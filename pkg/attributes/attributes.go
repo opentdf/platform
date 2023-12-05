@@ -87,6 +87,7 @@ func (s *attributesServer) ListAttributes(ctx context.Context, req *attributesv1
 	}
 	rows, err := s.dbClient.Query(context.TODO(), `
 		SELECT
+			id,
 		  resource
 		FROM opentdf.resources
 		WHERE policytype = @policytype
@@ -98,13 +99,15 @@ func (s *attributesServer) ListAttributes(ctx context.Context, req *attributesv1
 	defer rows.Close()
 
 	for rows.Next() {
+		var id string
 		var definition = new(attributesv1.AttributeDefinition)
 		// var tmpDefinition []byte
-		err = rows.Scan(&definition)
+		err = rows.Scan(&id, &definition)
 		if err != nil {
 			slog.Error("error listing attributes", slog.String("error", err.Error()))
 			return attributes, err
 		}
+		definition.Descriptor_.Id = id
 		attributes.Definitions = append(attributes.Definitions, definition)
 	}
 
@@ -115,13 +118,100 @@ func (s *attributesServer) ListAttributes(ctx context.Context, req *attributesv1
 }
 
 func (s *attributesServer) GetAttribute(ctx context.Context, req *attributesv1.GetAttributeRequest) (*attributesv1.GetAttributeResponse, error) {
-	return nil, nil
+	var (
+		definition = &attributesv1.GetAttributeResponse{}
+		err        error
+	)
+
+	args := pgx.NamedArgs{
+		"policytype": policyType,
+		"id":         req.Id,
+	}
+	rows, err := s.dbClient.Query(context.TODO(), `
+		SELECT
+			id,
+		  resource
+		FROM opentdf.resources
+		WHERE policytype = @policytype AND id = @id
+	`, args)
+	if err != nil {
+		slog.Error("error listing attributes", slog.String("error", err.Error()))
+		return definition, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id string
+
+		err = rows.Scan(&id, &definition.Definition)
+		if err != nil {
+			slog.Error("error listing attributes", slog.String("error", err.Error()))
+			return definition, err
+		}
+		definition.Definition.Descriptor_.Id = id
+	}
+
+	return definition, nil
 }
 
 func (s *attributesServer) UpdateAttribute(ctx context.Context, req *attributesv1.UpdateAttributeRequest) (*attributesv1.UpdateAttributeResponse, error) {
-	return nil, nil
+	var (
+		resp = &attributesv1.UpdateAttributeResponse{}
+		err  error
+	)
+	jsonAttr, err := json.Marshal(req.Definition)
+	if err != nil {
+		return resp, err
+	}
+
+	// Need to figure out how to handle group by
+	args := pgx.NamedArgs{
+		"namespace":   req.Definition.Descriptor_.Namespace,
+		"version":     req.Definition.Descriptor_.Version,
+		"fqn":         req.Definition.Descriptor_.Fqn,
+		"label":       req.Definition.Descriptor_.Label,
+		"description": req.Definition.Descriptor_.Description,
+		"policytype":  policyType,
+		"resource":    jsonAttr,
+		"id":          req.Definition.Descriptor_.Id,
+	}
+	_, err = s.dbClient.Exec(context.TODO(), `
+		UPDATE opentdf.resources
+		SET 
+		namespace = @namespace,
+		version = @version,
+		description = @description,
+		fqn = @fqn,
+		label = @label,
+		policyType = @policytype,
+		resource = @resource
+		WHERE id = @id
+		`, args)
+
+	if err != nil {
+		return resp, err
+	}
+	return resp, nil
 }
 
 func (s *attributesServer) DeleteAttribute(ctx context.Context, req *attributesv1.DeleteAttributeRequest) (*attributesv1.DeleteAttributeResponse, error) {
-	return nil, nil
+	var (
+		resp = &attributesv1.DeleteAttributeResponse{}
+		err  error
+	)
+
+	args := pgx.NamedArgs{
+		"id": req.Id,
+	}
+
+	_, err = s.dbClient.Exec(context.TODO(), `
+		DELETE FROM opentdf.resources
+		WHERE id = @id
+	`, args)
+
+	if err != nil {
+		slog.Error("error deleting attribute", slog.String("error", err.Error()))
+		return resp, err
+	}
+	return resp, nil
 }

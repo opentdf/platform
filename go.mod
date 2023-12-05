@@ -7,6 +7,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1
 	github.com/jackc/pgx/v5 v5.5.0
 	github.com/spf13/cobra v1.8.0
+	github.com/valyala/fasthttp v1.51.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 )

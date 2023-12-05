@@ -85,7 +85,7 @@ message GetAttributeRequest {
   optional AttributeRequestOptions options = 2;
 }
 message GetAttributeResponse {
-  AttributeDefinition definitions = 1;
+  AttributeDefinition definition = 1;
 }
 
 message ListAttributesRequest {

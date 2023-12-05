@@ -33,7 +33,7 @@ func (c *Client) RunMigrations(dir string) (*atlasexec.MigrateApply, error) {
 		),
 	)
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("failed to load working directory: %v", err))
+		return nil, errors.Join(fmt.Errorf("failed to load working directory"), err)
 	}
 	// atlasexec works on a temporary directory, so we need to close it
 	defer workdir.Close()

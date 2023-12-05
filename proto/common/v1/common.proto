@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package common.v1;
+
+// Struct to uniquely identify a resource with optional additional metadata
+message ResourceDescriptor {
+  // unique resource identifier
+  string id = 1;
+  // resource version
+  string version = 2;
+  // resource namespace; used to partition resources, support by namespace AuthN and enable federation
+  string namespace = 3;
+  /*
+     optional fully qualified name of the resource.  FQN is used to support direct references and to eliminate the need
+     for clients to compose an FQN at run time.
+
+     the fqn may be specific to the resource type.
+  */
+  string fqn = 4;
+  // optional short description / label
+  string label = 5;
+  // optional long description
+  string description = 6;
+  // optional list of resource dependencies
+  repeated ResourceDependency dependencies = 7;
+}
+
+// Define a resource dependency
+message ResourceDependency {
+  // namespace of referenced resource
+  string namespace = 1;
+  // version of reference resource
+  string version = 2;
+  enum PolicyResourceType {
+    POLICY_RESOURCE_TYPE_UNSPECIFIED = 0;
+    POLICY_RESOURCE_TYPE_RESOURCE_ENCODING = 1;
+    POLICY_RESOURCE_TYPE_SUBJECT_ENCODING = 2;
+    POLICY_RESOURCE_TYPE_KEY_ACCESS = 3;
+    POLICY_RESOURCE_TYPE_ATTRIBUTES = 4;
+  }
+  //type of dependency
+  PolicyResourceType type = 3;
+}

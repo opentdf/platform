@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package acse.v1;
+
+import "attributes/v1/attributes.proto";
+import "common/v1/common.proto";
+import "google/api/annotations.proto";
+
+/*
+   Access Control Subject Encoding (ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
+*/
+
+// Set of subject mappings identified by id with a version and namespace
+message SubjectMappingSet {
+  common.v1.ResourceDescriptor descriptor = 1;
+  //List of member attributes as FQN
+  repeated SubjectMapping subject_mappings = 2;
+}
+
+/**
+   Define a mapping of an subject attribute to subject using a rule:
+   <subject.subjectAttribute> <operator IN/NOT_IN> [subjectValue]
+
+   Example subject mapping of a subject with nationality = CZE entitled to attribute relto:ZCE
+   From Existing Policy: "http://demo.com/attr/relto/value/CZE": {"nationality": ["CZE"]}
+   To Subject Mapping Policy:
+   {
+     attributeValueFQN: "http://demo.com/attr/relto/value/CZE"
+     subjectAttribute: "nationality"
+     subjectValues: ["CZE"]
+     operator: "IN"
+   }
+
+*/
+message SubjectMapping {
+  enum Operator {
+    OPERATOR_UNSPECIFIED = 0;
+    OPERATOR_IN= 1;
+    OPERATOR_NOT_IN = 2;
+  }
+  //TODO should this be a list of values?
+  // Attribute Value to be mapped to
+  attributes.v1.AttributeValueReference attribute_value_ref = 1;
+  // Resource Attribute Key; NOT Attribute Definition Attribute name
+  string subject_attribute = 2;
+  // The list of comparison values for a resource's <attribute> value
+  repeated string subject_values = 3;
+  // the operator
+  Operator operator = 4;
+  //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
+  // or treat the subject values as regex patterns applied to subject attribute
+}
+
+message SubjectEncodingRequestOptions {}
+
+message GetSubjectEncodingRequest {
+  string id = 1;
+  optional SubjectEncodingRequestOptions options = 2;
+}
+message GetSubjectEncodingResponse {
+  optional SubjectMappingSet subject_mapping_set = 1;
+}
+
+message ListSubjectEncodingsRequest {
+  optional SubjectEncodingRequestOptions options = 1;
+}
+message ListSubjectEncodingsResponse {
+  repeated SubjectMappingSet subject_mapping_sets = 1;
+}
+
+message CreateSubjectEncodingRequest {}
+message CreateSubjectEncodingResponse {}
+
+message UpdateSubjectEncodingRequest {
+  string id = 1;
+  SubjectMappingSet definition = 2;
+}
+message UpdateSubjectEncodingResponse {}
+
+message DeleteSubjectEncodingRequest {
+  string id = 1;
+}
+message DeleteSubjectEncodingResponse {}
+
+service SubjectEncodingService {
+  rpc ListSubjectEncodings(ListSubjectEncodingsRequest) returns (ListSubjectEncodingsResponse) {
+    option (google.api.http) = {get: "/v1/encoding/subjects"};
+  }
+  rpc GetSubjectEncoding(GetSubjectEncodingRequest) returns (GetSubjectEncodingResponse) {
+    option (google.api.http) = {get: "/v1/encoding/subjects/{id}"};
+  }
+
+  rpc CreateSubjectEncoding(CreateSubjectEncodingRequest) returns (CreateSubjectEncodingResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/subjects"
+      body: "*"
+    };
+  }
+
+  rpc UpdateSubjectEncoding(UpdateSubjectEncodingRequest) returns (UpdateSubjectEncodingResponse) {
+    option (google.api.http) = {
+      put: "/v1/encoding/subjects/{id}"
+      body: "definition"
+    };
+  }
+
+  rpc DeleteSubjectEncoding(DeleteSubjectEncodingRequest) returns (DeleteSubjectEncodingResponse) {
+    option (google.api.http) = {delete: "/v1/encoding/subjects/{id}"};
+  }
+}

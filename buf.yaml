@@ -1,0 +1,12 @@
+version: v1
+deps: []
+breaking:
+  use:
+    - FILE
+lint:
+  use:
+    - DEFAULT
+  ignore_only:
+    PACKAGE_VERSION_SUFFIX:
+      - google/api/annotations.proto
+      - google/api/http.proto

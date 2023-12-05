@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package attributes.v1;
+
+import "common/v1/common.proto";
+import "google/api/annotations.proto";
+
+// Just a set of attributes
+message AttributeSet {
+  common.v1.ResourceDescriptor descriptor = 1;
+  repeated AttributeDefinition definitions = 2;
+}
+
+// Attribute Definition
+message AttributeDefinition {
+  enum AttributeRuleType {
+    ATTRIBUTE_RULE_TYPE_UNSPECIFIED = 0;
+    ATTRIBUTE_RULE_TYPE_ALL_OF = 1;
+    ATTRIBUTE_RULE_TYPE_ANY_OF = 2;
+    ATTRIBUTE_RULE_TYPE_HIERARCHICAL = 3;
+  }
+  common.v1.ResourceDescriptor descriptor = 1;
+  //attribute name
+  string name = 2;
+  // attribute rule enum
+  AttributeRuleType rule = 3;
+  // possible values
+  repeated AttributeDefinitionValue values = 4;
+
+  //optional attribute group by filtering rules
+  repeated AttributeDefinitionValue group_by = 9;
+}
+
+// Reference to an attribute value, one of descriptor or embedded value
+message AttributeDefinitionReference {
+  oneof ref {
+    common.v1.ResourceDescriptor descriptor = 1;
+    AttributeDefinition definition = 2;
+  }
+}
+
+// Definition of a single attribute value
+message AttributeDefinitionValue {
+  common.v1.ResourceDescriptor descriptor = 1;
+  string value = 2;
+  //TODO - optional lock down pub key format if needed.  Per ATTR KEY?
+  string attribute_public_key = 3;
+}
+
+// Reference to an attribute value, one of descriptor or embedded value
+message AttributeValueReference {
+  oneof ref {
+    common.v1.ResourceDescriptor descriptor = 1;
+    AttributeDefinitionValue attribute_value = 2;
+  }
+}
+
+/*
+   represent an attribute value as a group with other attribute values as members
+
+   Example for Org1 FVEY:
+   id: 1
+   version: 1.0
+   namespace: demo.com
+   groupValue: http://demo.com/attr/relTo/FVEY
+   members: [http://demo.com/attr/relTo/USA,http://demo.com/attr/relTo/GBR,...]
+
+*/
+message AttributeGroup {
+  common.v1.ResourceDescriptor descriptor = 1;
+  AttributeValueReference group_value = 2;
+  repeated AttributeValueReference member_values = 3;
+}
+
+//set of attribute groups
+message AttributeGroupSet {
+  common.v1.ResourceDescriptor descriptor = 1;
+  repeated AttributeGroup groups = 2;
+}
+
+message AttributeRequestOptions {}
+
+message GetAttributeRequest {
+  string id = 1;
+  optional AttributeRequestOptions options = 2;
+}
+message GetAttributeResponse {
+  AttributeDefinition definitions = 1;
+}
+
+message ListAttributesRequest {
+  optional AttributeRequestOptions options = 1;
+}
+message ListAttributesResponse {
+  repeated AttributeDefinition definitions = 1;
+}
+
+message CreateAttributeRequest {
+  AttributeDefinition definition = 1;
+}
+message CreateAttributeResponse {}
+
+message UpdateAttributeRequest {
+  string id = 1;
+  AttributeDefinition definition = 2;
+}
+message UpdateAttributeResponse {}
+
+message DeleteAttributeRequest {
+  string id = 1;
+}
+message DeleteAttributeResponse {}
+
+service AttributesService {
+  rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
+    option (google.api.http) = {get: "/v1/attributes/{id}"};
+  }
+
+  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
+    option (google.api.http) = {get: "/v1/attributes"};
+  }
+
+  rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
+    option (google.api.http) = {
+      post: "/v1/attributes"
+      body: "*"
+    };
+  }
+
+  rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {
+    option (google.api.http) = {
+      put: "/v1/attributes/{id}"
+      body: "definition"
+    };
+  }
+
+  rpc DeleteAttribute(DeleteAttributeRequest) returns (DeleteAttributeResponse) {
+    option (google.api.http) = {delete: "/v1/attributes/{id}"};
+  }
+}

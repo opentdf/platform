@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package key_access_server.v1;
+
+// import "common/v1/common.proto";
+// import "google/api/annotations.proto";
+
+// //https://github.com/opentdf/backend-go/blob/main/pkg/access/publicKey.go#L48-L83
+// message KasPublicKeys {
+//   repeated PublicKey keys
+// }
+
+// message PublicKey {
+//   string kid
+//   string key
+// }
+
+// message RewrapRequest {
+//     https://github.com/opentdf/backend-go/blob/main/pkg/access/rewrap.go#L20-L31
+// }
+
+// message RewrapResponse {
+//   https://github.com/opentdf/backend-go/blob/main/pkg/access/rewrap.go#L33-L37
+// }
+
+// service KeyAccessService {
+//   rpc getPublicKeys() returns (KasPublicKeys) {
+//     option(google.api.http)={
+//       get: "/v1/access/public-keys"
+//     }
+//   }
+
+//   rpc rewrap(RewrapRewuest) returns (RewrapResponse) {
+//     option(google.api.http)={
+//       post: "/v1/access/rewrap"
+//       body: "*"
+//     }
+//   }
+// }

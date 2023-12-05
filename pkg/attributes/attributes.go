@@ -16,12 +16,13 @@ type attributesServer struct {
 	dbClient *db.Client
 }
 
-func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) {
+func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
 	as := &attributesServer{
 		dbClient: dbClient,
 	}
 	attributesv1.RegisterAttributesServiceServer(g, as)
-	attributesv1.RegisterAttributesServiceHandlerServer(context.Background(), s, as)
+	err := attributesv1.RegisterAttributesServiceHandlerServer(context.Background(), s, as)
+	return err
 }
 
 func (s *attributesServer) CreateAttribute(ctx context.Context, req *attributesv1.CreateAttributeRequest) (*attributesv1.CreateAttributeResponse, error) {

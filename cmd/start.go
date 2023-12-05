@@ -85,10 +85,18 @@ func start(cmd *cobra.Command, args []string) {
 	mux := runtime.NewServeMux()
 
 	slog.Info("registering acre server")
-	acre.NewAcreServer(dbClient, grpcServer, mux)
+	err = acre.NewAcreServer(dbClient, grpcServer, mux)
+	if err != nil {
+		slog.Error("failed to register acre server", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	slog.Info("registering attributes server")
-	attributes.NewAttributesServer(dbClient, grpcServer, mux)
+	err = attributes.NewAttributesServer(dbClient, grpcServer, mux)
+	if err != nil {
+		slog.Error("failed to register attributes server", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	// TODO: make this conditional
 	reflection.Register(grpcServer)

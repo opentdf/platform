@@ -19,7 +19,7 @@ message AttributeDefinition {
     ATTRIBUTE_RULE_TYPE_ANY_OF = 2;
     ATTRIBUTE_RULE_TYPE_HIERARCHICAL = 3;
   }
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.v1.ResourceDescriptor descriptor = 1; //`db:"descriptor"`
   //attribute name
   string name = 2;
   // attribute rule enum

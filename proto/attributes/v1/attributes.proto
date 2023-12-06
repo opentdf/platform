@@ -73,10 +73,16 @@ message AttributeGroup {
 }
 
 //set of attribute groups
+// Could we do this with a list operation based on filtering?
 message AttributeGroupSet {
   common.v1.ResourceDescriptor descriptor = 1;
   repeated AttributeGroup groups = 2;
 }
+
+
+/*
+  Attribute Service Definitions
+*/
 
 message AttributeRequestOptions {}
 
@@ -111,18 +117,67 @@ message DeleteAttributeRequest {
 }
 message DeleteAttributeResponse {}
 
+message GetAttributeGroupRequest {
+  string id = 1;
+  optional AttributeRequestOptions options = 2;
+}
+
+message GetAttributeGroupResponse {
+  AttributeGroup group = 1;
+}
+
+message ListAttributeGroupsRequest {
+  optional AttributeRequestOptions options = 1;
+}
+
+message ListAttributeGroupsResponse {
+  repeated AttributeGroup groups = 1;
+}
+
+message CreateAttributeGroupRequest {
+  AttributeGroup group = 1;
+}
+
+message CreateAttributeGroupResponse {}
+
+message UpdateAttributeGroupRequest {
+  string id = 1;
+  AttributeGroup group = 2;
+}
+message UpdateAttributeGroupResponse {}
+
+message DeleteAttributeGroupRequest {
+  string id = 1;
+}
+message DeleteAttributeGroupResponse {}
+
 service AttributesService {
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/v1/attributes/{id}"};
+  }
+
+  rpc GetAttributeGroup(GetAttributeGroupRequest) returns (GetAttributeGroupResponse) {
+    option (google.api.http) = {get: "/v1/attributes/groups/{id}"};
   }
 
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
     option (google.api.http) = {get: "/v1/attributes"};
   }
 
+  rpc ListAttributeGroups(ListAttributeGroupsRequest) returns (ListAttributeGroupsResponse) {
+    option (google.api.http) = {get: "/v1/attributes/groups"};
+  }
+
   rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
     option (google.api.http) = {
       post: "/v1/attributes"
+      body: "*"
+    };
+  }
+
+  rpc CreateAttributeGroup(CreateAttributeGroupRequest) returns (CreateAttributeGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/attributes/groups"
       body: "*"
     };
   }
@@ -134,7 +189,19 @@ service AttributesService {
     };
   }
 
+  rpc UpdateAttributeGroup(UpdateAttributeGroupRequest) returns (UpdateAttributeGroupResponse) {
+    option (google.api.http) = {
+      put: "/v1/attributes/groups/{id}"
+      body: "group"
+    };
+  }
+
   rpc DeleteAttribute(DeleteAttributeRequest) returns (DeleteAttributeResponse) {
     option (google.api.http) = {delete: "/v1/attributes/{id}"};
   }
+
+  rpc DeleteAttributeGroup(DeleteAttributeGroupRequest) returns (DeleteAttributeGroupResponse) {
+    option (google.api.http) = {delete: "/v1/attributes/groups/{id}"};
+  }
 }
+

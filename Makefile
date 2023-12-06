@@ -10,7 +10,7 @@ DOCKER_BUILD_CMD=docker build
 DOCKER_IMAGE_NAME=opentdf
 
 # Buf parameters
-BUFLINT=buf lint --error-format=config-ignore-yaml proto
+BUFLINT=buf lint proto
 BUFGENERATE=buf generate proto
 
 # GolangCI-Lint
@@ -27,6 +27,7 @@ buf-lint:
 	 if [ $$exit_code -eq 100 ]; then \
       echo "Buf lint exited with code 100, treating as success"; \
 		else \
+			echo "Buf lint exited with code $$exit_code"; \
 			exit $$exit_code; \
 		fi)
 

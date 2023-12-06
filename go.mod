@@ -1,6 +1,6 @@
 module github.com/opentdf/opentdf-v2-poc
 
-go 1.21.2
+go 1.21
 
 require (
 	ariga.io/atlas-go-sdk v0.2.2

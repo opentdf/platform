@@ -1,7 +1,7 @@
 import grpc
-import attributes_pb2
-import common_pb2
-import attributes_pb2_grpc
+from gen.attributes.v1 import attributes_pb2
+from gen.common.v1 import common_pb2
+from gen.attributes.v1 import attributes_pb2_grpc
 
 
 # Create a new Attributes object

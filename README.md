@@ -6,13 +6,17 @@ OpenTDF V2 POC
 ### Prerequisites
 
 `brew install air`
+
 `brew install buf`
+
 `brew install ariga/tap/atlas`
 
 ### Run
 
 `docker-compose -f opentdf-compose.yaml up`
+
 `export DB_URL=postgres://postgres:changeme@localhost:5432/opentdf?sslmode=disable`
+
 `air`
 
 This should bring up a grpc server on port 8082 and http server on port 8081
@@ -65,6 +69,7 @@ EOM
 ```
 
 List Attributes
+
 ```bash
 grpcurl -plaintext -d @ localhost:8082 attributes.v1.AttributesService/ListAttributes
 ```

@@ -27,7 +27,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
   test:
-    name: lint
+    name: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

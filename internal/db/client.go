@@ -7,11 +7,23 @@ import (
 	"os"
 
 	"ariga.io/atlas-go-sdk/atlasexec"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// We can rename this but wanted to get mocks working
+type PgxIface interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	Ping(context.Context) error
+	Close()
+	Config() *pgxpool.Config
+}
+
 type Client struct {
-	*pgxpool.Pool
+	PgxIface
 }
 
 func NewClient(url string) (*Client, error) {
@@ -22,7 +34,7 @@ func NewClient(url string) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		Pool: pool,
+		PgxIface: pool,
 	}, err
 }
 

@@ -26,3 +26,14 @@ jobs:
         uses: golang/govulncheck-action@v1
         with:
           go-version-file: 'go.mod'
+  test:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache: false
+      - name: Test with the Go CLI
+        run: go test ./... -race

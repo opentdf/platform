@@ -38,7 +38,7 @@ golangci-lint:
 	$(GOLANGCILINT)
 
 test:
-	$(GOTEST) ./...
+	$(GOTEST) ./... -race
 
 clean:
 	$(GOCLEAN)

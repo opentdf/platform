@@ -2,18 +2,21 @@ package db
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 
-	"ariga.io/atlas-go-sdk/atlasexec"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
 // We can rename this but wanted to get mocks working
 type PgxIface interface {
+	Acquire(ctx context.Context) (*pgxpool.Conn, error)
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 	QueryRow(context.Context, string, ...any) pgx.Row
 	Query(context.Context, string, ...any) (pgx.Rows, error)
@@ -38,32 +41,41 @@ func NewClient(url string) (*Client, error) {
 	}, err
 }
 
-func (c *Client) RunMigrations(dir string) (*atlasexec.MigrateApply, error) {
-	workdir, err := atlasexec.NewWorkingDir(
-		atlasexec.WithMigrations(
-			os.DirFS(dir),
-		),
-	)
-	if err != nil {
-		return nil, errors.Join(fmt.Errorf("failed to load working directory"), err)
-	}
-	// atlasexec works on a temporary directory, so we need to close it
-	defer workdir.Close()
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
 
-	// Initialize the client.
-	client, err := atlasexec.NewClient(workdir.Path(), "atlas")
+func (c *Client) RunMigrations() (int, error) {
+	var (
+		applied int
+	)
+
+	fsys, err := fs.Sub(embedMigrations, "migrations")
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("failed to initialize atlas"), err)
+		return applied, errors.Join(fmt.Errorf("failed to create migrations filesystem"), err)
 	}
-	// Run `atlas migrate apply` on a SQLite database under /tmp.
-	res, err := client.Apply(context.Background(), &atlasexec.MigrateApplyParams{
-		URL: c.Config().ConnString(),
-	})
+
+	conn := stdlib.OpenDBFromPool(c.PgxIface.(*pgxpool.Pool))
+	defer conn.Close()
+
+	provider, err := goose.NewProvider(goose.DialectPostgres, conn, fsys)
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("failed to apply migrations"), err)
+		return applied, errors.Join(fmt.Errorf("failed to create goose provider"), err)
 	}
-	if res.Error != "" {
-		return nil, fmt.Errorf("failed to apply migrations: %s", res.Error)
+
+	res, err := provider.Up(context.Background())
+	if err != nil {
+		return applied, errors.Join(fmt.Errorf("failed to run migrations"), err)
 	}
-	return res, nil
+
+	for _, r := range res {
+		if r.Error != nil {
+			return applied, errors.Join(fmt.Errorf("failed to run migrations"), err)
+		}
+		if !r.Empty {
+			applied++
+		}
+	}
+
+	return applied, nil
+
 }

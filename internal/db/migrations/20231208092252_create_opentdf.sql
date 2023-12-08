@@ -1,3 +1,7 @@
+-- +goose Up
+-- +goose StatementBegin
+SELECT 'up SQL query';
+
 CREATE SCHEMA IF NOT EXISTS opentdf;
 
 CREATE TABLE IF NOT EXISTS opentdf.resources
@@ -11,3 +15,10 @@ CREATE TABLE IF NOT EXISTS opentdf.resources
     policytype VARCHAR NOT NULL,
     resource JSON
 );
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+SELECT 'down SQL query';
+-- +goose StatementEnd

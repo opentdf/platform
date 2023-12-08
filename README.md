@@ -9,8 +9,6 @@ OpenTDF V2 POC
 
 `brew install buf`
 
-`brew install ariga/tap/atlas`
-
 ### Run
 
 `docker-compose -f opentdf-compose.yaml up`

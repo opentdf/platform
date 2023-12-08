@@ -50,12 +50,12 @@ func start(cmd *cobra.Command, args []string) {
 	}
 
 	slog.Info("running database migrations")
-	migrationResults, err := dbClient.RunMigrations("./migrations")
+	appliedMigrations, err := dbClient.RunMigrations()
 	if err != nil {
 		slog.Error("issue running database migrations", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
-	slog.Info("database migrations complete", slog.Int("applied", len(migrationResults.Applied)))
+	slog.Info("database migrations complete", slog.Int("applied", appliedMigrations))
 
 	slog.Info("starting grpc & http server")
 	// Create new server for grpc & http. Also will support in process grpc potentially too

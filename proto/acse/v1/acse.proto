@@ -33,78 +33,82 @@ message SubjectMappingSet {
 
 */
 message SubjectMapping {
+  common.v1.ResourceDescriptor descriptor = 1;
+
   enum Operator {
     OPERATOR_UNSPECIFIED = 0;
-    OPERATOR_IN= 1;
+    OPERATOR_IN = 1;
     OPERATOR_NOT_IN = 2;
   }
   //TODO should this be a list of values?
   // Attribute Value to be mapped to
-  attributes.v1.AttributeValueReference attribute_value_ref = 1;
+  attributes.v1.AttributeValueReference attribute_value_ref = 2;
   // Resource Attribute Key; NOT Attribute Definition Attribute name
-  string subject_attribute = 2;
+  string subject_attribute = 3;
   // The list of comparison values for a resource's <attribute> value
-  repeated string subject_values = 3;
+  repeated string subject_values = 4;
   // the operator
-  Operator operator = 4;
+  Operator operator = 5;
   //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
   // or treat the subject values as regex patterns applied to subject attribute
 }
 
 message SubjectEncodingRequestOptions {}
 
-message GetSubjectEncodingRequest {
+message GetSubjectMappingRequest {
   string id = 1;
   optional SubjectEncodingRequestOptions options = 2;
 }
-message GetSubjectEncodingResponse {
-  optional SubjectMappingSet subject_mapping_set = 1;
+message GetSubjectMappingResponse {
+  optional SubjectMapping subject_mapping = 1;
 }
 
-message ListSubjectEncodingsRequest {
+message ListSubjectMappingsRequest {
   optional SubjectEncodingRequestOptions options = 1;
 }
-message ListSubjectEncodingsResponse {
-  repeated SubjectMappingSet subject_mapping_sets = 1;
+message ListSubjectMappingsResponse {
+  repeated SubjectMapping subject_mappings = 1;
 }
 
-message CreateSubjectEncodingRequest {}
-message CreateSubjectEncodingResponse {}
+message CreateSubjectMappingRequest {
+  SubjectMapping subject_mapping = 1;
+}
+message CreateSubjectMappingResponse {}
 
-message UpdateSubjectEncodingRequest {
+message UpdateSubjectMappingRequest {
   string id = 1;
-  SubjectMappingSet definition = 2;
+  SubjectMapping subject_mapping = 2;
 }
-message UpdateSubjectEncodingResponse {}
+message UpdateSubjectMappingResponse {}
 
-message DeleteSubjectEncodingRequest {
+message DeleteSubjectMappingRequest {
   string id = 1;
 }
-message DeleteSubjectEncodingResponse {}
+message DeleteSubjectMappingResponse {}
 
 service SubjectEncodingService {
-  rpc ListSubjectEncodings(ListSubjectEncodingsRequest) returns (ListSubjectEncodingsResponse) {
-    option (google.api.http) = {get: "/v1/encoding/subjects"};
+  rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
+    option (google.api.http) = {get: "/v1/encoding/subject/mappings"};
   }
-  rpc GetSubjectEncoding(GetSubjectEncodingRequest) returns (GetSubjectEncodingResponse) {
-    option (google.api.http) = {get: "/v1/encoding/subjects/{id}"};
+  rpc GetSubjectMapping(GetSubjectMappingRequest) returns (GetSubjectMappingResponse) {
+    option (google.api.http) = {get: "/v1/encoding/subject/mappings/{id}"};
   }
 
-  rpc CreateSubjectEncoding(CreateSubjectEncodingRequest) returns (CreateSubjectEncodingResponse) {
+  rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {
     option (google.api.http) = {
-      post: "/v1/encoding/subjects"
+      post: "/v1/encoding/subject/mappings"
       body: "*"
     };
   }
 
-  rpc UpdateSubjectEncoding(UpdateSubjectEncodingRequest) returns (UpdateSubjectEncodingResponse) {
+  rpc UpdateSubjectMapping(UpdateSubjectMappingRequest) returns (UpdateSubjectMappingResponse) {
     option (google.api.http) = {
-      put: "/v1/encoding/subjects/{id}"
-      body: "definition"
+      put: "/v1/encoding/subject/mapping/{id}"
+      body: "subject_mapping"
     };
   }
 
-  rpc DeleteSubjectEncoding(DeleteSubjectEncodingRequest) returns (DeleteSubjectEncodingResponse) {
+  rpc DeleteSubjectMapping(DeleteSubjectMappingRequest) returns (DeleteSubjectMappingResponse) {
     option (google.api.http) = {delete: "/v1/encoding/subjects/{id}"};
   }
 }

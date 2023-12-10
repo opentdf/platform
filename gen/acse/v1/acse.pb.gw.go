@@ -32,47 +32,47 @@ var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
 var (
-	filter_SubjectEncodingService_ListSubjectEncodings_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_SubjectEncodingService_ListSubjectMappings_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_SubjectEncodingService_ListSubjectEncodings_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListSubjectEncodingsRequest
+func request_SubjectEncodingService_ListSubjectMappings_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ListSubjectMappingsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectEncodingService_ListSubjectEncodings_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectEncodingService_ListSubjectMappings_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.ListSubjectEncodings(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.ListSubjectMappings(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_SubjectEncodingService_ListSubjectEncodings_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListSubjectEncodingsRequest
+func local_request_SubjectEncodingService_ListSubjectMappings_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ListSubjectMappingsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectEncodingService_ListSubjectEncodings_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectEncodingService_ListSubjectMappings_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.ListSubjectEncodings(ctx, &protoReq)
+	msg, err := server.ListSubjectMappings(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_SubjectEncodingService_GetSubjectEncoding_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
+	filter_SubjectEncodingService_GetSubjectMapping_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
 )
 
-func request_SubjectEncodingService_GetSubjectEncoding_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetSubjectEncodingRequest
+func request_SubjectEncodingService_GetSubjectMapping_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetSubjectMappingRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -95,17 +95,17 @@ func request_SubjectEncodingService_GetSubjectEncoding_0(ctx context.Context, ma
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectEncodingService_GetSubjectEncoding_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectEncodingService_GetSubjectMapping_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetSubjectEncoding(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetSubjectMapping(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_SubjectEncodingService_GetSubjectEncoding_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetSubjectEncodingRequest
+func local_request_SubjectEncodingService_GetSubjectMapping_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetSubjectMappingRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -128,17 +128,17 @@ func local_request_SubjectEncodingService_GetSubjectEncoding_0(ctx context.Conte
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectEncodingService_GetSubjectEncoding_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectEncodingService_GetSubjectMapping_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.GetSubjectEncoding(ctx, &protoReq)
+	msg, err := server.GetSubjectMapping(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_SubjectEncodingService_CreateSubjectEncoding_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateSubjectEncodingRequest
+func request_SubjectEncodingService_CreateSubjectMapping_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq CreateSubjectMappingRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -149,13 +149,13 @@ func request_SubjectEncodingService_CreateSubjectEncoding_0(ctx context.Context,
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.CreateSubjectEncoding(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.CreateSubjectMapping(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_SubjectEncodingService_CreateSubjectEncoding_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateSubjectEncodingRequest
+func local_request_SubjectEncodingService_CreateSubjectMapping_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq CreateSubjectMappingRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -166,20 +166,20 @@ func local_request_SubjectEncodingService_CreateSubjectEncoding_0(ctx context.Co
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.CreateSubjectEncoding(ctx, &protoReq)
+	msg, err := server.CreateSubjectMapping(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_SubjectEncodingService_UpdateSubjectEncoding_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateSubjectEncodingRequest
+func request_SubjectEncodingService_UpdateSubjectMapping_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UpdateSubjectMappingRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Definition); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.SubjectMapping); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -200,20 +200,20 @@ func request_SubjectEncodingService_UpdateSubjectEncoding_0(ctx context.Context,
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.UpdateSubjectEncoding(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UpdateSubjectMapping(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_SubjectEncodingService_UpdateSubjectEncoding_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateSubjectEncodingRequest
+func local_request_SubjectEncodingService_UpdateSubjectMapping_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UpdateSubjectMappingRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Definition); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.SubjectMapping); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -234,13 +234,13 @@ func local_request_SubjectEncodingService_UpdateSubjectEncoding_0(ctx context.Co
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.UpdateSubjectEncoding(ctx, &protoReq)
+	msg, err := server.UpdateSubjectMapping(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_SubjectEncodingService_DeleteSubjectEncoding_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteSubjectEncodingRequest
+func request_SubjectEncodingService_DeleteSubjectMapping_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteSubjectMappingRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -260,13 +260,13 @@ func request_SubjectEncodingService_DeleteSubjectEncoding_0(ctx context.Context,
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.DeleteSubjectEncoding(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.DeleteSubjectMapping(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_SubjectEncodingService_DeleteSubjectEncoding_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteSubjectEncodingRequest
+func local_request_SubjectEncodingService_DeleteSubjectMapping_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteSubjectMappingRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -286,7 +286,7 @@ func local_request_SubjectEncodingService_DeleteSubjectEncoding_0(ctx context.Co
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.DeleteSubjectEncoding(ctx, &protoReq)
+	msg, err := server.DeleteSubjectMapping(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -297,7 +297,7 @@ func local_request_SubjectEncodingService_DeleteSubjectEncoding_0(ctx context.Co
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterSubjectEncodingServiceHandlerFromEndpoint instead.
 func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server SubjectEncodingServiceServer) error {
 
-	mux.Handle("GET", pattern_SubjectEncodingService_ListSubjectEncodings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_SubjectEncodingService_ListSubjectMappings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -305,12 +305,12 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/ListSubjectEncodings", runtime.WithHTTPPathPattern("/v1/encoding/subjects"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/ListSubjectMappings", runtime.WithHTTPPathPattern("/v1/encoding/subject/mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SubjectEncodingService_ListSubjectEncodings_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_SubjectEncodingService_ListSubjectMappings_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -318,11 +318,11 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_SubjectEncodingService_ListSubjectEncodings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_ListSubjectMappings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_SubjectEncodingService_GetSubjectEncoding_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_SubjectEncodingService_GetSubjectMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -330,12 +330,12 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/GetSubjectEncoding", runtime.WithHTTPPathPattern("/v1/encoding/subjects/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/GetSubjectMapping", runtime.WithHTTPPathPattern("/v1/encoding/subject/mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SubjectEncodingService_GetSubjectEncoding_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_SubjectEncodingService_GetSubjectMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -343,11 +343,11 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_SubjectEncodingService_GetSubjectEncoding_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_GetSubjectMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SubjectEncodingService_CreateSubjectEncoding_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_SubjectEncodingService_CreateSubjectMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -355,12 +355,12 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/CreateSubjectEncoding", runtime.WithHTTPPathPattern("/v1/encoding/subjects"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/CreateSubjectMapping", runtime.WithHTTPPathPattern("/v1/encoding/subject/mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SubjectEncodingService_CreateSubjectEncoding_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_SubjectEncodingService_CreateSubjectMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -368,11 +368,11 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_SubjectEncodingService_CreateSubjectEncoding_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_CreateSubjectMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PUT", pattern_SubjectEncodingService_UpdateSubjectEncoding_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_SubjectEncodingService_UpdateSubjectMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -380,12 +380,12 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/UpdateSubjectEncoding", runtime.WithHTTPPathPattern("/v1/encoding/subjects/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/UpdateSubjectMapping", runtime.WithHTTPPathPattern("/v1/encoding/subject/mapping/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SubjectEncodingService_UpdateSubjectEncoding_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_SubjectEncodingService_UpdateSubjectMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -393,11 +393,11 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_SubjectEncodingService_UpdateSubjectEncoding_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_UpdateSubjectMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_SubjectEncodingService_DeleteSubjectEncoding_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_SubjectEncodingService_DeleteSubjectMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -405,12 +405,12 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/DeleteSubjectEncoding", runtime.WithHTTPPathPattern("/v1/encoding/subjects/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/DeleteSubjectMapping", runtime.WithHTTPPathPattern("/v1/encoding/subjects/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SubjectEncodingService_DeleteSubjectEncoding_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_SubjectEncodingService_DeleteSubjectMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -418,7 +418,7 @@ func RegisterSubjectEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_SubjectEncodingService_DeleteSubjectEncoding_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_DeleteSubjectMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -463,113 +463,113 @@ func RegisterSubjectEncodingServiceHandler(ctx context.Context, mux *runtime.Ser
 // "SubjectEncodingServiceClient" to call the correct interceptors.
 func RegisterSubjectEncodingServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client SubjectEncodingServiceClient) error {
 
-	mux.Handle("GET", pattern_SubjectEncodingService_ListSubjectEncodings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_SubjectEncodingService_ListSubjectMappings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/ListSubjectEncodings", runtime.WithHTTPPathPattern("/v1/encoding/subjects"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/ListSubjectMappings", runtime.WithHTTPPathPattern("/v1/encoding/subject/mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SubjectEncodingService_ListSubjectEncodings_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_SubjectEncodingService_ListSubjectMappings_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SubjectEncodingService_ListSubjectEncodings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_ListSubjectMappings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_SubjectEncodingService_GetSubjectEncoding_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_SubjectEncodingService_GetSubjectMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/GetSubjectEncoding", runtime.WithHTTPPathPattern("/v1/encoding/subjects/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/GetSubjectMapping", runtime.WithHTTPPathPattern("/v1/encoding/subject/mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SubjectEncodingService_GetSubjectEncoding_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_SubjectEncodingService_GetSubjectMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SubjectEncodingService_GetSubjectEncoding_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_GetSubjectMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SubjectEncodingService_CreateSubjectEncoding_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_SubjectEncodingService_CreateSubjectMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/CreateSubjectEncoding", runtime.WithHTTPPathPattern("/v1/encoding/subjects"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/CreateSubjectMapping", runtime.WithHTTPPathPattern("/v1/encoding/subject/mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SubjectEncodingService_CreateSubjectEncoding_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_SubjectEncodingService_CreateSubjectMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SubjectEncodingService_CreateSubjectEncoding_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_CreateSubjectMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PUT", pattern_SubjectEncodingService_UpdateSubjectEncoding_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_SubjectEncodingService_UpdateSubjectMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/UpdateSubjectEncoding", runtime.WithHTTPPathPattern("/v1/encoding/subjects/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/UpdateSubjectMapping", runtime.WithHTTPPathPattern("/v1/encoding/subject/mapping/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SubjectEncodingService_UpdateSubjectEncoding_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_SubjectEncodingService_UpdateSubjectMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SubjectEncodingService_UpdateSubjectEncoding_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_UpdateSubjectMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_SubjectEncodingService_DeleteSubjectEncoding_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_SubjectEncodingService_DeleteSubjectMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/DeleteSubjectEncoding", runtime.WithHTTPPathPattern("/v1/encoding/subjects/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acse.v1.SubjectEncodingService/DeleteSubjectMapping", runtime.WithHTTPPathPattern("/v1/encoding/subjects/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SubjectEncodingService_DeleteSubjectEncoding_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_SubjectEncodingService_DeleteSubjectMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SubjectEncodingService_DeleteSubjectEncoding_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_SubjectEncodingService_DeleteSubjectMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -577,25 +577,25 @@ func RegisterSubjectEncodingServiceHandlerClient(ctx context.Context, mux *runti
 }
 
 var (
-	pattern_SubjectEncodingService_ListSubjectEncodings_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "encoding", "subjects"}, ""))
+	pattern_SubjectEncodingService_ListSubjectMappings_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "subject", "mappings"}, ""))
 
-	pattern_SubjectEncodingService_GetSubjectEncoding_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "encoding", "subjects", "id"}, ""))
+	pattern_SubjectEncodingService_GetSubjectMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "subject", "mappings", "id"}, ""))
 
-	pattern_SubjectEncodingService_CreateSubjectEncoding_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "encoding", "subjects"}, ""))
+	pattern_SubjectEncodingService_CreateSubjectMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "subject", "mappings"}, ""))
 
-	pattern_SubjectEncodingService_UpdateSubjectEncoding_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "encoding", "subjects", "id"}, ""))
+	pattern_SubjectEncodingService_UpdateSubjectMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "subject", "mapping", "id"}, ""))
 
-	pattern_SubjectEncodingService_DeleteSubjectEncoding_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "encoding", "subjects", "id"}, ""))
+	pattern_SubjectEncodingService_DeleteSubjectMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "encoding", "subjects", "id"}, ""))
 )
 
 var (
-	forward_SubjectEncodingService_ListSubjectEncodings_0 = runtime.ForwardResponseMessage
+	forward_SubjectEncodingService_ListSubjectMappings_0 = runtime.ForwardResponseMessage
 
-	forward_SubjectEncodingService_GetSubjectEncoding_0 = runtime.ForwardResponseMessage
+	forward_SubjectEncodingService_GetSubjectMapping_0 = runtime.ForwardResponseMessage
 
-	forward_SubjectEncodingService_CreateSubjectEncoding_0 = runtime.ForwardResponseMessage
+	forward_SubjectEncodingService_CreateSubjectMapping_0 = runtime.ForwardResponseMessage
 
-	forward_SubjectEncodingService_UpdateSubjectEncoding_0 = runtime.ForwardResponseMessage
+	forward_SubjectEncodingService_UpdateSubjectMapping_0 = runtime.ForwardResponseMessage
 
-	forward_SubjectEncodingService_DeleteSubjectEncoding_0 = runtime.ForwardResponseMessage
+	forward_SubjectEncodingService_DeleteSubjectMapping_0 = runtime.ForwardResponseMessage
 )

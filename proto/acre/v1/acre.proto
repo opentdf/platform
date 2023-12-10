@@ -16,7 +16,7 @@ import "google/api/annotations.proto";
 */
 message ResourceMappingSet {
   common.v1.ResourceDescriptor descriptor = 1;
-  repeated ResourceMapping mappings = 2;
+  repeated ResourceMappingRef mappings = 2;
 }
 
 /*
@@ -83,60 +83,198 @@ message ResourceEncodingRequestOptions {
   common.v1.ResourceDescriptor descriptor = 1;
 }
 
-message ListResourceEncodingsRequest {
+/*
+   Resource Mappings
+*/
+
+message ListResourceMappingsRequest {
   optional ResourceEncodingRequestOptions options = 1;
 }
 
-message ListResourceEncodingsResponse {
-  repeated ResourceMappingSet encodings = 1;
+message ListResourceMappingsResponse {
+  repeated ResourceMapping mappings = 1;
 }
 
-message GetResourceEncodingRequest {
+message GetResourceMappingRequest {
   string id = 1;
   optional ResourceEncodingRequestOptions options = 2;
 }
 
-message GetResourceEncodingResponse {
-  ResourceMappingSet encodings = 1;
+message GetResourceMappingResponse {
+  ResourceMapping mapping = 1;
 }
 
-message CreateResourceEncodingRequest {}
-message CreateResourceEncodingResponse {}
+message CreateResourceMappingRequest {
+  ResourceMapping mapping = 1;
+}
+message CreateResourceMappingResponse {}
 
-message UpdateResourceEncodingRequest {
+message UpdateResourceMappingRequest {
   string id = 1;
-  ResourceMappingSet definition = 2;
+  ResourceMapping mapping = 2;
 }
-message UpdateResourceEncodingResponse {}
+message UpdateResourceMappingResponse {}
 
-message DeleteResourceEncodingRequest {
+message DeleteResourceMappingRequest {
   string id = 1;
 }
-message DeleteResourceEncodingResponse {}
+message DeleteResourceMappingResponse {}
+
+/*
+   Synonyms
+*/
+
+message ListResourceSynonymsRequest {
+  optional ResourceEncodingRequestOptions options = 1;
+}
+
+message ListResourceSynonymsResponse {
+  repeated Synonyms synonyms = 1;
+}
+
+message GetResourceSynonymRequest {
+  string id = 1;
+  optional ResourceEncodingRequestOptions options = 2;
+}
+
+message GetResourceSynonymResponse {
+  Synonyms synonym = 1;
+}
+
+message CreateResourceSynonymRequest {
+  Synonyms synonym = 1;
+}
+message CreateResourceSynonymResponse {}
+
+message UpdateResourceSynonymRequest {
+  string id = 1;
+  Synonyms synonym = 2;
+}
+message UpdateResourceSynonymResponse {}
+
+message DeleteResourceSynonymRequest {
+  string id = 1;
+}
+message DeleteResourceSynonymResponse {}
+
+/*
+   Resource Groups
+*/
+message ListResourceGroupsRequest {
+  optional ResourceEncodingRequestOptions options = 1;
+}
+
+message ListResourceGroupsResponse {
+  repeated ResourceGroup groups = 1;
+}
+
+message GetResourceGroupRequest {
+  string id = 1;
+  optional ResourceEncodingRequestOptions options = 2;
+}
+
+message GetResourceGroupResponse {
+  ResourceGroup group = 1;
+}
+
+message CreateResourceGroupRequest {
+  ResourceGroup group = 1;
+}
+message CreateResourceGroupResponse {}
+
+message UpdateResourceGroupRequest {
+  string id = 1;
+  ResourceGroup group = 2;
+}
+message UpdateResourceGroupResponse {}
+
+message DeleteResourceGroupRequest {
+  string id = 1;
+}
+message DeleteResourceGroupResponse {}
 
 service ResourcEncodingService {
-  rpc ListResourceEncodings(ListResourceEncodingsRequest) returns (ListResourceEncodingsResponse) {
-    option (google.api.http) = {get: "/v1/encoding/resources"};
+  /*
+     Resource Mappings
+  */
+  rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/mappings"};
   }
-  rpc GetResourceEncoding(GetResourceEncodingRequest) returns (GetResourceEncodingResponse) {
-    option (google.api.http) = {get: "/v1/encoding/resources/{id}"};
+  rpc GetResourceMapping(GetResourceMappingRequest) returns (GetResourceMappingResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/mappings/{id}"};
   }
 
-  rpc CreateResourceEncoding(CreateResourceEncodingRequest) returns (CreateResourceEncodingResponse) {
+  rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {
     option (google.api.http) = {
-      post: "/v1/encoding/resources"
+      post: "/v1/encoding/resource/mappings"
       body: "*"
     };
   }
 
-  rpc UpdateResourceEncoding(UpdateResourceEncodingRequest) returns (UpdateResourceEncodingResponse) {
+  rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
     option (google.api.http) = {
-      put: "/v1/encoding/resources/{id}"
-      body: "definition"
+      put: "/v1/encoding/resource/mappings/{id}"
+      body: "mapping"
     };
   }
 
-  rpc DeleteResourceEncoding(DeleteResourceEncodingRequest) returns (DeleteResourceEncodingResponse) {
-    option (google.api.http) = {delete: "/v1/encoding/resources/{id}"};
+  rpc DeleteResourceMapping(DeleteResourceMappingRequest) returns (DeleteResourceMappingResponse) {
+    option (google.api.http) = {delete: "/v1/encoding/resource/mappings/{id}"};
+  }
+
+  /*
+     Synonyms
+  */
+  rpc ListResourceSynonyms(ListResourceSynonymsRequest) returns (ListResourceSynonymsResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/synonyms"};
+  }
+  rpc GetResourceSynonym(GetResourceSynonymRequest) returns (GetResourceSynonymResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/synonyms/{id}"};
+  }
+
+  rpc CreateResourceSynonym(CreateResourceSynonymRequest) returns (CreateResourceSynonymResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/resource/synonyms"
+      body: "*"
+    };
+  }
+
+  rpc UpdateResourceSynonym(UpdateResourceSynonymRequest) returns (UpdateResourceSynonymResponse) {
+    option (google.api.http) = {
+      put: "/v1/encoding/resource/synonyms/{id}"
+      body: "synonym"
+    };
+  }
+
+  rpc DeleteResourceSynonym(DeleteResourceSynonymRequest) returns (DeleteResourceSynonymResponse) {
+    option (google.api.http) = {delete: "/v1/encoding/resource/synonyms/{id}"};
+  }
+
+  /*
+     Resource Groups
+  */
+  rpc ListResourceGroups(ListResourceGroupsRequest) returns (ListResourceGroupsResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/groups"};
+  }
+  rpc GetResourceGroup(GetResourceGroupRequest) returns (GetResourceGroupResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/groups/{id}"};
+  }
+
+  rpc CreateResourceGroup(CreateResourceGroupRequest) returns (CreateResourceGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/resource/groups"
+      body: "*"
+    };
+  }
+
+  rpc UpdateResourceGroup(UpdateResourceGroupRequest) returns (UpdateResourceGroupResponse) {
+    option (google.api.http) = {
+      put: "/v1/encoding/resource/groups/{id}"
+      body: "group"
+    };
+  }
+
+  rpc DeleteResourceGroup(DeleteResourceGroupRequest) returns (DeleteResourceGroupResponse) {
+    option (google.api.http) = {delete: "/v1/encoding/resource/groups/{id}"};
   }
 }

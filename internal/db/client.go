@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
+	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
 	"github.com/pressly/goose/v3"
 )
 
@@ -78,4 +79,106 @@ func (c *Client) RunMigrations() (int, error) {
 
 	return applied, nil
 
+}
+
+func (c Client) CreateResource(descriptor *commonv1.ResourceDescriptor, resource []byte, policyType string) error {
+	var err error
+
+	args := pgx.NamedArgs{
+		"namespace":   descriptor.Namespace,
+		"version":     descriptor.Version,
+		"fqn":         descriptor.Fqn,
+		"label":       descriptor.Label,
+		"description": descriptor.Description,
+		"policytype":  policyType,
+		"resource":    resource,
+	}
+	_, err = c.Exec(context.TODO(), `
+	INSERT INTO opentdf.resources (
+		namespace,
+		version,
+		fqn,
+		label,
+		description,
+		policytype,
+		resource
+	)
+	VALUES (
+		@namespace,
+		@version,
+		@fqn,
+		@label,
+		@description,
+		@policytype,
+		@resource
+	)
+	`, args)
+	return err
+}
+
+func (c Client) ListResources(policyType string) (pgx.Rows, error) {
+	args := pgx.NamedArgs{
+		"policytype": policyType,
+	}
+	return c.Query(context.TODO(), `
+		SELECT
+			id,
+		  resource
+		FROM opentdf.resources
+		WHERE policytype = @policytype
+	`, args)
+}
+
+func (c Client) GetResource(id string, policyType string) pgx.Row {
+	args := pgx.NamedArgs{
+		"id":         id,
+		"policytype": policyType,
+	}
+	return c.QueryRow(context.TODO(), `
+		SELECT
+			id,
+		  resource
+		FROM opentdf.resources
+		WHERE id = @id AND policytype = @policytype
+	`, args)
+}
+
+func (c Client) UpdateResource(descriptor *commonv1.ResourceDescriptor, resource []byte, policyType string) error {
+	var err error
+
+	args := pgx.NamedArgs{
+		"namespace":   descriptor.Namespace,
+		"version":     descriptor.Version,
+		"fqn":         descriptor.Fqn,
+		"label":       descriptor.Label,
+		"description": descriptor.Description,
+		"policytype":  policyType,
+		"resource":    resource,
+		"id":          descriptor.Id,
+	}
+	_, err = c.Exec(context.TODO(), `
+	UPDATE opentdf.resources
+	SET 
+	namespace = @namespace,
+	version = @version,
+	description = @description,
+	fqn = @fqn,
+	label = @label,
+	policyType = @policytype,
+	resource = @resource
+	WHERE id = @id
+	`, args)
+	return err
+}
+
+func (c Client) DeleteResource(id string, policyType string) error {
+	args := pgx.NamedArgs{
+		"id":         id,
+		"policytype": policyType,
+	}
+	_, err := c.Query(context.TODO(), `
+	DELETE FROM opentdf.resources
+	WHERE id = @id AND policytype = @policytype
+	`, args)
+	return err
 }

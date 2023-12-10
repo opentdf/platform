@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
 	"github.com/opentdf/opentdf-v2-poc/pkg/acre"
+	"github.com/opentdf/opentdf-v2-poc/pkg/acse"
 	"github.com/opentdf/opentdf-v2-poc/pkg/attributes"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/reflection"
@@ -75,6 +76,13 @@ func start(cmd *cobra.Command, args []string) {
 	err = attributes.NewAttributesServer(dbClient, s.GrpcServer, mux)
 	if err != nil {
 		slog.Error("failed to register attributes server", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	slog.Info("registering acse server")
+	err = acse.NewServer(dbClient, s.GrpcServer, mux)
+	if err != nil {
+		slog.Error("failed to register acse server", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 

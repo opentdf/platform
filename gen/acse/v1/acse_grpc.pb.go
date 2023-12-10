@@ -19,22 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SubjectEncodingService_ListSubjectEncodings_FullMethodName  = "/acse.v1.SubjectEncodingService/ListSubjectEncodings"
-	SubjectEncodingService_GetSubjectEncoding_FullMethodName    = "/acse.v1.SubjectEncodingService/GetSubjectEncoding"
-	SubjectEncodingService_CreateSubjectEncoding_FullMethodName = "/acse.v1.SubjectEncodingService/CreateSubjectEncoding"
-	SubjectEncodingService_UpdateSubjectEncoding_FullMethodName = "/acse.v1.SubjectEncodingService/UpdateSubjectEncoding"
-	SubjectEncodingService_DeleteSubjectEncoding_FullMethodName = "/acse.v1.SubjectEncodingService/DeleteSubjectEncoding"
+	SubjectEncodingService_ListSubjectMappings_FullMethodName  = "/acse.v1.SubjectEncodingService/ListSubjectMappings"
+	SubjectEncodingService_GetSubjectMapping_FullMethodName    = "/acse.v1.SubjectEncodingService/GetSubjectMapping"
+	SubjectEncodingService_CreateSubjectMapping_FullMethodName = "/acse.v1.SubjectEncodingService/CreateSubjectMapping"
+	SubjectEncodingService_UpdateSubjectMapping_FullMethodName = "/acse.v1.SubjectEncodingService/UpdateSubjectMapping"
+	SubjectEncodingService_DeleteSubjectMapping_FullMethodName = "/acse.v1.SubjectEncodingService/DeleteSubjectMapping"
 )
 
 // SubjectEncodingServiceClient is the client API for SubjectEncodingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SubjectEncodingServiceClient interface {
-	ListSubjectEncodings(ctx context.Context, in *ListSubjectEncodingsRequest, opts ...grpc.CallOption) (*ListSubjectEncodingsResponse, error)
-	GetSubjectEncoding(ctx context.Context, in *GetSubjectEncodingRequest, opts ...grpc.CallOption) (*GetSubjectEncodingResponse, error)
-	CreateSubjectEncoding(ctx context.Context, in *CreateSubjectEncodingRequest, opts ...grpc.CallOption) (*CreateSubjectEncodingResponse, error)
-	UpdateSubjectEncoding(ctx context.Context, in *UpdateSubjectEncodingRequest, opts ...grpc.CallOption) (*UpdateSubjectEncodingResponse, error)
-	DeleteSubjectEncoding(ctx context.Context, in *DeleteSubjectEncodingRequest, opts ...grpc.CallOption) (*DeleteSubjectEncodingResponse, error)
+	ListSubjectMappings(ctx context.Context, in *ListSubjectMappingsRequest, opts ...grpc.CallOption) (*ListSubjectMappingsResponse, error)
+	GetSubjectMapping(ctx context.Context, in *GetSubjectMappingRequest, opts ...grpc.CallOption) (*GetSubjectMappingResponse, error)
+	CreateSubjectMapping(ctx context.Context, in *CreateSubjectMappingRequest, opts ...grpc.CallOption) (*CreateSubjectMappingResponse, error)
+	UpdateSubjectMapping(ctx context.Context, in *UpdateSubjectMappingRequest, opts ...grpc.CallOption) (*UpdateSubjectMappingResponse, error)
+	DeleteSubjectMapping(ctx context.Context, in *DeleteSubjectMappingRequest, opts ...grpc.CallOption) (*DeleteSubjectMappingResponse, error)
 }
 
 type subjectEncodingServiceClient struct {
@@ -45,45 +45,45 @@ func NewSubjectEncodingServiceClient(cc grpc.ClientConnInterface) SubjectEncodin
 	return &subjectEncodingServiceClient{cc}
 }
 
-func (c *subjectEncodingServiceClient) ListSubjectEncodings(ctx context.Context, in *ListSubjectEncodingsRequest, opts ...grpc.CallOption) (*ListSubjectEncodingsResponse, error) {
-	out := new(ListSubjectEncodingsResponse)
-	err := c.cc.Invoke(ctx, SubjectEncodingService_ListSubjectEncodings_FullMethodName, in, out, opts...)
+func (c *subjectEncodingServiceClient) ListSubjectMappings(ctx context.Context, in *ListSubjectMappingsRequest, opts ...grpc.CallOption) (*ListSubjectMappingsResponse, error) {
+	out := new(ListSubjectMappingsResponse)
+	err := c.cc.Invoke(ctx, SubjectEncodingService_ListSubjectMappings_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *subjectEncodingServiceClient) GetSubjectEncoding(ctx context.Context, in *GetSubjectEncodingRequest, opts ...grpc.CallOption) (*GetSubjectEncodingResponse, error) {
-	out := new(GetSubjectEncodingResponse)
-	err := c.cc.Invoke(ctx, SubjectEncodingService_GetSubjectEncoding_FullMethodName, in, out, opts...)
+func (c *subjectEncodingServiceClient) GetSubjectMapping(ctx context.Context, in *GetSubjectMappingRequest, opts ...grpc.CallOption) (*GetSubjectMappingResponse, error) {
+	out := new(GetSubjectMappingResponse)
+	err := c.cc.Invoke(ctx, SubjectEncodingService_GetSubjectMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *subjectEncodingServiceClient) CreateSubjectEncoding(ctx context.Context, in *CreateSubjectEncodingRequest, opts ...grpc.CallOption) (*CreateSubjectEncodingResponse, error) {
-	out := new(CreateSubjectEncodingResponse)
-	err := c.cc.Invoke(ctx, SubjectEncodingService_CreateSubjectEncoding_FullMethodName, in, out, opts...)
+func (c *subjectEncodingServiceClient) CreateSubjectMapping(ctx context.Context, in *CreateSubjectMappingRequest, opts ...grpc.CallOption) (*CreateSubjectMappingResponse, error) {
+	out := new(CreateSubjectMappingResponse)
+	err := c.cc.Invoke(ctx, SubjectEncodingService_CreateSubjectMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *subjectEncodingServiceClient) UpdateSubjectEncoding(ctx context.Context, in *UpdateSubjectEncodingRequest, opts ...grpc.CallOption) (*UpdateSubjectEncodingResponse, error) {
-	out := new(UpdateSubjectEncodingResponse)
-	err := c.cc.Invoke(ctx, SubjectEncodingService_UpdateSubjectEncoding_FullMethodName, in, out, opts...)
+func (c *subjectEncodingServiceClient) UpdateSubjectMapping(ctx context.Context, in *UpdateSubjectMappingRequest, opts ...grpc.CallOption) (*UpdateSubjectMappingResponse, error) {
+	out := new(UpdateSubjectMappingResponse)
+	err := c.cc.Invoke(ctx, SubjectEncodingService_UpdateSubjectMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *subjectEncodingServiceClient) DeleteSubjectEncoding(ctx context.Context, in *DeleteSubjectEncodingRequest, opts ...grpc.CallOption) (*DeleteSubjectEncodingResponse, error) {
-	out := new(DeleteSubjectEncodingResponse)
-	err := c.cc.Invoke(ctx, SubjectEncodingService_DeleteSubjectEncoding_FullMethodName, in, out, opts...)
+func (c *subjectEncodingServiceClient) DeleteSubjectMapping(ctx context.Context, in *DeleteSubjectMappingRequest, opts ...grpc.CallOption) (*DeleteSubjectMappingResponse, error) {
+	out := new(DeleteSubjectMappingResponse)
+	err := c.cc.Invoke(ctx, SubjectEncodingService_DeleteSubjectMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,11 +94,11 @@ func (c *subjectEncodingServiceClient) DeleteSubjectEncoding(ctx context.Context
 // All implementations must embed UnimplementedSubjectEncodingServiceServer
 // for forward compatibility
 type SubjectEncodingServiceServer interface {
-	ListSubjectEncodings(context.Context, *ListSubjectEncodingsRequest) (*ListSubjectEncodingsResponse, error)
-	GetSubjectEncoding(context.Context, *GetSubjectEncodingRequest) (*GetSubjectEncodingResponse, error)
-	CreateSubjectEncoding(context.Context, *CreateSubjectEncodingRequest) (*CreateSubjectEncodingResponse, error)
-	UpdateSubjectEncoding(context.Context, *UpdateSubjectEncodingRequest) (*UpdateSubjectEncodingResponse, error)
-	DeleteSubjectEncoding(context.Context, *DeleteSubjectEncodingRequest) (*DeleteSubjectEncodingResponse, error)
+	ListSubjectMappings(context.Context, *ListSubjectMappingsRequest) (*ListSubjectMappingsResponse, error)
+	GetSubjectMapping(context.Context, *GetSubjectMappingRequest) (*GetSubjectMappingResponse, error)
+	CreateSubjectMapping(context.Context, *CreateSubjectMappingRequest) (*CreateSubjectMappingResponse, error)
+	UpdateSubjectMapping(context.Context, *UpdateSubjectMappingRequest) (*UpdateSubjectMappingResponse, error)
+	DeleteSubjectMapping(context.Context, *DeleteSubjectMappingRequest) (*DeleteSubjectMappingResponse, error)
 	mustEmbedUnimplementedSubjectEncodingServiceServer()
 }
 
@@ -106,20 +106,20 @@ type SubjectEncodingServiceServer interface {
 type UnimplementedSubjectEncodingServiceServer struct {
 }
 
-func (UnimplementedSubjectEncodingServiceServer) ListSubjectEncodings(context.Context, *ListSubjectEncodingsRequest) (*ListSubjectEncodingsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListSubjectEncodings not implemented")
+func (UnimplementedSubjectEncodingServiceServer) ListSubjectMappings(context.Context, *ListSubjectMappingsRequest) (*ListSubjectMappingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSubjectMappings not implemented")
 }
-func (UnimplementedSubjectEncodingServiceServer) GetSubjectEncoding(context.Context, *GetSubjectEncodingRequest) (*GetSubjectEncodingResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSubjectEncoding not implemented")
+func (UnimplementedSubjectEncodingServiceServer) GetSubjectMapping(context.Context, *GetSubjectMappingRequest) (*GetSubjectMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSubjectMapping not implemented")
 }
-func (UnimplementedSubjectEncodingServiceServer) CreateSubjectEncoding(context.Context, *CreateSubjectEncodingRequest) (*CreateSubjectEncodingResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateSubjectEncoding not implemented")
+func (UnimplementedSubjectEncodingServiceServer) CreateSubjectMapping(context.Context, *CreateSubjectMappingRequest) (*CreateSubjectMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateSubjectMapping not implemented")
 }
-func (UnimplementedSubjectEncodingServiceServer) UpdateSubjectEncoding(context.Context, *UpdateSubjectEncodingRequest) (*UpdateSubjectEncodingResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateSubjectEncoding not implemented")
+func (UnimplementedSubjectEncodingServiceServer) UpdateSubjectMapping(context.Context, *UpdateSubjectMappingRequest) (*UpdateSubjectMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSubjectMapping not implemented")
 }
-func (UnimplementedSubjectEncodingServiceServer) DeleteSubjectEncoding(context.Context, *DeleteSubjectEncodingRequest) (*DeleteSubjectEncodingResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteSubjectEncoding not implemented")
+func (UnimplementedSubjectEncodingServiceServer) DeleteSubjectMapping(context.Context, *DeleteSubjectMappingRequest) (*DeleteSubjectMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSubjectMapping not implemented")
 }
 func (UnimplementedSubjectEncodingServiceServer) mustEmbedUnimplementedSubjectEncodingServiceServer() {
 }
@@ -135,92 +135,92 @@ func RegisterSubjectEncodingServiceServer(s grpc.ServiceRegistrar, srv SubjectEn
 	s.RegisterService(&SubjectEncodingService_ServiceDesc, srv)
 }
 
-func _SubjectEncodingService_ListSubjectEncodings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListSubjectEncodingsRequest)
+func _SubjectEncodingService_ListSubjectMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSubjectMappingsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SubjectEncodingServiceServer).ListSubjectEncodings(ctx, in)
+		return srv.(SubjectEncodingServiceServer).ListSubjectMappings(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SubjectEncodingService_ListSubjectEncodings_FullMethodName,
+		FullMethod: SubjectEncodingService_ListSubjectMappings_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SubjectEncodingServiceServer).ListSubjectEncodings(ctx, req.(*ListSubjectEncodingsRequest))
+		return srv.(SubjectEncodingServiceServer).ListSubjectMappings(ctx, req.(*ListSubjectMappingsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SubjectEncodingService_GetSubjectEncoding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSubjectEncodingRequest)
+func _SubjectEncodingService_GetSubjectMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSubjectMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SubjectEncodingServiceServer).GetSubjectEncoding(ctx, in)
+		return srv.(SubjectEncodingServiceServer).GetSubjectMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SubjectEncodingService_GetSubjectEncoding_FullMethodName,
+		FullMethod: SubjectEncodingService_GetSubjectMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SubjectEncodingServiceServer).GetSubjectEncoding(ctx, req.(*GetSubjectEncodingRequest))
+		return srv.(SubjectEncodingServiceServer).GetSubjectMapping(ctx, req.(*GetSubjectMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SubjectEncodingService_CreateSubjectEncoding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateSubjectEncodingRequest)
+func _SubjectEncodingService_CreateSubjectMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateSubjectMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SubjectEncodingServiceServer).CreateSubjectEncoding(ctx, in)
+		return srv.(SubjectEncodingServiceServer).CreateSubjectMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SubjectEncodingService_CreateSubjectEncoding_FullMethodName,
+		FullMethod: SubjectEncodingService_CreateSubjectMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SubjectEncodingServiceServer).CreateSubjectEncoding(ctx, req.(*CreateSubjectEncodingRequest))
+		return srv.(SubjectEncodingServiceServer).CreateSubjectMapping(ctx, req.(*CreateSubjectMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SubjectEncodingService_UpdateSubjectEncoding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateSubjectEncodingRequest)
+func _SubjectEncodingService_UpdateSubjectMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSubjectMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SubjectEncodingServiceServer).UpdateSubjectEncoding(ctx, in)
+		return srv.(SubjectEncodingServiceServer).UpdateSubjectMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SubjectEncodingService_UpdateSubjectEncoding_FullMethodName,
+		FullMethod: SubjectEncodingService_UpdateSubjectMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SubjectEncodingServiceServer).UpdateSubjectEncoding(ctx, req.(*UpdateSubjectEncodingRequest))
+		return srv.(SubjectEncodingServiceServer).UpdateSubjectMapping(ctx, req.(*UpdateSubjectMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SubjectEncodingService_DeleteSubjectEncoding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteSubjectEncodingRequest)
+func _SubjectEncodingService_DeleteSubjectMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSubjectMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SubjectEncodingServiceServer).DeleteSubjectEncoding(ctx, in)
+		return srv.(SubjectEncodingServiceServer).DeleteSubjectMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SubjectEncodingService_DeleteSubjectEncoding_FullMethodName,
+		FullMethod: SubjectEncodingService_DeleteSubjectMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SubjectEncodingServiceServer).DeleteSubjectEncoding(ctx, req.(*DeleteSubjectEncodingRequest))
+		return srv.(SubjectEncodingServiceServer).DeleteSubjectMapping(ctx, req.(*DeleteSubjectMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -233,24 +233,24 @@ var SubjectEncodingService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SubjectEncodingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ListSubjectEncodings",
-			Handler:    _SubjectEncodingService_ListSubjectEncodings_Handler,
+			MethodName: "ListSubjectMappings",
+			Handler:    _SubjectEncodingService_ListSubjectMappings_Handler,
 		},
 		{
-			MethodName: "GetSubjectEncoding",
-			Handler:    _SubjectEncodingService_GetSubjectEncoding_Handler,
+			MethodName: "GetSubjectMapping",
+			Handler:    _SubjectEncodingService_GetSubjectMapping_Handler,
 		},
 		{
-			MethodName: "CreateSubjectEncoding",
-			Handler:    _SubjectEncodingService_CreateSubjectEncoding_Handler,
+			MethodName: "CreateSubjectMapping",
+			Handler:    _SubjectEncodingService_CreateSubjectMapping_Handler,
 		},
 		{
-			MethodName: "UpdateSubjectEncoding",
-			Handler:    _SubjectEncodingService_UpdateSubjectEncoding_Handler,
+			MethodName: "UpdateSubjectMapping",
+			Handler:    _SubjectEncodingService_UpdateSubjectMapping_Handler,
 		},
 		{
-			MethodName: "DeleteSubjectEncoding",
-			Handler:    _SubjectEncodingService_DeleteSubjectEncoding_Handler,
+			MethodName: "DeleteSubjectMapping",
+			Handler:    _SubjectEncodingService_DeleteSubjectMapping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

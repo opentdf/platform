@@ -23,11 +23,14 @@ type acseServer struct {
 	dbClient *db.Client
 }
 
-func NewServer(dbClient *db.Client, grpcServer *grpc.Server, mux *runtime.ServeMux) error {
+func NewServer(dbClient *db.Client, grpcServer *grpc.Server, grpcInprocess *grpc.Server, mux *runtime.ServeMux) error {
 	as := &acseServer{
 		dbClient: dbClient,
 	}
 	acsev1.RegisterSubjectEncodingServiceServer(grpcServer, as)
+	if grpcInprocess != nil {
+		acsev1.RegisterSubjectEncodingServiceServer(grpcInprocess, as)
+	}
 	err := acsev1.RegisterSubjectEncodingServiceHandlerServer(context.Background(), mux, as)
 	return err
 }

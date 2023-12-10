@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/pkg/acre"
 	"github.com/opentdf/opentdf-v2-poc/pkg/acse"
 	"github.com/opentdf/opentdf-v2-poc/pkg/attributes"
+	"github.com/opentdf/opentdf-v2-poc/pkg/entitlements"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/reflection"
 )
@@ -80,12 +81,18 @@ func start(cmd *cobra.Command, args []string) {
 	}
 
 	slog.Info("registering acse server")
-	err = acse.NewServer(dbClient, s.GrpcServer, mux)
+	err = acse.NewServer(dbClient, s.GrpcServer, s.GrpcInProcess.GetGrpcServer(), mux)
 	if err != nil {
 		slog.Error("failed to register acse server", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
+	slog.Info("registering entitlements service")
+	err = entitlements.NewEntitlementsServer(dbClient, s.GrpcServer, nil, s.GrpcInProcess.Conn(), mux)
+	if err != nil {
+		slog.Error("failed to register entitlements server", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 	// TODO: make this conditional
 	reflection.Register(s.GrpcServer)
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/valyala/fasthttp/fasthttputil"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -46,7 +47,7 @@ func NewOpenTDFServer(grpcAddress string, httpAddress string) *OpenTDFServer {
 		grpcServerAddress: grpcAddress,
 		GrpcInProcess: &inProcessServer{
 			ln:  fasthttputil.NewInmemoryListener(),
-			srv: &grpc.Server{},
+			srv: grpc.NewServer(),
 		},
 	}
 }
@@ -67,6 +68,15 @@ func (s *OpenTDFServer) Run() {
 		}
 	}()
 
+	// Start In Process Grpc Server
+	go func() {
+		slog.Info("starting in process grpc server")
+		if err := s.GrpcInProcess.srv.Serve(s.GrpcInProcess.ln); err != nil {
+			slog.Error("failed to serve in process grpc", slog.String("error", err.Error()))
+			return
+		}
+	}()
+
 	// Start Http Server
 	go func() {
 		slog.Info("starting http server")
@@ -82,6 +92,10 @@ func (s *OpenTDFServer) Run() {
 func (s *OpenTDFServer) Stop() {
 	slog.Info("shutting down grpc server")
 	s.GrpcServer.GracefulStop()
+
+	slog.Info("shutting down in process grpc server")
+	s.GrpcInProcess.srv.GracefulStop()
+
 	slog.Info("shutting down http server")
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
 	defer cancel()
@@ -90,4 +104,20 @@ func (s *OpenTDFServer) Stop() {
 		return
 	}
 	slog.Info("shutdown complete")
+}
+
+func (s inProcessServer) GetGrpcServer() *grpc.Server {
+	return s.srv
+}
+
+func (s *inProcessServer) Conn() *grpc.ClientConn {
+	defaultOptions := []grpc.DialOption{
+		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+			return s.ln.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	conn, _ := grpc.Dial("", defaultOptions...)
+	return conn
 }

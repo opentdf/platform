@@ -4,13 +4,17 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/opentdf-v2-poc/internal/config"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/internal/logger"
+	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
 	"github.com/opentdf/opentdf-v2-poc/pkg/acre"
 	"github.com/opentdf/opentdf-v2-poc/pkg/acse"
@@ -44,8 +48,32 @@ func init() {
 func start(cmd *cobra.Command, args []string) {
 	slog.Info("starting opentdf services")
 
+	slog.Info("loading configuration")
+	// Load the config
+	conf, err := config.LoadConfig()
+	if err != nil {
+		slog.Error("could not load config", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	logger, err := logger.NewLogger(conf.Logger)
+	if err != nil {
+		slog.Error("could not start logger", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	slog.SetDefault(logger.Logger)
+
+	slog.Info("starting opa engine")
+	// Start the opa engine
+	eng, err := opa.NewEngine(conf.OPA)
+	if err != nil {
+		slog.Error("could not start opa engine", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	defer eng.Stop(context.Background())
+
 	// Lets make sure we can establish a new db client
-	dbClient, err := db.NewClient(os.Getenv("DB_URL"))
+	dbClient, err := db.NewClient(conf.DB)
 	if err != nil {
 		slog.Error("could not establish database connection", slog.String("error", err.Error()))
 		os.Exit(1)
@@ -61,11 +89,12 @@ func start(cmd *cobra.Command, args []string) {
 
 	slog.Info("starting grpc & http server")
 	// Create new server for grpc & http. Also will support in process grpc potentially too
-	s := server.NewOpenTDFServer(":8082", ":8081")
+	s := server.NewOpenTDFServer(conf.Server)
 	defer s.Stop()
 
 	mux := runtime.NewServeMux()
 	s.HttpServer.Handler = mux
+
 	slog.Info("registering acre server")
 	err = acre.NewAcreServer(dbClient, s.GrpcServer, mux)
 	if err != nil {
@@ -88,7 +117,7 @@ func start(cmd *cobra.Command, args []string) {
 	}
 
 	slog.Info("registering entitlements service")
-	err = entitlements.NewEntitlementsServer(dbClient, s.GrpcServer, nil, s.GrpcInProcess.Conn(), mux)
+	err = entitlements.NewEntitlementsServer(conf.OpenTDF.Entitlements, s.GrpcServer, nil, s.GrpcInProcess.Conn(), mux, eng)
 	if err != nil {
 		slog.Error("failed to register entitlements server", slog.String("error", err.Error()))
 		os.Exit(1)

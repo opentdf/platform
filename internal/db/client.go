@@ -26,20 +26,40 @@ type PgxIface interface {
 	Config() *pgxpool.Config
 }
 
+type Config struct {
+	Host     string `yaml:"host" default:"localhost"`
+	Port     int    `yaml:"port" default:"5432"`
+	Database string `yaml:"database" default:"opentdf"`
+	User     string `yaml:"user" default:"postgres"`
+	Password string `yaml:"password" default:"changeme"`
+	// TODO: add support for sslmode
+}
+
 type Client struct {
 	PgxIface
 }
 
-func NewClient(url string) (*Client, error) {
+func NewClient(config Config) (*Client, error) {
 	// urlExample := "postgres://username:password@localhost:5432/database_name"
 	// switch to config
-	pool, err := pgxpool.New(context.Background(), url)
+
+	pool, err := pgxpool.New(context.Background(), config.buildURL())
 	if err != nil {
 		return nil, err
 	}
 	return &Client{
 		PgxIface: pool,
 	}, err
+}
+
+func (c Config) buildURL() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
+		c.User,
+		c.Password,
+		c.Host,
+		c.Port,
+		c.Database,
+	)
 }
 
 //go:embed migrations/*.sql

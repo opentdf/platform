@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -17,6 +18,19 @@ const (
 	readTimeoutSeconds  = 10
 	shutdownTimeout     = 5
 )
+
+type Config struct {
+	Grpc GrpcConfig `yaml:"grpc"`
+	Http HttpConfig `yaml:"http"`
+}
+
+type GrpcConfig struct {
+	Port int `yaml:"port" default:"9000"`
+}
+
+type HttpConfig struct {
+	Port int `yaml:"port" default:"8080"`
+}
 
 type OpenTDFServer struct {
 	HttpServer        *http.Server
@@ -36,15 +50,15 @@ type inProcessServer struct {
 }
 
 // TODO: make this configurable
-func NewOpenTDFServer(grpcAddress string, httpAddress string) *OpenTDFServer {
+func NewOpenTDFServer(config Config) *OpenTDFServer {
 	return &OpenTDFServer{
 		HttpServer: &http.Server{
-			Addr:         httpAddress,
+			Addr:         fmt.Sprintf(":%d", config.Http.Port),
 			WriteTimeout: writeTimeoutSeconds * time.Second,
 			ReadTimeout:  readTimeoutSeconds * time.Second,
 		},
 		GrpcServer:        grpc.NewServer(),
-		grpcServerAddress: grpcAddress,
+		grpcServerAddress: fmt.Sprintf(":%d", config.Grpc.Port),
 		GrpcInProcess: &inProcessServer{
 			ln:  fasthttputil.NewInmemoryListener(),
 			srv: grpc.NewServer(),

@@ -1,6 +1,9 @@
 # opentdf-v2-poc
 OpenTDF V2 POC
 
+- [Configuration](./docs/configuration.md)
+- [Development](#development)
+
 ## Development
 
 ### Prerequisites
@@ -11,25 +14,25 @@ OpenTDF V2 POC
 
 ### Run
 
-`docker-compose -f opentdf-compose.yaml up`
+1. `docker-compose -f opentdf-compose.yaml up`
 
-`export DB_URL=postgres://postgres:changeme@localhost:5432/opentdf?sslmode=disable`
+2. `cp example-opentdf.yaml opentdf.yaml`
 
-`air`
+3. `air`
 
-This should bring up a grpc server on port 8082 and http server on port 8081
+This should bring up a grpc server on port 9000 and http server on port 8080. Air will watch for changes and restart the server.
 
 ### Test
 
 ```bash
-  grpcurl -plaintext localhost:8082 list
+  grpcurl -plaintext localhost:9000 list
 
   acre.v1.ResourcEncodingService
   attributes.v1.AttributesService
   grpc.reflection.v1.ServerReflection
   grpc.reflection.v1alpha.ServerReflection
 
-  grpcurl -plaintext localhost:8082 list attributes.v1.AttributesService
+  grpcurl -plaintext localhost:9000 list attributes.v1.AttributesService
 
   attributes.v1.AttributesService.CreateAttribute
   attributes.v1.AttributesService.DeleteAttribute

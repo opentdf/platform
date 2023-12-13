@@ -20,7 +20,7 @@ type Config struct {
 	Providers []providers.Config `yaml:"providers"`
 }
 
-type entitlementsServer struct {
+type Entitlements struct {
 	entitlmentsv1.UnimplementedEntitlementsServiceServer
 	grpcConn  *grpc.ClientConn
 	eng       *opa.Engine
@@ -28,7 +28,7 @@ type entitlementsServer struct {
 }
 
 func NewEntitlementsServer(config Config, g *grpc.Server, grpcInprocess *grpc.Server, clientConn *grpc.ClientConn, s *runtime.ServeMux, eng *opa.Engine) error {
-	as := &entitlementsServer{
+	as := &Entitlements{
 		grpcConn: clientConn,
 		eng:      eng,
 	}
@@ -52,7 +52,7 @@ func NewEntitlementsServer(config Config, g *grpc.Server, grpcInprocess *grpc.Se
 This is a poc to work with subject encodings service.
 There is most likely logic that needs to be moved from https://github.com/opentdf/backend/tree/main/containers/entitlement-pdp
 */
-func (s entitlementsServer) GetEntitlements(ctx context.Context, req *entitlmentsv1.GetEntitlementsRequest) (*entitlmentsv1.GetEntitlementsResponse, error) {
+func (s Entitlements) GetEntitlements(ctx context.Context, req *entitlmentsv1.GetEntitlementsRequest) (*entitlmentsv1.GetEntitlementsResponse, error) {
 	var (
 		entitlements = &entitlmentsv1.GetEntitlementsResponse{
 			Entitlements: make(map[string]*entitlmentsv1.Entitlements),

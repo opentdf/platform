@@ -18,13 +18,13 @@ const (
 	subjectMappingPolicyType = "subject_mapping"
 )
 
-type acseServer struct {
+type SubjectEncoding struct {
 	acsev1.UnimplementedSubjectEncodingServiceServer
 	dbClient *db.Client
 }
 
-func NewServer(dbClient *db.Client, grpcServer *grpc.Server, grpcInprocess *grpc.Server, mux *runtime.ServeMux) error {
-	as := &acseServer{
+func NewSubjectEncodingServer(dbClient *db.Client, grpcServer *grpc.Server, grpcInprocess *grpc.Server, mux *runtime.ServeMux) error {
+	as := &SubjectEncoding{
 		dbClient: dbClient,
 	}
 	acsev1.RegisterSubjectEncodingServiceServer(grpcServer, as)
@@ -35,7 +35,7 @@ func NewServer(dbClient *db.Client, grpcServer *grpc.Server, grpcInprocess *grpc
 	return err
 }
 
-func (s *acseServer) CreateSubjectMapping(ctx context.Context, req *acsev1.CreateSubjectMappingRequest) (*acsev1.CreateSubjectMappingResponse, error) {
+func (s SubjectEncoding) CreateSubjectMapping(ctx context.Context, req *acsev1.CreateSubjectMappingRequest) (*acsev1.CreateSubjectMappingResponse, error) {
 	slog.Debug("creating subject mapping")
 	var (
 		err error
@@ -53,7 +53,7 @@ func (s *acseServer) CreateSubjectMapping(ctx context.Context, req *acsev1.Creat
 	return &acsev1.CreateSubjectMappingResponse{}, nil
 }
 
-func (s *acseServer) ListSubjectMappings(ctx context.Context, req *acsev1.ListSubjectMappingsRequest) (*acsev1.ListSubjectMappingsResponse, error) {
+func (s SubjectEncoding) ListSubjectMappings(ctx context.Context, req *acsev1.ListSubjectMappingsRequest) (*acsev1.ListSubjectMappingsResponse, error) {
 	mappings := &acsev1.ListSubjectMappingsResponse{}
 
 	rows, err := s.dbClient.ListResources(subjectMappingPolicyType)
@@ -86,7 +86,7 @@ func (s *acseServer) ListSubjectMappings(ctx context.Context, req *acsev1.ListSu
 	return mappings, nil
 }
 
-func (s *acseServer) GetSubjectMapping(ctx context.Context, req *acsev1.GetSubjectMappingRequest) (*acsev1.GetSubjectMappingResponse, error) {
+func (s SubjectEncoding) GetSubjectMapping(ctx context.Context, req *acsev1.GetSubjectMappingRequest) (*acsev1.GetSubjectMappingResponse, error) {
 	var (
 		mapping = &acsev1.GetSubjectMappingResponse{
 			SubjectMapping: new(acsev1.SubjectMapping),
@@ -121,7 +121,7 @@ func (s *acseServer) GetSubjectMapping(ctx context.Context, req *acsev1.GetSubje
 	return mapping, nil
 }
 
-func (s *acseServer) UpdateSubjectMapping(ctx context.Context, req *acsev1.UpdateSubjectMappingRequest) (*acsev1.UpdateSubjectMappingResponse, error) {
+func (s SubjectEncoding) UpdateSubjectMapping(ctx context.Context, req *acsev1.UpdateSubjectMappingRequest) (*acsev1.UpdateSubjectMappingResponse, error) {
 	jsonAttr, err := protojson.Marshal(req.SubjectMapping)
 	if err != nil {
 		slog.Error("issue marshalling subject mapping", slog.String("error", err.Error()))
@@ -135,7 +135,7 @@ func (s *acseServer) UpdateSubjectMapping(ctx context.Context, req *acsev1.Updat
 	return &acsev1.UpdateSubjectMappingResponse{}, nil
 }
 
-func (s *acseServer) DeleteSubjectMapping(ctx context.Context, req *acsev1.DeleteSubjectMappingRequest) (*acsev1.DeleteSubjectMappingResponse, error) {
+func (s SubjectEncoding) DeleteSubjectMapping(ctx context.Context, req *acsev1.DeleteSubjectMappingRequest) (*acsev1.DeleteSubjectMappingResponse, error) {
 	if err := s.dbClient.DeleteResource(req.Id, subjectMappingPolicyType); err != nil {
 		slog.Error("issue deleting resource mapping", slog.String("error", err.Error()))
 		return &acsev1.DeleteSubjectMappingResponse{}, status.Error(codes.Internal, err.Error())

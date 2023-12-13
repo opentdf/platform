@@ -96,7 +96,7 @@ func start(cmd *cobra.Command, args []string) {
 	s.HttpServer.Handler = mux
 
 	slog.Info("registering acre server")
-	err = acre.NewAcreServer(dbClient, s.GrpcServer, mux)
+	err = acre.NewResourceEncoding(dbClient, s.GrpcServer, mux)
 	if err != nil {
 		slog.Error("failed to register acre server", slog.String("error", err.Error()))
 		os.Exit(1)
@@ -110,7 +110,7 @@ func start(cmd *cobra.Command, args []string) {
 	}
 
 	slog.Info("registering acse server")
-	err = acse.NewServer(dbClient, s.GrpcServer, s.GrpcInProcess.GetGrpcServer(), mux)
+	err = acse.NewSubjectEncodingServer(dbClient, s.GrpcServer, s.GrpcInProcess.GetGrpcServer(), mux)
 	if err != nil {
 		slog.Error("failed to register acse server", slog.String("error", err.Error()))
 		os.Exit(1)

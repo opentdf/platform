@@ -48,6 +48,10 @@ func NewEntitlementsServer(config Config, g *grpc.Server, grpcInprocess *grpc.Se
 	return nil
 }
 
+/*
+This is a poc to work with subject encodings service.
+There is most likely logic that needs to be moved from https://github.com/opentdf/backend/tree/main/containers/entitlement-pdp
+*/
 func (s entitlementsServer) GetEntitlements(ctx context.Context, req *entitlmentsv1.GetEntitlementsRequest) (*entitlmentsv1.GetEntitlementsResponse, error) {
 	var (
 		entitlements = &entitlmentsv1.GetEntitlementsResponse{
@@ -56,13 +60,18 @@ func (s entitlementsServer) GetEntitlements(ctx context.Context, req *entitlment
 		entityAttributes = make(map[string]string)
 	)
 	slog.Info("getting entitlements", slog.Any("entities", req.Entities))
+
+	// Get the subject mappings. Currently this list doesn't get filtered
 	acseClient := acsev1.NewSubjectEncodingServiceClient(s.grpcConn)
 	mappings, err := acseClient.ListSubjectMappings(ctx, &acsev1.ListSubjectMappingsRequest{})
 	if err != nil {
 		return entitlements, err
 	}
 
+	// Get Entitlements for each entity.
 	for _, e := range req.Entities {
+		// Get the attributes for each entity from each provider. Think about this as if we had to aggregate data from multiple systems
+		// that we wanted to feed into the entitlements policy.
 		for _, p := range s.providers {
 			attrs, err := p.GetAttributes(e.Id)
 			if err != nil {
@@ -79,6 +88,7 @@ func (s entitlementsServer) GetEntitlements(ctx context.Context, req *entitlment
 
 		slog.Debug("evaluating opa policy", slog.Any("entity_attributes", entityAttributes), slog.Any("mappings", mappings.SubjectMappings))
 
+		// Get the entitlements for the entity.
 		result, err := s.eng.Decision(ctx, sdk.DecisionOptions{
 			Now:  time.Now(),
 			Path: "opentdf/entitlement/generated_entitlements",

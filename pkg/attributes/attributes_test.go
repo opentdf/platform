@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var definition = &attributesv1.CreateAttributeRequest{
@@ -25,11 +24,15 @@ var definition = &attributesv1.CreateAttributeRequest{
 			},
 		},
 		Descriptor_: &commonv1.ResourceDescriptor{
-			Version:     "1",
-			Namespace:   "demo.com",
-			Fqn:         "http://demo.com/attr/relto",
-			Label:       "Country of Origin",
+			Version:   1,
+			Name:      "example attribute",
+			Namespace: "demo.com",
+			Fqn:       "http://demo.com/attr/relto",
+			Labels: map[string]string{
+				"origin": "Country of Origin",
+			},
 			Description: "The relto attribute is used to describe the relationship of the resource to the country of origin.",
+			Type:        commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
 		},
 	},
 }
@@ -41,23 +44,19 @@ func Test_CreateAttribute_Returns_InternalError_When_InsertIssue(t *testing.T) {
 	}
 	defer mock.Close()
 
-	jsonDefinition, err := protojson.Marshal(definition.Definition)
-	if err != nil {
-		t.Errorf("marshal error was not expected: %s", err.Error())
-	}
-
 	mock.ExpectExec("INSERT INTO opentdf.resources").
-		WithArgs(definition.Definition.Descriptor_.Namespace,
+		WithArgs(definition.Definition.Descriptor_.Name,
+			definition.Definition.Descriptor_.Namespace,
 			definition.Definition.Descriptor_.Version,
 			definition.Definition.Descriptor_.Fqn,
-			definition.Definition.Descriptor_.Label,
+			definition.Definition.Descriptor_.Labels,
 			definition.Definition.Descriptor_.Description,
-			"attribute",
-			jsonDefinition,
+			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
+			definition.Definition,
 		).
 		WillReturnError(errors.New("error inserting resource"))
 
-	attrServer := &attributesServer{
+	attrServer := &Attributes{
 		dbClient: &db.Client{
 			PgxIface: mock,
 		},

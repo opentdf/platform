@@ -19,16 +19,22 @@ attr = attributes_pb2.AttributeDefinition(
     ),
   ],
   descriptor=common_pb2.ResourceDescriptor(
-    version="1",
+    version=1,
+    name="my_attribute_python",
     namespace="demo.com",
     fqn="https://demo.com/attr/my_attribute",
-    label="my_attribute",
+    labels={
+      "label1": "value1",
+      "label2": "value2"
+    
+    },
     description="My Attribute",
+    type=common_pb2.PolicyResourceType.POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION
   )
 )
 print(attr)
 
-chan = grpc.insecure_channel("localhost:8082")
+chan = grpc.insecure_channel("localhost:9000")
 stub = attributes_pb2_grpc.AttributesServiceStub(chan)
 
 try:

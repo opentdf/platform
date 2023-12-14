@@ -7,17 +7,11 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v5"
 	acrev1 "github.com/opentdf/opentdf-v2-poc/gen/acre/v1"
+	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
-)
-
-const (
-	resourceMappingPolicyType = "resource_mapping"
-	resourceGroupPolicyType   = "resource_group"
-	synonymPolicyType         = "synonym"
 )
 
 type ResourceEncoding struct {
@@ -43,11 +37,11 @@ func (s ResourceEncoding) CreateResourceMapping(ctx context.Context, req *acrev1
 	var (
 		err error
 	)
-	jsonResource, err := protojson.Marshal(req.Mapping)
-	if err != nil {
-		return &acrev1.CreateResourceMappingResponse{}, status.Error(codes.Internal, err.Error())
-	}
-	err = s.dbClient.CreateResource(req.Mapping.Descriptor_, jsonResource, resourceMappingPolicyType)
+
+	// Set the version of the resource to 1 on create
+	req.Mapping.Descriptor_.Version = 1
+
+	err = s.dbClient.CreateResource(req.Mapping.Descriptor_, req.Mapping)
 	if err != nil {
 		slog.Error("issue creating resource mapping", slog.String("error", err.Error()))
 		return &acrev1.CreateResourceMappingResponse{}, status.Error(codes.Internal, err.Error())
@@ -59,7 +53,7 @@ func (s ResourceEncoding) CreateResourceMapping(ctx context.Context, req *acrev1
 func (s ResourceEncoding) ListResourceMappings(ctx context.Context, req *acrev1.ListResourceMappingsRequest) (*acrev1.ListResourceMappingsResponse, error) {
 	mappings := &acrev1.ListResourceMappingsResponse{}
 
-	rows, err := s.dbClient.ListResources(resourceMappingPolicyType)
+	rows, err := s.dbClient.ListResources(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(), req.Selector)
 	if err != nil {
 		slog.Error("issue listing resource mappings", slog.String("error", err.Error()))
 		return mappings, status.Error(codes.Internal, err.Error())
@@ -68,20 +62,15 @@ func (s ResourceEncoding) ListResourceMappings(ctx context.Context, req *acrev1.
 
 	for rows.Next() {
 		var (
-			id       string
-			mapping  = new(acrev1.ResourceMapping)
-			bMapping []byte
+			id      int32
+			mapping = new(acrev1.ResourceMapping)
 		)
-		err = rows.Scan(&id, &bMapping)
+		err = rows.Scan(&id, &mapping)
 		if err != nil {
 			slog.Error("issue listing resource mappings", slog.String("error", err.Error()))
 			return mappings, status.Error(codes.Internal, err.Error())
 		}
-		err = protojson.Unmarshal(bMapping, mapping)
-		if err != nil {
-			slog.Error("issue unmarshalling resource mappings", slog.String("error", err.Error()))
-			return mappings, status.Error(codes.Internal, err.Error())
-		}
+
 		mapping.Descriptor_.Id = id
 		mappings.Mappings = append(mappings.Mappings, mapping)
 	}
@@ -94,18 +83,17 @@ func (s ResourceEncoding) GetResourceMapping(ctx context.Context, req *acrev1.Ge
 		mapping = &acrev1.GetResourceMappingResponse{
 			Mapping: new(acrev1.ResourceMapping),
 		}
-		bMapping []byte
-		err      error
-		id       string
+		err error
+		id  int32
 	)
 
-	row := s.dbClient.GetResource(req.Id, resourceMappingPolicyType)
+	row := s.dbClient.GetResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String())
 	if err != nil {
 		slog.Error("issue getting resource mapping", slog.String("error", err.Error()))
 		return mapping, status.Error(codes.Internal, err.Error())
 	}
 
-	err = row.Scan(&id, &bMapping)
+	err = row.Scan(&id, &mapping.Mapping)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			slog.Info("resource mapping not found", slog.String("id", req.Id))
@@ -114,23 +102,14 @@ func (s ResourceEncoding) GetResourceMapping(ctx context.Context, req *acrev1.Ge
 		slog.Error("issue getting resource mapping", slog.String("error", err.Error()))
 		return mapping, status.Error(codes.Internal, err.Error())
 	}
-	err = protojson.Unmarshal(bMapping, mapping.Mapping)
-	if err != nil {
-		slog.Error("issue unmarshalling resource mapping", slog.String("error", err.Error()))
-		return mapping, status.Error(codes.Internal, err.Error())
-	}
 	mapping.Mapping.Descriptor_.Id = id
 
 	return mapping, nil
 }
 
 func (s ResourceEncoding) UpdateResourceMapping(ctx context.Context, req *acrev1.UpdateResourceMappingRequest) (*acrev1.UpdateResourceMappingResponse, error) {
-	jsonAttr, err := protojson.Marshal(req.Mapping)
-	if err != nil {
-		slog.Error("issue marshalling mapping", slog.String("error", err.Error()))
-		return &acrev1.UpdateResourceMappingResponse{}, status.Error(codes.Internal, err.Error())
-	}
-	err = s.dbClient.UpdateResource(req.Mapping.Descriptor_, jsonAttr, resourceMappingPolicyType)
+
+	err := s.dbClient.UpdateResource(req.Mapping.Descriptor_, req.Mapping, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String())
 	if err != nil {
 		slog.Error("issue updating mapping", slog.String("error", err.Error()))
 		return &acrev1.UpdateResourceMappingResponse{}, status.Error(codes.Internal, err.Error())
@@ -139,7 +118,7 @@ func (s ResourceEncoding) UpdateResourceMapping(ctx context.Context, req *acrev1
 }
 
 func (s ResourceEncoding) DeleteResourceMapping(ctx context.Context, req *acrev1.DeleteResourceMappingRequest) (*acrev1.DeleteResourceMappingResponse, error) {
-	if err := s.dbClient.DeleteResource(req.Id, resourceMappingPolicyType); err != nil {
+	if err := s.dbClient.DeleteResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()); err != nil {
 		slog.Error("issue deleting resource mapping", slog.String("error", err.Error()))
 		return &acrev1.DeleteResourceMappingResponse{}, status.Error(codes.Internal, err.Error())
 	}
@@ -155,11 +134,11 @@ func (s ResourceEncoding) CreateResourceGroup(ctx context.Context, req *acrev1.C
 	var (
 		err error
 	)
-	jsonResource, err := protojson.Marshal(req.Group)
-	if err != nil {
-		return &acrev1.CreateResourceGroupResponse{}, status.Error(codes.Internal, err.Error())
-	}
-	err = s.dbClient.CreateResource(req.Group.Descriptor_, jsonResource, resourceGroupPolicyType)
+
+	// Set the version of the resource to 1 on create
+	req.Group.Descriptor_.Version = 1
+
+	err = s.dbClient.CreateResource(req.Group.Descriptor_, req.Group)
 	if err != nil {
 		slog.Error("issue creating resource group", slog.String("error", err.Error()))
 		return &acrev1.CreateResourceGroupResponse{}, status.Error(codes.Internal, err.Error())
@@ -171,7 +150,7 @@ func (s ResourceEncoding) CreateResourceGroup(ctx context.Context, req *acrev1.C
 func (s ResourceEncoding) ListResourceGroups(ctx context.Context, req *acrev1.ListResourceGroupsRequest) (*acrev1.ListResourceGroupsResponse, error) {
 	groups := &acrev1.ListResourceGroupsResponse{}
 
-	rows, err := s.dbClient.ListResources(resourceGroupPolicyType)
+	rows, err := s.dbClient.ListResources(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(), req.Selector)
 	if err != nil {
 		slog.Error("issue listing resource groups", slog.String("error", err.Error()))
 		return groups, status.Error(codes.Internal, err.Error())
@@ -180,19 +159,13 @@ func (s ResourceEncoding) ListResourceGroups(ctx context.Context, req *acrev1.Li
 
 	for rows.Next() {
 		var (
-			id     string
-			group  = new(acrev1.ResourceGroup)
-			bGroup []byte
+			id    int32
+			group = new(acrev1.ResourceGroup)
 		)
 		// var tmpDefinition []byte
-		err = rows.Scan(&id, &bGroup)
+		err = rows.Scan(&id, &group)
 		if err != nil {
 			slog.Error("issue listing resource groups", slog.String("error", err.Error()))
-			return groups, status.Error(codes.Internal, err.Error())
-		}
-		err = protojson.Unmarshal(bGroup, group)
-		if err != nil {
-			slog.Error("issue unmarshalling resource groups", slog.String("error", err.Error()))
 			return groups, status.Error(codes.Internal, err.Error())
 		}
 		group.Descriptor_.Id = id
@@ -207,18 +180,17 @@ func (s ResourceEncoding) GetResourceGroup(ctx context.Context, req *acrev1.GetR
 		group = &acrev1.GetResourceGroupResponse{
 			Group: new(acrev1.ResourceGroup),
 		}
-		bGroup []byte
-		err    error
-		id     string
+		err error
+		id  int32
 	)
 
-	row := s.dbClient.GetResource(req.Id, resourceGroupPolicyType)
+	row := s.dbClient.GetResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String())
 	if err != nil {
 		slog.Error("issue getting resource group", slog.String("error", err.Error()))
 		return group, status.Error(codes.Internal, err.Error())
 	}
 
-	err = row.Scan(&id, &bGroup)
+	err = row.Scan(&id, &group.Group)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			slog.Info("resource group not found", slog.String("id", req.Id))
@@ -227,23 +199,15 @@ func (s ResourceEncoding) GetResourceGroup(ctx context.Context, req *acrev1.GetR
 		slog.Error("issue getting resource group", slog.String("error", err.Error()))
 		return group, status.Error(codes.Internal, err.Error())
 	}
-	err = protojson.Unmarshal(bGroup, group.Group)
-	if err != nil {
-		slog.Error("issue unmarshalling resource group", slog.String("error", err.Error()))
-		return group, status.Error(codes.Internal, err.Error())
-	}
+
 	group.Group.Descriptor_.Id = id
 
 	return group, nil
 }
 
 func (s ResourceEncoding) UpdateResourceGroup(ctx context.Context, req *acrev1.UpdateResourceGroupRequest) (*acrev1.UpdateResourceGroupResponse, error) {
-	jsonAttr, err := protojson.Marshal(req.Group)
-	if err != nil {
-		slog.Error("issue marshalling group", slog.String("error", err.Error()))
-		return &acrev1.UpdateResourceGroupResponse{}, status.Error(codes.Internal, err.Error())
-	}
-	err = s.dbClient.UpdateResource(req.Group.Descriptor_, jsonAttr, resourceGroupPolicyType)
+
+	err := s.dbClient.UpdateResource(req.Group.Descriptor_, req.Group, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String())
 	if err != nil {
 		slog.Error("issue updating group", slog.String("error", err.Error()))
 		return &acrev1.UpdateResourceGroupResponse{}, status.Error(codes.Internal, err.Error())
@@ -252,7 +216,7 @@ func (s ResourceEncoding) UpdateResourceGroup(ctx context.Context, req *acrev1.U
 }
 
 func (s ResourceEncoding) DeleteResourceGroup(ctx context.Context, req *acrev1.DeleteResourceGroupRequest) (*acrev1.DeleteResourceGroupResponse, error) {
-	if err := s.dbClient.DeleteResource(req.Id, resourceGroupPolicyType); err != nil {
+	if err := s.dbClient.DeleteResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()); err != nil {
 		slog.Error("issue deleting resource group", slog.String("error", err.Error()))
 		return &acrev1.DeleteResourceGroupResponse{}, status.Error(codes.Internal, err.Error())
 	}
@@ -268,11 +232,11 @@ func (s ResourceEncoding) CreateResourceSynonym(ctx context.Context, req *acrev1
 	var (
 		err error
 	)
-	jsonResource, err := protojson.Marshal(req.Synonym)
-	if err != nil {
-		return &acrev1.CreateResourceSynonymResponse{}, status.Error(codes.Internal, err.Error())
-	}
-	err = s.dbClient.CreateResource(req.Synonym.Descriptor_, jsonResource, synonymPolicyType)
+
+	// Set the version of the resource to 1 on create
+	req.Synonym.Descriptor_.Version = 1
+
+	err = s.dbClient.CreateResource(req.Synonym.Descriptor_, req.Synonym)
 	if err != nil {
 		slog.Error("issue creating resource group", slog.String("error", err.Error()))
 		return &acrev1.CreateResourceSynonymResponse{}, status.Error(codes.Internal, err.Error())
@@ -284,7 +248,7 @@ func (s ResourceEncoding) CreateResourceSynonym(ctx context.Context, req *acrev1
 func (s ResourceEncoding) ListResourceSynonyms(ctx context.Context, req *acrev1.ListResourceSynonymsRequest) (*acrev1.ListResourceSynonymsResponse, error) {
 	synonyms := &acrev1.ListResourceSynonymsResponse{}
 
-	rows, err := s.dbClient.ListResources(synonymPolicyType)
+	rows, err := s.dbClient.ListResources(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(), req.Selector)
 	if err != nil {
 		slog.Error("issue listing resource synonyms", slog.String("error", err.Error()))
 		return synonyms, status.Error(codes.Internal, err.Error())
@@ -293,19 +257,12 @@ func (s ResourceEncoding) ListResourceSynonyms(ctx context.Context, req *acrev1.
 
 	for rows.Next() {
 		var (
-			id       string
-			synonym  = new(acrev1.Synonyms)
-			bSynonym []byte
+			id      int32
+			synonym = new(acrev1.Synonyms)
 		)
-		// var tmpDefinition []byte
-		err = rows.Scan(&id, &bSynonym)
+		err = rows.Scan(&id, &synonym)
 		if err != nil {
 			slog.Error("issue listing resource synonyms", slog.String("error", err.Error()))
-			return synonyms, status.Error(codes.Internal, err.Error())
-		}
-		err = protojson.Unmarshal(bSynonym, synonym)
-		if err != nil {
-			slog.Error("issue unmarshalling resource synonyms", slog.String("error", err.Error()))
 			return synonyms, status.Error(codes.Internal, err.Error())
 		}
 		synonym.Descriptor_.Id = id
@@ -321,18 +278,17 @@ func (s ResourceEncoding) GetResourceSynonym(ctx context.Context, req *acrev1.Ge
 		synonym = &acrev1.GetResourceSynonymResponse{
 			Synonym: new(acrev1.Synonyms),
 		}
-		bSynonym []byte
-		err      error
-		id       string
+		err error
+		id  int32
 	)
 
-	row := s.dbClient.GetResource(req.Id, synonymPolicyType)
+	row := s.dbClient.GetResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String())
 	if err != nil {
 		slog.Error("issue getting resource synonym", slog.String("error", err.Error()))
 		return synonym, status.Error(codes.Internal, err.Error())
 	}
 
-	err = row.Scan(&id, &bSynonym)
+	err = row.Scan(&id, &synonym.Synonym)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			slog.Info("resource synonym not found", slog.String("id", req.Id))
@@ -341,23 +297,14 @@ func (s ResourceEncoding) GetResourceSynonym(ctx context.Context, req *acrev1.Ge
 		slog.Error("issue getting resource synonym", slog.String("error", err.Error()))
 		return synonym, status.Error(codes.Internal, err.Error())
 	}
-	err = protojson.Unmarshal(bSynonym, synonym.Synonym)
-	if err != nil {
-		slog.Error("issue unmarshalling resource synonym", slog.String("error", err.Error()))
-		return synonym, status.Error(codes.Internal, err.Error())
-	}
+
 	synonym.Synonym.Descriptor_.Id = id
 
 	return synonym, nil
 }
 
 func (s ResourceEncoding) UpdateResourceSynonym(ctx context.Context, req *acrev1.UpdateResourceSynonymRequest) (*acrev1.UpdateResourceSynonymResponse, error) {
-	jsonAttr, err := protojson.Marshal(req.Synonym)
-	if err != nil {
-		slog.Error("issue marshalling synonym", slog.String("error", err.Error()))
-		return &acrev1.UpdateResourceSynonymResponse{}, status.Error(codes.Internal, err.Error())
-	}
-	err = s.dbClient.UpdateResource(req.Synonym.Descriptor_, jsonAttr, synonymPolicyType)
+	err := s.dbClient.UpdateResource(req.Synonym.Descriptor_, req.Synonym, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String())
 	if err != nil {
 		slog.Error("issue updating synonym", slog.String("error", err.Error()))
 		return &acrev1.UpdateResourceSynonymResponse{}, status.Error(codes.Internal, err.Error())
@@ -366,7 +313,9 @@ func (s ResourceEncoding) UpdateResourceSynonym(ctx context.Context, req *acrev1
 }
 
 func (s ResourceEncoding) DeleteResourceSynonym(ctx context.Context, req *acrev1.DeleteResourceSynonymRequest) (*acrev1.DeleteResourceSynonymResponse, error) {
-	if err := s.dbClient.DeleteResource(req.Id, synonymPolicyType); err != nil {
+	//TODO: Need to check if resource exists before deleting
+
+	if err := s.dbClient.DeleteResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()); err != nil {
 		slog.Error("issue deleting resource synonym", slog.String("error", err.Error()))
 		return &acrev1.DeleteResourceSynonymResponse{}, status.Error(codes.Internal, err.Error())
 	}

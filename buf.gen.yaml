@@ -3,6 +3,8 @@ managed:
   enabled: true
   go_package_prefix:
     default: github.com/opentdf/opentdf-v2-poc/gen
+    except:
+      - buf.build/bufbuild/protovalidate
 plugins:
   - plugin: buf.build/grpc-ecosystem/gateway:v2.18.1
     out: gen

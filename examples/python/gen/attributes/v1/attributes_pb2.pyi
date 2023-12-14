@@ -123,11 +123,11 @@ class GetAttributeResponse(_message.Message):
         ...
 
 class ListAttributesRequest(_message.Message):
-    __slots__ = ('options',)
-    OPTIONS_FIELD_NUMBER: _ClassVar[int]
-    options: AttributeRequestOptions
+    __slots__ = ('selector',)
+    SELECTOR_FIELD_NUMBER: _ClassVar[int]
+    selector: _common_pb2.ResourceSelector
 
-    def __init__(self, options: _Optional[_Union[AttributeRequestOptions, _Mapping]]=...) -> None:
+    def __init__(self, selector: _Optional[_Union[_common_pb2.ResourceSelector, _Mapping]]=...) -> None:
         ...
 
 class ListAttributesResponse(_message.Message):
@@ -201,11 +201,11 @@ class GetAttributeGroupResponse(_message.Message):
         ...
 
 class ListAttributeGroupsRequest(_message.Message):
-    __slots__ = ('options',)
-    OPTIONS_FIELD_NUMBER: _ClassVar[int]
-    options: AttributeRequestOptions
+    __slots__ = ('selector',)
+    SELECTOR_FIELD_NUMBER: _ClassVar[int]
+    selector: _common_pb2.ResourceSelector
 
-    def __init__(self, options: _Optional[_Union[AttributeRequestOptions, _Mapping]]=...) -> None:
+    def __init__(self, selector: _Optional[_Union[_common_pb2.ResourceSelector, _Mapping]]=...) -> None:
         ...
 
 class ListAttributeGroupsResponse(_message.Message):

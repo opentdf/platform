@@ -31,8 +31,7 @@ func LoadConfig() (*Config, error) {
 	config := &Config{}
 	homedir, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Println("Can't read homedir:", err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 	viper.AddConfigPath(fmt.Sprintf("%s/.opentdf", homedir))
 	viper.AddConfigPath(".opentdf")

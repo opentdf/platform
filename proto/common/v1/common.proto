@@ -2,27 +2,42 @@ syntax = "proto3";
 
 package common.v1;
 
+enum PolicyResourceType {
+  POLICY_RESOURCE_TYPE_UNSPECIFIED = 0;
+  POLICY_RESOURCE_TYPE_RESOURCE_ENCODING = 1;
+  POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM = 2;
+  POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING = 3;
+  POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP = 4;
+  POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING = 5;
+  POLICY_RESOURCE_TYPE_KEY_ACCESS = 6;
+  POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION = 7;
+  POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP = 8;
+}
+
 // Struct to uniquely identify a resource with optional additional metadata
 message ResourceDescriptor {
+  PolicyResourceType type = 1;
   // unique resource identifier
-  string id = 1;
+  int32 id = 2;
   // resource version
-  string version = 2;
+  int32 version = 3;
+  // resource name
+  string name = 4;
   // resource namespace; used to partition resources, support by namespace AuthN and enable federation
-  string namespace = 3;
+  string namespace = 5;
   /*
      optional fully qualified name of the resource.  FQN is used to support direct references and to eliminate the need
      for clients to compose an FQN at run time.
 
      the fqn may be specific to the resource type.
   */
-  string fqn = 4;
+  string fqn = 6;
   // optional short description / label
-  string label = 5;
+  map<string, string> labels = 7;
   // optional long description
-  string description = 6;
+  string description = 8;
   // optional list of resource dependencies
-  repeated ResourceDependency dependencies = 7;
+  repeated ResourceDependency dependencies = 9;
 }
 
 // Define a resource dependency
@@ -31,13 +46,26 @@ message ResourceDependency {
   string namespace = 1;
   // version of reference resource
   string version = 2;
-  enum PolicyResourceType {
-    POLICY_RESOURCE_TYPE_UNSPECIFIED = 0;
-    POLICY_RESOURCE_TYPE_RESOURCE_ENCODING = 1;
-    POLICY_RESOURCE_TYPE_SUBJECT_ENCODING = 2;
-    POLICY_RESOURCE_TYPE_KEY_ACCESS = 3;
-    POLICY_RESOURCE_TYPE_ATTRIBUTES = 4;
-  }
   //type of dependency
   PolicyResourceType type = 3;
+}
+
+// Define a resource selector
+message ResourceSelector {
+  // namespace of referenced resource
+  string namespace = 1;
+  // version of reference resource
+  string version = 2;
+  // Define a label selector
+  message LabelSelector {
+    // labels to match a against a resource
+    map<string, string> labels = 1;
+  }
+  // You can select a resource by name or by labels
+  oneof selector {
+    // name of referenced resource
+    string name = 3;
+    // labels to match a against a resource
+    LabelSelector label_selector = 4;
+  }
 }

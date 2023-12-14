@@ -8,7 +8,11 @@ OpenTDF V2 POC
 
 ### Prerequisites
 
+[Air](https://github.com/cosmtrek/air)
+
 `brew install air`
+
+[Buf](https://buf.build/docs/ecosystem/cli-overview)
 
 `brew install buf`
 
@@ -16,7 +20,7 @@ OpenTDF V2 POC
 
 1. `docker-compose -f opentdf-compose.yaml up`
 
-2. `cp example-opentdf.yaml opentdf.yaml`
+2. `cp example-opentdf.yaml opentdf.yaml` and update the values
 
 3. `air`
 
@@ -45,10 +49,10 @@ This should bring up a grpc server on port 9000 and http server on port 8080. Ai
 Create Attribute
 
 ```bash
-grpcurl -plaintext -d @ localhost:8082 attributes.v1.AttributesService/CreateAttribute <<EOM  
+grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM  
 {
     "definition": {
-        "name": "test",
+        "name": "relto",
         "rule":"ATTRIBUTE_RULE_TYPE_ANY_OF",
         "values": [
             {
@@ -59,18 +63,30 @@ grpcurl -plaintext -d @ localhost:8082 attributes.v1.AttributesService/CreateAtt
             }
         ],
         "descriptor": {
-            "version": "1",
-            "label": "test",
+            "labels": [
+                {
+                    "key": "test2",
+                    "value": "test2"
+                },
+                {
+                    "key": "test3",
+                    "value": "test3"
+                }
+            ],
             "description": "this is a test attribute",
-            "namespace": "virtru.com"
+            "namespace": "virtru.com",
+            "name": "attribute1",
+            "type":"POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION"
         }
     }
 }
+
 EOM
 ```
 
 List Attributes
 
 ```bash
-grpcurl -plaintext -d @ localhost:8082 attributes.v1.AttributesService/ListAttributes
+grpcurl -plaintext localhost:9000 attributes.v1.AttributesService/ListAttributes
 ```
+

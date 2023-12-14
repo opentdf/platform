@@ -3,6 +3,7 @@ syntax = "proto3";
 package acre.v1;
 
 import "attributes/v1/attributes.proto";
+import "buf/validate/validate.proto";
 import "common/v1/common.proto";
 import "google/api/annotations.proto";
 
@@ -88,7 +89,7 @@ message ResourceEncodingRequestOptions {
 */
 
 message ListResourceMappingsRequest {
-  optional ResourceEncodingRequestOptions options = 1;
+  common.v1.ResourceSelector selector = 1;
 }
 
 message ListResourceMappingsResponse {
@@ -125,7 +126,7 @@ message DeleteResourceMappingResponse {}
 */
 
 message ListResourceSynonymsRequest {
-  optional ResourceEncodingRequestOptions options = 1;
+  common.v1.ResourceSelector selector = 1;
 }
 
 message ListResourceSynonymsResponse {
@@ -133,7 +134,7 @@ message ListResourceSynonymsResponse {
 }
 
 message GetResourceSynonymRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
   optional ResourceEncodingRequestOptions options = 2;
 }
 
@@ -161,7 +162,7 @@ message DeleteResourceSynonymResponse {}
    Resource Groups
 */
 message ListResourceGroupsRequest {
-  optional ResourceEncodingRequestOptions options = 1;
+  common.v1.ResourceSelector selector = 1;
 }
 
 message ListResourceGroupsResponse {
@@ -169,7 +170,7 @@ message ListResourceGroupsResponse {
 }
 
 message GetResourceGroupRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
   optional ResourceEncodingRequestOptions options = 2;
 }
 

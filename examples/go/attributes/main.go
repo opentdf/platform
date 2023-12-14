@@ -24,15 +24,16 @@ func main() {
 			},
 		},
 		Descriptor_: &commonv1.ResourceDescriptor{
-			Version:     "1",
+			Version:     1,
 			Namespace:   "demo.com",
 			Fqn:         "http://demo.com/attr/relto",
 			Description: "The relto attribute is used to describe the relationship of the resource to the country of origin. ",
-			Label:       "Country of Origin",
+			Labels:      map[string]string{"origin": "Country of Origin"},
+			Type:        commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
 		},
 	}
 
-	conn, err := grpc.Dial("localhost:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("localhost:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		os.Exit(1)

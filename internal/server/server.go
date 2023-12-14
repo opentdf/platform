@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bufbuild/protovalidate-go"
+	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -51,13 +53,20 @@ type inProcessServer struct {
 
 // TODO: make this configurable
 func NewOpenTDFServer(config Config) *OpenTDFServer {
+	// TODO: support ability to pass in grpc server options and interceptors
+	validator, _ := protovalidate.New()
+
 	return &OpenTDFServer{
 		HttpServer: &http.Server{
 			Addr:         fmt.Sprintf(":%d", config.Http.Port),
 			WriteTimeout: writeTimeoutSeconds * time.Second,
 			ReadTimeout:  readTimeoutSeconds * time.Second,
 		},
-		GrpcServer:        grpc.NewServer(),
+		GrpcServer: grpc.NewServer(
+			grpc.UnaryInterceptor(
+				protovalidate_middleware.UnaryServerInterceptor(validator),
+			),
+		),
 		grpcServerAddress: fmt.Sprintf(":%d", config.Grpc.Port),
 		GrpcInProcess: &inProcessServer{
 			ln:  fasthttputil.NewInmemoryListener(),

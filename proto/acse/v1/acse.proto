@@ -64,7 +64,7 @@ message GetSubjectMappingResponse {
 }
 
 message ListSubjectMappingsRequest {
-  optional SubjectEncodingRequestOptions options = 1;
+  common.v1.ResourceSelector selector = 1;
 }
 message ListSubjectMappingsResponse {
   repeated SubjectMapping subject_mappings = 1;

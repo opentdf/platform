@@ -7,13 +7,14 @@ CREATE SCHEMA IF NOT EXISTS opentdf;
 CREATE TABLE IF NOT EXISTS opentdf.resources
 (
     id SERIAL PRIMARY KEY,
+    name VARCHAR NOT NULL,
     namespace VARCHAR NOT NULL,
     version INTEGER NOT NULL,
     fqn VARCHAR,
-    label VARCHAR,
+    labels JSONB,
     description VARCHAR,
     policytype VARCHAR NOT NULL,
-    resource JSON
+    resource JSONB
 );
 
 -- +goose StatementEnd

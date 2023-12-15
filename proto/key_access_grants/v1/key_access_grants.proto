@@ -91,14 +91,14 @@ message KeyAccessGrantsRequestOptions {}
 
 message GetKeyAccessGrantRequest {
   string id = 1;
-  optional KeyAccessGrantsRequestOptions options = 2;
+  KeyAccessGrantsRequestOptions options = 2;
 }
 message GetKeyAccessGrantResponse {
-  optional KeyAccessGrant grant = 1;
+  KeyAccessGrant grant = 1;
 }
 
 message ListKeyAccessGrantsRequest {
-  optional KeyAccessGrantsRequestOptions options = 1;
+  KeyAccessGrantsRequestOptions options = 1;
 }
 message ListKeyAccessGrantsResponse {
   repeated KeyAccessGrant grants = 1;

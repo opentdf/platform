@@ -1,0 +1,6 @@
+version: v1
+managed:
+  enabled: false
+plugins:
+  - plugin: grpc-gateway-ts
+    out: gen

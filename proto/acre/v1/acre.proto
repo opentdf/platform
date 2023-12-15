@@ -98,7 +98,7 @@ message ListResourceMappingsResponse {
 
 message GetResourceMappingRequest {
   string id = 1;
-  optional ResourceEncodingRequestOptions options = 2;
+  ResourceEncodingRequestOptions options = 2;
 }
 
 message GetResourceMappingResponse {
@@ -135,7 +135,7 @@ message ListResourceSynonymsResponse {
 
 message GetResourceSynonymRequest {
   string id = 1 [(buf.validate.field).required = true];
-  optional ResourceEncodingRequestOptions options = 2;
+  ResourceEncodingRequestOptions options = 2;
 }
 
 message GetResourceSynonymResponse {
@@ -171,7 +171,7 @@ message ListResourceGroupsResponse {
 
 message GetResourceGroupRequest {
   string id = 1 [(buf.validate.field).required = true];
-  optional ResourceEncodingRequestOptions options = 2;
+  ResourceEncodingRequestOptions options = 2;
 }
 
 message GetResourceGroupResponse {

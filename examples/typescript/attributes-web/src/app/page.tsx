@@ -4,21 +4,20 @@ import Image from 'next/image'
 import styles from './page.module.css'
 
 import React, { useEffect, useState } from 'react';
-import { AttributesServiceService, v1ListAttributesResponse, v1AttributeDefinition } from '../../../attributes'; // Adjust the import path accordingly
-import { OpenAPI } from '../../../attributes';
+import { AttributesService, ListAttributesResponse, AttributeDefinition } from '../../../gen/attributes/v1/attributes.pb';  // Adjust the import path accordingly
 
-OpenAPI.BASE = 'http://localhost:8081'; // Adjust the base path to your server
+const API_BASE_URL = 'http://localhost:8081'; 
 
 const AttributesPage = () => {
-  const [attributes, setAttributes] = useState<v1ListAttributesResponse | null>(null);
+  const [attributes, setAttributes] = useState<ListAttributesResponse | null>(null);
   const [rawJson, setRawJson] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const definition: v1AttributeDefinition = JSON.parse(rawJson);
-      await AttributesServiceService.attributesServiceCreateAttribute(definition);
+      const definition: AttributeDefinition = JSON.parse(rawJson);
+      await AttributesService.CreateAttribute({definition: definition},{pathPrefix: API_BASE_URL});
       setRawJson('');
       // Optionally, refetch or update the attributes list
       await fetchAttributes();
@@ -31,7 +30,7 @@ const AttributesPage = () => {
   const fetchAttributes = async () => {
     try {
       // Replace 'listAttributes' with the actual method name provided by your client
-      const response = await AttributesServiceService.attributesServiceListAttributes();
+      const response = await AttributesService.ListAttributes({},{pathPrefix: API_BASE_URL});
       if ('definitions' in response) { // Replace with actual response validation
         setAttributes(response);
       } else {

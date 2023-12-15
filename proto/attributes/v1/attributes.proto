@@ -109,7 +109,7 @@ message AttributeRequestOptions {}
 
 message GetAttributeRequest {
   string id = 1;
-  optional AttributeRequestOptions options = 2;
+  AttributeRequestOptions options = 2;
 }
 message GetAttributeResponse {
   AttributeDefinition definition = 1;
@@ -140,7 +140,7 @@ message DeleteAttributeResponse {}
 
 message GetAttributeGroupRequest {
   string id = 1;
-  optional AttributeRequestOptions options = 2;
+  AttributeRequestOptions options = 2;
 }
 
 message GetAttributeGroupResponse {

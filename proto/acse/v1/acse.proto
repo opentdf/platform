@@ -57,10 +57,10 @@ message SubjectEncodingRequestOptions {}
 
 message GetSubjectMappingRequest {
   string id = 1;
-  optional SubjectEncodingRequestOptions options = 2;
+  SubjectEncodingRequestOptions options = 2;
 }
 message GetSubjectMappingResponse {
-  optional SubjectMapping subject_mapping = 1;
+  SubjectMapping subject_mapping = 1;
 }
 
 message ListSubjectMappingsRequest {

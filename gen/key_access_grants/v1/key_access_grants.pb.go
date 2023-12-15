@@ -9,7 +9,7 @@ package key_access_grantsv1
 import (
 	v11 "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1"
 	v1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
-	_ "github.com/opentdf/opentdf-v2-poc/gen/google/api"
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

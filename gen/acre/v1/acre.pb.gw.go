@@ -145,7 +145,7 @@ func request_ResourcEncodingService_CreateResourceMapping_0(ctx context.Context,
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Mapping); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -162,7 +162,7 @@ func local_request_ResourcEncodingService_CreateResourceMapping_0(ctx context.Co
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Mapping); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -405,7 +405,7 @@ func request_ResourcEncodingService_CreateResourceSynonym_0(ctx context.Context,
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Synonym); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -422,7 +422,7 @@ func local_request_ResourcEncodingService_CreateResourceSynonym_0(ctx context.Co
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Synonym); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -665,7 +665,7 @@ func request_ResourcEncodingService_CreateResourceGroup_0(ctx context.Context, m
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Group); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -682,7 +682,7 @@ func local_request_ResourcEncodingService_CreateResourceGroup_0(ctx context.Cont
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Group); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -892,7 +892,7 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 
 	})
 
-	mux.Handle("PUT", pattern_ResourcEncodingService_UpdateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1017,7 +1017,7 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 
 	})
 
-	mux.Handle("PUT", pattern_ResourcEncodingService_UpdateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1142,7 +1142,7 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 
 	})
 
-	mux.Handle("PUT", pattern_ResourcEncodingService_UpdateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1299,7 +1299,7 @@ func RegisterResourcEncodingServiceHandlerClient(ctx context.Context, mux *runti
 
 	})
 
-	mux.Handle("PUT", pattern_ResourcEncodingService_UpdateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -1409,7 +1409,7 @@ func RegisterResourcEncodingServiceHandlerClient(ctx context.Context, mux *runti
 
 	})
 
-	mux.Handle("PUT", pattern_ResourcEncodingService_UpdateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -1519,7 +1519,7 @@ func RegisterResourcEncodingServiceHandlerClient(ctx context.Context, mux *runti
 
 	})
 
-	mux.Handle("PUT", pattern_ResourcEncodingService_UpdateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)

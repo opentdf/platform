@@ -97,18 +97,18 @@ service SubjectEncodingService {
   rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {
     option (google.api.http) = {
       post: "/v1/encoding/subject/mappings"
-      body: "*"
+      body: "subject_mapping"
     };
   }
 
   rpc UpdateSubjectMapping(UpdateSubjectMappingRequest) returns (UpdateSubjectMappingResponse) {
     option (google.api.http) = {
-      put: "/v1/encoding/subject/mapping/{id}"
+      post: "/v1/encoding/subject/mappings/{id}"
       body: "subject_mapping"
     };
   }
 
   rpc DeleteSubjectMapping(DeleteSubjectMappingRequest) returns (DeleteSubjectMappingResponse) {
-    option (google.api.http) = {delete: "/v1/encoding/subjects/{id}"};
+    option (google.api.http) = {delete: "/v1/encoding/subjects/mappings/{id}"};
   }
 }

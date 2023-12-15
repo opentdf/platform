@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package common.v1;
 
+option go_package = "github.com/opentdf/opentdf-v2-poc/gen/common/v1";
+
 enum PolicyResourceType {
   POLICY_RESOURCE_TYPE_UNSPECIFIED = 0;
   POLICY_RESOURCE_TYPE_RESOURCE_ENCODING = 1;

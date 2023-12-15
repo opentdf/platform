@@ -4,6 +4,28 @@ package attributes.v1;
 
 import "common/v1/common.proto";
 import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1";
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Attributes Service";
+    version: "1.0";
+    contact: {
+      name: "opentdf project";
+      url: "https://github.com/opentdf-v2-poc/opentdf-v2-poc";
+      email: "opentdf@virtru.com";
+    };
+    license: {
+      name: "Clear BSD License";
+      url: "https://github.com/opentdf-v2-poc/opentdf-v2-pocy/blob/main/LICENSE";
+    };
+    extensions: {
+      key: "x-something-something";
+      value {string_value: "yadda"}
+    }
+  };
+};
 
 // Just a set of attributes
 message AttributeSet {
@@ -152,54 +174,54 @@ message DeleteAttributeGroupResponse {}
 
 service AttributesService {
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
-    option (google.api.http) = {get: "/v1/attributes/{id}"};
+    option (google.api.http) = {get: "/v1/attribute/definitions/{id}"};
   }
 
   rpc GetAttributeGroup(GetAttributeGroupRequest) returns (GetAttributeGroupResponse) {
-    option (google.api.http) = {get: "/v1/attributes/groups/{id}"};
+    option (google.api.http) = {get: "/v1/attribute/groups/{id}"};
   }
 
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
-    option (google.api.http) = {get: "/v1/attributes"};
+    option (google.api.http) = {get: "/v1/attribute/definitions"};
   }
 
   rpc ListAttributeGroups(ListAttributeGroupsRequest) returns (ListAttributeGroupsResponse) {
-    option (google.api.http) = {get: "/v1/attributes/groups"};
+    option (google.api.http) = {get: "/v1/attribute/groups"};
   }
 
   rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
     option (google.api.http) = {
-      post: "/v1/attributes"
-      body: "*"
+      post: "/v1/attributes/definitions"
+      body: "definition"
     };
   }
 
   rpc CreateAttributeGroup(CreateAttributeGroupRequest) returns (CreateAttributeGroupResponse) {
     option (google.api.http) = {
       post: "/v1/attributes/groups"
-      body: "*"
+      body: "group"
     };
   }
 
   rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {
     option (google.api.http) = {
-      put: "/v1/attributes/{id}"
+      post: "/v1/attribute/definitions/{id}"
       body: "definition"
     };
   }
 
   rpc UpdateAttributeGroup(UpdateAttributeGroupRequest) returns (UpdateAttributeGroupResponse) {
     option (google.api.http) = {
-      put: "/v1/attributes/groups/{id}"
+      post: "/v1/attribute/groups/{id}"
       body: "group"
     };
   }
 
   rpc DeleteAttribute(DeleteAttributeRequest) returns (DeleteAttributeResponse) {
-    option (google.api.http) = {delete: "/v1/attributes/{id}"};
+    option (google.api.http) = {delete: "/v1/attribute/definitions/{id}"};
   }
 
   rpc DeleteAttributeGroup(DeleteAttributeGroupRequest) returns (DeleteAttributeGroupResponse) {
-    option (google.api.http) = {delete: "/v1/attributes/groups/{id}"};
+    option (google.api.http) = {delete: "/v1/attribute/groups/{id}"};
   }
 }

@@ -208,13 +208,13 @@ service ResourcEncodingService {
   rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {
     option (google.api.http) = {
       post: "/v1/encoding/resource/mappings"
-      body: "*"
+      body: "mapping"
     };
   }
 
   rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
     option (google.api.http) = {
-      put: "/v1/encoding/resource/mappings/{id}"
+      post: "/v1/encoding/resource/mappings/{id}"
       body: "mapping"
     };
   }
@@ -236,13 +236,13 @@ service ResourcEncodingService {
   rpc CreateResourceSynonym(CreateResourceSynonymRequest) returns (CreateResourceSynonymResponse) {
     option (google.api.http) = {
       post: "/v1/encoding/resource/synonyms"
-      body: "*"
+      body: "synonym"
     };
   }
 
   rpc UpdateResourceSynonym(UpdateResourceSynonymRequest) returns (UpdateResourceSynonymResponse) {
     option (google.api.http) = {
-      put: "/v1/encoding/resource/synonyms/{id}"
+      post: "/v1/encoding/resource/synonyms/{id}"
       body: "synonym"
     };
   }
@@ -264,13 +264,13 @@ service ResourcEncodingService {
   rpc CreateResourceGroup(CreateResourceGroupRequest) returns (CreateResourceGroupResponse) {
     option (google.api.http) = {
       post: "/v1/encoding/resource/groups"
-      body: "*"
+      body: "group"
     };
   }
 
   rpc UpdateResourceGroup(UpdateResourceGroupRequest) returns (UpdateResourceGroupResponse) {
     option (google.api.http) = {
-      put: "/v1/encoding/resource/groups/{id}"
+      post: "/v1/encoding/resource/groups/{id}"
       body: "group"
     };
   }

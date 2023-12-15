@@ -1,0 +1,686 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Attributes Service",
+    "version": "1.0",
+    "contact": {
+      "name": "opentdf project",
+      "url": "https://github.com/opentdf-v2-poc/opentdf-v2-poc",
+      "email": "opentdf@virtru.com"
+    },
+    "license": {
+      "name": "Clear BSD License",
+      "url": "https://github.com/opentdf-v2-poc/opentdf-v2-pocy/blob/main/LICENSE"
+    },
+    "x-something-something": "yadda"
+  },
+  "tags": [
+    {
+      "name": "AttributesService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/attribute/definitions": {
+      "get": {
+        "operationId": "AttributesService_ListAttributes",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAttributesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "selector.namespace",
+            "description": "namespace of referenced resource",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "selector.version",
+            "description": "version of reference resource",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "selector.name",
+            "description": "name of referenced resource",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "selector.labelSelector.labels",
+            "description": "labels to match a against a resource\n\nThis is a request variable of the map type. The query format is \"map_name[key]=value\", e.g. If the map name is Age, the key type is string, and the value type is integer, the query parameter is expressed as Age[\"bob\"]=18",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/v1/attribute/definitions/{id}": {
+      "get": {
+        "operationId": "AttributesService_GetAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
+      "delete": {
+        "operationId": "AttributesService_DeleteAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
+      "post": {
+        "operationId": "AttributesService_UpdateAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "definition",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1AttributeDefinition"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/v1/attribute/groups": {
+      "get": {
+        "operationId": "AttributesService_ListAttributeGroups",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAttributeGroupsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "selector.namespace",
+            "description": "namespace of referenced resource",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "selector.version",
+            "description": "version of reference resource",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "selector.name",
+            "description": "name of referenced resource",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "selector.labelSelector.labels",
+            "description": "labels to match a against a resource\n\nThis is a request variable of the map type. The query format is \"map_name[key]=value\", e.g. If the map name is Age, the key type is string, and the value type is integer, the query parameter is expressed as Age[\"bob\"]=18",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/v1/attribute/groups/{id}": {
+      "get": {
+        "operationId": "AttributesService_GetAttributeGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetAttributeGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
+      "delete": {
+        "operationId": "AttributesService_DeleteAttributeGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteAttributeGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
+      "post": {
+        "operationId": "AttributesService_UpdateAttributeGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateAttributeGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1AttributeGroup"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/v1/attributes/definitions": {
+      "post": {
+        "operationId": "AttributesService_CreateAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "definition",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1AttributeDefinition"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/v1/attributes/groups": {
+      "post": {
+        "operationId": "AttributesService_CreateAttributeGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateAttributeGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1AttributeGroup"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "AttributeDefinitionAttributeRuleType": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_HIERARCHICAL"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_UNSPECIFIED"
+    },
+    "ResourceSelectorLabelSelector": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "labels to match a against a resource"
+        }
+      },
+      "title": "Define a label selector"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1AttributeDefinition": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/v1ResourceDescriptor"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/AttributeDefinitionAttributeRuleType",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AttributeDefinitionValue"
+          },
+          "title": "possible values"
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AttributeDefinitionValue"
+          },
+          "title": "optional attribute group by filtering rules"
+        }
+      },
+      "title": "Attribute Definition"
+    },
+    "v1AttributeDefinitionValue": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/v1ResourceDescriptor"
+        },
+        "value": {
+          "type": "string"
+        },
+        "attributePublicKey": {
+          "type": "string",
+          "title": "TODO - optional lock down pub key format if needed.  Per ATTR KEY?"
+        }
+      },
+      "title": "Definition of a single attribute value"
+    },
+    "v1AttributeGroup": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/v1ResourceDescriptor"
+        },
+        "groupValue": {
+          "$ref": "#/definitions/v1AttributeValueReference"
+        },
+        "memberValues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AttributeValueReference"
+          }
+        }
+      },
+      "description": "Example for Org1 FVEY:\nid: 1\nversion: 1.0\nnamespace: demo.com\ngroupValue: http://demo.com/attr/relTo/FVEY\nmembers: [http://demo.com/attr/relTo/USA,http://demo.com/attr/relTo/GBR,...]",
+      "title": "represent an attribute value as a group with other attribute values as members"
+    },
+    "v1AttributeRequestOptions": {
+      "type": "object"
+    },
+    "v1AttributeValueReference": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/v1ResourceDescriptor"
+        },
+        "attributeValue": {
+          "$ref": "#/definitions/v1AttributeDefinitionValue"
+        }
+      },
+      "title": "Reference to an attribute value, one of descriptor or embedded value"
+    },
+    "v1CreateAttributeGroupResponse": {
+      "type": "object"
+    },
+    "v1CreateAttributeResponse": {
+      "type": "object"
+    },
+    "v1DeleteAttributeGroupResponse": {
+      "type": "object"
+    },
+    "v1DeleteAttributeResponse": {
+      "type": "object"
+    },
+    "v1GetAttributeGroupResponse": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$ref": "#/definitions/v1AttributeGroup"
+        }
+      }
+    },
+    "v1GetAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "$ref": "#/definitions/v1AttributeDefinition"
+        }
+      }
+    },
+    "v1ListAttributeGroupsResponse": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AttributeGroup"
+          }
+        }
+      }
+    },
+    "v1ListAttributesResponse": {
+      "type": "object",
+      "properties": {
+        "definitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AttributeDefinition"
+          }
+        }
+      }
+    },
+    "v1PolicyResourceType": {
+      "type": "string",
+      "enum": [
+        "POLICY_RESOURCE_TYPE_UNSPECIFIED",
+        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING",
+        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM",
+        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING",
+        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP",
+        "POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING",
+        "POLICY_RESOURCE_TYPE_KEY_ACCESS",
+        "POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION",
+        "POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP"
+      ],
+      "default": "POLICY_RESOURCE_TYPE_UNSPECIFIED"
+    },
+    "v1ResourceDependency": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "title": "namespace of referenced resource"
+        },
+        "version": {
+          "type": "string",
+          "title": "version of reference resource"
+        },
+        "type": {
+          "$ref": "#/definitions/v1PolicyResourceType",
+          "title": "type of dependency"
+        }
+      },
+      "title": "Define a resource dependency"
+    },
+    "v1ResourceDescriptor": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/v1PolicyResourceType"
+        },
+        "id": {
+          "type": "integer",
+          "format": "int32",
+          "title": "unique resource identifier"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int32",
+          "title": "resource version"
+        },
+        "name": {
+          "type": "string",
+          "title": "resource name"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "resource namespace; used to partition resources, support by namespace AuthN and enable federation"
+        },
+        "fqn": {
+          "type": "string",
+          "description": "optional fully qualified name of the resource.  FQN is used to support direct references and to eliminate the need\nfor clients to compose an FQN at run time.\n\nthe fqn may be specific to the resource type."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "optional short description / label"
+        },
+        "description": {
+          "type": "string",
+          "title": "optional long description"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ResourceDependency"
+          },
+          "title": "optional list of resource dependencies"
+        }
+      },
+      "title": "Struct to uniquely identify a resource with optional additional metadata"
+    },
+    "v1ResourceSelector": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "title": "namespace of referenced resource"
+        },
+        "version": {
+          "type": "string",
+          "title": "version of reference resource"
+        },
+        "name": {
+          "type": "string",
+          "title": "name of referenced resource"
+        },
+        "labelSelector": {
+          "$ref": "#/definitions/ResourceSelectorLabelSelector",
+          "title": "labels to match a against a resource"
+        }
+      },
+      "title": "Define a resource selector"
+    },
+    "v1UpdateAttributeGroupResponse": {
+      "type": "object"
+    },
+    "v1UpdateAttributeResponse": {
+      "type": "object"
+    }
+  }
+}

@@ -6,10 +6,12 @@ package cmd
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/go-chi/cors"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/config"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
@@ -93,7 +95,16 @@ func start(cmd *cobra.Command, args []string) {
 	defer s.Stop()
 
 	mux := runtime.NewServeMux()
-	s.HttpServer.Handler = mux
+
+	// TOOO: cors should be configurable and not just allow all
+	s.HttpServer.Handler = cors.New(cors.Options{
+		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}).Handler(mux)
 
 	slog.Info("registering acre server")
 	err = acre.NewResourceEncoding(dbClient, s.GrpcServer, mux)

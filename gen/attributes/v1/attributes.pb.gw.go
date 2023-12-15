@@ -251,7 +251,7 @@ func request_AttributesService_CreateAttribute_0(ctx context.Context, marshaler 
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Definition); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -268,7 +268,7 @@ func local_request_AttributesService_CreateAttribute_0(ctx context.Context, mars
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Definition); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -285,7 +285,7 @@ func request_AttributesService_CreateAttributeGroup_0(ctx context.Context, marsh
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Group); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -302,7 +302,7 @@ func local_request_AttributesService_CreateAttributeGroup_0(ctx context.Context,
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Group); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -565,7 +565,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/GetAttribute", runtime.WithHTTPPathPattern("/v1/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/GetAttribute", runtime.WithHTTPPathPattern("/v1/attribute/definitions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -590,7 +590,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/GetAttributeGroup", runtime.WithHTTPPathPattern("/v1/attributes/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/GetAttributeGroup", runtime.WithHTTPPathPattern("/v1/attribute/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -615,7 +615,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/ListAttributes", runtime.WithHTTPPathPattern("/v1/attributes"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/ListAttributes", runtime.WithHTTPPathPattern("/v1/attribute/definitions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -640,7 +640,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/ListAttributeGroups", runtime.WithHTTPPathPattern("/v1/attributes/groups"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/ListAttributeGroups", runtime.WithHTTPPathPattern("/v1/attribute/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -665,7 +665,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/CreateAttribute", runtime.WithHTTPPathPattern("/v1/attributes"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/CreateAttribute", runtime.WithHTTPPathPattern("/v1/attributes/definitions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -707,7 +707,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("PUT", pattern_AttributesService_UpdateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_AttributesService_UpdateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -715,7 +715,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/UpdateAttribute", runtime.WithHTTPPathPattern("/v1/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/UpdateAttribute", runtime.WithHTTPPathPattern("/v1/attribute/definitions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -732,7 +732,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("PUT", pattern_AttributesService_UpdateAttributeGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_AttributesService_UpdateAttributeGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -740,7 +740,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/UpdateAttributeGroup", runtime.WithHTTPPathPattern("/v1/attributes/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/UpdateAttributeGroup", runtime.WithHTTPPathPattern("/v1/attribute/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -765,7 +765,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/DeleteAttribute", runtime.WithHTTPPathPattern("/v1/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/DeleteAttribute", runtime.WithHTTPPathPattern("/v1/attribute/definitions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -790,7 +790,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/DeleteAttributeGroup", runtime.WithHTTPPathPattern("/v1/attributes/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.v1.AttributesService/DeleteAttributeGroup", runtime.WithHTTPPathPattern("/v1/attribute/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -854,7 +854,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/GetAttribute", runtime.WithHTTPPathPattern("/v1/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/GetAttribute", runtime.WithHTTPPathPattern("/v1/attribute/definitions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -876,7 +876,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/GetAttributeGroup", runtime.WithHTTPPathPattern("/v1/attributes/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/GetAttributeGroup", runtime.WithHTTPPathPattern("/v1/attribute/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -898,7 +898,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/ListAttributes", runtime.WithHTTPPathPattern("/v1/attributes"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/ListAttributes", runtime.WithHTTPPathPattern("/v1/attribute/definitions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -920,7 +920,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/ListAttributeGroups", runtime.WithHTTPPathPattern("/v1/attributes/groups"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/ListAttributeGroups", runtime.WithHTTPPathPattern("/v1/attribute/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -942,7 +942,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/CreateAttribute", runtime.WithHTTPPathPattern("/v1/attributes"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/CreateAttribute", runtime.WithHTTPPathPattern("/v1/attributes/definitions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -980,13 +980,13 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("PUT", pattern_AttributesService_UpdateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_AttributesService_UpdateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/UpdateAttribute", runtime.WithHTTPPathPattern("/v1/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/UpdateAttribute", runtime.WithHTTPPathPattern("/v1/attribute/definitions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1002,13 +1002,13 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("PUT", pattern_AttributesService_UpdateAttributeGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_AttributesService_UpdateAttributeGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/UpdateAttributeGroup", runtime.WithHTTPPathPattern("/v1/attributes/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/UpdateAttributeGroup", runtime.WithHTTPPathPattern("/v1/attribute/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1030,7 +1030,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/DeleteAttribute", runtime.WithHTTPPathPattern("/v1/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/DeleteAttribute", runtime.WithHTTPPathPattern("/v1/attribute/definitions/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1052,7 +1052,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/DeleteAttributeGroup", runtime.WithHTTPPathPattern("/v1/attributes/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.v1.AttributesService/DeleteAttributeGroup", runtime.WithHTTPPathPattern("/v1/attribute/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1072,25 +1072,25 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 }
 
 var (
-	pattern_AttributesService_GetAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "attributes", "id"}, ""))
+	pattern_AttributesService_GetAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attribute", "definitions", "id"}, ""))
 
-	pattern_AttributesService_GetAttributeGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attributes", "groups", "id"}, ""))
+	pattern_AttributesService_GetAttributeGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attribute", "groups", "id"}, ""))
 
-	pattern_AttributesService_ListAttributes_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "attributes"}, ""))
+	pattern_AttributesService_ListAttributes_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "attribute", "definitions"}, ""))
 
-	pattern_AttributesService_ListAttributeGroups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "attributes", "groups"}, ""))
+	pattern_AttributesService_ListAttributeGroups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "attribute", "groups"}, ""))
 
-	pattern_AttributesService_CreateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "attributes"}, ""))
+	pattern_AttributesService_CreateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "attributes", "definitions"}, ""))
 
 	pattern_AttributesService_CreateAttributeGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "attributes", "groups"}, ""))
 
-	pattern_AttributesService_UpdateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "attributes", "id"}, ""))
+	pattern_AttributesService_UpdateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attribute", "definitions", "id"}, ""))
 
-	pattern_AttributesService_UpdateAttributeGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attributes", "groups", "id"}, ""))
+	pattern_AttributesService_UpdateAttributeGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attribute", "groups", "id"}, ""))
 
-	pattern_AttributesService_DeleteAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "attributes", "id"}, ""))
+	pattern_AttributesService_DeleteAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attribute", "definitions", "id"}, ""))
 
-	pattern_AttributesService_DeleteAttributeGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attributes", "groups", "id"}, ""))
+	pattern_AttributesService_DeleteAttributeGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "attribute", "groups", "id"}, ""))
 )
 
 var (

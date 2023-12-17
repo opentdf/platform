@@ -84,12 +84,15 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_Success_When_Valid_De
 		Descriptor_: &commonv1.ResourceDescriptor{
 			Version:   1,
 			Namespace: "virtru.com",
+			Name:      "relto",
+			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
 		},
 	}
 
 	_, err := suite.client.CreateAttribute(context.Background(), &attributesv1.CreateAttributeRequest{
 		Definition: &definition,
 	})
+
 	assert.Nil(suite.T(), err)
 }
 
@@ -108,6 +111,7 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_Inval
 		Descriptor_: &commonv1.ResourceDescriptor{
 			Version:   1,
 			Namespace: "virtru.com",
+			Name:      "relto",
 			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
 		},
 	}

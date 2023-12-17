@@ -34,6 +34,7 @@ The server configuration is used to define how the application runs its server.
 
 - `grpc`: The configuration for the grpc server.
   - `port`: The port number for the grpc server.
+  - `reflection`: Whether to enable reflection for the grpc server.
 - `http`: The configuration for the http server.
   - `port`: The port number for the http server.
 
@@ -43,6 +44,7 @@ Example:
 server:
   grpc:
     port: 9001 
+    reflection: true
   http:
     port: 8081
 ```

@@ -67,10 +67,6 @@ func local_request_ResourcEncodingService_ListResourceMappings_0(ctx context.Con
 
 }
 
-var (
-	filter_ResourcEncodingService_GetResourceMapping_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
-)
-
 func request_ResourcEncodingService_GetResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceMappingRequest
 	var metadata runtime.ServerMetadata
@@ -90,13 +86,6 @@ func request_ResourcEncodingService_GetResourceMapping_0(ctx context.Context, ma
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_GetResourceMapping_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetResourceMapping(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -123,13 +112,6 @@ func local_request_ResourcEncodingService_GetResourceMapping_0(ctx context.Conte
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_GetResourceMapping_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.GetResourceMapping(ctx, &protoReq)
@@ -327,10 +309,6 @@ func local_request_ResourcEncodingService_ListResourceSynonyms_0(ctx context.Con
 
 }
 
-var (
-	filter_ResourcEncodingService_GetResourceSynonym_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
-)
-
 func request_ResourcEncodingService_GetResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceSynonymRequest
 	var metadata runtime.ServerMetadata
@@ -350,13 +328,6 @@ func request_ResourcEncodingService_GetResourceSynonym_0(ctx context.Context, ma
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_GetResourceSynonym_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetResourceSynonym(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -383,13 +354,6 @@ func local_request_ResourcEncodingService_GetResourceSynonym_0(ctx context.Conte
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_GetResourceSynonym_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.GetResourceSynonym(ctx, &protoReq)
@@ -587,10 +551,6 @@ func local_request_ResourcEncodingService_ListResourceGroups_0(ctx context.Conte
 
 }
 
-var (
-	filter_ResourcEncodingService_GetResourceGroup_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
-)
-
 func request_ResourcEncodingService_GetResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceGroupRequest
 	var metadata runtime.ServerMetadata
@@ -610,13 +570,6 @@ func request_ResourcEncodingService_GetResourceGroup_0(ctx context.Context, mars
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_GetResourceGroup_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetResourceGroup(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -643,13 +596,6 @@ func local_request_ResourcEncodingService_GetResourceGroup_0(ctx context.Context
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_GetResourceGroup_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.GetResourceGroup(ctx, &protoReq)

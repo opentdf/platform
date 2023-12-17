@@ -9,10 +9,13 @@ import (
 	"time"
 
 	"github.com/bufbuild/protovalidate-go"
+	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
 )
 
 const (
@@ -27,7 +30,8 @@ type Config struct {
 }
 
 type GrpcConfig struct {
-	Port int `yaml:"port" default:"9000"`
+	Port              int  `yaml:"port" default:"9000"`
+	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"false"`
 }
 
 type HttpConfig struct {
@@ -35,6 +39,7 @@ type HttpConfig struct {
 }
 
 type OpenTDFServer struct {
+	Mux               *runtime.ServeMux
 	HttpServer        *http.Server
 	GrpcServer        *grpc.Server
 	grpcServerAddress string
@@ -56,17 +61,37 @@ func NewOpenTDFServer(config Config) *OpenTDFServer {
 	// TODO: support ability to pass in grpc server options and interceptors
 	validator, _ := protovalidate.New()
 
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			protovalidate_middleware.UnaryServerInterceptor(validator),
+		),
+	)
+
+	// TODO: Support ability to configure mux
+	mux := runtime.NewServeMux()
+
+	// Enable grpc reflection
+	if config.Grpc.ReflectionEnabled {
+		reflection.Register(grpcServer)
+	}
+
 	return &OpenTDFServer{
+		Mux: mux,
 		HttpServer: &http.Server{
 			Addr:         fmt.Sprintf(":%d", config.Http.Port),
 			WriteTimeout: writeTimeoutSeconds * time.Second,
 			ReadTimeout:  readTimeoutSeconds * time.Second,
+			// TOOO: cors should be configurable and not just allow all
+			Handler: cors.New(cors.Options{
+				AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+				AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+				AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
+				ExposedHeaders:   []string{"Link"},
+				AllowCredentials: true,
+				MaxAge:           300,
+			}).Handler(mux),
 		},
-		GrpcServer: grpc.NewServer(
-			grpc.UnaryInterceptor(
-				protovalidate_middleware.UnaryServerInterceptor(validator),
-			),
-		),
+		GrpcServer:        grpcServer,
 		grpcServerAddress: fmt.Sprintf(":%d", config.Grpc.Port),
 		GrpcInProcess: &inProcessServer{
 			ln:  fasthttputil.NewInmemoryListener(),

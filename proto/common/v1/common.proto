@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package common.v1;
 
-option go_package = "github.com/opentdf/opentdf-v2-poc/gen/common/v1";
+import "buf/validate/validate.proto";
 
 enum PolicyResourceType {
   POLICY_RESOURCE_TYPE_UNSPECIFIED = 0;
@@ -18,15 +18,26 @@ enum PolicyResourceType {
 
 // Struct to uniquely identify a resource with optional additional metadata
 message ResourceDescriptor {
-  PolicyResourceType type = 1;
+  PolicyResourceType type = 1 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
   // unique resource identifier
   int32 id = 2;
   // resource version
   int32 version = 3;
   // resource name
-  string name = 4;
+  string name = 4 [(buf.validate.field).required = true];
   // resource namespace; used to partition resources, support by namespace AuthN and enable federation
-  string namespace = 5;
+  string namespace = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "namespace_format",
+      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters.",
+      expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
+    }
+  ];
   /*
      optional fully qualified name of the resource.  FQN is used to support direct references and to eliminate the need
      for clients to compose an FQN at run time.

@@ -2,30 +2,11 @@ syntax = "proto3";
 
 package attributes.v1;
 
+import "buf/validate/validate.proto";
 import "common/v1/common.proto";
 import "google/api/annotations.proto";
-import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1";
-option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
-  info: {
-    title: "Attributes Service";
-    version: "1.0";
-    contact: {
-      name: "opentdf project";
-      url: "https://github.com/opentdf-v2-poc/opentdf-v2-poc";
-      email: "opentdf@virtru.com";
-    };
-    license: {
-      name: "Clear BSD License";
-      url: "https://github.com/opentdf-v2-poc/opentdf-v2-pocy/blob/main/LICENSE";
-    };
-    extensions: {
-      key: "x-something-something";
-      value {string_value: "yadda"}
-    }
-  };
-};
 
 // Just a set of attributes
 message AttributeSet {
@@ -43,9 +24,12 @@ message AttributeDefinition {
   }
   common.v1.ResourceDescriptor descriptor = 1;
   //attribute name
-  string name = 2;
+  string name = 2 [(buf.validate.field).required = true];
   // attribute rule enum
-  AttributeRuleType rule = 3;
+  AttributeRuleType rule = 3 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
   // possible values
   repeated AttributeDefinitionValue values = 4;
 
@@ -94,22 +78,12 @@ message AttributeGroup {
   repeated AttributeValueReference member_values = 3;
 }
 
-//set of attribute groups
-// Could we do this with a list operation based on filtering?
-message AttributeGroupSet {
-  common.v1.ResourceDescriptor descriptor = 1;
-  repeated AttributeGroup groups = 2;
-}
-
 /*
    Attribute Service Definitions
 */
 
-message AttributeRequestOptions {}
-
 message GetAttributeRequest {
-  string id = 1;
-  AttributeRequestOptions options = 2;
+  string id = 1 [(buf.validate.field).required = true];
 }
 message GetAttributeResponse {
   AttributeDefinition definition = 1;
@@ -123,24 +97,23 @@ message ListAttributesResponse {
 }
 
 message CreateAttributeRequest {
-  AttributeDefinition definition = 1;
+  AttributeDefinition definition = 1 [(buf.validate.field).required = true];
 }
 message CreateAttributeResponse {}
 
 message UpdateAttributeRequest {
-  string id = 1;
-  AttributeDefinition definition = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  AttributeDefinition definition = 2 [(buf.validate.field).required = true];
 }
 message UpdateAttributeResponse {}
 
 message DeleteAttributeRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteAttributeResponse {}
 
 message GetAttributeGroupRequest {
-  string id = 1;
-  AttributeRequestOptions options = 2;
+  string id = 1 [(buf.validate.field).required = true];
 }
 
 message GetAttributeGroupResponse {
@@ -156,19 +129,19 @@ message ListAttributeGroupsResponse {
 }
 
 message CreateAttributeGroupRequest {
-  AttributeGroup group = 1;
+  AttributeGroup group = 1 [(buf.validate.field).required = true];
 }
 
 message CreateAttributeGroupResponse {}
 
 message UpdateAttributeGroupRequest {
-  string id = 1;
-  AttributeGroup group = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  AttributeGroup group = 2 [(buf.validate.field).required = true];
 }
 message UpdateAttributeGroupResponse {}
 
 message DeleteAttributeGroupRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteAttributeGroupResponse {}
 

@@ -13,14 +13,6 @@ import "google/api/annotations.proto";
 */
 
 /*
-   A Set of versioned resource mappings
-*/
-message ResourceMappingSet {
-  common.v1.ResourceDescriptor descriptor = 1;
-  repeated ResourceMappingRef mappings = 2;
-}
-
-/*
    A modular set of terms that are the "same".  Could be used across resource mappings
 */
 message Synonyms {
@@ -97,8 +89,7 @@ message ListResourceMappingsResponse {
 }
 
 message GetResourceMappingRequest {
-  string id = 1;
-  ResourceEncodingRequestOptions options = 2;
+  string id = 1 [(buf.validate.field).required = true];
 }
 
 message GetResourceMappingResponse {
@@ -106,18 +97,18 @@ message GetResourceMappingResponse {
 }
 
 message CreateResourceMappingRequest {
-  ResourceMapping mapping = 1;
+  ResourceMapping mapping = 1 [(buf.validate.field).required = true];
 }
 message CreateResourceMappingResponse {}
 
 message UpdateResourceMappingRequest {
-  string id = 1;
-  ResourceMapping mapping = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  ResourceMapping mapping = 2 [(buf.validate.field).required = true];
 }
 message UpdateResourceMappingResponse {}
 
 message DeleteResourceMappingRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteResourceMappingResponse {}
 
@@ -135,7 +126,6 @@ message ListResourceSynonymsResponse {
 
 message GetResourceSynonymRequest {
   string id = 1 [(buf.validate.field).required = true];
-  ResourceEncodingRequestOptions options = 2;
 }
 
 message GetResourceSynonymResponse {
@@ -143,18 +133,18 @@ message GetResourceSynonymResponse {
 }
 
 message CreateResourceSynonymRequest {
-  Synonyms synonym = 1;
+  Synonyms synonym = 1 [(buf.validate.field).required = true];
 }
 message CreateResourceSynonymResponse {}
 
 message UpdateResourceSynonymRequest {
-  string id = 1;
-  Synonyms synonym = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  Synonyms synonym = 2 [(buf.validate.field).required = true];
 }
 message UpdateResourceSynonymResponse {}
 
 message DeleteResourceSynonymRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteResourceSynonymResponse {}
 
@@ -171,7 +161,6 @@ message ListResourceGroupsResponse {
 
 message GetResourceGroupRequest {
   string id = 1 [(buf.validate.field).required = true];
-  ResourceEncodingRequestOptions options = 2;
 }
 
 message GetResourceGroupResponse {
@@ -179,18 +168,18 @@ message GetResourceGroupResponse {
 }
 
 message CreateResourceGroupRequest {
-  ResourceGroup group = 1;
+  ResourceGroup group = 1 [(buf.validate.field).required = true];
 }
 message CreateResourceGroupResponse {}
 
 message UpdateResourceGroupRequest {
-  string id = 1;
-  ResourceGroup group = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  ResourceGroup group = 2 [(buf.validate.field).required = true];
 }
 message UpdateResourceGroupResponse {}
 
 message DeleteResourceGroupRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteResourceGroupResponse {}
 

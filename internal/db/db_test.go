@@ -140,7 +140,7 @@ func Test_ListResourceSQL_Returns_Expected_SQL_Statement_With_Selector_Name(t *t
 }
 
 func Test_GetResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
-	sql, args, err := getResourceSQL("1", commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP, String())
+	sql, args, err := getResourceSQL("1", commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
 
 	assert.Nil(t, err)
 	assert.Equal(t, "SELECT id, resource FROM opentdf.resources WHERE id = $1 AND policytype = $2", sql)

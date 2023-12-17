@@ -3,19 +3,13 @@ syntax = "proto3";
 package acse.v1;
 
 import "attributes/v1/attributes.proto";
+import "buf/validate/validate.proto";
 import "common/v1/common.proto";
 import "google/api/annotations.proto";
 
 /*
    Access Control Subject Encoding (ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
 */
-
-// Set of subject mappings identified by id with a version and namespace
-message SubjectMappingSet {
-  common.v1.ResourceDescriptor descriptor = 1;
-  //List of member attributes as FQN
-  repeated SubjectMapping subject_mappings = 2;
-}
 
 /**
    Define a mapping of an subject attribute to subject using a rule:
@@ -48,16 +42,16 @@ message SubjectMapping {
   // The list of comparison values for a resource's <attribute> value
   repeated string subject_values = 4;
   // the operator
-  Operator operator = 5;
+  Operator operator = 5 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
   //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
   // or treat the subject values as regex patterns applied to subject attribute
 }
 
-message SubjectEncodingRequestOptions {}
-
 message GetSubjectMappingRequest {
-  string id = 1;
-  SubjectEncodingRequestOptions options = 2;
+  string id = 1 [(buf.validate.field).required = true];
 }
 message GetSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
@@ -71,18 +65,18 @@ message ListSubjectMappingsResponse {
 }
 
 message CreateSubjectMappingRequest {
-  SubjectMapping subject_mapping = 1;
+  SubjectMapping subject_mapping = 1 [(buf.validate.field).required = true];
 }
 message CreateSubjectMappingResponse {}
 
 message UpdateSubjectMappingRequest {
-  string id = 1;
-  SubjectMapping subject_mapping = 2;
+  string id = 1 [(buf.validate.field).required = true];
+  SubjectMapping subject_mapping = 2 [(buf.validate.field).required = true];
 }
 message UpdateSubjectMappingResponse {}
 
 message DeleteSubjectMappingRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteSubjectMappingResponse {}
 

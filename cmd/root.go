@@ -1,5 +1,5 @@
 /*
-Copyright © 2023 OpenTDF opentdf@virtru.com
+'Copyright 2023 Virtru Corporation'
 */
 package cmd
 

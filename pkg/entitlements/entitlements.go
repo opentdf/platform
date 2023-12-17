@@ -27,7 +27,7 @@ type Entitlements struct {
 	providers []providers.Provider
 }
 
-func NewEntitlementsServer(config Config, g *grpc.Server, grpcInprocess *grpc.Server, clientConn *grpc.ClientConn, s *runtime.ServeMux, eng *opa.Engine) error {
+func NewEntitlementsServer(config Config, grpcServers []*grpc.Server, clientConn *grpc.ClientConn, s *runtime.ServeMux, eng *opa.Engine) error {
 	as := &Entitlements{
 		grpcConn: clientConn,
 		eng:      eng,
@@ -37,10 +37,12 @@ func NewEntitlementsServer(config Config, g *grpc.Server, grpcInprocess *grpc.Se
 		return err
 	}
 	as.providers = append(as.providers, p...)
-	entitlmentsv1.RegisterEntitlementsServiceServer(g, as)
-	if grpcInprocess != nil {
-		entitlmentsv1.RegisterEntitlementsServiceServer(grpcInprocess, as)
+
+	// Register with each grpc server
+	for _, g := range grpcServers {
+		entitlmentsv1.RegisterEntitlementsServiceServer(g, as)
 	}
+
 	err = entitlmentsv1.RegisterEntitlementsServiceHandlerServer(context.Background(), s, as)
 	if err != nil {
 		return err

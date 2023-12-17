@@ -2,9 +2,9 @@ package opa
 
 import (
 	"fmt"
-	"os"
 
 	sdktest "github.com/open-policy-agent/opa/sdk/test"
+	"github.com/opentdf/opentdf-v2-poc/policies"
 )
 
 // MockBundleServer is a mock HTTP server that serves a bundle. This should be used for local development only.
@@ -14,7 +14,7 @@ type mockBundleServer struct {
 }
 
 func createMockServer() (*mockBundleServer, error) {
-	policy, err := os.ReadFile("./policies/entitlements/entitlements.rego")
+	policy, err := policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package wellknown.v1;
+
+// message OpenTDFWellKnown {
+//   // Not sure what we want here
+//   https://github.com/opentdf/backend-go/pull/25/files#diff-822b0efe10878f239d252e8c03a4d772362975d7d6ec040d1e0b73034796db79R8-R31
+//   OidcConfig oidc
+//   KasConfig kas
+//   optional map<string,string> additional
+// }
+// message OidcConfig {
+//   map<string,string> oidc
+// }
+// message KasConfig {
+//   map<string,string> kas
+// }
+
+// service WellKnownEndpointsService {
+//   rpc GetWellKnownEndpoints() returns (OpenTDFWellKnown) {
+//     option(google.api.http)={
+//       get: ".well-known/opentdf-config"
+//     };
+//   }
+// }

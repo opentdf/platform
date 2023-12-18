@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+package attributes.v1;
+
+import "buf/validate/validate.proto";
+import "common/v1/common.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1";
+
+// Just a set of attributes
+message AttributeSet {
+  common.v1.ResourceDescriptor descriptor = 1;
+  repeated AttributeDefinition definitions = 2;
+}
+
+// Attribute Definition
+message AttributeDefinition {
+  enum AttributeRuleType {
+    ATTRIBUTE_RULE_TYPE_UNSPECIFIED = 0;
+    ATTRIBUTE_RULE_TYPE_ALL_OF = 1;
+    ATTRIBUTE_RULE_TYPE_ANY_OF = 2;
+    ATTRIBUTE_RULE_TYPE_HIERARCHICAL = 3;
+  }
+  common.v1.ResourceDescriptor descriptor = 1;
+  //attribute name
+  string name = 2 [(buf.validate.field).required = true];
+  // attribute rule enum
+  AttributeRuleType rule = 3 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+  // possible values
+  repeated AttributeDefinitionValue values = 4;
+
+  //optional attribute group by filtering rules
+  repeated AttributeDefinitionValue group_by = 9;
+}
+
+// Reference to an attribute value, one of descriptor or embedded value
+message AttributeDefinitionReference {
+  oneof ref {
+    common.v1.ResourceDescriptor descriptor = 1;
+    AttributeDefinition definition = 2;
+  }
+}
+
+// Definition of a single attribute value
+message AttributeDefinitionValue {
+  common.v1.ResourceDescriptor descriptor = 1;
+  string value = 2;
+  //TODO - optional lock down pub key format if needed.  Per ATTR KEY?
+  string attribute_public_key = 3;
+}
+
+// Reference to an attribute value, one of descriptor or embedded value
+message AttributeValueReference {
+  oneof ref {
+    common.v1.ResourceDescriptor descriptor = 1;
+    AttributeDefinitionValue attribute_value = 2;
+  }
+}
+
+/*
+   represent an attribute value as a group with other attribute values as members
+
+   Example for Org1 FVEY:
+   id: 1
+   version: 1.0
+   namespace: demo.com
+   groupValue: http://demo.com/attr/relTo/FVEY
+   members: [http://demo.com/attr/relTo/USA,http://demo.com/attr/relTo/GBR,...]
+
+*/
+message AttributeGroup {
+  common.v1.ResourceDescriptor descriptor = 1;
+  AttributeValueReference group_value = 2;
+  repeated AttributeValueReference member_values = 3;
+}
+
+/*
+   Attribute Service Definitions
+*/
+
+message GetAttributeRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+message GetAttributeResponse {
+  AttributeDefinition definition = 1;
+}
+
+message ListAttributesRequest {
+  common.v1.ResourceSelector selector = 1;
+}
+message ListAttributesResponse {
+  repeated AttributeDefinition definitions = 1;
+}
+
+message CreateAttributeRequest {
+  AttributeDefinition definition = 1 [(buf.validate.field).required = true];
+}
+message CreateAttributeResponse {}
+
+message UpdateAttributeRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+  AttributeDefinition definition = 2 [(buf.validate.field).required = true];
+}
+message UpdateAttributeResponse {}
+
+message DeleteAttributeRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+message DeleteAttributeResponse {}
+
+message GetAttributeGroupRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+
+message GetAttributeGroupResponse {
+  AttributeGroup group = 1;
+}
+
+message ListAttributeGroupsRequest {
+  common.v1.ResourceSelector selector = 1;
+}
+
+message ListAttributeGroupsResponse {
+  repeated AttributeGroup groups = 1;
+}
+
+message CreateAttributeGroupRequest {
+  AttributeGroup group = 1 [(buf.validate.field).required = true];
+}
+
+message CreateAttributeGroupResponse {}
+
+message UpdateAttributeGroupRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+  AttributeGroup group = 2 [(buf.validate.field).required = true];
+}
+message UpdateAttributeGroupResponse {}
+
+message DeleteAttributeGroupRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+message DeleteAttributeGroupResponse {}
+
+service AttributesService {
+  rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
+    option (google.api.http) = {get: "/v1/attribute/definitions/{id}"};
+  }
+
+  rpc GetAttributeGroup(GetAttributeGroupRequest) returns (GetAttributeGroupResponse) {
+    option (google.api.http) = {get: "/v1/attribute/groups/{id}"};
+  }
+
+  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
+    option (google.api.http) = {get: "/v1/attribute/definitions"};
+  }
+
+  rpc ListAttributeGroups(ListAttributeGroupsRequest) returns (ListAttributeGroupsResponse) {
+    option (google.api.http) = {get: "/v1/attribute/groups"};
+  }
+
+  rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
+    option (google.api.http) = {
+      post: "/v1/attributes/definitions"
+      body: "definition"
+    };
+  }
+
+  rpc CreateAttributeGroup(CreateAttributeGroupRequest) returns (CreateAttributeGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/attributes/groups"
+      body: "group"
+    };
+  }
+
+  rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {
+    option (google.api.http) = {
+      post: "/v1/attribute/definitions/{id}"
+      body: "definition"
+    };
+  }
+
+  rpc UpdateAttributeGroup(UpdateAttributeGroupRequest) returns (UpdateAttributeGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/attribute/groups/{id}"
+      body: "group"
+    };
+  }
+
+  rpc DeleteAttribute(DeleteAttributeRequest) returns (DeleteAttributeResponse) {
+    option (google.api.http) = {delete: "/v1/attribute/definitions/{id}"};
+  }
+
+  rpc DeleteAttributeGroup(DeleteAttributeGroupRequest) returns (DeleteAttributeGroupResponse) {
+    option (google.api.http) = {delete: "/v1/attribute/groups/{id}"};
+  }
+}

@@ -1,0 +1,53 @@
+[
+
+    {
+        "name": "architecture",
+        "rule":2,
+        "values": [
+            {
+                "value": "collaborator"
+            },
+            {
+                "value": "contributor"
+            },
+            {
+                "value": "owner"
+            }
+        ],
+        "descriptor": {
+            "labels": {
+                "group": "architecture",
+                "owner": "virtru"
+              },
+            "description": "this is a test attribute engineering",
+            "namespace": "virtru.com",
+            "name": "architecture",
+            "type":7
+        }
+    },
+    {
+      "name": "engineering",
+      "rule":2,
+      "values": [
+          {
+              "value": "collaborator"
+          },
+          {
+              "value": "contributor"
+          },
+          {
+              "value": "owner"
+          }
+      ],
+      "descriptor": {
+          "labels": {
+              "group": "engineering",
+              "owner": "virtru"
+            },
+          "description": "this is a test attribute engineering",
+          "namespace": "virtru.com",
+          "name": "engineering",
+          "type":7
+      }
+    }
+]

@@ -1,0 +1,270 @@
+syntax = "proto3";
+
+package acre.v1;
+
+import "attributes/v1/attributes.proto";
+import "buf/validate/validate.proto";
+import "common/v1/common.proto";
+import "google/api/annotations.proto";
+
+/*
+   Access Control Resource Encodings (ACRE).  Structures supporting Resources and Attributes mappings
+
+*/
+
+/*
+   A modular set of terms that are the "same".  Could be used across resource mappings
+*/
+message Synonyms {
+  common.v1.ResourceDescriptor descriptor = 1;
+  repeated string terms = 2;
+}
+
+/*
+   Map one or more domain specific terms (synonyms) to an attribute value by reference.
+
+   Example:
+   attributeValueRef: ref http://demo.com/attr/Classification/value/Confidential
+   synonymRef:
+     terms: ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+
+   Example 2:
+   attributeValueRef: ref to http://demo.com/attr/Classification/Confidential
+   synonymRef:
+     terms: ["OFFICIAL-SENSITIVE"]
+
+*/
+message ResourceMapping {
+  common.v1.ResourceDescriptor descriptor = 1;
+  attributes.v1.AttributeValueReference attribute_value_ref = 2;
+  SynonymRef synonym_ref = 3;
+}
+
+/*
+   represents modeling an resource code/tag as a group . Use if not in the bounds of an attribute
+   definition.  Otherwise use attributes.AttributeGroup
+
+   Example:
+     value: NATO
+     members: [USA, GBR, etc.]
+*/
+message ResourceGroup {
+  common.v1.ResourceDescriptor descriptor = 1;
+  //group value
+  string value = 2;
+  //List of member values
+  repeated string members = 3;
+}
+
+// Reference to a ResourceMapping, one of descriptor or embedded value
+message ResourceMappingRef {
+  oneof ref {
+    common.v1.ResourceDescriptor descriptor = 1;
+    ResourceMapping resource_mapping = 2;
+  }
+}
+
+// Reference to a Synonyms, one of descriptor or embedded value
+message SynonymRef {
+  oneof ref {
+    common.v1.ResourceDescriptor descriptor = 1;
+    Synonyms synonyms = 2;
+  }
+}
+
+message ResourceEncodingRequestOptions {
+  common.v1.ResourceDescriptor descriptor = 1;
+}
+
+/*
+   Resource Mappings
+*/
+
+message ListResourceMappingsRequest {
+  common.v1.ResourceSelector selector = 1;
+}
+
+message ListResourceMappingsResponse {
+  repeated ResourceMapping mappings = 1;
+}
+
+message GetResourceMappingRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+
+message GetResourceMappingResponse {
+  ResourceMapping mapping = 1;
+}
+
+message CreateResourceMappingRequest {
+  ResourceMapping mapping = 1 [(buf.validate.field).required = true];
+}
+message CreateResourceMappingResponse {}
+
+message UpdateResourceMappingRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+  ResourceMapping mapping = 2 [(buf.validate.field).required = true];
+}
+message UpdateResourceMappingResponse {}
+
+message DeleteResourceMappingRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+message DeleteResourceMappingResponse {}
+
+/*
+   Synonyms
+*/
+
+message ListResourceSynonymsRequest {
+  common.v1.ResourceSelector selector = 1;
+}
+
+message ListResourceSynonymsResponse {
+  repeated Synonyms synonyms = 1;
+}
+
+message GetResourceSynonymRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+
+message GetResourceSynonymResponse {
+  Synonyms synonym = 1;
+}
+
+message CreateResourceSynonymRequest {
+  Synonyms synonym = 1 [(buf.validate.field).required = true];
+}
+message CreateResourceSynonymResponse {}
+
+message UpdateResourceSynonymRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+  Synonyms synonym = 2 [(buf.validate.field).required = true];
+}
+message UpdateResourceSynonymResponse {}
+
+message DeleteResourceSynonymRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+message DeleteResourceSynonymResponse {}
+
+/*
+   Resource Groups
+*/
+message ListResourceGroupsRequest {
+  common.v1.ResourceSelector selector = 1;
+}
+
+message ListResourceGroupsResponse {
+  repeated ResourceGroup groups = 1;
+}
+
+message GetResourceGroupRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+
+message GetResourceGroupResponse {
+  ResourceGroup group = 1;
+}
+
+message CreateResourceGroupRequest {
+  ResourceGroup group = 1 [(buf.validate.field).required = true];
+}
+message CreateResourceGroupResponse {}
+
+message UpdateResourceGroupRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+  ResourceGroup group = 2 [(buf.validate.field).required = true];
+}
+message UpdateResourceGroupResponse {}
+
+message DeleteResourceGroupRequest {
+  int32 id = 1 [(buf.validate.field).required = true];
+}
+message DeleteResourceGroupResponse {}
+
+service ResourcEncodingService {
+  /*
+     Resource Mappings
+  */
+  rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/mappings"};
+  }
+  rpc GetResourceMapping(GetResourceMappingRequest) returns (GetResourceMappingResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/mappings/{id}"};
+  }
+
+  rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/resource/mappings"
+      body: "mapping"
+    };
+  }
+
+  rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/resource/mappings/{id}"
+      body: "mapping"
+    };
+  }
+
+  rpc DeleteResourceMapping(DeleteResourceMappingRequest) returns (DeleteResourceMappingResponse) {
+    option (google.api.http) = {delete: "/v1/encoding/resource/mappings/{id}"};
+  }
+
+  /*
+     Synonyms
+  */
+  rpc ListResourceSynonyms(ListResourceSynonymsRequest) returns (ListResourceSynonymsResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/synonyms"};
+  }
+  rpc GetResourceSynonym(GetResourceSynonymRequest) returns (GetResourceSynonymResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/synonyms/{id}"};
+  }
+
+  rpc CreateResourceSynonym(CreateResourceSynonymRequest) returns (CreateResourceSynonymResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/resource/synonyms"
+      body: "synonym"
+    };
+  }
+
+  rpc UpdateResourceSynonym(UpdateResourceSynonymRequest) returns (UpdateResourceSynonymResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/resource/synonyms/{id}"
+      body: "synonym"
+    };
+  }
+
+  rpc DeleteResourceSynonym(DeleteResourceSynonymRequest) returns (DeleteResourceSynonymResponse) {
+    option (google.api.http) = {delete: "/v1/encoding/resource/synonyms/{id}"};
+  }
+
+  /*
+     Resource Groups
+  */
+  rpc ListResourceGroups(ListResourceGroupsRequest) returns (ListResourceGroupsResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/groups"};
+  }
+  rpc GetResourceGroup(GetResourceGroupRequest) returns (GetResourceGroupResponse) {
+    option (google.api.http) = {get: "/v1/encoding/resource/groups/{id}"};
+  }
+
+  rpc CreateResourceGroup(CreateResourceGroupRequest) returns (CreateResourceGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/resource/groups"
+      body: "group"
+    };
+  }
+
+  rpc UpdateResourceGroup(UpdateResourceGroupRequest) returns (UpdateResourceGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/encoding/resource/groups/{id}"
+      body: "group"
+    };
+  }
+
+  rpc DeleteResourceGroup(DeleteResourceGroupRequest) returns (DeleteResourceGroupResponse) {
+    option (google.api.http) = {delete: "/v1/encoding/resource/groups/{id}"};
+  }
+}

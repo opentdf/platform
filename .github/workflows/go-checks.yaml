@@ -1,0 +1,50 @@
+name: "Golang Checks"
+
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.21'
+          cache: false
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        with:
+          version: v1.55
+  vulncheck:
+    name: vulncheck
+    runs-on: ubuntu-22.04
+    steps:
+      - name: govluncheck
+        uses: golang/govulncheck-action@7da72f730e37eeaad891fcff0a532d27ed737cd4
+        with:
+          go-version-file: 'go.mod'
+  unit:
+    name: unit tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.21'
+          cache: false
+      - name: Unit Tests with the Go CLI
+        run: go test ./... -short -race -cover
+  integration:
+    name: integration tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.21'
+          cache: false
+      - name: Integration Tests with the Go CLI
+        run: go test ./tests -race

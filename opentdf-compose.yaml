@@ -1,0 +1,51 @@
+services:
+  keycloak:
+    #image: ghcr.io/opentdf/keycloak:21.1.2-1.4.2
+    image: quay.io/keycloak/keycloak:latest
+    restart: always
+    command: ["start-dev"]
+    environment:
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_DB_VENDOR: postgres
+      KC_DB_URL_HOST: keycloakdb
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: changeme
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: changeme
+      KC_FEATURES: "preview,token-exchange"
+    ports:
+      - "8080:8080"
+  keycloakdb:
+    image: postgres
+    restart: always
+    user: postgres
+    environment:
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_USER: postgres
+      POSTGRES_DB: keycloak
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+  opentdfdb:
+    image: postgres
+    restart: always
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: opentdf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"

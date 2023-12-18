@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package key_access_grants.v1;
+
+import "attributes/v1/attributes.proto";
+import "common/v1/common.proto";
+import "google/api/annotations.proto";
+
+/*
+   Descriptor for a KAS
+*/
+message KeyAccessServer {
+  common.v1.ResourceDescriptor descriptor = 1;
+  //Kas Url
+  string url = 2;
+  //public key - optional since can also be retrieved via url
+  string publi_key = 3;
+}
+
+/*
+   Shareable set of key access grants to help with encryption workflows
+*/
+message KeyAccessGrants {
+  common.v1.ResourceDescriptor descriptor = 1;
+  /*
+     List of available key access servers
+     Example:
+     - id: KAS-USA-1
+       url: http://....
+       pubKey=xxx
+     - ....
+  */
+  repeated KeyAccessServer key_access_servers = 2;
+  // list of key access grants
+  repeated KeyAccessGrant key_access_grants = 3;
+}
+
+/*
+   Defines encryption settings for an attribute and it's values
+
+   Example: All attribute values for attribute "Classification":
+   attributeDefinition:
+     descriptor:
+       fqn: http://demo.com/attr/Classification
+     type: ALL_OF
+   attributeValueGrants:
+     - kasIds: [KAS-USA-1, KAS-GBR-1]
+
+   Example: Per attribute values for attribute "Classification":
+   attributeDefinition:
+     descriptor:
+       fqn: http://demo.com/attr/Classification
+     type: ALL_OF
+   attributeValueGrants:
+     - kasIds: [KAS-USA-1, KAS-GBR-1]
+       value:
+        descriptor:
+          value: TopSecret
+     - kasIds: [KAS-USA-3, KAS-GBR-2]
+       value:
+        descriptor:
+          value: Secret
+*/
+message KeyAccessGrant {
+  //the attribute associated with this
+  attributes.v1.AttributeDefinition attribute_definition = 1;
+  // attribute value settings; if empty then applies to all values
+  repeated KeyAccessGrantAttributeValue attribute_value_grants = 2;
+}
+
+/*
+   Define the attribute value -> prioritized key access servers
+
+   Example: Apply to all attribute value for enclosed attribute definition:
+   kasIds: [KAS-USA-1, KAS-GBR-1]
+
+   Example: Applies to only single attribute value
+   kasIds: [KAS-USA-1, KAS-GBR-1]
+   value:
+     descriptor:
+       value: FVEY
+*/
+message KeyAccessGrantAttributeValue {
+  // optional - if this is empty - then applies to all attribute values of the enclosed attribute definition
+  attributes.v1.AttributeValueReference value = 1;
+  //list of key access server ordered by priority.
+  repeated string kas_ids = 2;
+}
+
+message KeyAccessGrantsRequestOptions {}
+
+message GetKeyAccessGrantRequest {
+  string id = 1;
+  KeyAccessGrantsRequestOptions options = 2;
+}
+message GetKeyAccessGrantResponse {
+  KeyAccessGrant grant = 1;
+}
+
+message ListKeyAccessGrantsRequest {
+  KeyAccessGrantsRequestOptions options = 1;
+}
+message ListKeyAccessGrantsResponse {
+  repeated KeyAccessGrant grants = 1;
+}
+
+message CreateKeyAccessGrantsRequest {}
+message CreateKeyAccessGrantsResponse {}
+
+message UpdateKeyAccessGrantsRequest {
+  string id = 1;
+  KeyAccessGrant grant = 2;
+}
+message UpdateKeyAccessGrantsResponse {}
+
+message DeleteKeyAccessGrantsRequest {
+  string id = 1;
+}
+message DeleteKeyAccessGrantsResponse {}
+
+service KeyAccessGrantsService {
+  rpc ListKeyAccessGrants(ListKeyAccessGrantsRequest) returns (ListKeyAccessGrantsResponse) {
+    option (google.api.http) = {get: "/v1/grants"};
+  }
+  rpc GetKeyAccessGrant(GetKeyAccessGrantRequest) returns (GetKeyAccessGrantResponse) {
+    option (google.api.http) = {get: "/v1/grants/{id}"};
+  }
+
+  rpc CreateKeyAccessGrants(CreateKeyAccessGrantsRequest) returns (CreateKeyAccessGrantsResponse) {
+    option (google.api.http) = {
+      post: "/v1/grants"
+      body: "*"
+    };
+  }
+  rpc UpdateKeyAccessGrants(UpdateKeyAccessGrantsRequest) returns (UpdateKeyAccessGrantsResponse) {
+    option (google.api.http) = {
+      put: "/v1/grants/{id}"
+      body: "grant"
+    };
+  }
+
+  rpc DeleteKeyAccessGrants(DeleteKeyAccessGrantsRequest) returns (DeleteKeyAccessGrantsResponse) {
+    option (google.api.http) = {delete: "/v1/grants/{id}"};
+  }
+}

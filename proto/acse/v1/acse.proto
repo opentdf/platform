@@ -51,7 +51,7 @@ message SubjectMapping {
 }
 
 message GetSubjectMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message GetSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
@@ -70,13 +70,13 @@ message CreateSubjectMappingRequest {
 message CreateSubjectMappingResponse {}
 
 message UpdateSubjectMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
   SubjectMapping subject_mapping = 2 [(buf.validate.field).required = true];
 }
 message UpdateSubjectMappingResponse {}
 
 message DeleteSubjectMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message DeleteSubjectMappingResponse {}
 

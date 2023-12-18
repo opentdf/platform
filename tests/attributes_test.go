@@ -18,6 +18,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	definitionsTestData = "testdata/attributes/attribute_definitions.json"
+)
+
 type AttributesSuite struct {
 	suite.Suite
 	conn   *grpc.ClientConn
@@ -35,7 +39,7 @@ func (suite *AttributesSuite) SetupSuite() {
 
 	suite.client = attributesv1.NewAttributesServiceClient(conn)
 
-	testData, err := os.ReadFile("testdata/attributes.json")
+	testData, err := os.ReadFile(definitionsTestData)
 	if err != nil {
 		slog.Error("could not read attributes.json", slog.String("error", err.Error()))
 		suite.T().Fatal(err)
@@ -66,6 +70,13 @@ func (suite *AttributesSuite) SetupSuite() {
 func (suite *AttributesSuite) TearDownSuite() {
 	slog.Info("tearing down attributes test suite")
 	defer suite.conn.Close()
+}
+
+func TestAttributeSuite(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping attributes integration tests")
+	}
+	suite.Run(t, new(AttributesSuite))
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_Success_When_Valid_Definition() {
@@ -128,9 +139,48 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_Inval
 
 }
 
-func TestAttributeSuite(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping attributes integration tests")
+func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_InvalidNamespace() {
+	definition := attributesv1.AttributeDefinition{
+		Name: "relto",
+		Rule: attributesv1.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
+		Values: []*attributesv1.AttributeDefinitionValue{
+			{
+				Value: "USA",
+			},
+			{
+				Value: "GBR",
+			},
+		},
+		Descriptor_: &commonv1.ResourceDescriptor{
+			Version:   1,
+			Namespace: "virtru",
+			Name:      "relto",
+			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
+		},
 	}
-	suite.Run(t, new(AttributesSuite))
+
+	_, err := suite.client.CreateAttribute(context.Background(), &attributesv1.CreateAttributeRequest{
+		Definition: &definition,
+	})
+
+	if assert.Error(suite.T(), err) {
+		st, _ := status.FromError(err)
+		assert.Equal(suite.T(), codes.InvalidArgument, st.Code())
+		assert.Equal(suite.T(), st.Message(), "validation error:\n - definition.descriptor.namespace: Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. [namespace_format]")
+	}
+
+}
+
+func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_ID_Does_Not_Exist() {
+	definition, err := suite.client.GetAttribute(context.Background(), &attributesv1.GetAttributeRequest{
+		Id: 10000,
+	})
+	assert.Nil(suite.T(), definition)
+	assert.NotNil(suite.T(), err)
+
+	if assert.Error(suite.T(), err) {
+		st, _ := status.FromError(err)
+		assert.Equal(suite.T(), codes.NotFound, st.Code())
+		assert.Equal(suite.T(), st.Message(), "attribute not found")
+	}
 }

@@ -83,7 +83,7 @@ message AttributeGroup {
 */
 
 message GetAttributeRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message GetAttributeResponse {
   AttributeDefinition definition = 1;
@@ -102,18 +102,18 @@ message CreateAttributeRequest {
 message CreateAttributeResponse {}
 
 message UpdateAttributeRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
   AttributeDefinition definition = 2 [(buf.validate.field).required = true];
 }
 message UpdateAttributeResponse {}
 
 message DeleteAttributeRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message DeleteAttributeResponse {}
 
 message GetAttributeGroupRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 
 message GetAttributeGroupResponse {
@@ -135,13 +135,13 @@ message CreateAttributeGroupRequest {
 message CreateAttributeGroupResponse {}
 
 message UpdateAttributeGroupRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
   AttributeGroup group = 2 [(buf.validate.field).required = true];
 }
 message UpdateAttributeGroupResponse {}
 
 message DeleteAttributeGroupRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message DeleteAttributeGroupResponse {}
 

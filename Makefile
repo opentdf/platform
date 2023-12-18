@@ -1,20 +1,20 @@
 # Go parameters
-VGOCMD=go
-VGOBUILD=$(VGOCMD) build
-VGOCLEAN=$(vGOCMD) clean
-VGOTEST=$(VGOCMD) test
-VBINARY_NAME=myapp
+V_GOCMD=go
+V_GOBUILD=$(V_GOCMD) build
+V_GOCLEAN=$(V_GOCMD) clean
+V_GOTEST=$(V_GOCMD) test
+V_BINARY_NAME=myapp
 
 # Docker parameters
-VDOCKER_BUILD_CMD=docker build
-VDOCKER_IMAGE_NAME=opentdf
+V_DOCKER_BUILD_CMD=docker build
+V_DOCKER_IMAGE_NAME=opentdf
 
 # Buf parameters
-VBUFLINT=buf lint proto
-VBUFGENERATE=buf generate proto
+V_BUFLINT=buf lint proto
+V_BUFGENERATE=buf generate proto
 
 # GolangCI-Lint
-VGOLANGCILINT=golangci-lint run
+V_GOLANGCILINT=golangci-lint run
 
 .PHONY: all lint buf-lint buf-generate golangci-lint test clean build docker-build
 
@@ -23,7 +23,7 @@ all: lint test build
 lint: buf-lint golangci-lint
 
 buf-lint:
-	@$(VBUFLINT) || (exit_code=$$?; \
+	@$(V_BUFLINT) || (exit_code=$$?; \
 	 if [ $$exit_code -eq 100 ]; then \
       echo "Buf lint exited with code 100, treating as success"; \
 		else \
@@ -32,24 +32,24 @@ buf-lint:
 		fi)
 
 buf-generate:
-	$(VBUFGENERATE)
+	$(V_BUFGENERATE)
 
 golangci-lint:
-	$(VGOLANGCILINT)
+	$(V_GOLANGCILINT)
 
 test-short:
-	$(VGOTEST) ./... -race -short
+	$(V_GOTEST) ./... -race -short
 
 test:
-	$(VGOTEST) ./... -race
+	$(V_GOTEST) ./... -race
 
 clean:
-	$(VGOCLEAN)
-	rm -f $(VBINARY_NAME)
+	$(V_GOCLEAN)
+	rm -f $(V_BINARY_NAME)
 
 build:
-	$(VGOBUILD) -o $(VBINARY_NAME) -v
+	$(V_GOBUILD) -o $(V_BINARY_NAME) -v
 
 docker-build: build
-	$(VDOCKER_BUILD_CMD) -t $(VDOCKER_IMAGE_NAME) .
+	$(V_DOCKER_BUILD_CMD) -t $(V_DOCKER_IMAGE_NAME) .
 

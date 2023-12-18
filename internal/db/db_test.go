@@ -94,13 +94,13 @@ func Test_CreateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 func Test_ListResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 	selector := &commonv1.ResourceSelector{
 		Namespace: "opentdf",
-		Version:   "1",
+		Version:   1,
 	}
 	sql, args, err := listResourceSQL(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "SELECT id, resource FROM opentdf.resources WHERE policytype = $1 AND namespace = $2 AND version = $3", sql)
-	assert.Equal(t, []interface{}{commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector.Namespace, "1"}, args)
+	assert.Equal(t, []interface{}{commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector.Namespace, int32(1)}, args)
 }
 
 func Test_ListResourceSQL_Returns_Expected_SQL_Statement_With_Selector_Labels(t *testing.T) {
@@ -140,11 +140,11 @@ func Test_ListResourceSQL_Returns_Expected_SQL_Statement_With_Selector_Name(t *t
 }
 
 func Test_GetResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
-	sql, args, err := getResourceSQL("1", commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
+	sql, args, err := getResourceSQL(1, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
 
 	assert.Nil(t, err)
 	assert.Equal(t, "SELECT id, resource FROM opentdf.resources WHERE id = $1 AND policytype = $2", sql)
-	assert.Equal(t, []interface{}{"1", commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()}, args)
+	assert.Equal(t, []interface{}{int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()}, args)
 }
 
 func Test_UpdateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
@@ -157,11 +157,11 @@ func Test_UpdateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 }
 
 func Test_DeleteResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
-	sql, args, err := deleteResourceSQL("1", commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
+	sql, args, err := deleteResourceSQL(1, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
 
 	assert.Nil(t, err)
 	assert.Equal(t, "DELETE FROM opentdf.resources WHERE id = $1 AND policytype = $2", sql)
-	assert.Equal(t, []interface{}{"1", commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()}, args)
+	assert.Equal(t, []interface{}{int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()}, args)
 }
 
 func Test_BuildURL_Returns_Expected_Connection_String(t *testing.T) {

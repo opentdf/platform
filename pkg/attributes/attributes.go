@@ -49,9 +49,8 @@ func (s Attributes) CreateAttribute(ctx context.Context, req *attributesv1.Creat
 
 func (s Attributes) CreateAttributeGroup(ctx context.Context, req *attributesv1.CreateAttributeGroupRequest) (*attributesv1.CreateAttributeGroupResponse, error) {
 	slog.Debug("creating new attribute group definition")
-	var err error
 
-	err = s.dbClient.CreateResource(req.Group.Descriptor_, req.Group)
+	err := s.dbClient.CreateResource(req.Group.Descriptor_, req.Group)
 	if err != nil {
 		slog.Error("error creating attribute group", slog.String("error", err.Error()))
 		return &attributesv1.CreateAttributeGroupResponse{}, status.Error(codes.Internal, err.Error())
@@ -64,7 +63,7 @@ func (s *Attributes) ListAttributes(ctx context.Context, req *attributesv1.ListA
 
 	rows, err := s.dbClient.ListResources(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(), req.Selector)
 	if err != nil {
-		slog.Error("error listing attributes", slog.String("error", err.Error()))
+		slog.Error("error listing attribute definitions", slog.String("error", err.Error()))
 		return attributes, status.Error(codes.Internal, err.Error())
 	}
 	defer rows.Close()
@@ -127,14 +126,14 @@ func (s *Attributes) GetAttribute(ctx context.Context, req *attributesv1.GetAttr
 
 	row := s.dbClient.GetResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String())
 	if err != nil {
-		slog.Error("error getting attribute", slog.String("error", err.Error()))
+		slog.Error("error getting attribute definition", slog.String("error", err.Error()))
 		return definition, status.Error(codes.Internal, err.Error())
 	}
 
 	err = row.Scan(&id, &definition.Definition)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			slog.Info("attribute not found", slog.String("id", req.Id))
+			slog.Info("attribute not found", slog.Int("id", int(req.Id)))
 			return definition, status.Error(codes.NotFound, "attribute not found")
 		}
 		slog.Error("error getting attribute", slog.String("error", err.Error()))
@@ -158,13 +157,13 @@ func (s *Attributes) GetAttributeGroup(ctx context.Context, req *attributesv1.Ge
 	row := s.dbClient.GetResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
 	if err != nil {
 		slog.Error("error getting attribute group", slog.String("error", err.Error()))
-		return group, err
+		return group, status.Error(codes.Internal, err.Error())
 	}
 
 	err = row.Scan(&id, &group.Group)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			slog.Info("attribute group not found", slog.String("id", req.Id))
+			slog.Info("attribute group not found", slog.Int("id", int(req.Id)))
 			return group, status.Error(codes.NotFound, "attribute group not found")
 		}
 		slog.Error("error getting attribute group", slog.String("error", err.Error()))

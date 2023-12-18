@@ -68,7 +68,7 @@ message ResourceSelector {
   // namespace of referenced resource
   string namespace = 1;
   // version of reference resource
-  string version = 2;
+  int32 version = 2;
   // Define a label selector
   message LabelSelector {
     // labels to match a against a resource

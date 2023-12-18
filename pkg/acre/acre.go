@@ -96,7 +96,7 @@ func (s ResourceEncoding) GetResourceMapping(ctx context.Context, req *acrev1.Ge
 	err = row.Scan(&id, &mapping.Mapping)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			slog.Info("resource mapping not found", slog.String("id", req.Id))
+			slog.Info("resource mapping not found", slog.Int("id", int(req.Id)))
 			return mapping, status.Error(codes.NotFound, "resource mapping not found")
 		}
 		slog.Error("issue getting resource mapping", slog.String("error", err.Error()))
@@ -193,7 +193,7 @@ func (s ResourceEncoding) GetResourceGroup(ctx context.Context, req *acrev1.GetR
 	err = row.Scan(&id, &group.Group)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			slog.Info("resource group not found", slog.String("id", req.Id))
+			slog.Info("resource group not found", slog.Int("id", int(req.Id)))
 			return group, status.Error(codes.NotFound, "resource group not found")
 		}
 		slog.Error("issue getting resource group", slog.String("error", err.Error()))
@@ -291,7 +291,7 @@ func (s ResourceEncoding) GetResourceSynonym(ctx context.Context, req *acrev1.Ge
 	err = row.Scan(&id, &synonym.Synonym)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			slog.Info("resource synonym not found", slog.String("id", req.Id))
+			slog.Info("resource synonym not found", slog.Int("id", int(req.Id)))
 			return synonym, status.Error(codes.NotFound, "resource synonym not found")
 		}
 		slog.Error("issue getting resource synonym", slog.String("error", err.Error()))

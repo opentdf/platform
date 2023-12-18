@@ -95,8 +95,8 @@ func (s SubjectEncoding) GetSubjectMapping(ctx context.Context, req *acsev1.GetS
 	err = row.Scan(&id, &mapping.SubjectMapping)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			slog.Info("subject mapping not found", slog.String("id", req.Id))
-			return mapping, status.Error(codes.NotFound, "resource mapping not found")
+			slog.Info("subject mapping not found", slog.Int("id", int(req.Id)))
+			return mapping, status.Error(codes.NotFound, "subject mapping not found")
 		}
 		slog.Error("issue getting subject mapping", slog.String("error", err.Error()))
 		return mapping, status.Error(codes.Internal, err.Error())

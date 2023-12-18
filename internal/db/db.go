@@ -2,11 +2,9 @@ package db
 
 import (
 	"context"
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -15,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
+	"github.com/opentdf/opentdf-v2-poc/migrations"
 	"github.com/pressly/goose/v3"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -67,9 +66,6 @@ func (c Config) buildURL() string {
 	)
 }
 
-//go:embed migrations/*.sql
-var embedMigrations embed.FS
-
 func (c *Client) RunMigrations() (int, error) {
 	var (
 		applied int
@@ -80,20 +76,15 @@ func (c *Client) RunMigrations() (int, error) {
 		return applied, nil
 	}
 
-	fsys, err := fs.Sub(embedMigrations, "migrations")
-	if err != nil {
-		return applied, errors.Join(fmt.Errorf("failed to create migrations filesystem"), err)
-	}
-
 	pool, ok := c.PgxIface.(*pgxpool.Pool)
 	if !ok || pool == nil {
-		return applied, errors.Join(fmt.Errorf("failed to cast pgxpool.Pool"), err)
+		return applied, fmt.Errorf("failed to cast pgxpool.Pool")
 	}
 
 	conn := stdlib.OpenDBFromPool(pool)
 	defer conn.Close()
 
-	provider, err := goose.NewProvider(goose.DialectPostgres, conn, fsys)
+	provider, err := goose.NewProvider(goose.DialectPostgres, conn, migrations.MigrationsFS)
 	if err != nil {
 		return applied, errors.Join(fmt.Errorf("failed to create goose provider"), err)
 	}
@@ -187,7 +178,7 @@ func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (s
 			builder = builder.Where(sq.Expr("labels @> ?::jsonb", bLabels))
 		}
 		// Set the version if it is not empty
-		if selectors.Version != "" {
+		if selectors.Version != 0 {
 			builder = builder.Where(sq.Eq{"version": selectors.Version})
 		}
 	}
@@ -195,7 +186,7 @@ func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (s
 	return builder.ToSql()
 }
 
-func (c Client) GetResource(id string, policyType string) pgx.Row {
+func (c Client) GetResource(id int32, policyType string) pgx.Row {
 	sql, args, err := getResourceSQL(id, policyType)
 	if err != nil {
 		return nil
@@ -206,7 +197,7 @@ func (c Client) GetResource(id string, policyType string) pgx.Row {
 	return c.QueryRow(context.TODO(), sql, args...)
 }
 
-func getResourceSQL(id string, policyType string) (string, []interface{}, error) {
+func getResourceSQL(id int32, policyType string) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Select("id", "resource").From("opentdf.resources")
@@ -248,7 +239,7 @@ func updateResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protore
 	return builder.ToSql()
 }
 
-func (c Client) DeleteResource(id string, policyType string) error {
+func (c Client) DeleteResource(id int32, policyType string) error {
 	sql, args, err := deleteResourceSQL(id, policyType)
 	if err != nil {
 		return err
@@ -261,7 +252,7 @@ func (c Client) DeleteResource(id string, policyType string) error {
 	return err
 }
 
-func deleteResourceSQL(id string, policyType string) (string, []interface{}, error) {
+func deleteResourceSQL(id int32, policyType string) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Delete("opentdf.resources")

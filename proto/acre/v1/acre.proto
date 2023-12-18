@@ -89,7 +89,7 @@ message ListResourceMappingsResponse {
 }
 
 message GetResourceMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 
 message GetResourceMappingResponse {
@@ -102,13 +102,13 @@ message CreateResourceMappingRequest {
 message CreateResourceMappingResponse {}
 
 message UpdateResourceMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
   ResourceMapping mapping = 2 [(buf.validate.field).required = true];
 }
 message UpdateResourceMappingResponse {}
 
 message DeleteResourceMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message DeleteResourceMappingResponse {}
 
@@ -125,7 +125,7 @@ message ListResourceSynonymsResponse {
 }
 
 message GetResourceSynonymRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 
 message GetResourceSynonymResponse {
@@ -138,13 +138,13 @@ message CreateResourceSynonymRequest {
 message CreateResourceSynonymResponse {}
 
 message UpdateResourceSynonymRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
   Synonyms synonym = 2 [(buf.validate.field).required = true];
 }
 message UpdateResourceSynonymResponse {}
 
 message DeleteResourceSynonymRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message DeleteResourceSynonymResponse {}
 
@@ -160,7 +160,7 @@ message ListResourceGroupsResponse {
 }
 
 message GetResourceGroupRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 
 message GetResourceGroupResponse {
@@ -173,13 +173,13 @@ message CreateResourceGroupRequest {
 message CreateResourceGroupResponse {}
 
 message UpdateResourceGroupRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
   ResourceGroup group = 2 [(buf.validate.field).required = true];
 }
 message UpdateResourceGroupResponse {}
 
 message DeleteResourceGroupRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message DeleteResourceGroupResponse {}
 

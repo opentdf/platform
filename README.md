@@ -26,6 +26,10 @@ OpenTDF V2 POC
 
 This should bring up a grpc server on port 9000 and http server on port 8080. Air will watch for changes and restart the server.
 
+### Generate Clients
+
+`make buf-generate`
+
 ### Test
 
 ```bash

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -18,7 +19,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-// We can rename this but wanted to get mocks working
+// We can rename this but wanted to get mocks working.
 type PgxIface interface {
 	Acquire(ctx context.Context) (*pgxpool.Conn, error)
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
@@ -45,7 +46,6 @@ type Client struct {
 }
 
 func NewClient(config Config) (*Client, error) {
-
 	pool, err := pgxpool.New(context.Background(), config.buildURL())
 	if err != nil {
 		return nil, err
@@ -57,11 +57,10 @@ func NewClient(config Config) (*Client, error) {
 }
 
 func (c Config) buildURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
+	return fmt.Sprintf("postgres://%s:%s@%s/%s",
 		c.User,
 		c.Password,
-		c.Host,
-		c.Port,
+		net.JoinHostPort(c.Host, fmt.Sprint(c.Port)),
 		c.Database,
 	)
 }
@@ -72,7 +71,9 @@ func (c *Client) RunMigrations() (int, error) {
 	)
 
 	if !c.config.RunMigrations {
-		slog.Info("skipping migrations", slog.String("reason", "runMigrations is false"), slog.Bool("runMigrations", c.config.RunMigrations))
+		slog.Info("skipping migrations",
+			slog.String("reason", "runMigrations is false"),
+			slog.Bool("runMigrations", c.config.RunMigrations))
 		return applied, nil
 	}
 
@@ -104,7 +105,6 @@ func (c *Client) RunMigrations() (int, error) {
 	}
 
 	return applied, nil
-
 }
 
 func (c Client) CreateResource(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) error {
@@ -139,7 +139,6 @@ func createResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protore
 	)
 
 	return builder.ToSql()
-
 }
 
 func (c Client) ListResources(policyType string, selectors *commonv1.ResourceSelector) (pgx.Rows, error) {
@@ -150,8 +149,8 @@ func (c Client) ListResources(policyType string, selectors *commonv1.ResourceSel
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
+	// Rows error check should not flag this https://github.com/jingyugao/rowserrcheck/issues/32
 	return c.Query(context.TODO(), sql, args...)
-
 }
 
 func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (string, []interface{}, error) {

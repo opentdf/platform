@@ -2,6 +2,7 @@ package ldap
 
 import (
 	"fmt"
+	"net"
 	"slices"
 
 	"github.com/go-ldap/ldap/v3"
@@ -48,9 +49,8 @@ func NewLDAP(c Config) (*Client, error) {
 }
 
 func (c Config) buildURL() string {
-	return fmt.Sprintf("ldap://%s:%d",
-		c.Host,
-		c.Port,
+	return fmt.Sprintf("ldap://%s",
+		net.JoinHostPort(c.Host, fmt.Sprint(c.Port)),
 	)
 }
 
@@ -61,7 +61,16 @@ func (l Client) GetAttributes(id string) (map[string]string, error) {
 
 	// TODO: add support for ldap search filter
 	filter := fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))", id)
-	searchReq := ldap.NewSearchRequest("dc=dev,dc=virtruqa,dc=com", ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, filter, []string{}, nil)
+	searchReq := ldap.NewSearchRequest("dc=dev,dc=virtruqa,dc=com",
+		ldap.ScopeWholeSubtree,
+		ldap.NeverDerefAliases,
+		0,
+		0,
+		false,
+		filter,
+		[]string{},
+		nil)
+
 	res, err := l.Search(searchReq)
 	if err != nil {
 		return nil, err

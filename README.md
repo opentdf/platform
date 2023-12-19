@@ -1,5 +1,4 @@
-# opentdf-v2-poc
-OpenTDF V2 POC
+# OpenTDF Enhancements POC
 
 - [Configuration](./docs/configuration.md)
 - [Development](#development)

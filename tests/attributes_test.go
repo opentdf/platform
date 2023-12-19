@@ -64,7 +64,6 @@ func (suite *AttributesSuite) SetupSuite() {
 		}
 	}
 	slog.Info("loaded attributes test data")
-
 }
 
 func (suite *AttributesSuite) TearDownSuite() {
@@ -80,7 +79,6 @@ func TestAttributeSuite(t *testing.T) {
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_Success_When_Valid_Definition() {
-
 	definition := attributesv1.AttributeDefinition{
 		Name: "relto",
 		Rule: attributesv1.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
@@ -136,7 +134,6 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_Inval
 		assert.Equal(suite.T(), codes.InvalidArgument, st.Code())
 		assert.Equal(suite.T(), st.Message(), "validation error:\n - definition.rule: value must be one of the defined enum values [enum.defined_only]")
 	}
-
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_InvalidNamespace() {
@@ -168,7 +165,6 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_Inval
 		assert.Equal(suite.T(), codes.InvalidArgument, st.Code())
 		assert.Equal(suite.T(), st.Message(), "validation error:\n - definition.descriptor.namespace: Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. [namespace_format]")
 	}
-
 }
 
 func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_ID_Does_Not_Exist() {

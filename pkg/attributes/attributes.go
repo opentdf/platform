@@ -2,6 +2,7 @@ package attributes
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -61,7 +62,11 @@ func (s Attributes) CreateAttributeGroup(ctx context.Context, req *attributesv1.
 func (s *Attributes) ListAttributes(ctx context.Context, req *attributesv1.ListAttributesRequest) (*attributesv1.ListAttributesResponse, error) {
 	attributes := &attributesv1.ListAttributesResponse{}
 
-	rows, err := s.dbClient.ListResources(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(), req.Selector)
+	rows, err := s.dbClient.ListResources(
+		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
+		req.Selector,
+	)
+
 	if err != nil {
 		slog.Error("error listing attribute definitions", slog.String("error", err.Error()))
 		return attributes, status.Error(codes.Internal, err.Error())
@@ -83,6 +88,11 @@ func (s *Attributes) ListAttributes(ctx context.Context, req *attributesv1.ListA
 		attributes.Definitions = append(attributes.Definitions, definition)
 	}
 
+	if err := rows.Err(); err != nil {
+		slog.Error("error listing attributes", slog.String("error", err.Error()))
+		return attributes, status.Error(codes.Internal, err.Error())
+	}
+
 	return attributes, nil
 }
 
@@ -91,7 +101,10 @@ func (s *Attributes) ListAttributeGroups(ctx context.Context, req *attributesv1.
 		attributeGroups = new(attributesv1.ListAttributeGroupsResponse)
 		err             error
 	)
-	rows, err := s.dbClient.ListResources(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), req.Selector)
+	rows, err := s.dbClient.ListResources(
+		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
+		req.Selector,
+	)
 	if err != nil {
 		slog.Error("error listing attribute groups", slog.String("error", err.Error()))
 		return attributeGroups, status.Error(codes.Internal, err.Error())
@@ -112,6 +125,12 @@ func (s *Attributes) ListAttributeGroups(ctx context.Context, req *attributesv1.
 		group.Descriptor_.Id = id
 		attributeGroups.Groups = append(attributeGroups.Groups, group)
 	}
+
+	if err := rows.Err(); err != nil {
+		slog.Error("error listing attribute groups", slog.String("error", err.Error()))
+		return attributeGroups, status.Error(codes.Internal, err.Error())
+	}
+
 	return attributeGroups, nil
 }
 
@@ -124,15 +143,14 @@ func (s *Attributes) GetAttribute(ctx context.Context, req *attributesv1.GetAttr
 		id  int32
 	)
 
-	row := s.dbClient.GetResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String())
-	if err != nil {
-		slog.Error("error getting attribute definition", slog.String("error", err.Error()))
-		return definition, status.Error(codes.Internal, err.Error())
-	}
+	row := s.dbClient.GetResource(
+		req.Id,
+		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
+	)
 
 	err = row.Scan(&id, &definition.Definition)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			slog.Info("attribute not found", slog.Int("id", int(req.Id)))
 			return definition, status.Error(codes.NotFound, "attribute not found")
 		}
@@ -154,15 +172,14 @@ func (s *Attributes) GetAttributeGroup(ctx context.Context, req *attributesv1.Ge
 		id  int32
 	)
 
-	row := s.dbClient.GetResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
-	if err != nil {
-		slog.Error("error getting attribute group", slog.String("error", err.Error()))
-		return group, status.Error(codes.Internal, err.Error())
-	}
+	row := s.dbClient.GetResource(
+		req.Id,
+		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
+	)
 
 	err = row.Scan(&id, &group.Group)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			slog.Info("attribute group not found", slog.Int("id", int(req.Id)))
 			return group, status.Error(codes.NotFound, "attribute group not found")
 		}
@@ -176,7 +193,11 @@ func (s *Attributes) GetAttributeGroup(ctx context.Context, req *attributesv1.Ge
 }
 
 func (s *Attributes) UpdateAttribute(ctx context.Context, req *attributesv1.UpdateAttributeRequest) (*attributesv1.UpdateAttributeResponse, error) {
-	err := s.dbClient.UpdateResource(req.Definition.Descriptor_, req.Definition, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String())
+	err := s.dbClient.UpdateResource(
+		req.Definition.Descriptor_,
+		req.Definition,
+		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
+	)
 	if err != nil {
 		slog.Error("issue updating attribute", slog.String("error", err.Error()))
 		return &attributesv1.UpdateAttributeResponse{}, status.Error(codes.Internal, err.Error())
@@ -185,7 +206,10 @@ func (s *Attributes) UpdateAttribute(ctx context.Context, req *attributesv1.Upda
 }
 
 func (s *Attributes) UpdateAttributeGroup(ctx context.Context, req *attributesv1.UpdateAttributeGroupRequest) (*attributesv1.UpdateAttributeGroupResponse, error) {
-	err := s.dbClient.UpdateResource(req.Group.Descriptor_, req.Group, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
+	err := s.dbClient.UpdateResource(
+		req.Group.Descriptor_, req.Group,
+		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
+	)
 	if err != nil {
 		slog.Error("issues updating attribute group", slog.String("error", err.Error()))
 		return &attributesv1.UpdateAttributeGroupResponse{}, status.Error(codes.Internal, err.Error())
@@ -194,7 +218,9 @@ func (s *Attributes) UpdateAttributeGroup(ctx context.Context, req *attributesv1
 }
 
 func (s *Attributes) DeleteAttribute(ctx context.Context, req *attributesv1.DeleteAttributeRequest) (*attributesv1.DeleteAttributeResponse, error) {
-	if err := s.dbClient.DeleteResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()); err != nil {
+	if err := s.dbClient.DeleteResource(req.Id,
+		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
+	); err != nil {
 		slog.Error("issue deleting attribute", slog.String("error", err.Error()))
 		return &attributesv1.DeleteAttributeResponse{}, status.Error(codes.Internal, err.Error())
 	}
@@ -202,7 +228,10 @@ func (s *Attributes) DeleteAttribute(ctx context.Context, req *attributesv1.Dele
 }
 
 func (s *Attributes) DeleteAttributeGroup(ctx context.Context, req *attributesv1.DeleteAttributeGroupRequest) (*attributesv1.DeleteAttributeGroupResponse, error) {
-	if err := s.dbClient.DeleteResource(req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()); err != nil {
+	if err := s.dbClient.DeleteResource(
+		req.Id,
+		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
+	); err != nil {
 		slog.Error("issue deleting attribute group", slog.String("error", err.Error()))
 		return &attributesv1.DeleteAttributeGroupResponse{}, status.Error(codes.Internal, err.Error())
 	}

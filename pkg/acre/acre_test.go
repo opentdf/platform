@@ -87,7 +87,6 @@ var (
 )
 
 func (suite *AcreSuite) Test_CreateResourceMapping_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(mapping.Mapping.Descriptor_.Name,
 			mapping.Mapping.Descriptor_.Namespace,
@@ -107,12 +106,10 @@ func (suite *AcreSuite) Test_CreateResourceMapping_Returns_InternalError_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error inserting resource mapping")
-
 	}
 }
 
 func (suite *AcreSuite) Test_CreateResourceMapping_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(mapping.Mapping.Descriptor_.Name,
 			mapping.Mapping.Descriptor_.Namespace,
@@ -132,7 +129,6 @@ func (suite *AcreSuite) Test_CreateResourceMapping_Returns_OK_When_Successful() 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_ListResourceMappings_Returns_InternalError_When_Database_Error() {
@@ -155,7 +151,6 @@ func (suite *AcreSuite) Test_ListResourceMappings_Returns_InternalError_When_Dat
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error listing resource mappings")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -188,7 +183,6 @@ func (suite *AcreSuite) Test_ListResourceMappings_Returns_OK_When_Successful() {
 }
 
 func (suite *AcreSuite) Test_GetResourceMapping_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnError(errors.New("error getting resource mapping"))
@@ -202,7 +196,6 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_InternalError_When_Datab
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error getting resource mapping")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -211,7 +204,6 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_InternalError_When_Datab
 }
 
 func (suite *AcreSuite) Test_GetResourceMapping_Returns_NotFound_When_Resource_Not_Found() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnError(pgx.ErrNoRows)
@@ -225,7 +217,6 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_NotFound_When_Resource_N
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "resource mapping not found")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -234,7 +225,6 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_NotFound_When_Resource_N
 }
 
 func (suite *AcreSuite) Test_GetResourceMapping_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -252,7 +242,6 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_OK_When_Successful() {
 }
 
 func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(mapping.Mapping.Descriptor_.Name,
 			mapping.Mapping.Descriptor_.Namespace,
@@ -276,7 +265,6 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_InternalError_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error updating resource mapping")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -285,7 +273,6 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_InternalError_When_Da
 }
 
 func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(mapping.Mapping.Descriptor_.Name,
 			mapping.Mapping.Descriptor_.Namespace,
@@ -312,7 +299,6 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_OK_When_Successful() 
 }
 
 func (suite *AcreSuite) Test_DeleteResourceMapping_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnError(errors.New("error deleting resource mapping"))
@@ -326,17 +312,14 @@ func (suite *AcreSuite) Test_DeleteResourceMapping_Returns_InternalError_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting resource mapping")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_DeleteResourceMapping_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -350,11 +333,9 @@ func (suite *AcreSuite) Test_DeleteResourceMapping_Returns_OK_When_Successful() 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(synonym.Synonym.Descriptor_.Name,
 			synonym.Synonym.Descriptor_.Namespace,
@@ -374,7 +355,6 @@ func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_InternalError_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error inserting resource synonym")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -383,7 +363,6 @@ func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_InternalError_When_Da
 }
 
 func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(synonym.Synonym.Descriptor_.Name,
 			synonym.Synonym.Descriptor_.Namespace,
@@ -402,7 +381,6 @@ func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_OK_When_Successful() 
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
@@ -427,13 +405,11 @@ func (suite *AcreSuite) Test_ListResourceSynonyms_Returns_InternalError_When_Dat
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error listing resource synonyms")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_ListResourceSynonyms_Returns_OK_When_Successful() {
@@ -458,11 +434,9 @@ func (suite *AcreSuite) Test_ListResourceSynonyms_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_GetResourceSynonym_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnError(errors.New("error getting resource synonym"))
@@ -475,17 +449,14 @@ func (suite *AcreSuite) Test_GetResourceSynonym_Returns_InternalError_When_Datab
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 		assert.Contains(suite.T(), grpcStatus.Message(), "error getting resource synonym")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_GetResourceSynonym_Returns_NotFound_When_Resource_Not_Found() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnError(pgx.ErrNoRows)
@@ -497,18 +468,16 @@ func (suite *AcreSuite) Test_GetResourceSynonym_Returns_NotFound_When_Resource_N
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), "resource synonym not found")
 
+		assert.Contains(suite.T(), grpcStatus.Message(), "resource synonym not found")
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
 func (suite *AcreSuite) Test_GetResourceSynonym_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -522,12 +491,10 @@ func (suite *AcreSuite) Test_GetResourceSynonym_Returns_OK_When_Successful() {
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
 func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(synonym.Synonym.Descriptor_.Name,
 			synonym.Synonym.Descriptor_.Namespace,
@@ -550,17 +517,14 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 		assert.Contains(suite.T(), grpcStatus.Message(), "error updating resource synonym")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
 func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(synonym.Synonym.Descriptor_.Name,
 			synonym.Synonym.Descriptor_.Namespace,
@@ -583,12 +547,10 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_OK_When_Successful() 
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
 func (suite *AcreSuite) Test_DeleteResourceSynonym_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnError(errors.New("error deleting resource synonym"))
@@ -601,18 +563,14 @@ func (suite *AcreSuite) Test_DeleteResourceSynonym_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting resource synonym")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
-
 }
 
 func (suite *AcreSuite) Test_DeleteResourceSynonym_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -625,13 +583,10 @@ func (suite *AcreSuite) Test_DeleteResourceSynonym_Returns_OK_When_Successful() 
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
-
 }
 
 func (suite *AcreSuite) Test_CreateResourceGroup_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -650,17 +605,14 @@ func (suite *AcreSuite) Test_CreateResourceGroup_Returns_InternalError_When_Data
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 		assert.Contains(suite.T(), grpcStatus.Message(), "error inserting resource group")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
 func (suite *AcreSuite) Test_CreateResourceGroup_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -679,7 +631,6 @@ func (suite *AcreSuite) Test_CreateResourceGroup_Returns_OK_When_Successful() {
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
@@ -702,15 +653,13 @@ func (suite *AcreSuite) Test_ListResourceGroups_Returns_InternalError_When_Datab
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), "error listing resource groups")
 
+		assert.Contains(suite.T(), grpcStatus.Message(), "error listing resource groups")
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
-
 }
 
 func (suite *AcreSuite) Test_ListResourceGroups_Returns_OK_When_Successful() {
@@ -730,17 +679,15 @@ func (suite *AcreSuite) Test_ListResourceGroups_Returns_OK_When_Successful() {
 	})
 
 	assert.NoError(suite.T(), err)
+
 	assert.Equal(suite.T(), []*acrev1.ResourceGroup{group.Group}, groups.Groups)
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
-
 }
 
 func (suite *AcreSuite) Test_GetResourceGroup_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnError(errors.New("error getting resource group"))
@@ -752,19 +699,16 @@ func (suite *AcreSuite) Test_GetResourceGroup_Returns_InternalError_When_Databas
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), "error getting resource group")
 
+		assert.Contains(suite.T(), grpcStatus.Message(), "error getting resource group")
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
-
 }
 
 func (suite *AcreSuite) Test_GetResourceGroup_Returns_NotFound_When_Resource_Not_Found() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnError(pgx.ErrNoRows)
@@ -776,18 +720,16 @@ func (suite *AcreSuite) Test_GetResourceGroup_Returns_NotFound_When_Resource_Not
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), "resource group not found")
 
+		assert.Contains(suite.T(), grpcStatus.Message(), "resource group not found")
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
 func (suite *AcreSuite) Test_GetResourceGroup_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -801,12 +743,10 @@ func (suite *AcreSuite) Test_GetResourceGroup_Returns_OK_When_Successful() {
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
 }
 
 func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -828,18 +768,16 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_InternalError_When_Data
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), "error updating resource group")
 
+		assert.Contains(suite.T(), grpcStatus.Message(), "error updating resource group")
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -863,11 +801,9 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_DeleteResourceGroup_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnError(errors.New("error deleting resource group"))
@@ -879,17 +815,14 @@ func (suite *AcreSuite) Test_DeleteResourceGroup_Returns_InternalError_When_Data
 		grpcStatus, _ := status.FromError(err)
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting resource group")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcreSuite) Test_DeleteResourceGroup_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -903,5 +836,4 @@ func (suite *AcreSuite) Test_DeleteResourceGroup_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }

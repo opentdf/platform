@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// startCmd represents the start command
+// startCmd represents the start command.
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the opentdf service",
@@ -77,7 +77,6 @@ func start(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		return err
-
 	}
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
@@ -92,7 +91,10 @@ func start(cmd *cobra.Command, args []string) error {
 	}
 
 	// Start the server
-	slog.Info("starting opentdf server", slog.Int("grpcPort", conf.Server.Grpc.Port), slog.Int("httpPort", conf.Server.Http.Port))
+	slog.Info("starting opentdf server",
+		slog.Int("grpcPort", conf.Server.Grpc.Port),
+		slog.Int("httpPort", conf.Server.HTTP.Port))
+
 	otdf.Run()
 
 	waitForShutdownSignal()
@@ -147,7 +149,10 @@ func RegisterServices(config config.Config, otdf *server.OpenTDFServer, dbClient
 	}
 
 	slog.Info("registering entitlements service")
-	err = entitlements.NewEntitlementsServer(config.OpenTDF.Entitlements, []*grpc.Server{otdf.GrpcServer}, otdf.GrpcInProcess.Conn(), otdf.Mux, eng)
+	err = entitlements.NewEntitlementsServer(config.OpenTDF.Entitlements,
+		[]*grpc.Server{otdf.GrpcServer},
+		otdf.GrpcInProcess.Conn(),
+		otdf.Mux, eng)
 	if err != nil {
 		return err
 	}

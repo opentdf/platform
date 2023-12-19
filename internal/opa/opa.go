@@ -68,8 +68,7 @@ func NewEngine(config Config) (*Engine, error) {
 	}, nil
 }
 
-func newStandardLogger(c LoggingConfig) opalog.Logger {
-	// TODO: replace with opaLogger/slog
+func newStandardLogger(c LoggingConfig) *opalog.StandardLogger {
 	opalogger := opalog.New()
 
 	switch c.Level {

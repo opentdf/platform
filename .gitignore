@@ -23,3 +23,6 @@ go.work
 tmp/
 .DS_Store
 __pycache__
+
+# GoLand IDE
+.idea/

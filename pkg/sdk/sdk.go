@@ -12,6 +12,7 @@ import (
 
 const (
 	ErrGrpcDialFailed = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed = Error("failed to shutdown sdk")
 )
 
 type Error string
@@ -21,6 +22,7 @@ func (c Error) Error() string {
 }
 
 type SDK struct {
+	conn             *grpc.ClientConn
 	Attributes       attributesv1.AttributesServiceClient
 	ResourceEncoding acrev1.ResourcEncodingServiceClient
 	SubjectEncoding  acsev1.SubjectEncodingServiceClient
@@ -37,4 +39,11 @@ func New(endpoint string) (*SDK, error) {
 		ResourceEncoding: acrev1.NewResourcEncodingServiceClient(conn),
 		SubjectEncoding:  acsev1.NewSubjectEncodingServiceClient(conn),
 	}, nil
+}
+
+func (s SDK) Shutdown() error {
+	if err := s.conn.Close(); err != nil {
+		return errors.Join(ErrShutdownFailed, err)
+	}
+	return nil
 }

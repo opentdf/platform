@@ -6,6 +6,9 @@ deps:
 breaking:
   use:
     - FILE
+    - PACKAGE
+    - WIRE_JSON
+    - WIRE
 lint:
   use:
     - DEFAULT

@@ -28,7 +28,10 @@ func CreateAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 			return AsymEncryption{}, err
 		}
 
-		pub = cert.PublicKey.(*rsa.PublicKey)
+		var ok bool
+		if pub, ok = cert.PublicKey.(*rsa.PublicKey); !ok {
+			return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
+		}
 	} else {
 		var err error
 		pub, err = x509.ParsePKIXPublicKey(block.Bytes)

@@ -22,11 +22,12 @@ const (
 	writeTimeoutSeconds = 5
 	readTimeoutSeconds  = 10
 	shutdownTimeout     = 5
+	maxAge              = 300
 )
 
 type Config struct {
 	Grpc GrpcConfig `yaml:"grpc"`
-	Http HttpConfig `yaml:"http"`
+	HTTP HTTPConfig `yaml:"http"`
 }
 
 type GrpcConfig struct {
@@ -34,13 +35,13 @@ type GrpcConfig struct {
 	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"false"`
 }
 
-type HttpConfig struct {
+type HTTPConfig struct {
 	Port int `yaml:"port" default:"8080"`
 }
 
 type OpenTDFServer struct {
 	Mux               *runtime.ServeMux
-	HttpServer        *http.Server
+	HTTPServer        *http.Server
 	GrpcServer        *grpc.Server
 	grpcServerAddress string
 	GrpcInProcess     *inProcessServer
@@ -77,8 +78,8 @@ func NewOpenTDFServer(config Config) *OpenTDFServer {
 
 	return &OpenTDFServer{
 		Mux: mux,
-		HttpServer: &http.Server{
-			Addr:         fmt.Sprintf(":%d", config.Http.Port),
+		HTTPServer: &http.Server{
+			Addr:         fmt.Sprintf(":%d", config.HTTP.Port),
 			WriteTimeout: writeTimeoutSeconds * time.Second,
 			ReadTimeout:  readTimeoutSeconds * time.Second,
 			// TOOO: cors should be configurable and not just allow all
@@ -88,7 +89,7 @@ func NewOpenTDFServer(config Config) *OpenTDFServer {
 				AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
 				ExposedHeaders:   []string{"Link"},
 				AllowCredentials: true,
-				MaxAge:           300,
+				MaxAge:           maxAge,
 			}).Handler(mux),
 		},
 		GrpcServer:        grpcServer,
@@ -101,7 +102,6 @@ func NewOpenTDFServer(config Config) *OpenTDFServer {
 }
 
 func (s *OpenTDFServer) Run() {
-
 	// Start Grpc Server
 	go func() {
 		slog.Info("starting grpc server")
@@ -129,7 +129,7 @@ func (s *OpenTDFServer) Run() {
 	go func() {
 		slog.Info("starting http server")
 
-		err := s.HttpServer.ListenAndServe()
+		err := s.HTTPServer.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			slog.Error("failed to serve http", slog.String("error", err.Error()))
 			return
@@ -147,7 +147,7 @@ func (s *OpenTDFServer) Stop() {
 	slog.Info("shutting down http server")
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
 	defer cancel()
-	if err := s.HttpServer.Shutdown(ctx); err != nil {
+	if err := s.HTTPServer.Shutdown(ctx); err != nil {
 		slog.Error("failed to shutdown http server", slog.String("error", err.Error()))
 		return
 	}

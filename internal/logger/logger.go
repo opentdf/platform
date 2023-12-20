@@ -50,33 +50,6 @@ func NewLogger(config Config) (*Logger, error) {
 	}, nil
 }
 
-// Was trying to pass in the logger to the opa engine but it isn't that simple.
-
-// func (l Logger) GetLevel() opalog.Level {
-// 	switch l.config.Level {
-// 	case "debug":
-// 		return opalog.Debug
-// 	case "info":
-// 		return opalog.Info
-// 	case "error":
-// 		return opalog.Error
-// 	default:
-// 		return opalog.Info
-// 	}
-// }
-
-// func (l Logger) SetLevel(opalog.Level) {
-// 	// Don't let opa override our log level
-// }
-
-// func (l *Logger) WithFields(fields map[string]interface{}) opalog.Logger {
-// 	newLogger := *l
-// 	for k, v := range fields {
-// 		newLogger.With(slog.Any(k, v))
-// 	}
-// 	return &newLogger
-// }
-
 func getWriter(config Config) (io.Writer, error) {
 	switch config.Output {
 	case "stdout":

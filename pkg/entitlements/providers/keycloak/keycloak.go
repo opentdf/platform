@@ -2,7 +2,6 @@ package keycloak
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -30,7 +29,6 @@ type Client struct {
 
 func NewKeycloak(c Config) (*Client, error) {
 	client := gocloak.NewClient(c.Host)
-	fmt.Println(c)
 	return &Client{
 		Config:  c,
 		GoCloak: client,
@@ -42,11 +40,16 @@ func (k Client) GetAttributes(id string) (map[string]string, error) {
 		attributes = make(map[string]string)
 	)
 
-	token, err := k.LoginClientSignedJWT(context.Background(), k.ClientID, k.Realm, []byte(k.ClientSecret.Get()), jwt.SigningMethodHS256, jwt.NewNumericDate(time.Now()))
+	token, err := k.LoginClientSignedJWT(context.Background(),
+		k.ClientID, k.Realm,
+		[]byte(k.ClientSecret.Get()),
+		jwt.SigningMethodHS256,
+		jwt.NewNumericDate(time.Now()))
+
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(id)
+
 	user, err := k.GetUserByID(context.Background(), token.AccessToken, k.Realm, id)
 	if err != nil {
 		return nil, err

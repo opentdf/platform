@@ -20,6 +20,10 @@ linters-settings:
     allow:
      - auth
      - error
+     - Row
+     - Rows
+     - Leveler
+     - Writer
   cyclop:
     # The maximal code complexity to report.
     # Default: 10
@@ -172,7 +176,7 @@ linters-settings:
     # database/sql is always checked
     # Default: []
     packages:
-      - github.com/jmoiron/sqlx
+      - github.com/jackc/pgx/v5
 
   tenv:
     # The option `all` will run against whole test files (`_test.go`) regardless of method/function signatures.

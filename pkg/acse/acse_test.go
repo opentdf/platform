@@ -79,17 +79,14 @@ func (suite *AcseSuite) Test_CreateSubjectMapping_Returns_Internal_Error_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error inserting resource")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_CreateSubjectMapping_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(mapping.SubjectMapping.Descriptor_.Name,
 			mapping.SubjectMapping.Descriptor_.Namespace,
@@ -109,7 +106,6 @@ func (suite *AcseSuite) Test_CreateSubjectMapping_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_ListSubjectMappings_Returns_Internal_Error_When_Database_Error() {
@@ -131,13 +127,11 @@ func (suite *AcseSuite) Test_ListSubjectMappings_Returns_Internal_Error_When_Dat
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error listing subject mappings")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_ListSubjectMappings_Returns_OK_When_Successful() {
@@ -159,7 +153,6 @@ func (suite *AcseSuite) Test_ListSubjectMappings_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_GetSubjectMapping_Returns_Internal_Error_When_Database_Error() {
@@ -182,7 +175,6 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_Internal_Error_When_Datab
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_GetSubjectMapping_Returns_NotFound_Error_When_No_Mapping_Found() {
@@ -221,7 +213,6 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_Internal_Error_When_Database_Error() {
@@ -254,7 +245,6 @@ func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_Internal_Error_When_Da
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_OK_When_Successful() {
@@ -281,7 +271,6 @@ func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_Internal_Error_When_Database_Error() {
@@ -304,7 +293,6 @@ func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_Internal_Error_When_Da
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_OK_When_Successful() {
@@ -321,5 +309,4 @@ func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }

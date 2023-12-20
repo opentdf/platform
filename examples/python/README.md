@@ -1,5 +1,5 @@
 
-### Issues
+# Issues
 
 - https://github.com/protocolbuffers/protobuf/issues/10329#issuecomment-1648792288
 
@@ -7,7 +7,7 @@ There are issues with the import statements when generating the python code. Thi
 
 https://github.com/cpcloud/protoletariat
 
-### Generation
+## Generation
   
   ```bash
   buf generate ../../proto

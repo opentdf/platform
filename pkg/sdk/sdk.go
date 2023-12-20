@@ -28,8 +28,14 @@ type SDK struct {
 	SubjectEncoding  acsev1.SubjectEncodingServiceClient
 }
 
-func New(endpoint string) (*SDK, error) {
-	conn, err := grpc.Dial(endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func New(opts SDKOptions) (*SDK, error) {
+	var dialOpts []grpc.DialOption
+
+	if opts.Insecure {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	conn, err := grpc.Dial(opts.DefaultEndpoint, dialOpts...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}

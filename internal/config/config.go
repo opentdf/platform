@@ -10,7 +10,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/logger"
 	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/pkg/entitlements"
 	"github.com/spf13/viper"
 )
 
@@ -23,7 +22,6 @@ type Config struct {
 }
 
 type OpenTDFConfig struct {
-	Entitlements entitlements.Config `yaml:"entitlements"`
 }
 
 // Load config with viper

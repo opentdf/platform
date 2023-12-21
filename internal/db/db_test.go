@@ -59,7 +59,7 @@ func Test_RunMigrations_Returns_Error_When_PGX_Iface_Is_Nil(t *testing.T) {
 
 type BadPGX struct{}
 
-func (b BadPGX) Acquire(ctx context.Context) (*pgxpool.Conn, error) { return nil, nil }
+func (b BadPGX) Acquire(_ context.Context) (*pgxpool.Conn, error) { return nil, nil }
 func (b BadPGX) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, nil
 }
@@ -171,9 +171,10 @@ func Test_BuildURL_Returns_Expected_Connection_String(t *testing.T) {
 		Database: "opentdf",
 		User:     "postgres",
 		Password: "postgres",
+		SslMode:  "disable",
 	}
 
 	url := c.buildURL()
 
-	assert.Equal(t, "postgres://postgres:postgres@localhost:5432/opentdf", url)
+	assert.Equal(t, "postgres://postgres:postgres@localhost:5432/opentdf?sslmode=disable", url)
 }

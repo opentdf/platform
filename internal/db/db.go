@@ -108,7 +108,8 @@ func (c *Client) RunMigrations() (int, error) {
 	return applied, nil
 }
 
-func (c Client) CreateResource(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) error {
+func (c Client) CreateResource(ctx context.Context,
+	descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) error {
 	sql, args, err := createResourceSQL(descriptor, resource)
 	if err != nil {
 		return err
@@ -116,12 +117,13 @@ func (c Client) CreateResource(descriptor *commonv1.ResourceDescriptor, resource
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	_, err = c.Exec(context.TODO(), sql, args...)
+	_, err = c.Exec(ctx, sql, args...)
 
 	return err
 }
 
-func createResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) (string, []interface{}, error) {
+func createResourceSQL(descriptor *commonv1.ResourceDescriptor,
+	resource protoreflect.ProtoMessage) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Insert("opentdf.resources")
@@ -142,7 +144,8 @@ func createResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protore
 	return builder.ToSql()
 }
 
-func (c Client) ListResources(policyType string, selectors *commonv1.ResourceSelector) (pgx.Rows, error) {
+func (c Client) ListResources(ctx context.Context,
+	policyType string, selectors *commonv1.ResourceSelector) (pgx.Rows, error) {
 	sql, args, err := listResourceSQL(policyType, selectors)
 	if err != nil {
 		return nil, err
@@ -151,7 +154,7 @@ func (c Client) ListResources(policyType string, selectors *commonv1.ResourceSel
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
 	// Rows error check should not flag this https://github.com/jingyugao/rowserrcheck/issues/32
-	return c.Query(context.TODO(), sql, args...)
+	return c.Query(ctx, sql, args...)
 }
 
 func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (string, []interface{}, error) {
@@ -186,7 +189,7 @@ func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (s
 	return builder.ToSql()
 }
 
-func (c Client) GetResource(id int32, policyType string) pgx.Row {
+func (c Client) GetResource(ctx context.Context, id int32, policyType string) pgx.Row {
 	sql, args, err := getResourceSQL(id, policyType)
 	if err != nil {
 		return nil
@@ -194,7 +197,7 @@ func (c Client) GetResource(id int32, policyType string) pgx.Row {
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	return c.QueryRow(context.TODO(), sql, args...)
+	return c.QueryRow(ctx, sql, args...)
 }
 
 func getResourceSQL(id int32, policyType string) (string, []interface{}, error) {
@@ -207,7 +210,8 @@ func getResourceSQL(id int32, policyType string) (string, []interface{}, error) 
 	return builder.ToSql()
 }
 
-func (c Client) UpdateResource(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage, policyType string) error {
+func (c Client) UpdateResource(ctx context.Context, descriptor *commonv1.ResourceDescriptor,
+	resource protoreflect.ProtoMessage, policyType string) error {
 	sql, args, err := updateResourceSQL(descriptor, resource, policyType)
 	if err != nil {
 		return err
@@ -215,12 +219,13 @@ func (c Client) UpdateResource(descriptor *commonv1.ResourceDescriptor, resource
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	_, err = c.Exec(context.TODO(), sql, args...)
+	_, err = c.Exec(ctx, sql, args...)
 
 	return err
 }
 
-func updateResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage, policyType string) (string, []interface{}, error) {
+func updateResourceSQL(descriptor *commonv1.ResourceDescriptor,
+	resource protoreflect.ProtoMessage, policyType string) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Update("opentdf.resources")
@@ -239,7 +244,7 @@ func updateResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protore
 	return builder.ToSql()
 }
 
-func (c Client) DeleteResource(id int32, policyType string) error {
+func (c Client) DeleteResource(ctx context.Context, id int32, policyType string) error {
 	sql, args, err := deleteResourceSQL(id, policyType)
 	if err != nil {
 		return err
@@ -247,7 +252,7 @@ func (c Client) DeleteResource(id int32, policyType string) error {
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	_, err = c.Exec(context.TODO(), sql, args...)
+	_, err = c.Exec(ctx, sql, args...)
 
 	return err
 }

@@ -169,7 +169,6 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_Internal_Error_When_Datab
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error getting subject mapping")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -191,7 +190,6 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_NotFound_Error_When_No_Ma
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "subject mapping not found")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -239,7 +237,6 @@ func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_Internal_Error_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error updating subject mapping")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -287,7 +284,6 @@ func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_Internal_Error_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting subject mapping")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {

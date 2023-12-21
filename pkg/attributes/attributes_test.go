@@ -68,7 +68,6 @@ var definition = &attributesv1.CreateAttributeRequest{
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -88,17 +87,14 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_InternalError_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error inserting resource")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -118,7 +114,6 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_OK_When_Successful() 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 var group = &attributesv1.CreateAttributeGroupRequest{
@@ -137,7 +132,6 @@ var group = &attributesv1.CreateAttributeGroupRequest{
 }
 
 func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -157,17 +151,14 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_InternalError_Wh
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error inserting resource")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -187,11 +178,9 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_OK_When_Successf
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_ListAttributes_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(), "opentdf", int32(1)).
 		WillReturnError(errors.New("error listing attribute defintions"))
@@ -208,17 +197,14 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_InternalError_When_Dat
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error listing attribute defintions")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_ListAttributes_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(), "opentdf", int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -237,11 +223,9 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), "opentdf", int32(1)).
 		WillReturnError(errors.New("error listing attribute groups"))
@@ -258,17 +242,14 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_InternalError_Whe
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error listing attribute groups")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), "opentdf", int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -287,11 +268,9 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_OK_When_Successfu
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_GetAttribute_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnError(errors.New("error getting attribute definition"))
@@ -305,17 +284,14 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_InternalError_When_Datab
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error getting attribute definition")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_No_Resource_Found() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}))
@@ -329,18 +305,14 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_No_Resourc
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "attribute not found")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
-
 }
 
 func (suite *AttributesSuite) Test_GetAttribute_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -356,11 +328,9 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_OK_When_Successful() {
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnError(errors.New("error getting attribute group"))
@@ -374,17 +344,14 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_InternalError_When_
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error getting attribute group")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_NotFound_When_No_Resource_Found() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}))
@@ -398,18 +365,14 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_NotFound_When_No_Re
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "attribute group not found")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
-
 	}
-
 }
 
 func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -425,11 +388,9 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_OK_When_Successful(
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -453,17 +414,14 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error updating attribute definition")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_UpdateAttribute_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -487,11 +445,9 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_OK_When_Successful() 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -515,17 +471,14 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_Wh
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error updating attribute group")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -549,11 +502,9 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_OK_When_Successf
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_DeleteAttribute_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnError(errors.New("error deleting attribute definition"))
@@ -567,17 +518,14 @@ func (suite *AttributesSuite) Test_DeleteAttribute_Returns_InternalError_When_Da
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting attribute definition")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_DeleteAttribute_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -591,11 +539,9 @@ func (suite *AttributesSuite) Test_DeleteAttribute_Returns_OK_When_Successful() 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_DeleteAttributeGroup_Returns_InternalError_When_Database_Error() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnError(errors.New("error deleting attribute group"))
@@ -609,17 +555,14 @@ func (suite *AttributesSuite) Test_DeleteAttributeGroup_Returns_InternalError_Wh
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
 		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting attribute group")
-
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }
 
 func (suite *AttributesSuite) Test_DeleteAttributeGroup_Returns_OK_When_Successful() {
-
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
@@ -633,5 +576,4 @@ func (suite *AttributesSuite) Test_DeleteAttributeGroup_Returns_OK_When_Successf
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
 	}
-
 }

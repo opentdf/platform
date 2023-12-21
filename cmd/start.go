@@ -43,7 +43,7 @@ func init() {
 	// startCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func start(cmd *cobra.Command, args []string) error {
+func start(_ *cobra.Command, _ []string) error {
 	slog.Info("starting opentdf services")
 
 	slog.Info("loading configuration")
@@ -124,7 +124,7 @@ func createDatabaseClient(conf db.Config) (*db.Client, error) {
 	return dbClient, nil
 }
 
-func RegisterServices(config config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
+func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
 	var (
 		err error
 	)

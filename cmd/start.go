@@ -18,9 +18,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/pkg/acre"
 	"github.com/opentdf/opentdf-v2-poc/pkg/acse"
 	"github.com/opentdf/opentdf-v2-poc/pkg/attributes"
-	"github.com/opentdf/opentdf-v2-poc/pkg/entitlements"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 // startCmd represents the start command.
@@ -148,13 +146,5 @@ func RegisterServices(config config.Config, otdf *server.OpenTDFServer, dbClient
 		return err
 	}
 
-	slog.Info("registering entitlements service")
-	err = entitlements.NewEntitlementsServer(config.OpenTDF.Entitlements,
-		[]*grpc.Server{otdf.GrpcServer},
-		otdf.GrpcInProcess.Conn(),
-		otdf.Mux, eng)
-	if err != nil {
-		return err
-	}
 	return nil
 }

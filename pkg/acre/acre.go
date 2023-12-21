@@ -348,7 +348,6 @@ func (s ResourceEncoding) UpdateResourceSynonym(ctx context.Context, req *acrev1
 }
 
 func (s ResourceEncoding) DeleteResourceSynonym(ctx context.Context, req *acrev1.DeleteResourceSynonymRequest) (*acrev1.DeleteResourceSynonymResponse, error) {
-	//TODO: Need to check if resource exists before deleting
 	if err := s.dbClient.DeleteResource(
 		req.Id,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),

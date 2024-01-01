@@ -11,7 +11,7 @@ import (
 	acsev1 "github.com/opentdf/opentdf-v2-poc/gen/acse/v1"
 	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	otdferrors "github.com/opentdf/opentdf-v2-poc/pkg/errors"
+	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,7 +32,10 @@ func NewSubjectEncodingServer(dbClient *db.Client, grpcServer *grpc.Server,
 		acsev1.RegisterSubjectEncodingServiceServer(grpcInprocess, as)
 	}
 	err := acsev1.RegisterSubjectEncodingServiceHandlerServer(context.Background(), mux, as)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to register subject encoding service handler: %w", err)
+	}
+	return nil
 }
 
 func (s SubjectEncoding) CreateSubjectMapping(ctx context.Context,
@@ -44,9 +47,9 @@ func (s SubjectEncoding) CreateSubjectMapping(ctx context.Context,
 
 	err := s.dbClient.CreateResource(ctx, req.SubjectMapping.Descriptor_, req.SubjectMapping)
 	if err != nil {
-		slog.Error(otdferrors.ErrCreatingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return &acsev1.CreateSubjectMappingResponse{}, status.Error(codes.Internal,
-			fmt.Sprintf("%v: %v", otdferrors.ErrCreatingResource, err))
+			fmt.Sprintf("%v: %v", services.ErrCreatingResource, err))
 	}
 
 	return &acsev1.CreateSubjectMappingResponse{}, nil
@@ -62,8 +65,8 @@ func (s SubjectEncoding) ListSubjectMappings(ctx context.Context,
 		req.Selector,
 	)
 	if err != nil {
-		slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-		return mappings, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return mappings, status.Error(codes.Internal, services.ErrListingResource)
 	}
 	defer rows.Close()
 
@@ -74,8 +77,8 @@ func (s SubjectEncoding) ListSubjectMappings(ctx context.Context,
 		)
 		err = rows.Scan(&id, &mapping)
 		if err != nil {
-			slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-			return mappings, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+			return mappings, status.Error(codes.Internal, services.ErrListingResource)
 		}
 
 		mapping.Descriptor_.Id = id
@@ -83,13 +86,13 @@ func (s SubjectEncoding) ListSubjectMappings(ctx context.Context,
 	}
 
 	if err := rows.Err(); err != nil {
-		slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-		return mappings, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return mappings, status.Error(codes.Internal, services.ErrListingResource)
 	}
 
 	if err := rows.Err(); err != nil {
-		slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-		return mappings, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return mappings, status.Error(codes.Internal, services.ErrListingResource)
 	}
 
 	return mappings, nil
@@ -104,20 +107,24 @@ func (s SubjectEncoding) GetSubjectMapping(ctx context.Context,
 		id int32
 	)
 
-	row := s.dbClient.GetResource(
+	row, err := s.dbClient.GetResource(
 		ctx,
 		req.Id,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
 	)
+	if err != nil {
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return mapping, status.Error(codes.Internal, services.ErrGettingResource)
+	}
 
-	err := row.Scan(&id, &mapping.SubjectMapping)
+	err = row.Scan(&id, &mapping.SubjectMapping)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			slog.Info(otdferrors.ErrNotFound.Error(), slog.Int("id", int(req.Id)))
-			return mapping, status.Error(codes.NotFound, otdferrors.ErrNotFound.Error())
+			slog.Info(services.ErrNotFound, slog.Int("id", int(req.Id)))
+			return mapping, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(otdferrors.ErrGettingResource.Error(), slog.String("error", err.Error()))
-		return mapping, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrGettingResource, err))
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return mapping, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
 	mapping.SubjectMapping.Descriptor_.Id = id
@@ -134,9 +141,9 @@ func (s SubjectEncoding) UpdateSubjectMapping(ctx context.Context,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
 	)
 	if err != nil {
-		slog.Error(otdferrors.ErrUpdatingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return &acsev1.UpdateSubjectMappingResponse{},
-			status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrUpdatingResource, err))
+			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
 	return &acsev1.UpdateSubjectMappingResponse{}, nil
 }
@@ -148,9 +155,9 @@ func (s SubjectEncoding) DeleteSubjectMapping(ctx context.Context,
 		req.Id,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
 	); err != nil {
-		slog.Error(otdferrors.ErrDeletingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
 		return &acsev1.DeleteSubjectMappingResponse{},
-			status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrDeletingResource, err))
+			status.Error(codes.Internal, services.ErrDeletingResource)
 	}
 	return &acsev1.DeleteSubjectMappingResponse{}, nil
 }

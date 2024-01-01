@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -15,13 +16,13 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/logger"
 	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/pkg/acre"
-	"github.com/opentdf/opentdf-v2-poc/pkg/acse"
-	"github.com/opentdf/opentdf-v2-poc/pkg/attributes"
+	"github.com/opentdf/opentdf-v2-poc/pkg/services/acre"
+	"github.com/opentdf/opentdf-v2-poc/pkg/services/acse"
+	"github.com/opentdf/opentdf-v2-poc/pkg/services/attributes"
 	"github.com/spf13/cobra"
 )
 
-// startCmd represents the start command.
+//nolint:gochecknoglobals // startCmd represents the start command.
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the opentdf service",
@@ -50,14 +51,12 @@ func start(_ *cobra.Command, _ []string) error {
 	// Load the config
 	conf, err := config.LoadConfig()
 	if err != nil {
-		slog.Error("could not load config", slog.String("error", err.Error()))
-		return err
+		return fmt.Errorf("could not load config: %w", err)
 	}
 
 	logger, err := logger.NewLogger(conf.Logger)
 	if err != nil {
-		slog.Error("could not start logger", slog.String("error", err.Error()))
-		return err
+		return fmt.Errorf("could not start logger: %w", err)
 	}
 	slog.SetDefault(logger.Logger)
 
@@ -65,16 +64,14 @@ func start(_ *cobra.Command, _ []string) error {
 	// Start the opa engine
 	eng, err := opa.NewEngine(conf.OPA)
 	if err != nil {
-		slog.Error("could not start opa engine", slog.String("error", err.Error()))
-		return err
+		return fmt.Errorf("could not start opa engine: %w", err)
 	}
 	defer eng.Stop(context.Background())
 
 	// Lets make sure we can establish a new db client
 	dbClient, err := createDatabaseClient(conf.DB)
 	if err != nil {
-		slog.Error("issue creating database client", slog.String("error", err.Error()))
-		return err
+		return fmt.Errorf("issue creating database client: %w", err)
 	}
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
@@ -84,8 +81,7 @@ func start(_ *cobra.Command, _ []string) error {
 	// Register the services
 	err = RegisterServices(*conf, otdf, dbClient, eng)
 	if err != nil {
-		slog.Error("issue registering services", slog.String("error", err.Error()))
-		return err
+		return fmt.Errorf("issue registering services: %w", err)
 	}
 
 	// Start the server
@@ -111,19 +107,21 @@ func createDatabaseClient(conf db.Config) (*db.Client, error) {
 	slog.Info("creating database client")
 	dbClient, err := db.NewClient(conf)
 	if err != nil {
+		//nolint:wrapcheck // we want to return the error as is. the start command will wrap it
 		return nil, err
 	}
 
 	slog.Info("running database migrations")
 	appliedMigrations, err := dbClient.RunMigrations()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("issue running database migrations: %w", err)
 	}
 
 	slog.Info("database migrations complete", slog.Int("applied", appliedMigrations))
 	return dbClient, nil
 }
 
+//nolint:revive // the opa engine will be used in the future
 func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
 	var (
 		err error
@@ -131,19 +129,19 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	slog.Info("registering acre server")
 	err = acre.NewResourceEncoding(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not register acre service: %w", err)
 	}
 
 	slog.Info("registering attributes server")
 	err = attributes.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not register attributes service: %w", err)
 	}
 
 	slog.Info("registering acse server")
 	err = acse.NewSubjectEncodingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not register acse service: %w", err)
 	}
 
 	return nil

@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/logger"
 	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	otdferrors "github.com/opentdf/opentdf-v2-poc/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -26,12 +25,22 @@ type Config struct {
 type OpenTDFConfig struct {
 }
 
+type Error string
+
+func (e Error) Error() string {
+	return string(e)
+}
+
+const (
+	ErrLoadingConfig Error = "error loading config"
+)
+
 // Load config with viper.
 func LoadConfig() (*Config, error) {
 	config := &Config{}
 	homedir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, errors.Join(err, otdferrors.ErrLoadingConfig)
+		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 	viper.AddConfigPath(fmt.Sprintf("%s/.opentdf", homedir))
 	viper.AddConfigPath(".opentdf")
@@ -44,16 +53,16 @@ func LoadConfig() (*Config, error) {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, errors.Join(err, otdferrors.ErrLoadingConfig)
+		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 
 	if err := defaults.Set(config); err != nil {
-		return nil, errors.Join(err, otdferrors.ErrLoadingConfig)
+		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 
 	err = viper.Unmarshal(config)
 	if err != nil {
-		return nil, errors.Join(err, otdferrors.ErrLoadingConfig)
+		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 	return config, nil
 }

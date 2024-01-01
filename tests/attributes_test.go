@@ -9,6 +9,7 @@ import (
 
 	attributesv1 "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1"
 	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
+	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -177,6 +178,6 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_ID_Does_No
 	if assert.Error(suite.T(), err) {
 		st, _ := status.FromError(err)
 		assert.Equal(suite.T(), codes.NotFound, st.Code())
-		assert.Equal(suite.T(), st.Message(), "attribute not found")
+		assert.Equal(suite.T(), st.Message(), services.ErrNotFound)
 	}
 }

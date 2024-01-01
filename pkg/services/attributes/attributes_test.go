@@ -9,6 +9,7 @@ import (
 	attributesv1 "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1"
 	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -44,7 +45,8 @@ func TestAttributesSuite(t *testing.T) {
 	suite.Run(t, new(AttributesSuite))
 }
 
-var definition = &attributesv1.CreateAttributeRequest{
+//nolint:gochecknoglobals // This is test data and should be reinitialized for each test
+var attributeDefinition = &attributesv1.CreateAttributeRequest{
 	Definition: &attributesv1.AttributeDefinition{
 		Name: "relto",
 		Rule: attributesv1.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
@@ -67,7 +69,26 @@ var definition = &attributesv1.CreateAttributeRequest{
 	},
 }
 
+//nolint:gochecknoglobals // This is test data and should be reinitialized for each test
+var attributeGroup = &attributesv1.CreateAttributeGroupRequest{
+	Group: &attributesv1.AttributeGroup{
+		Descriptor_: &commonv1.ResourceDescriptor{
+			Version:   1,
+			Name:      "example attribute group",
+			Namespace: "demo.com",
+			Fqn:       "http://demo.com/attr/group",
+			Labels:    map[string]string{},
+			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP,
+		},
+		MemberValues: []*attributesv1.AttributeValueReference{},
+		GroupValue:   &attributesv1.AttributeValueReference{},
+	},
+}
+
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_InternalError_When_Database_Error() {
+	// Copy Global Test Data to Local
+	definition := attributeDefinition
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -86,7 +107,7 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error inserting resource")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreatingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -95,6 +116,9 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_InternalError_When_Da
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	definition := attributeDefinition
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -116,22 +140,10 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_OK_When_Successful() 
 	}
 }
 
-var group = &attributesv1.CreateAttributeGroupRequest{
-	Group: &attributesv1.AttributeGroup{
-		Descriptor_: &commonv1.ResourceDescriptor{
-			Version:   1,
-			Name:      "example attribute group",
-			Namespace: "demo.com",
-			Fqn:       "http://demo.com/attr/group",
-			Labels:    map[string]string{},
-			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP,
-		},
-		MemberValues: []*attributesv1.AttributeValueReference{},
-		GroupValue:   &attributesv1.AttributeValueReference{},
-	},
-}
-
 func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_InternalError_When_Database_Error() {
+	// Copy Global Test Data to Local
+	group := attributeGroup
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -150,7 +162,7 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_InternalError_Wh
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error inserting resource")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreatingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -159,6 +171,9 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_InternalError_Wh
 }
 
 func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	group := attributeGroup
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -196,7 +211,7 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_InternalError_When_Dat
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error listing attribute defintions")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -205,6 +220,9 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_InternalError_When_Dat
 }
 
 func (suite *AttributesSuite) Test_ListAttributes_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	definition := attributeDefinition
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(), "opentdf", int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -241,7 +259,7 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_InternalError_Whe
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error listing attribute groups")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -250,6 +268,9 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_InternalError_Whe
 }
 
 func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	group := attributeGroup
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), "opentdf", int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
@@ -283,7 +304,7 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_InternalError_When_Datab
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error getting attribute definition")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -304,7 +325,7 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_No_Resourc
 
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "attribute not found")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrNotFound)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -313,17 +334,20 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_No_Resourc
 }
 
 func (suite *AttributesSuite) Test_GetAttribute_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	definition := attributeDefinition
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), definition.Definition))
 
-	definition, err := suite.attrServer.GetAttribute(context.Background(), &attributesv1.GetAttributeRequest{
+	resp, err := suite.attrServer.GetAttribute(context.Background(), &attributesv1.GetAttributeRequest{
 		Id: 1,
 	})
 
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), definition.Definition, definition.Definition)
+	assert.Equal(suite.T(), definition.Definition, resp.Definition)
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
@@ -343,7 +367,7 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_InternalError_When_
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error getting attribute group")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -364,7 +388,7 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_NotFound_When_No_Re
 
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "attribute group not found")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrNotFound)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -373,17 +397,20 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_NotFound_When_No_Re
 }
 
 func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	group := attributeGroup
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), group.Group))
 
-	group, err := suite.attrServer.GetAttributeGroup(context.Background(), &attributesv1.GetAttributeGroupRequest{
+	resp, err := suite.attrServer.GetAttributeGroup(context.Background(), &attributesv1.GetAttributeGroupRequest{
 		Id: 1,
 	})
 
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), group.Group, group.Group)
+	assert.Equal(suite.T(), group.Group, resp.Group)
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
@@ -391,6 +418,9 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_OK_When_Successful(
 }
 
 func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Database_Error() {
+	// Copy Global Test Data to Local
+	definition := attributeDefinition
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -413,7 +443,7 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error updating attribute definition")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -422,6 +452,9 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Da
 }
 
 func (suite *AttributesSuite) Test_UpdateAttribute_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	definition := attributeDefinition
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -448,6 +481,9 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_OK_When_Successful() 
 }
 
 func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_When_Database_Error() {
+	// Copy Global Test Data to Local
+	group := attributeGroup
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -470,7 +506,7 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_Wh
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error updating attribute group")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -479,6 +515,9 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_Wh
 }
 
 func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	group := attributeGroup
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -517,7 +556,7 @@ func (suite *AttributesSuite) Test_DeleteAttribute_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting attribute definition")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -554,7 +593,7 @@ func (suite *AttributesSuite) Test_DeleteAttributeGroup_Returns_InternalError_Wh
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting attribute group")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {

@@ -11,7 +11,7 @@ import (
 	attributesv1 "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1"
 	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	otdferrors "github.com/opentdf/opentdf-v2-poc/pkg/errors"
+	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,7 +28,10 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 	}
 	attributesv1.RegisterAttributesServiceServer(g, as)
 	err := attributesv1.RegisterAttributesServiceHandlerServer(context.Background(), s, as)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to register attributes service handler: %w", err)
+	}
+	return nil
 }
 
 func (s Attributes) CreateAttribute(ctx context.Context,
@@ -40,9 +43,9 @@ func (s Attributes) CreateAttribute(ctx context.Context,
 
 	err := s.dbClient.CreateResource(ctx, req.Definition.Descriptor_, req.Definition)
 	if err != nil {
-		slog.Error(otdferrors.ErrCreatingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return &attributesv1.CreateAttributeResponse{},
-			status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrCreatingResource, err))
+			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 	slog.Debug("created new attribute definition", slog.String("name", req.Definition.Name))
 
@@ -55,9 +58,9 @@ func (s Attributes) CreateAttributeGroup(ctx context.Context,
 
 	err := s.dbClient.CreateResource(ctx, req.Group.Descriptor_, req.Group)
 	if err != nil {
-		slog.Error(otdferrors.ErrCreatingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return &attributesv1.CreateAttributeGroupResponse{},
-			status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrCreatingResource, err))
+			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 	return &attributesv1.CreateAttributeGroupResponse{}, nil
 }
@@ -73,8 +76,8 @@ func (s *Attributes) ListAttributes(ctx context.Context,
 	)
 
 	if err != nil {
-		slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-		return attributes, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return attributes, status.Error(codes.Internal, services.ErrListingResource)
 	}
 	defer rows.Close()
 
@@ -85,8 +88,8 @@ func (s *Attributes) ListAttributes(ctx context.Context,
 		)
 		err = rows.Scan(&id, &definition)
 		if err != nil {
-			slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-			return attributes, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+			return attributes, status.Error(codes.Internal, services.ErrListingResource)
 		}
 
 		definition.Descriptor_.Id = id
@@ -94,8 +97,8 @@ func (s *Attributes) ListAttributes(ctx context.Context,
 	}
 
 	if err := rows.Err(); err != nil {
-		slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-		return attributes, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return attributes, status.Error(codes.Internal, services.ErrListingResource)
 	}
 
 	return attributes, nil
@@ -112,8 +115,8 @@ func (s *Attributes) ListAttributeGroups(ctx context.Context,
 		req.Selector,
 	)
 	if err != nil {
-		slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-		return groups, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return groups, status.Error(codes.Internal, services.ErrListingResource)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -124,8 +127,8 @@ func (s *Attributes) ListAttributeGroups(ctx context.Context,
 		// var tmpDefinition []byte
 		err = rows.Scan(&id, &group)
 		if err != nil {
-			slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-			return groups, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+			return groups, status.Error(codes.Internal, services.ErrListingResource)
 		}
 
 		group.Descriptor_.Id = id
@@ -133,13 +136,14 @@ func (s *Attributes) ListAttributeGroups(ctx context.Context,
 	}
 
 	if err := rows.Err(); err != nil {
-		slog.Error(otdferrors.ErrListingResource.Error(), slog.String("error", err.Error()))
-		return groups, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrListingResource, err))
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return groups, status.Error(codes.Internal, services.ErrListingResource)
 	}
 
 	return groups, nil
 }
 
+//nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s *Attributes) GetAttribute(ctx context.Context,
 	req *attributesv1.GetAttributeRequest) (*attributesv1.GetAttributeResponse, error) {
 	var (
@@ -149,20 +153,24 @@ func (s *Attributes) GetAttribute(ctx context.Context,
 		id int32
 	)
 
-	row := s.dbClient.GetResource(
+	row, err := s.dbClient.GetResource(
 		ctx,
 		req.Id,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
 	)
+	if err != nil {
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return definition, status.Error(codes.Internal, services.ErrGettingResource)
+	}
 
-	err := row.Scan(&id, &definition.Definition)
+	err = row.Scan(&id, &definition.Definition)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			slog.Info(otdferrors.ErrNotFound.Error(), slog.Int("id", int(req.Id)))
-			return definition, status.Error(codes.NotFound, otdferrors.ErrNotFound.Error())
+			slog.Info(services.ErrNotFound, slog.Int("id", int(req.Id)))
+			return definition, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(otdferrors.ErrGettingResource.Error(), slog.String("error", err.Error()))
-		return definition, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrGettingResource, err))
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return definition, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
 	definition.Definition.Descriptor_.Id = id
@@ -170,6 +178,7 @@ func (s *Attributes) GetAttribute(ctx context.Context,
 	return definition, nil
 }
 
+//nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s *Attributes) GetAttributeGroup(ctx context.Context,
 	req *attributesv1.GetAttributeGroupRequest) (*attributesv1.GetAttributeGroupResponse, error) {
 	var (
@@ -179,20 +188,24 @@ func (s *Attributes) GetAttributeGroup(ctx context.Context,
 		id int32
 	)
 
-	row := s.dbClient.GetResource(
+	row, err := s.dbClient.GetResource(
 		ctx,
 		req.Id,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
 	)
+	if err != nil {
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return group, status.Error(codes.Internal, services.ErrGettingResource)
+	}
 
-	err := row.Scan(&id, &group.Group)
+	err = row.Scan(&id, &group.Group)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			slog.Info(otdferrors.ErrNotFound.Error(), slog.Int("id", int(req.Id)))
-			return group, status.Error(codes.NotFound, otdferrors.ErrNotFound.Error())
+			slog.Info(services.ErrNotFound, slog.Int("id", int(req.Id)))
+			return group, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(otdferrors.ErrGettingResource.Error(), slog.String("error", err.Error()))
-		return group, status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrGettingResource.Error(), err))
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return group, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
 	group.Group.Descriptor_.Id = id
@@ -209,9 +222,9 @@ func (s *Attributes) UpdateAttribute(ctx context.Context,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
 	)
 	if err != nil {
-		slog.Error(otdferrors.ErrUpdatingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return &attributesv1.UpdateAttributeResponse{},
-			status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrUpdatingResource, err))
+			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
 	return &attributesv1.UpdateAttributeResponse{}, nil
 }
@@ -224,9 +237,9 @@ func (s *Attributes) UpdateAttributeGroup(ctx context.Context,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
 	)
 	if err != nil {
-		slog.Error(otdferrors.ErrUpdatingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return &attributesv1.UpdateAttributeGroupResponse{},
-			status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrUpdatingResource, err))
+			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
 	return &attributesv1.UpdateAttributeGroupResponse{}, nil
 }
@@ -238,9 +251,9 @@ func (s *Attributes) DeleteAttribute(ctx context.Context,
 		req.Id,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
 	); err != nil {
-		slog.Error(otdferrors.ErrDeletingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
 		return &attributesv1.DeleteAttributeResponse{}, status.Error(codes.Internal,
-			fmt.Sprintf("%v: %v", otdferrors.ErrDeletingResource, err))
+			services.ErrDeletingResource)
 	}
 	return &attributesv1.DeleteAttributeResponse{}, nil
 }
@@ -252,9 +265,9 @@ func (s *Attributes) DeleteAttributeGroup(ctx context.Context,
 		req.Id,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
 	); err != nil {
-		slog.Error(otdferrors.ErrDeletingResource.Error(), slog.String("error", err.Error()))
+		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
 		return &attributesv1.DeleteAttributeGroupResponse{},
-			status.Error(codes.Internal, fmt.Sprintf("%v: %v", otdferrors.ErrDeletingResource, err))
+			status.Error(codes.Internal, services.ErrDeletingResource)
 	}
 	return &attributesv1.DeleteAttributeGroupResponse{}, nil
 }

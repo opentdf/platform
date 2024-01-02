@@ -37,7 +37,7 @@ type Config struct {
 	User          string `yaml:"user" default:"postgres"`
 	Password      string `yaml:"password" default:"changeme"`
 	RunMigrations bool   `yaml:"runMigrations" default:"true"`
-	// TODO: add support for sslmode
+	SSLMode       string `yaml:"sslMode" default:"prefer"`
 }
 
 type Client struct {
@@ -57,11 +57,12 @@ func NewClient(config Config) (*Client, error) {
 }
 
 func (c Config) buildURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s",
+	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		c.User,
 		c.Password,
 		net.JoinHostPort(c.Host, fmt.Sprint(c.Port)),
 		c.Database,
+		c.SSLMode,
 	)
 }
 

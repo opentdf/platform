@@ -78,7 +78,7 @@ func start(_ *cobra.Command, _ []string) error {
 	otdf, err := server.NewOpenTDFServer(conf.Server)
 	if err != nil {
 		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
-		return err
+		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
 	defer otdf.Stop()
 

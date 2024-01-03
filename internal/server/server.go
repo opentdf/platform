@@ -225,10 +225,6 @@ func (s OpenTDFServer) startHTTPServer() {
 }
 
 func loadTLSConfig(config TLSConfig) (*tls.Config, error) {
-	if !config.Enabled {
-		return nil, nil
-	}
-
 	cert, err := tls.LoadX509KeyPair(config.Cert, config.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tls cert: %w", err)

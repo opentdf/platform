@@ -154,7 +154,21 @@ linters-settings:
     # Default: false
     all: true
 
-
+  lll:
+    line-length: 120
+  
+  wrapcheck:
+    ignoreSigs:
+      - "status.Error("
+      - ".Errorf("
+      - "errors.New("
+      - "errors.Unwrap("
+      - "errors.Join("
+      - ".Wrap("
+      - ".Wrapf("
+      - ".WithMessage("
+      - ".WithMessagef("
+      - ".WithStack("
 linters:
   disable-all: true
   enable:

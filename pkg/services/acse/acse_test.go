@@ -10,6 +10,7 @@ import (
 	attributesv1 "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1"
 	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -41,7 +42,8 @@ func TestAcseSuite(t *testing.T) {
 	suite.Run(t, new(AcseSuite))
 }
 
-var mapping = &acsev1.CreateSubjectMappingRequest{
+//nolint:gochecknoglobals // This is test data and should be reinitialized for each test
+var subjectMapping = &acsev1.CreateSubjectMappingRequest{
 	SubjectMapping: &acsev1.SubjectMapping{
 		Descriptor_: &commonv1.ResourceDescriptor{
 			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING,
@@ -60,6 +62,9 @@ var mapping = &acsev1.CreateSubjectMappingRequest{
 }
 
 func (suite *AcseSuite) Test_CreateSubjectMapping_Returns_Internal_Error_When_Database_Error() {
+	// Copy Global Test Data to Local
+	mapping := subjectMapping
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(mapping.SubjectMapping.Descriptor_.Name,
 			mapping.SubjectMapping.Descriptor_.Namespace,
@@ -87,6 +92,9 @@ func (suite *AcseSuite) Test_CreateSubjectMapping_Returns_Internal_Error_When_Da
 }
 
 func (suite *AcseSuite) Test_CreateSubjectMapping_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	mapping := subjectMapping
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(mapping.SubjectMapping.Descriptor_.Name,
 			mapping.SubjectMapping.Descriptor_.Namespace,
@@ -126,7 +134,7 @@ func (suite *AcseSuite) Test_ListSubjectMappings_Returns_Internal_Error_When_Dat
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error listing subject mappings")
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -135,6 +143,9 @@ func (suite *AcseSuite) Test_ListSubjectMappings_Returns_Internal_Error_When_Dat
 }
 
 func (suite *AcseSuite) Test_ListSubjectMappings_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	mapping := subjectMapping
+
 	selector := &commonv1.ResourceSelector{
 		Namespace: "opentdf",
 		Version:   1,
@@ -168,8 +179,7 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_Internal_Error_When_Datab
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error getting subject mapping")
-
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -190,8 +200,7 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_NotFound_Error_When_No_Ma
 
 		assert.Equal(suite.T(), codes.NotFound, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "subject mapping not found")
-
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrNotFound)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -200,6 +209,9 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_NotFound_Error_When_No_Ma
 }
 
 func (suite *AcseSuite) Test_GetSubjectMapping_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	mapping := subjectMapping
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).AddRow(int32(1), mapping.SubjectMapping))
@@ -216,6 +228,9 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_OK_When_Successful() {
 }
 
 func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_Internal_Error_When_Database_Error() {
+	// Copy Global Test Data to Local
+	mapping := subjectMapping
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(mapping.SubjectMapping.Descriptor_.Name,
 			mapping.SubjectMapping.Descriptor_.Namespace,
@@ -238,8 +253,7 @@ func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_Internal_Error_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error updating subject mapping")
-
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -248,6 +262,9 @@ func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_Internal_Error_When_Da
 }
 
 func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_OK_When_Successful() {
+	// Copy Global Test Data to Local
+	mapping := subjectMapping
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(mapping.SubjectMapping.Descriptor_.Name,
 			mapping.SubjectMapping.Descriptor_.Namespace,
@@ -286,8 +303,7 @@ func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_Internal_Error_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), "error deleting subject mapping")
-
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {

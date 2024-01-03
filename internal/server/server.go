@@ -157,11 +157,13 @@ func (s OpenTDFServer) Stop() {
 	s.GrpcInProcess.srv.GracefulStop()
 
 	slog.Info("shutting down http server")
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
-	defer cancel()
-	if err := s.HTTPServer.Shutdown(ctx); err != nil {
-		slog.Error("failed to shutdown http server", slog.String("error", err.Error()))
-		return
+	if s.HTTPServer != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
+		defer cancel()
+		if err := s.HTTPServer.Shutdown(ctx); err != nil {
+			slog.Error("failed to shutdown http server", slog.String("error", err.Error()))
+			return
+		}
 	}
 	slog.Info("shutdown complete")
 }

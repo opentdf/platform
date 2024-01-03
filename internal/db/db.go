@@ -37,7 +37,7 @@ type Config struct {
 	User          string `yaml:"user" default:"postgres"`
 	Password      string `yaml:"password" default:"changeme"`
 	RunMigrations bool   `yaml:"runMigrations" default:"true"`
-	// TODO: add support for sslmode
+	SslMode       string `yaml:"sslMode" default:"prefer"`
 }
 
 type Client struct {
@@ -48,20 +48,21 @@ type Client struct {
 func NewClient(config Config) (*Client, error) {
 	pool, err := pgxpool.New(context.Background(), config.buildURL())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
 	return &Client{
 		PgxIface: pool,
 		config:   config,
-	}, err
+	}, nil
 }
 
 func (c Config) buildURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s",
+	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		c.User,
 		c.Password,
 		net.JoinHostPort(c.Host, fmt.Sprint(c.Port)),
 		c.Database,
+		c.SslMode,
 	)
 }
 
@@ -107,20 +108,22 @@ func (c *Client) RunMigrations() (int, error) {
 	return applied, nil
 }
 
-func (c Client) CreateResource(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) error {
+func (c Client) CreateResource(ctx context.Context,
+	descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) error {
 	sql, args, err := createResourceSQL(descriptor, resource)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create resource sql: %w", err)
 	}
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	_, err = c.Exec(context.TODO(), sql, args...)
+	_, err = c.Exec(ctx, sql, args...)
 
 	return err
 }
 
-func createResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) (string, []interface{}, error) {
+func createResourceSQL(descriptor *commonv1.ResourceDescriptor,
+	resource protoreflect.ProtoMessage) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Insert("opentdf.resources")
@@ -138,19 +141,21 @@ func createResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protore
 		resource,
 	)
 
+	//nolint:wrapcheck // Wrapped error in CreateResource
 	return builder.ToSql()
 }
 
-func (c Client) ListResources(policyType string, selectors *commonv1.ResourceSelector) (pgx.Rows, error) {
+func (c Client) ListResources(ctx context.Context,
+	policyType string, selectors *commonv1.ResourceSelector) (pgx.Rows, error) {
 	sql, args, err := listResourceSQL(policyType, selectors)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create list resource sql: %w", err)
 	}
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	// Rows error check should not flag this https://github.com/jingyugao/rowserrcheck/issues/32
-	return c.Query(context.TODO(), sql, args...)
+	//nolint:rowserrcheck // Rows error check should not flag this https://github.com/jingyugao/rowserrcheck/issues/32
+	return c.Query(ctx, sql, args...)
 }
 
 func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (string, []interface{}, error) {
@@ -172,7 +177,7 @@ func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (s
 		case *commonv1.ResourceSelector_LabelSelector_:
 			bLabels, err := json.Marshal(selector.LabelSelector.Labels)
 			if err != nil {
-				return "", nil, err
+				return "", nil, fmt.Errorf("failed to marshal labels: %w", err)
 			}
 			builder = builder.Where(sq.Expr("labels @> ?::jsonb", bLabels))
 		}
@@ -182,18 +187,19 @@ func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (s
 		}
 	}
 
+	//nolint:wrapcheck // Wrapped error in ListResources
 	return builder.ToSql()
 }
 
-func (c Client) GetResource(id int32, policyType string) pgx.Row {
+func (c Client) GetResource(ctx context.Context, id int32, policyType string) (pgx.Row, error) {
 	sql, args, err := getResourceSQL(id, policyType)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to create get resource sql: %w", err)
 	}
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	return c.QueryRow(context.TODO(), sql, args...)
+	return c.QueryRow(ctx, sql, args...), nil
 }
 
 func getResourceSQL(id int32, policyType string) (string, []interface{}, error) {
@@ -203,23 +209,26 @@ func getResourceSQL(id int32, policyType string) (string, []interface{}, error) 
 
 	builder = builder.Where(sq.Eq{"id": id, "policytype": policyType})
 
+	//nolint:wrapcheck // Wrapped error in GetResource
 	return builder.ToSql()
 }
 
-func (c Client) UpdateResource(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage, policyType string) error {
+func (c Client) UpdateResource(ctx context.Context, descriptor *commonv1.ResourceDescriptor,
+	resource protoreflect.ProtoMessage, policyType string) error {
 	sql, args, err := updateResourceSQL(descriptor, resource, policyType)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create update resource sql: %w", err)
 	}
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	_, err = c.Exec(context.TODO(), sql, args...)
+	_, err = c.Exec(ctx, sql, args...)
 
 	return err
 }
 
-func updateResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage, policyType string) (string, []interface{}, error) {
+func updateResourceSQL(descriptor *commonv1.ResourceDescriptor,
+	resource protoreflect.ProtoMessage, policyType string) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Update("opentdf.resources")
@@ -235,18 +244,19 @@ func updateResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protore
 
 	builder = builder.Where(sq.Eq{"id": descriptor.Id})
 
+	//nolint:wrapcheck // Wrapped error in UpdateResource
 	return builder.ToSql()
 }
 
-func (c Client) DeleteResource(id int32, policyType string) error {
+func (c Client) DeleteResource(ctx context.Context, id int32, policyType string) error {
 	sql, args, err := deleteResourceSQL(id, policyType)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create delete resource sql: %w", err)
 	}
 
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 
-	_, err = c.Exec(context.TODO(), sql, args...)
+	_, err = c.Exec(ctx, sql, args...)
 
 	return err
 }
@@ -258,5 +268,6 @@ func deleteResourceSQL(id int32, policyType string) (string, []interface{}, erro
 
 	builder = builder.Where(sq.Eq{"id": id, "policytype": policyType})
 
+	//nolint:wrapcheck // Wrapped error in DeleteResource
 	return builder.ToSql()
 }

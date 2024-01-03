@@ -58,7 +58,8 @@ type OpenTDFServer struct {
 }
 
 /*
-Still need to flush this concept out more for internal communication. Would like to leverage grpc as mechanism for internal communication. Hopefully making it easier to define service boundaries
+Still need to flush this out for internal communication. Would like to leverage grpc
+as mechanism for internal communication. Hopefully making it easier to define service boundaries.
 https://github.com/heroku/x/blob/master/grpc/grpcserver/inprocess.go
 https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.go
 */

@@ -18,7 +18,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-
 	ctx := context.Background()
 	conf := &config.Config{}
 

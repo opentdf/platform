@@ -18,7 +18,13 @@ V_GOLANGCILINT=golangci-lint run
 
 .PHONY: all lint buf-lint buf-generate golangci-lint test clean build docker-build
 
-all: lint test build
+all: pre-build lint test build
+
+pre-build:
+	@echo "Checking for required tools..."
+	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
+	@which golangci-lint > /dev/null || (echo "golangci-lint not found, please install it from https://golangci-lint.run/usage/install/" && exit 1)
+	@golangci-lint --version | grep "version 1.55" > /dev/null || (echo "golangci-lint version must be v1.55" && exit 1)
 
 lint: buf-lint golangci-lint
 

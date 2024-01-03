@@ -9,7 +9,6 @@ import (
 
 type Logger struct {
 	*slog.Logger
-	config Config
 }
 
 type Config struct {

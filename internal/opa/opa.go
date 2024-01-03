@@ -3,6 +3,7 @@ package opa
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/open-policy-agent/opa/hooks"
@@ -44,7 +45,7 @@ func NewEngine(config Config) (*Engine, error) {
 	} else {
 		bConfig, err = os.ReadFile(config.Path)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
 
@@ -60,7 +61,7 @@ func NewEngine(config Config) (*Engine, error) {
 		Hooks:         hooks.Hooks{},
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create new sdk: %w", err)
 	}
 
 	return &Engine{

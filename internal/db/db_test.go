@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	descriptor = &commonv1.ResourceDescriptor{
+	//nolint:gochecknoglobals // Test data and should be reintialized for each test
+	resourceDescriptor = &commonv1.ResourceDescriptor{
 		Name:        "relto",
 		Namespace:   "opentdf",
 		Version:     1,
@@ -24,7 +25,8 @@ var (
 		Type:        commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM,
 	}
 
-	resource = &acrev1.Synonyms{
+	//nolint:gochecknoglobals // Test data and should be reintialized for each test
+	testResource = &acrev1.Synonyms{
 		Terms: []string{"relto", "rel-to", "rel_to"},
 	}
 )
@@ -59,7 +61,7 @@ func Test_RunMigrations_Returns_Error_When_PGX_Iface_Is_Nil(t *testing.T) {
 
 type BadPGX struct{}
 
-func (b BadPGX) Acquire(ctx context.Context) (*pgxpool.Conn, error) { return nil, nil }
+func (b BadPGX) Acquire(_ context.Context) (*pgxpool.Conn, error) { return &pgxpool.Conn{}, nil }
 func (b BadPGX) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, nil
 }
@@ -84,6 +86,10 @@ func Test_RunMigrations_Returns_Error_When_PGX_Iface_Is_Wrong_Type(t *testing.T)
 }
 
 func Test_CreateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
+	// Copy the test data so we don't modify it
+	descriptor := resourceDescriptor
+	resource := testResource
+
 	sql, args, err := createResourceSQL(descriptor, resource)
 
 	assert.Nil(t, err)
@@ -148,6 +154,10 @@ func Test_GetResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 }
 
 func Test_UpdateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
+	// Copy the test data so we don't modify it
+	descriptor := resourceDescriptor
+	resource := testResource
+
 	sql, args, err := updateResourceSQL(descriptor, resource, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String())
 
 	assert.Nil(t, err)
@@ -171,9 +181,10 @@ func Test_BuildURL_Returns_Expected_Connection_String(t *testing.T) {
 		Database: "opentdf",
 		User:     "postgres",
 		Password: "postgres",
+		SslMode:  "disable",
 	}
 
 	url := c.buildURL()
 
-	assert.Equal(t, "postgres://postgres:postgres@localhost:5432/opentdf", url)
+	assert.Equal(t, "postgres://postgres:postgres@localhost:5432/opentdf?sslmode=disable", url)
 }

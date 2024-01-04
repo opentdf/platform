@@ -23,7 +23,7 @@
 
 3. `air`
 
-This should bring up a grpc server on port 9001 and http server on port 8081 (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
+This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
 
 ### Test
 
@@ -31,14 +31,14 @@ This should bring up a grpc server on port 9001 and http server on port 8081 (se
 > GRPC and reflection is disabled by default. Please see the `opentdf.yaml` for more details (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43))
 
 ```bash
-  grpcurl -plaintext localhost:9001 list
+  grpcurl -plaintext localhost:9000 list
 
   acre.v1.ResourcEncodingService
   attributes.v1.AttributesService
   grpc.reflection.v1.ServerReflection
   grpc.reflection.v1alpha.ServerReflection
 
-  grpcurl -plaintext localhost:9001 list attributes.v1.AttributesService
+  grpcurl -plaintext localhost:9000 list attributes.v1.AttributesService
 
   attributes.v1.AttributesService.CreateAttribute
   attributes.v1.AttributesService.DeleteAttribute
@@ -51,7 +51,7 @@ This should bring up a grpc server on port 9001 and http server on port 8081 (se
 Create Attribute
 
 ```bash
-grpcurl -plaintext -d @ localhost:9001 attributes.v1.AttributesService/CreateAttribute <<EOM  
+grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM  
 {
     "definition": {
         "name": "relto",
@@ -89,6 +89,5 @@ EOM
 List Attributes
 
 ```bash
-grpcurl -plaintext localhost:9001 attributes.v1.AttributesService/ListAttributes
+grpcurl -plaintext localhost:9000 attributes.v1.AttributesService/ListAttributes
 ```
-

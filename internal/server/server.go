@@ -39,7 +39,7 @@ type GrpcConfig struct {
 }
 
 type HTTPConfig struct {
-	Enabled bool `yaml:"enabled" default:"false"`
+	Enabled bool `yaml:"enabled" default:"true"`
 	Port    int  `yaml:"port" default:"8080"`
 }
 

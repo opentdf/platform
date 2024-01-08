@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type Attributes struct {
@@ -41,7 +42,13 @@ func (s Attributes) CreateAttribute(ctx context.Context,
 	// Set the version of the resource to 1 on create
 	req.Definition.Descriptor_.Version = 1
 
-	err := s.dbClient.CreateResource(ctx, req.Definition.Descriptor_, req.Definition)
+	resource, err := protojson.Marshal(req.Definition)
+	if err != nil {
+		return &attributesv1.CreateAttributeResponse{},
+			status.Error(codes.Internal, services.ErrCreatingResource)
+	}
+
+	err = s.dbClient.CreateResource(ctx, req.Definition.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return &attributesv1.CreateAttributeResponse{},
@@ -56,7 +63,16 @@ func (s Attributes) CreateAttributeGroup(ctx context.Context,
 	req *attributesv1.CreateAttributeGroupRequest) (*attributesv1.CreateAttributeGroupResponse, error) {
 	slog.Debug("creating new attribute group definition")
 
-	err := s.dbClient.CreateResource(ctx, req.Group.Descriptor_, req.Group)
+	// Set the version of the resource to 1 on create
+	req.Group.Descriptor_.Version = 1
+
+	resource, err := protojson.Marshal(req.Group)
+	if err != nil {
+		return &attributesv1.CreateAttributeGroupResponse{},
+			status.Error(codes.Internal, services.ErrCreatingResource)
+	}
+
+	err = s.dbClient.CreateResource(ctx, req.Group.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return &attributesv1.CreateAttributeGroupResponse{},
@@ -83,10 +99,17 @@ func (s *Attributes) ListAttributes(ctx context.Context,
 
 	for rows.Next() {
 		var (
-			id         int32
-			definition = new(attributesv1.AttributeDefinition)
+			id          int32
+			definition  = new(attributesv1.AttributeDefinition)
+			bDefinition []byte
 		)
-		err = rows.Scan(&id, &definition)
+		err = rows.Scan(&id, &bDefinition)
+		if err != nil {
+			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+			return attributes, status.Error(codes.Internal, services.ErrListingResource)
+		}
+
+		err = protojson.Unmarshal(bDefinition, definition)
 		if err != nil {
 			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 			return attributes, status.Error(codes.Internal, services.ErrListingResource)
@@ -121,11 +144,18 @@ func (s *Attributes) ListAttributeGroups(ctx context.Context,
 	defer rows.Close()
 	for rows.Next() {
 		var (
-			id    int32
-			group = new(attributesv1.AttributeGroup)
+			id     int32
+			group  = new(attributesv1.AttributeGroup)
+			bGroup []byte
 		)
 		// var tmpDefinition []byte
-		err = rows.Scan(&id, &group)
+		err = rows.Scan(&id, &bGroup)
+		if err != nil {
+			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+			return groups, status.Error(codes.Internal, services.ErrListingResource)
+		}
+
+		err = protojson.Unmarshal(bGroup, group)
 		if err != nil {
 			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 			return groups, status.Error(codes.Internal, services.ErrListingResource)
@@ -150,7 +180,8 @@ func (s *Attributes) GetAttribute(ctx context.Context,
 		definition = &attributesv1.GetAttributeResponse{
 			Definition: new(attributesv1.AttributeDefinition),
 		}
-		id int32
+		id          int32
+		bDefinition []byte
 	)
 
 	row, err := s.dbClient.GetResource(
@@ -163,12 +194,18 @@ func (s *Attributes) GetAttribute(ctx context.Context,
 		return definition, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
-	err = row.Scan(&id, &definition.Definition)
+	err = row.Scan(&id, &bDefinition)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			slog.Info(services.ErrNotFound, slog.Int("id", int(req.Id)))
 			return definition, status.Error(codes.NotFound, services.ErrNotFound)
 		}
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return definition, status.Error(codes.Internal, services.ErrGettingResource)
+	}
+
+	err = protojson.Unmarshal(bDefinition, definition.Definition)
+	if err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return definition, status.Error(codes.Internal, services.ErrGettingResource)
 	}
@@ -185,7 +222,8 @@ func (s *Attributes) GetAttributeGroup(ctx context.Context,
 		group = &attributesv1.GetAttributeGroupResponse{
 			Group: new(attributesv1.AttributeGroup),
 		}
-		id int32
+		id     int32
+		bGroup []byte
 	)
 
 	row, err := s.dbClient.GetResource(
@@ -198,12 +236,18 @@ func (s *Attributes) GetAttributeGroup(ctx context.Context,
 		return group, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
-	err = row.Scan(&id, &group.Group)
+	err = row.Scan(&id, &bGroup)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			slog.Info(services.ErrNotFound, slog.Int("id", int(req.Id)))
 			return group, status.Error(codes.NotFound, services.ErrNotFound)
 		}
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return group, status.Error(codes.Internal, services.ErrGettingResource)
+	}
+
+	err = protojson.Unmarshal(bGroup, group.Group)
+	if err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return group, status.Error(codes.Internal, services.ErrGettingResource)
 	}
@@ -215,10 +259,16 @@ func (s *Attributes) GetAttributeGroup(ctx context.Context,
 
 func (s *Attributes) UpdateAttribute(ctx context.Context,
 	req *attributesv1.UpdateAttributeRequest) (*attributesv1.UpdateAttributeResponse, error) {
-	err := s.dbClient.UpdateResource(
+	resource, err := protojson.Marshal(req.Definition)
+	if err != nil {
+		return &attributesv1.UpdateAttributeResponse{},
+			status.Error(codes.Internal, services.ErrCreatingResource)
+	}
+
+	err = s.dbClient.UpdateResource(
 		ctx,
 		req.Definition.Descriptor_,
-		req.Definition,
+		resource,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
 	)
 	if err != nil {
@@ -231,9 +281,15 @@ func (s *Attributes) UpdateAttribute(ctx context.Context,
 
 func (s *Attributes) UpdateAttributeGroup(ctx context.Context,
 	req *attributesv1.UpdateAttributeGroupRequest) (*attributesv1.UpdateAttributeGroupResponse, error) {
-	err := s.dbClient.UpdateResource(
+	resource, err := protojson.Marshal(req.Group)
+	if err != nil {
+		return &attributesv1.UpdateAttributeGroupResponse{},
+			status.Error(codes.Internal, services.ErrCreatingResource)
+	}
+
+	err = s.dbClient.UpdateResource(
 		ctx,
-		req.Group.Descriptor_, req.Group,
+		req.Group.Descriptor_, resource,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
 	)
 	if err != nil {

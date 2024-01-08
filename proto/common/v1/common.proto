@@ -14,6 +14,7 @@ enum PolicyResourceType {
   POLICY_RESOURCE_TYPE_KEY_ACCESS = 6;
   POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION = 7;
   POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP = 8;
+  POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS = 9;
 }
 
 // Struct to uniquely identify a resource with optional additional metadata

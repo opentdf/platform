@@ -16,7 +16,6 @@ import (
 	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
 	"github.com/opentdf/opentdf-v2-poc/migrations"
 	"github.com/pressly/goose/v3"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // We can rename this but wanted to get mocks working.
@@ -109,7 +108,8 @@ func (c *Client) RunMigrations() (int, error) {
 }
 
 func (c Client) CreateResource(ctx context.Context,
-	descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) error {
+	descriptor *commonv1.ResourceDescriptor, resource []byte) error {
+
 	sql, args, err := createResourceSQL(descriptor, resource)
 	if err != nil {
 		return fmt.Errorf("failed to create resource sql: %w", err)
@@ -123,7 +123,7 @@ func (c Client) CreateResource(ctx context.Context,
 }
 
 func createResourceSQL(descriptor *commonv1.ResourceDescriptor,
-	resource protoreflect.ProtoMessage) (string, []interface{}, error) {
+	resource []byte) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Insert("opentdf.resources")
@@ -214,7 +214,7 @@ func getResourceSQL(id int32, policyType string) (string, []interface{}, error) 
 }
 
 func (c Client) UpdateResource(ctx context.Context, descriptor *commonv1.ResourceDescriptor,
-	resource protoreflect.ProtoMessage, policyType string) error {
+	resource []byte, policyType string) error {
 	sql, args, err := updateResourceSQL(descriptor, resource, policyType)
 	if err != nil {
 		return fmt.Errorf("failed to create update resource sql: %w", err)
@@ -228,7 +228,7 @@ func (c Client) UpdateResource(ctx context.Context, descriptor *commonv1.Resourc
 }
 
 func updateResourceSQL(descriptor *commonv1.ResourceDescriptor,
-	resource protoreflect.ProtoMessage, policyType string) (string, []interface{}, error) {
+	resource []byte, policyType string) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Update("opentdf.resources")

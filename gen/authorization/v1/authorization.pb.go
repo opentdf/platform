@@ -10,6 +10,7 @@ import (
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	anypb "google.golang.org/protobuf/types/known/anypb"
 	reflect "reflect"
 	sync "sync"
 )
@@ -20,64 +21,6 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
-
-type Entity_Type int32
-
-const (
-	Entity_OTHER         Entity_Type = 0
-	Entity_EMAIL         Entity_Type = 1
-	Entity_USERNAME      Entity_Type = 2
-	Entity_REMOTE_CLAIMS Entity_Type = 3
-	Entity_CLAIMS        Entity_Type = 4
-	Entity_JWT           Entity_Type = 5
-)
-
-// Enum value maps for Entity_Type.
-var (
-	Entity_Type_name = map[int32]string{
-		0: "OTHER",
-		1: "EMAIL",
-		2: "USERNAME",
-		3: "REMOTE_CLAIMS",
-		4: "CLAIMS",
-		5: "JWT",
-	}
-	Entity_Type_value = map[string]int32{
-		"OTHER":         0,
-		"EMAIL":         1,
-		"USERNAME":      2,
-		"REMOTE_CLAIMS": 3,
-		"CLAIMS":        4,
-		"JWT":           5,
-	}
-)
-
-func (x Entity_Type) Enum() *Entity_Type {
-	p := new(Entity_Type)
-	*p = x
-	return p
-}
-
-func (x Entity_Type) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (Entity_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_authorization_v1_authorization_proto_enumTypes[0].Descriptor()
-}
-
-func (Entity_Type) Type() protoreflect.EnumType {
-	return &file_authorization_v1_authorization_proto_enumTypes[0]
-}
-
-func (x Entity_Type) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use Entity_Type.Descriptor instead.
-func (Entity_Type) EnumDescriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{0, 0}
-}
 
 type Action_Type int32
 
@@ -178,11 +121,11 @@ func (x Action_Type) String() string {
 }
 
 func (Action_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_authorization_v1_authorization_proto_enumTypes[1].Descriptor()
+	return file_authorization_v1_authorization_proto_enumTypes[0].Descriptor()
 }
 
 func (Action_Type) Type() protoreflect.EnumType {
-	return &file_authorization_v1_authorization_proto_enumTypes[1]
+	return &file_authorization_v1_authorization_proto_enumTypes[0]
 }
 
 func (x Action_Type) Number() protoreflect.EnumNumber {
@@ -191,53 +134,53 @@ func (x Action_Type) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Action_Type.Descriptor instead.
 func (Action_Type) EnumDescriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{5, 0}
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{6, 0}
 }
 
-type Decision_Type int32
+type DecisionResponse_Decision int32
 
 const (
-	Decision_DENY   Decision_Type = 0
-	Decision_PERMIT Decision_Type = 1
+	DecisionResponse_DENY   DecisionResponse_Decision = 0
+	DecisionResponse_PERMIT DecisionResponse_Decision = 1
 )
 
-// Enum value maps for Decision_Type.
+// Enum value maps for DecisionResponse_Decision.
 var (
-	Decision_Type_name = map[int32]string{
+	DecisionResponse_Decision_name = map[int32]string{
 		0: "DENY",
 		1: "PERMIT",
 	}
-	Decision_Type_value = map[string]int32{
+	DecisionResponse_Decision_value = map[string]int32{
 		"DENY":   0,
 		"PERMIT": 1,
 	}
 )
 
-func (x Decision_Type) Enum() *Decision_Type {
-	p := new(Decision_Type)
+func (x DecisionResponse_Decision) Enum() *DecisionResponse_Decision {
+	p := new(DecisionResponse_Decision)
 	*p = x
 	return p
 }
 
-func (x Decision_Type) String() string {
+func (x DecisionResponse_Decision) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (Decision_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_authorization_v1_authorization_proto_enumTypes[2].Descriptor()
+func (DecisionResponse_Decision) Descriptor() protoreflect.EnumDescriptor {
+	return file_authorization_v1_authorization_proto_enumTypes[1].Descriptor()
 }
 
-func (Decision_Type) Type() protoreflect.EnumType {
-	return &file_authorization_v1_authorization_proto_enumTypes[2]
+func (DecisionResponse_Decision) Type() protoreflect.EnumType {
+	return &file_authorization_v1_authorization_proto_enumTypes[1]
 }
 
-func (x Decision_Type) Number() protoreflect.EnumNumber {
+func (x DecisionResponse_Decision) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use Decision_Type.Descriptor instead.
-func (Decision_Type) EnumDescriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{8, 0}
+// Deprecated: Use DecisionResponse_Decision.Descriptor instead.
+func (DecisionResponse_Decision) EnumDescriptor() ([]byte, []int) {
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{9, 0}
 }
 
 type Entity struct {
@@ -245,9 +188,16 @@ type Entity struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id        string            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type      Entity_Type       `protobuf:"varint,2,opt,name=type,proto3,enum=authorization.Entity_Type" json:"type,omitempty"`
-	Extension map[string]string `protobuf:"bytes,3,rep,name=extension,proto3" json:"extension,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Types that are assignable to EntityType:
+	//
+	//	*Entity_EmailAddress
+	//	*Entity_UserName
+	//	*Entity_RemoteClaimsUrl
+	//	*Entity_Jwt
+	//	*Entity_Claims
+	//	*Entity_Custom
+	EntityType isEntity_EntityType `protobuf_oneof:"entity_type"`
 }
 
 func (x *Entity) Reset() {
@@ -289,31 +239,105 @@ func (x *Entity) GetId() string {
 	return ""
 }
 
-func (x *Entity) GetType() Entity_Type {
-	if x != nil {
-		return x.Type
-	}
-	return Entity_OTHER
-}
-
-func (x *Entity) GetExtension() map[string]string {
-	if x != nil {
-		return x.Extension
+func (m *Entity) GetEntityType() isEntity_EntityType {
+	if m != nil {
+		return m.EntityType
 	}
 	return nil
 }
 
-// EntityChain
-type Entities struct {
+func (x *Entity) GetEmailAddress() string {
+	if x, ok := x.GetEntityType().(*Entity_EmailAddress); ok {
+		return x.EmailAddress
+	}
+	return ""
+}
+
+func (x *Entity) GetUserName() string {
+	if x, ok := x.GetEntityType().(*Entity_UserName); ok {
+		return x.UserName
+	}
+	return ""
+}
+
+func (x *Entity) GetRemoteClaimsUrl() string {
+	if x, ok := x.GetEntityType().(*Entity_RemoteClaimsUrl); ok {
+		return x.RemoteClaimsUrl
+	}
+	return ""
+}
+
+func (x *Entity) GetJwt() string {
+	if x, ok := x.GetEntityType().(*Entity_Jwt); ok {
+		return x.Jwt
+	}
+	return ""
+}
+
+func (x *Entity) GetClaims() *anypb.Any {
+	if x, ok := x.GetEntityType().(*Entity_Claims); ok {
+		return x.Claims
+	}
+	return nil
+}
+
+func (x *Entity) GetCustom() *CustomExtension {
+	if x, ok := x.GetEntityType().(*Entity_Custom); ok {
+		return x.Custom
+	}
+	return nil
+}
+
+type isEntity_EntityType interface {
+	isEntity_EntityType()
+}
+
+type Entity_EmailAddress struct {
+	EmailAddress string `protobuf:"bytes,2,opt,name=email_address,json=emailAddress,proto3,oneof"`
+}
+
+type Entity_UserName struct {
+	UserName string `protobuf:"bytes,3,opt,name=user_name,json=userName,proto3,oneof"`
+}
+
+type Entity_RemoteClaimsUrl struct {
+	RemoteClaimsUrl string `protobuf:"bytes,4,opt,name=remote_claims_url,json=remoteClaimsUrl,proto3,oneof"`
+}
+
+type Entity_Jwt struct {
+	Jwt string `protobuf:"bytes,5,opt,name=jwt,proto3,oneof"`
+}
+
+type Entity_Claims struct {
+	Claims *anypb.Any `protobuf:"bytes,6,opt,name=claims,proto3,oneof"`
+}
+
+type Entity_Custom struct {
+	Custom *CustomExtension `protobuf:"bytes,7,opt,name=custom,proto3,oneof"`
+}
+
+func (*Entity_EmailAddress) isEntity_EntityType() {}
+
+func (*Entity_UserName) isEntity_EntityType() {}
+
+func (*Entity_RemoteClaimsUrl) isEntity_EntityType() {}
+
+func (*Entity_Jwt) isEntity_EntityType() {}
+
+func (*Entity_Claims) isEntity_EntityType() {}
+
+func (*Entity_Custom) isEntity_EntityType() {}
+
+type CustomExtension struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Entity []*Entity `protobuf:"bytes,1,rep,name=entity,proto3" json:"entity,omitempty"`
+	Extension *anypb.Any `protobuf:"bytes,1,opt,name=extension,proto3" json:"extension,omitempty"`
 }
 
-func (x *Entities) Reset() {
-	*x = Entities{}
+func (x *CustomExtension) Reset() {
+	*x = CustomExtension{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_authorization_v1_authorization_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -321,13 +345,13 @@ func (x *Entities) Reset() {
 	}
 }
 
-func (x *Entities) String() string {
+func (x *CustomExtension) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Entities) ProtoMessage() {}
+func (*CustomExtension) ProtoMessage() {}
 
-func (x *Entities) ProtoReflect() protoreflect.Message {
+func (x *CustomExtension) ProtoReflect() protoreflect.Message {
 	mi := &file_authorization_v1_authorization_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -339,12 +363,67 @@ func (x *Entities) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Entities.ProtoReflect.Descriptor instead.
-func (*Entities) Descriptor() ([]byte, []int) {
+// Deprecated: Use CustomExtension.ProtoReflect.Descriptor instead.
+func (*CustomExtension) Descriptor() ([]byte, []int) {
 	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Entities) GetEntity() []*Entity {
+func (x *CustomExtension) GetExtension() *anypb.Any {
+	if x != nil {
+		return x.Extension
+	}
+	return nil
+}
+
+type EntityChain struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id     string    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Entity []*Entity `protobuf:"bytes,2,rep,name=entity,proto3" json:"entity,omitempty"`
+}
+
+func (x *EntityChain) Reset() {
+	*x = EntityChain{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_authorization_v1_authorization_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EntityChain) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EntityChain) ProtoMessage() {}
+
+func (x *EntityChain) ProtoReflect() protoreflect.Message {
+	mi := &file_authorization_v1_authorization_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EntityChain.ProtoReflect.Descriptor instead.
+func (*EntityChain) Descriptor() ([]byte, []int) {
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *EntityChain) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EntityChain) GetEntity() []*Entity {
 	if x != nil {
 		return x.Entity
 	}
@@ -362,7 +441,7 @@ type Attributes struct {
 func (x *Attributes) Reset() {
 	*x = Attributes{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_authorization_v1_authorization_proto_msgTypes[2]
+		mi := &file_authorization_v1_authorization_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -375,7 +454,7 @@ func (x *Attributes) String() string {
 func (*Attributes) ProtoMessage() {}
 
 func (x *Attributes) ProtoReflect() protoreflect.Message {
-	mi := &file_authorization_v1_authorization_proto_msgTypes[2]
+	mi := &file_authorization_v1_authorization_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -388,7 +467,7 @@ func (x *Attributes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Attributes.ProtoReflect.Descriptor instead.
 func (*Attributes) Descriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{2}
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Attributes) GetAttribute() []string {
@@ -410,7 +489,7 @@ type Resource struct {
 func (x *Resource) Reset() {
 	*x = Resource{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_authorization_v1_authorization_proto_msgTypes[3]
+		mi := &file_authorization_v1_authorization_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -423,7 +502,7 @@ func (x *Resource) String() string {
 func (*Resource) ProtoMessage() {}
 
 func (x *Resource) ProtoReflect() protoreflect.Message {
-	mi := &file_authorization_v1_authorization_proto_msgTypes[3]
+	mi := &file_authorization_v1_authorization_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -436,7 +515,7 @@ func (x *Resource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Resource.ProtoReflect.Descriptor instead.
 func (*Resource) Descriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{3}
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Resource) GetId() string {
@@ -464,7 +543,7 @@ type Resources struct {
 func (x *Resources) Reset() {
 	*x = Resources{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_authorization_v1_authorization_proto_msgTypes[4]
+		mi := &file_authorization_v1_authorization_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -477,7 +556,7 @@ func (x *Resources) String() string {
 func (*Resources) ProtoMessage() {}
 
 func (x *Resources) ProtoReflect() protoreflect.Message {
-	mi := &file_authorization_v1_authorization_proto_msgTypes[4]
+	mi := &file_authorization_v1_authorization_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -490,7 +569,7 @@ func (x *Resources) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Resources.ProtoReflect.Descriptor instead.
 func (*Resources) Descriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{4}
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Resources) GetResources() []*Resource {
@@ -512,7 +591,7 @@ type Action struct {
 func (x *Action) Reset() {
 	*x = Action{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_authorization_v1_authorization_proto_msgTypes[5]
+		mi := &file_authorization_v1_authorization_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -525,7 +604,7 @@ func (x *Action) String() string {
 func (*Action) ProtoMessage() {}
 
 func (x *Action) ProtoReflect() protoreflect.Message {
-	mi := &file_authorization_v1_authorization_proto_msgTypes[5]
+	mi := &file_authorization_v1_authorization_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -538,7 +617,7 @@ func (x *Action) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Action.ProtoReflect.Descriptor instead.
 func (*Action) Descriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{5}
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Action) GetType() Action_Type {
@@ -566,7 +645,7 @@ type Actions struct {
 func (x *Actions) Reset() {
 	*x = Actions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_authorization_v1_authorization_proto_msgTypes[6]
+		mi := &file_authorization_v1_authorization_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -579,7 +658,7 @@ func (x *Actions) String() string {
 func (*Actions) ProtoMessage() {}
 
 func (x *Actions) ProtoReflect() protoreflect.Message {
-	mi := &file_authorization_v1_authorization_proto_msgTypes[6]
+	mi := &file_authorization_v1_authorization_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -592,7 +671,7 @@ func (x *Actions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Actions.ProtoReflect.Descriptor instead.
 func (*Actions) Descriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{6}
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Actions) GetAction() []*Action {
@@ -602,82 +681,18 @@ func (x *Actions) GetAction() []*Action {
 	return nil
 }
 
-type IsAuthorizedRequest struct {
+type DecisionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Actions   *Actions   `protobuf:"bytes,1,opt,name=actions,proto3" json:"actions,omitempty"`
-	Entities  *Entity    `protobuf:"bytes,2,opt,name=entities,proto3" json:"entities,omitempty"`
-	Resources *Resources `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
+	Actions     *Actions     `protobuf:"bytes,1,opt,name=actions,proto3" json:"actions,omitempty"`
+	EntityChain *EntityChain `protobuf:"bytes,2,opt,name=entity_chain,json=entityChain,proto3" json:"entity_chain,omitempty"`
+	Resources   *Resources   `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
 }
 
-func (x *IsAuthorizedRequest) Reset() {
-	*x = IsAuthorizedRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_authorization_v1_authorization_proto_msgTypes[7]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *IsAuthorizedRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*IsAuthorizedRequest) ProtoMessage() {}
-
-func (x *IsAuthorizedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_authorization_v1_authorization_proto_msgTypes[7]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use IsAuthorizedRequest.ProtoReflect.Descriptor instead.
-func (*IsAuthorizedRequest) Descriptor() ([]byte, []int) {
-	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *IsAuthorizedRequest) GetActions() *Actions {
-	if x != nil {
-		return x.Actions
-	}
-	return nil
-}
-
-func (x *IsAuthorizedRequest) GetEntities() *Entity {
-	if x != nil {
-		return x.Entities
-	}
-	return nil
-}
-
-func (x *IsAuthorizedRequest) GetResources() *Resources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-type Decision struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	EntityId    string        `protobuf:"bytes,1,opt,name=entityId,proto3" json:"entityId,omitempty"`
-	ResourceId  string        `protobuf:"bytes,2,opt,name=resourceId,proto3" json:"resourceId,omitempty"`
-	Type        Decision_Type `protobuf:"varint,3,opt,name=type,proto3,enum=authorization.Decision_Type" json:"type,omitempty"`
-	Obligations []string      `protobuf:"bytes,4,rep,name=obligations,proto3" json:"obligations,omitempty"`
-}
-
-func (x *Decision) Reset() {
-	*x = Decision{}
+func (x *DecisionRequest) Reset() {
+	*x = DecisionRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_authorization_v1_authorization_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -685,13 +700,13 @@ func (x *Decision) Reset() {
 	}
 }
 
-func (x *Decision) String() string {
+func (x *DecisionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Decision) ProtoMessage() {}
+func (*DecisionRequest) ProtoMessage() {}
 
-func (x *Decision) ProtoReflect() protoreflect.Message {
+func (x *DecisionRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_authorization_v1_authorization_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -703,49 +718,45 @@ func (x *Decision) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Decision.ProtoReflect.Descriptor instead.
-func (*Decision) Descriptor() ([]byte, []int) {
+// Deprecated: Use DecisionRequest.ProtoReflect.Descriptor instead.
+func (*DecisionRequest) Descriptor() ([]byte, []int) {
 	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *Decision) GetEntityId() string {
+func (x *DecisionRequest) GetActions() *Actions {
 	if x != nil {
-		return x.EntityId
-	}
-	return ""
-}
-
-func (x *Decision) GetResourceId() string {
-	if x != nil {
-		return x.ResourceId
-	}
-	return ""
-}
-
-func (x *Decision) GetType() Decision_Type {
-	if x != nil {
-		return x.Type
-	}
-	return Decision_DENY
-}
-
-func (x *Decision) GetObligations() []string {
-	if x != nil {
-		return x.Obligations
+		return x.Actions
 	}
 	return nil
 }
 
-type IsAuthorizedResponse struct {
+func (x *DecisionRequest) GetEntityChain() *EntityChain {
+	if x != nil {
+		return x.EntityChain
+	}
+	return nil
+}
+
+func (x *DecisionRequest) GetResources() *Resources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+type DecisionResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Decisions []*Decision `protobuf:"bytes,1,rep,name=decisions,proto3" json:"decisions,omitempty"`
+	EntityChainId string                    `protobuf:"bytes,1,opt,name=entity_chain_id,json=entityChainId,proto3" json:"entity_chain_id,omitempty"`
+	ResourceId    string                    `protobuf:"bytes,2,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	Decision      DecisionResponse_Decision `protobuf:"varint,3,opt,name=decision,proto3,enum=authorization.DecisionResponse_Decision" json:"decision,omitempty"`
+	Obligations   []string                  `protobuf:"bytes,4,rep,name=obligations,proto3" json:"obligations,omitempty"`
 }
 
-func (x *IsAuthorizedResponse) Reset() {
-	*x = IsAuthorizedResponse{}
+func (x *DecisionResponse) Reset() {
+	*x = DecisionResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_authorization_v1_authorization_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -753,13 +764,13 @@ func (x *IsAuthorizedResponse) Reset() {
 	}
 }
 
-func (x *IsAuthorizedResponse) String() string {
+func (x *DecisionResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*IsAuthorizedResponse) ProtoMessage() {}
+func (*DecisionResponse) ProtoMessage() {}
 
-func (x *IsAuthorizedResponse) ProtoReflect() protoreflect.Message {
+func (x *DecisionResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_authorization_v1_authorization_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -771,14 +782,82 @@ func (x *IsAuthorizedResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use IsAuthorizedResponse.ProtoReflect.Descriptor instead.
-func (*IsAuthorizedResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use DecisionResponse.ProtoReflect.Descriptor instead.
+func (*DecisionResponse) Descriptor() ([]byte, []int) {
 	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *IsAuthorizedResponse) GetDecisions() []*Decision {
+func (x *DecisionResponse) GetEntityChainId() string {
 	if x != nil {
-		return x.Decisions
+		return x.EntityChainId
+	}
+	return ""
+}
+
+func (x *DecisionResponse) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *DecisionResponse) GetDecision() DecisionResponse_Decision {
+	if x != nil {
+		return x.Decision
+	}
+	return DecisionResponse_DENY
+}
+
+func (x *DecisionResponse) GetObligations() []string {
+	if x != nil {
+		return x.Obligations
+	}
+	return nil
+}
+
+type AuthorizationDecisionResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	DecisionResponses []*DecisionResponse `protobuf:"bytes,1,rep,name=decision_responses,json=decisionResponses,proto3" json:"decision_responses,omitempty"`
+}
+
+func (x *AuthorizationDecisionResponse) Reset() {
+	*x = AuthorizationDecisionResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_authorization_v1_authorization_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AuthorizationDecisionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizationDecisionResponse) ProtoMessage() {}
+
+func (x *AuthorizationDecisionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_authorization_v1_authorization_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizationDecisionResponse.ProtoReflect.Descriptor instead.
+func (*AuthorizationDecisionResponse) Descriptor() ([]byte, []int) {
+	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AuthorizationDecisionResponse) GetDecisionResponses() []*DecisionResponse {
+	if x != nil {
+		return x.DecisionResponses
 	}
 	return nil
 }
@@ -791,26 +870,33 @@ var file_authorization_v1_authorization_proto_rawDesc = []byte{
 	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0d, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a,
 	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x1a, 0x1c, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x61, 0x70,
 	0x69, 0x2f, 0x61, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x22, 0x9e, 0x02, 0x0a, 0x06, 0x45, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x12, 0x0e,
-	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x2e,
-	0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x1a, 0x2e, 0x61,
-	0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x45, 0x6e, 0x74,
-	0x69, 0x74, 0x79, 0x2e, 0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x42,
-	0x0a, 0x09, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x24, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x2e, 0x45, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69,
-	0x6f, 0x6e, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x09, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69,
-	0x6f, 0x6e, 0x1a, 0x3c, 0x0a, 0x0e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x45,
-	0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01,
-	0x22, 0x52, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x12, 0x09, 0x0a, 0x05, 0x4f, 0x54, 0x48, 0x45,
-	0x52, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x45, 0x4d, 0x41, 0x49, 0x4c, 0x10, 0x01, 0x12, 0x0c,
-	0x0a, 0x08, 0x55, 0x53, 0x45, 0x52, 0x4e, 0x41, 0x4d, 0x45, 0x10, 0x02, 0x12, 0x11, 0x0a, 0x0d,
-	0x52, 0x45, 0x4d, 0x4f, 0x54, 0x45, 0x5f, 0x43, 0x4c, 0x41, 0x49, 0x4d, 0x53, 0x10, 0x03, 0x12,
-	0x0a, 0x0a, 0x06, 0x43, 0x4c, 0x41, 0x49, 0x4d, 0x53, 0x10, 0x04, 0x12, 0x07, 0x0a, 0x03, 0x4a,
-	0x57, 0x54, 0x10, 0x05, 0x22, 0x39, 0x0a, 0x08, 0x45, 0x6e, 0x74, 0x69, 0x74, 0x69, 0x65, 0x73,
-	0x12, 0x2d, 0x0a, 0x06, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
+	0x6f, 0x74, 0x6f, 0x1a, 0x19, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x62, 0x75, 0x66, 0x2f, 0x61, 0x6e, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x99,
+	0x02, 0x0a, 0x06, 0x45, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x25, 0x0a, 0x0d, 0x65, 0x6d, 0x61,
+	0x69, 0x6c, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x48, 0x00, 0x52, 0x0c, 0x65, 0x6d, 0x61, 0x69, 0x6c, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
+	0x12, 0x1d, 0x0a, 0x09, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x08, 0x75, 0x73, 0x65, 0x72, 0x4e, 0x61, 0x6d, 0x65, 0x12,
+	0x2c, 0x0a, 0x11, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x5f, 0x63, 0x6c, 0x61, 0x69, 0x6d, 0x73,
+	0x5f, 0x75, 0x72, 0x6c, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x0f, 0x72, 0x65,
+	0x6d, 0x6f, 0x74, 0x65, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x73, 0x55, 0x72, 0x6c, 0x12, 0x12, 0x0a,
+	0x03, 0x6a, 0x77, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x6a, 0x77,
+	0x74, 0x12, 0x2e, 0x0a, 0x06, 0x63, 0x6c, 0x61, 0x69, 0x6d, 0x73, 0x18, 0x06, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x48, 0x00, 0x52, 0x06, 0x63, 0x6c, 0x61, 0x69, 0x6d,
+	0x73, 0x12, 0x38, 0x0a, 0x06, 0x63, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x18, 0x07, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x1e, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x2e, 0x43, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
+	0x6e, 0x48, 0x00, 0x52, 0x06, 0x63, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x42, 0x0d, 0x0a, 0x0b, 0x65,
+	0x6e, 0x74, 0x69, 0x74, 0x79, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x22, 0x45, 0x0a, 0x0f, 0x43, 0x75,
+	0x73, 0x74, 0x6f, 0x6d, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x32, 0x0a,
+	0x09, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x09, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
+	0x6e, 0x22, 0x4c, 0x0a, 0x0b, 0x45, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x43, 0x68, 0x61, 0x69, 0x6e,
+	0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64,
+	0x12, 0x2d, 0x0a, 0x06, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b,
 	0x32, 0x15, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e,
 	0x2e, 0x45, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x52, 0x06, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x22,
 	0x2a, 0x0a, 0x0a, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x12, 0x1c, 0x0a,
@@ -859,56 +945,62 @@ var file_authorization_v1_authorization_proto_rawDesc = []byte{
 	0x49, 0x54, 0x10, 0x19, 0x22, 0x38, 0x0a, 0x07, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12,
 	0x2d, 0x0a, 0x06, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32,
 	0x15, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e,
-	0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x06, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0xb2,
-	0x01, 0x0a, 0x13, 0x49, 0x73, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x30, 0x0a, 0x07, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e,
-	0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72,
-	0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52,
-	0x07, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x31, 0x0a, 0x08, 0x65, 0x6e, 0x74, 0x69,
-	0x74, 0x69, 0x65, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x61, 0x75, 0x74,
+	0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x06, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0xba,
+	0x01, 0x0a, 0x0f, 0x44, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x30, 0x0a, 0x07, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x07, 0x61, 0x63, 0x74,
+	0x69, 0x6f, 0x6e, 0x73, 0x12, 0x3d, 0x0a, 0x0c, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x5f, 0x63,
+	0x68, 0x61, 0x69, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x61, 0x75, 0x74,
 	0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x45, 0x6e, 0x74, 0x69, 0x74,
-	0x79, 0x52, 0x08, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x69, 0x65, 0x73, 0x12, 0x36, 0x0a, 0x09, 0x72,
-	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x18,
-	0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x52,
-	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x52, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72,
-	0x63, 0x65, 0x73, 0x22, 0xb8, 0x01, 0x0a, 0x08, 0x44, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e,
-	0x12, 0x1a, 0x0a, 0x08, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x08, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x49, 0x64, 0x12, 0x1e, 0x0a, 0x0a,
-	0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x0a, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x12, 0x30, 0x0a, 0x04,
-	0x74, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x1c, 0x2e, 0x61, 0x75, 0x74,
-	0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x44, 0x65, 0x63, 0x69, 0x73,
-	0x69, 0x6f, 0x6e, 0x2e, 0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x20,
-	0x0a, 0x0b, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x04, 0x20,
-	0x03, 0x28, 0x09, 0x52, 0x0b, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73,
-	0x22, 0x1c, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x44, 0x45, 0x4e, 0x59,
-	0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x50, 0x45, 0x52, 0x4d, 0x49, 0x54, 0x10, 0x01, 0x22, 0x4d,
-	0x0a, 0x14, 0x49, 0x73, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x35, 0x0a, 0x09, 0x64, 0x65, 0x63, 0x69, 0x73, 0x69,
-	0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x61, 0x75, 0x74, 0x68,
-	0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x44, 0x65, 0x63, 0x69, 0x73, 0x69,
-	0x6f, 0x6e, 0x52, 0x09, 0x64, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x32, 0x87, 0x01,
-	0x0a, 0x14, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53,
-	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x6f, 0x0a, 0x0c, 0x49, 0x73, 0x41, 0x75, 0x74, 0x68,
-	0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x12, 0x22, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69,
-	0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x49, 0x73, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69,
-	0x7a, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x61, 0x75, 0x74,
-	0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x49, 0x73, 0x41, 0x75, 0x74,
-	0x68, 0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x16, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x10, 0x22, 0x0e, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72,
-	0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0xb3, 0x01, 0x0a, 0x11, 0x63, 0x6f, 0x6d, 0x2e,
-	0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x12, 0x41,
-	0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x50, 0x72, 0x6f, 0x74,
-	0x6f, 0x50, 0x01, 0x5a, 0x36, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x6f, 0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2d,
-	0x76, 0x32, 0x2d, 0x70, 0x6f, 0x63, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x6f,
-	0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x76, 0x31, 0xa2, 0x02, 0x03, 0x41, 0x58,
-	0x58, 0xaa, 0x02, 0x0d, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0xca, 0x02, 0x0d, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0xe2, 0x02, 0x19, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x0d,
-	0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x79, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x52, 0x0b, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x43, 0x68,
+	0x61, 0x69, 0x6e, 0x12, 0x36, 0x0a, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69,
+	0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73,
+	0x52, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x22, 0xe5, 0x01, 0x0a, 0x10,
+	0x44, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x12, 0x26, 0x0a, 0x0f, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e,
+	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x65, 0x6e, 0x74, 0x69, 0x74,
+	0x79, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x72, 0x65, 0x73, 0x6f,
+	0x75, 0x72, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x72,
+	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x12, 0x44, 0x0a, 0x08, 0x64, 0x65, 0x63,
+	0x69, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x28, 0x2e, 0x61, 0x75,
+	0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x44, 0x65, 0x63, 0x69,
+	0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x44, 0x65, 0x63,
+	0x69, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x08, 0x64, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x12,
+	0x20, 0x0a, 0x0b, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x04,
+	0x20, 0x03, 0x28, 0x09, 0x52, 0x0b, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x22, 0x20, 0x0a, 0x08, 0x44, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x08, 0x0a,
+	0x04, 0x44, 0x45, 0x4e, 0x59, 0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x50, 0x45, 0x52, 0x4d, 0x49,
+	0x54, 0x10, 0x01, 0x22, 0x6f, 0x0a, 0x1d, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61,
+	0x74, 0x69, 0x6f, 0x6e, 0x44, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x4e, 0x0a, 0x12, 0x64, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e,
+	0x5f, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x1f, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x2e, 0x44, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x52, 0x11, 0x64, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x73, 0x32, 0x8f, 0x01, 0x0a, 0x14, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69,
+	0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x77, 0x0a,
+	0x0c, 0x49, 0x73, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x12, 0x1e, 0x2e,
+	0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x44, 0x65,
+	0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2c, 0x2e,
+	0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x41, 0x75,
+	0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x44, 0x65, 0x63, 0x69, 0x73,
+	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x19, 0x82, 0xd3, 0xe4,
+	0x93, 0x02, 0x13, 0x22, 0x11, 0x2f, 0x76, 0x31, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69,
+	0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0xb3, 0x01, 0x0a, 0x11, 0x63, 0x6f, 0x6d, 0x2e, 0x61,
+	0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x12, 0x41, 0x75,
+	0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x50, 0x72, 0x6f, 0x74, 0x6f,
+	0x50, 0x01, 0x5a, 0x36, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f,
+	0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2d, 0x76,
+	0x32, 0x2d, 0x70, 0x6f, 0x63, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72,
+	0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x76, 0x31, 0xa2, 0x02, 0x03, 0x41, 0x58, 0x58,
+	0xaa, 0x02, 0x0d, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0xca, 0x02, 0x0d, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0xe2, 0x02, 0x19, 0x41, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x0d, 0x41,
+	0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -923,46 +1015,47 @@ func file_authorization_v1_authorization_proto_rawDescGZIP() []byte {
 	return file_authorization_v1_authorization_proto_rawDescData
 }
 
-var file_authorization_v1_authorization_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_authorization_v1_authorization_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_authorization_v1_authorization_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_authorization_v1_authorization_proto_goTypes = []interface{}{
-	(Entity_Type)(0),             // 0: authorization.Entity.Type
-	(Action_Type)(0),             // 1: authorization.Action.Type
-	(Decision_Type)(0),           // 2: authorization.Decision.Type
-	(*Entity)(nil),               // 3: authorization.Entity
-	(*Entities)(nil),             // 4: authorization.Entities
-	(*Attributes)(nil),           // 5: authorization.Attributes
-	(*Resource)(nil),             // 6: authorization.Resource
-	(*Resources)(nil),            // 7: authorization.Resources
-	(*Action)(nil),               // 8: authorization.Action
-	(*Actions)(nil),              // 9: authorization.Actions
-	(*IsAuthorizedRequest)(nil),  // 10: authorization.IsAuthorizedRequest
-	(*Decision)(nil),             // 11: authorization.Decision
-	(*IsAuthorizedResponse)(nil), // 12: authorization.IsAuthorizedResponse
-	nil,                          // 13: authorization.Entity.ExtensionEntry
-	nil,                          // 14: authorization.Action.ExtensionEntry
+	(Action_Type)(0),                      // 0: authorization.Action.Type
+	(DecisionResponse_Decision)(0),        // 1: authorization.DecisionResponse.Decision
+	(*Entity)(nil),                        // 2: authorization.Entity
+	(*CustomExtension)(nil),               // 3: authorization.CustomExtension
+	(*EntityChain)(nil),                   // 4: authorization.EntityChain
+	(*Attributes)(nil),                    // 5: authorization.Attributes
+	(*Resource)(nil),                      // 6: authorization.Resource
+	(*Resources)(nil),                     // 7: authorization.Resources
+	(*Action)(nil),                        // 8: authorization.Action
+	(*Actions)(nil),                       // 9: authorization.Actions
+	(*DecisionRequest)(nil),               // 10: authorization.DecisionRequest
+	(*DecisionResponse)(nil),              // 11: authorization.DecisionResponse
+	(*AuthorizationDecisionResponse)(nil), // 12: authorization.AuthorizationDecisionResponse
+	nil,                                   // 13: authorization.Action.ExtensionEntry
+	(*anypb.Any)(nil),                     // 14: google.protobuf.Any
 }
 var file_authorization_v1_authorization_proto_depIdxs = []int32{
-	0,  // 0: authorization.Entity.type:type_name -> authorization.Entity.Type
-	13, // 1: authorization.Entity.extension:type_name -> authorization.Entity.ExtensionEntry
-	3,  // 2: authorization.Entities.entity:type_name -> authorization.Entity
-	5,  // 3: authorization.Resource.attributes:type_name -> authorization.Attributes
-	6,  // 4: authorization.Resources.resources:type_name -> authorization.Resource
-	1,  // 5: authorization.Action.type:type_name -> authorization.Action.Type
-	14, // 6: authorization.Action.extension:type_name -> authorization.Action.ExtensionEntry
-	8,  // 7: authorization.Actions.action:type_name -> authorization.Action
-	9,  // 8: authorization.IsAuthorizedRequest.actions:type_name -> authorization.Actions
-	3,  // 9: authorization.IsAuthorizedRequest.entities:type_name -> authorization.Entity
-	7,  // 10: authorization.IsAuthorizedRequest.resources:type_name -> authorization.Resources
-	2,  // 11: authorization.Decision.type:type_name -> authorization.Decision.Type
-	11, // 12: authorization.IsAuthorizedResponse.decisions:type_name -> authorization.Decision
-	10, // 13: authorization.AuthorizationService.IsAuthorized:input_type -> authorization.IsAuthorizedRequest
-	12, // 14: authorization.AuthorizationService.IsAuthorized:output_type -> authorization.IsAuthorizedResponse
-	14, // [14:15] is the sub-list for method output_type
-	13, // [13:14] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	14, // 0: authorization.Entity.claims:type_name -> google.protobuf.Any
+	3,  // 1: authorization.Entity.custom:type_name -> authorization.CustomExtension
+	14, // 2: authorization.CustomExtension.extension:type_name -> google.protobuf.Any
+	2,  // 3: authorization.EntityChain.entity:type_name -> authorization.Entity
+	5,  // 4: authorization.Resource.attributes:type_name -> authorization.Attributes
+	6,  // 5: authorization.Resources.resources:type_name -> authorization.Resource
+	0,  // 6: authorization.Action.type:type_name -> authorization.Action.Type
+	13, // 7: authorization.Action.extension:type_name -> authorization.Action.ExtensionEntry
+	8,  // 8: authorization.Actions.action:type_name -> authorization.Action
+	9,  // 9: authorization.DecisionRequest.actions:type_name -> authorization.Actions
+	4,  // 10: authorization.DecisionRequest.entity_chain:type_name -> authorization.EntityChain
+	7,  // 11: authorization.DecisionRequest.resources:type_name -> authorization.Resources
+	1,  // 12: authorization.DecisionResponse.decision:type_name -> authorization.DecisionResponse.Decision
+	11, // 13: authorization.AuthorizationDecisionResponse.decision_responses:type_name -> authorization.DecisionResponse
+	10, // 14: authorization.AuthorizationService.IsAuthorized:input_type -> authorization.DecisionRequest
+	12, // 15: authorization.AuthorizationService.IsAuthorized:output_type -> authorization.AuthorizationDecisionResponse
+	15, // [15:16] is the sub-list for method output_type
+	14, // [14:15] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_authorization_v1_authorization_proto_init() }
@@ -984,7 +1077,7 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Entities); i {
+			switch v := v.(*CustomExtension); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -996,7 +1089,7 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Attributes); i {
+			switch v := v.(*EntityChain); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1008,7 +1101,7 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Resource); i {
+			switch v := v.(*Attributes); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1020,7 +1113,7 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Resources); i {
+			switch v := v.(*Resource); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1032,7 +1125,7 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Action); i {
+			switch v := v.(*Resources); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1044,7 +1137,7 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Actions); i {
+			switch v := v.(*Action); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1056,7 +1149,7 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*IsAuthorizedRequest); i {
+			switch v := v.(*Actions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1068,7 +1161,7 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Decision); i {
+			switch v := v.(*DecisionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1080,7 +1173,19 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 		file_authorization_v1_authorization_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*IsAuthorizedResponse); i {
+			switch v := v.(*DecisionResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_authorization_v1_authorization_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AuthorizationDecisionResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1092,12 +1197,20 @@ func file_authorization_v1_authorization_proto_init() {
 			}
 		}
 	}
+	file_authorization_v1_authorization_proto_msgTypes[0].OneofWrappers = []interface{}{
+		(*Entity_EmailAddress)(nil),
+		(*Entity_UserName)(nil),
+		(*Entity_RemoteClaimsUrl)(nil),
+		(*Entity_Jwt)(nil),
+		(*Entity_Claims)(nil),
+		(*Entity_Custom)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_authorization_v1_authorization_proto_rawDesc,
-			NumEnums:      3,
+			NumEnums:      2,
 			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,

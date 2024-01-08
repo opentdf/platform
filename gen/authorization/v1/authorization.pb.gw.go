@@ -36,7 +36,7 @@ var (
 )
 
 func request_AuthorizationService_IsAuthorized_0(ctx context.Context, marshaler runtime.Marshaler, client AuthorizationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq IsAuthorizedRequest
+	var protoReq DecisionRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
@@ -52,7 +52,7 @@ func request_AuthorizationService_IsAuthorized_0(ctx context.Context, marshaler 
 }
 
 func local_request_AuthorizationService_IsAuthorized_0(ctx context.Context, marshaler runtime.Marshaler, server AuthorizationServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq IsAuthorizedRequest
+	var protoReq DecisionRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
@@ -81,7 +81,7 @@ func RegisterAuthorizationServiceHandlerServer(ctx context.Context, mux *runtime
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/authorization.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/authorization"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/authorization.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/v1/authorization"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -145,7 +145,7 @@ func RegisterAuthorizationServiceHandlerClient(ctx context.Context, mux *runtime
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/authorization.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/authorization"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/authorization.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/v1/authorization"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -165,7 +165,7 @@ func RegisterAuthorizationServiceHandlerClient(ctx context.Context, mux *runtime
 }
 
 var (
-	pattern_AuthorizationService_IsAuthorized_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"authorization"}, ""))
+	pattern_AuthorizationService_IsAuthorized_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "authorization"}, ""))
 )
 
 var (

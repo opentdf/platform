@@ -1,27 +1,30 @@
 syntax = "proto3";
 
 package authorization;
-option go_package = "github.com/opentdf/backend-go/gen/authorization";
+option go_package = "github.com/opentdf/opentdf-v2-poc/gen/authorization/v1";
 
 import "google/api/annotations.proto";
+import "google/protobuf/any.proto";
 
 message Entity {
-  enum Type {
-    OTHER = 0;
-    EMAIL = 1;
-    USERNAME = 2;
-    REMOTE_CLAIMS = 3;
-    CLAIMS = 4;
-    JWT = 5;
-  }
   string id = 1;
-  Type type = 2;
-  map<string, string> extension = 3;
+  oneof entity_type {
+    string email_address = 2;
+    string user_name = 3;
+    string remote_claims_url = 4;
+    string jwt = 5;
+    google.protobuf.Any claims = 6;
+    CustomExtension custom = 7;
+  }
 }
 
-// EntityChain
-message Entities {
-  repeated Entity entity = 1;
+message CustomExtension {
+  google.protobuf.Any extension = 1;
+}
+
+message EntityChain {
+  string id = 1;
+  repeated Entity entity = 2;
 }
 
 message Attributes {
@@ -73,31 +76,31 @@ message Actions {
   repeated Action action = 1;
 }
 
-message IsAuthorizedRequest {
+message DecisionRequest {
   Actions actions = 1;
-  Entity entities = 2;
+  EntityChain entity_chain = 2;
   Resources resources = 3;
 }
 
-message Decision {
-  enum Type {
+message DecisionResponse {
+  enum Decision {
     DENY = 0;
     PERMIT = 1;
   }
-  string entityId = 1;
-  string resourceId = 2;
-  Type type = 3;
+  string entity_chain_id = 1;
+  string resource_id = 2;
+  Decision decision = 3;
   repeated string obligations = 4;
 }
 
-message IsAuthorizedResponse {
-  repeated Decision decisions = 1;
+message AuthorizationDecisionResponse {
+  repeated DecisionResponse decision_responses = 1;
 }
 
 service AuthorizationService {
-  rpc IsAuthorized(IsAuthorizedRequest) returns (IsAuthorizedResponse) {
+  rpc IsAuthorized(DecisionRequest) returns (AuthorizationDecisionResponse) {
     option (google.api.http) = {
-      post: "/authorization"
+      post: "/v1/authorization"
     };
   }
 }

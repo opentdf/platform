@@ -28,3 +28,4 @@ opentdf.yaml
 /.idea/modules.xml
 /.idea/opentdf-v2-poc.iml
 /.idea/vcs.xml
+!/proto/google/

@@ -42,7 +42,7 @@ message Resources {
 
 message Action {
   enum Type {
-    OTHER = 0;
+    UNKNOWN = 0;
     CREATE = 1;
     READ = 2;
     UPDATE = 3;
@@ -84,8 +84,9 @@ message DecisionRequest {
 
 message DecisionResponse {
   enum Decision {
-    DENY = 0;
-    PERMIT = 1;
+    UNKNOWN = 0;
+    DENY = 1;
+    PERMIT = 2;
   }
   string entity_chain_id = 1;
   string resource_id = 2;
@@ -97,10 +98,21 @@ message AuthorizationDecisionResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
+message EntitlementsRequest {
+  repeated EntityChain entity_chain = 1;
+  Resources resources = 2;
+  optional Attributes attributes = 3;
+}
+
 service AuthorizationService {
   rpc IsAuthorized(DecisionRequest) returns (AuthorizationDecisionResponse) {
     option (google.api.http) = {
       post: "/v1/authorization"
+    };
+  }
+  rpc GetEntitlements(EntitlementsRequest) returns (AuthorizationDecisionResponse) {
+    option (google.api.http) = {
+      post: "/v1/entitlements"
     };
   }
 }

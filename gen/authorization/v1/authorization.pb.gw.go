@@ -2,11 +2,11 @@
 // source: authorization/v1/authorization.proto
 
 /*
-Package v1 is a reverse proxy.
+Package authorizationv1 is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package v1
+package authorizationv1
 
 import (
 	"context"
@@ -81,7 +81,7 @@ func RegisterAuthorizationServiceHandlerServer(ctx context.Context, mux *runtime
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/authorization.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/v1/authorization"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/authorization.v1.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/v1/authorization"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -145,7 +145,7 @@ func RegisterAuthorizationServiceHandlerClient(ctx context.Context, mux *runtime
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/authorization.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/v1/authorization"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/authorization.v1.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/v1/authorization"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

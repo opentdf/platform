@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: authorization/v1/authorization.proto
 
-package v1
+package authorizationv1
 
 import (
 	context "context"
@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AuthorizationService_IsAuthorized_FullMethodName = "/authorization.AuthorizationService/IsAuthorized"
+	AuthorizationService_IsAuthorized_FullMethodName = "/authorization.v1.AuthorizationService/IsAuthorized"
 )
 
 // AuthorizationServiceClient is the client API for AuthorizationService service.
@@ -96,7 +96,7 @@ func _AuthorizationService_IsAuthorized_Handler(srv interface{}, ctx context.Con
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AuthorizationService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "authorization.AuthorizationService",
+	ServiceName: "authorization.v1.AuthorizationService",
 	HandlerType: (*AuthorizationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

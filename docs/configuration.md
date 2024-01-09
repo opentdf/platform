@@ -36,6 +36,7 @@ The server configuration is used to define how the application runs its server.
   - `port`: The port number for the grpc server.
   - `reflection`: Whether to enable reflection for the grpc server.
 - `http`: The configuration for the http server.
+  - `enabled`: Whether to enable the http server. (default: true)
   - `port`: The port number for the http server.
 
 Example:

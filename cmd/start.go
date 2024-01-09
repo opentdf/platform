@@ -75,7 +75,11 @@ func start(_ *cobra.Command, _ []string) error {
 	}
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
-	otdf := server.NewOpenTDFServer(conf.Server)
+	otdf, err := server.NewOpenTDFServer(conf.Server)
+	if err != nil {
+		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
+		return fmt.Errorf("issue creating opentdf server: %w", err)
+	}
 	defer otdf.Stop()
 
 	// Register the services
@@ -85,9 +89,7 @@ func start(_ *cobra.Command, _ []string) error {
 	}
 
 	// Start the server
-	slog.Info("starting opentdf server",
-		slog.Int("grpcPort", conf.Server.Grpc.Port),
-		slog.Int("httpPort", conf.Server.HTTP.Port))
+	slog.Info("starting opentdf")
 
 	otdf.Run()
 

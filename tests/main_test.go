@@ -98,7 +98,11 @@ func TestMain(m *testing.M) {
 
 	slog.Info("applied migrations", slog.Int("count", applied))
 
-	otdf := server.NewOpenTDFServer(conf.Server)
+	otdf, err := server.NewOpenTDFServer(conf.Server)
+	if err != nil {
+		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
+		panic(err)
+	}
 	defer otdf.Stop()
 
 	slog.Info("starting opa engine")

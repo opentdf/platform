@@ -58,8 +58,7 @@ The database configuration is used to define how the application connects to its
 - `port`: The port number for the database.
 - `user`: The username for the database.
 - `password`: The password for the database.
-- `sslMode`: The ssl mode for the database (default: prefer).
-
+- `sslmode`: The ssl mode for the database (default: prefer).
 Example:
 
 ```yaml
@@ -68,7 +67,7 @@ db:
   port: 5432
   user: postgres
   password: changeme
-  sslMode: require
+  sslmode: require
 ```
 
 ## OPA Configuration

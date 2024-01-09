@@ -181,10 +181,10 @@ func Test_BuildURL_Returns_Expected_Connection_String(t *testing.T) {
 		Database: "opentdf",
 		User:     "postgres",
 		Password: "postgres",
-		SslMode:  "disable",
+		SSLMode:  "require",
 	}
 
 	url := c.buildURL()
 
-	assert.Equal(t, "postgres://postgres:postgres@localhost:5432/opentdf?sslmode=disable", url)
+	assert.Equal(t, "postgres://postgres:postgres@localhost:5432/opentdf?sslmode=require", url)
 }

@@ -14,11 +14,11 @@ message Entity {
     string remote_claims_url = 4;
     string jwt = 5;
     google.protobuf.Any claims = 6;
-    CustomExtension custom = 7;
+    EntityCustom custom = 7;
   }
 }
 
-message CustomExtension {
+message EntityCustom {
   google.protobuf.Any extension = 1;
 }
 
@@ -28,39 +28,39 @@ message EntityChain {
 }
 
 message Action {
-  enum Type {
-    TYPE_UNSPECIFIED = 0;
-    TYPE_CREATE = 1;
-    TYPE_READ = 2;
-    TYPE_UPDATE = 3;
-    TYPE_DELETE = 4;
-    TYPE_WRITE = 5;
-    TYPE_EXECUTE = 6;
-    TYPE_COPY = 7;
-    TYPE_MOVE = 9;
-    TYPE_RENAME = 10;
-    TYPE_SHARE = 11;
-    TYPE_DOWNLOAD = 12;
-    TYPE_UPLOAD = 13;
-    TYPE_ARCHIVE = 14;
-    TYPE_EXPORT = 15;
-    TYPE_IMPORT = 16;
-    TYPE_LOCK = 17;
-    TYPE_UNLOCK = 18;
-    TYPE_PRINT = 19;
-    TYPE_BACKUP = 20;
-    TYPE_RESTORE = 21;
-    TYPE_ENCRYPT = 22;
-    TYPE_DECRYPT = 23;
-    TYPE_AUDIT = 24;
-    TYPE_TRANSMIT = 25;
+  enum StandardAction {
+    STANDARD_ACTION_UNSPECIFIED = 0;
+    STANDARD_ACTION_CREATE = 1;
+    STANDARD_ACTION_READ = 2;
+    STANDARD_ACTION_UPDATE = 3;
+    STANDARD_ACTION_DELETE = 4;
+    STANDARD_ACTION_WRITE = 5;
+    STANDARD_ACTION_EXECUTE = 6;
+    STANDARD_ACTION_COPY = 7;
+    STANDARD_ACTION_MOVE = 9;
+    STANDARD_ACTION_RENAME = 10;
+    STANDARD_ACTION_SHARE = 11;
+    STANDARD_ACTION_DOWNLOAD = 12;
+    STANDARD_ACTION_UPLOAD = 13;
+    STANDARD_ACTION_ARCHIVE = 14;
+    STANDARD_ACTION_EXPORT = 15;
+    STANDARD_ACTION_IMPORT = 16;
+    STANDARD_ACTION_LOCK = 17;
+    STANDARD_ACTION_UNLOCK = 18;
+    STANDARD_ACTION_PRINT = 19;
+    STANDARD_ACTION_BACKUP = 20;
+    STANDARD_ACTION_RESTORE = 21;
+    STANDARD_ACTION_ENCRYPT = 22;
+    STANDARD_ACTION_DECRYPT = 23;
+    STANDARD_ACTION_AUDIT = 24;
+    STANDARD_ACTION_TRANSMIT = 25;
   }
-  Type type = 1;
-  map<string, string> extension = 2;
+  StandardAction standard = 1;
+  optional string custom = 2;
 }
 
 message Actions {
-  repeated Action action = 1;
+  repeated Action standard_action = 1;
 }
 
 message DecisionRequest {

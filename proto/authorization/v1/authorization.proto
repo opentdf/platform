@@ -76,7 +76,7 @@ message DecisionResponse {
     DECISION_PERMIT = 2;
   }
   string entity_chain_id = 1;
-  string resource_id = 2;
+  attributes.v1.AttributeUrlSet attribute_url_set = 2;
   Decision decision = 3;
   repeated string obligations = 4;
 }
@@ -91,7 +91,7 @@ message GetDecisionsResponse {
 
 message GetEntitlementsRequest {
   repeated EntityChain entity_chain = 1;
-  attributes.v1.AttributeUrlSet attribute_url_set = 3;
+  optional attributes.v1.AttributeUrlSet attribute_url_set = 2;
 }
 
 message GetEntitlementsResponse {

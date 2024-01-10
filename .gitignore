@@ -24,8 +24,5 @@ tmp/
 .DS_Store
 __pycache__
 opentdf.yaml
-/.idea/.gitignore
-/.idea/modules.xml
-/.idea/opentdf-v2-poc.iml
-/.idea/vcs.xml
+/.idea/*
 !/proto/google/

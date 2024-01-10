@@ -23,6 +23,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Standard actions supported by the platform
 type Action_StandardAction int32
 
 const (
@@ -187,12 +188,15 @@ func (DecisionResponse_Decision) EnumDescriptor() ([]byte, []int) {
 	return file_authorization_v1_authorization_proto_rawDescGZIP(), []int{6, 0}
 }
 
+// PE (Person Entity) or NPE (Non-Person Entity)
 type Entity struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Standard entity types supported by the platform
+	//
 	// Types that are assignable to EntityType:
 	//
 	//	*Entity_EmailAddress
@@ -332,6 +336,7 @@ func (*Entity_Claims) isEntity_EntityType() {}
 
 func (*Entity_Custom) isEntity_EntityType() {}
 
+// Entity type for custom entities beyond the standard types
 type EntityCustom struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -379,6 +384,7 @@ func (x *EntityCustom) GetExtension() *anypb.Any {
 	return nil
 }
 
+// A set of related PE and NPE
 type EntityChain struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -434,6 +440,7 @@ func (x *EntityChain) GetEntity() []*Entity {
 	return nil
 }
 
+// An action an entity can take
 type Action struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

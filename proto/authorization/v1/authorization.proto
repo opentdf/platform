@@ -6,8 +6,10 @@ import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 import "attributes/v1/attributes.proto";
 
+// PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {
   string id = 1;
+  // Standard entity types supported by the platform
   oneof entity_type {
     string email_address = 2;
     string user_name = 3;
@@ -18,16 +20,20 @@ message Entity {
   }
 }
 
+// Entity type for custom entities beyond the standard types
 message EntityCustom {
   google.protobuf.Any extension = 1;
 }
 
+// A set of related PE and NPE
 message EntityChain {
   string id = 1;
   repeated Entity entity = 2;
 }
 
+// An action an entity can take
 message Action {
+  // Standard actions supported by the platform
   enum StandardAction {
     STANDARD_ACTION_UNSPECIFIED = 0;
     STANDARD_ACTION_CREATE = 1;
@@ -104,7 +110,8 @@ service AuthorizationService {
       post: "/v1/authorization"
     };
   }
-  rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
+  rpc GetEntitlements(GetEntitlementsRequest)
+      returns (GetEntitlementsResponse) {
     option (google.api.http) = {
       post: "/v1/entitlements"
     };

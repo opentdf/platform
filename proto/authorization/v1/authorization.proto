@@ -35,8 +35,9 @@ message EntityChain {
 message Action {
   // Standard actions supported by the platform
   enum StandardAction {
-    STANDARD_ACTION_DECRYPT = 0;
-    STANDARD_ACTION_TRANSMIT = 1;
+    STANDARD_UNSPECIFIED = 0;
+    STANDARD_ACTION_DECRYPT = 1;
+    STANDARD_ACTION_TRANSMIT = 2;
   }
   StandardAction standard = 1;
   optional string custom = 2;

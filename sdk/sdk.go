@@ -53,9 +53,12 @@ func NewSDK(opts Options) (*SDK, error) {
 		return nil, errors.New("can't set both token and client credentials")
 	}
 
+<<<<<<< HEAD
 	if opts.Token != "" {
 		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(credentials.PerRPCCredentials)
 	}
+=======
+>>>>>>> 6e918fa (save)
 	conn, err := grpc.Dial(opts.PlatformEndpoint, dialOpts...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)

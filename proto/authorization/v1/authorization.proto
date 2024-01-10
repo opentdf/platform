@@ -41,31 +41,31 @@ message Resources {
 
 message Action {
   enum Type {
-    UNKNOWN = 0;
-    CREATE = 1;
-    READ = 2;
-    UPDATE = 3;
-    DELETE = 4;
-    WRITE = 5;
-    EXECUTE = 6;
-    COPY = 7;
-    MOVE = 9;
-    RENAME = 10;
-    SHARE = 11;
-    DOWNLOAD = 12;
-    UPLOAD = 13;
-    ARCHIVE = 14;
-    EXPORT = 15;
-    IMPORT = 16;
-    LOCK = 17;
-    UNLOCK = 18;
-    PRINT = 19;
-    BACKUP = 20;
-    RESTORE = 21;
-    ENCRYPT = 22;
-    DECRYPT = 23;
-    AUDIT = 24;
-    TRANSMIT = 25;
+    TYPE_UNSPECIFIED = 0;
+    TYPE_CREATE = 1;
+    TYPE_READ = 2;
+    TYPE_UPDATE = 3;
+    TYPE_DELETE = 4;
+    TYPE_WRITE = 5;
+    TYPE_EXECUTE = 6;
+    TYPE_COPY = 7;
+    TYPE_MOVE = 9;
+    TYPE_RENAME = 10;
+    TYPE_SHARE = 11;
+    TYPE_DOWNLOAD = 12;
+    TYPE_UPLOAD = 13;
+    TYPE_ARCHIVE = 14;
+    TYPE_EXPORT = 15;
+    TYPE_IMPORT = 16;
+    TYPE_LOCK = 17;
+    TYPE_UNLOCK = 18;
+    TYPE_PRINT = 19;
+    TYPE_BACKUP = 20;
+    TYPE_RESTORE = 21;
+    TYPE_ENCRYPT = 22;
+    TYPE_DECRYPT = 23;
+    TYPE_AUDIT = 24;
+    TYPE_TRANSMIT = 25;
   }
   Type type = 1;
   map<string, string> extension = 2;
@@ -83,9 +83,9 @@ message DecisionRequest {
 
 message DecisionResponse {
   enum Decision {
-    UNKNOWN = 0;
-    DENY = 1;
-    PERMIT = 2;
+    DECISION_UNSPECIFIED = 0;
+    DECISION_DENY = 1;
+    DECISION_PERMIT = 2;
   }
   string entity_chain_id = 1;
   string resource_id = 2;
@@ -93,23 +93,31 @@ message DecisionResponse {
   repeated string obligations = 4;
 }
 
-message AuthorizationDecisionResponse {
+message GetDecisionsRequest {
   repeated DecisionResponse decision_responses = 1;
 }
 
-message EntitlementsRequest {
+message GetDecisionsResponse {
+  repeated DecisionResponse decision_responses = 1;
+}
+
+message GetEntitlementsRequest {
   repeated EntityChain entity_chain = 1;
   Resources resources = 2;
   optional Attributes attributes = 3;
 }
 
+message GetEntitlementsResponse {
+  repeated DecisionResponse decision_responses = 1;
+}
+
 service AuthorizationService {
-  rpc IsAuthorized(DecisionRequest) returns (AuthorizationDecisionResponse) {
+  rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
     option (google.api.http) = {
       post: "/v1/authorization"
     };
   }
-  rpc GetEntitlements(EntitlementsRequest) returns (AuthorizationDecisionResponse) {
+  rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
     option (google.api.http) = {
       post: "/v1/entitlements"
     };

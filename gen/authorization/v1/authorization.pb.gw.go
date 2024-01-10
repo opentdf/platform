@@ -32,37 +32,37 @@ var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
 var (
-	filter_AuthorizationService_IsAuthorized_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_AuthorizationService_GetDecisions_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_AuthorizationService_IsAuthorized_0(ctx context.Context, marshaler runtime.Marshaler, client AuthorizationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DecisionRequest
+func request_AuthorizationService_GetDecisions_0(ctx context.Context, marshaler runtime.Marshaler, client AuthorizationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetDecisionsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthorizationService_IsAuthorized_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthorizationService_GetDecisions_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.IsAuthorized(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetDecisions(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_AuthorizationService_IsAuthorized_0(ctx context.Context, marshaler runtime.Marshaler, server AuthorizationServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DecisionRequest
+func local_request_AuthorizationService_GetDecisions_0(ctx context.Context, marshaler runtime.Marshaler, server AuthorizationServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetDecisionsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthorizationService_IsAuthorized_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthorizationService_GetDecisions_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.IsAuthorized(ctx, &protoReq)
+	msg, err := server.GetDecisions(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -72,7 +72,7 @@ var (
 )
 
 func request_AuthorizationService_GetEntitlements_0(ctx context.Context, marshaler runtime.Marshaler, client AuthorizationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq EntitlementsRequest
+	var protoReq GetEntitlementsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
@@ -88,7 +88,7 @@ func request_AuthorizationService_GetEntitlements_0(ctx context.Context, marshal
 }
 
 func local_request_AuthorizationService_GetEntitlements_0(ctx context.Context, marshaler runtime.Marshaler, server AuthorizationServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq EntitlementsRequest
+	var protoReq GetEntitlementsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
@@ -109,7 +109,7 @@ func local_request_AuthorizationService_GetEntitlements_0(ctx context.Context, m
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterAuthorizationServiceHandlerFromEndpoint instead.
 func RegisterAuthorizationServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AuthorizationServiceServer) error {
 
-	mux.Handle("POST", pattern_AuthorizationService_IsAuthorized_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_AuthorizationService_GetDecisions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -117,12 +117,12 @@ func RegisterAuthorizationServiceHandlerServer(ctx context.Context, mux *runtime
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/authorization.v1.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/v1/authorization"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/authorization.v1.AuthorizationService/GetDecisions", runtime.WithHTTPPathPattern("/v1/authorization"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_AuthorizationService_IsAuthorized_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_AuthorizationService_GetDecisions_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -130,7 +130,7 @@ func RegisterAuthorizationServiceHandlerServer(ctx context.Context, mux *runtime
 			return
 		}
 
-		forward_AuthorizationService_IsAuthorized_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AuthorizationService_GetDecisions_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -200,25 +200,25 @@ func RegisterAuthorizationServiceHandler(ctx context.Context, mux *runtime.Serve
 // "AuthorizationServiceClient" to call the correct interceptors.
 func RegisterAuthorizationServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client AuthorizationServiceClient) error {
 
-	mux.Handle("POST", pattern_AuthorizationService_IsAuthorized_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_AuthorizationService_GetDecisions_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/authorization.v1.AuthorizationService/IsAuthorized", runtime.WithHTTPPathPattern("/v1/authorization"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/authorization.v1.AuthorizationService/GetDecisions", runtime.WithHTTPPathPattern("/v1/authorization"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_AuthorizationService_IsAuthorized_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_AuthorizationService_GetDecisions_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthorizationService_IsAuthorized_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AuthorizationService_GetDecisions_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -248,13 +248,13 @@ func RegisterAuthorizationServiceHandlerClient(ctx context.Context, mux *runtime
 }
 
 var (
-	pattern_AuthorizationService_IsAuthorized_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "authorization"}, ""))
+	pattern_AuthorizationService_GetDecisions_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "authorization"}, ""))
 
 	pattern_AuthorizationService_GetEntitlements_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "entitlements"}, ""))
 )
 
 var (
-	forward_AuthorizationService_IsAuthorized_0 = runtime.ForwardResponseMessage
+	forward_AuthorizationService_GetDecisions_0 = runtime.ForwardResponseMessage
 
 	forward_AuthorizationService_GetEntitlements_0 = runtime.ForwardResponseMessage
 )

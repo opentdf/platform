@@ -8,6 +8,15 @@ import "google/api/annotations.proto";
 
 option go_package = "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1";
 
+// A set of Attribute URL
+// Attribute URL is a string in URL form that uniquely describes an attribute value in a namespace.
+// The namespace is "owned" by an attribute authority and includes a name for the category of values.
+// The value is a string that has meaning within the scope of the namespace.
+// Example: "https://acme.com/attr/projects/value/rocket" describes an attribute value "rocket" within the "acme corporation 'projects'" namespace.
+message AttributeUrlSet {
+  repeated string attribute_url = 1;
+}
+
 // Just a set of attributes
 message AttributeSet {
   common.v1.ResourceDescriptor descriptor = 1;

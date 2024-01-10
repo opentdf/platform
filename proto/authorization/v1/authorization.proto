@@ -4,6 +4,7 @@ package authorization.v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
+import "attributes/v1/attributes.proto";
 
 message Entity {
   string id = 1;
@@ -24,19 +25,6 @@ message CustomExtension {
 message EntityChain {
   string id = 1;
   repeated Entity entity = 2;
-}
-
-message Attributes {
-  repeated string attribute = 1;
-}
-
-message Resource {
-  string id = 1;
-  Attributes attributes = 3;
-}
-
-message Resources {
-  repeated Resource resources = 1;
 }
 
 message Action {
@@ -78,7 +66,7 @@ message Actions {
 message DecisionRequest {
   Actions actions = 1;
   EntityChain entity_chain = 2;
-  Resources resources = 3;
+  attributes.v1.AttributeUrlSet attribute_url_set = 3;
 }
 
 message DecisionResponse {
@@ -103,8 +91,7 @@ message GetDecisionsResponse {
 
 message GetEntitlementsRequest {
   repeated EntityChain entity_chain = 1;
-  Resources resources = 2;
-  optional Attributes attributes = 3;
+  attributes.v1.AttributeUrlSet attribute_url_set = 3;
 }
 
 message GetEntitlementsResponse {

@@ -9,7 +9,7 @@ const (
 	zip64MagicVal                   = 0xFFFFFFFF
 	zip64EndOfCDSignature           = 0x06064b50
 	zip64ExternalID                 = 0x0001
-	zipVersion                      = 0x2D //version 4.5 of the PKZIP specification
+	zipVersion                      = 0x2D // version 4.5 of the PKZIP specification
 )
 
 const (

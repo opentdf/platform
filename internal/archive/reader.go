@@ -1,12 +1,10 @@
 package archive
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
-	"unsafe"
 )
 
 // https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT
@@ -51,23 +49,17 @@ type Reader struct {
 
 // CreateReader Create archive reader instance.
 func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
-
 	reader := Reader{}
 	reader.fileEntries = make(map[string]ZipFileEntry)
 
 	// read end of central directory record
-	index, err := readSeeker.Seek(-endOfCDRecordSize, io.SeekEnd)
+	_, err := readSeeker.Seek(-endOfCDRecordSize, io.SeekEnd)
 	if err != nil {
 		return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	buf, err := readBytes(readSeeker, index, endOfCDRecordSize)
-	if err != nil {
-		return reader, err
-	}
-
 	endOfCDRecord := EndOfCDRecord{}
-	err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &endOfCDRecord)
+	err = binary.Read(readSeeker, binary.LittleEndian, &endOfCDRecord)
 	if err != nil {
 		return reader, fmt.Errorf("binary.Read failed: %w", err)
 	}
@@ -88,18 +80,13 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 		isZip64 = true
 
 		// read zip64 end of central directory locator
-		index, err = readSeeker.Seek(-(endOfCDRecordSize + zip64EndOfCDRecordLocatorSize), io.SeekEnd)
+		_, err := readSeeker.Seek(-(endOfCDRecordSize + zip64EndOfCDRecordLocatorSize), io.SeekEnd)
 		if err != nil {
 			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
 
-		buf, err = readBytes(readSeeker, index, zip64EndOfCDRecordLocatorSize)
-		if err != nil {
-			return reader, err
-		}
-
 		zip64EndOfCDRecordLocator := Zip64EndOfCDRecordLocator{}
-		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &zip64EndOfCDRecordLocator)
+		err = binary.Read(readSeeker, binary.LittleEndian, &zip64EndOfCDRecordLocator)
 		if err != nil {
 			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
@@ -109,13 +96,13 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 		}
 
 		// read zip64 end of central directory record
-		buf, err = readBytes(readSeeker, int64(zip64EndOfCDRecordLocator.CDOffset), zip64EndOfCDRecordSize)
+		_, err = readSeeker.Seek(int64(zip64EndOfCDRecordLocator.CDOffset), io.SeekStart)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
 
 		zip64EndOfCDRecord := Zip64EndOfCDRecord{}
-		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &zip64EndOfCDRecord)
+		err = binary.Read(readSeeker, binary.LittleEndian, &zip64EndOfCDRecord)
 		if err != nil {
 			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
@@ -134,13 +121,12 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 	reader.readSeeker = readSeeker
 	for i := uint64(0); i < entryCount; i++ {
 		// read central directory header of index(i)
-		index = int64(nextCD + centralDirectoryStart)
-		buf, err = readBytes(readSeeker, index, cdFileHeaderSize)
+		_, err = readSeeker.Seek(int64(nextCD+centralDirectoryStart), io.SeekStart)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
 
-		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &cdFileHeader)
+		err = binary.Read(readSeeker, binary.LittleEndian, &cdFileHeader)
 		if err != nil {
 			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
@@ -151,13 +137,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 		// read the filename
 		fileNameByteArray := make([]byte, cdFileHeader.FilenameLength)
-		index += cdFileHeaderSize
-		buf, err = readBytes(readSeeker, index, int64(cdFileHeader.FilenameLength))
-		if err != nil {
-			return reader, err
-		}
-
-		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, fileNameByteArray)
+		err = binary.Read(readSeeker, binary.LittleEndian, fileNameByteArray)
 		if err != nil {
 			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
@@ -169,78 +149,43 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 			// read Zip64 Extended Information extra field id
 			headerTag := uint16(0)
-
-			index += int64(cdFileHeader.FilenameLength)
-			buf, err = readBytes(readSeeker, index, int64(unsafe.Sizeof(headerTag)))
-			if err != nil {
-				return reader, err
-			}
-
-			err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &headerTag)
+			err = binary.Read(readSeeker, binary.LittleEndian, &headerTag)
 			if err != nil {
 				return reader, fmt.Errorf("binary.Read failed: %w", err)
 			}
 
 			// read Zip64 Extended Information Extra Field Block Size
 			blockSize := uint16(0)
-
-			index += int64(unsafe.Sizeof(blockSize))
-			buf, err = readBytes(readSeeker, index, int64(unsafe.Sizeof(blockSize)))
-			if err != nil {
-				return reader, err
-			}
-
-			err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &blockSize)
+			err = binary.Read(readSeeker, binary.LittleEndian, &blockSize)
 			if err != nil {
 				return reader, fmt.Errorf("binary.Read failed: %w", err)
 			}
 
 			if headerTag == zip64ExternalID {
-				index += int64(unsafe.Sizeof(blockSize))
-
 				if cdFileHeader.CompressedSize == zip64MagicVal {
 					compressedSize := uint64(0)
-					buf, err = readBytes(readSeeker, index, int64(unsafe.Sizeof(compressedSize)))
-					if err != nil {
-						return reader, err
-					}
-
-					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &compressedSize)
+					err = binary.Read(readSeeker, binary.LittleEndian, &compressedSize)
 					if err != nil {
 						return reader, fmt.Errorf("binary.Read failed: %w", err)
 					}
 
 					bytesToRead = compressedSize
-					index += int64(unsafe.Sizeof(compressedSize))
 				}
 
 				if cdFileHeader.UncompressedSize == zip64MagicVal {
 					uncompressedSize := uint64(0)
-					buf, err = readBytes(readSeeker, index, int64(unsafe.Sizeof(uncompressedSize)))
-					if err != nil {
-						return reader, err
-					}
-
-					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &uncompressedSize)
+					err = binary.Read(readSeeker, binary.LittleEndian, &uncompressedSize)
 					if err != nil {
 						return reader, fmt.Errorf("binary.Read failed: %w", err)
 					}
-
-					index += int64(unsafe.Sizeof(uncompressedSize))
 				}
 
 				if cdFileHeader.LocalHeaderOffset == zip64MagicVal {
 					localHeaderOffset := uint64(0)
-					buf, err = readBytes(readSeeker, index, int64(unsafe.Sizeof(localHeaderOffset)))
-					if err != nil {
-						return reader, err
-					}
-
-					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &localHeaderOffset)
+					err = binary.Read(readSeeker, binary.LittleEndian, &localHeaderOffset)
 					if err != nil {
 						return reader, fmt.Errorf("binary.Read failed: %w", err)
 					}
-
 					offset = localHeaderOffset
 				}
 			}
@@ -248,14 +193,13 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 		// Read each file
 		localFileHeader := LocalFileHeader{}
-		buf, err = readBytes(readSeeker, int64(offset), int64(localFileHeaderSize))
+		_, err = readSeeker.Seek(int64(offset), io.SeekStart)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
-
-		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &localFileHeader)
+		err = binary.Read(readSeeker, binary.LittleEndian, &localFileHeader)
 		if err != nil {
-			return reader, fmt.Errorf("binary.Read failed: %w", err)
+			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
 
 		if localFileHeader.Signature != fileHeaderSignature {
@@ -310,7 +254,7 @@ func (reader Reader) ReadFileSize(filename string) (int64, error) {
 	return fileNameEntry.length, nil
 }
 
-// ReadBytes Read bytes reads up to size from input providers
+// Read bytes reads up to size from input providers
 // and return the buffer with the read bytes.
 func readBytes(readerSeeker io.ReadSeeker, index, size int64) ([]byte, error) {
 	_, err := readerSeeker.Seek(index, 0)

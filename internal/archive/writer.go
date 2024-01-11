@@ -158,7 +158,7 @@ func (writer *Writer) AddData(data []byte) error {
 			buf = new(bytes.Buffer)
 			err := binary.Write(buf, binary.LittleEndian, zip64ExtendedLocalInfoExtraField)
 			if err != nil {
-				return err
+				return fmt.Errorf("binary.Write failed: %w", err)
 			}
 
 			_, err = writer.writer.Write(buf.Bytes())
@@ -211,7 +211,7 @@ func (writer *Writer) AddData(data []byte) error {
 			buf := new(bytes.Buffer)
 			err := binary.Write(buf, binary.LittleEndian, zip64DataDescriptor)
 			if err != nil {
-				return err
+				return fmt.Errorf("binary.Write failed: %w", err)
 			}
 
 			_, err = writer.writer.Write(buf.Bytes())
@@ -235,7 +235,7 @@ func (writer *Writer) AddData(data []byte) error {
 			buf := new(bytes.Buffer)
 			err := binary.Write(buf, binary.LittleEndian, zip32DataDescriptor)
 			if err != nil {
-				return err
+				return fmt.Errorf("binary.Write failed: %w", err)
 			}
 
 			_, err = writer.writer.Write(buf.Bytes())
@@ -310,7 +310,7 @@ func (writer *Writer) writeCentralDirectory() error {
 		buf := new(bytes.Buffer)
 		err := binary.Write(buf, binary.LittleEndian, cdFileHeader)
 		if err != nil {
-			return err
+			return fmt.Errorf("binary.Write failed: %w", err)
 		}
 
 		_, err = writer.writer.Write(buf.Bytes())
@@ -337,7 +337,7 @@ func (writer *Writer) writeCentralDirectory() error {
 			buf := new(bytes.Buffer)
 			err := binary.Write(buf, binary.LittleEndian, zip64ExtendedInfoExtraField)
 			if err != nil {
-				return err
+				return fmt.Errorf("binary.Write failed: %w", err)
 			}
 
 			_, err = writer.writer.Write(buf.Bytes())
@@ -390,7 +390,7 @@ func (writer *Writer) writeEndOfCentralDirectory() error {
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.LittleEndian, endOfCDRecord)
 	if err != nil {
-		return err
+		return fmt.Errorf("binary.Write failed: %w", err)
 	}
 
 	_, err = writer.writer.Write(buf.Bytes())
@@ -420,7 +420,7 @@ func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.LittleEndian, zip64EndOfCDRecord)
 	if err != nil {
-		return err
+		return fmt.Errorf("binary.Write failed: %w", err)
 	}
 
 	_, err = writer.writer.Write(buf.Bytes())
@@ -444,7 +444,7 @@ func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.LittleEndian, zip64EndOfCDRecordLocator)
 	if err != nil {
-		return err
+		return fmt.Errorf("binary.Write failed: %w", err)
 	}
 
 	_, err = writer.writer.Write(buf.Bytes())

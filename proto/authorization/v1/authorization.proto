@@ -192,19 +192,6 @@ message EntityEntitlements{
 Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
 
 {
-  "entities": [
-    {
-      "id": "e1",
-      "emailAddress": "bob@example.org"
-    },
-    {
-      "id": "e2",
-      "emailAddress": "alice@example.org"
-    }
-  ]
-}
------ Entitlement Response Example ----
-{
   "entitlements": [
     {
       "entityId": "e1",

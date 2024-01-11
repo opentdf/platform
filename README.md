@@ -9,7 +9,9 @@
 
 [Air](https://github.com/cosmtrek/air)
 
-`brew install air`
+With go 1.18 or higher:
+
+`go install github.com/cosmtrek/air@v1.49.0`
 
 [Buf](https://buf.build/docs/ecosystem/cli-overview)
 

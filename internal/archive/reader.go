@@ -146,7 +146,6 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 		bytesToRead := uint64(cdFileHeader.CompressedSize)
 
 		if isZip64 {
-
 			// read Zip64 Extended Information extra field id
 			headerTag := uint16(0)
 			err = binary.Read(readSeeker, binary.LittleEndian, &headerTag)

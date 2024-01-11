@@ -136,9 +136,7 @@ func customZip(t *testing.T) {
 	}
 
 	// create test zip files
-	for index, test := range ArchiveTests {
-
-		// zip file name as index
+	for index, test := range ArchiveTests { // zip file name as index
 		zipFileName := strconv.Itoa(index) + ".zip"
 		writer, err := os.Create(zipFileName)
 		if err != nil {
@@ -155,7 +153,7 @@ func customZip(t *testing.T) {
 		archiveWriter := CreateWriter(writer)
 
 		// calculate total size of the zip file contents
-		var totalContentSize int64 = 0
+		var totalContentSize int64
 		for i := 0; i < len(test.files); i++ {
 			fileInfo := test.files[i]
 			totalContentSize += fileInfo.size
@@ -175,13 +173,11 @@ func customZip(t *testing.T) {
 			}
 
 			totalBytes := fileInfo.size
+			var bytesToWrite int64
 			for totalBytes > 0 {
-
-				bytesToWrite := int64(0)
 				if totalBytes >= stepSize {
 					totalBytes -= stepSize
 					bytesToWrite = stepSize
-
 				} else {
 					bytesToWrite = totalBytes
 					totalBytes = 0
@@ -227,7 +223,6 @@ func nativeUnzips(t *testing.T) {
 
 		// Iterate over the files in the zip file
 		for _, f := range r.File {
-
 			// open the file
 			fc, err := f.Open()
 			if err != nil {
@@ -243,8 +238,7 @@ func nativeUnzips(t *testing.T) {
 			fileInfo := f.FileInfo()
 			totalBytes := fileInfo.Size()
 			for totalBytes > 0 {
-
-				bytesToRead := int64(0)
+				var bytesToRead int64
 				if totalBytes >= stepSize {
 					totalBytes -= stepSize
 					bytesToRead = stepSize

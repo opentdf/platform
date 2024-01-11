@@ -58,8 +58,8 @@ func nativeZipFiles(t *testing.T) {
 			}
 
 			totalBytes := entry.size
+			var bytesToWrite int64
 			for totalBytes > 0 {
-				var bytesToWrite int64
 				if totalBytes >= stepSize {
 					totalBytes -= stepSize
 					bytesToWrite = stepSize

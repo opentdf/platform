@@ -110,7 +110,7 @@ func (writer *Writer) AddData(data []byte) error {
 
 	if writer.writeState == Initial {
 		localFileHeader.Signature = fileHeaderSignature
-		localFileHeader.Version = 45
+		localFileHeader.Version = zipVersion
 		// since payload is added by chunks we set General purpose bit flag to 0x08
 		localFileHeader.GeneralPurposeBitFlag = 0x08
 		localFileHeader.CompressionMethod = 0 // no compression
@@ -325,7 +325,6 @@ func (writer *Writer) writeCentralDirectory() error {
 		}
 
 		if writer.isZip64 {
-
 			zip64ExtendedInfoExtraField := Zip64ExtendedInfoExtraField{}
 			zip64ExtendedInfoExtraField.Signature = zip64ExternalID
 			zip64ExtendedInfoExtraField.Size = zip64ExtendedInfoExtraFieldSize - 4
@@ -334,7 +333,7 @@ func (writer *Writer) writeCentralDirectory() error {
 			zip64ExtendedInfoExtraField.LocalFileHeaderOffset = uint64(writer.fileInfoEntries[i].offset)
 
 			// write zip64 extended info extra field struct
-			buf := new(bytes.Buffer)
+			buf = new(bytes.Buffer)
 			err := binary.Write(buf, binary.LittleEndian, zip64ExtendedInfoExtraField)
 			if err != nil {
 				return fmt.Errorf("binary.Write failed: %w", err)
@@ -360,15 +359,14 @@ func (writer *Writer) writeCentralDirectory() error {
 // writeEndOfCentralDirectory write end of central directory struct into archive
 func (writer *Writer) writeEndOfCentralDirectory() error {
 	if writer.isZip64 {
-
 		err := writer.WriteZip64EndOfCentralDirectory()
 		if err != nil {
-			return nil
+			return err
 		}
 
 		err = writer.WriteZip64EndOfCentralDirectoryLocator()
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 

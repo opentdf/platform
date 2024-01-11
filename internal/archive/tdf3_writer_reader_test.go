@@ -204,12 +204,11 @@ func writeTDFs(t *testing.T) {
 			t.Fatalf("Fail to set payload size: %v", err)
 		}
 
+		var bytesToWrite int64
 		for totalBytes > 0 {
-			bytesToWrite := int64(0)
 			if totalBytes >= stepSize {
 				totalBytes -= stepSize
 				bytesToWrite = stepSize
-
 			} else {
 				bytesToWrite = totalBytes
 				totalBytes = 0
@@ -232,7 +231,6 @@ func writeTDFs(t *testing.T) {
 func readTDFs(t *testing.T) {
 
 	for index, tdf3Entry := range TDF3Tests {
-
 		// tdf3 file name as index
 		tdf3Name := strconv.Itoa(index) + ".zip"
 
@@ -265,7 +263,7 @@ func readTDFs(t *testing.T) {
 
 		// read the payload
 		readIndex := int64(0)
-		bytesToRead := int64(0)
+		var bytesToRead int64
 		totalBytes := tdf3Entry.payloadSize
 		for totalBytes > 0 {
 			if totalBytes >= stepSize {

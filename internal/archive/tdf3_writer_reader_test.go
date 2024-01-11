@@ -12,7 +12,7 @@ type TDF3Entry struct {
 	payloadSize int64
 }
 
-var TDF3Tests = []TDF3Entry{
+var TDF3Tests = []TDF3Entry{ //nolint:gochecknoglobals // This global is used as test harness for other tests
 	{
 		manifest:    "some manifest",
 		payloadSize: oneKB,

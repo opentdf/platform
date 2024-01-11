@@ -23,7 +23,7 @@ type ZipEntryInfo struct {
 	size     int64
 }
 
-var ArchiveTests = []struct { //nolint:gochecknoglobals
+var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used as test harness for other tests
 	files []ZipEntryInfo
 }{
 	{
@@ -119,8 +119,9 @@ var ArchiveTests = []struct { //nolint:gochecknoglobals
 
 // create a buffer of 2mb and fill it with 0xFF, and
 // it used to fill with the contents of the files
-var stepSize int64 = 2 * oneMB           //nolint:gochecknoglobals
-var writeBuffer = make([]byte, stepSize) //nolint:gochecknoglobals
+var stepSize int64 = 2 * oneMB           //nolint:gochecknoglobals // This global is used in other tests
+var writeBuffer = make([]byte, stepSize) //nolint:gochecknoglobalsas // This is used as reuse buffer
+// in other tests
 
 func TestCreateArchiveWriter(t *testing.T) { // use custom implementation of zip
 	customZip(t)
@@ -205,7 +206,6 @@ func nativeUnzips(t *testing.T) {
 
 	// test the zip file you created
 	for index := range ArchiveTests {
-
 		// zip file name as index
 		zipFileName := strconv.Itoa(index) + ".zip"
 

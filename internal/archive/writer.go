@@ -163,7 +163,7 @@ func (writer *Writer) AddData(data []byte) error {
 
 			_, err = writer.writer.Write(buf.Bytes())
 			if err != nil {
-				return err
+				return fmt.Errorf("io.Writer.Write failed: %w", err)
 			}
 		}
 
@@ -216,7 +216,7 @@ func (writer *Writer) AddData(data []byte) error {
 
 			_, err = writer.writer.Write(buf.Bytes())
 			if err != nil {
-				return err
+				return fmt.Errorf("io.Writer.Write failed: %w", err)
 			}
 
 			writer.currentOffset += localFileHeaderSize
@@ -256,7 +256,7 @@ func (writer *Writer) AddData(data []byte) error {
 	return nil
 }
 
-// Finish Completed adding all the files in zip archive
+// Finish Completed adding all the files in zip archive.
 func (writer *Writer) Finish() error {
 	err := writer.writeCentralDirectory()
 	if err != nil {
@@ -271,7 +271,7 @@ func (writer *Writer) Finish() error {
 	return nil
 }
 
-// WriteCentralDirectory write central directory struct into archive
+// WriteCentralDirectory write central directory struct into archive.
 func (writer *Writer) writeCentralDirectory() error {
 
 	writer.lastOffsetCDFileHeader = writer.currentOffset
@@ -356,7 +356,7 @@ func (writer *Writer) writeCentralDirectory() error {
 	return nil
 }
 
-// writeEndOfCentralDirectory write end of central directory struct into archive
+// writeEndOfCentralDirectory write end of central directory struct into archive.
 func (writer *Writer) writeEndOfCentralDirectory() error {
 	if writer.isZip64 {
 		err := writer.WriteZip64EndOfCentralDirectory()
@@ -399,9 +399,8 @@ func (writer *Writer) writeEndOfCentralDirectory() error {
 	return nil
 }
 
-// WriteZip64EndOfCentralDirectory write the zip64 end of central directory record struct to the archive
+// WriteZip64EndOfCentralDirectory write the zip64 end of central directory record struct to the archive.
 func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
-
 	zip64EndOfCDRecord := Zip64EndOfCDRecord{}
 	zip64EndOfCDRecord.Signature = zip64EndOfCDSignature
 	zip64EndOfCDRecord.RecordSize = zip64EndOfCDRecordSize - 12
@@ -430,7 +429,7 @@ func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
 }
 
 // WriteZip64EndOfCentralDirectoryLocator write the zip64 end of central directory locator struct
-// to the archive
+// to the archive.
 func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
 	zip64EndOfCDRecordLocator := Zip64EndOfCDRecordLocator{}
 	zip64EndOfCDRecordLocator.Signature = zip64EndOfCDLocatorSignature
@@ -449,15 +448,13 @@ func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
 	if err != nil {
 		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
-
 	return nil
 }
 
-// GetTimeDateUnMSDosFormat Get the time and date in MSDOS format
+// GetTimeDateUnMSDosFormat Get the time and date in MSDOS format.
 func (writer *Writer) getTimeDateUnMSDosFormat() (uint16, uint16) {
 	t := time.Now().UTC()
 	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/2), 29))
 	dateInDos := (t.Year()-80)<<9 | int((t.Month()+1)<<5) | t.Day()
 	return uint16(timeInDos), uint16(dateInDos)
-
 }

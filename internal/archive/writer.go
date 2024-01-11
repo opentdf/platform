@@ -134,18 +134,18 @@ func (writer *Writer) AddData(data []byte) error {
 		buf := new(bytes.Buffer)
 		err := binary.Write(buf, binary.LittleEndian, localFileHeader)
 		if err != nil {
-			return fmt.Errorf("binary.Write failed: %v", err)
+			return fmt.Errorf("binary.Write failed: %w", err)
 		}
 
 		_, err = writer.writer.Write(buf.Bytes())
 		if err != nil {
-			return err
+			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
 
 		// write the file name
 		_, err = writer.writer.Write([]byte(writer.FileInfo.filename))
 		if err != nil {
-			return err
+			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
 
 		if writer.isZip64 {
@@ -178,7 +178,7 @@ func (writer *Writer) AddData(data []byte) error {
 	// now write the contents
 	_, err := writer.writer.Write(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
 
 	// calculate the crc32
@@ -240,7 +240,7 @@ func (writer *Writer) AddData(data []byte) error {
 
 			_, err = writer.writer.Write(buf.Bytes())
 			if err != nil {
-				return err
+				return fmt.Errorf("io.Writer.Write failed: %w", err)
 			}
 
 			writer.currentOffset += localFileHeaderSize
@@ -265,7 +265,7 @@ func (writer *Writer) Finish() error {
 
 	err = writer.writeEndOfCentralDirectory()
 	if err != nil {
-		return err
+		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
 
 	return nil
@@ -315,13 +315,13 @@ func (writer *Writer) writeCentralDirectory() error {
 
 		_, err = writer.writer.Write(buf.Bytes())
 		if err != nil {
-			return err
+			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
 
 		// write the filename
 		_, err = writer.writer.Write([]byte(writer.fileInfoEntries[i].filename))
 		if err != nil {
-			return err
+			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
 
 		if writer.isZip64 {
@@ -342,7 +342,7 @@ func (writer *Writer) writeCentralDirectory() error {
 
 			_, err = writer.writer.Write(buf.Bytes())
 			if err != nil {
-				return err
+				return fmt.Errorf("io.Writer.Write failed: %w", err)
 			}
 		}
 
@@ -395,7 +395,7 @@ func (writer *Writer) writeEndOfCentralDirectory() error {
 
 	_, err = writer.writer.Write(buf.Bytes())
 	if err != nil {
-		return err
+		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
 
 	return nil
@@ -425,15 +425,15 @@ func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
 
 	_, err = writer.writer.Write(buf.Bytes())
 	if err != nil {
-		return err
+		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
 
 	return nil
 }
 
-// WriteZip64EndOfCentralDirectoryLocator write the zip64 end of central directory locator struct to the archive
+// WriteZip64EndOfCentralDirectoryLocator write the zip64 end of central directory locator struct
+// to the archive
 func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
-
 	zip64EndOfCDRecordLocator := Zip64EndOfCDRecordLocator{}
 	zip64EndOfCDRecordLocator.Signature = zip64EndOfCDLocatorSignature
 	zip64EndOfCDRecordLocator.CDStartDiskNumber = 0
@@ -449,7 +449,7 @@ func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
 
 	_, err = writer.writer.Write(buf.Bytes())
 	if err != nil {
-		return err
+		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
 
 	return nil

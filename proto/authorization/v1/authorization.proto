@@ -28,7 +28,7 @@ message EntityCustom {
 // A set of related PE and NPE
 message EntityChain {
   string id = 1;
-  repeated Entity entity = 2;
+  repeated Entity entities = 2;
 }
 
 // An action an entity can take
@@ -39,47 +39,196 @@ message Action {
     STANDARD_ACTION_DECRYPT = 1;
     STANDARD_ACTION_TRANSMIT = 2;
   }
-  StandardAction standard = 1;
-  optional string custom = 2;
+  oneof value {
+    StandardAction standard = 1;
+    string custom = 2;
+  }
 }
 
-message Actions {
-  repeated Action standard_action = 1;
+/*
+Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
+and Alice (represented by entity chain ec2) have TRANSMIT authorization for
+2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
+{
+  "actions":  [
+    {
+      "standard":  "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "entityChains":  [
+    {
+      "id":  "ec1",
+      "entities":  [
+        {
+          "emailAddress":  "bob@example.org"
+        }
+      ]
+    },
+    {
+      "id":  "ec2",
+      "entities":  [
+        {
+          "userName":  "alice@example.org"
+        }
+      ]
+    }
+  ],
+  "attributeSets":  [
+    {
+      "id":  "attr-set-1",
+      "fqns":  [
+        "http://www.example.org/attr/foo/value/bar"
+      ]
+    },
+    {
+      "id":  "request-set-2",
+      "fqns":  [
+        "http://www.example.org/attr/foo/value/bar",
+        "http://www.example.org/attr/color/value/red"
+      ]
+    }
+  ]
 }
 
+
+ */
 message DecisionRequest {
-  Actions actions = 1;
-  EntityChain entity_chain = 2;
-  attributes.v1.AttributeUrlSet attribute_url_set = 3;
+  repeated Action actions = 1;
+  repeated EntityChain entity_chains = 2;
+  repeated attributes.v1.AttributeFQNSet attribute_sets = 3;
 }
 
+/*
+
+Example response for a Decision Request -  Do Bob (represented by entity chain ec1)
+and Alice (represented by entity chain ec2) have TRANSMIT authorization for
+2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
+Results:
+- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has watermark oblications
+- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes
+- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes
+- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
+
+{
+    "entityChainId":  "ec1",
+    "attributeSetId":  "attr-set-1",
+    "decision":  "DECISION_PERMIT",
+    "obligations":  [
+      "http://www.example.org/obligation/watermark"
+    ]
+  },
+  {
+    "entityChainId":  "ec1",
+    "attributeSetId":  "attr-set-2",
+    "decision":  "DECISION_PERMIT"
+  },
+  {
+    "entityChainId":  "ec2",
+    "attributeSetId":  "attr-set-1",
+    "decision":  "DECISION_PERMIT"
+  },
+  {
+    "entityChainId":  "ec2",
+    "attributeSetId":  "attr-set-2",
+    "decision":  "DECISION_DENY"
+  }
+
+
+ */
 message DecisionResponse {
   enum Decision {
     DECISION_UNSPECIFIED = 0;
     DECISION_DENY = 1;
     DECISION_PERMIT = 2;
   }
-  string entity_chain_id = 1;
-  attributes.v1.AttributeUrlSet attribute_url_set = 2;
-  Decision decision = 3;
-  repeated string obligations = 4;
+  string entity_chain_id = 1; // Id reference for the entity chain in the corresponding request
+  string attribute_set_id = 2; // Id reference for the attribute set in the corresponding request
+  Action action = 3;  // Action of the decision response
+  Decision decision = 4; // The decision response
+  repeated string obligations = 5; //optional list of obligations represented in URI format
 }
 
 message GetDecisionsRequest {
-  repeated DecisionResponse decision_responses = 1;
+  repeated DecisionRequest decision_requests = 1;
 }
 
 message GetDecisionsResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
-message GetEntitlementsRequest {
-  repeated EntityChain entity_chain = 1;
-  optional attributes.v1.AttributeUrlSet attribute_url_set = 2;
+/*
+Request to get entitlements for one or more entities for an optional attribute scope
+
+Example: Get entitlements for bob and alice (both represented using an email address
+
+{
+  "entities": [
+    {
+      "id": "e1",
+      "emailAddress": "bob@example.org"
+    },
+    {
+      "id": "e2",
+      "emailAddress": "alice@example.org"
+    }
+  ]
 }
 
+ */
+message GetEntitlementsRequest {
+  repeated Entity entities = 1; // list of requested entities
+  optional attributes.v1.AttributeFQNSet scope = 2; //optional attribute fqn as a scope
+}
+
+message EntityEntitlements{
+  string entity_id = 1;
+  attributes.v1.AttributeFQNSet entity_attributes = 2;
+}
+
+/*
+
+Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
+
+{
+  "entities": [
+    {
+      "id": "e1",
+      "emailAddress": "bob@example.org"
+    },
+    {
+      "id": "e2",
+      "emailAddress": "alice@example.org"
+    }
+  ]
+}
+----- Entitlement Response Example ----
+{
+  "entitlements": [
+    {
+      "entityId": "e1",
+      "entityAttributes": {
+        "fqns": [
+          "http://www.example.org/attr/foo/value/bar"
+        ]
+      }
+    },
+    {
+      "entityId": "e2",
+      "entityAttributes": {
+        "fqns": [
+          "http://www.example.org/attr/color/value/red"
+        ]
+      }
+    }
+  ]
+}
+
+
+ */
 message GetEntitlementsResponse {
-  repeated DecisionResponse decision_responses = 1;
+  repeated EntityEntitlements entitlements = 1;
 }
 
 service AuthorizationService {

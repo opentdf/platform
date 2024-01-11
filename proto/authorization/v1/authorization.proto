@@ -51,52 +51,59 @@ and Alice (represented by entity chain ec2) have TRANSMIT authorization for
 2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
 {
-  "actions":  [
+  "actions": [
     {
-      "standard":  "STANDARD_ACTION_TRANSMIT"
+      "standard": "STANDARD_ACTION_TRANSMIT"
     }
   ],
-  "entityChains":  [
+  "entityChains": [
     {
-      "id":  "ec1",
-      "entities":  [
+      "id": "ec1",
+      "entities": [
         {
-          "emailAddress":  "bob@example.org"
+          "emailAddress": "bob@example.org"
         }
       ]
     },
     {
-      "id":  "ec2",
-      "entities":  [
+      "id": "ec2",
+      "entities": [
         {
-          "userName":  "alice@example.org"
+          "userName": "alice@example.org"
         }
       ]
     }
   ],
-  "attributeSets":  [
+  "attributeSets": [
     {
-      "id":  "attr-set-1",
-      "fqns":  [
-        "http://www.example.org/attr/foo/value/bar"
+      "id": "attr-set-1",
+      "attributeValueReferences": [
+        {
+          "attributeFqn": "http://www.example.org/attr/foo/value/bar"
+        }
       ]
     },
     {
-      "id":  "request-set-2",
-      "fqns":  [
-        "http://www.example.org/attr/foo/value/bar",
-        "http://www.example.org/attr/color/value/red"
+      "id": "request-set-2",
+      "attributeValueReferences": [
+        {
+          "attributeFqn": "http://www.example.org/attr/foo/value/bar"
+        },
+        {
+          "attributeFqn": "http://www.example.org/attr/color/value/red"
+        }
       ]
     }
   ]
 }
 
 
+
  */
 message DecisionRequest {
   repeated Action actions = 1;
   repeated EntityChain entity_chains = 2;
-  repeated attributes.v1.AttributeFQNSet attribute_sets = 3;
+  repeated AttributeValueSet attribute_sets = 3;
 }
 
 /*
@@ -179,12 +186,17 @@ Example: Get entitlements for bob and alice (both represented using an email add
  */
 message GetEntitlementsRequest {
   repeated Entity entities = 1; // list of requested entities
-  optional attributes.v1.AttributeFQNSet scope = 2; //optional attribute fqn as a scope
+  optional AttributeValueSet scope = 2; //optional attribute fqn as a scope
 }
 
 message EntityEntitlements{
   string entity_id = 1;
-  attributes.v1.AttributeFQNSet entity_attributes = 2;
+  AttributeValueSet entity_attributes = 2;
+}
+
+message AttributeValueSet{
+  string id = 1;
+  repeated attributes.v1.AttributeValueReference attribute_value_references= 2;
 }
 
 /*
@@ -196,16 +208,20 @@ Example Response for a request of : Get entitlements for bob and alice (both rep
     {
       "entityId": "e1",
       "entityAttributes": {
-        "fqns": [
-          "http://www.example.org/attr/foo/value/bar"
+        "attributeValueReferences": [
+          {
+            "attributeFqn": "http://www.example.org/attr/foo/value/bar"
+          }
         ]
       }
     },
     {
       "entityId": "e2",
       "entityAttributes": {
-        "fqns": [
-          "http://www.example.org/attr/color/value/red"
+        "attributeValueReferences": [
+          {
+            "attributeFqn": "http://www.example.org/attr/color/value/red"
+          }
         ]
       }
     }

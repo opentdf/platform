@@ -72,67 +72,7 @@ func (x AttributeDefinition_AttributeRuleType) Number() protoreflect.EnumNumber 
 
 // Deprecated: Use AttributeDefinition_AttributeRuleType.Descriptor instead.
 func (AttributeDefinition_AttributeRuleType) EnumDescriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{2, 0}
-}
-
-// A set of Attribute URL
-// Attribute URL is a string in URL form that uniquely describes an attribute value in a namespace.
-// The namespace is "owned" by an attribute authority and includes a name for the category of values.
-// The value is a string that has meaning within the scope of the namespace.
-// Example: "https://acme.com/attr/projects/value/rocket" describes an attribute value "rocket" within the "acme corporation 'projects'" namespace.
-type AttributeFQNSet struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Id   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Fqns []string `protobuf:"bytes,2,rep,name=fqns,proto3" json:"fqns,omitempty"`
-}
-
-func (x *AttributeFQNSet) Reset() {
-	*x = AttributeFQNSet{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[0]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *AttributeFQNSet) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AttributeFQNSet) ProtoMessage() {}
-
-func (x *AttributeFQNSet) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[0]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AttributeFQNSet.ProtoReflect.Descriptor instead.
-func (*AttributeFQNSet) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *AttributeFQNSet) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *AttributeFQNSet) GetFqns() []string {
-	if x != nil {
-		return x.Fqns
-	}
-	return nil
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{1, 0}
 }
 
 // Just a set of attributes
@@ -148,7 +88,7 @@ type AttributeSet struct {
 func (x *AttributeSet) Reset() {
 	*x = AttributeSet{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[1]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -161,7 +101,7 @@ func (x *AttributeSet) String() string {
 func (*AttributeSet) ProtoMessage() {}
 
 func (x *AttributeSet) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[1]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -174,7 +114,7 @@ func (x *AttributeSet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttributeSet.ProtoReflect.Descriptor instead.
 func (*AttributeSet) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{1}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *AttributeSet) GetDescriptor_() *v1.ResourceDescriptor {
@@ -211,7 +151,7 @@ type AttributeDefinition struct {
 func (x *AttributeDefinition) Reset() {
 	*x = AttributeDefinition{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[2]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -224,7 +164,7 @@ func (x *AttributeDefinition) String() string {
 func (*AttributeDefinition) ProtoMessage() {}
 
 func (x *AttributeDefinition) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[2]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -237,7 +177,7 @@ func (x *AttributeDefinition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttributeDefinition.ProtoReflect.Descriptor instead.
 func (*AttributeDefinition) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{2}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *AttributeDefinition) GetDescriptor_() *v1.ResourceDescriptor {
@@ -291,7 +231,7 @@ type AttributeDefinitionReference struct {
 func (x *AttributeDefinitionReference) Reset() {
 	*x = AttributeDefinitionReference{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[3]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -304,7 +244,7 @@ func (x *AttributeDefinitionReference) String() string {
 func (*AttributeDefinitionReference) ProtoMessage() {}
 
 func (x *AttributeDefinitionReference) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[3]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -317,7 +257,7 @@ func (x *AttributeDefinitionReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttributeDefinitionReference.ProtoReflect.Descriptor instead.
 func (*AttributeDefinitionReference) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{3}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{2}
 }
 
 func (m *AttributeDefinitionReference) GetRef() isAttributeDefinitionReference_Ref {
@@ -372,7 +312,7 @@ type AttributeDefinitionValue struct {
 func (x *AttributeDefinitionValue) Reset() {
 	*x = AttributeDefinitionValue{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[4]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -385,7 +325,7 @@ func (x *AttributeDefinitionValue) String() string {
 func (*AttributeDefinitionValue) ProtoMessage() {}
 
 func (x *AttributeDefinitionValue) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[4]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -398,7 +338,7 @@ func (x *AttributeDefinitionValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttributeDefinitionValue.ProtoReflect.Descriptor instead.
 func (*AttributeDefinitionValue) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{4}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AttributeDefinitionValue) GetDescriptor_() *v1.ResourceDescriptor {
@@ -432,13 +372,14 @@ type AttributeValueReference struct {
 	//
 	//	*AttributeValueReference_Descriptor_
 	//	*AttributeValueReference_AttributeValue
+	//	*AttributeValueReference_AttributeFqn
 	Ref isAttributeValueReference_Ref `protobuf_oneof:"ref"`
 }
 
 func (x *AttributeValueReference) Reset() {
 	*x = AttributeValueReference{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[5]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -451,7 +392,7 @@ func (x *AttributeValueReference) String() string {
 func (*AttributeValueReference) ProtoMessage() {}
 
 func (x *AttributeValueReference) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[5]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -464,7 +405,7 @@ func (x *AttributeValueReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttributeValueReference.ProtoReflect.Descriptor instead.
 func (*AttributeValueReference) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{5}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{4}
 }
 
 func (m *AttributeValueReference) GetRef() isAttributeValueReference_Ref {
@@ -488,6 +429,13 @@ func (x *AttributeValueReference) GetAttributeValue() *AttributeDefinitionValue 
 	return nil
 }
 
+func (x *AttributeValueReference) GetAttributeFqn() string {
+	if x, ok := x.GetRef().(*AttributeValueReference_AttributeFqn); ok {
+		return x.AttributeFqn
+	}
+	return ""
+}
+
 type isAttributeValueReference_Ref interface {
 	isAttributeValueReference_Ref()
 }
@@ -500,9 +448,15 @@ type AttributeValueReference_AttributeValue struct {
 	AttributeValue *AttributeDefinitionValue `protobuf:"bytes,2,opt,name=attribute_value,json=attributeValue,proto3,oneof"`
 }
 
+type AttributeValueReference_AttributeFqn struct {
+	AttributeFqn string `protobuf:"bytes,3,opt,name=attribute_fqn,json=attributeFqn,proto3,oneof"`
+}
+
 func (*AttributeValueReference_Descriptor_) isAttributeValueReference_Ref() {}
 
 func (*AttributeValueReference_AttributeValue) isAttributeValueReference_Ref() {}
+
+func (*AttributeValueReference_AttributeFqn) isAttributeValueReference_Ref() {}
 
 // represent an attribute value as a group with other attribute values as members
 //
@@ -525,7 +479,7 @@ type AttributeGroup struct {
 func (x *AttributeGroup) Reset() {
 	*x = AttributeGroup{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[6]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -538,7 +492,7 @@ func (x *AttributeGroup) String() string {
 func (*AttributeGroup) ProtoMessage() {}
 
 func (x *AttributeGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[6]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -551,7 +505,7 @@ func (x *AttributeGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttributeGroup.ProtoReflect.Descriptor instead.
 func (*AttributeGroup) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{6}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AttributeGroup) GetDescriptor_() *v1.ResourceDescriptor {
@@ -586,7 +540,7 @@ type GetAttributeRequest struct {
 func (x *GetAttributeRequest) Reset() {
 	*x = GetAttributeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[7]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -599,7 +553,7 @@ func (x *GetAttributeRequest) String() string {
 func (*GetAttributeRequest) ProtoMessage() {}
 
 func (x *GetAttributeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[7]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -612,7 +566,7 @@ func (x *GetAttributeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAttributeRequest.ProtoReflect.Descriptor instead.
 func (*GetAttributeRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{7}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetAttributeRequest) GetId() int32 {
@@ -633,7 +587,7 @@ type GetAttributeResponse struct {
 func (x *GetAttributeResponse) Reset() {
 	*x = GetAttributeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[8]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -646,7 +600,7 @@ func (x *GetAttributeResponse) String() string {
 func (*GetAttributeResponse) ProtoMessage() {}
 
 func (x *GetAttributeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[8]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -659,7 +613,7 @@ func (x *GetAttributeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAttributeResponse.ProtoReflect.Descriptor instead.
 func (*GetAttributeResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{8}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetAttributeResponse) GetDefinition() *AttributeDefinition {
@@ -680,7 +634,7 @@ type ListAttributesRequest struct {
 func (x *ListAttributesRequest) Reset() {
 	*x = ListAttributesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[9]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -693,7 +647,7 @@ func (x *ListAttributesRequest) String() string {
 func (*ListAttributesRequest) ProtoMessage() {}
 
 func (x *ListAttributesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[9]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -706,7 +660,7 @@ func (x *ListAttributesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAttributesRequest.ProtoReflect.Descriptor instead.
 func (*ListAttributesRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{9}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListAttributesRequest) GetSelector() *v1.ResourceSelector {
@@ -727,7 +681,7 @@ type ListAttributesResponse struct {
 func (x *ListAttributesResponse) Reset() {
 	*x = ListAttributesResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[10]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -740,7 +694,7 @@ func (x *ListAttributesResponse) String() string {
 func (*ListAttributesResponse) ProtoMessage() {}
 
 func (x *ListAttributesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[10]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -753,7 +707,7 @@ func (x *ListAttributesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAttributesResponse.ProtoReflect.Descriptor instead.
 func (*ListAttributesResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{10}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListAttributesResponse) GetDefinitions() []*AttributeDefinition {
@@ -774,7 +728,7 @@ type CreateAttributeRequest struct {
 func (x *CreateAttributeRequest) Reset() {
 	*x = CreateAttributeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[11]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -787,7 +741,7 @@ func (x *CreateAttributeRequest) String() string {
 func (*CreateAttributeRequest) ProtoMessage() {}
 
 func (x *CreateAttributeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[11]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -800,7 +754,7 @@ func (x *CreateAttributeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAttributeRequest.ProtoReflect.Descriptor instead.
 func (*CreateAttributeRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{11}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CreateAttributeRequest) GetDefinition() *AttributeDefinition {
@@ -819,7 +773,7 @@ type CreateAttributeResponse struct {
 func (x *CreateAttributeResponse) Reset() {
 	*x = CreateAttributeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[12]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -832,7 +786,7 @@ func (x *CreateAttributeResponse) String() string {
 func (*CreateAttributeResponse) ProtoMessage() {}
 
 func (x *CreateAttributeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[12]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -845,7 +799,7 @@ func (x *CreateAttributeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAttributeResponse.ProtoReflect.Descriptor instead.
 func (*CreateAttributeResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{12}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{11}
 }
 
 type UpdateAttributeRequest struct {
@@ -860,7 +814,7 @@ type UpdateAttributeRequest struct {
 func (x *UpdateAttributeRequest) Reset() {
 	*x = UpdateAttributeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[13]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -873,7 +827,7 @@ func (x *UpdateAttributeRequest) String() string {
 func (*UpdateAttributeRequest) ProtoMessage() {}
 
 func (x *UpdateAttributeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[13]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -886,7 +840,7 @@ func (x *UpdateAttributeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAttributeRequest.ProtoReflect.Descriptor instead.
 func (*UpdateAttributeRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{13}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateAttributeRequest) GetId() int32 {
@@ -912,7 +866,7 @@ type UpdateAttributeResponse struct {
 func (x *UpdateAttributeResponse) Reset() {
 	*x = UpdateAttributeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[14]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -925,7 +879,7 @@ func (x *UpdateAttributeResponse) String() string {
 func (*UpdateAttributeResponse) ProtoMessage() {}
 
 func (x *UpdateAttributeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[14]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +892,7 @@ func (x *UpdateAttributeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAttributeResponse.ProtoReflect.Descriptor instead.
 func (*UpdateAttributeResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{14}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{13}
 }
 
 type DeleteAttributeRequest struct {
@@ -952,7 +906,7 @@ type DeleteAttributeRequest struct {
 func (x *DeleteAttributeRequest) Reset() {
 	*x = DeleteAttributeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[15]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -965,7 +919,7 @@ func (x *DeleteAttributeRequest) String() string {
 func (*DeleteAttributeRequest) ProtoMessage() {}
 
 func (x *DeleteAttributeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[15]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -978,7 +932,7 @@ func (x *DeleteAttributeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAttributeRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAttributeRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{15}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DeleteAttributeRequest) GetId() int32 {
@@ -997,7 +951,7 @@ type DeleteAttributeResponse struct {
 func (x *DeleteAttributeResponse) Reset() {
 	*x = DeleteAttributeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[16]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1010,7 +964,7 @@ func (x *DeleteAttributeResponse) String() string {
 func (*DeleteAttributeResponse) ProtoMessage() {}
 
 func (x *DeleteAttributeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[16]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1023,7 +977,7 @@ func (x *DeleteAttributeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAttributeResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAttributeResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{16}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{15}
 }
 
 type GetAttributeGroupRequest struct {
@@ -1037,7 +991,7 @@ type GetAttributeGroupRequest struct {
 func (x *GetAttributeGroupRequest) Reset() {
 	*x = GetAttributeGroupRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[17]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1050,7 +1004,7 @@ func (x *GetAttributeGroupRequest) String() string {
 func (*GetAttributeGroupRequest) ProtoMessage() {}
 
 func (x *GetAttributeGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[17]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1063,7 +1017,7 @@ func (x *GetAttributeGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAttributeGroupRequest.ProtoReflect.Descriptor instead.
 func (*GetAttributeGroupRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{17}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetAttributeGroupRequest) GetId() int32 {
@@ -1084,7 +1038,7 @@ type GetAttributeGroupResponse struct {
 func (x *GetAttributeGroupResponse) Reset() {
 	*x = GetAttributeGroupResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[18]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1097,7 +1051,7 @@ func (x *GetAttributeGroupResponse) String() string {
 func (*GetAttributeGroupResponse) ProtoMessage() {}
 
 func (x *GetAttributeGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[18]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +1064,7 @@ func (x *GetAttributeGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAttributeGroupResponse.ProtoReflect.Descriptor instead.
 func (*GetAttributeGroupResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{18}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetAttributeGroupResponse) GetGroup() *AttributeGroup {
@@ -1131,7 +1085,7 @@ type ListAttributeGroupsRequest struct {
 func (x *ListAttributeGroupsRequest) Reset() {
 	*x = ListAttributeGroupsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[19]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1144,7 +1098,7 @@ func (x *ListAttributeGroupsRequest) String() string {
 func (*ListAttributeGroupsRequest) ProtoMessage() {}
 
 func (x *ListAttributeGroupsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[19]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1157,7 +1111,7 @@ func (x *ListAttributeGroupsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAttributeGroupsRequest.ProtoReflect.Descriptor instead.
 func (*ListAttributeGroupsRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{19}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListAttributeGroupsRequest) GetSelector() *v1.ResourceSelector {
@@ -1178,7 +1132,7 @@ type ListAttributeGroupsResponse struct {
 func (x *ListAttributeGroupsResponse) Reset() {
 	*x = ListAttributeGroupsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[20]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1191,7 +1145,7 @@ func (x *ListAttributeGroupsResponse) String() string {
 func (*ListAttributeGroupsResponse) ProtoMessage() {}
 
 func (x *ListAttributeGroupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[20]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1204,7 +1158,7 @@ func (x *ListAttributeGroupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAttributeGroupsResponse.ProtoReflect.Descriptor instead.
 func (*ListAttributeGroupsResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{20}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListAttributeGroupsResponse) GetGroups() []*AttributeGroup {
@@ -1225,7 +1179,7 @@ type CreateAttributeGroupRequest struct {
 func (x *CreateAttributeGroupRequest) Reset() {
 	*x = CreateAttributeGroupRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[21]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1238,7 +1192,7 @@ func (x *CreateAttributeGroupRequest) String() string {
 func (*CreateAttributeGroupRequest) ProtoMessage() {}
 
 func (x *CreateAttributeGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[21]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1251,7 +1205,7 @@ func (x *CreateAttributeGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAttributeGroupRequest.ProtoReflect.Descriptor instead.
 func (*CreateAttributeGroupRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{21}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CreateAttributeGroupRequest) GetGroup() *AttributeGroup {
@@ -1270,7 +1224,7 @@ type CreateAttributeGroupResponse struct {
 func (x *CreateAttributeGroupResponse) Reset() {
 	*x = CreateAttributeGroupResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[22]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1283,7 +1237,7 @@ func (x *CreateAttributeGroupResponse) String() string {
 func (*CreateAttributeGroupResponse) ProtoMessage() {}
 
 func (x *CreateAttributeGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[22]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1296,7 +1250,7 @@ func (x *CreateAttributeGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAttributeGroupResponse.ProtoReflect.Descriptor instead.
 func (*CreateAttributeGroupResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{22}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{21}
 }
 
 type UpdateAttributeGroupRequest struct {
@@ -1311,7 +1265,7 @@ type UpdateAttributeGroupRequest struct {
 func (x *UpdateAttributeGroupRequest) Reset() {
 	*x = UpdateAttributeGroupRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[23]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1324,7 +1278,7 @@ func (x *UpdateAttributeGroupRequest) String() string {
 func (*UpdateAttributeGroupRequest) ProtoMessage() {}
 
 func (x *UpdateAttributeGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[23]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1337,7 +1291,7 @@ func (x *UpdateAttributeGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAttributeGroupRequest.ProtoReflect.Descriptor instead.
 func (*UpdateAttributeGroupRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{23}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *UpdateAttributeGroupRequest) GetId() int32 {
@@ -1363,7 +1317,7 @@ type UpdateAttributeGroupResponse struct {
 func (x *UpdateAttributeGroupResponse) Reset() {
 	*x = UpdateAttributeGroupResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[24]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1376,7 +1330,7 @@ func (x *UpdateAttributeGroupResponse) String() string {
 func (*UpdateAttributeGroupResponse) ProtoMessage() {}
 
 func (x *UpdateAttributeGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[24]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1389,7 +1343,7 @@ func (x *UpdateAttributeGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAttributeGroupResponse.ProtoReflect.Descriptor instead.
 func (*UpdateAttributeGroupResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{24}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{23}
 }
 
 type DeleteAttributeGroupRequest struct {
@@ -1403,7 +1357,7 @@ type DeleteAttributeGroupRequest struct {
 func (x *DeleteAttributeGroupRequest) Reset() {
 	*x = DeleteAttributeGroupRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[25]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1416,7 +1370,7 @@ func (x *DeleteAttributeGroupRequest) String() string {
 func (*DeleteAttributeGroupRequest) ProtoMessage() {}
 
 func (x *DeleteAttributeGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[25]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1429,7 +1383,7 @@ func (x *DeleteAttributeGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAttributeGroupRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAttributeGroupRequest) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{25}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DeleteAttributeGroupRequest) GetId() int32 {
@@ -1448,7 +1402,7 @@ type DeleteAttributeGroupResponse struct {
 func (x *DeleteAttributeGroupResponse) Reset() {
 	*x = DeleteAttributeGroupResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_attributes_v1_attributes_proto_msgTypes[26]
+		mi := &file_attributes_v1_attributes_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1461,7 +1415,7 @@ func (x *DeleteAttributeGroupResponse) String() string {
 func (*DeleteAttributeGroupResponse) ProtoMessage() {}
 
 func (x *DeleteAttributeGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_attributes_v1_attributes_proto_msgTypes[26]
+	mi := &file_attributes_v1_attributes_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1474,7 +1428,7 @@ func (x *DeleteAttributeGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAttributeGroupResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAttributeGroupResponse) Descriptor() ([]byte, []int) {
-	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{26}
+	return file_attributes_v1_attributes_proto_rawDescGZIP(), []int{25}
 }
 
 var File_attributes_v1_attributes_proto protoreflect.FileDescriptor
@@ -1488,83 +1442,82 @@ var file_attributes_v1_attributes_proto_rawDesc = []byte{
 	0x6d, 0x6d, 0x6f, 0x6e, 0x2f, 0x76, 0x31, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1c, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x61, 0x70, 0x69,
 	0x2f, 0x61, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x22, 0x35, 0x0a, 0x0f, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x46,
-	0x51, 0x4e, 0x53, 0x65, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x18, 0x02, 0x20,
-	0x03, 0x28, 0x09, 0x52, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x22, 0x93, 0x01, 0x0a, 0x0c, 0x41, 0x74,
-	0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x53, 0x65, 0x74, 0x12, 0x3d, 0x0a, 0x0a, 0x64, 0x65,
-	0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d,
-	0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75,
-	0x72, 0x63, 0x65, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x52, 0x0a, 0x64,
-	0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x12, 0x44, 0x0a, 0x0b, 0x64, 0x65, 0x66,
-	0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x22,
-	0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41,
-	0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69,
-	0x6f, 0x6e, 0x52, 0x0b, 0x64, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22,
-	0xed, 0x03, 0x0a, 0x13, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66,
-	0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x3d, 0x0a, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72,
-	0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x63, 0x6f,
-	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65,
-	0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x52, 0x0a, 0x64, 0x65, 0x73, 0x63,
-	0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x12, 0x1a, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x42, 0x06, 0xba, 0x48, 0x03, 0xc8, 0x01, 0x01, 0x52, 0x04, 0x6e, 0x61,
-	0x6d, 0x65, 0x12, 0x55, 0x0a, 0x04, 0x72, 0x75, 0x6c, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e,
-	0x32, 0x34, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x76, 0x31,
-	0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69,
-	0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x52, 0x75,
-	0x6c, 0x65, 0x54, 0x79, 0x70, 0x65, 0x42, 0x0b, 0xba, 0x48, 0x08, 0xc8, 0x01, 0x01, 0x82, 0x01,
-	0x02, 0x10, 0x01, 0x52, 0x04, 0x72, 0x75, 0x6c, 0x65, 0x12, 0x3f, 0x0a, 0x06, 0x76, 0x61, 0x6c,
-	0x75, 0x65, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x61, 0x74, 0x74, 0x72,
-	0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62,
-	0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c,
-	0x75, 0x65, 0x52, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x12, 0x42, 0x0a, 0x08, 0x67, 0x72,
-	0x6f, 0x75, 0x70, 0x5f, 0x62, 0x79, 0x18, 0x09, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x61,
-	0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x74, 0x74,
+	0x74, 0x6f, 0x22, 0x93, 0x01, 0x0a, 0x0c, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65,
+	0x53, 0x65, 0x74, 0x12, 0x3d, 0x0a, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f,
+	0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e,
+	0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x44, 0x65, 0x73, 0x63,
+	0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x52, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74,
+	0x6f, 0x72, 0x12, 0x44, 0x0a, 0x0b, 0x64, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62,
+	0x75, 0x74, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74,
+	0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0b, 0x64, 0x65, 0x66,
+	0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0xed, 0x03, 0x0a, 0x13, 0x41, 0x74, 0x74,
 	0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e,
-	0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x07, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x42, 0x79, 0x22, 0x9e,
-	0x01, 0x0a, 0x11, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x52, 0x75, 0x6c, 0x65,
-	0x54, 0x79, 0x70, 0x65, 0x12, 0x23, 0x0a, 0x1f, 0x41, 0x54, 0x54, 0x52, 0x49, 0x42, 0x55, 0x54,
-	0x45, 0x5f, 0x52, 0x55, 0x4c, 0x45, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x4e, 0x53, 0x50,
-	0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x1e, 0x0a, 0x1a, 0x41, 0x54, 0x54,
-	0x52, 0x49, 0x42, 0x55, 0x54, 0x45, 0x5f, 0x52, 0x55, 0x4c, 0x45, 0x5f, 0x54, 0x59, 0x50, 0x45,
-	0x5f, 0x41, 0x4c, 0x4c, 0x5f, 0x4f, 0x46, 0x10, 0x01, 0x12, 0x1e, 0x0a, 0x1a, 0x41, 0x54, 0x54,
-	0x52, 0x49, 0x42, 0x55, 0x54, 0x45, 0x5f, 0x52, 0x55, 0x4c, 0x45, 0x5f, 0x54, 0x59, 0x50, 0x45,
-	0x5f, 0x41, 0x4e, 0x59, 0x5f, 0x4f, 0x46, 0x10, 0x02, 0x12, 0x24, 0x0a, 0x20, 0x41, 0x54, 0x54,
-	0x52, 0x49, 0x42, 0x55, 0x54, 0x45, 0x5f, 0x52, 0x55, 0x4c, 0x45, 0x5f, 0x54, 0x59, 0x50, 0x45,
-	0x5f, 0x48, 0x49, 0x45, 0x52, 0x41, 0x52, 0x43, 0x48, 0x49, 0x43, 0x41, 0x4c, 0x10, 0x03, 0x22,
-	0xac, 0x01, 0x0a, 0x1c, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66,
-	0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65,
-	0x12, 0x3f, 0x0a, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01,
+	0x12, 0x3d, 0x0a, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01,
 	0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31,
 	0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70,
-	0x74, 0x6f, 0x72, 0x48, 0x00, 0x52, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f,
-	0x72, 0x12, 0x44, 0x0a, 0x0a, 0x64, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74,
+	0x74, 0x6f, 0x72, 0x52, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x12,
+	0x1a, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x06, 0xba,
+	0x48, 0x03, 0xc8, 0x01, 0x01, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x55, 0x0a, 0x04, 0x72,
+	0x75, 0x6c, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x34, 0x2e, 0x61, 0x74, 0x74, 0x72,
+	0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62,
+	0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x41, 0x74,
+	0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x52, 0x75, 0x6c, 0x65, 0x54, 0x79, 0x70, 0x65, 0x42,
+	0x0b, 0xba, 0x48, 0x08, 0xc8, 0x01, 0x01, 0x82, 0x01, 0x02, 0x10, 0x01, 0x52, 0x04, 0x72, 0x75,
+	0x6c, 0x65, 0x12, 0x3f, 0x0a, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x04, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x27, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e,
+	0x76, 0x31, 0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69,
+	0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x06, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x73, 0x12, 0x42, 0x0a, 0x08, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x5f, 0x62, 0x79, 0x18,
+	0x09, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74,
 	0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44,
-	0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x48, 0x00, 0x52, 0x0a, 0x64, 0x65, 0x66,
-	0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x05, 0x0a, 0x03, 0x72, 0x65, 0x66, 0x22, 0xa1,
-	0x01, 0x0a, 0x18, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69,
-	0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x3d, 0x0a, 0x0a, 0x64,
-	0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x1d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x73, 0x6f,
-	0x75, 0x72, 0x63, 0x65, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x52, 0x0a,
-	0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61,
-	0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
-	0x12, 0x30, 0x0a, 0x14, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x5f, 0x70, 0x75,
-	0x62, 0x6c, 0x69, 0x63, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x12,
-	0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b,
-	0x65, 0x79, 0x22, 0xb5, 0x01, 0x0a, 0x17, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65,
-	0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x12, 0x3f,
-	0x0a, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x52,
-	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f,
-	0x72, 0x48, 0x00, 0x52, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x12,
-	0x52, 0x0a, 0x0f, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x5f, 0x76, 0x61, 0x6c,
-	0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69,
-	0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75,
-	0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75,
-	0x65, 0x48, 0x00, 0x52, 0x0e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x56, 0x61,
-	0x6c, 0x75, 0x65, 0x42, 0x05, 0x0a, 0x03, 0x72, 0x65, 0x66, 0x22, 0xe5, 0x01, 0x0a, 0x0e, 0x41,
+	0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x07,
+	0x67, 0x72, 0x6f, 0x75, 0x70, 0x42, 0x79, 0x22, 0x9e, 0x01, 0x0a, 0x11, 0x41, 0x74, 0x74, 0x72,
+	0x69, 0x62, 0x75, 0x74, 0x65, 0x52, 0x75, 0x6c, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x23, 0x0a,
+	0x1f, 0x41, 0x54, 0x54, 0x52, 0x49, 0x42, 0x55, 0x54, 0x45, 0x5f, 0x52, 0x55, 0x4c, 0x45, 0x5f,
+	0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44,
+	0x10, 0x00, 0x12, 0x1e, 0x0a, 0x1a, 0x41, 0x54, 0x54, 0x52, 0x49, 0x42, 0x55, 0x54, 0x45, 0x5f,
+	0x52, 0x55, 0x4c, 0x45, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x41, 0x4c, 0x4c, 0x5f, 0x4f, 0x46,
+	0x10, 0x01, 0x12, 0x1e, 0x0a, 0x1a, 0x41, 0x54, 0x54, 0x52, 0x49, 0x42, 0x55, 0x54, 0x45, 0x5f,
+	0x52, 0x55, 0x4c, 0x45, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x41, 0x4e, 0x59, 0x5f, 0x4f, 0x46,
+	0x10, 0x02, 0x12, 0x24, 0x0a, 0x20, 0x41, 0x54, 0x54, 0x52, 0x49, 0x42, 0x55, 0x54, 0x45, 0x5f,
+	0x52, 0x55, 0x4c, 0x45, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x48, 0x49, 0x45, 0x52, 0x41, 0x52,
+	0x43, 0x48, 0x49, 0x43, 0x41, 0x4c, 0x10, 0x03, 0x22, 0xac, 0x01, 0x0a, 0x1c, 0x41, 0x74, 0x74,
+	0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e,
+	0x52, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x12, 0x3f, 0x0a, 0x0a, 0x64, 0x65, 0x73,
+	0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e,
+	0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72,
+	0x63, 0x65, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x48, 0x00, 0x52, 0x0a,
+	0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x12, 0x44, 0x0a, 0x0a, 0x64, 0x65,
+	0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x22,
+	0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41,
+	0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69,
+	0x6f, 0x6e, 0x48, 0x00, 0x52, 0x0a, 0x64, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e,
+	0x42, 0x05, 0x0a, 0x03, 0x72, 0x65, 0x66, 0x22, 0xa1, 0x01, 0x0a, 0x18, 0x41, 0x74, 0x74, 0x72,
+	0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x56,
+	0x61, 0x6c, 0x75, 0x65, 0x12, 0x3d, 0x0a, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74,
+	0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f,
+	0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x44, 0x65, 0x73,
+	0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x52, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70,
+	0x74, 0x6f, 0x72, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x30, 0x0a, 0x14, 0x61, 0x74, 0x74,
+	0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x5f, 0x6b, 0x65,
+	0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x12, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75,
+	0x74, 0x65, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b, 0x65, 0x79, 0x22, 0xdc, 0x01, 0x0a, 0x17,
+	0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65,
+	0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x12, 0x3f, 0x0a, 0x0a, 0x64, 0x65, 0x73, 0x63, 0x72,
+	0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x63, 0x6f,
+	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65,
+	0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x48, 0x00, 0x52, 0x0a, 0x64, 0x65,
+	0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x12, 0x52, 0x0a, 0x0f, 0x61, 0x74, 0x74, 0x72,
+	0x69, 0x62, 0x75, 0x74, 0x65, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x27, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x76,
+	0x31, 0x2e, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e,
+	0x69, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x48, 0x00, 0x52, 0x0e, 0x61, 0x74,
+	0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x25, 0x0a, 0x0d,
+	0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x5f, 0x66, 0x71, 0x6e, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x0c, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65,
+	0x46, 0x71, 0x6e, 0x42, 0x05, 0x0a, 0x03, 0x72, 0x65, 0x66, 0x22, 0xe5, 0x01, 0x0a, 0x0e, 0x41,
 	0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x12, 0x3d, 0x0a,
 	0x0a, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x0b, 0x32, 0x1d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65,
@@ -1782,84 +1735,83 @@ func file_attributes_v1_attributes_proto_rawDescGZIP() []byte {
 }
 
 var file_attributes_v1_attributes_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_attributes_v1_attributes_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_attributes_v1_attributes_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_attributes_v1_attributes_proto_goTypes = []interface{}{
 	(AttributeDefinition_AttributeRuleType)(0), // 0: attributes.v1.AttributeDefinition.AttributeRuleType
-	(*AttributeFQNSet)(nil),                    // 1: attributes.v1.AttributeFQNSet
-	(*AttributeSet)(nil),                       // 2: attributes.v1.AttributeSet
-	(*AttributeDefinition)(nil),                // 3: attributes.v1.AttributeDefinition
-	(*AttributeDefinitionReference)(nil),       // 4: attributes.v1.AttributeDefinitionReference
-	(*AttributeDefinitionValue)(nil),           // 5: attributes.v1.AttributeDefinitionValue
-	(*AttributeValueReference)(nil),            // 6: attributes.v1.AttributeValueReference
-	(*AttributeGroup)(nil),                     // 7: attributes.v1.AttributeGroup
-	(*GetAttributeRequest)(nil),                // 8: attributes.v1.GetAttributeRequest
-	(*GetAttributeResponse)(nil),               // 9: attributes.v1.GetAttributeResponse
-	(*ListAttributesRequest)(nil),              // 10: attributes.v1.ListAttributesRequest
-	(*ListAttributesResponse)(nil),             // 11: attributes.v1.ListAttributesResponse
-	(*CreateAttributeRequest)(nil),             // 12: attributes.v1.CreateAttributeRequest
-	(*CreateAttributeResponse)(nil),            // 13: attributes.v1.CreateAttributeResponse
-	(*UpdateAttributeRequest)(nil),             // 14: attributes.v1.UpdateAttributeRequest
-	(*UpdateAttributeResponse)(nil),            // 15: attributes.v1.UpdateAttributeResponse
-	(*DeleteAttributeRequest)(nil),             // 16: attributes.v1.DeleteAttributeRequest
-	(*DeleteAttributeResponse)(nil),            // 17: attributes.v1.DeleteAttributeResponse
-	(*GetAttributeGroupRequest)(nil),           // 18: attributes.v1.GetAttributeGroupRequest
-	(*GetAttributeGroupResponse)(nil),          // 19: attributes.v1.GetAttributeGroupResponse
-	(*ListAttributeGroupsRequest)(nil),         // 20: attributes.v1.ListAttributeGroupsRequest
-	(*ListAttributeGroupsResponse)(nil),        // 21: attributes.v1.ListAttributeGroupsResponse
-	(*CreateAttributeGroupRequest)(nil),        // 22: attributes.v1.CreateAttributeGroupRequest
-	(*CreateAttributeGroupResponse)(nil),       // 23: attributes.v1.CreateAttributeGroupResponse
-	(*UpdateAttributeGroupRequest)(nil),        // 24: attributes.v1.UpdateAttributeGroupRequest
-	(*UpdateAttributeGroupResponse)(nil),       // 25: attributes.v1.UpdateAttributeGroupResponse
-	(*DeleteAttributeGroupRequest)(nil),        // 26: attributes.v1.DeleteAttributeGroupRequest
-	(*DeleteAttributeGroupResponse)(nil),       // 27: attributes.v1.DeleteAttributeGroupResponse
-	(*v1.ResourceDescriptor)(nil),              // 28: common.v1.ResourceDescriptor
-	(*v1.ResourceSelector)(nil),                // 29: common.v1.ResourceSelector
+	(*AttributeSet)(nil),                       // 1: attributes.v1.AttributeSet
+	(*AttributeDefinition)(nil),                // 2: attributes.v1.AttributeDefinition
+	(*AttributeDefinitionReference)(nil),       // 3: attributes.v1.AttributeDefinitionReference
+	(*AttributeDefinitionValue)(nil),           // 4: attributes.v1.AttributeDefinitionValue
+	(*AttributeValueReference)(nil),            // 5: attributes.v1.AttributeValueReference
+	(*AttributeGroup)(nil),                     // 6: attributes.v1.AttributeGroup
+	(*GetAttributeRequest)(nil),                // 7: attributes.v1.GetAttributeRequest
+	(*GetAttributeResponse)(nil),               // 8: attributes.v1.GetAttributeResponse
+	(*ListAttributesRequest)(nil),              // 9: attributes.v1.ListAttributesRequest
+	(*ListAttributesResponse)(nil),             // 10: attributes.v1.ListAttributesResponse
+	(*CreateAttributeRequest)(nil),             // 11: attributes.v1.CreateAttributeRequest
+	(*CreateAttributeResponse)(nil),            // 12: attributes.v1.CreateAttributeResponse
+	(*UpdateAttributeRequest)(nil),             // 13: attributes.v1.UpdateAttributeRequest
+	(*UpdateAttributeResponse)(nil),            // 14: attributes.v1.UpdateAttributeResponse
+	(*DeleteAttributeRequest)(nil),             // 15: attributes.v1.DeleteAttributeRequest
+	(*DeleteAttributeResponse)(nil),            // 16: attributes.v1.DeleteAttributeResponse
+	(*GetAttributeGroupRequest)(nil),           // 17: attributes.v1.GetAttributeGroupRequest
+	(*GetAttributeGroupResponse)(nil),          // 18: attributes.v1.GetAttributeGroupResponse
+	(*ListAttributeGroupsRequest)(nil),         // 19: attributes.v1.ListAttributeGroupsRequest
+	(*ListAttributeGroupsResponse)(nil),        // 20: attributes.v1.ListAttributeGroupsResponse
+	(*CreateAttributeGroupRequest)(nil),        // 21: attributes.v1.CreateAttributeGroupRequest
+	(*CreateAttributeGroupResponse)(nil),       // 22: attributes.v1.CreateAttributeGroupResponse
+	(*UpdateAttributeGroupRequest)(nil),        // 23: attributes.v1.UpdateAttributeGroupRequest
+	(*UpdateAttributeGroupResponse)(nil),       // 24: attributes.v1.UpdateAttributeGroupResponse
+	(*DeleteAttributeGroupRequest)(nil),        // 25: attributes.v1.DeleteAttributeGroupRequest
+	(*DeleteAttributeGroupResponse)(nil),       // 26: attributes.v1.DeleteAttributeGroupResponse
+	(*v1.ResourceDescriptor)(nil),              // 27: common.v1.ResourceDescriptor
+	(*v1.ResourceSelector)(nil),                // 28: common.v1.ResourceSelector
 }
 var file_attributes_v1_attributes_proto_depIdxs = []int32{
-	28, // 0: attributes.v1.AttributeSet.descriptor:type_name -> common.v1.ResourceDescriptor
-	3,  // 1: attributes.v1.AttributeSet.definitions:type_name -> attributes.v1.AttributeDefinition
-	28, // 2: attributes.v1.AttributeDefinition.descriptor:type_name -> common.v1.ResourceDescriptor
+	27, // 0: attributes.v1.AttributeSet.descriptor:type_name -> common.v1.ResourceDescriptor
+	2,  // 1: attributes.v1.AttributeSet.definitions:type_name -> attributes.v1.AttributeDefinition
+	27, // 2: attributes.v1.AttributeDefinition.descriptor:type_name -> common.v1.ResourceDescriptor
 	0,  // 3: attributes.v1.AttributeDefinition.rule:type_name -> attributes.v1.AttributeDefinition.AttributeRuleType
-	5,  // 4: attributes.v1.AttributeDefinition.values:type_name -> attributes.v1.AttributeDefinitionValue
-	5,  // 5: attributes.v1.AttributeDefinition.group_by:type_name -> attributes.v1.AttributeDefinitionValue
-	28, // 6: attributes.v1.AttributeDefinitionReference.descriptor:type_name -> common.v1.ResourceDescriptor
-	3,  // 7: attributes.v1.AttributeDefinitionReference.definition:type_name -> attributes.v1.AttributeDefinition
-	28, // 8: attributes.v1.AttributeDefinitionValue.descriptor:type_name -> common.v1.ResourceDescriptor
-	28, // 9: attributes.v1.AttributeValueReference.descriptor:type_name -> common.v1.ResourceDescriptor
-	5,  // 10: attributes.v1.AttributeValueReference.attribute_value:type_name -> attributes.v1.AttributeDefinitionValue
-	28, // 11: attributes.v1.AttributeGroup.descriptor:type_name -> common.v1.ResourceDescriptor
-	6,  // 12: attributes.v1.AttributeGroup.group_value:type_name -> attributes.v1.AttributeValueReference
-	6,  // 13: attributes.v1.AttributeGroup.member_values:type_name -> attributes.v1.AttributeValueReference
-	3,  // 14: attributes.v1.GetAttributeResponse.definition:type_name -> attributes.v1.AttributeDefinition
-	29, // 15: attributes.v1.ListAttributesRequest.selector:type_name -> common.v1.ResourceSelector
-	3,  // 16: attributes.v1.ListAttributesResponse.definitions:type_name -> attributes.v1.AttributeDefinition
-	3,  // 17: attributes.v1.CreateAttributeRequest.definition:type_name -> attributes.v1.AttributeDefinition
-	3,  // 18: attributes.v1.UpdateAttributeRequest.definition:type_name -> attributes.v1.AttributeDefinition
-	7,  // 19: attributes.v1.GetAttributeGroupResponse.group:type_name -> attributes.v1.AttributeGroup
-	29, // 20: attributes.v1.ListAttributeGroupsRequest.selector:type_name -> common.v1.ResourceSelector
-	7,  // 21: attributes.v1.ListAttributeGroupsResponse.groups:type_name -> attributes.v1.AttributeGroup
-	7,  // 22: attributes.v1.CreateAttributeGroupRequest.group:type_name -> attributes.v1.AttributeGroup
-	7,  // 23: attributes.v1.UpdateAttributeGroupRequest.group:type_name -> attributes.v1.AttributeGroup
-	8,  // 24: attributes.v1.AttributesService.GetAttribute:input_type -> attributes.v1.GetAttributeRequest
-	18, // 25: attributes.v1.AttributesService.GetAttributeGroup:input_type -> attributes.v1.GetAttributeGroupRequest
-	10, // 26: attributes.v1.AttributesService.ListAttributes:input_type -> attributes.v1.ListAttributesRequest
-	20, // 27: attributes.v1.AttributesService.ListAttributeGroups:input_type -> attributes.v1.ListAttributeGroupsRequest
-	12, // 28: attributes.v1.AttributesService.CreateAttribute:input_type -> attributes.v1.CreateAttributeRequest
-	22, // 29: attributes.v1.AttributesService.CreateAttributeGroup:input_type -> attributes.v1.CreateAttributeGroupRequest
-	14, // 30: attributes.v1.AttributesService.UpdateAttribute:input_type -> attributes.v1.UpdateAttributeRequest
-	24, // 31: attributes.v1.AttributesService.UpdateAttributeGroup:input_type -> attributes.v1.UpdateAttributeGroupRequest
-	16, // 32: attributes.v1.AttributesService.DeleteAttribute:input_type -> attributes.v1.DeleteAttributeRequest
-	26, // 33: attributes.v1.AttributesService.DeleteAttributeGroup:input_type -> attributes.v1.DeleteAttributeGroupRequest
-	9,  // 34: attributes.v1.AttributesService.GetAttribute:output_type -> attributes.v1.GetAttributeResponse
-	19, // 35: attributes.v1.AttributesService.GetAttributeGroup:output_type -> attributes.v1.GetAttributeGroupResponse
-	11, // 36: attributes.v1.AttributesService.ListAttributes:output_type -> attributes.v1.ListAttributesResponse
-	21, // 37: attributes.v1.AttributesService.ListAttributeGroups:output_type -> attributes.v1.ListAttributeGroupsResponse
-	13, // 38: attributes.v1.AttributesService.CreateAttribute:output_type -> attributes.v1.CreateAttributeResponse
-	23, // 39: attributes.v1.AttributesService.CreateAttributeGroup:output_type -> attributes.v1.CreateAttributeGroupResponse
-	15, // 40: attributes.v1.AttributesService.UpdateAttribute:output_type -> attributes.v1.UpdateAttributeResponse
-	25, // 41: attributes.v1.AttributesService.UpdateAttributeGroup:output_type -> attributes.v1.UpdateAttributeGroupResponse
-	17, // 42: attributes.v1.AttributesService.DeleteAttribute:output_type -> attributes.v1.DeleteAttributeResponse
-	27, // 43: attributes.v1.AttributesService.DeleteAttributeGroup:output_type -> attributes.v1.DeleteAttributeGroupResponse
+	4,  // 4: attributes.v1.AttributeDefinition.values:type_name -> attributes.v1.AttributeDefinitionValue
+	4,  // 5: attributes.v1.AttributeDefinition.group_by:type_name -> attributes.v1.AttributeDefinitionValue
+	27, // 6: attributes.v1.AttributeDefinitionReference.descriptor:type_name -> common.v1.ResourceDescriptor
+	2,  // 7: attributes.v1.AttributeDefinitionReference.definition:type_name -> attributes.v1.AttributeDefinition
+	27, // 8: attributes.v1.AttributeDefinitionValue.descriptor:type_name -> common.v1.ResourceDescriptor
+	27, // 9: attributes.v1.AttributeValueReference.descriptor:type_name -> common.v1.ResourceDescriptor
+	4,  // 10: attributes.v1.AttributeValueReference.attribute_value:type_name -> attributes.v1.AttributeDefinitionValue
+	27, // 11: attributes.v1.AttributeGroup.descriptor:type_name -> common.v1.ResourceDescriptor
+	5,  // 12: attributes.v1.AttributeGroup.group_value:type_name -> attributes.v1.AttributeValueReference
+	5,  // 13: attributes.v1.AttributeGroup.member_values:type_name -> attributes.v1.AttributeValueReference
+	2,  // 14: attributes.v1.GetAttributeResponse.definition:type_name -> attributes.v1.AttributeDefinition
+	28, // 15: attributes.v1.ListAttributesRequest.selector:type_name -> common.v1.ResourceSelector
+	2,  // 16: attributes.v1.ListAttributesResponse.definitions:type_name -> attributes.v1.AttributeDefinition
+	2,  // 17: attributes.v1.CreateAttributeRequest.definition:type_name -> attributes.v1.AttributeDefinition
+	2,  // 18: attributes.v1.UpdateAttributeRequest.definition:type_name -> attributes.v1.AttributeDefinition
+	6,  // 19: attributes.v1.GetAttributeGroupResponse.group:type_name -> attributes.v1.AttributeGroup
+	28, // 20: attributes.v1.ListAttributeGroupsRequest.selector:type_name -> common.v1.ResourceSelector
+	6,  // 21: attributes.v1.ListAttributeGroupsResponse.groups:type_name -> attributes.v1.AttributeGroup
+	6,  // 22: attributes.v1.CreateAttributeGroupRequest.group:type_name -> attributes.v1.AttributeGroup
+	6,  // 23: attributes.v1.UpdateAttributeGroupRequest.group:type_name -> attributes.v1.AttributeGroup
+	7,  // 24: attributes.v1.AttributesService.GetAttribute:input_type -> attributes.v1.GetAttributeRequest
+	17, // 25: attributes.v1.AttributesService.GetAttributeGroup:input_type -> attributes.v1.GetAttributeGroupRequest
+	9,  // 26: attributes.v1.AttributesService.ListAttributes:input_type -> attributes.v1.ListAttributesRequest
+	19, // 27: attributes.v1.AttributesService.ListAttributeGroups:input_type -> attributes.v1.ListAttributeGroupsRequest
+	11, // 28: attributes.v1.AttributesService.CreateAttribute:input_type -> attributes.v1.CreateAttributeRequest
+	21, // 29: attributes.v1.AttributesService.CreateAttributeGroup:input_type -> attributes.v1.CreateAttributeGroupRequest
+	13, // 30: attributes.v1.AttributesService.UpdateAttribute:input_type -> attributes.v1.UpdateAttributeRequest
+	23, // 31: attributes.v1.AttributesService.UpdateAttributeGroup:input_type -> attributes.v1.UpdateAttributeGroupRequest
+	15, // 32: attributes.v1.AttributesService.DeleteAttribute:input_type -> attributes.v1.DeleteAttributeRequest
+	25, // 33: attributes.v1.AttributesService.DeleteAttributeGroup:input_type -> attributes.v1.DeleteAttributeGroupRequest
+	8,  // 34: attributes.v1.AttributesService.GetAttribute:output_type -> attributes.v1.GetAttributeResponse
+	18, // 35: attributes.v1.AttributesService.GetAttributeGroup:output_type -> attributes.v1.GetAttributeGroupResponse
+	10, // 36: attributes.v1.AttributesService.ListAttributes:output_type -> attributes.v1.ListAttributesResponse
+	20, // 37: attributes.v1.AttributesService.ListAttributeGroups:output_type -> attributes.v1.ListAttributeGroupsResponse
+	12, // 38: attributes.v1.AttributesService.CreateAttribute:output_type -> attributes.v1.CreateAttributeResponse
+	22, // 39: attributes.v1.AttributesService.CreateAttributeGroup:output_type -> attributes.v1.CreateAttributeGroupResponse
+	14, // 40: attributes.v1.AttributesService.UpdateAttribute:output_type -> attributes.v1.UpdateAttributeResponse
+	24, // 41: attributes.v1.AttributesService.UpdateAttributeGroup:output_type -> attributes.v1.UpdateAttributeGroupResponse
+	16, // 42: attributes.v1.AttributesService.DeleteAttribute:output_type -> attributes.v1.DeleteAttributeResponse
+	26, // 43: attributes.v1.AttributesService.DeleteAttributeGroup:output_type -> attributes.v1.DeleteAttributeGroupResponse
 	34, // [34:44] is the sub-list for method output_type
 	24, // [24:34] is the sub-list for method input_type
 	24, // [24:24] is the sub-list for extension type_name
@@ -1874,18 +1826,6 @@ func file_attributes_v1_attributes_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_attributes_v1_attributes_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttributeFQNSet); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_attributes_v1_attributes_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AttributeSet); i {
 			case 0:
 				return &v.state
@@ -1897,7 +1837,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AttributeDefinition); i {
 			case 0:
 				return &v.state
@@ -1909,7 +1849,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AttributeDefinitionReference); i {
 			case 0:
 				return &v.state
@@ -1921,7 +1861,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AttributeDefinitionValue); i {
 			case 0:
 				return &v.state
@@ -1933,7 +1873,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AttributeValueReference); i {
 			case 0:
 				return &v.state
@@ -1945,7 +1885,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AttributeGroup); i {
 			case 0:
 				return &v.state
@@ -1957,7 +1897,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetAttributeRequest); i {
 			case 0:
 				return &v.state
@@ -1969,7 +1909,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetAttributeResponse); i {
 			case 0:
 				return &v.state
@@ -1981,7 +1921,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ListAttributesRequest); i {
 			case 0:
 				return &v.state
@@ -1993,7 +1933,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ListAttributesResponse); i {
 			case 0:
 				return &v.state
@@ -2005,7 +1945,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CreateAttributeRequest); i {
 			case 0:
 				return &v.state
@@ -2017,7 +1957,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CreateAttributeResponse); i {
 			case 0:
 				return &v.state
@@ -2029,7 +1969,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateAttributeRequest); i {
 			case 0:
 				return &v.state
@@ -2041,7 +1981,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateAttributeResponse); i {
 			case 0:
 				return &v.state
@@ -2053,7 +1993,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DeleteAttributeRequest); i {
 			case 0:
 				return &v.state
@@ -2065,7 +2005,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DeleteAttributeResponse); i {
 			case 0:
 				return &v.state
@@ -2077,7 +2017,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetAttributeGroupRequest); i {
 			case 0:
 				return &v.state
@@ -2089,7 +2029,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetAttributeGroupResponse); i {
 			case 0:
 				return &v.state
@@ -2101,7 +2041,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ListAttributeGroupsRequest); i {
 			case 0:
 				return &v.state
@@ -2113,7 +2053,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ListAttributeGroupsResponse); i {
 			case 0:
 				return &v.state
@@ -2125,7 +2065,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CreateAttributeGroupRequest); i {
 			case 0:
 				return &v.state
@@ -2137,7 +2077,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CreateAttributeGroupResponse); i {
 			case 0:
 				return &v.state
@@ -2149,7 +2089,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateAttributeGroupRequest); i {
 			case 0:
 				return &v.state
@@ -2161,7 +2101,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateAttributeGroupResponse); i {
 			case 0:
 				return &v.state
@@ -2173,7 +2113,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DeleteAttributeGroupRequest); i {
 			case 0:
 				return &v.state
@@ -2185,7 +2125,7 @@ func file_attributes_v1_attributes_proto_init() {
 				return nil
 			}
 		}
-		file_attributes_v1_attributes_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+		file_attributes_v1_attributes_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DeleteAttributeGroupResponse); i {
 			case 0:
 				return &v.state
@@ -2198,13 +2138,14 @@ func file_attributes_v1_attributes_proto_init() {
 			}
 		}
 	}
-	file_attributes_v1_attributes_proto_msgTypes[3].OneofWrappers = []interface{}{
+	file_attributes_v1_attributes_proto_msgTypes[2].OneofWrappers = []interface{}{
 		(*AttributeDefinitionReference_Descriptor_)(nil),
 		(*AttributeDefinitionReference_Definition)(nil),
 	}
-	file_attributes_v1_attributes_proto_msgTypes[5].OneofWrappers = []interface{}{
+	file_attributes_v1_attributes_proto_msgTypes[4].OneofWrappers = []interface{}{
 		(*AttributeValueReference_Descriptor_)(nil),
 		(*AttributeValueReference_AttributeValue)(nil),
+		(*AttributeValueReference_AttributeFqn)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -2212,7 +2153,7 @@ func file_attributes_v1_attributes_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_attributes_v1_attributes_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   27,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

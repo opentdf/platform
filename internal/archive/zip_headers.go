@@ -8,14 +8,14 @@ const (
 	zip64EndOfCDLocatorSignature    = 0x07064b50
 	zip64MagicVal                   = 0xFFFFFFFF
 	zip64EndOfCDSignature           = 0x06064b50
-	zip64ExternalId                 = 0x0001
+	zip64ExternalID                 = 0x0001
 	zipVersion                      = 0x2D //version 4.5 of the PKZIP specification
 )
 
 const (
-	endOfCDRecordSize                    = 22 // int64(unsafe.Sizeof(EndOfCDRecord{}))
-	zip64EndOfCDRecordLocatorSize        = 20 //int64(unsafe.Sizeof(Zip64EndOfCDRecordLocator{}))
-	zip64EndOfCDRecordSize               = 56 //int64(unsafe.Sizeof(Zip64EndOfCDRecord{}))
+	endOfCDRecordSize                    = 22
+	zip64EndOfCDRecordLocatorSize        = 20
+	zip64EndOfCDRecordSize               = 56
 	cdFileHeaderSize                     = 46
 	localFileHeaderSize                  = 30
 	zip64ExtendedLocalInfoExtraFieldSize = 20

@@ -160,9 +160,7 @@ var TDF3Tests = []TDF3Entry{
 	},
 }
 
-func TestTDF3Writer_and_Reader(t *testing.T) {
-
-	// Create tdf files
+func TestTDF3Writer_and_Reader(t *testing.T) { // Create tdf files
 	writeTDFs(t)
 
 	// Read the tdf files
@@ -176,9 +174,7 @@ func writeTDFs(t *testing.T) {
 		writeBuffer[index] = 0xFF
 	}
 
-	for index, tdf3Entry := range TDF3Tests {
-
-		// tdf3 file name as index
+	for index, tdf3Entry := range TDF3Tests { // tdf3 file name as index
 		tdf3Name := strconv.Itoa(index) + ".zip"
 
 		writer, err := os.Create(tdf3Name)
@@ -209,7 +205,6 @@ func writeTDFs(t *testing.T) {
 		}
 
 		for totalBytes > 0 {
-
 			bytesToWrite := int64(0)
 			if totalBytes >= stepSize {
 				totalBytes -= stepSize

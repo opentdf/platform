@@ -9,9 +9,7 @@ import (
 	"testing"
 )
 
-func TestCreateArchiveReader(t *testing.T) {
-
-	// use native library("archive/zip") to create zip files
+func TestCreateArchiveReader(t *testing.T) { // use native library("archive/zip") to create zip files
 	nativeZipFiles(t)
 
 	// use custom implementation to unzip
@@ -25,9 +23,7 @@ func nativeZipFiles(t *testing.T) {
 	}
 
 	// create the zip files using naive library
-	for index, zipEntries := range ArchiveTests {
-
-		// zip file name as index
+	for index, zipEntries := range ArchiveTests { // zip file name as index
 		zipFileName := strconv.Itoa(index) + ".zip"
 
 		// Open the zip file
@@ -53,7 +49,6 @@ func nativeZipFiles(t *testing.T) {
 
 		// Iterate over the entries to create files
 		for _, entry := range zipEntries.files {
-
 			input, err := writer.CreateHeader(&zip.FileHeader{
 				Name:   entry.filename,
 				Method: zip.Store,
@@ -64,8 +59,7 @@ func nativeZipFiles(t *testing.T) {
 
 			totalBytes := entry.size
 			for totalBytes > 0 {
-
-				bytesToWrite := int64(0)
+				var bytesToWrite int64
 				if totalBytes >= stepSize {
 					totalBytes -= stepSize
 					bytesToWrite = stepSize
@@ -80,7 +74,6 @@ func nativeZipFiles(t *testing.T) {
 					t.Fatalf("Fail to write to archive file:%s : %v", entry.filename, err)
 				}
 			}
-
 		}
 	}
 }
@@ -89,7 +82,6 @@ func customUnzip(t *testing.T) {
 	// unzip the zip files using the custom implementation
 	// test the zip file you created
 	for index, fileEntries := range ArchiveTests {
-
 		// zip file name as index
 		zipFileName := strconv.Itoa(index) + ".zip"
 
@@ -112,14 +104,13 @@ func customUnzip(t *testing.T) {
 
 		// Iterate over the files in the zip file
 		for _, zipEntry := range fileEntries.files {
-
 			totalBytes, err := reader.ReadFileSize(zipEntry.filename)
 			if err != nil {
 				t.Fatalf("Fail to read the file:%s size archive", zipEntry.filename)
 			}
 
 			fileIndex := int64(0)
-			bytesToRead := int64(0)
+			var bytesToRead int64
 			for totalBytes > 0 {
 				if totalBytes >= stepSize {
 					totalBytes -= stepSize

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"unsafe"
 )
@@ -48,7 +49,7 @@ type Reader struct {
 	fileEntries map[string]ZipFileEntry
 }
 
-// CreateReader Create archive reader instance
+// CreateReader Create archive reader instance.
 func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 	reader := Reader{}
@@ -57,7 +58,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 	// read end of central directory record
 	index, err := readSeeker.Seek(-endOfCDRecordSize, io.SeekEnd)
 	if err != nil {
-		return reader, err
+		return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
 	buf, err := readBytes(readSeeker, index, endOfCDRecordSize)
@@ -68,7 +69,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 	endOfCDRecord := EndOfCDRecord{}
 	err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &endOfCDRecord)
 	if err != nil {
-		return reader, err
+		return reader, fmt.Errorf("binary.Read failed: %w", err)
 	}
 
 	// check if it's valid zip format
@@ -87,12 +88,12 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 		isZip64 = true
 
 		// read zip64 end of central directory locator
-		index, err := readSeeker.Seek(-(endOfCDRecordSize + zip64EndOfCDRecordLocatorSize), io.SeekEnd)
+		index, err = readSeeker.Seek(-(endOfCDRecordSize + zip64EndOfCDRecordLocatorSize), io.SeekEnd)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
 
-		buf, err := readBytes(readSeeker, index, zip64EndOfCDRecordLocatorSize)
+		buf, err = readBytes(readSeeker, index, zip64EndOfCDRecordLocatorSize)
 		if err != nil {
 			return reader, err
 		}
@@ -100,7 +101,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 		zip64EndOfCDRecordLocator := Zip64EndOfCDRecordLocator{}
 		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &zip64EndOfCDRecordLocator)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
 
 		if zip64EndOfCDRecordLocator.Signature != zip64EndOfCDLocatorSignature {
@@ -116,7 +117,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 		zip64EndOfCDRecord := Zip64EndOfCDRecord{}
 		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &zip64EndOfCDRecord)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
 
 		if zip64EndOfCDRecord.Signature != zip64EndOfCDSignature {
@@ -132,7 +133,6 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 	reader.readSeeker = readSeeker
 	for i := uint64(0); i < entryCount; i++ {
-
 		// read central directory header of index(i)
 		index = int64(nextCD + centralDirectoryStart)
 		buf, err = readBytes(readSeeker, index, cdFileHeaderSize)
@@ -142,7 +142,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &cdFileHeader)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
 
 		if cdFileHeader.Signature != centralDirectoryHeaderSignature {
@@ -159,7 +159,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, fileNameByteArray)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
 
 		offset := uint64(cdFileHeader.LocalHeaderOffset)
@@ -178,7 +178,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 			err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &headerTag)
 			if err != nil {
-				return reader, err
+				return reader, fmt.Errorf("binary.Read failed: %w", err)
 			}
 
 			// read Zip64 Extended Information Extra Field Block Size
@@ -192,14 +192,13 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 			err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &blockSize)
 			if err != nil {
-				return reader, err
+				return reader, fmt.Errorf("binary.Read failed: %w", err)
 			}
 
-			if headerTag == zip64ExternalId {
+			if headerTag == zip64ExternalID {
 				index += int64(unsafe.Sizeof(blockSize))
 
 				if cdFileHeader.CompressedSize == zip64MagicVal {
-
 					compressedSize := uint64(0)
 					buf, err = readBytes(readSeeker, index, int64(unsafe.Sizeof(compressedSize)))
 					if err != nil {
@@ -208,7 +207,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &compressedSize)
 					if err != nil {
-						return reader, err
+						return reader, fmt.Errorf("binary.Read failed: %w", err)
 					}
 
 					bytesToRead = compressedSize
@@ -224,7 +223,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &uncompressedSize)
 					if err != nil {
-						return reader, err
+						return reader, fmt.Errorf("binary.Read failed: %w", err)
 					}
 
 					index += int64(unsafe.Sizeof(uncompressedSize))
@@ -239,7 +238,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &localHeaderOffset)
 					if err != nil {
-						return reader, err
+						return reader, fmt.Errorf("binary.Read failed: %w", err)
 					}
 
 					offset = localHeaderOffset
@@ -249,14 +248,14 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 		// Read each file
 		localFileHeader := LocalFileHeader{}
-		buf, err := readBytes(readSeeker, int64(offset), int64(localFileHeaderSize))
+		buf, err = readBytes(readSeeker, int64(offset), int64(localFileHeaderSize))
 		if err != nil {
 			return reader, err
 		}
 
 		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &localFileHeader)
 		if err != nil {
-			return reader, err
+			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
 
 		if localFileHeader.Signature != fileHeaderSignature {
@@ -265,7 +264,8 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 		zipFileEntry := ZipFileEntry{}
 		zipFileEntry.length = int64(bytesToRead)
-		zipFileEntry.index = int64(offset) + localFileHeaderSize + int64(localFileHeader.FilenameLength) + int64(localFileHeader.ExtraFieldLength)
+		zipFileEntry.index = int64(offset) + localFileHeaderSize +
+			int64(localFileHeader.FilenameLength) + int64(localFileHeader.ExtraFieldLength)
 
 		reader.fileEntries[string(fileNameByteArray)] = zipFileEntry
 
@@ -275,9 +275,8 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 	return reader, nil
 }
 
-// ReadFileData Read data from file of given length of size
+// ReadFileData Read data from file of given length of size.
 func (reader Reader) ReadFileData(filename string, index int64, length int64) ([]byte, error) {
-
 	fileNameEntry, ok := reader.fileEntries[filename]
 	if !ok {
 		return nil, errZipFileNotFound
@@ -291,7 +290,7 @@ func (reader Reader) ReadFileData(filename string, index int64, length int64) ([
 }
 
 // ReadAllFileData Return all the data of the file
-// NOTE: Use this method for small file sizes
+// NOTE: Use this method for small file sizes.
 func (reader Reader) ReadAllFileData(filename string) ([]byte, error) {
 	fileNameEntry, ok := reader.fileEntries[filename]
 	if !ok {
@@ -301,7 +300,7 @@ func (reader Reader) ReadAllFileData(filename string) ([]byte, error) {
 	return readBytes(reader.readSeeker, fileNameEntry.index, fileNameEntry.length)
 }
 
-// ReadFileSize Return the file size of the filename
+// ReadFileSize Return the file size of the filename.
 func (reader Reader) ReadFileSize(filename string) (int64, error) {
 	fileNameEntry, ok := reader.fileEntries[filename]
 	if !ok {
@@ -314,16 +313,15 @@ func (reader Reader) ReadFileSize(filename string) (int64, error) {
 // ReadBytes Read bytes reads up to size from input providers
 // and return the buffer with the read bytes.
 func readBytes(readerSeeker io.ReadSeeker, index, size int64) ([]byte, error) {
-
 	_, err := readerSeeker.Seek(index, 0)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("readerSeeker.Seek failed: %w", err)
 	}
 
 	buf := make([]byte, size)
 	_, err = readerSeeker.Read(buf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("readerSeeker.Read failed: %w", err)
 	}
 
 	return buf, nil

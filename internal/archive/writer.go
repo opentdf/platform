@@ -64,7 +64,7 @@ type Writer struct {
 	isZip64         bool
 }
 
-// CreateWriter Create tdf3 writer instance
+// CreateWriter Create tdf3 writer instance.
 func CreateWriter(writer io.Writer) *Writer {
 	archiveWriter := Writer{}
 
@@ -77,7 +77,7 @@ func CreateWriter(writer io.Writer) *Writer {
 	return &archiveWriter
 }
 
-// EnableZip64 Enable zip 64
+// EnableZip64 Enable zip 64.
 func (writer *Writer) EnableZip64() {
 	writer.isZip64 = true
 }
@@ -85,7 +85,6 @@ func (writer *Writer) EnableZip64() {
 // AddHeader set size of the file. calling this method means finished writing
 // the previous file and starting a new file.
 func (writer *Writer) AddHeader(filename string, size int64) error {
-
 	if len(writer.FileInfo.filename) != 0 {
 		err := fmt.Errorf("writer: cannot add a new file until the current "+
 			"file write is not completed:%s", writer.FileInfo.filename)
@@ -103,7 +102,7 @@ func (writer *Writer) AddHeader(filename string, size int64) error {
 	return nil
 }
 
-// AddData Add data to the zip archive
+// AddData Add data to the zip archive.
 func (writer *Writer) AddData(data []byte) error {
 
 	localFileHeader := LocalFileHeader{}
@@ -112,7 +111,7 @@ func (writer *Writer) AddData(data []byte) error {
 	if writer.writeState == Initial {
 		localFileHeader.Signature = fileHeaderSignature
 		localFileHeader.Version = 45
-		//since payload is added by chunks we set General purpose bit flag to 0x08
+		// since payload is added by chunks we set General purpose bit flag to 0x08
 		localFileHeader.GeneralPurposeBitFlag = 0x08
 		localFileHeader.CompressionMethod = 0 // no compression
 		localFileHeader.LastModifiedTime = fileTime
@@ -135,7 +134,7 @@ func (writer *Writer) AddData(data []byte) error {
 		buf := new(bytes.Buffer)
 		err := binary.Write(buf, binary.LittleEndian, localFileHeader)
 		if err != nil {
-			return err
+			return fmt.Errorf("binary.Write failed: %v", err)
 		}
 
 		_, err = writer.writer.Write(buf.Bytes())
@@ -150,14 +149,13 @@ func (writer *Writer) AddData(data []byte) error {
 		}
 
 		if writer.isZip64 {
-
 			zip64ExtendedLocalInfoExtraField := Zip64ExtendedLocalInfoExtraField{}
-			zip64ExtendedLocalInfoExtraField.Signature = zip64ExternalId
+			zip64ExtendedLocalInfoExtraField.Signature = zip64ExternalID
 			zip64ExtendedLocalInfoExtraField.Size = zip64ExtendedLocalInfoExtraFieldSize - 4
 			zip64ExtendedLocalInfoExtraField.OriginalSize = uint64(writer.FileInfo.size)
 			zip64ExtendedLocalInfoExtraField.CompressedSize = uint64(writer.FileInfo.size)
 
-			buf := new(bytes.Buffer)
+			buf = new(bytes.Buffer)
 			err := binary.Write(buf, binary.LittleEndian, zip64ExtendedLocalInfoExtraField)
 			if err != nil {
 				return err
@@ -202,7 +200,6 @@ func (writer *Writer) AddData(data []byte) error {
 	}
 
 	if writer.writeState == Finished {
-
 		if writer.isZip64 {
 			zip64DataDescriptor := Zip64DataDescriptor{}
 			zip64DataDescriptor.Signature = dataDescriptorSignature
@@ -330,7 +327,7 @@ func (writer *Writer) writeCentralDirectory() error {
 		if writer.isZip64 {
 
 			zip64ExtendedInfoExtraField := Zip64ExtendedInfoExtraField{}
-			zip64ExtendedInfoExtraField.Signature = zip64ExternalId
+			zip64ExtendedInfoExtraField.Signature = zip64ExternalID
 			zip64ExtendedInfoExtraField.Size = zip64ExtendedInfoExtraFieldSize - 4
 			zip64ExtendedInfoExtraField.OriginalSize = uint64(writer.fileInfoEntries[i].size)
 			zip64ExtendedInfoExtraField.CompressedSize = uint64(writer.fileInfoEntries[i].size)

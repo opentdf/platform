@@ -23,7 +23,7 @@ type ZipEntryInfo struct {
 	size     int64
 }
 
-var ArchiveTests = []struct {
+var ArchiveTests = []struct { //nolint:gochecknoglobals
 	files []ZipEntryInfo
 }{
 	{
@@ -119,12 +119,10 @@ var ArchiveTests = []struct {
 
 // create a buffer of 2mb and fill it with 0xFF, and
 // it used to fill with the contents of the files
-var stepSize int64 = 2 * oneMB
-var writeBuffer = make([]byte, stepSize)
+var stepSize int64 = 2 * oneMB           //nolint:gochecknoglobals
+var writeBuffer = make([]byte, stepSize) //nolint:gochecknoglobals
 
-func TestCreateArchiveWriter(t *testing.T) {
-
-	// use custom implementation of zip
+func TestCreateArchiveWriter(t *testing.T) { // use custom implementation of zip
 	customZip(t)
 
 	// use native library("archive/zip") to unzip files

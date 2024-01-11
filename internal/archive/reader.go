@@ -47,8 +47,8 @@ type Reader struct {
 	fileEntries map[string]ZipFileEntry
 }
 
-// CreateReader Create archive reader instance.
-func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
+// NewReader Create archive reader instance.
+func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 	reader := Reader{}
 	reader.fileEntries = make(map[string]ZipFileEntry)
 

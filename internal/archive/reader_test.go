@@ -97,7 +97,7 @@ func customUnzip(t *testing.T) {
 			}
 		}(readSeeker)
 
-		reader, err := CreateReader(readSeeker)
+		reader, err := NewReader(readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to create archive %v", err)
 		}

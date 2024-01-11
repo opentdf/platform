@@ -64,8 +64,8 @@ type Writer struct {
 	isZip64         bool
 }
 
-// CreateWriter Create tdf3 writer instance.
-func CreateWriter(writer io.Writer) *Writer {
+// NewWriter Create tdf3 writer instance.
+func NewWriter(writer io.Writer) *Writer {
 	archiveWriter := Writer{}
 
 	archiveWriter.writer = writer
@@ -256,8 +256,8 @@ func (writer *Writer) AddData(data []byte) error {
 	return nil
 }
 
-// Finish Completed adding all the files in zip archive.
-func (writer *Writer) Finish() error {
+// Close Completed adding all the files in zip archive.
+func (writer *Writer) Close() error {
 	err := writer.writeCentralDirectory()
 	if err != nil {
 		return err

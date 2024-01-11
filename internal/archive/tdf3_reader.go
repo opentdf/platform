@@ -13,9 +13,9 @@ const (
 	tdfPayloadFileName  = "0.payload"
 )
 
-// CreateTDFReader Create tdf reader instance.
-func CreateTDFReader(readSeeker io.ReadSeeker) (TDFReader, error) {
-	archiveReader, err := CreateReader(readSeeker)
+// NewTDFReader Create tdf reader instance.
+func NewTDFReader(readSeeker io.ReadSeeker) (TDFReader, error) {
+	archiveReader, err := NewReader(readSeeker)
 	if err != nil {
 		return TDFReader{}, err
 	}

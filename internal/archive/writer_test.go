@@ -151,7 +151,7 @@ func customZip(t *testing.T) {
 			}
 		}(writer)
 
-		archiveWriter := CreateWriter(writer)
+		archiveWriter := NewWriter(writer)
 
 		// calculate total size of the zip file contents
 		var totalContentSize int64
@@ -191,7 +191,7 @@ func customZip(t *testing.T) {
 			}
 		}
 
-		err = archiveWriter.Finish()
+		err = archiveWriter.Close()
 		if err != nil {
 			t.Fatalf("Fail to close to archive: %v", err)
 		}

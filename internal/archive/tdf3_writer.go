@@ -6,10 +6,10 @@ type TDFWriter struct {
 	archiveWriter *Writer
 }
 
-// CreateTDFWriter Create tdf writer instance.
-func CreateTDFWriter(writer io.Writer) *TDFWriter {
+// NewTDFWriter Create tdf writer instance.
+func NewTDFWriter(writer io.Writer) *TDFWriter {
 	tdfWriter := TDFWriter{}
-	tdfWriter.archiveWriter = CreateWriter(writer)
+	tdfWriter.archiveWriter = NewWriter(writer)
 
 	return &tdfWriter
 }
@@ -38,7 +38,7 @@ func (tdfWriter *TDFWriter) AppendPayload(data []byte) error {
 	return tdfWriter.archiveWriter.AddData(data)
 }
 
-// Finish Completed adding all the files in zip archive.
-func (tdfWriter *TDFWriter) Finish() error {
-	return tdfWriter.archiveWriter.Finish()
+// Close Completed adding all the files in zip archive.
+func (tdfWriter *TDFWriter) Close() error {
+	return tdfWriter.archiveWriter.Close()
 }

@@ -189,9 +189,9 @@ func writeTDFs(t *testing.T) {
 			}
 		}(writer)
 
-		tdf3Writer := CreateTDFWriter(writer)
+		tdf3Writer := NewTDFWriter(writer)
 		defer func(tdf3Writer *TDFWriter) {
-			err := tdf3Writer.Finish()
+			err := tdf3Writer.Close()
 			if err != nil {
 				t.Fatalf("Fail to close tdf3 writer: %v", err)
 			}
@@ -246,7 +246,7 @@ func readTDFs(t *testing.T) {
 			}
 		}(inputProvider)
 
-		tdf3Reader, err := CreateTDFReader(inputProvider)
+		tdf3Reader, err := NewTDFReader(inputProvider)
 		if err != nil {
 			t.Fatalf("Fail to create archive %v", err)
 		}

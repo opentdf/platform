@@ -362,7 +362,7 @@ func (x *AttributeDefinitionValue) GetAttributePublicKey() string {
 	return ""
 }
 
-// Reference to an attribute value, one of descriptor or embedded value
+// Reference to an attribute value, one of descriptor or embedded value or a fqn
 type AttributeValueReference struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

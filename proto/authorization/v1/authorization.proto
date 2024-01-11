@@ -191,7 +191,7 @@ message GetEntitlementsRequest {
 
 message EntityEntitlements{
   string entity_id = 1;
-  AttributeValueSet entity_attributes = 2;
+  repeated attributes.v1.AttributeValueReference attribute_value_references= 2;
 }
 
 message AttributeValueSet{
@@ -204,26 +204,22 @@ message AttributeValueSet{
 Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
 
 {
-  "entitlements": [
+  "entitlements":  [
     {
-      "entityId": "e1",
-      "entityAttributes": {
-        "attributeValueReferences": [
-          {
-            "attributeFqn": "http://www.example.org/attr/foo/value/bar"
-          }
-        ]
-      }
+      "entityId":  "e1",
+      "attributeValueReferences":  [
+        {
+          "attributeFqn":  "http://www.example.org/attr/foo/value/bar"
+        }
+      ]
     },
     {
-      "entityId": "e2",
-      "entityAttributes": {
-        "attributeValueReferences": [
-          {
-            "attributeFqn": "http://www.example.org/attr/color/value/red"
-          }
-        ]
-      }
+      "entityId":  "e2",
+      "attributeValueReferences":  [
+        {
+          "attributeFqn":  "http://www.example.org/attr/color/value/red"
+        }
+      ]
     }
   ]
 }

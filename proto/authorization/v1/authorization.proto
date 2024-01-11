@@ -8,7 +8,7 @@ import "attributes/v1/attributes.proto";
 
 // PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {
-  string id = 1;
+  string id = 1; // ephemeral id for tracking between request and response
   // Standard entity types supported by the platform
   oneof entity_type {
     string email_address = 2;
@@ -27,7 +27,7 @@ message EntityCustom {
 
 // A set of related PE and NPE
 message EntityChain {
-  string id = 1;
+  string id = 1; // ephemeral id for tracking between request and response
   repeated Entity entities = 2;
 }
 
@@ -74,7 +74,7 @@ and Alice (represented by entity chain ec2) have TRANSMIT authorization for
       ]
     }
   ],
-  "attributeSets": [
+  "resourceAttributes": [
     {
       "id": "attr-set-1",
       "attributeValueReferences": [
@@ -103,7 +103,7 @@ and Alice (represented by entity chain ec2) have TRANSMIT authorization for
 message DecisionRequest {
   repeated Action actions = 1;
   repeated EntityChain entity_chains = 2;
-  repeated AttributeValueSet attribute_sets = 3;
+  repeated ResourceAttributes resource_attributes = 3;
 }
 
 /*
@@ -113,14 +113,14 @@ and Alice (represented by entity chain ec2) have TRANSMIT authorization for
 2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
 Results:
-- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has watermark oblications
+- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation
 - bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes
 - alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes
 - alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
 
 {
     "entityChainId":  "ec1",
-    "attributeSetId":  "attr-set-1",
+    "resourceAttributesId":  "attr-set-1",
     "decision":  "DECISION_PERMIT",
     "obligations":  [
       "http://www.example.org/obligation/watermark"
@@ -128,17 +128,17 @@ Results:
   },
   {
     "entityChainId":  "ec1",
-    "attributeSetId":  "attr-set-2",
+    "resourceAttributesId":  "attr-set-2",
     "decision":  "DECISION_PERMIT"
   },
   {
     "entityChainId":  "ec2",
-    "attributeSetId":  "attr-set-1",
+    "resourceAttributesId":  "attr-set-1",
     "decision":  "DECISION_PERMIT"
   },
   {
     "entityChainId":  "ec2",
-    "attributeSetId":  "attr-set-2",
+    "resourceAttributesId":  "attr-set-2",
     "decision":  "DECISION_DENY"
   }
 
@@ -150,8 +150,8 @@ message DecisionResponse {
     DECISION_DENY = 1;
     DECISION_PERMIT = 2;
   }
-  string entity_chain_id = 1; // Id reference for the entity chain in the corresponding request
-  string attribute_set_id = 2; // Id reference for the attribute set in the corresponding request
+  string entity_chain_id = 1; // ephemeral entity chain id from the request
+  string resource_attributes_id = 2; // ephemeral resource attributes id from the request
   Action action = 3;  // Action of the decision response
   Decision decision = 4; // The decision response
   repeated string obligations = 5; //optional list of obligations represented in URI format
@@ -186,7 +186,7 @@ Example: Get entitlements for bob and alice (both represented using an email add
  */
 message GetEntitlementsRequest {
   repeated Entity entities = 1; // list of requested entities
-  optional AttributeValueSet scope = 2; //optional attribute fqn as a scope
+  optional ResourceAttributes scope = 2; //optional attribute fqn as a scope
 }
 
 message EntityEntitlements{
@@ -194,7 +194,8 @@ message EntityEntitlements{
   repeated attributes.v1.AttributeValueReference attribute_value_references= 2;
 }
 
-message AttributeValueSet{
+//A logical bucket of attributes belonging to a "Resource"
+message ResourceAttributes{
   string id = 1;
   repeated attributes.v1.AttributeValueReference attribute_value_references= 2;
 }

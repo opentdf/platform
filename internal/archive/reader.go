@@ -66,7 +66,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 	}
 
 	endOfCDRecord := EndOfCDRecord{}
-	err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &endOfCDRecord)
+	err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &endOfCDRecord)
 	if err != nil {
 		return reader, err
 	}
@@ -98,7 +98,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 		}
 
 		zip64EndOfCDRecordLocator := Zip64EndOfCDRecordLocator{}
-		err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &zip64EndOfCDRecordLocator)
+		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &zip64EndOfCDRecordLocator)
 		if err != nil {
 			return reader, err
 		}
@@ -114,7 +114,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 		}
 
 		zip64EndOfCDRecord := Zip64EndOfCDRecord{}
-		err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &zip64EndOfCDRecord)
+		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &zip64EndOfCDRecord)
 		if err != nil {
 			return reader, err
 		}
@@ -140,7 +140,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 			return reader, err
 		}
 
-		err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &cdFileHeader)
+		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &cdFileHeader)
 		if err != nil {
 			return reader, err
 		}
@@ -157,7 +157,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 			return reader, err
 		}
 
-		err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, fileNameByteArray)
+		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, fileNameByteArray)
 		if err != nil {
 			return reader, err
 		}
@@ -176,7 +176,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 				return reader, err
 			}
 
-			err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &headerTag)
+			err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &headerTag)
 			if err != nil {
 				return reader, err
 			}
@@ -190,7 +190,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 				return reader, err
 			}
 
-			err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &blockSize)
+			err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &blockSize)
 			if err != nil {
 				return reader, err
 			}
@@ -206,7 +206,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 						return reader, err
 					}
 
-					err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &compressedSize)
+					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &compressedSize)
 					if err != nil {
 						return reader, err
 					}
@@ -222,7 +222,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 						return reader, err
 					}
 
-					err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &uncompressedSize)
+					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &uncompressedSize)
 					if err != nil {
 						return reader, err
 					}
@@ -237,7 +237,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 						return reader, err
 					}
 
-					err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &localHeaderOffset)
+					err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &localHeaderOffset)
 					if err != nil {
 						return reader, err
 					}
@@ -254,7 +254,7 @@ func CreateReader(readSeeker io.ReadSeeker) (Reader, error) {
 			return reader, err
 		}
 
-		err = binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &localFileHeader)
+		err = binary.Read(bytes.NewBuffer(buf), binary.LittleEndian, &localFileHeader)
 		if err != nil {
 			return reader, err
 		}

@@ -1,4 +1,4 @@
-package tdf3_archiver
+package archive
 
 const (
 	fileHeaderSignature             = 0x04034b50 // (PK♥♦ or "PK\3\4")

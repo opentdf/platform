@@ -1,4 +1,4 @@
-package tdf3_archiver
+package archive
 
 import (
 	"archive/zip"
@@ -79,11 +79,6 @@ func nativeZipFiles(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Fail to write to archive file:%s : %v", entry.filename, err)
 				}
-
-				//_, err := input.Write(writeBuffer[:bytesToWrite])
-				//if err != nil {
-				//	t.Fatalf("Fail to write to archive file:%s : %v", entry.filename, err)
-				//}
 			}
 
 		}
@@ -98,24 +93,29 @@ func customUnzip(t *testing.T) {
 		// zip file name as index
 		zipFileName := strconv.Itoa(index) + ".zip"
 
-		inputProvider, err := CreateFileInputProvider(zipFileName)
+		readSeeker, err := os.Open(zipFileName)
 		if err != nil {
-			t.Fatalf("Fail to create input provider for file:%s %v", zipFileName, err)
+			t.Fatalf("Fail to open archive file:%s %v", zipFileName, err)
 		}
 
-		defer inputProvider.Close()
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file:%v", err)
+			}
+		}(readSeeker)
 
-		archiver, err := CreateArchiveReader(inputProvider)
+		reader, err := CreateReader(readSeeker)
 		if err != nil {
-			t.Fatalf("Fail to create archiver %v", err)
+			t.Fatalf("Fail to create archive %v", err)
 		}
 
 		// Iterate over the files in the zip file
 		for _, zipEntry := range fileEntries.files {
 
-			totalBytes, err := archiver.ReadFileSize(zipEntry.filename)
+			totalBytes, err := reader.ReadFileSize(zipEntry.filename)
 			if err != nil {
-				t.Fatalf("Fail to read the file:%s size archiver", zipEntry.filename)
+				t.Fatalf("Fail to read the file:%s size archive", zipEntry.filename)
 			}
 
 			fileIndex := int64(0)
@@ -129,14 +129,14 @@ func customUnzip(t *testing.T) {
 					totalBytes = 0
 				}
 
-				buf, err := archiver.ReadFileData(zipEntry.filename, fileIndex, bytesToRead)
+				buf, err := reader.ReadFileData(zipEntry.filename, fileIndex, bytesToRead)
 				if err != nil {
 					t.Fatalf("Fail to read from archive file:%s : %v", zipEntry.filename, err)
 				}
 
 				fileIndex += bytesToRead
 
-				if bytes.Compare(buf, writeBuffer[:bytesToRead]) != 0 {
+				if !bytes.Equal(buf, writeBuffer[:bytesToRead]) {
 					t.Fatalf("Fail to compare zip contents")
 				}
 			}

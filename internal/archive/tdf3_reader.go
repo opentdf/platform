@@ -1,7 +1,11 @@
-package tdf3_archiver
+package archive
+
+import (
+	"io"
+)
 
 type TDFReader struct {
-	archiveReader ArchiveReader
+	archiveReader Reader
 }
 
 const (
@@ -10,8 +14,8 @@ const (
 )
 
 // CreateTDFReader Create tdf reader instance
-func CreateTDFReader(inputProvider IInputProvider) (TDFReader, error) {
-	archiveReader, err := CreateArchiveReader(inputProvider)
+func CreateTDFReader(readSeeker io.ReadSeeker) (TDFReader, error) {
+	archiveReader, err := CreateReader(readSeeker)
 	if err != nil {
 		return TDFReader{}, err
 	}

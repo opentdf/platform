@@ -1,4 +1,4 @@
-package tdf3_archiver
+package archive
 
 import (
 	"archive/zip"
@@ -142,12 +142,19 @@ func customZip(t *testing.T) {
 
 		// zip file name as index
 		zipFileName := strconv.Itoa(index) + ".zip"
-		outputProvider, err := CreateFileOutputProvider(zipFileName)
+		writer, err := os.Create(zipFileName)
 		if err != nil {
-			t.Fatalf("Fail to read tdf: %v", err)
+			t.Fatalf("Fail to open archive file: %v", err)
 		}
 
-		archiveWriter := CreateArchiveWriter(outputProvider)
+		defer func(outputProvider *os.File) {
+			err := outputProvider.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file: %v", err)
+			}
+		}(writer)
+
+		archiveWriter := CreateWriter(writer)
 
 		// calculate total size of the zip file contents
 		var totalContentSize int64 = 0
@@ -164,7 +171,7 @@ func customZip(t *testing.T) {
 		for i := 0; i < len(test.files); i++ {
 			fileInfo := test.files[i]
 
-			err = archiveWriter.SetFileSize(fileInfo.filename, fileInfo.size)
+			err = archiveWriter.AddHeader(fileInfo.filename, fileInfo.size)
 			if err != nil {
 				t.Fatalf("Fail to set the size of file in archive: %v", err)
 			}
@@ -182,7 +189,7 @@ func customZip(t *testing.T) {
 					totalBytes = 0
 				}
 
-				err = archiveWriter.AddDataToFile(fileInfo.filename, writeBuffer[:bytesToWrite])
+				err = archiveWriter.AddData(writeBuffer[:bytesToWrite])
 				if err != nil {
 					t.Fatalf("Fail to write to archive: %v", err)
 				}
@@ -193,9 +200,6 @@ func customZip(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Fail to close to archive: %v", err)
 		}
-
-		// clean the output provider
-		outputProvider.DestroyFileOutputProvider()
 	}
 }
 
@@ -255,7 +259,7 @@ func nativeUnzips(t *testing.T) {
 					t.Fatalf("Fail to read from archive file:%s : %v", fileInfo.Name(), err)
 				}
 
-				if bytes.Compare(readBuffer[:bytesToRead], writeBuffer[:bytesToRead]) != 0 {
+				if !bytes.Equal(readBuffer[:bytesToRead], writeBuffer[:bytesToRead]) {
 					t.Fatalf("Fail to compare zip contents")
 				}
 			}

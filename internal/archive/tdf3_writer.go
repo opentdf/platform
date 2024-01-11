@@ -1,13 +1,15 @@
-package tdf3_archiver
+package archive
+
+import "io"
 
 type TDFWriter struct {
-	archiveWriter *ArchiveWriter
+	archiveWriter *Writer
 }
 
 // CreateTDFWriter Create tdf writer instance
-func CreateTDFWriter(outputProvider IOutputProvider) *TDFWriter {
+func CreateTDFWriter(writer io.Writer) *TDFWriter {
 	tdfWriter := TDFWriter{}
-	tdfWriter.archiveWriter = CreateArchiveWriter(outputProvider)
+	tdfWriter.archiveWriter = CreateWriter(writer)
 
 	return &tdfWriter
 }
@@ -19,23 +21,23 @@ func (tdfWriter *TDFWriter) SetPayloadSize(payloadSize int64) error {
 		tdfWriter.archiveWriter.EnableZip64()
 	}
 
-	return tdfWriter.archiveWriter.SetFileSize(tdfPayloadFileName, payloadSize)
+	return tdfWriter.archiveWriter.AddHeader(tdfPayloadFileName, payloadSize)
 }
 
 // AppendManifest Add the manifest to tdf3 archive
 func (tdfWriter *TDFWriter) AppendManifest(manifest string) error {
 
-	err := tdfWriter.archiveWriter.SetFileSize(tdfManifestFileName, int64(len(manifest)))
+	err := tdfWriter.archiveWriter.AddHeader(tdfManifestFileName, int64(len(manifest)))
 	if err != nil {
 		return err
 	}
 
-	return tdfWriter.archiveWriter.AddDataToFile(tdfManifestFileName, []byte(manifest))
+	return tdfWriter.archiveWriter.AddData([]byte(manifest))
 }
 
-// AppendPayload Add payload to to tdf3 archive
+// AppendPayload Add payload to tdf3 archive
 func (tdfWriter *TDFWriter) AppendPayload(data []byte) error {
-	return tdfWriter.archiveWriter.AddDataToFile(tdfPayloadFileName, data)
+	return tdfWriter.archiveWriter.AddData(data)
 }
 
 // Finish Completed adding all the files in zip archive

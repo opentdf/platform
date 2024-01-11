@@ -1,4 +1,4 @@
-package tdf3_archiver
+package archive
 
 import (
 	"bytes"
@@ -181,13 +181,19 @@ func writeTDFs(t *testing.T) {
 		// tdf3 file name as index
 		tdf3Name := strconv.Itoa(index) + ".zip"
 
-		outputProvider, err := CreateFileOutputProvider(tdf3Name)
+		writer, err := os.Create(tdf3Name)
 		if err != nil {
-			t.Fatalf("Fail to read tdf: %v", err)
+			t.Fatalf("Fail to open archive file: %v", err)
 		}
-		defer outputProvider.DestroyFileOutputProvider()
 
-		tdf3Writer := CreateTDFWriter(outputProvider)
+		defer func(outputProvider *os.File) {
+			err := outputProvider.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file: %v", err)
+			}
+		}(writer)
+
+		tdf3Writer := CreateTDFWriter(writer)
 		defer func(tdf3Writer *TDFWriter) {
 			err := tdf3Writer.Finish()
 			if err != nil {
@@ -235,16 +241,21 @@ func readTDFs(t *testing.T) {
 		// tdf3 file name as index
 		tdf3Name := strconv.Itoa(index) + ".zip"
 
-		inputProvider, err := CreateFileInputProvider(tdf3Name)
+		inputProvider, err := os.Open(tdf3Name)
 		if err != nil {
-			t.Fatalf("Fail to create input provider for file:%s %v", tdf3Name, err)
+			t.Fatalf("Fail to open archive file:%s %v", tdf3Name, err)
 		}
 
-		defer inputProvider.Close()
+		defer func(inputProvider *os.File) {
+			err := inputProvider.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file:%s %v", tdf3Name, err)
+			}
+		}(inputProvider)
 
 		tdf3Reader, err := CreateTDFReader(inputProvider)
 		if err != nil {
-			t.Fatalf("Fail to create archiver %v", err)
+			t.Fatalf("Fail to create archive %v", err)
 		}
 
 		// read manifest
@@ -277,7 +288,7 @@ func readTDFs(t *testing.T) {
 
 			readIndex += bytesToRead
 
-			if bytes.Compare(buf, writeBuffer[:bytesToRead]) != 0 {
+			if !bytes.Equal(buf, writeBuffer[:bytesToRead]) {
 				t.Fatalf("Fail to compare zip contents")
 			}
 		}

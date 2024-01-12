@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -14,8 +15,8 @@ type AsymEncryption struct {
 	publicKey *rsa.PublicKey
 }
 
-// CreateAsymEncryption creates and returns a new AsymEncryption.
-func CreateAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
+// NewAsymEncryption creates and returns a new AsymEncryption.
+func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 	block, _ := pem.Decode([]byte(publicKeyInPem))
 	if block == nil {
 		return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
@@ -25,7 +26,7 @@ func CreateAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 	if strings.Contains(publicKeyInPem, "BEGIN CERTIFICATE") {
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return AsymEncryption{}, err
+			return AsymEncryption{}, fmt.Errorf("x509.ParseCertificate failed: %w", err)
 		}
 
 		var ok bool
@@ -36,7 +37,7 @@ func CreateAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 		var err error
 		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
-			return AsymEncryption{}, err
+			return AsymEncryption{}, fmt.Errorf("x509.ParsePKIXPublicKey failed: %w", err)
 		}
 	}
 
@@ -52,15 +53,14 @@ func CreateAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 
 // Encrypt encrypts data with public key.
 func (asymEncryption AsymEncryption) Encrypt(data []byte) ([]byte, error) {
-
 	if asymEncryption.publicKey == nil {
 		return nil, errors.New("failed to encrypt, public key is empty")
 	}
 
-	return rsa.EncryptOAEP(
-		sha256.New(),
-		rand.Reader,
-		asymEncryption.publicKey,
-		data,
-		nil)
+	bytes, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, asymEncryption.publicKey, data, nil)
+	if err != nil {
+		return nil, fmt.Errorf("rsa.EncryptOAEP failed: %w", err)
+	}
+
+	return bytes, nil
 }

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 )
 
 // CalculateSHA256 Calculate the SHA256 checksum of the data(32 bytes).
@@ -25,12 +26,11 @@ func SHA256AsHex(data []byte) []byte {
 
 // CalculateSHA256Hmac Calculate the hmac of the data with given secret.
 func CalculateSHA256Hmac(secret, data []byte) []byte {
-
 	// Create a new HMAC by defining the hash type and the secret
 	hash := hmac.New(sha256.New, secret)
 
 	// compute the HMAC
-	hash.Write([]byte(data))
+	hash.Write(data)
 	dataHmac := hash.Sum(nil)
 
 	return dataHmac
@@ -57,18 +57,20 @@ func Base64Encode(data []byte) []byte {
 func Base64Decode(data []byte) ([]byte, error) {
 	outData := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
 	actualLen, err := base64.StdEncoding.Decode(outData, data)
-	return outData[:actualLen], err
+	if err != nil {
+		return nil, fmt.Errorf("base64.StdEncoding.Decode failed: %w", err)
+	}
+
+	return outData[:actualLen], nil
 }
 
 // RandomBytes Generates random bytes of given size.
 func RandomBytes(size int) ([]byte, error) {
 	data := make([]byte, size)
 	_, err := rand.Read(data)
-	return data, err
-}
+	if err != nil {
+		return nil, fmt.Errorf("rand.Read failed: %w", err)
+	}
 
-// SymmetricKey Generates 32 random bytes.
-// Used as aes-256 key
-func SymmetricKey() ([]byte, error) {
-	return RandomBytes(32)
+	return data, nil
 }

@@ -6,14 +6,15 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 )
 
 type AsymDecryption struct {
 	privateKey *rsa.PrivateKey
 }
 
-// CreateAsymDecryption creates and returns a new AsymDecryption.
-func CreateAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
+// NewAsymDecryption creates and returns a new AsymDecryption.
+func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
 	block, _ := pem.Decode([]byte(privateKeyInPem))
 	if block == nil {
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
@@ -21,7 +22,7 @@ func CreateAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return AsymDecryption{}, err
+		return AsymDecryption{}, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
 	}
 
 	switch privateKey := priv.(type) {
@@ -40,7 +41,12 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 		return nil, errors.New("failed to decrypt, private key is empty")
 	}
 
-	return asymDecryption.privateKey.Decrypt(nil,
+	bytes, err := asymDecryption.privateKey.Decrypt(nil,
 		data,
 		&rsa.OAEPOptions{Hash: crypto.SHA256})
+	if err != nil {
+		return nil, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
+	}
+
+	return bytes, nil
 }

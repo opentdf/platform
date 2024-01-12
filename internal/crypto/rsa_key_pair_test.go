@@ -1,29 +1,25 @@
 package crypto
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestRSAKeyPair(t *testing.T) {
-
 	for _, size := range []int{2048, 3072, 4096} {
-		rsaKeyPair, err := GenerateRSAKeyPair(size)
+		rsaKeyPair, err := NewRSAKeyPair(size)
 		if err != nil {
-			t.Fatalf("GenerateRSAKeyPair(%d): %v", size, err)
+			t.Fatalf("NewRSAKeyPair(%d): %v", size, err)
 		}
 
-		publicKeyAsPem, err := rsaKeyPair.PublicKeyInPemFormat()
+		_, err = rsaKeyPair.PublicKeyInPemFormat()
 		if err != nil {
 			t.Fatalf("rsa PublicKeyInPemFormat() error - %v", err)
 		}
-		fmt.Println(publicKeyAsPem)
 
-		privateKeyAsPem, err := rsaKeyPair.PrivateKeyInPemFormat()
+		_, err = rsaKeyPair.PrivateKeyInPemFormat()
 		if err != nil {
 			t.Fatalf("rsa PrivateKeyInPemFormat() error - %v", err)
 		}
-		fmt.Println(privateKeyAsPem)
 
 		keySize, err := rsaKeyPair.KeySize()
 		if err != nil {

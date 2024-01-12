@@ -5,7 +5,6 @@ import (
 )
 
 func Test_SHA256AsHex(t *testing.T) {
-
 	calculatedHashInHex := SHA256AsHex([]byte(""))
 	emptyStrHash := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
@@ -78,7 +77,6 @@ func Test_Base64EncodeAndDecode(t *testing.T) {
 }
 
 func testBase64(in, out string, t *testing.T) {
-
 	encoded := Base64Encode([]byte(in))
 	if string(encoded) != out {
 		t.Fatalf("Base64 encode failed actual:%s expected:%s", string(encoded), out)

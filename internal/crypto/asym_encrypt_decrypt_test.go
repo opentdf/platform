@@ -5,7 +5,6 @@ import (
 )
 
 func TestAsymEncryptionAndDecryption(t *testing.T) {
-
 	var rsaKeys = []struct {
 		privateKey string
 		publicKey  string
@@ -224,9 +223,9 @@ rfa3TMt0K2Gs502yHMD4
 	}
 
 	for _, test := range rsaKeys {
-		asymEncryptor, err := CreateAsymEncryption(test.publicKey)
+		asymEncryptor, err := NewAsymEncryption(test.publicKey)
 		if err != nil {
-			t.Fatalf("CreateAsymEncryption - failed: %v", err)
+			t.Fatalf("NewAsymEncryption - failed: %v", err)
 		}
 
 		plainText := "virtru"
@@ -235,9 +234,9 @@ rfa3TMt0K2Gs502yHMD4
 			t.Fatalf("AsymEncryption encrypt failed: %v", err)
 		}
 
-		asymDecryptor, err := CreateAsymDecryption(test.privateKey)
+		asymDecryptor, err := NewAsymDecryption(test.privateKey)
 		if err != nil {
-			t.Fatalf("CreateAsymDecryption - failed: %v", err)
+			t.Fatalf("NewAsymDecryption - failed: %v", err)
 		}
 
 		decryptedText, err := asymDecryptor.Decrypt(cipherText)

@@ -6,18 +6,18 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 )
 
 type RsaKeyPair struct {
 	privateKey *rsa.PrivateKey
 }
 
-// GenerateRSAKeyPair Generates a RSA key pair of the given bit size.
-func GenerateRSAKeyPair(bits int) (RsaKeyPair, error) {
-
+// NewRSAKeyPair Generates an RSA key pair of the given bit size.
+func NewRSAKeyPair(bits int) (RsaKeyPair, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
-		return RsaKeyPair{}, err
+		return RsaKeyPair{}, fmt.Errorf("rsa.GenerateKe failed: %w", err)
 	}
 
 	rsaKeyPair := RsaKeyPair{privateKey: privateKey}
@@ -26,14 +26,13 @@ func GenerateRSAKeyPair(bits int) (RsaKeyPair, error) {
 
 // PrivateKeyInPemFormat Returns private key in pem format.
 func (keyPair RsaKeyPair) PrivateKeyInPemFormat() (string, error) {
-
 	if keyPair.privateKey == nil {
 		return "", errors.New("failed to generate PEM formatted private key")
 	}
 
 	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(keyPair.privateKey)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
 	}
 
 	privateKeyPem := pem.EncodeToMemory(
@@ -47,14 +46,13 @@ func (keyPair RsaKeyPair) PrivateKeyInPemFormat() (string, error) {
 
 // PublicKeyInPemFormat Returns public key in pem format.
 func (keyPair RsaKeyPair) PublicKeyInPemFormat() (string, error) {
-
 	if keyPair.privateKey == nil {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
 	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&keyPair.privateKey.PublicKey)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
 	}
 
 	publicKeyPem := pem.EncodeToMemory(

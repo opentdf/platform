@@ -7,7 +7,6 @@ import (
 )
 
 func TestCreateAesGcm_DecryptWithDefaults(t *testing.T) {
-
 	var gcmDecryptionTests = []struct {
 		symmetricKey string
 		iv           string
@@ -41,11 +40,10 @@ widely adopted for its performance`,
 	}
 
 	for _, test := range gcmDecryptionTests {
-
 		key, _ := hex.DecodeString(test.symmetricKey)
 		nonce, _ := hex.DecodeString(test.iv)
 
-		aesGcm, err := CreateAESGcm(key)
+		aesGcm, err := NewAESGcm(key)
 		if err != nil {
 			t.Fatalf("Fail to create AesGcm: %v", err)
 		}
@@ -99,7 +97,7 @@ c572c36440ed80fd61fc71df37`,
 		key, _ := hex.DecodeString(test.symmetricKey)
 		nonce, _ := hex.DecodeString(test.iv)
 
-		aesGcm, err := CreateAESGcm(key)
+		aesGcm, err := NewAESGcm(key)
 		if err != nil {
 			t.Fatalf("Fail to create AesGcm: %v", err)
 		}
@@ -118,10 +116,9 @@ c572c36440ed80fd61fc71df37`,
 }
 
 func TestCreateAESGcm_WithDifferentAuthTags(t *testing.T) {
-
 	plainText := "Virtru"
 	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
-	aesGcm, err := CreateAESGcm(key)
+	aesGcm, err := NewAESGcm(key)
 	if err != nil {
 		t.Fatalf("Fail to create AesGcm: %v", err)
 	}
@@ -133,7 +130,6 @@ func TestCreateAESGcm_WithDifferentAuthTags(t *testing.T) {
 
 	var authTagsForNanoTDF = []int{12, 13, 14, 15, 16}
 	for _, authTag := range authTagsForNanoTDF {
-
 		cipherText, err := aesGcm.EncryptWithIVAndTagSize(nonce, []byte(plainText), authTag)
 		if err != nil {
 			t.Fatalf("Fail to encrypt with auth tag:%d err:%v", authTag, err)
@@ -151,7 +147,6 @@ func TestCreateAESGcm_WithDifferentAuthTags(t *testing.T) {
 }
 
 func BenchmarkAESGcm_ForTDF3(b *testing.B) {
-
 	// Create 2mb buffer and fill with character 'X'
 	twoMB := 2 * 1024 * 1024
 	twoMbBuffer := make([]byte, twoMB)
@@ -160,7 +155,7 @@ func BenchmarkAESGcm_ForTDF3(b *testing.B) {
 	}
 
 	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
-	aesGcm, err := CreateAESGcm(key)
+	aesGcm, err := NewAESGcm(key)
 	if err != nil {
 		b.Fatalf("Fail to create AesGcm: %v", err)
 	}

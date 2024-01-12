@@ -61,13 +61,17 @@ func TestMain(m *testing.M) {
 	postgres, err := tc.GenericContainer(context.Background(), req)
 	if err != nil {
 		slog.Error("could not start postgres container", slog.String("error", err.Error()))
-		os.Exit(1)
+		panic(err)
 	}
 
 	// Cleanup the container
 	defer func() {
 		if err := postgres.Terminate(ctx); err != nil {
 			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
+			return
+		}
+
+		if err := recover(); err != nil {
 			os.Exit(1)
 		}
 	}()
@@ -75,7 +79,7 @@ func TestMain(m *testing.M) {
 	port, err := postgres.MappedPort(ctx, "5432/tcp")
 	if err != nil {
 		slog.Error("could not get postgres mapped port", slog.String("error", err.Error()))
-		os.Exit(1)
+		panic(err)
 	}
 
 	conf.DB.Port = port.Int()
@@ -83,18 +87,22 @@ func TestMain(m *testing.M) {
 	dbClient, err := db.NewClient(conf.DB)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
-		os.Exit(1)
+		panic(err)
 	}
 
 	applied, err := dbClient.RunMigrations()
 	if err != nil {
 		slog.Error("issue running migrations", slog.String("error", err.Error()))
-		os.Exit(1)
+		panic(err)
 	}
 
 	slog.Info("applied migrations", slog.Int("count", applied))
 
-	otdf := server.NewOpenTDFServer(conf.Server)
+	otdf, err := server.NewOpenTDFServer(conf.Server)
+	if err != nil {
+		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
+		panic(err)
+	}
 	defer otdf.Stop()
 
 	slog.Info("starting opa engine")
@@ -103,7 +111,7 @@ func TestMain(m *testing.M) {
 	eng, err := opa.NewEngine(conf.OPA)
 	if err != nil {
 		slog.Error("could not start opa engine", slog.String("error", err.Error()))
-		os.Exit(1)
+		panic(err)
 	}
 	defer eng.Stop(context.Background())
 
@@ -111,14 +119,12 @@ func TestMain(m *testing.M) {
 	err = cmd.RegisterServices(*conf, otdf, dbClient, eng)
 	if err != nil {
 		slog.Error("issue registering services", slog.String("error", err.Error()))
-		os.Exit(1)
+		panic(err)
 	}
 
 	// Start the server
-	slog.Info("starting opentdf server", slog.Int("grpcPort", conf.Server.Grpc.Port), slog.Int("httpPort", conf.Server.Http.Port))
+	slog.Info("starting opentdf server", slog.Int("grpcPort", conf.Server.Grpc.Port), slog.Int("httpPort", conf.Server.HTTP.Port))
 	otdf.Run()
-	defer otdf.Stop()
 
 	m.Run()
-
 }

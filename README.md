@@ -1,5 +1,4 @@
-# opentdf-v2-poc
-OpenTDF V2 POC
+# OpenTDF Enhancements POC
 
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
@@ -10,7 +9,9 @@ OpenTDF V2 POC
 
 [Air](https://github.com/cosmtrek/air)
 
-`brew install air`
+With go 1.18 or higher:
+
+`go install github.com/cosmtrek/air@v1.49.0`
 
 [Buf](https://buf.build/docs/ecosystem/cli-overview)
 

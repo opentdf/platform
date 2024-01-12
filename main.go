@@ -1,6 +1,5 @@
 /*
 Copyright © 2023 OpenTDF opentdf@virtru.com
-
 */
 package main
 

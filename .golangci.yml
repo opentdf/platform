@@ -20,6 +20,10 @@ linters-settings:
     allow:
      - auth
      - error
+     - Row
+     - Rows
+     - Leveler
+     - Writer
   cyclop:
     # The maximal code complexity to report.
     # Default: 10
@@ -41,36 +45,6 @@ linters-settings:
     check:
       - switch
       - map
-
-  exhaustruct:
-    # List of regular expressions to exclude struct packages and names from check.
-    # Default: []
-    exclude:
-      # std libs
-      - "^net/http.Client$"
-      - "^net/http.Cookie$"
-      - "^net/http.Request$"
-      - "^net/http.Response$"
-      - "^net/http.Server$"
-      - "^net/http.Transport$"
-      - "^net/url.URL$"
-      - "^os/exec.Cmd$"
-      - "^reflect.StructField$"
-      - "^crypto/tls.Config$"
-      # public libs
-      - "^github.com/Shopify/sarama.Config$"
-      - "^github.com/Shopify/sarama.ProducerMessage$"
-      - "^github.com/mitchellh/mapstructure.DecoderConfig$"
-      - "^github.com/prometheus/client_golang/.+Opts$"
-      - "^github.com/spf13/cobra.Command$"
-      - "^github.com/spf13/cobra.CompletionOptions$"
-      - "^github.com/stretchr/testify/mock.Mock$"
-      - "^github.com/testcontainers/testcontainers-go.+Request$"
-      - "^github.com/testcontainers/testcontainers-go.FromDockerfile$"
-      - "^golang.org/x/tools/go/analysis.Analyzer$"
-      - "^google.golang.org/protobuf/.+Options$"
-      - "^gopkg.in/yaml.v3.Node$"
-      - "^github.com/redis/go-redis/v9.Options$"
 
   funlen:
     # Checks the number of lines in a function.
@@ -172,7 +146,7 @@ linters-settings:
     # database/sql is always checked
     # Default: []
     packages:
-      - github.com/jmoiron/sqlx
+      - github.com/jackc/pgx/v5
 
   tenv:
     # The option `all` will run against whole test files (`_test.go`) regardless of method/function signatures.
@@ -180,7 +154,21 @@ linters-settings:
     # Default: false
     all: true
 
-
+  lll:
+    line-length: 120
+  
+  wrapcheck:
+    ignoreSigs:
+      - "status.Error("
+      - ".Errorf("
+      - "errors.New("
+      - "errors.Unwrap("
+      - "errors.Join("
+      - ".Wrap("
+      - ".Wrapf("
+      - ".WithMessage("
+      - ".WithMessagef("
+      - ".WithStack("
 linters:
   disable-all: true
   enable:
@@ -252,7 +240,6 @@ linters:
 
     ## you may want to enable
     #- decorder # checks declaration order and count of types, constants, variables and functions
-    #- exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
     #- gci # controls golang package import order and makes it always deterministic
     #- ginkgolinter # [if you use ginkgo/gomega] enforces standards of using ginkgo and gomega
     - godox # detects FIXME, TODO and other comment keywords
@@ -325,7 +312,6 @@ issues:
         - gosec
         - noctx
         - wrapcheck
-        - exhaustruct
         - lll
     - text: 'shadow: declaration of "(err)" shadows declaration at'
       linters: [ govet ]

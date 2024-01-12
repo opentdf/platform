@@ -23,7 +23,8 @@ go.work
 tmp/
 .DS_Store
 __pycache__
-opentdf.yaml
 
 # GoLand IDE
 .idea/
+
+opentdf.yaml

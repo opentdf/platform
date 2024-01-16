@@ -3,6 +3,7 @@ syntax = "proto3";
 package key_access_grants.v1;
 
 import "attributes/v1/attributes.proto";
+import "buf/validate/validate.proto";
 import "common/v1/common.proto";
 import "google/api/annotations.proto";
 
@@ -12,9 +13,16 @@ import "google/api/annotations.proto";
 message KeyAccessServer {
   common.v1.ResourceDescriptor descriptor = 1;
   //Kas Url
-  string url = 2;
+  string url = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "fqn_format",
+      message: "FQN must start with a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
+    }
+  ];
   //public key - optional since can also be retrieved via url
-  string publi_key = 3;
+  string public_key = 3;
 }
 
 /*
@@ -87,34 +95,33 @@ message KeyAccessGrantAttributeValue {
   repeated string kas_ids = 2;
 }
 
-message KeyAccessGrantsRequestOptions {}
-
 message GetKeyAccessGrantRequest {
-  string id = 1;
-  KeyAccessGrantsRequestOptions options = 2;
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message GetKeyAccessGrantResponse {
-  KeyAccessGrant grant = 1;
+  KeyAccessGrants grants = 1;
 }
 
 message ListKeyAccessGrantsRequest {
-  KeyAccessGrantsRequestOptions options = 1;
+  common.v1.ResourceSelector selector = 1;
 }
 message ListKeyAccessGrantsResponse {
-  repeated KeyAccessGrant grants = 1;
+  repeated KeyAccessGrants grants = 1;
 }
 
-message CreateKeyAccessGrantsRequest {}
+message CreateKeyAccessGrantsRequest {
+  KeyAccessGrants grants = 1 [(buf.validate.field).required = true];
+}
 message CreateKeyAccessGrantsResponse {}
 
 message UpdateKeyAccessGrantsRequest {
-  string id = 1;
-  KeyAccessGrant grant = 2;
+  int32 id = 1 [(buf.validate.field).required = true];
+  KeyAccessGrants grants = 2 [(buf.validate.field).required = true];
 }
 message UpdateKeyAccessGrantsResponse {}
 
 message DeleteKeyAccessGrantsRequest {
-  string id = 1;
+  int32 id = 1 [(buf.validate.field).required = true];
 }
 message DeleteKeyAccessGrantsResponse {}
 
@@ -129,13 +136,13 @@ service KeyAccessGrantsService {
   rpc CreateKeyAccessGrants(CreateKeyAccessGrantsRequest) returns (CreateKeyAccessGrantsResponse) {
     option (google.api.http) = {
       post: "/v1/grants"
-      body: "*"
+      body: "grants"
     };
   }
   rpc UpdateKeyAccessGrants(UpdateKeyAccessGrantsRequest) returns (UpdateKeyAccessGrantsResponse) {
     option (google.api.http) = {
       put: "/v1/grants/{id}"
-      body: "grant"
+      body: "grants"
     };
   }
 

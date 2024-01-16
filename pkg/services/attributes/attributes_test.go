@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type AttributesSuite struct {
@@ -65,6 +66,7 @@ var attributeDefinition = &attributesv1.CreateAttributeRequest{
 			},
 			Description: "The relto attribute is used to describe the relationship of the resource to the country of origin.",
 			Type:        commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
+			Id:          1,
 		},
 	},
 }
@@ -77,17 +79,32 @@ var attributeGroup = &attributesv1.CreateAttributeGroupRequest{
 			Name:      "example attribute group",
 			Namespace: "demo.com",
 			Fqn:       "http://demo.com/attr/group",
-			Labels:    map[string]string{},
-			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP,
+			Labels: map[string]string{
+				"origin": "Country of Origin",
+			},
+			Type: commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP,
+			Id:   1,
 		},
-		MemberValues: []*attributesv1.AttributeValueReference{},
-		GroupValue:   &attributesv1.AttributeValueReference{},
+		MemberValues: []*attributesv1.AttributeValueReference{
+			{
+				Ref: &attributesv1.AttributeValueReference_AttributeValue{
+					AttributeValue: &attributesv1.AttributeDefinitionValue{
+						Value: "USA",
+					},
+				},
+			},
+		},
+		GroupValue: &attributesv1.AttributeValueReference{},
 	},
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_InternalError_When_Database_Error() {
 	// Copy Global Test Data to Local
 	definition := attributeDefinition
+
+	bDefinition, err := protojson.Marshal(definition.Definition)
+
+	assert.NoError(suite.T(), err)
 
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
@@ -97,11 +114,11 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_InternalError_When_Da
 			definition.Definition.Descriptor_.Labels,
 			definition.Definition.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
-			definition.Definition,
+			bDefinition,
 		).
 		WillReturnError(errors.New("error inserting resource"))
 
-	_, err := suite.attrServer.CreateAttribute(context.Background(), definition)
+	_, err = suite.attrServer.CreateAttribute(context.Background(), definition)
 	if assert.Error(suite.T(), err) {
 		grpcStatus, _ := status.FromError(err)
 
@@ -119,6 +136,10 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_OK_When_Successful() 
 	// Copy Global Test Data to Local
 	definition := attributeDefinition
 
+	bDefinition, err := protojson.Marshal(definition.Definition)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -127,11 +148,11 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_OK_When_Successful() 
 			definition.Definition.Descriptor_.Labels,
 			definition.Definition.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
-			definition.Definition,
+			bDefinition,
 		).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
-	_, err := suite.attrServer.CreateAttribute(context.Background(), definition)
+	_, err = suite.attrServer.CreateAttribute(context.Background(), definition)
 
 	assert.NoError(suite.T(), err)
 
@@ -144,6 +165,10 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_InternalError_Wh
 	// Copy Global Test Data to Local
 	group := attributeGroup
 
+	bGroup, err := protojson.Marshal(group.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -152,11 +177,11 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_InternalError_Wh
 			group.Group.Descriptor_.Labels,
 			group.Group.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
-			group.Group,
+			bGroup,
 		).
 		WillReturnError(errors.New("error inserting resource"))
 
-	_, err := suite.attrServer.CreateAttributeGroup(context.Background(), group)
+	_, err = suite.attrServer.CreateAttributeGroup(context.Background(), group)
 	if assert.Error(suite.T(), err) {
 		grpcStatus, _ := status.FromError(err)
 
@@ -174,6 +199,10 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_OK_When_Successf
 	// Copy Global Test Data to Local
 	group := attributeGroup
 
+	bGroup, err := protojson.Marshal(group.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -182,11 +211,11 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_OK_When_Successf
 			group.Group.Descriptor_.Labels,
 			group.Group.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
-			group.Group,
+			bGroup,
 		).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
-	_, err := suite.attrServer.CreateAttributeGroup(context.Background(), group)
+	_, err = suite.attrServer.CreateAttributeGroup(context.Background(), group)
 
 	assert.NoError(suite.T(), err)
 
@@ -223,10 +252,14 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_OK_When_Successful() {
 	// Copy Global Test Data to Local
 	definition := attributeDefinition
 
+	bDefinition, err := protojson.Marshal(definition.Definition)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(), "opentdf", int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), definition.Definition))
+			AddRow(int32(1), bDefinition))
 
 	definitions, err := suite.attrServer.ListAttributes(context.Background(), &attributesv1.ListAttributesRequest{
 		Selector: &commonv1.ResourceSelector{
@@ -271,10 +304,14 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_OK_When_Successfu
 	// Copy Global Test Data to Local
 	group := attributeGroup
 
+	bGroup, err := protojson.Marshal(group.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), "opentdf", int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), group.Group))
+			AddRow(int32(1), bGroup))
 
 	groups, err := suite.attrServer.ListAttributeGroups(context.Background(), &attributesv1.ListAttributeGroupsRequest{
 		Selector: &commonv1.ResourceSelector{
@@ -337,10 +374,14 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_OK_When_Successful() {
 	// Copy Global Test Data to Local
 	definition := attributeDefinition
 
+	bDefinition, err := protojson.Marshal(definition.Definition)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), definition.Definition))
+			AddRow(int32(1), bDefinition))
 
 	resp, err := suite.attrServer.GetAttribute(context.Background(), &attributesv1.GetAttributeRequest{
 		Id: 1,
@@ -400,10 +441,14 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_OK_When_Successful(
 	// Copy Global Test Data to Local
 	group := attributeGroup
 
+	bGroup, err := protojson.Marshal(group.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), group.Group))
+			AddRow(int32(1), bGroup))
 
 	resp, err := suite.attrServer.GetAttributeGroup(context.Background(), &attributesv1.GetAttributeGroupRequest{
 		Id: 1,
@@ -421,6 +466,10 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Da
 	// Copy Global Test Data to Local
 	definition := attributeDefinition
 
+	bDefinition, err := protojson.Marshal(definition.Definition)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -429,12 +478,12 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Da
 			definition.Definition.Descriptor_.Fqn,
 			definition.Definition.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
-			definition.Definition,
+			bDefinition,
 			int32(1),
 		).
 		WillReturnError(errors.New("error updating attribute definition"))
 
-	_, err := suite.attrServer.UpdateAttribute(context.Background(), &attributesv1.UpdateAttributeRequest{
+	_, err = suite.attrServer.UpdateAttribute(context.Background(), &attributesv1.UpdateAttributeRequest{
 		Definition: definition.Definition,
 		Id:         1,
 	})
@@ -455,6 +504,10 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_OK_When_Successful() 
 	// Copy Global Test Data to Local
 	definition := attributeDefinition
 
+	bDefinition, err := protojson.Marshal(definition.Definition)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(definition.Definition.Descriptor_.Name,
 			definition.Definition.Descriptor_.Namespace,
@@ -463,12 +516,12 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_OK_When_Successful() 
 			definition.Definition.Descriptor_.Fqn,
 			definition.Definition.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
-			definition.Definition,
+			bDefinition,
 			int32(1),
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err := suite.attrServer.UpdateAttribute(context.Background(), &attributesv1.UpdateAttributeRequest{
+	_, err = suite.attrServer.UpdateAttribute(context.Background(), &attributesv1.UpdateAttributeRequest{
 		Definition: definition.Definition,
 		Id:         1,
 	})
@@ -484,6 +537,10 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_Wh
 	// Copy Global Test Data to Local
 	group := attributeGroup
 
+	bGroup, err := protojson.Marshal(group.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -492,12 +549,12 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_Wh
 			group.Group.Descriptor_.Fqn,
 			group.Group.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
-			group.Group,
+			bGroup,
 			int32(1),
 		).
 		WillReturnError(errors.New("error updating attribute group"))
 
-	_, err := suite.attrServer.UpdateAttributeGroup(context.Background(), &attributesv1.UpdateAttributeGroupRequest{
+	_, err = suite.attrServer.UpdateAttributeGroup(context.Background(), &attributesv1.UpdateAttributeGroupRequest{
 		Group: group.Group,
 		Id:    1,
 	})
@@ -518,6 +575,10 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_OK_When_Successf
 	// Copy Global Test Data to Local
 	group := attributeGroup
 
+	bGroup, err := protojson.Marshal(group.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(group.Group.Descriptor_.Name,
 			group.Group.Descriptor_.Namespace,
@@ -526,12 +587,12 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_OK_When_Successf
 			group.Group.Descriptor_.Fqn,
 			group.Group.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
-			group.Group,
+			bGroup,
 			int32(1),
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err := suite.attrServer.UpdateAttributeGroup(context.Background(), &attributesv1.UpdateAttributeGroupRequest{
+	_, err = suite.attrServer.UpdateAttributeGroup(context.Background(), &attributesv1.UpdateAttributeGroupRequest{
 		Group: group.Group,
 		Id:    1,
 	})

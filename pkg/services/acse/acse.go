@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type SubjectEncoding struct {
@@ -45,7 +46,13 @@ func (s SubjectEncoding) CreateSubjectMapping(ctx context.Context,
 	// Set the version of the resource to 1 on create
 	req.SubjectMapping.Descriptor_.Version = 1
 
-	err := s.dbClient.CreateResource(ctx, req.SubjectMapping.Descriptor_, req.SubjectMapping)
+	resource, err := protojson.Marshal(req.SubjectMapping)
+	if err != nil {
+		return &acsev1.CreateSubjectMappingResponse{},
+			status.Error(codes.Internal, services.ErrCreatingResource)
+	}
+
+	err = s.dbClient.CreateResource(ctx, req.SubjectMapping.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return &acsev1.CreateSubjectMappingResponse{}, status.Error(codes.Internal,
@@ -72,10 +79,17 @@ func (s SubjectEncoding) ListSubjectMappings(ctx context.Context,
 
 	for rows.Next() {
 		var (
-			id      int32
-			mapping = new(acsev1.SubjectMapping)
+			id       int32
+			mapping  = new(acsev1.SubjectMapping)
+			bMapping []byte
 		)
-		err = rows.Scan(&id, &mapping)
+		err = rows.Scan(&id, &bMapping)
+		if err != nil {
+			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+			return mappings, status.Error(codes.Internal, services.ErrListingResource)
+		}
+
+		err = protojson.Unmarshal(bMapping, mapping)
 		if err != nil {
 			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 			return mappings, status.Error(codes.Internal, services.ErrListingResource)
@@ -104,7 +118,8 @@ func (s SubjectEncoding) GetSubjectMapping(ctx context.Context,
 		mapping = &acsev1.GetSubjectMappingResponse{
 			SubjectMapping: new(acsev1.SubjectMapping),
 		}
-		id int32
+		id       int32
+		bMapping []byte
 	)
 
 	row, err := s.dbClient.GetResource(
@@ -117,12 +132,18 @@ func (s SubjectEncoding) GetSubjectMapping(ctx context.Context,
 		return mapping, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
-	err = row.Scan(&id, &mapping.SubjectMapping)
+	err = row.Scan(&id, &bMapping)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			slog.Info(services.ErrNotFound, slog.Int("id", int(req.Id)))
 			return mapping, status.Error(codes.NotFound, services.ErrNotFound)
 		}
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return mapping, status.Error(codes.Internal, services.ErrGettingResource)
+	}
+
+	err = protojson.Unmarshal(bMapping, mapping.SubjectMapping)
+	if err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return mapping, status.Error(codes.Internal, services.ErrGettingResource)
 	}
@@ -134,10 +155,16 @@ func (s SubjectEncoding) GetSubjectMapping(ctx context.Context,
 
 func (s SubjectEncoding) UpdateSubjectMapping(ctx context.Context,
 	req *acsev1.UpdateSubjectMappingRequest) (*acsev1.UpdateSubjectMappingResponse, error) {
-	err := s.dbClient.UpdateResource(
+	resource, err := protojson.Marshal(req.SubjectMapping)
+	if err != nil {
+		return &acsev1.UpdateSubjectMappingResponse{},
+			status.Error(codes.Internal, services.ErrCreatingResource)
+	}
+
+	err = s.dbClient.UpdateResource(
 		ctx,
 		req.SubjectMapping.Descriptor_,
-		req.SubjectMapping,
+		resource,
 		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
 	)
 	if err != nil {

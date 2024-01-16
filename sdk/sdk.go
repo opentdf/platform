@@ -58,8 +58,8 @@ func newSDK(conn *grpc.ClientConn) *SDK {
 	}
 }
 
-// Shutdown closes the underlying grpc.ClientConn.
-func (s SDK) Shutdown() error {
+// Close closes the underlying grpc.ClientConn.
+func (s SDK) Close() error {
 	if err := s.conn.Close(); err != nil {
 		return errors.Join(ErrShutdownFailed, err)
 	}

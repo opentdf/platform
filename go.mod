@@ -1,9 +1,10 @@
 module github.com/opentdf/opentdf-v2-poc
 
-go 1.21
+go 1.21.5
+
+replace github.com/opentdf/opentdf-v2-poc/sdk => ./sdk
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.31.0-20231115204500-e097f827e652.2
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/bufbuild/protovalidate-go v0.4.3
 	github.com/creasty/defaults v1.7.0
@@ -12,17 +13,19 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1
 	github.com/jackc/pgx/v5 v5.5.0
 	github.com/open-policy-agent/opa v0.59.0
+	github.com/opentdf/opentdf-v2-poc/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.1
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.26.0
 	github.com/valyala/fasthttp v1.51.0
-	google.golang.org/grpc v1.59.0
+	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.31.0
 )
 
 require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.31.0-20231115204500-e097f827e652.2 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
@@ -126,6 +129,6 @@ require (
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17
+	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
 )

@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/services/common"
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

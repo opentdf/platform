@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package key_access_grants;
+package keyaccessgrants;
 
 import "attributes/attributes.proto";
 import "buf/validate/validate.proto";

@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/sdk/acse"
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/services/common"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -43,8 +44,8 @@ func TestAcseSuite(t *testing.T) {
 }
 
 //nolint:gochecknoglobals // This is test data and should be reinitialized for each test
-var subjectMapping = &CreateSubjectMappingRequest{
-	SubjectMapping: &SubjectMapping{
+var subjectMapping = &acse.CreateSubjectMappingRequest{
+	SubjectMapping: &acse.SubjectMapping{
 		Descriptor_: &common.ResourceDescriptor{
 			Type:      common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING,
 			Version:   1,
@@ -57,7 +58,7 @@ var subjectMapping = &CreateSubjectMappingRequest{
 		},
 		SubjectAttribute:  "architect",
 		SubjectValues:     []string{"owner", "collaborator", "contributor"},
-		Operator:          SubjectMapping_OPERATOR_IN,
+		Operator:          acse.SubjectMapping_OPERATOR_IN,
 		AttributeValueRef: &attributes.AttributeValueReference{},
 	},
 }
@@ -135,7 +136,7 @@ func (suite *AcseSuite) Test_ListSubjectMappings_Returns_Internal_Error_When_Dat
 		WithArgs(common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(), selector.Namespace, int32(1)).
 		WillReturnError(errors.New("error listing subject mappings"))
 
-	_, err := suite.acseSerer.ListSubjectMappings(context.Background(), &ListSubjectMappingsRequest{
+	_, err := suite.acseSerer.ListSubjectMappings(context.Background(), &acse.ListSubjectMappingsRequest{
 		Selector: selector,
 	})
 	if assert.Error(suite.T(), err) {
@@ -168,7 +169,7 @@ func (suite *AcseSuite) Test_ListSubjectMappings_Returns_OK_When_Successful() {
 		WithArgs(common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(), selector.Namespace, int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).AddRow(int32(1), bMapping))
 
-	_, err = suite.acseSerer.ListSubjectMappings(context.Background(), &ListSubjectMappingsRequest{
+	_, err = suite.acseSerer.ListSubjectMappings(context.Background(), &acse.ListSubjectMappingsRequest{
 		Selector: selector,
 	})
 
@@ -184,7 +185,7 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_Internal_Error_When_Datab
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String()).
 		WillReturnError(errors.New("error getting subject mapping"))
 
-	_, err := suite.acseSerer.GetSubjectMapping(context.Background(), &GetSubjectMappingRequest{
+	_, err := suite.acseSerer.GetSubjectMapping(context.Background(), &acse.GetSubjectMappingRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -205,7 +206,7 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_NotFound_Error_When_No_Ma
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}))
 
-	_, err := suite.acseSerer.GetSubjectMapping(context.Background(), &GetSubjectMappingRequest{
+	_, err := suite.acseSerer.GetSubjectMapping(context.Background(), &acse.GetSubjectMappingRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -233,7 +234,7 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_OK_When_Successful() {
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).AddRow(int32(1), bMapping))
 
-	_, err = suite.acseSerer.GetSubjectMapping(context.Background(), &GetSubjectMappingRequest{
+	_, err = suite.acseSerer.GetSubjectMapping(context.Background(), &acse.GetSubjectMappingRequest{
 		Id: 1,
 	})
 
@@ -265,7 +266,7 @@ func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_Internal_Error_When_Da
 		).
 		WillReturnError(errors.New("error updating subject mapping"))
 
-	_, err = suite.acseSerer.UpdateSubjectMapping(context.Background(), &UpdateSubjectMappingRequest{
+	_, err = suite.acseSerer.UpdateSubjectMapping(context.Background(), &acse.UpdateSubjectMappingRequest{
 		Id:             1,
 		SubjectMapping: mapping.SubjectMapping,
 	})
@@ -303,7 +304,7 @@ func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_OK_When_Successful() {
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err = suite.acseSerer.UpdateSubjectMapping(context.Background(), &UpdateSubjectMappingRequest{
+	_, err = suite.acseSerer.UpdateSubjectMapping(context.Background(), &acse.UpdateSubjectMappingRequest{
 		Id:             1,
 		SubjectMapping: mapping.SubjectMapping,
 	})
@@ -320,7 +321,7 @@ func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_Internal_Error_When_Da
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String()).
 		WillReturnError(errors.New("error deleting subject mapping"))
 
-	_, err := suite.acseSerer.DeleteSubjectMapping(context.Background(), &DeleteSubjectMappingRequest{
+	_, err := suite.acseSerer.DeleteSubjectMapping(context.Background(), &acse.DeleteSubjectMappingRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -341,7 +342,7 @@ func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_OK_When_Successful() {
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	_, err := suite.acseSerer.DeleteSubjectMapping(context.Background(), &DeleteSubjectMappingRequest{
+	_, err := suite.acseSerer.DeleteSubjectMapping(context.Background(), &acse.DeleteSubjectMappingRequest{
 		Id: 1,
 	})
 

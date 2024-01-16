@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/opentdf/opentdf-v2-poc/migrations"
-	"github.com/opentdf/opentdf-v2-poc/services/common"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/pressly/goose/v3"
 )
 

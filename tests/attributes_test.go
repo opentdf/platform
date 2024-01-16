@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/services/common"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

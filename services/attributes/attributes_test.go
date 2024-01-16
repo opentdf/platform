@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"github.com/opentdf/opentdf-v2-poc/services/common"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -46,11 +47,11 @@ func TestAttributesSuite(t *testing.T) {
 }
 
 //nolint:gochecknoglobals // This is test data and should be reinitialized for each test
-var attributeDefinition = &CreateAttributeRequest{
-	Definition: &AttributeDefinition{
+var attributeDefinition = &attributes.CreateAttributeRequest{
+	Definition: &attributes.AttributeDefinition{
 		Name: "relto",
-		Rule: AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
-		Values: []*AttributeDefinitionValue{
+		Rule: attributes.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
+		Values: []*attributes.AttributeDefinitionValue{
 			{
 				Value: "USA",
 			},
@@ -71,8 +72,8 @@ var attributeDefinition = &CreateAttributeRequest{
 }
 
 //nolint:gochecknoglobals // This is test data and should be reinitialized for each test
-var attributeGroup = &CreateAttributeGroupRequest{
-	Group: &AttributeGroup{
+var attributeGroup = &attributes.CreateAttributeGroupRequest{
+	Group: &attributes.AttributeGroup{
 		Descriptor_: &common.ResourceDescriptor{
 			Version:   1,
 			Name:      "example attribute group",
@@ -84,16 +85,16 @@ var attributeGroup = &CreateAttributeGroupRequest{
 			Type: common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP,
 			Id:   1,
 		},
-		MemberValues: []*AttributeValueReference{
+		MemberValues: []*attributes.AttributeValueReference{
 			{
-				Ref: &AttributeValueReference_AttributeValue{
-					AttributeValue: &AttributeDefinitionValue{
+				Ref: &attributes.AttributeValueReference_AttributeValue{
+					AttributeValue: &attributes.AttributeDefinitionValue{
 						Value: "USA",
 					},
 				},
 			},
 		},
-		GroupValue: &AttributeValueReference{},
+		GroupValue: &attributes.AttributeValueReference{},
 	},
 }
 
@@ -228,7 +229,7 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_InternalError_When_Dat
 		WithArgs(common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(), "opentdf", int32(1)).
 		WillReturnError(errors.New("error listing attribute defintions"))
 
-	_, err := suite.attrServer.ListAttributes(context.Background(), &ListAttributesRequest{
+	_, err := suite.attrServer.ListAttributes(context.Background(), &attributes.ListAttributesRequest{
 		Selector: &common.ResourceSelector{
 			Namespace: "opentdf",
 			Version:   1,
@@ -260,7 +261,7 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_OK_When_Successful() {
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bDefinition))
 
-	definitions, err := suite.attrServer.ListAttributes(context.Background(), &ListAttributesRequest{
+	definitions, err := suite.attrServer.ListAttributes(context.Background(), &attributes.ListAttributesRequest{
 		Selector: &common.ResourceSelector{
 			Namespace: "opentdf",
 			Version:   1,
@@ -268,7 +269,7 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_OK_When_Successful() {
 	})
 
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), []*AttributeDefinition{definition.Definition}, definitions.Definitions)
+	assert.Equal(suite.T(), []*attributes.AttributeDefinition{definition.Definition}, definitions.Definitions)
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
@@ -280,7 +281,7 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_InternalError_Whe
 		WithArgs(common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), "opentdf", int32(1)).
 		WillReturnError(errors.New("error listing attribute groups"))
 
-	_, err := suite.attrServer.ListAttributeGroups(context.Background(), &ListAttributeGroupsRequest{
+	_, err := suite.attrServer.ListAttributeGroups(context.Background(), &attributes.ListAttributeGroupsRequest{
 		Selector: &common.ResourceSelector{
 			Namespace: "opentdf",
 			Version:   1,
@@ -312,7 +313,7 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_OK_When_Successfu
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bGroup))
 
-	groups, err := suite.attrServer.ListAttributeGroups(context.Background(), &ListAttributeGroupsRequest{
+	groups, err := suite.attrServer.ListAttributeGroups(context.Background(), &attributes.ListAttributeGroupsRequest{
 		Selector: &common.ResourceSelector{
 			Namespace: "opentdf",
 			Version:   1,
@@ -320,7 +321,7 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_OK_When_Successfu
 	})
 
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), []*AttributeGroup{group.Group}, groups.Groups)
+	assert.Equal(suite.T(), []*attributes.AttributeGroup{group.Group}, groups.Groups)
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
@@ -332,7 +333,7 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_InternalError_When_Datab
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnError(errors.New("error getting attribute definition"))
 
-	_, err := suite.attrServer.GetAttribute(context.Background(), &GetAttributeRequest{
+	_, err := suite.attrServer.GetAttribute(context.Background(), &attributes.GetAttributeRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -353,7 +354,7 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_No_Resourc
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}))
 
-	_, err := suite.attrServer.GetAttribute(context.Background(), &GetAttributeRequest{
+	_, err := suite.attrServer.GetAttribute(context.Background(), &attributes.GetAttributeRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -382,7 +383,7 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_OK_When_Successful() {
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bDefinition))
 
-	resp, err := suite.attrServer.GetAttribute(context.Background(), &GetAttributeRequest{
+	resp, err := suite.attrServer.GetAttribute(context.Background(), &attributes.GetAttributeRequest{
 		Id: 1,
 	})
 
@@ -399,7 +400,7 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_InternalError_When_
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnError(errors.New("error getting attribute group"))
 
-	_, err := suite.attrServer.GetAttributeGroup(context.Background(), &GetAttributeGroupRequest{
+	_, err := suite.attrServer.GetAttributeGroup(context.Background(), &attributes.GetAttributeGroupRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -420,7 +421,7 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_NotFound_When_No_Re
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}))
 
-	_, err := suite.attrServer.GetAttributeGroup(context.Background(), &GetAttributeGroupRequest{
+	_, err := suite.attrServer.GetAttributeGroup(context.Background(), &attributes.GetAttributeGroupRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -449,7 +450,7 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_OK_When_Successful(
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bGroup))
 
-	resp, err := suite.attrServer.GetAttributeGroup(context.Background(), &GetAttributeGroupRequest{
+	resp, err := suite.attrServer.GetAttributeGroup(context.Background(), &attributes.GetAttributeGroupRequest{
 		Id: 1,
 	})
 
@@ -482,7 +483,7 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Da
 		).
 		WillReturnError(errors.New("error updating attribute definition"))
 
-	_, err = suite.attrServer.UpdateAttribute(context.Background(), &UpdateAttributeRequest{
+	_, err = suite.attrServer.UpdateAttribute(context.Background(), &attributes.UpdateAttributeRequest{
 		Definition: definition.Definition,
 		Id:         1,
 	})
@@ -520,7 +521,7 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_OK_When_Successful() 
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err = suite.attrServer.UpdateAttribute(context.Background(), &UpdateAttributeRequest{
+	_, err = suite.attrServer.UpdateAttribute(context.Background(), &attributes.UpdateAttributeRequest{
 		Definition: definition.Definition,
 		Id:         1,
 	})
@@ -553,7 +554,7 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_Wh
 		).
 		WillReturnError(errors.New("error updating attribute group"))
 
-	_, err = suite.attrServer.UpdateAttributeGroup(context.Background(), &UpdateAttributeGroupRequest{
+	_, err = suite.attrServer.UpdateAttributeGroup(context.Background(), &attributes.UpdateAttributeGroupRequest{
 		Group: group.Group,
 		Id:    1,
 	})
@@ -591,7 +592,7 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_OK_When_Successf
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err = suite.attrServer.UpdateAttributeGroup(context.Background(), &UpdateAttributeGroupRequest{
+	_, err = suite.attrServer.UpdateAttributeGroup(context.Background(), &attributes.UpdateAttributeGroupRequest{
 		Group: group.Group,
 		Id:    1,
 	})
@@ -608,7 +609,7 @@ func (suite *AttributesSuite) Test_DeleteAttribute_Returns_InternalError_When_Da
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnError(errors.New("error deleting attribute definition"))
 
-	_, err := suite.attrServer.DeleteAttribute(context.Background(), &DeleteAttributeRequest{
+	_, err := suite.attrServer.DeleteAttribute(context.Background(), &attributes.DeleteAttributeRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -629,7 +630,7 @@ func (suite *AttributesSuite) Test_DeleteAttribute_Returns_OK_When_Successful() 
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	_, err := suite.attrServer.DeleteAttribute(context.Background(), &DeleteAttributeRequest{
+	_, err := suite.attrServer.DeleteAttribute(context.Background(), &attributes.DeleteAttributeRequest{
 		Id: 1,
 	})
 
@@ -645,7 +646,7 @@ func (suite *AttributesSuite) Test_DeleteAttributeGroup_Returns_InternalError_Wh
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnError(errors.New("error deleting attribute group"))
 
-	_, err := suite.attrServer.DeleteAttributeGroup(context.Background(), &DeleteAttributeGroupRequest{
+	_, err := suite.attrServer.DeleteAttributeGroup(context.Background(), &attributes.DeleteAttributeGroupRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -666,7 +667,7 @@ func (suite *AttributesSuite) Test_DeleteAttributeGroup_Returns_OK_When_Successf
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	_, err := suite.attrServer.DeleteAttributeGroup(context.Background(), &DeleteAttributeGroupRequest{
+	_, err := suite.attrServer.DeleteAttributeGroup(context.Background(), &attributes.DeleteAttributeGroupRequest{
 		Id: 1,
 	})
 

@@ -19,6 +19,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/services/acre"
 	"github.com/opentdf/opentdf-v2-poc/services/acse"
 	"github.com/opentdf/opentdf-v2-poc/services/attributes"
+	"github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
 

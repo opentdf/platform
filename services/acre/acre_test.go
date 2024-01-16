@@ -8,9 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/sdk/acre"
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/services/common"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -45,8 +46,8 @@ func TestAcreSuite(t *testing.T) {
 
 var (
 	//nolint:gochecknoglobals // Test data and should be reintialized for each test
-	resourceMapping = &CreateResourceMappingRequest{
-		Mapping: &ResourceMapping{
+	resourceMapping = &acre.CreateResourceMappingRequest{
+		Mapping: &acre.ResourceMapping{
 			Descriptor_: &common.ResourceDescriptor{
 				Name:      "test",
 				Namespace: "opentdf",
@@ -57,13 +58,13 @@ var (
 				Id:        1,
 			},
 			AttributeValueRef: &attributes.AttributeValueReference{},
-			SynonymRef:        &SynonymRef{},
+			SynonymRef:        &acre.SynonymRef{},
 		},
 	}
 
 	//nolint:gochecknoglobals // Test data and should be reintialized for each test
-	resourceSynonym = &CreateResourceSynonymRequest{
-		Synonym: &Synonyms{
+	resourceSynonym = &acre.CreateResourceSynonymRequest{
+		Synonym: &acre.Synonyms{
 			Descriptor_: &common.ResourceDescriptor{
 				Name:      "test",
 				Namespace: "opentdf",
@@ -78,8 +79,8 @@ var (
 	}
 
 	//nolint:gochecknoglobals // Test data and should be reintialized for each test
-	resourceGroup = &CreateResourceGroupRequest{
-		Group: &ResourceGroup{
+	resourceGroup = &acre.CreateResourceGroupRequest{
+		Group: &acre.ResourceGroup{
 			Descriptor_: &common.ResourceDescriptor{
 				Name:      "test",
 				Namespace: "opentdf",
@@ -167,7 +168,7 @@ func (suite *AcreSuite) Test_ListResourceMappings_Returns_InternalError_When_Dat
 			selector.Namespace, int32(1)).
 		WillReturnError(errors.New("error listing resource mappings"))
 
-	_, err := suite.acreServer.ListResourceMappings(context.Background(), &ListResourceMappingsRequest{
+	_, err := suite.acreServer.ListResourceMappings(context.Background(), &acre.ListResourceMappingsRequest{
 		Selector: selector,
 	})
 	if assert.Error(suite.T(), err) {
@@ -202,12 +203,12 @@ func (suite *AcreSuite) Test_ListResourceMappings_Returns_OK_When_Successful() {
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bMapping))
 
-	mappings, err := suite.acreServer.ListResourceMappings(context.Background(), &ListResourceMappingsRequest{
+	mappings, err := suite.acreServer.ListResourceMappings(context.Background(), &acre.ListResourceMappingsRequest{
 		Selector: selector,
 	})
 
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), []*ResourceMapping{lResourceMapping.Mapping}, mappings.Mappings)
+	assert.Equal(suite.T(), []*acre.ResourceMapping{lResourceMapping.Mapping}, mappings.Mappings)
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
@@ -219,7 +220,7 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_InternalError_When_Datab
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnError(errors.New("error getting resource mapping"))
 
-	_, err := suite.acreServer.GetResourceMapping(context.Background(), &GetResourceMappingRequest{
+	_, err := suite.acreServer.GetResourceMapping(context.Background(), &acre.GetResourceMappingRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -240,7 +241,7 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_NotFound_When_Resource_N
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnError(pgx.ErrNoRows)
 
-	_, err := suite.acreServer.GetResourceMapping(context.Background(), &GetResourceMappingRequest{
+	_, err := suite.acreServer.GetResourceMapping(context.Background(), &acre.GetResourceMappingRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -269,7 +270,7 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_OK_When_Successful() {
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bMapping))
 
-	_, err = suite.acreServer.GetResourceMapping(context.Background(), &GetResourceMappingRequest{
+	_, err = suite.acreServer.GetResourceMapping(context.Background(), &acre.GetResourceMappingRequest{
 		Id: int32(1),
 	})
 
@@ -301,7 +302,7 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_InternalError_When_Da
 		).
 		WillReturnError(errors.New("error updating resource mapping"))
 
-	_, err = suite.acreServer.UpdateResourceMapping(context.Background(), &UpdateResourceMappingRequest{
+	_, err = suite.acreServer.UpdateResourceMapping(context.Background(), &acre.UpdateResourceMappingRequest{
 		Id:      int32(1),
 		Mapping: lResourceMapping.Mapping,
 	})
@@ -339,7 +340,7 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_OK_When_Successful() 
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err = suite.acreServer.UpdateResourceMapping(context.Background(), &UpdateResourceMappingRequest{
+	_, err = suite.acreServer.UpdateResourceMapping(context.Background(), &acre.UpdateResourceMappingRequest{
 		Id:      int32(1),
 		Mapping: lResourceMapping.Mapping,
 	})
@@ -356,7 +357,7 @@ func (suite *AcreSuite) Test_DeleteResourceMapping_Returns_InternalError_When_Da
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnError(errors.New("error deleting resource mapping"))
 
-	_, err := suite.acreServer.DeleteResourceMapping(context.Background(), &DeleteResourceMappingRequest{
+	_, err := suite.acreServer.DeleteResourceMapping(context.Background(), &acre.DeleteResourceMappingRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -377,7 +378,7 @@ func (suite *AcreSuite) Test_DeleteResourceMapping_Returns_OK_When_Successful() 
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	_, err := suite.acreServer.DeleteResourceMapping(context.Background(), &DeleteResourceMappingRequest{
+	_, err := suite.acreServer.DeleteResourceMapping(context.Background(), &acre.DeleteResourceMappingRequest{
 		Id: int32(1),
 	})
 
@@ -460,7 +461,7 @@ func (suite *AcreSuite) Test_ListResourceSynonyms_Returns_InternalError_When_Dat
 			selector.Namespace, int32(1)).
 		WillReturnError(errors.New("error listing resource synonyms"))
 
-	_, err := suite.acreServer.ListResourceSynonyms(context.Background(), &ListResourceSynonymsRequest{
+	_, err := suite.acreServer.ListResourceSynonyms(context.Background(), &acre.ListResourceSynonymsRequest{
 		Selector: selector,
 	})
 
@@ -496,12 +497,12 @@ func (suite *AcreSuite) Test_ListResourceSynonyms_Returns_OK_When_Successful() {
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bSynonym))
 
-	synonyms, err := suite.acreServer.ListResourceSynonyms(context.Background(), &ListResourceSynonymsRequest{
+	synonyms, err := suite.acreServer.ListResourceSynonyms(context.Background(), &acre.ListResourceSynonymsRequest{
 		Selector: selector,
 	})
 
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), []*Synonyms{lResourceSynonym.Synonym}, synonyms.Synonyms)
+	assert.Equal(suite.T(), []*acre.Synonyms{lResourceSynonym.Synonym}, synonyms.Synonyms)
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
@@ -513,7 +514,7 @@ func (suite *AcreSuite) Test_GetResourceSynonym_Returns_InternalError_When_Datab
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnError(errors.New("error getting resource synonym"))
 
-	_, err := suite.acreServer.GetResourceSynonym(context.Background(), &GetResourceSynonymRequest{
+	_, err := suite.acreServer.GetResourceSynonym(context.Background(), &acre.GetResourceSynonymRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -533,7 +534,7 @@ func (suite *AcreSuite) Test_GetResourceSynonym_Returns_NotFound_When_Resource_N
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnError(pgx.ErrNoRows)
 
-	_, err := suite.acreServer.GetResourceSynonym(context.Background(), &GetResourceSynonymRequest{
+	_, err := suite.acreServer.GetResourceSynonym(context.Background(), &acre.GetResourceSynonymRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -562,7 +563,7 @@ func (suite *AcreSuite) Test_GetResourceSynonym_Returns_OK_When_Successful() {
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bSynonym))
 
-	_, err = suite.acreServer.GetResourceSynonym(context.Background(), &GetResourceSynonymRequest{
+	_, err = suite.acreServer.GetResourceSynonym(context.Background(), &acre.GetResourceSynonymRequest{
 		Id: int32(1),
 	})
 
@@ -594,7 +595,7 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_InternalError_When_Da
 		).
 		WillReturnError(errors.New("error updating resource synonym"))
 
-	_, err = suite.acreServer.UpdateResourceSynonym(context.Background(), &UpdateResourceSynonymRequest{
+	_, err = suite.acreServer.UpdateResourceSynonym(context.Background(), &acre.UpdateResourceSynonymRequest{
 		Id:      int32(1),
 		Synonym: lResourceSynonym.Synonym,
 	})
@@ -631,7 +632,7 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_OK_When_Successful() 
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err = suite.acreServer.UpdateResourceSynonym(context.Background(), &UpdateResourceSynonymRequest{
+	_, err = suite.acreServer.UpdateResourceSynonym(context.Background(), &acre.UpdateResourceSynonymRequest{
 		Id:      int32(1),
 		Synonym: lResourceSynonym.Synonym,
 	})
@@ -648,7 +649,7 @@ func (suite *AcreSuite) Test_DeleteResourceSynonym_Returns_InternalError_When_Da
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnError(errors.New("error deleting resource synonym"))
 
-	_, err := suite.acreServer.DeleteResourceSynonym(context.Background(), &DeleteResourceSynonymRequest{
+	_, err := suite.acreServer.DeleteResourceSynonym(context.Background(), &acre.DeleteResourceSynonymRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -668,7 +669,7 @@ func (suite *AcreSuite) Test_DeleteResourceSynonym_Returns_OK_When_Successful() 
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	_, err := suite.acreServer.DeleteResourceSynonym(context.Background(), &DeleteResourceSynonymRequest{
+	_, err := suite.acreServer.DeleteResourceSynonym(context.Background(), &acre.DeleteResourceSynonymRequest{
 		Id: int32(1),
 	})
 
@@ -752,7 +753,7 @@ func (suite *AcreSuite) Test_ListResourceGroups_Returns_InternalError_When_Datab
 			selector.Namespace, int32(1)).
 		WillReturnError(errors.New("error listing resource groups"))
 
-	_, err := suite.acreServer.ListResourceGroups(context.Background(), &ListResourceGroupsRequest{
+	_, err := suite.acreServer.ListResourceGroups(context.Background(), &acre.ListResourceGroupsRequest{
 		Selector: selector,
 	})
 
@@ -788,13 +789,13 @@ func (suite *AcreSuite) Test_ListResourceGroups_Returns_OK_When_Successful() {
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bResourceGroup))
 
-	groups, err := suite.acreServer.ListResourceGroups(context.Background(), &ListResourceGroupsRequest{
+	groups, err := suite.acreServer.ListResourceGroups(context.Background(), &acre.ListResourceGroupsRequest{
 		Selector: selector,
 	})
 
 	assert.NoError(suite.T(), err)
 
-	assert.Equal(suite.T(), []*ResourceGroup{lResourceGroup.Group}, groups.Groups)
+	assert.Equal(suite.T(), []*acre.ResourceGroup{lResourceGroup.Group}, groups.Groups)
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
 		suite.T().Errorf("there were unfulfilled expectations: %s", err)
@@ -806,7 +807,7 @@ func (suite *AcreSuite) Test_GetResourceGroup_Returns_InternalError_When_Databas
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnError(errors.New("error getting resource group"))
 
-	_, err := suite.acreServer.GetResourceGroup(context.Background(), &GetResourceGroupRequest{
+	_, err := suite.acreServer.GetResourceGroup(context.Background(), &acre.GetResourceGroupRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -827,7 +828,7 @@ func (suite *AcreSuite) Test_GetResourceGroup_Returns_NotFound_When_Resource_Not
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnError(pgx.ErrNoRows)
 
-	_, err := suite.acreServer.GetResourceGroup(context.Background(), &GetResourceGroupRequest{
+	_, err := suite.acreServer.GetResourceGroup(context.Background(), &acre.GetResourceGroupRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -856,7 +857,7 @@ func (suite *AcreSuite) Test_GetResourceGroup_Returns_OK_When_Successful() {
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
 			AddRow(int32(1), bGroup))
 
-	_, err = suite.acreServer.GetResourceGroup(context.Background(), &GetResourceGroupRequest{
+	_, err = suite.acreServer.GetResourceGroup(context.Background(), &acre.GetResourceGroupRequest{
 		Id: int32(1),
 	})
 
@@ -888,7 +889,7 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_InternalError_When_Data
 		).
 		WillReturnError(errors.New("error updating resource group"))
 
-	_, err = suite.acreServer.UpdateResourceGroup(context.Background(), &UpdateResourceGroupRequest{
+	_, err = suite.acreServer.UpdateResourceGroup(context.Background(), &acre.UpdateResourceGroupRequest{
 		Id:    int32(1),
 		Group: lResourceGroup.Group,
 	})
@@ -926,7 +927,7 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_OK_When_Successful() {
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err = suite.acreServer.UpdateResourceGroup(context.Background(), &UpdateResourceGroupRequest{
+	_, err = suite.acreServer.UpdateResourceGroup(context.Background(), &acre.UpdateResourceGroupRequest{
 		Id:    int32(1),
 		Group: lResourceGroup.Group,
 	})
@@ -943,7 +944,7 @@ func (suite *AcreSuite) Test_DeleteResourceGroup_Returns_InternalError_When_Data
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnError(errors.New("error deleting resource group"))
 
-	_, err := suite.acreServer.DeleteResourceGroup(context.Background(), &DeleteResourceGroupRequest{
+	_, err := suite.acreServer.DeleteResourceGroup(context.Background(), &acre.DeleteResourceGroupRequest{
 		Id: int32(1),
 	})
 	if assert.Error(suite.T(), err) {
@@ -962,7 +963,7 @@ func (suite *AcreSuite) Test_DeleteResourceGroup_Returns_OK_When_Successful() {
 		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	_, err := suite.acreServer.DeleteResourceGroup(context.Background(), &DeleteResourceGroupRequest{
+	_, err := suite.acreServer.DeleteResourceGroup(context.Background(), &acre.DeleteResourceGroupRequest{
 		Id: int32(1),
 	})
 

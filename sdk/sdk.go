@@ -3,12 +3,12 @@ package sdk
 import (
 	"errors"
 
-	"github.com/opentdf/opentdf-v2-poc/services/acre"
-	"github.com/opentdf/opentdf-v2-poc/services/acse"
-	"github.com/opentdf/opentdf-v2-poc/services/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/acre"
+	"github.com/opentdf/opentdf-v2-poc/sdk/acse"
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/keyaccessgrants"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -22,41 +22,26 @@ func (c Error) Error() string {
 	return string(c)
 }
 
-type Options struct {
-	Insecure         bool `default:"false"`
-	IDPEndpoint      string
-	PlatformEndpoint string
-	ClientID         string
-	ClientSecret     string
-	Token            string
-}
-
 type SDK struct {
 	conn             *grpc.ClientConn
 	Attributes       attributes.AttributesServiceClient
 	ResourceEncoding acre.ResourcEncodingServiceClient
 	SubjectEncoding  acse.SubjectEncodingServiceClient
+	KeyAccessGrants  keyaccessgrants.KeyAccessGrantsServiceClient
 }
 
-func NewSDK(opts Options) (*SDK, error) {
-	var dialOpts []grpc.DialOption
-
-	if opts.Insecure {
-		// Disable TLS
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	} else {
-		// Enable TLS
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")))
+func New(platformEndpoint string, opts ...Option) (*SDK, error) {
+	// Set default options
+	cfg := &config{
+		insecure: grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
 	}
 
-	if opts.Token != "" && opts.ClientID != "" && opts.ClientSecret != "" {
-		return nil, errors.New("can't set both token and client credentials")
+	// Apply options
+	for _, opt := range opts {
+		opt(cfg)
 	}
 
-	if opts.Token != "" {
-		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(credentials.PerRPCCredentials)
-	}
-	conn, err := grpc.Dial(opts.PlatformEndpoint, dialOpts...)
+	conn, err := grpc.Dial(platformEndpoint, cfg.build()...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}
@@ -69,6 +54,7 @@ func newSDK(conn *grpc.ClientConn) *SDK {
 		Attributes:       attributes.NewAttributesServiceClient(conn),
 		ResourceEncoding: acre.NewResourcEncodingServiceClient(conn),
 		SubjectEncoding:  acse.NewSubjectEncodingServiceClient(conn),
+		KeyAccessGrants:  keyaccessgrants.NewKeyAccessGrantsServiceClient(conn),
 	}
 }
 
@@ -86,6 +72,6 @@ func (s SDK) Conn() *grpc.ClientConn {
 }
 
 // ExchangeToken exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
-func (s SDK) ExchangeToken(token string) (string, error) {
+func (s SDK) TokenExchange(token string) (string, error) {
 	return "", nil
 }

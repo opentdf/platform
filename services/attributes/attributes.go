@@ -9,8 +9,9 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"github.com/opentdf/opentdf-v2-poc/services/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,7 +19,7 @@ import (
 )
 
 type AttributesService struct {
-	UnimplementedAttributesServiceServer
+	attributes.UnimplementedAttributesServiceServer
 	dbClient *db.Client
 }
 
@@ -26,8 +27,8 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 	as := &AttributesService{
 		dbClient: dbClient,
 	}
-	RegisterAttributesServiceServer(g, as)
-	err := RegisterAttributesServiceHandlerServer(context.Background(), s, as)
+	attributes.RegisterAttributesServiceServer(g, as)
+	err := attributes.RegisterAttributesServiceHandlerServer(context.Background(), s, as)
 	if err != nil {
 		return fmt.Errorf("failed to register attributes service handler: %w", err)
 	}
@@ -35,7 +36,7 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 }
 
 func (s AttributesService) CreateAttribute(ctx context.Context,
-	req *CreateAttributeRequest) (*CreateAttributeResponse, error) {
+	req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error) {
 	slog.Debug("creating new attribute definition", slog.String("name", req.Definition.Name))
 
 	// Set the version of the resource to 1 on create
@@ -43,23 +44,23 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 
 	resource, err := protojson.Marshal(req.Definition)
 	if err != nil {
-		return &CreateAttributeResponse{},
+		return &attributes.CreateAttributeResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
 	err = s.dbClient.CreateResource(ctx, req.Definition.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &CreateAttributeResponse{},
+		return &attributes.CreateAttributeResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 	slog.Debug("created new attribute definition", slog.String("name", req.Definition.Name))
 
-	return &CreateAttributeResponse{}, nil
+	return &attributes.CreateAttributeResponse{}, nil
 }
 
 func (s AttributesService) CreateAttributeGroup(ctx context.Context,
-	req *CreateAttributeGroupRequest) (*CreateAttributeGroupResponse, error) {
+	req *attributes.CreateAttributeGroupRequest) (*attributes.CreateAttributeGroupResponse, error) {
 	slog.Debug("creating new attribute group definition")
 
 	// Set the version of the resource to 1 on create
@@ -67,22 +68,22 @@ func (s AttributesService) CreateAttributeGroup(ctx context.Context,
 
 	resource, err := protojson.Marshal(req.Group)
 	if err != nil {
-		return &CreateAttributeGroupResponse{},
+		return &attributes.CreateAttributeGroupResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
 	err = s.dbClient.CreateResource(ctx, req.Group.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &CreateAttributeGroupResponse{},
+		return &attributes.CreateAttributeGroupResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
-	return &CreateAttributeGroupResponse{}, nil
+	return &attributes.CreateAttributeGroupResponse{}, nil
 }
 
 func (s *AttributesService) ListAttributes(ctx context.Context,
-	req *ListAttributesRequest) (*ListAttributesResponse, error) {
-	attributes := &ListAttributesResponse{}
+	req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
+	attributesList := &attributes.ListAttributesResponse{}
 
 	rows, err := s.dbClient.ListResources(
 		ctx,
@@ -92,44 +93,44 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 
 	if err != nil {
 		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-		return attributes, status.Error(codes.Internal, services.ErrListingResource)
+		return attributesList, status.Error(codes.Internal, services.ErrListingResource)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var (
 			id          int32
-			definition  = new(AttributeDefinition)
+			definition  = new(attributes.AttributeDefinition)
 			bDefinition []byte
 		)
 		err = rows.Scan(&id, &bDefinition)
 		if err != nil {
 			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-			return attributes, status.Error(codes.Internal, services.ErrListingResource)
+			return attributesList, status.Error(codes.Internal, services.ErrListingResource)
 		}
 
 		err = protojson.Unmarshal(bDefinition, definition)
 		if err != nil {
 			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-			return attributes, status.Error(codes.Internal, services.ErrListingResource)
+			return attributesList, status.Error(codes.Internal, services.ErrListingResource)
 		}
 
 		definition.Descriptor_.Id = id
-		attributes.Definitions = append(attributes.Definitions, definition)
+		attributesList.Definitions = append(attributesList.Definitions, definition)
 	}
 
 	if err := rows.Err(); err != nil {
 		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-		return attributes, status.Error(codes.Internal, services.ErrListingResource)
+		return attributesList, status.Error(codes.Internal, services.ErrListingResource)
 	}
 
-	return attributes, nil
+	return attributesList, nil
 }
 
 func (s *AttributesService) ListAttributeGroups(ctx context.Context,
-	req *ListAttributeGroupsRequest) (*ListAttributeGroupsResponse, error) {
+	req *attributes.ListAttributeGroupsRequest) (*attributes.ListAttributeGroupsResponse, error) {
 	var (
-		groups = new(ListAttributeGroupsResponse)
+		groups = new(attributes.ListAttributeGroupsResponse)
 	)
 	rows, err := s.dbClient.ListResources(
 		ctx,
@@ -144,7 +145,7 @@ func (s *AttributesService) ListAttributeGroups(ctx context.Context,
 	for rows.Next() {
 		var (
 			id     int32
-			group  = new(AttributeGroup)
+			group  = new(attributes.AttributeGroup)
 			bGroup []byte
 		)
 		// var tmpDefinition []byte
@@ -174,10 +175,10 @@ func (s *AttributesService) ListAttributeGroups(ctx context.Context,
 
 //nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s *AttributesService) GetAttribute(ctx context.Context,
-	req *GetAttributeRequest) (*GetAttributeResponse, error) {
+	req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
 	var (
-		definition = &GetAttributeResponse{
-			Definition: new(AttributeDefinition),
+		definition = &attributes.GetAttributeResponse{
+			Definition: new(attributes.AttributeDefinition),
 		}
 		id          int32
 		bDefinition []byte
@@ -216,10 +217,10 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 
 //nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s *AttributesService) GetAttributeGroup(ctx context.Context,
-	req *GetAttributeGroupRequest) (*GetAttributeGroupResponse, error) {
+	req *attributes.GetAttributeGroupRequest) (*attributes.GetAttributeGroupResponse, error) {
 	var (
-		group = &GetAttributeGroupResponse{
-			Group: new(AttributeGroup),
+		group = &attributes.GetAttributeGroupResponse{
+			Group: new(attributes.AttributeGroup),
 		}
 		id     int32
 		bGroup []byte
@@ -257,10 +258,10 @@ func (s *AttributesService) GetAttributeGroup(ctx context.Context,
 }
 
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
-	req *UpdateAttributeRequest) (*UpdateAttributeResponse, error) {
+	req *attributes.UpdateAttributeRequest) (*attributes.UpdateAttributeResponse, error) {
 	resource, err := protojson.Marshal(req.Definition)
 	if err != nil {
-		return &UpdateAttributeResponse{},
+		return &attributes.UpdateAttributeResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
@@ -272,17 +273,17 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return &UpdateAttributeResponse{},
+		return &attributes.UpdateAttributeResponse{},
 			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
-	return &UpdateAttributeResponse{}, nil
+	return &attributes.UpdateAttributeResponse{}, nil
 }
 
 func (s *AttributesService) UpdateAttributeGroup(ctx context.Context,
-	req *UpdateAttributeGroupRequest) (*UpdateAttributeGroupResponse, error) {
+	req *attributes.UpdateAttributeGroupRequest) (*attributes.UpdateAttributeGroupResponse, error) {
 	resource, err := protojson.Marshal(req.Group)
 	if err != nil {
-		return &UpdateAttributeGroupResponse{},
+		return &attributes.UpdateAttributeGroupResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
@@ -293,36 +294,36 @@ func (s *AttributesService) UpdateAttributeGroup(ctx context.Context,
 	)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return &UpdateAttributeGroupResponse{},
+		return &attributes.UpdateAttributeGroupResponse{},
 			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
-	return &UpdateAttributeGroupResponse{}, nil
+	return &attributes.UpdateAttributeGroupResponse{}, nil
 }
 
 func (s *AttributesService) DeleteAttribute(ctx context.Context,
-	req *DeleteAttributeRequest) (*DeleteAttributeResponse, error) {
+	req *attributes.DeleteAttributeRequest) (*attributes.DeleteAttributeResponse, error) {
 	if err := s.dbClient.DeleteResource(
 		ctx,
 		req.Id,
 		common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
 	); err != nil {
 		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return &DeleteAttributeResponse{}, status.Error(codes.Internal,
+		return &attributes.DeleteAttributeResponse{}, status.Error(codes.Internal,
 			services.ErrDeletingResource)
 	}
-	return &DeleteAttributeResponse{}, nil
+	return &attributes.DeleteAttributeResponse{}, nil
 }
 
 func (s *AttributesService) DeleteAttributeGroup(ctx context.Context,
-	req *DeleteAttributeGroupRequest) (*DeleteAttributeGroupResponse, error) {
+	req *attributes.DeleteAttributeGroupRequest) (*attributes.DeleteAttributeGroupResponse, error) {
 	if err := s.dbClient.DeleteResource(
 		ctx,
 		req.Id,
 		common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(),
 	); err != nil {
 		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return &DeleteAttributeGroupResponse{},
+		return &attributes.DeleteAttributeGroupResponse{},
 			status.Error(codes.Internal, services.ErrDeletingResource)
 	}
-	return &DeleteAttributeGroupResponse{}, nil
+	return &attributes.DeleteAttributeGroupResponse{}, nil
 }

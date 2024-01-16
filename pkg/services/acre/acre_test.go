@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type AcreSuite struct {
@@ -54,6 +55,7 @@ var (
 				Fqn:       "http://opentdf.com/attr/test",
 				Labels:    map[string]string{"test": "test"},
 				Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING,
+				Id:        1,
 			},
 			AttributeValueRef: &attributesv1.AttributeValueReference{},
 			SynonymRef:        &acrev1.SynonymRef{},
@@ -70,6 +72,7 @@ var (
 				Fqn:       "http://opentdf.com/attr/test",
 				Labels:    map[string]string{"test": "test"},
 				Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM,
+				Id:        1,
 			},
 			Terms: []string{"test"},
 		},
@@ -85,6 +88,7 @@ var (
 				Fqn:       "http://opentdf.com/attr/test",
 				Labels:    map[string]string{"test": "test"},
 				Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP,
+				Id:        1,
 			},
 		},
 	}
@@ -94,6 +98,10 @@ func (suite *AcreSuite) Test_CreateResourceMapping_Returns_InternalError_When_Da
 	// Copy global
 	lResourceMapping := resourceMapping
 
+	bMapping, err := protojson.Marshal(lResourceMapping.Mapping)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(lResourceMapping.Mapping.Descriptor_.Name,
 			lResourceMapping.Mapping.Descriptor_.Namespace,
@@ -102,11 +110,11 @@ func (suite *AcreSuite) Test_CreateResourceMapping_Returns_InternalError_When_Da
 			lResourceMapping.Mapping.Descriptor_.Labels,
 			lResourceMapping.Mapping.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
-			lResourceMapping.Mapping,
+			bMapping,
 		).
 		WillReturnError(errors.New("error inserting resource mapping"))
 
-	_, err := suite.acreServer.CreateResourceMapping(context.Background(), lResourceMapping)
+	_, err = suite.acreServer.CreateResourceMapping(context.Background(), lResourceMapping)
 	if assert.Error(suite.T(), err) {
 		grpcStatus, _ := status.FromError(err)
 
@@ -114,11 +122,19 @@ func (suite *AcreSuite) Test_CreateResourceMapping_Returns_InternalError_When_Da
 
 		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreatingResource)
 	}
+
+	if err := suite.mock.ExpectationsWereMet(); err != nil {
+		suite.T().Errorf("there were unfulfilled expectations: %s", err)
+	}
 }
 
 func (suite *AcreSuite) Test_CreateResourceMapping_Returns_OK_When_Successful() {
 	// Copy global
 	lResourceMapping := resourceMapping
+
+	bMapping, err := protojson.Marshal(lResourceMapping.Mapping)
+
+	assert.NoError(suite.T(), err)
 
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(lResourceMapping.Mapping.Descriptor_.Name,
@@ -128,11 +144,11 @@ func (suite *AcreSuite) Test_CreateResourceMapping_Returns_OK_When_Successful() 
 			lResourceMapping.Mapping.Descriptor_.Labels,
 			lResourceMapping.Mapping.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
-			lResourceMapping.Mapping,
+			bMapping,
 		).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
-	_, err := suite.acreServer.CreateResourceMapping(context.Background(), lResourceMapping)
+	_, err = suite.acreServer.CreateResourceMapping(context.Background(), lResourceMapping)
 
 	assert.NoError(suite.T(), err)
 
@@ -172,6 +188,10 @@ func (suite *AcreSuite) Test_ListResourceMappings_Returns_OK_When_Successful() {
 	// Copy Global
 	lResourceMapping := resourceMapping
 
+	bMapping, err := protojson.Marshal(lResourceMapping.Mapping)
+
+	assert.NoError(suite.T(), err)
+
 	selector := &commonv1.ResourceSelector{
 		Namespace: "opentdf",
 		Version:   1,
@@ -181,7 +201,7 @@ func (suite *AcreSuite) Test_ListResourceMappings_Returns_OK_When_Successful() {
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
 			selector.Namespace, int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), lResourceMapping.Mapping))
+			AddRow(int32(1), bMapping))
 
 	mappings, err := suite.acreServer.ListResourceMappings(context.Background(), &acrev1.ListResourceMappingsRequest{
 		Selector: selector,
@@ -241,12 +261,16 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_OK_When_Successful() {
 	// Copy Global
 	lResourceMapping := resourceMapping
 
+	bMapping, err := protojson.Marshal(lResourceMapping.Mapping)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), lResourceMapping.Mapping))
+			AddRow(int32(1), bMapping))
 
-	_, err := suite.acreServer.GetResourceMapping(context.Background(), &acrev1.GetResourceMappingRequest{
+	_, err = suite.acreServer.GetResourceMapping(context.Background(), &acrev1.GetResourceMappingRequest{
 		Id: int32(1),
 	})
 
@@ -260,6 +284,11 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_OK_When_Successful() {
 func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_InternalError_When_Database_Error() {
 	// Copy Global
 	lResourceMapping := resourceMapping
+
+	bMapping, err := protojson.Marshal(lResourceMapping.Mapping)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(lResourceMapping.Mapping.Descriptor_.Name,
 			lResourceMapping.Mapping.Descriptor_.Namespace,
@@ -268,12 +297,12 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_InternalError_When_Da
 			lResourceMapping.Mapping.Descriptor_.Fqn,
 			lResourceMapping.Mapping.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
-			lResourceMapping.Mapping,
+			bMapping,
 			int32(1),
 		).
 		WillReturnError(errors.New("error updating resource mapping"))
 
-	_, err := suite.acreServer.UpdateResourceMapping(context.Background(), &acrev1.UpdateResourceMappingRequest{
+	_, err = suite.acreServer.UpdateResourceMapping(context.Background(), &acrev1.UpdateResourceMappingRequest{
 		Id:      int32(1),
 		Mapping: lResourceMapping.Mapping,
 	})
@@ -294,6 +323,10 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_OK_When_Successful() 
 	// Copy Global
 	lResourceMapping := resourceMapping
 
+	bMapping, err := protojson.Marshal(lResourceMapping.Mapping)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(lResourceMapping.Mapping.Descriptor_.Name,
 			lResourceMapping.Mapping.Descriptor_.Namespace,
@@ -302,12 +335,12 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_OK_When_Successful() 
 			lResourceMapping.Mapping.Descriptor_.Fqn,
 			lResourceMapping.Mapping.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
-			lResourceMapping.Mapping,
+			bMapping,
 			int32(1),
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err := suite.acreServer.UpdateResourceMapping(context.Background(), &acrev1.UpdateResourceMappingRequest{
+	_, err = suite.acreServer.UpdateResourceMapping(context.Background(), &acrev1.UpdateResourceMappingRequest{
 		Id:      int32(1),
 		Mapping: lResourceMapping.Mapping,
 	})
@@ -360,6 +393,10 @@ func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_InternalError_When_Da
 	// Copy global
 	lResourceSynonym := resourceSynonym
 
+	bSynonym, err := protojson.Marshal(lResourceSynonym.Synonym)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(lResourceSynonym.Synonym.Descriptor_.Name,
 			lResourceSynonym.Synonym.Descriptor_.Namespace,
@@ -368,11 +405,11 @@ func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_InternalError_When_Da
 			lResourceSynonym.Synonym.Descriptor_.Labels,
 			lResourceSynonym.Synonym.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
-			lResourceSynonym.Synonym,
+			bSynonym,
 		).
 		WillReturnError(errors.New("error inserting resource synonym"))
 
-	_, err := suite.acreServer.CreateResourceSynonym(context.Background(), lResourceSynonym)
+	_, err = suite.acreServer.CreateResourceSynonym(context.Background(), lResourceSynonym)
 	if assert.Error(suite.T(), err) {
 		grpcStatus, _ := status.FromError(err)
 
@@ -390,6 +427,8 @@ func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_OK_When_Successful() 
 	// Copy global
 	lResourceSynonym := resourceSynonym
 
+	bSynonym, err := protojson.Marshal(lResourceSynonym.Synonym)
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(lResourceSynonym.Synonym.Descriptor_.Name,
 			lResourceSynonym.Synonym.Descriptor_.Namespace,
@@ -398,11 +437,11 @@ func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_OK_When_Successful() 
 			lResourceSynonym.Synonym.Descriptor_.Labels,
 			lResourceSynonym.Synonym.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
-			lResourceSynonym.Synonym,
+			bSynonym,
 		).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
-	_, err := suite.acreServer.CreateResourceSynonym(context.Background(), lResourceSynonym)
+	_, err = suite.acreServer.CreateResourceSynonym(context.Background(), lResourceSynonym)
 
 	assert.NoError(suite.T(), err)
 
@@ -443,6 +482,10 @@ func (suite *AcreSuite) Test_ListResourceSynonyms_Returns_OK_When_Successful() {
 	// Copy Global
 	lResourceSynonym := resourceSynonym
 
+	bSynonym, err := protojson.Marshal(lResourceSynonym.Synonym)
+
+	assert.NoError(suite.T(), err)
+
 	selector := &commonv1.ResourceSelector{
 		Namespace: "opentdf",
 		Version:   1,
@@ -452,7 +495,7 @@ func (suite *AcreSuite) Test_ListResourceSynonyms_Returns_OK_When_Successful() {
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
 			selector.Namespace, int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), lResourceSynonym.Synonym))
+			AddRow(int32(1), bSynonym))
 
 	synonyms, err := suite.acreServer.ListResourceSynonyms(context.Background(), &acrev1.ListResourceSynonymsRequest{
 		Selector: selector,
@@ -511,12 +554,16 @@ func (suite *AcreSuite) Test_GetResourceSynonym_Returns_OK_When_Successful() {
 	// Copy global
 	lResourceSynonym := resourceSynonym
 
+	bSynonym, err := protojson.Marshal(lResourceSynonym.Synonym)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), lResourceSynonym.Synonym))
+			AddRow(int32(1), bSynonym))
 
-	_, err := suite.acreServer.GetResourceSynonym(context.Background(), &acrev1.GetResourceSynonymRequest{
+	_, err = suite.acreServer.GetResourceSynonym(context.Background(), &acrev1.GetResourceSynonymRequest{
 		Id: int32(1),
 	})
 
@@ -531,6 +578,10 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_InternalError_When_Da
 	// Copy Global
 	lResourceSynonym := resourceSynonym
 
+	bSynonym, err := protojson.Marshal(lResourceSynonym.Synonym)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(lResourceSynonym.Synonym.Descriptor_.Name,
 			lResourceSynonym.Synonym.Descriptor_.Namespace,
@@ -539,12 +590,12 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_InternalError_When_Da
 			lResourceSynonym.Synonym.Descriptor_.Fqn,
 			lResourceSynonym.Synonym.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
-			lResourceSynonym.Synonym,
+			bSynonym,
 			int32(1),
 		).
 		WillReturnError(errors.New("error updating resource synonym"))
 
-	_, err := suite.acreServer.UpdateResourceSynonym(context.Background(), &acrev1.UpdateResourceSynonymRequest{
+	_, err = suite.acreServer.UpdateResourceSynonym(context.Background(), &acrev1.UpdateResourceSynonymRequest{
 		Id:      int32(1),
 		Synonym: lResourceSynonym.Synonym,
 	})
@@ -564,6 +615,10 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_OK_When_Successful() 
 	// Copy Global
 	lResourceSynonym := resourceSynonym
 
+	bSynonym, err := protojson.Marshal(lResourceSynonym.Synonym)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(lResourceSynonym.Synonym.Descriptor_.Name,
 			lResourceSynonym.Synonym.Descriptor_.Namespace,
@@ -572,12 +627,12 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_OK_When_Successful() 
 			lResourceSynonym.Synonym.Descriptor_.Fqn,
 			lResourceSynonym.Synonym.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
-			lResourceSynonym.Synonym,
+			bSynonym,
 			int32(1),
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err := suite.acreServer.UpdateResourceSynonym(context.Background(), &acrev1.UpdateResourceSynonymRequest{
+	_, err = suite.acreServer.UpdateResourceSynonym(context.Background(), &acrev1.UpdateResourceSynonymRequest{
 		Id:      int32(1),
 		Synonym: lResourceSynonym.Synonym,
 	})
@@ -629,6 +684,10 @@ func (suite *AcreSuite) Test_CreateResourceGroup_Returns_InternalError_When_Data
 	// Copy Global
 	lResourceGroup := resourceGroup
 
+	bGroup, err := protojson.Marshal(lResourceGroup.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(lResourceGroup.Group.Descriptor_.Name,
 			lResourceGroup.Group.Descriptor_.Namespace,
@@ -637,11 +696,11 @@ func (suite *AcreSuite) Test_CreateResourceGroup_Returns_InternalError_When_Data
 			lResourceGroup.Group.Descriptor_.Labels,
 			lResourceGroup.Group.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
-			lResourceGroup.Group,
+			bGroup,
 		).
 		WillReturnError(errors.New("error inserting resource group"))
 
-	_, err := suite.acreServer.CreateResourceGroup(context.Background(), lResourceGroup)
+	_, err = suite.acreServer.CreateResourceGroup(context.Background(), lResourceGroup)
 	if assert.Error(suite.T(), err) {
 		grpcStatus, _ := status.FromError(err)
 
@@ -658,6 +717,10 @@ func (suite *AcreSuite) Test_CreateResourceGroup_Returns_OK_When_Successful() {
 	// Copy Global
 	lResourceGroup := resourceGroup
 
+	bGroup, err := protojson.Marshal(lResourceGroup.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("INSERT INTO opentdf.resources").
 		WithArgs(lResourceGroup.Group.Descriptor_.Name,
 			lResourceGroup.Group.Descriptor_.Namespace,
@@ -666,11 +729,11 @@ func (suite *AcreSuite) Test_CreateResourceGroup_Returns_OK_When_Successful() {
 			lResourceGroup.Group.Descriptor_.Labels,
 			lResourceGroup.Group.Descriptor_.Description,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
-			lResourceGroup.Group,
+			bGroup,
 		).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
-	_, err := suite.acreServer.CreateResourceGroup(context.Background(), lResourceGroup)
+	_, err = suite.acreServer.CreateResourceGroup(context.Background(), lResourceGroup)
 
 	assert.NoError(suite.T(), err)
 
@@ -711,6 +774,10 @@ func (suite *AcreSuite) Test_ListResourceGroups_Returns_OK_When_Successful() {
 	// Copy Global
 	lResourceGroup := resourceGroup
 
+	bResourceGroup, err := protojson.Marshal(lResourceGroup.Group)
+
+	assert.NoError(suite.T(), err)
+
 	selector := &commonv1.ResourceSelector{
 		Namespace: "opentdf",
 		Version:   1,
@@ -720,7 +787,7 @@ func (suite *AcreSuite) Test_ListResourceGroups_Returns_OK_When_Successful() {
 		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
 			selector.Namespace, int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), lResourceGroup.Group))
+			AddRow(int32(1), bResourceGroup))
 
 	groups, err := suite.acreServer.ListResourceGroups(context.Background(), &acrev1.ListResourceGroupsRequest{
 		Selector: selector,
@@ -781,12 +848,16 @@ func (suite *AcreSuite) Test_GetResourceGroup_Returns_OK_When_Successful() {
 	// Copy Global
 	lResourceGroup := resourceGroup
 
+	bGroup, err := protojson.Marshal(lResourceGroup.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
 		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).
-			AddRow(int32(1), lResourceGroup.Group))
+			AddRow(int32(1), bGroup))
 
-	_, err := suite.acreServer.GetResourceGroup(context.Background(), &acrev1.GetResourceGroupRequest{
+	_, err = suite.acreServer.GetResourceGroup(context.Background(), &acrev1.GetResourceGroupRequest{
 		Id: int32(1),
 	})
 
@@ -801,6 +872,10 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_InternalError_When_Data
 	// Copy Global
 	lResourceGroup := resourceGroup
 
+	bGroup, err := protojson.Marshal(lResourceGroup.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(lResourceGroup.Group.Descriptor_.Name,
 			lResourceGroup.Group.Descriptor_.Namespace,
@@ -809,12 +884,12 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_InternalError_When_Data
 			lResourceGroup.Group.Descriptor_.Fqn,
 			lResourceGroup.Group.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
-			lResourceGroup.Group,
+			bGroup,
 			int32(1),
 		).
 		WillReturnError(errors.New("error updating resource group"))
 
-	_, err := suite.acreServer.UpdateResourceGroup(context.Background(), &acrev1.UpdateResourceGroupRequest{
+	_, err = suite.acreServer.UpdateResourceGroup(context.Background(), &acrev1.UpdateResourceGroupRequest{
 		Id:    int32(1),
 		Group: lResourceGroup.Group,
 	})
@@ -835,6 +910,10 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_OK_When_Successful() {
 	// Copy Global
 	lResourceGroup := resourceGroup
 
+	bGroup, err := protojson.Marshal(lResourceGroup.Group)
+
+	assert.NoError(suite.T(), err)
+
 	suite.mock.ExpectExec("UPDATE opentdf.resources").
 		WithArgs(lResourceGroup.Group.Descriptor_.Name,
 			lResourceGroup.Group.Descriptor_.Namespace,
@@ -843,12 +922,12 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_OK_When_Successful() {
 			lResourceGroup.Group.Descriptor_.Fqn,
 			lResourceGroup.Group.Descriptor_.Labels,
 			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
-			lResourceGroup.Group,
+			bGroup,
 			int32(1),
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err := suite.acreServer.UpdateResourceGroup(context.Background(), &acrev1.UpdateResourceGroupRequest{
+	_, err = suite.acreServer.UpdateResourceGroup(context.Background(), &acrev1.UpdateResourceGroupRequest{
 		Id:    int32(1),
 		Group: lResourceGroup.Group,
 	})

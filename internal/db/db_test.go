@@ -11,6 +11,7 @@ import (
 	acrev1 "github.com/opentdf/opentdf-v2-poc/gen/acre/v1"
 	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
@@ -88,7 +89,9 @@ func Test_RunMigrations_Returns_Error_When_PGX_Iface_Is_Wrong_Type(t *testing.T)
 func Test_CreateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 	// Copy the test data so we don't modify it
 	descriptor := resourceDescriptor
-	resource := testResource
+	resource, err := protojson.Marshal(testResource)
+
+	assert.Nil(t, err)
 
 	sql, args, err := createResourceSQL(descriptor, resource)
 
@@ -156,7 +159,9 @@ func Test_GetResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 func Test_UpdateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 	// Copy the test data so we don't modify it
 	descriptor := resourceDescriptor
-	resource := testResource
+	resource, err := protojson.Marshal(testResource)
+
+	assert.Nil(t, err)
 
 	sql, args, err := updateResourceSQL(descriptor, resource, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String())
 

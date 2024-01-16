@@ -9,7 +9,9 @@
 
 [Air](https://github.com/cosmtrek/air)
 
-`brew install air`
+With go 1.18 or higher:
+
+`go install github.com/cosmtrek/air@v1.49.0`
 
 [Buf](https://buf.build/docs/ecosystem/cli-overview)
 
@@ -23,9 +25,12 @@
 
 3. `air`
 
-This should bring up a grpc server on port 9000 and http server on port 8080. Air will watch for changes and restart the server.
+This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
 
 ### Test
+
+> [!WARNING]
+> GRPC and reflection is disabled by default. Please see the `opentdf.yaml` for more details (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43))
 
 ```bash
   grpcurl -plaintext localhost:9000 list
@@ -88,4 +93,3 @@ List Attributes
 ```bash
 grpcurl -plaintext localhost:9000 attributes.v1.AttributesService/ListAttributes
 ```
-

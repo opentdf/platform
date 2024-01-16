@@ -37,9 +37,9 @@ services:
               - "msExchMailboxSecurityDescriptor"
 server:
   # grpc:
-  #   port: 9001 
+  #   port: 9000
   #   reflectionEnabled: true # Default is false
   http:
-    port: 8081
+    port: 8080
 opa:
   embedded: true # Only for local development

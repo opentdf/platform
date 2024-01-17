@@ -183,7 +183,7 @@ message DeleteResourceGroupRequest {
 }
 message DeleteResourceGroupResponse {}
 
-service ResourcEncodingService {
+service ResourceEncodingService {
   /*
      Resource Mappings
   */

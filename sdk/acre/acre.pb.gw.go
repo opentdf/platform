@@ -32,17 +32,17 @@ var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
 var (
-	filter_ResourcEncodingService_ListResourceMappings_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_ResourceEncodingService_ListResourceMappings_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_ResourcEncodingService_ListResourceMappings_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_ListResourceMappings_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListResourceMappingsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_ListResourceMappings_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourceEncodingService_ListResourceMappings_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -51,14 +51,14 @@ func request_ResourcEncodingService_ListResourceMappings_0(ctx context.Context, 
 
 }
 
-func local_request_ResourcEncodingService_ListResourceMappings_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_ListResourceMappings_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListResourceMappingsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_ListResourceMappings_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourceEncodingService_ListResourceMappings_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -67,7 +67,7 @@ func local_request_ResourcEncodingService_ListResourceMappings_0(ctx context.Con
 
 }
 
-func request_ResourcEncodingService_GetResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_GetResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceMappingRequest
 	var metadata runtime.ServerMetadata
 
@@ -93,7 +93,7 @@ func request_ResourcEncodingService_GetResourceMapping_0(ctx context.Context, ma
 
 }
 
-func local_request_ResourcEncodingService_GetResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_GetResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceMappingRequest
 	var metadata runtime.ServerMetadata
 
@@ -119,7 +119,7 @@ func local_request_ResourcEncodingService_GetResourceMapping_0(ctx context.Conte
 
 }
 
-func request_ResourcEncodingService_CreateResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_CreateResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateResourceMappingRequest
 	var metadata runtime.ServerMetadata
 
@@ -136,7 +136,7 @@ func request_ResourcEncodingService_CreateResourceMapping_0(ctx context.Context,
 
 }
 
-func local_request_ResourcEncodingService_CreateResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_CreateResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateResourceMappingRequest
 	var metadata runtime.ServerMetadata
 
@@ -153,7 +153,7 @@ func local_request_ResourcEncodingService_CreateResourceMapping_0(ctx context.Co
 
 }
 
-func request_ResourcEncodingService_UpdateResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_UpdateResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateResourceMappingRequest
 	var metadata runtime.ServerMetadata
 
@@ -187,7 +187,7 @@ func request_ResourcEncodingService_UpdateResourceMapping_0(ctx context.Context,
 
 }
 
-func local_request_ResourcEncodingService_UpdateResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_UpdateResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateResourceMappingRequest
 	var metadata runtime.ServerMetadata
 
@@ -221,7 +221,7 @@ func local_request_ResourcEncodingService_UpdateResourceMapping_0(ctx context.Co
 
 }
 
-func request_ResourcEncodingService_DeleteResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_DeleteResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteResourceMappingRequest
 	var metadata runtime.ServerMetadata
 
@@ -247,7 +247,7 @@ func request_ResourcEncodingService_DeleteResourceMapping_0(ctx context.Context,
 
 }
 
-func local_request_ResourcEncodingService_DeleteResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_DeleteResourceMapping_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteResourceMappingRequest
 	var metadata runtime.ServerMetadata
 
@@ -274,17 +274,17 @@ func local_request_ResourcEncodingService_DeleteResourceMapping_0(ctx context.Co
 }
 
 var (
-	filter_ResourcEncodingService_ListResourceSynonyms_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_ResourceEncodingService_ListResourceSynonyms_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_ResourcEncodingService_ListResourceSynonyms_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_ListResourceSynonyms_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListResourceSynonymsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_ListResourceSynonyms_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourceEncodingService_ListResourceSynonyms_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -293,14 +293,14 @@ func request_ResourcEncodingService_ListResourceSynonyms_0(ctx context.Context, 
 
 }
 
-func local_request_ResourcEncodingService_ListResourceSynonyms_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_ListResourceSynonyms_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListResourceSynonymsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_ListResourceSynonyms_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourceEncodingService_ListResourceSynonyms_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -309,7 +309,7 @@ func local_request_ResourcEncodingService_ListResourceSynonyms_0(ctx context.Con
 
 }
 
-func request_ResourcEncodingService_GetResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_GetResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceSynonymRequest
 	var metadata runtime.ServerMetadata
 
@@ -335,7 +335,7 @@ func request_ResourcEncodingService_GetResourceSynonym_0(ctx context.Context, ma
 
 }
 
-func local_request_ResourcEncodingService_GetResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_GetResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceSynonymRequest
 	var metadata runtime.ServerMetadata
 
@@ -361,7 +361,7 @@ func local_request_ResourcEncodingService_GetResourceSynonym_0(ctx context.Conte
 
 }
 
-func request_ResourcEncodingService_CreateResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_CreateResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateResourceSynonymRequest
 	var metadata runtime.ServerMetadata
 
@@ -378,7 +378,7 @@ func request_ResourcEncodingService_CreateResourceSynonym_0(ctx context.Context,
 
 }
 
-func local_request_ResourcEncodingService_CreateResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_CreateResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateResourceSynonymRequest
 	var metadata runtime.ServerMetadata
 
@@ -395,7 +395,7 @@ func local_request_ResourcEncodingService_CreateResourceSynonym_0(ctx context.Co
 
 }
 
-func request_ResourcEncodingService_UpdateResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_UpdateResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateResourceSynonymRequest
 	var metadata runtime.ServerMetadata
 
@@ -429,7 +429,7 @@ func request_ResourcEncodingService_UpdateResourceSynonym_0(ctx context.Context,
 
 }
 
-func local_request_ResourcEncodingService_UpdateResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_UpdateResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateResourceSynonymRequest
 	var metadata runtime.ServerMetadata
 
@@ -463,7 +463,7 @@ func local_request_ResourcEncodingService_UpdateResourceSynonym_0(ctx context.Co
 
 }
 
-func request_ResourcEncodingService_DeleteResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_DeleteResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteResourceSynonymRequest
 	var metadata runtime.ServerMetadata
 
@@ -489,7 +489,7 @@ func request_ResourcEncodingService_DeleteResourceSynonym_0(ctx context.Context,
 
 }
 
-func local_request_ResourcEncodingService_DeleteResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_DeleteResourceSynonym_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteResourceSynonymRequest
 	var metadata runtime.ServerMetadata
 
@@ -516,17 +516,17 @@ func local_request_ResourcEncodingService_DeleteResourceSynonym_0(ctx context.Co
 }
 
 var (
-	filter_ResourcEncodingService_ListResourceGroups_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_ResourceEncodingService_ListResourceGroups_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_ResourcEncodingService_ListResourceGroups_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_ListResourceGroups_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListResourceGroupsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_ListResourceGroups_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourceEncodingService_ListResourceGroups_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -535,14 +535,14 @@ func request_ResourcEncodingService_ListResourceGroups_0(ctx context.Context, ma
 
 }
 
-func local_request_ResourcEncodingService_ListResourceGroups_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_ListResourceGroups_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListResourceGroupsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourcEncodingService_ListResourceGroups_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ResourceEncodingService_ListResourceGroups_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -551,7 +551,7 @@ func local_request_ResourcEncodingService_ListResourceGroups_0(ctx context.Conte
 
 }
 
-func request_ResourcEncodingService_GetResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_GetResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceGroupRequest
 	var metadata runtime.ServerMetadata
 
@@ -577,7 +577,7 @@ func request_ResourcEncodingService_GetResourceGroup_0(ctx context.Context, mars
 
 }
 
-func local_request_ResourcEncodingService_GetResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_GetResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetResourceGroupRequest
 	var metadata runtime.ServerMetadata
 
@@ -603,7 +603,7 @@ func local_request_ResourcEncodingService_GetResourceGroup_0(ctx context.Context
 
 }
 
-func request_ResourcEncodingService_CreateResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_CreateResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateResourceGroupRequest
 	var metadata runtime.ServerMetadata
 
@@ -620,7 +620,7 @@ func request_ResourcEncodingService_CreateResourceGroup_0(ctx context.Context, m
 
 }
 
-func local_request_ResourcEncodingService_CreateResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_CreateResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateResourceGroupRequest
 	var metadata runtime.ServerMetadata
 
@@ -637,7 +637,7 @@ func local_request_ResourcEncodingService_CreateResourceGroup_0(ctx context.Cont
 
 }
 
-func request_ResourcEncodingService_UpdateResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_UpdateResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateResourceGroupRequest
 	var metadata runtime.ServerMetadata
 
@@ -671,7 +671,7 @@ func request_ResourcEncodingService_UpdateResourceGroup_0(ctx context.Context, m
 
 }
 
-func local_request_ResourcEncodingService_UpdateResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_UpdateResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateResourceGroupRequest
 	var metadata runtime.ServerMetadata
 
@@ -705,7 +705,7 @@ func local_request_ResourcEncodingService_UpdateResourceGroup_0(ctx context.Cont
 
 }
 
-func request_ResourcEncodingService_DeleteResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourcEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_ResourceEncodingService_DeleteResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ResourceEncodingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteResourceGroupRequest
 	var metadata runtime.ServerMetadata
 
@@ -731,7 +731,7 @@ func request_ResourcEncodingService_DeleteResourceGroup_0(ctx context.Context, m
 
 }
 
-func local_request_ResourcEncodingService_DeleteResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, server ResourcEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_ResourceEncodingService_DeleteResourceGroup_0(ctx context.Context, marshaler runtime.Marshaler, server ResourceEncodingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteResourceGroupRequest
 	var metadata runtime.ServerMetadata
 
@@ -757,13 +757,13 @@ func local_request_ResourcEncodingService_DeleteResourceGroup_0(ctx context.Cont
 
 }
 
-// RegisterResourcEncodingServiceHandlerServer registers the http handlers for service ResourcEncodingService to "mux".
-// UnaryRPC     :call ResourcEncodingServiceServer directly.
+// RegisterResourceEncodingServiceHandlerServer registers the http handlers for service ResourceEncodingService to "mux".
+// UnaryRPC     :call ResourceEncodingServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterResourcEncodingServiceHandlerFromEndpoint instead.
-func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ResourcEncodingServiceServer) error {
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterResourceEncodingServiceHandlerFromEndpoint instead.
+func RegisterResourceEncodingServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ResourceEncodingServiceServer) error {
 
-	mux.Handle("GET", pattern_ResourcEncodingService_ListResourceMappings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_ListResourceMappings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -771,12 +771,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/ListResourceMappings", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/ListResourceMappings", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_ListResourceMappings_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_ListResourceMappings_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -784,11 +784,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_ListResourceMappings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_ListResourceMappings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_GetResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_GetResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -796,12 +796,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/GetResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/GetResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_GetResourceMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_GetResourceMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -809,11 +809,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_GetResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_GetResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_CreateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_CreateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -821,12 +821,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/CreateResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/CreateResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_CreateResourceMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_CreateResourceMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -834,11 +834,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_CreateResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_CreateResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_UpdateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -846,12 +846,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/UpdateResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/UpdateResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_UpdateResourceMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_UpdateResourceMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -859,11 +859,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_UpdateResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_UpdateResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_ResourcEncodingService_DeleteResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_ResourceEncodingService_DeleteResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -871,12 +871,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/DeleteResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/DeleteResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_DeleteResourceMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_DeleteResourceMapping_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -884,11 +884,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_DeleteResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_DeleteResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_ListResourceSynonyms_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_ListResourceSynonyms_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -896,12 +896,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/ListResourceSynonyms", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/ListResourceSynonyms", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_ListResourceSynonyms_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_ListResourceSynonyms_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -909,11 +909,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_ListResourceSynonyms_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_ListResourceSynonyms_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_GetResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_GetResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -921,12 +921,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/GetResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/GetResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_GetResourceSynonym_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_GetResourceSynonym_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -934,11 +934,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_GetResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_GetResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_CreateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_CreateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -946,12 +946,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/CreateResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/CreateResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_CreateResourceSynonym_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_CreateResourceSynonym_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -959,11 +959,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_CreateResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_CreateResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_UpdateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -971,12 +971,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/UpdateResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/UpdateResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_UpdateResourceSynonym_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_UpdateResourceSynonym_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -984,11 +984,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_UpdateResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_UpdateResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_ResourcEncodingService_DeleteResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_ResourceEncodingService_DeleteResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -996,12 +996,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/DeleteResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/DeleteResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_DeleteResourceSynonym_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_DeleteResourceSynonym_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -1009,11 +1009,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_DeleteResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_DeleteResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_ListResourceGroups_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_ListResourceGroups_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1021,12 +1021,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/ListResourceGroups", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/ListResourceGroups", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_ListResourceGroups_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_ListResourceGroups_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -1034,11 +1034,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_ListResourceGroups_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_ListResourceGroups_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_GetResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_GetResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1046,12 +1046,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/GetResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/GetResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_GetResourceGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_GetResourceGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -1059,11 +1059,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_GetResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_GetResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_CreateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_CreateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1071,12 +1071,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/CreateResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/CreateResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_CreateResourceGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_CreateResourceGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -1084,11 +1084,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_CreateResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_CreateResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_UpdateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1096,12 +1096,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/UpdateResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/UpdateResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_UpdateResourceGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_UpdateResourceGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -1109,11 +1109,11 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_UpdateResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_UpdateResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_ResourcEncodingService_DeleteResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_ResourceEncodingService_DeleteResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1121,12 +1121,12 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourcEncodingService/DeleteResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/acre.ResourceEncodingService/DeleteResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_ResourcEncodingService_DeleteResourceGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_ResourceEncodingService_DeleteResourceGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -1134,16 +1134,16 @@ func RegisterResourcEncodingServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_ResourcEncodingService_DeleteResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_DeleteResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
 	return nil
 }
 
-// RegisterResourcEncodingServiceHandlerFromEndpoint is same as RegisterResourcEncodingServiceHandler but
+// RegisterResourceEncodingServiceHandlerFromEndpoint is same as RegisterResourceEncodingServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterResourcEncodingServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterResourceEncodingServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.DialContext(ctx, endpoint, opts...)
 	if err != nil {
 		return err
@@ -1163,349 +1163,349 @@ func RegisterResourcEncodingServiceHandlerFromEndpoint(ctx context.Context, mux 
 		}()
 	}()
 
-	return RegisterResourcEncodingServiceHandler(ctx, mux, conn)
+	return RegisterResourceEncodingServiceHandler(ctx, mux, conn)
 }
 
-// RegisterResourcEncodingServiceHandler registers the http handlers for service ResourcEncodingService to "mux".
+// RegisterResourceEncodingServiceHandler registers the http handlers for service ResourceEncodingService to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterResourcEncodingServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterResourcEncodingServiceHandlerClient(ctx, mux, NewResourcEncodingServiceClient(conn))
+func RegisterResourceEncodingServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterResourceEncodingServiceHandlerClient(ctx, mux, NewResourceEncodingServiceClient(conn))
 }
 
-// RegisterResourcEncodingServiceHandlerClient registers the http handlers for service ResourcEncodingService
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ResourcEncodingServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ResourcEncodingServiceClient"
+// RegisterResourceEncodingServiceHandlerClient registers the http handlers for service ResourceEncodingService
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ResourceEncodingServiceClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ResourceEncodingServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ResourcEncodingServiceClient" to call the correct interceptors.
-func RegisterResourcEncodingServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ResourcEncodingServiceClient) error {
+// "ResourceEncodingServiceClient" to call the correct interceptors.
+func RegisterResourceEncodingServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ResourceEncodingServiceClient) error {
 
-	mux.Handle("GET", pattern_ResourcEncodingService_ListResourceMappings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_ListResourceMappings_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/ListResourceMappings", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/ListResourceMappings", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_ListResourceMappings_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_ListResourceMappings_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_ListResourceMappings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_ListResourceMappings_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_GetResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_GetResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/GetResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/GetResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_GetResourceMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_GetResourceMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_GetResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_GetResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_CreateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_CreateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/CreateResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/CreateResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_CreateResourceMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_CreateResourceMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_CreateResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_CreateResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_UpdateResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/UpdateResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/UpdateResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_UpdateResourceMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_UpdateResourceMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_UpdateResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_UpdateResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_ResourcEncodingService_DeleteResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_ResourceEncodingService_DeleteResourceMapping_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/DeleteResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/DeleteResourceMapping", runtime.WithHTTPPathPattern("/v1/encoding/resource/mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_DeleteResourceMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_DeleteResourceMapping_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_DeleteResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_DeleteResourceMapping_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_ListResourceSynonyms_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_ListResourceSynonyms_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/ListResourceSynonyms", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/ListResourceSynonyms", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_ListResourceSynonyms_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_ListResourceSynonyms_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_ListResourceSynonyms_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_ListResourceSynonyms_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_GetResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_GetResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/GetResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/GetResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_GetResourceSynonym_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_GetResourceSynonym_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_GetResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_GetResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_CreateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_CreateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/CreateResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/CreateResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_CreateResourceSynonym_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_CreateResourceSynonym_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_CreateResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_CreateResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_UpdateResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/UpdateResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/UpdateResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_UpdateResourceSynonym_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_UpdateResourceSynonym_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_UpdateResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_UpdateResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_ResourcEncodingService_DeleteResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_ResourceEncodingService_DeleteResourceSynonym_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/DeleteResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/DeleteResourceSynonym", runtime.WithHTTPPathPattern("/v1/encoding/resource/synonyms/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_DeleteResourceSynonym_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_DeleteResourceSynonym_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_DeleteResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_DeleteResourceSynonym_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_ListResourceGroups_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_ListResourceGroups_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/ListResourceGroups", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/ListResourceGroups", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_ListResourceGroups_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_ListResourceGroups_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_ListResourceGroups_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_ListResourceGroups_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_ResourcEncodingService_GetResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_ResourceEncodingService_GetResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/GetResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/GetResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_GetResourceGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_GetResourceGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_GetResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_GetResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_CreateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_CreateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/CreateResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/CreateResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_CreateResourceGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_CreateResourceGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_CreateResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_CreateResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_ResourcEncodingService_UpdateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_ResourceEncodingService_UpdateResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/UpdateResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/UpdateResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_UpdateResourceGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_UpdateResourceGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_UpdateResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_UpdateResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_ResourcEncodingService_DeleteResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_ResourceEncodingService_DeleteResourceGroup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourcEncodingService/DeleteResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/acre.ResourceEncodingService/DeleteResourceGroup", runtime.WithHTTPPathPattern("/v1/encoding/resource/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ResourcEncodingService_DeleteResourceGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_ResourceEncodingService_DeleteResourceGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ResourcEncodingService_DeleteResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_ResourceEncodingService_DeleteResourceGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1513,65 +1513,65 @@ func RegisterResourcEncodingServiceHandlerClient(ctx context.Context, mux *runti
 }
 
 var (
-	pattern_ResourcEncodingService_ListResourceMappings_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "mappings"}, ""))
+	pattern_ResourceEncodingService_ListResourceMappings_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "mappings"}, ""))
 
-	pattern_ResourcEncodingService_GetResourceMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "mappings", "id"}, ""))
+	pattern_ResourceEncodingService_GetResourceMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "mappings", "id"}, ""))
 
-	pattern_ResourcEncodingService_CreateResourceMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "mappings"}, ""))
+	pattern_ResourceEncodingService_CreateResourceMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "mappings"}, ""))
 
-	pattern_ResourcEncodingService_UpdateResourceMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "mappings", "id"}, ""))
+	pattern_ResourceEncodingService_UpdateResourceMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "mappings", "id"}, ""))
 
-	pattern_ResourcEncodingService_DeleteResourceMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "mappings", "id"}, ""))
+	pattern_ResourceEncodingService_DeleteResourceMapping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "mappings", "id"}, ""))
 
-	pattern_ResourcEncodingService_ListResourceSynonyms_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "synonyms"}, ""))
+	pattern_ResourceEncodingService_ListResourceSynonyms_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "synonyms"}, ""))
 
-	pattern_ResourcEncodingService_GetResourceSynonym_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "synonyms", "id"}, ""))
+	pattern_ResourceEncodingService_GetResourceSynonym_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "synonyms", "id"}, ""))
 
-	pattern_ResourcEncodingService_CreateResourceSynonym_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "synonyms"}, ""))
+	pattern_ResourceEncodingService_CreateResourceSynonym_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "synonyms"}, ""))
 
-	pattern_ResourcEncodingService_UpdateResourceSynonym_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "synonyms", "id"}, ""))
+	pattern_ResourceEncodingService_UpdateResourceSynonym_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "synonyms", "id"}, ""))
 
-	pattern_ResourcEncodingService_DeleteResourceSynonym_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "synonyms", "id"}, ""))
+	pattern_ResourceEncodingService_DeleteResourceSynonym_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "synonyms", "id"}, ""))
 
-	pattern_ResourcEncodingService_ListResourceGroups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "groups"}, ""))
+	pattern_ResourceEncodingService_ListResourceGroups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "groups"}, ""))
 
-	pattern_ResourcEncodingService_GetResourceGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "groups", "id"}, ""))
+	pattern_ResourceEncodingService_GetResourceGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "groups", "id"}, ""))
 
-	pattern_ResourcEncodingService_CreateResourceGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "groups"}, ""))
+	pattern_ResourceEncodingService_CreateResourceGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "encoding", "resource", "groups"}, ""))
 
-	pattern_ResourcEncodingService_UpdateResourceGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "groups", "id"}, ""))
+	pattern_ResourceEncodingService_UpdateResourceGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "groups", "id"}, ""))
 
-	pattern_ResourcEncodingService_DeleteResourceGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "groups", "id"}, ""))
+	pattern_ResourceEncodingService_DeleteResourceGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "encoding", "resource", "groups", "id"}, ""))
 )
 
 var (
-	forward_ResourcEncodingService_ListResourceMappings_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_ListResourceMappings_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_GetResourceMapping_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_GetResourceMapping_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_CreateResourceMapping_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_CreateResourceMapping_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_UpdateResourceMapping_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_UpdateResourceMapping_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_DeleteResourceMapping_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_DeleteResourceMapping_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_ListResourceSynonyms_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_ListResourceSynonyms_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_GetResourceSynonym_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_GetResourceSynonym_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_CreateResourceSynonym_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_CreateResourceSynonym_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_UpdateResourceSynonym_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_UpdateResourceSynonym_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_DeleteResourceSynonym_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_DeleteResourceSynonym_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_ListResourceGroups_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_ListResourceGroups_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_GetResourceGroup_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_GetResourceGroup_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_CreateResourceGroup_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_CreateResourceGroup_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_UpdateResourceGroup_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_UpdateResourceGroup_0 = runtime.ForwardResponseMessage
 
-	forward_ResourcEncodingService_DeleteResourceGroup_0 = runtime.ForwardResponseMessage
+	forward_ResourceEncodingService_DeleteResourceGroup_0 = runtime.ForwardResponseMessage
 )

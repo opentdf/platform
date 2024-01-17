@@ -12,7 +12,7 @@ import (
 type AcreSuite struct {
 	suite.Suite
 	conn   *grpc.ClientConn
-	client acre.ResourcEncodingServiceClient
+	client acre.ResourceEncodingServiceClient
 }
 
 func (suite *AcreSuite) SetupSuite() {
@@ -22,7 +22,7 @@ func (suite *AcreSuite) SetupSuite() {
 	}
 	suite.conn = conn
 
-	suite.client = acre.NewResourcEncodingServiceClient(conn)
+	suite.client = acre.NewResourceEncodingServiceClient(conn)
 }
 
 func (suite *AcreSuite) TearDownSuite() {

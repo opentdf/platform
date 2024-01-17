@@ -19,7 +19,7 @@ import (
 )
 
 type ResourceEncodingService struct {
-	acre.UnimplementedResourcEncodingServiceServer
+	acre.UnimplementedResourceEncodingServiceServer
 	dbClient *db.Client
 }
 
@@ -27,8 +27,8 @@ func NewResourceEncoding(dbClient *db.Client, grpcServer *grpc.Server, mux *runt
 	as := &ResourceEncodingService{
 		dbClient: dbClient,
 	}
-	acre.RegisterResourcEncodingServiceServer(grpcServer, as)
-	err := acre.RegisterResourcEncodingServiceHandlerServer(context.Background(), mux, as)
+	acre.RegisterResourceEncodingServiceServer(grpcServer, as)
+	err := acre.RegisterResourceEncodingServiceHandlerServer(context.Background(), mux, as)
 	if err != nil {
 		return errors.New("failed to register resource encoding service handler")
 	}

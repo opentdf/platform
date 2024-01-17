@@ -5,10 +5,9 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/opentdf/opentdf-v2-poc/sdk"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -33,16 +32,14 @@ func main() {
 		},
 	}
 
-	conn, err := grpc.Dial("localhost:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	s, err := sdk.New("localhost:9000", sdk.WithInsecureConn())
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
-	defer conn.Close()
+	defer s.Close()
 
-	attrClient := attributes.NewAttributesServiceClient(conn)
-
-	_, err = attrClient.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Definition: &definition,
 	})
 	if err != nil {
@@ -52,7 +49,7 @@ func main() {
 
 	slog.Info("attribute created")
 
-	allAttr, err := attrClient.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
+	allAttr, err := s.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
 	if err != nil {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		os.Exit(1)

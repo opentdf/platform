@@ -7,8 +7,8 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v5"
-	acrev1 "github.com/opentdf/opentdf-v2-poc/gen/acre/v1"
-	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/acre"
+	"github.com/opentdf/opentdf-v2-poc/gen/common"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 	"google.golang.org/grpc"
@@ -18,7 +18,7 @@ import (
 )
 
 type ResourceEncoding struct {
-	acrev1.UnimplementedResourcEncodingServiceServer
+	acre.UnimplementedResourcEncodingServiceServer
 	dbClient *db.Client
 }
 
@@ -26,8 +26,8 @@ func NewResourceEncoding(dbClient *db.Client, grpcServer *grpc.Server, mux *runt
 	as := &ResourceEncoding{
 		dbClient: dbClient,
 	}
-	acrev1.RegisterResourcEncodingServiceServer(grpcServer, as)
-	err := acrev1.RegisterResourcEncodingServiceHandlerServer(context.Background(), mux, as)
+	acre.RegisterResourcEncodingServiceServer(grpcServer, as)
+	err := acre.RegisterResourcEncodingServiceHandlerServer(context.Background(), mux, as)
 	if err != nil {
 		return errors.New("failed to register resource encoding service handler")
 	}
@@ -39,7 +39,7 @@ func NewResourceEncoding(dbClient *db.Client, grpcServer *grpc.Server, mux *runt
 */
 
 func (s ResourceEncoding) CreateResourceMapping(ctx context.Context,
-	req *acrev1.CreateResourceMappingRequest) (*acrev1.CreateResourceMappingResponse, error) {
+	req *acre.CreateResourceMappingRequest) (*acre.CreateResourceMappingResponse, error) {
 	slog.Debug("creating resource mapping")
 
 	// Set the version of the resource to 1 on create
@@ -47,28 +47,28 @@ func (s ResourceEncoding) CreateResourceMapping(ctx context.Context,
 
 	resource, err := protojson.Marshal(req.Mapping)
 	if err != nil {
-		return &acrev1.CreateResourceMappingResponse{},
+		return &acre.CreateResourceMappingResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
 	err = s.dbClient.CreateResource(ctx, req.Mapping.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &acrev1.CreateResourceMappingResponse{},
+		return &acre.CreateResourceMappingResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
-	return &acrev1.CreateResourceMappingResponse{}, nil
+	return &acre.CreateResourceMappingResponse{}, nil
 }
 
 //nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s ResourceEncoding) ListResourceMappings(ctx context.Context,
-	req *acrev1.ListResourceMappingsRequest) (*acrev1.ListResourceMappingsResponse, error) {
-	mappings := &acrev1.ListResourceMappingsResponse{}
+	req *acre.ListResourceMappingsRequest) (*acre.ListResourceMappingsResponse, error) {
+	mappings := &acre.ListResourceMappingsResponse{}
 
 	rows, err := s.dbClient.ListResources(
 		ctx,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
 		req.Selector,
 	)
 	if err != nil {
@@ -80,7 +80,7 @@ func (s ResourceEncoding) ListResourceMappings(ctx context.Context,
 	for rows.Next() {
 		var (
 			id         int32
-			mapping    = new(acrev1.ResourceMapping)
+			mapping    = new(acre.ResourceMapping)
 			tmpMapping []byte
 		)
 		err = rows.Scan(&id, &tmpMapping)
@@ -108,10 +108,10 @@ func (s ResourceEncoding) ListResourceMappings(ctx context.Context,
 }
 
 func (s ResourceEncoding) GetResourceMapping(ctx context.Context,
-	req *acrev1.GetResourceMappingRequest) (*acrev1.GetResourceMappingResponse, error) {
+	req *acre.GetResourceMappingRequest) (*acre.GetResourceMappingResponse, error) {
 	var (
-		mapping = &acrev1.GetResourceMappingResponse{
-			Mapping: new(acrev1.ResourceMapping),
+		mapping = &acre.GetResourceMappingResponse{
+			Mapping: new(acre.ResourceMapping),
 		}
 		id       int32
 		bMapping []byte
@@ -120,7 +120,7 @@ func (s ResourceEncoding) GetResourceMapping(ctx context.Context,
 	row, err := s.dbClient.GetResource(
 		ctx,
 		req.Id,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
 	)
 	if err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
@@ -149,10 +149,10 @@ func (s ResourceEncoding) GetResourceMapping(ctx context.Context,
 }
 
 func (s ResourceEncoding) UpdateResourceMapping(ctx context.Context,
-	req *acrev1.UpdateResourceMappingRequest) (*acrev1.UpdateResourceMappingResponse, error) {
+	req *acre.UpdateResourceMappingRequest) (*acre.UpdateResourceMappingResponse, error) {
 	resource, err := protojson.Marshal(req.Mapping)
 	if err != nil {
-		return &acrev1.UpdateResourceMappingResponse{},
+		return &acre.UpdateResourceMappingResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
@@ -160,28 +160,28 @@ func (s ResourceEncoding) UpdateResourceMapping(ctx context.Context,
 		ctx,
 		req.Mapping.Descriptor_,
 		resource,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
 	)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return &acrev1.UpdateResourceMappingResponse{},
+		return &acre.UpdateResourceMappingResponse{},
 			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
-	return &acrev1.UpdateResourceMappingResponse{}, nil
+	return &acre.UpdateResourceMappingResponse{}, nil
 }
 
 func (s ResourceEncoding) DeleteResourceMapping(ctx context.Context,
-	req *acrev1.DeleteResourceMappingRequest) (*acrev1.DeleteResourceMappingResponse, error) {
+	req *acre.DeleteResourceMappingRequest) (*acre.DeleteResourceMappingResponse, error) {
 	if err := s.dbClient.DeleteResource(
 		ctx,
 		req.Id,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING.String(),
 	); err != nil {
 		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return &acrev1.DeleteResourceMappingResponse{},
+		return &acre.DeleteResourceMappingResponse{},
 			status.Error(codes.Internal, services.ErrDeletingResource)
 	}
-	return &acrev1.DeleteResourceMappingResponse{}, nil
+	return &acre.DeleteResourceMappingResponse{}, nil
 }
 
 /*
@@ -189,7 +189,7 @@ func (s ResourceEncoding) DeleteResourceMapping(ctx context.Context,
 */
 
 func (s ResourceEncoding) CreateResourceGroup(ctx context.Context,
-	req *acrev1.CreateResourceGroupRequest) (*acrev1.CreateResourceGroupResponse, error) {
+	req *acre.CreateResourceGroupRequest) (*acre.CreateResourceGroupResponse, error) {
 	slog.Debug("creating resource group")
 
 	// Set the version of the resource to 1 on create
@@ -197,28 +197,28 @@ func (s ResourceEncoding) CreateResourceGroup(ctx context.Context,
 
 	resource, err := protojson.Marshal(req.Group)
 	if err != nil {
-		return &acrev1.CreateResourceGroupResponse{},
+		return &acre.CreateResourceGroupResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
 	err = s.dbClient.CreateResource(ctx, req.Group.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &acrev1.CreateResourceGroupResponse{},
+		return &acre.CreateResourceGroupResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
-	return &acrev1.CreateResourceGroupResponse{}, nil
+	return &acre.CreateResourceGroupResponse{}, nil
 }
 
 //nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s ResourceEncoding) ListResourceGroups(ctx context.Context,
-	req *acrev1.ListResourceGroupsRequest) (*acrev1.ListResourceGroupsResponse, error) {
-	groups := &acrev1.ListResourceGroupsResponse{}
+	req *acre.ListResourceGroupsRequest) (*acre.ListResourceGroupsResponse, error) {
+	groups := &acre.ListResourceGroupsResponse{}
 
 	rows, err := s.dbClient.ListResources(
 		ctx,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
 		req.Selector,
 	)
 	if err != nil {
@@ -230,7 +230,7 @@ func (s ResourceEncoding) ListResourceGroups(ctx context.Context,
 	for rows.Next() {
 		var (
 			id     int32
-			group  = new(acrev1.ResourceGroup)
+			group  = new(acre.ResourceGroup)
 			bGroup []byte
 		)
 		// var tmpDefinition []byte
@@ -259,10 +259,10 @@ func (s ResourceEncoding) ListResourceGroups(ctx context.Context,
 }
 
 func (s ResourceEncoding) GetResourceGroup(ctx context.Context,
-	req *acrev1.GetResourceGroupRequest) (*acrev1.GetResourceGroupResponse, error) {
+	req *acre.GetResourceGroupRequest) (*acre.GetResourceGroupResponse, error) {
 	var (
-		group = &acrev1.GetResourceGroupResponse{
-			Group: new(acrev1.ResourceGroup),
+		group = &acre.GetResourceGroupResponse{
+			Group: new(acre.ResourceGroup),
 		}
 		id     int32
 		bGroup []byte
@@ -270,7 +270,7 @@ func (s ResourceEncoding) GetResourceGroup(ctx context.Context,
 
 	row, err := s.dbClient.GetResource(
 		ctx,
-		req.Id, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
+		req.Id, common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
 	)
 	if err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
@@ -299,39 +299,39 @@ func (s ResourceEncoding) GetResourceGroup(ctx context.Context,
 }
 
 func (s ResourceEncoding) UpdateResourceGroup(ctx context.Context,
-	req *acrev1.UpdateResourceGroupRequest) (*acrev1.UpdateResourceGroupResponse, error) {
+	req *acre.UpdateResourceGroupRequest) (*acre.UpdateResourceGroupResponse, error) {
 
 	resource, err := protojson.Marshal(req.Group)
 	if err != nil {
-		return &acrev1.UpdateResourceGroupResponse{},
+		return &acre.UpdateResourceGroupResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
 	err = s.dbClient.UpdateResource(
 		ctx,
 		req.Group.Descriptor_, resource,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
 	)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return &acrev1.UpdateResourceGroupResponse{},
+		return &acre.UpdateResourceGroupResponse{},
 			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
-	return &acrev1.UpdateResourceGroupResponse{}, nil
+	return &acre.UpdateResourceGroupResponse{}, nil
 }
 
 func (s ResourceEncoding) DeleteResourceGroup(ctx context.Context,
-	req *acrev1.DeleteResourceGroupRequest) (*acrev1.DeleteResourceGroupResponse, error) {
+	req *acre.DeleteResourceGroupRequest) (*acre.DeleteResourceGroupResponse, error) {
 	if err := s.dbClient.DeleteResource(
 		ctx,
 		req.Id,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP.String(),
 	); err != nil {
 		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return &acrev1.DeleteResourceGroupResponse{},
+		return &acre.DeleteResourceGroupResponse{},
 			status.Error(codes.Internal, services.ErrDeletingResource)
 	}
-	return &acrev1.DeleteResourceGroupResponse{}, nil
+	return &acre.DeleteResourceGroupResponse{}, nil
 }
 
 /*
@@ -339,7 +339,7 @@ func (s ResourceEncoding) DeleteResourceGroup(ctx context.Context,
 */
 
 func (s ResourceEncoding) CreateResourceSynonym(ctx context.Context,
-	req *acrev1.CreateResourceSynonymRequest) (*acrev1.CreateResourceSynonymResponse, error) {
+	req *acre.CreateResourceSynonymRequest) (*acre.CreateResourceSynonymResponse, error) {
 	slog.Debug("creating resource synonym")
 
 	// Set the version of the resource to 1 on create
@@ -347,28 +347,28 @@ func (s ResourceEncoding) CreateResourceSynonym(ctx context.Context,
 
 	resource, err := protojson.Marshal(req.Synonym)
 	if err != nil {
-		return &acrev1.CreateResourceSynonymResponse{},
+		return &acre.CreateResourceSynonymResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
 	err = s.dbClient.CreateResource(ctx, req.Synonym.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &acrev1.CreateResourceSynonymResponse{},
+		return &acre.CreateResourceSynonymResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
-	return &acrev1.CreateResourceSynonymResponse{}, nil
+	return &acre.CreateResourceSynonymResponse{}, nil
 }
 
 //nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s ResourceEncoding) ListResourceSynonyms(ctx context.Context,
-	req *acrev1.ListResourceSynonymsRequest) (*acrev1.ListResourceSynonymsResponse, error) {
-	synonyms := &acrev1.ListResourceSynonymsResponse{}
+	req *acre.ListResourceSynonymsRequest) (*acre.ListResourceSynonymsResponse, error) {
+	synonyms := &acre.ListResourceSynonymsResponse{}
 
 	rows, err := s.dbClient.ListResources(
 		ctx,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
 		req.Selector)
 	if err != nil {
 		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
@@ -379,7 +379,7 @@ func (s ResourceEncoding) ListResourceSynonyms(ctx context.Context,
 	for rows.Next() {
 		var (
 			id       int32
-			synonym  = new(acrev1.Synonyms)
+			synonym  = new(acre.Synonyms)
 			bSynonym []byte
 		)
 		err = rows.Scan(&id, &bSynonym)
@@ -407,10 +407,10 @@ func (s ResourceEncoding) ListResourceSynonyms(ctx context.Context,
 }
 
 func (s ResourceEncoding) GetResourceSynonym(ctx context.Context,
-	req *acrev1.GetResourceSynonymRequest) (*acrev1.GetResourceSynonymResponse, error) {
+	req *acre.GetResourceSynonymRequest) (*acre.GetResourceSynonymResponse, error) {
 	var (
-		synonym = &acrev1.GetResourceSynonymResponse{
-			Synonym: new(acrev1.Synonyms),
+		synonym = &acre.GetResourceSynonymResponse{
+			Synonym: new(acre.Synonyms),
 		}
 		id       int32
 		bSynonym []byte
@@ -419,7 +419,7 @@ func (s ResourceEncoding) GetResourceSynonym(ctx context.Context,
 	row, err := s.dbClient.GetResource(
 		ctx,
 		req.Id,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
 	)
 	if err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
@@ -448,11 +448,11 @@ func (s ResourceEncoding) GetResourceSynonym(ctx context.Context,
 }
 
 func (s ResourceEncoding) UpdateResourceSynonym(ctx context.Context,
-	req *acrev1.UpdateResourceSynonymRequest) (*acrev1.UpdateResourceSynonymResponse, error) {
+	req *acre.UpdateResourceSynonymRequest) (*acre.UpdateResourceSynonymResponse, error) {
 
 	resource, err := protojson.Marshal(req.Synonym)
 	if err != nil {
-		return &acrev1.UpdateResourceSynonymResponse{},
+		return &acre.UpdateResourceSynonymResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
@@ -460,26 +460,26 @@ func (s ResourceEncoding) UpdateResourceSynonym(ctx context.Context,
 		ctx,
 		req.Synonym.Descriptor_,
 		resource,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
 	)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return &acrev1.UpdateResourceSynonymResponse{},
+		return &acre.UpdateResourceSynonymResponse{},
 			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
-	return &acrev1.UpdateResourceSynonymResponse{}, nil
+	return &acre.UpdateResourceSynonymResponse{}, nil
 }
 
 func (s ResourceEncoding) DeleteResourceSynonym(ctx context.Context,
-	req *acrev1.DeleteResourceSynonymRequest) (*acrev1.DeleteResourceSynonymResponse, error) {
+	req *acre.DeleteResourceSynonymRequest) (*acre.DeleteResourceSynonymResponse, error) {
 	if err := s.dbClient.DeleteResource(
 		ctx,
 		req.Id,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(),
 	); err != nil {
 		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return &acrev1.DeleteResourceSynonymResponse{},
+		return &acre.DeleteResourceSynonymResponse{},
 			status.Error(codes.Internal, services.ErrDeletingResource)
 	}
-	return &acrev1.DeleteResourceSynonymResponse{}, nil
+	return &acre.DeleteResourceSynonymResponse{}, nil
 }

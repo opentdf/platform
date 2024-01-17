@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	attributesv1 "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1"
-	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/attributes"
+	"github.com/opentdf/opentdf-v2-poc/gen/common"
 	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +26,7 @@ const (
 type AttributesSuite struct {
 	suite.Suite
 	conn   *grpc.ClientConn
-	client attributesv1.AttributesServiceClient
+	client attributes.AttributesServiceClient
 }
 
 func (suite *AttributesSuite) SetupSuite() {
@@ -38,7 +38,7 @@ func (suite *AttributesSuite) SetupSuite() {
 	}
 	suite.conn = conn
 
-	suite.client = attributesv1.NewAttributesServiceClient(conn)
+	suite.client = attributes.NewAttributesServiceClient(conn)
 
 	testData, err := os.ReadFile(definitionsTestData)
 	if err != nil {
@@ -46,17 +46,17 @@ func (suite *AttributesSuite) SetupSuite() {
 		suite.T().Fatal(err)
 	}
 
-	var attributes = make([]*attributesv1.AttributeDefinition, 0)
+	var attributesDef = make([]*attributes.AttributeDefinition, 0)
 
-	err = json.Unmarshal(testData, &attributes)
+	err = json.Unmarshal(testData, &attributesDef)
 
 	if err != nil {
 		slog.Error("could not unmarshal attributes.json", slog.String("error", err.Error()))
 		suite.T().Fatal(err)
 	}
 
-	for _, attr := range attributes {
-		_, err = suite.client.CreateAttribute(ctx, &attributesv1.CreateAttributeRequest{
+	for _, attr := range attributesDef {
+		_, err = suite.client.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
 			Definition: attr,
 		})
 		if err != nil {
@@ -80,10 +80,10 @@ func TestAttributeSuite(t *testing.T) {
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_Success_When_Valid_Definition() {
-	definition := attributesv1.AttributeDefinition{
+	definition := attributes.AttributeDefinition{
 		Name: "relto",
-		Rule: attributesv1.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
-		Values: []*attributesv1.AttributeDefinitionValue{
+		Rule: attributes.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
+		Values: []*attributes.AttributeDefinitionValue{
 			{
 				Value: "USA",
 			},
@@ -91,15 +91,15 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_Success_When_Valid_De
 				Value: "GBR",
 			},
 		},
-		Descriptor_: &commonv1.ResourceDescriptor{
+		Descriptor_: &common.ResourceDescriptor{
 			Version:   1,
 			Namespace: "virtru.com",
 			Name:      "relto",
-			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
+			Type:      common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
 		},
 	}
 
-	_, err := suite.client.CreateAttribute(context.Background(), &attributesv1.CreateAttributeRequest{
+	_, err := suite.client.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Definition: &definition,
 	})
 
@@ -107,10 +107,10 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_Success_When_Valid_De
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_InvalidRuleType() {
-	definition := attributesv1.AttributeDefinition{
+	definition := attributes.AttributeDefinition{
 		Name: "relto",
 		Rule: 543,
-		Values: []*attributesv1.AttributeDefinitionValue{
+		Values: []*attributes.AttributeDefinitionValue{
 			{
 				Value: "USA",
 			},
@@ -118,15 +118,15 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_Inval
 				Value: "GBR",
 			},
 		},
-		Descriptor_: &commonv1.ResourceDescriptor{
+		Descriptor_: &common.ResourceDescriptor{
 			Version:   1,
 			Namespace: "virtru.com",
 			Name:      "relto",
-			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
+			Type:      common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
 		},
 	}
 
-	_, err := suite.client.CreateAttribute(context.Background(), &attributesv1.CreateAttributeRequest{
+	_, err := suite.client.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Definition: &definition,
 	})
 
@@ -138,10 +138,10 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_Inval
 }
 
 func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_InvalidNamespace() {
-	definition := attributesv1.AttributeDefinition{
+	definition := attributes.AttributeDefinition{
 		Name: "relto",
-		Rule: attributesv1.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
-		Values: []*attributesv1.AttributeDefinitionValue{
+		Rule: attributes.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
+		Values: []*attributes.AttributeDefinitionValue{
 			{
 				Value: "USA",
 			},
@@ -149,15 +149,15 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_Inval
 				Value: "GBR",
 			},
 		},
-		Descriptor_: &commonv1.ResourceDescriptor{
+		Descriptor_: &common.ResourceDescriptor{
 			Version:   1,
 			Namespace: "virtru",
 			Name:      "relto",
-			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
+			Type:      common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
 		},
 	}
 
-	_, err := suite.client.CreateAttribute(context.Background(), &attributesv1.CreateAttributeRequest{
+	_, err := suite.client.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Definition: &definition,
 	})
 
@@ -169,7 +169,7 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_BadRequest_When_Inval
 }
 
 func (suite *AttributesSuite) Test_GetAttribute_Returns_NotFound_When_ID_Does_Not_Exist() {
-	definition, err := suite.client.GetAttribute(context.Background(), &attributesv1.GetAttributeRequest{
+	definition, err := suite.client.GetAttribute(context.Background(), &attributes.GetAttributeRequest{
 		Id: 10000,
 	})
 	assert.Nil(suite.T(), definition)

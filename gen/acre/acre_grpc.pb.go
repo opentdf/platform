@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: acre/v1/acre.proto
+// source: acre/acre.proto
 
-package acrev1
+package acre
 
 import (
 	context "context"
@@ -19,21 +19,21 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ResourcEncodingService_ListResourceMappings_FullMethodName  = "/acre.v1.ResourcEncodingService/ListResourceMappings"
-	ResourcEncodingService_GetResourceMapping_FullMethodName    = "/acre.v1.ResourcEncodingService/GetResourceMapping"
-	ResourcEncodingService_CreateResourceMapping_FullMethodName = "/acre.v1.ResourcEncodingService/CreateResourceMapping"
-	ResourcEncodingService_UpdateResourceMapping_FullMethodName = "/acre.v1.ResourcEncodingService/UpdateResourceMapping"
-	ResourcEncodingService_DeleteResourceMapping_FullMethodName = "/acre.v1.ResourcEncodingService/DeleteResourceMapping"
-	ResourcEncodingService_ListResourceSynonyms_FullMethodName  = "/acre.v1.ResourcEncodingService/ListResourceSynonyms"
-	ResourcEncodingService_GetResourceSynonym_FullMethodName    = "/acre.v1.ResourcEncodingService/GetResourceSynonym"
-	ResourcEncodingService_CreateResourceSynonym_FullMethodName = "/acre.v1.ResourcEncodingService/CreateResourceSynonym"
-	ResourcEncodingService_UpdateResourceSynonym_FullMethodName = "/acre.v1.ResourcEncodingService/UpdateResourceSynonym"
-	ResourcEncodingService_DeleteResourceSynonym_FullMethodName = "/acre.v1.ResourcEncodingService/DeleteResourceSynonym"
-	ResourcEncodingService_ListResourceGroups_FullMethodName    = "/acre.v1.ResourcEncodingService/ListResourceGroups"
-	ResourcEncodingService_GetResourceGroup_FullMethodName      = "/acre.v1.ResourcEncodingService/GetResourceGroup"
-	ResourcEncodingService_CreateResourceGroup_FullMethodName   = "/acre.v1.ResourcEncodingService/CreateResourceGroup"
-	ResourcEncodingService_UpdateResourceGroup_FullMethodName   = "/acre.v1.ResourcEncodingService/UpdateResourceGroup"
-	ResourcEncodingService_DeleteResourceGroup_FullMethodName   = "/acre.v1.ResourcEncodingService/DeleteResourceGroup"
+	ResourcEncodingService_ListResourceMappings_FullMethodName  = "/acre.ResourcEncodingService/ListResourceMappings"
+	ResourcEncodingService_GetResourceMapping_FullMethodName    = "/acre.ResourcEncodingService/GetResourceMapping"
+	ResourcEncodingService_CreateResourceMapping_FullMethodName = "/acre.ResourcEncodingService/CreateResourceMapping"
+	ResourcEncodingService_UpdateResourceMapping_FullMethodName = "/acre.ResourcEncodingService/UpdateResourceMapping"
+	ResourcEncodingService_DeleteResourceMapping_FullMethodName = "/acre.ResourcEncodingService/DeleteResourceMapping"
+	ResourcEncodingService_ListResourceSynonyms_FullMethodName  = "/acre.ResourcEncodingService/ListResourceSynonyms"
+	ResourcEncodingService_GetResourceSynonym_FullMethodName    = "/acre.ResourcEncodingService/GetResourceSynonym"
+	ResourcEncodingService_CreateResourceSynonym_FullMethodName = "/acre.ResourcEncodingService/CreateResourceSynonym"
+	ResourcEncodingService_UpdateResourceSynonym_FullMethodName = "/acre.ResourcEncodingService/UpdateResourceSynonym"
+	ResourcEncodingService_DeleteResourceSynonym_FullMethodName = "/acre.ResourcEncodingService/DeleteResourceSynonym"
+	ResourcEncodingService_ListResourceGroups_FullMethodName    = "/acre.ResourcEncodingService/ListResourceGroups"
+	ResourcEncodingService_GetResourceGroup_FullMethodName      = "/acre.ResourcEncodingService/GetResourceGroup"
+	ResourcEncodingService_CreateResourceGroup_FullMethodName   = "/acre.ResourcEncodingService/CreateResourceGroup"
+	ResourcEncodingService_UpdateResourceGroup_FullMethodName   = "/acre.ResourcEncodingService/UpdateResourceGroup"
+	ResourcEncodingService_DeleteResourceGroup_FullMethodName   = "/acre.ResourcEncodingService/DeleteResourceGroup"
 )
 
 // ResourcEncodingServiceClient is the client API for ResourcEncodingService service.
@@ -565,7 +565,7 @@ func _ResourcEncodingService_DeleteResourceGroup_Handler(srv interface{}, ctx co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ResourcEncodingService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "acre.v1.ResourcEncodingService",
+	ServiceName: "acre.ResourcEncodingService",
 	HandlerType: (*ResourcEncodingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -630,5 +630,5 @@ var ResourcEncodingService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "acre/v1/acre.proto",
+	Metadata: "acre/acre.proto",
 }

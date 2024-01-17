@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"testing"
 
-	attributesv1 "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1"
-	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
-	kagv1 "github.com/opentdf/opentdf-v2-poc/gen/key_access_grants/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/attributes"
+	"github.com/opentdf/opentdf-v2-poc/gen/common"
+	kag "github.com/opentdf/opentdf-v2-poc/gen/key_access_grants"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 	"github.com/pashagolub/pgxmock/v3"
@@ -44,29 +44,29 @@ func TestAcseSuite(t *testing.T) {
 }
 
 //nolint:gochecknoglobals // This is test data and should be reinitialized for each test
-var keyAccessGrants = &kagv1.CreateKeyAccessGrantsRequest{
-	Grants: &kagv1.KeyAccessGrants{
-		Descriptor_: &commonv1.ResourceDescriptor{
+var keyAccessGrants = &kag.CreateKeyAccessGrantsRequest{
+	Grants: &kag.KeyAccessGrants{
+		Descriptor_: &common.ResourceDescriptor{
 			Name:      "test",
 			Namespace: "opentdf.com",
 			Version:   1,
 			Fqn:       "http://opentdf.com/v1/grants/tests",
 			Id:        1,
-			Type:      commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS,
+			Type:      common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS,
 		},
-		KeyAccessServers: []*kagv1.KeyAccessServer{
+		KeyAccessServers: []*kag.KeyAccessServer{
 			{
 				Url: "http://localhost:9000",
 			},
 		},
-		KeyAccessGrants: []*kagv1.KeyAccessGrant{
+		KeyAccessGrants: []*kag.KeyAccessGrant{
 			{
-				AttributeDefinition: &attributesv1.AttributeDefinition{
+				AttributeDefinition: &attributes.AttributeDefinition{
 					Name: "test",
 				},
-				AttributeValueGrants: []*kagv1.KeyAccessGrantAttributeValue{
+				AttributeValueGrants: []*kag.KeyAccessGrantAttributeValue{
 					{
-						Value:  &attributesv1.AttributeValueReference{},
+						Value:  &attributes.AttributeValueReference{},
 						KasIds: []string{"kas1", "kas2"},
 					},
 				},
@@ -90,7 +90,7 @@ func (suite *KeyAccessGrantSuite) Test_CreateKeyAccessGrants_Returns_Internal_Er
 			grant.Grants.Descriptor_.Fqn,
 			grant.Grants.Descriptor_.Labels,
 			grant.Grants.Descriptor_.Description,
-			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(),
+			common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(),
 			bGrants,
 		).
 		WillReturnError(errors.New("error inserting resource"))
@@ -124,7 +124,7 @@ func (suite *KeyAccessGrantSuite) Test_CreateKeyAccessGrants_Returns_OK_When_Suc
 			grant.Grants.Descriptor_.Fqn,
 			grant.Grants.Descriptor_.Labels,
 			grant.Grants.Descriptor_.Description,
-			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(),
+			common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(),
 			bGrant,
 		).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
@@ -139,16 +139,16 @@ func (suite *KeyAccessGrantSuite) Test_CreateKeyAccessGrants_Returns_OK_When_Suc
 }
 
 func (suite *KeyAccessGrantSuite) Test_ListKeyAccessGrants_Returns_Internal_Error_When_Database_Error() {
-	selector := &commonv1.ResourceSelector{
+	selector := &common.ResourceSelector{
 		Namespace: "opentdf",
 		Version:   1,
 	}
 
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
-		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(), selector.Namespace, int32(1)).
+		WithArgs(common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(), selector.Namespace, int32(1)).
 		WillReturnError(errors.New("error listing key access grants"))
 
-	_, err := suite.kagServer.ListKeyAccessGrants(context.Background(), &kagv1.ListKeyAccessGrantsRequest{
+	_, err := suite.kagServer.ListKeyAccessGrants(context.Background(), &kag.ListKeyAccessGrantsRequest{
 		Selector: selector,
 	})
 	if assert.Error(suite.T(), err) {
@@ -172,16 +172,16 @@ func (suite *KeyAccessGrantSuite) Test_ListKeyAccessGrants_Returns_OK_When_Succe
 
 	assert.NoError(suite.T(), err)
 
-	selector := &commonv1.ResourceSelector{
+	selector := &common.ResourceSelector{
 		Namespace: "opentdf",
 		Version:   1,
 	}
 
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
-		WithArgs(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(), selector.Namespace, int32(1)).
+		WithArgs(common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(), selector.Namespace, int32(1)).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).AddRow(int32(1), bGrant))
 
-	_, err = suite.kagServer.ListKeyAccessGrants(context.Background(), &kagv1.ListKeyAccessGrantsRequest{
+	_, err = suite.kagServer.ListKeyAccessGrants(context.Background(), &kag.ListKeyAccessGrantsRequest{
 		Selector: selector,
 	})
 
@@ -194,10 +194,10 @@ func (suite *KeyAccessGrantSuite) Test_ListKeyAccessGrants_Returns_OK_When_Succe
 
 func (suite *KeyAccessGrantSuite) Test_GetKeyAccessGrant_Returns_Internal_Error_When_Database_Error() {
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
-		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
+		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
 		WillReturnError(errors.New("error getting key access grants"))
 
-	_, err := suite.kagServer.GetKeyAccessGrant(context.Background(), &kagv1.GetKeyAccessGrantRequest{
+	_, err := suite.kagServer.GetKeyAccessGrant(context.Background(), &kag.GetKeyAccessGrantRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -215,10 +215,10 @@ func (suite *KeyAccessGrantSuite) Test_GetKeyAccessGrant_Returns_Internal_Error_
 
 func (suite *KeyAccessGrantSuite) Test_GetKeyAccessGrant_Returns_NotFound_Error_When_No_Grants_Found() {
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
-		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
+		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}))
 
-	_, err := suite.kagServer.GetKeyAccessGrant(context.Background(), &kagv1.GetKeyAccessGrantRequest{
+	_, err := suite.kagServer.GetKeyAccessGrant(context.Background(), &kag.GetKeyAccessGrantRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -243,10 +243,10 @@ func (suite *KeyAccessGrantSuite) Test_GetKeyAccessGrant_Returns_OK_When_Success
 	assert.NoError(suite.T(), err)
 
 	suite.mock.ExpectQuery("SELECT id, resource FROM opentdf.resources").
-		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
+		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
 		WillReturnRows(pgxmock.NewRows([]string{"id", "resource"}).AddRow(int32(1), bGrant))
 
-	_, err = suite.kagServer.GetKeyAccessGrant(context.Background(), &kagv1.GetKeyAccessGrantRequest{
+	_, err = suite.kagServer.GetKeyAccessGrant(context.Background(), &kag.GetKeyAccessGrantRequest{
 		Id: 1,
 	})
 
@@ -272,13 +272,13 @@ func (suite *KeyAccessGrantSuite) Test_UpdateKeyAccessGrants_Returns_Internal_Er
 			grant.Grants.Descriptor_.Description,
 			grant.Grants.Descriptor_.Fqn,
 			grant.Grants.Descriptor_.Labels,
-			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(),
+			common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(),
 			bGrants,
 			int32(1),
 		).
 		WillReturnError(errors.New("error updating key access grant"))
 
-	_, err = suite.kagServer.UpdateKeyAccessGrants(context.Background(), &kagv1.UpdateKeyAccessGrantsRequest{
+	_, err = suite.kagServer.UpdateKeyAccessGrants(context.Background(), &kag.UpdateKeyAccessGrantsRequest{
 		Id:     1,
 		Grants: grant.Grants,
 	})
@@ -310,13 +310,13 @@ func (suite *KeyAccessGrantSuite) Test_UpdateKeyAccessGrants_Returns_OK_When_Suc
 			grant.Grants.Descriptor_.Description,
 			grant.Grants.Descriptor_.Fqn,
 			grant.Grants.Descriptor_.Labels,
-			commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(),
+			common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String(),
 			bGrants,
 			int32(1),
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	_, err = suite.kagServer.UpdateKeyAccessGrants(context.Background(), &kagv1.UpdateKeyAccessGrantsRequest{
+	_, err = suite.kagServer.UpdateKeyAccessGrants(context.Background(), &kag.UpdateKeyAccessGrantsRequest{
 		Id:     1,
 		Grants: grant.Grants,
 	})
@@ -330,10 +330,10 @@ func (suite *KeyAccessGrantSuite) Test_UpdateKeyAccessGrants_Returns_OK_When_Suc
 
 func (suite *KeyAccessGrantSuite) Test_DeleteKeyAccessGrants_Returns_Internal_Error_When_Database_Error() {
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
-		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
+		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
 		WillReturnError(errors.New("error deleting key access grant"))
 
-	_, err := suite.kagServer.DeleteKeyAccessGrants(context.Background(), &kagv1.DeleteKeyAccessGrantsRequest{
+	_, err := suite.kagServer.DeleteKeyAccessGrants(context.Background(), &kag.DeleteKeyAccessGrantsRequest{
 		Id: 1,
 	})
 	if assert.Error(suite.T(), err) {
@@ -351,10 +351,10 @@ func (suite *KeyAccessGrantSuite) Test_DeleteKeyAccessGrants_Returns_Internal_Er
 
 func (suite *KeyAccessGrantSuite) Test_DeleteKeyAccessGrants_Returns_OK_When_Successful() {
 	suite.mock.ExpectExec("DELETE FROM opentdf.resources").
-		WithArgs(int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
+		WithArgs(int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS.String()).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	_, err := suite.kagServer.DeleteKeyAccessGrants(context.Background(), &kagv1.DeleteKeyAccessGrantsRequest{
+	_, err := suite.kagServer.DeleteKeyAccessGrants(context.Background(), &kag.DeleteKeyAccessGrantsRequest{
 		Id: 1,
 	})
 

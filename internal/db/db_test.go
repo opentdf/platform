@@ -8,26 +8,26 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	acrev1 "github.com/opentdf/opentdf-v2-poc/gen/acre/v1"
-	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/acre"
+	"github.com/opentdf/opentdf-v2-poc/gen/common"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
 	//nolint:gochecknoglobals // Test data and should be reintialized for each test
-	resourceDescriptor = &commonv1.ResourceDescriptor{
+	resourceDescriptor = &common.ResourceDescriptor{
 		Name:        "relto",
 		Namespace:   "opentdf",
 		Version:     1,
 		Fqn:         "http://opentdf.com/attr/relto",
 		Labels:      map[string]string{"origin": "Country of Origin"},
 		Description: "The relto attribute is used to describe the relationship of the resource to the country of origin.",
-		Type:        commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM,
+		Type:        common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM,
 	}
 
 	//nolint:gochecknoglobals // Test data and should be reintialized for each test
-	testResource = &acrev1.Synonyms{
+	testResource = &acre.Synonyms{
 		Terms: []string{"relto", "rel-to", "rel_to"},
 	}
 )
@@ -101,59 +101,59 @@ func Test_CreateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 }
 
 func Test_ListResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
-	selector := &commonv1.ResourceSelector{
+	selector := &common.ResourceSelector{
 		Namespace: "opentdf",
 		Version:   1,
 	}
-	sql, args, err := listResourceSQL(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector)
+	sql, args, err := listResourceSQL(common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "SELECT id, resource FROM opentdf.resources WHERE policytype = $1 AND namespace = $2 AND version = $3", sql)
-	assert.Equal(t, []interface{}{commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector.Namespace, int32(1)}, args)
+	assert.Equal(t, []interface{}{common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector.Namespace, int32(1)}, args)
 }
 
 func Test_ListResourceSQL_Returns_Expected_SQL_Statement_With_Selector_Labels(t *testing.T) {
-	selector := &commonv1.ResourceSelector{
+	selector := &common.ResourceSelector{
 		Namespace: "opentdf",
-		Selector: &commonv1.ResourceSelector_LabelSelector_{
-			LabelSelector: &commonv1.ResourceSelector_LabelSelector{
+		Selector: &common.ResourceSelector_LabelSelector_{
+			LabelSelector: &common.ResourceSelector_LabelSelector{
 				Labels: map[string]string{"origin": "Country of Origin"},
 			},
 		},
 	}
 
-	bLabels, err := json.Marshal(selector.Selector.(*commonv1.ResourceSelector_LabelSelector_).LabelSelector.Labels)
+	bLabels, err := json.Marshal(selector.Selector.(*common.ResourceSelector_LabelSelector_).LabelSelector.Labels)
 	if err != nil {
 		t.Errorf("marshal error was not expected: %s", err.Error())
 	}
 
-	sql, args, err := listResourceSQL(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector)
+	sql, args, err := listResourceSQL(common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "SELECT id, resource FROM opentdf.resources WHERE policytype = $1 AND namespace = $2 AND labels @> $3::jsonb", sql)
-	assert.Equal(t, []interface{}{commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector.Namespace, bLabels}, args)
+	assert.Equal(t, []interface{}{common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector.Namespace, bLabels}, args)
 }
 
 func Test_ListResourceSQL_Returns_Expected_SQL_Statement_With_Selector_Name(t *testing.T) {
-	selector := &commonv1.ResourceSelector{
+	selector := &common.ResourceSelector{
 		Namespace: "opentdf",
-		Selector: &commonv1.ResourceSelector_Name{
+		Selector: &common.ResourceSelector_Name{
 			Name: "relto",
 		},
 	}
-	sql, args, err := listResourceSQL(commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector)
+	sql, args, err := listResourceSQL(common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "SELECT id, resource FROM opentdf.resources WHERE policytype = $1 AND namespace = $2 AND name = $3", sql)
-	assert.Equal(t, []interface{}{commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector.Namespace, selector.Selector.(*commonv1.ResourceSelector_Name).Name}, args)
+	assert.Equal(t, []interface{}{common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String(), selector.Namespace, selector.Selector.(*common.ResourceSelector_Name).Name}, args)
 }
 
 func Test_GetResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
-	sql, args, err := getResourceSQL(1, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
+	sql, args, err := getResourceSQL(1, common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
 
 	assert.Nil(t, err)
 	assert.Equal(t, "SELECT id, resource FROM opentdf.resources WHERE id = $1 AND policytype = $2", sql)
-	assert.Equal(t, []interface{}{int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()}, args)
+	assert.Equal(t, []interface{}{int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()}, args)
 }
 
 func Test_UpdateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
@@ -163,20 +163,20 @@ func Test_UpdateResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
 
 	assert.Nil(t, err)
 
-	sql, args, err := updateResourceSQL(descriptor, resource, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String())
+	sql, args, err := updateResourceSQL(descriptor, resource, common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String())
 
 	assert.Nil(t, err)
 	assert.Equal(t, "UPDATE opentdf.resources SET name = $1, namespace = $2, version = $3, description = $4, fqn = $5, labels = $6, policyType = $7, resource = $8 WHERE id = $9", sql)
 	assert.Equal(t, []interface{}{descriptor.Name, descriptor.Namespace, descriptor.Version, descriptor.Description, descriptor.Fqn,
-		descriptor.Labels, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(), resource, descriptor.Id}, args)
+		descriptor.Labels, common.PolicyResourceType_POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM.String(), resource, descriptor.Id}, args)
 }
 
 func Test_DeleteResourceSQL_Returns_Expected_SQL_Statement(t *testing.T) {
-	sql, args, err := deleteResourceSQL(1, commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
+	sql, args, err := deleteResourceSQL(1, common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String())
 
 	assert.Nil(t, err)
 	assert.Equal(t, "DELETE FROM opentdf.resources WHERE id = $1 AND policytype = $2", sql)
-	assert.Equal(t, []interface{}{int32(1), commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()}, args)
+	assert.Equal(t, []interface{}{int32(1), common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP.String()}, args)
 }
 
 func Test_BuildURL_Returns_Expected_Connection_String(t *testing.T) {

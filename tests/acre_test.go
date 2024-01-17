@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	acrev1 "github.com/opentdf/opentdf-v2-poc/gen/acre/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/acre"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -12,7 +12,7 @@ import (
 type AcreSuite struct {
 	suite.Suite
 	conn   *grpc.ClientConn
-	client acrev1.ResourcEncodingServiceClient
+	client acre.ResourcEncodingServiceClient
 }
 
 func (suite *AcreSuite) SetupSuite() {
@@ -22,7 +22,7 @@ func (suite *AcreSuite) SetupSuite() {
 	}
 	suite.conn = conn
 
-	suite.client = acrev1.NewResourcEncodingServiceClient(conn)
+	suite.client = acre.NewResourcEncodingServiceClient(conn)
 }
 
 func (suite *AcreSuite) TearDownSuite() {

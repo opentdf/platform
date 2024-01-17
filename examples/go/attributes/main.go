@@ -5,17 +5,17 @@ import (
 	"log/slog"
 	"os"
 
-	attributesv1 "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1"
-	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/attributes"
+	"github.com/opentdf/opentdf-v2-poc/gen/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	definition := attributesv1.AttributeDefinition{
+	definition := attributes.AttributeDefinition{
 		Name: "relto",
-		Rule: attributesv1.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
-		Values: []*attributesv1.AttributeDefinitionValue{
+		Rule: attributes.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
+		Values: []*attributes.AttributeDefinitionValue{
 			{
 				Value: "USA",
 			},
@@ -23,13 +23,13 @@ func main() {
 				Value: "GBR",
 			},
 		},
-		Descriptor_: &commonv1.ResourceDescriptor{
+		Descriptor_: &common.ResourceDescriptor{
 			Version:     1,
 			Namespace:   "demo.com",
 			Fqn:         "http://demo.com/attr/relto",
 			Description: "The relto attribute is used to describe the relationship of the resource to the country of origin. ",
 			Labels:      map[string]string{"origin": "Country of Origin"},
-			Type:        commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
+			Type:        common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
 		},
 	}
 
@@ -40,9 +40,9 @@ func main() {
 	}
 	defer conn.Close()
 
-	attrClient := attributesv1.NewAttributesServiceClient(conn)
+	attrClient := attributes.NewAttributesServiceClient(conn)
 
-	_, err = attrClient.CreateAttribute(context.Background(), &attributesv1.CreateAttributeRequest{
+	_, err = attrClient.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Definition: &definition,
 	})
 	if err != nil {
@@ -52,7 +52,7 @@ func main() {
 
 	slog.Info("attribute created")
 
-	allAttr, err := attrClient.ListAttributes(context.Background(), &attributesv1.ListAttributesRequest{})
+	allAttr, err := attrClient.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
 	if err != nil {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		os.Exit(1)

@@ -109,7 +109,6 @@ func (c *Client) RunMigrations() (int, error) {
 
 func (c Client) CreateResource(ctx context.Context,
 	descriptor *common.ResourceDescriptor, resource []byte) error {
-
 	sql, args, err := createResourceSQL(descriptor, resource)
 	if err != nil {
 		return fmt.Errorf("failed to create resource sql: %w", err)

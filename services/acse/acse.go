@@ -44,9 +44,6 @@ func (s SubjectEncodingService) CreateSubjectMapping(ctx context.Context,
 	req *acse.CreateSubjectMappingRequest) (*acse.CreateSubjectMappingResponse, error) {
 	slog.Debug("creating subject mapping")
 
-	// Set the version of the resource to 1 on create
-	req.SubjectMapping.Descriptor_.Version = 1
-
 	resource, err := protojson.Marshal(req.SubjectMapping)
 	if err != nil {
 		return &acse.CreateSubjectMappingResponse{},

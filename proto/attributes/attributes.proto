@@ -6,8 +6,6 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 
-option go_package = "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1";
-
 // Just a set of attributes
 message AttributeSet {
   common.ResourceDescriptor descriptor = 1;

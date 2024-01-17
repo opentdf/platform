@@ -33,7 +33,7 @@ type SDK struct {
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Set default options
 	cfg := &config{
-		insecure: grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
+		tls: grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
 	}
 
 	// Apply options

@@ -11,7 +11,7 @@ type Option func(*config)
 type config struct {
 	token             grpc.DialOption
 	clientCredentials grpc.DialOption
-	insecure          grpc.DialOption
+	tls               grpc.DialOption
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -25,7 +25,7 @@ func (c *config) build() []grpc.DialOption {
 		opts = append(opts, c.token)
 	}
 
-	opts = append(opts, c.insecure)
+	opts = append(opts, c.tls)
 
 	return opts
 }
@@ -33,7 +33,7 @@ func (c *config) build() []grpc.DialOption {
 // WithInsecureConn returns an Option that sets up an http connection.
 func WithInsecureConn() Option {
 	return func(c *config) {
-		c.insecure = grpc.WithTransportCredentials(insecure.NewCredentials())
+		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
 }
 

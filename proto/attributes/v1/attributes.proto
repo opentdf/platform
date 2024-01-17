@@ -53,11 +53,12 @@ message AttributeDefinitionValue {
   string attribute_public_key = 3;
 }
 
-// Reference to an attribute value, one of descriptor or embedded value
+// Reference to an attribute value, one of descriptor or embedded value or a fqn
 message AttributeValueReference {
   oneof ref {
     common.v1.ResourceDescriptor descriptor = 1;
     AttributeDefinitionValue attribute_value = 2;
+    string attribute_fqn = 3;
   }
 }
 

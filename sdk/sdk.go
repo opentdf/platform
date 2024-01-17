@@ -25,7 +25,7 @@ func (c Error) Error() string {
 type SDK struct {
 	conn             *grpc.ClientConn
 	Attributes       attributes.AttributesServiceClient
-	ResourceEncoding acre.ResourcEncodingServiceClient
+	ResourceEncoding acre.ResourceEncodingServiceClient
 	SubjectEncoding  acse.SubjectEncodingServiceClient
 	KeyAccessGrants  keyaccessgrants.KeyAccessGrantsServiceClient
 }
@@ -53,7 +53,7 @@ func newSDK(conn *grpc.ClientConn) *SDK {
 	return &SDK{
 		conn:             conn,
 		Attributes:       attributes.NewAttributesServiceClient(conn),
-		ResourceEncoding: acre.NewResourcEncodingServiceClient(conn),
+		ResourceEncoding: acre.NewResourceEncodingServiceClient(conn),
 		SubjectEncoding:  acse.NewSubjectEncodingServiceClient(conn),
 		KeyAccessGrants:  keyaccessgrants.NewKeyAccessGrantsServiceClient(conn),
 	}

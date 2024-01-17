@@ -1,16 +1,14 @@
 syntax = "proto3";
 
-package attributes.v1;
+package attributes;
 
 import "buf/validate/validate.proto";
-import "common/v1/common.proto";
+import "common/common.proto";
 import "google/api/annotations.proto";
-
-option go_package = "github.com/opentdf/opentdf-v2-poc/gen/attributes/v1";
 
 // Just a set of attributes
 message AttributeSet {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
   repeated AttributeDefinition definitions = 2;
 }
 
@@ -22,7 +20,7 @@ message AttributeDefinition {
     ATTRIBUTE_RULE_TYPE_ANY_OF = 2;
     ATTRIBUTE_RULE_TYPE_HIERARCHICAL = 3;
   }
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
   //attribute name
   string name = 2 [(buf.validate.field).required = true];
   // attribute rule enum
@@ -40,25 +38,24 @@ message AttributeDefinition {
 // Reference to an attribute value, one of descriptor or embedded value
 message AttributeDefinitionReference {
   oneof ref {
-    common.v1.ResourceDescriptor descriptor = 1;
+    common.ResourceDescriptor descriptor = 1;
     AttributeDefinition definition = 2;
   }
 }
 
 // Definition of a single attribute value
 message AttributeDefinitionValue {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
   string value = 2;
   //TODO - optional lock down pub key format if needed.  Per ATTR KEY?
   string attribute_public_key = 3;
 }
 
-// Reference to an attribute value, one of descriptor or embedded value or a fqn
+// Reference to an attribute value, one of descriptor or embedded value
 message AttributeValueReference {
   oneof ref {
-    common.v1.ResourceDescriptor descriptor = 1;
+    common.ResourceDescriptor descriptor = 1;
     AttributeDefinitionValue attribute_value = 2;
-    string attribute_fqn = 3;
   }
 }
 
@@ -74,7 +71,7 @@ message AttributeValueReference {
 
 */
 message AttributeGroup {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
   AttributeValueReference group_value = 2;
   repeated AttributeValueReference member_values = 3;
 }
@@ -91,7 +88,7 @@ message GetAttributeResponse {
 }
 
 message ListAttributesRequest {
-  common.v1.ResourceSelector selector = 1;
+  common.ResourceSelector selector = 1;
 }
 message ListAttributesResponse {
   repeated AttributeDefinition definitions = 1;
@@ -122,7 +119,7 @@ message GetAttributeGroupResponse {
 }
 
 message ListAttributeGroupsRequest {
-  common.v1.ResourceSelector selector = 1;
+  common.ResourceSelector selector = 1;
 }
 
 message ListAttributeGroupsResponse {

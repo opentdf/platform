@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: authorization/v1/authorization.proto
+// source: authorization/authorization.proto
 
-package authorizationv1
+package authorization
 
 import (
 	context "context"
@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AuthorizationService_GetDecisions_FullMethodName    = "/authorization.v1.AuthorizationService/GetDecisions"
-	AuthorizationService_GetEntitlements_FullMethodName = "/authorization.v1.AuthorizationService/GetEntitlements"
+	AuthorizationService_GetDecisions_FullMethodName    = "/authorization.AuthorizationService/GetDecisions"
+	AuthorizationService_GetEntitlements_FullMethodName = "/authorization.AuthorizationService/GetEntitlements"
 )
 
 // AuthorizationServiceClient is the client API for AuthorizationService service.
@@ -129,7 +129,7 @@ func _AuthorizationService_GetEntitlements_Handler(srv interface{}, ctx context.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AuthorizationService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "authorization.v1.AuthorizationService",
+	ServiceName: "authorization.AuthorizationService",
 	HandlerType: (*AuthorizationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -142,5 +142,5 @@ var AuthorizationService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "authorization/v1/authorization.proto",
+	Metadata: "authorization/authorization.proto",
 }

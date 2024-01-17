@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: key_access_grants/v1/key_access_grants.proto
+// source: key_access_grants/key_access_grants.proto
 
-package key_access_grantsv1
+package key_access_grants
 
 import (
 	context "context"
@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	KeyAccessGrantsService_ListKeyAccessGrants_FullMethodName   = "/key_access_grants.v1.KeyAccessGrantsService/ListKeyAccessGrants"
-	KeyAccessGrantsService_GetKeyAccessGrant_FullMethodName     = "/key_access_grants.v1.KeyAccessGrantsService/GetKeyAccessGrant"
-	KeyAccessGrantsService_CreateKeyAccessGrants_FullMethodName = "/key_access_grants.v1.KeyAccessGrantsService/CreateKeyAccessGrants"
-	KeyAccessGrantsService_UpdateKeyAccessGrants_FullMethodName = "/key_access_grants.v1.KeyAccessGrantsService/UpdateKeyAccessGrants"
-	KeyAccessGrantsService_DeleteKeyAccessGrants_FullMethodName = "/key_access_grants.v1.KeyAccessGrantsService/DeleteKeyAccessGrants"
+	KeyAccessGrantsService_ListKeyAccessGrants_FullMethodName   = "/key_access_grants.KeyAccessGrantsService/ListKeyAccessGrants"
+	KeyAccessGrantsService_GetKeyAccessGrant_FullMethodName     = "/key_access_grants.KeyAccessGrantsService/GetKeyAccessGrant"
+	KeyAccessGrantsService_CreateKeyAccessGrants_FullMethodName = "/key_access_grants.KeyAccessGrantsService/CreateKeyAccessGrants"
+	KeyAccessGrantsService_UpdateKeyAccessGrants_FullMethodName = "/key_access_grants.KeyAccessGrantsService/UpdateKeyAccessGrants"
+	KeyAccessGrantsService_DeleteKeyAccessGrants_FullMethodName = "/key_access_grants.KeyAccessGrantsService/DeleteKeyAccessGrants"
 )
 
 // KeyAccessGrantsServiceClient is the client API for KeyAccessGrantsService service.
@@ -229,7 +229,7 @@ func _KeyAccessGrantsService_DeleteKeyAccessGrants_Handler(srv interface{}, ctx 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var KeyAccessGrantsService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "key_access_grants.v1.KeyAccessGrantsService",
+	ServiceName: "key_access_grants.KeyAccessGrantsService",
 	HandlerType: (*KeyAccessGrantsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -254,5 +254,5 @@ var KeyAccessGrantsService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "key_access_grants/v1/key_access_grants.proto",
+	Metadata: "key_access_grants/key_access_grants.proto",
 }

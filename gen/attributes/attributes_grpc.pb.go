@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: attributes/v1/attributes.proto
+// source: attributes/attributes.proto
 
-package attributesv1
+package attributes
 
 import (
 	context "context"
@@ -19,16 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AttributesService_GetAttribute_FullMethodName         = "/attributes.v1.AttributesService/GetAttribute"
-	AttributesService_GetAttributeGroup_FullMethodName    = "/attributes.v1.AttributesService/GetAttributeGroup"
-	AttributesService_ListAttributes_FullMethodName       = "/attributes.v1.AttributesService/ListAttributes"
-	AttributesService_ListAttributeGroups_FullMethodName  = "/attributes.v1.AttributesService/ListAttributeGroups"
-	AttributesService_CreateAttribute_FullMethodName      = "/attributes.v1.AttributesService/CreateAttribute"
-	AttributesService_CreateAttributeGroup_FullMethodName = "/attributes.v1.AttributesService/CreateAttributeGroup"
-	AttributesService_UpdateAttribute_FullMethodName      = "/attributes.v1.AttributesService/UpdateAttribute"
-	AttributesService_UpdateAttributeGroup_FullMethodName = "/attributes.v1.AttributesService/UpdateAttributeGroup"
-	AttributesService_DeleteAttribute_FullMethodName      = "/attributes.v1.AttributesService/DeleteAttribute"
-	AttributesService_DeleteAttributeGroup_FullMethodName = "/attributes.v1.AttributesService/DeleteAttributeGroup"
+	AttributesService_GetAttribute_FullMethodName         = "/attributes.AttributesService/GetAttribute"
+	AttributesService_GetAttributeGroup_FullMethodName    = "/attributes.AttributesService/GetAttributeGroup"
+	AttributesService_ListAttributes_FullMethodName       = "/attributes.AttributesService/ListAttributes"
+	AttributesService_ListAttributeGroups_FullMethodName  = "/attributes.AttributesService/ListAttributeGroups"
+	AttributesService_CreateAttribute_FullMethodName      = "/attributes.AttributesService/CreateAttribute"
+	AttributesService_CreateAttributeGroup_FullMethodName = "/attributes.AttributesService/CreateAttributeGroup"
+	AttributesService_UpdateAttribute_FullMethodName      = "/attributes.AttributesService/UpdateAttribute"
+	AttributesService_UpdateAttributeGroup_FullMethodName = "/attributes.AttributesService/UpdateAttributeGroup"
+	AttributesService_DeleteAttribute_FullMethodName      = "/attributes.AttributesService/DeleteAttribute"
+	AttributesService_DeleteAttributeGroup_FullMethodName = "/attributes.AttributesService/DeleteAttributeGroup"
 )
 
 // AttributesServiceClient is the client API for AttributesService service.
@@ -393,7 +393,7 @@ func _AttributesService_DeleteAttributeGroup_Handler(srv interface{}, ctx contex
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AttributesService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "attributes.v1.AttributesService",
+	ServiceName: "attributes.AttributesService",
 	HandlerType: (*AttributesServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -438,5 +438,5 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "attributes/v1/attributes.proto",
+	Metadata: "attributes/attributes.proto",
 }

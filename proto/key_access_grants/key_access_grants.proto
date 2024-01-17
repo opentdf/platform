@@ -1,17 +1,17 @@
 syntax = "proto3";
 
-package key_access_grants.v1;
+package key_access_grants;
 
-import "attributes/v1/attributes.proto";
+import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
-import "common/v1/common.proto";
+import "common/common.proto";
 import "google/api/annotations.proto";
 
 /*
    Descriptor for a KAS
 */
 message KeyAccessServer {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
   //Kas Url
   string url = 2 [
     (buf.validate.field).required = true,
@@ -29,7 +29,7 @@ message KeyAccessServer {
    Shareable set of key access grants to help with encryption workflows
 */
 message KeyAccessGrants {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
   /*
      List of available key access servers
      Example:
@@ -71,7 +71,7 @@ message KeyAccessGrants {
 */
 message KeyAccessGrant {
   //the attribute associated with this
-  attributes.v1.AttributeDefinition attribute_definition = 1;
+  attributes.AttributeDefinition attribute_definition = 1;
   // attribute value settings; if empty then applies to all values
   repeated KeyAccessGrantAttributeValue attribute_value_grants = 2;
 }
@@ -90,7 +90,7 @@ message KeyAccessGrant {
 */
 message KeyAccessGrantAttributeValue {
   // optional - if this is empty - then applies to all attribute values of the enclosed attribute definition
-  attributes.v1.AttributeValueReference value = 1;
+  attributes.AttributeValueReference value = 1;
   //list of key access server ordered by priority.
   repeated string kas_ids = 2;
 }
@@ -103,7 +103,7 @@ message GetKeyAccessGrantResponse {
 }
 
 message ListKeyAccessGrantsRequest {
-  common.v1.ResourceSelector selector = 1;
+  common.ResourceSelector selector = 1;
 }
 message ListKeyAccessGrantsResponse {
   repeated KeyAccessGrants grants = 1;

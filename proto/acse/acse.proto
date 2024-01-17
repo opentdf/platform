@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package acse.v1;
+package acse;
 
-import "attributes/v1/attributes.proto";
+import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
-import "common/v1/common.proto";
+import "common/common.proto";
 import "google/api/annotations.proto";
 
 /*
@@ -27,7 +27,7 @@ import "google/api/annotations.proto";
 
 */
 message SubjectMapping {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
 
   enum Operator {
     OPERATOR_UNSPECIFIED = 0;
@@ -36,7 +36,7 @@ message SubjectMapping {
   }
   //TODO should this be a list of values?
   // Attribute Value to be mapped to
-  attributes.v1.AttributeValueReference attribute_value_ref = 2;
+  attributes.AttributeValueReference attribute_value_ref = 2;
   // Resource Attribute Key; NOT Attribute Definition Attribute name
   string subject_attribute = 3;
   // The list of comparison values for a resource's <attribute> value
@@ -58,7 +58,7 @@ message GetSubjectMappingResponse {
 }
 
 message ListSubjectMappingsRequest {
-  common.v1.ResourceSelector selector = 1;
+  common.ResourceSelector selector = 1;
 }
 message ListSubjectMappingsResponse {
   repeated SubjectMapping subject_mappings = 1;

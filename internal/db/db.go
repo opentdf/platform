@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/common"
 	"github.com/opentdf/opentdf-v2-poc/migrations"
 	"github.com/pressly/goose/v3"
 )
@@ -108,8 +108,7 @@ func (c *Client) RunMigrations() (int, error) {
 }
 
 func (c Client) CreateResource(ctx context.Context,
-	descriptor *commonv1.ResourceDescriptor, resource []byte) error {
-
+	descriptor *common.ResourceDescriptor, resource []byte) error {
 	sql, args, err := createResourceSQL(descriptor, resource)
 	if err != nil {
 		return fmt.Errorf("failed to create resource sql: %w", err)
@@ -122,7 +121,7 @@ func (c Client) CreateResource(ctx context.Context,
 	return err
 }
 
-func createResourceSQL(descriptor *commonv1.ResourceDescriptor,
+func createResourceSQL(descriptor *common.ResourceDescriptor,
 	resource []byte) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
@@ -146,7 +145,7 @@ func createResourceSQL(descriptor *commonv1.ResourceDescriptor,
 }
 
 func (c Client) ListResources(ctx context.Context,
-	policyType string, selectors *commonv1.ResourceSelector) (pgx.Rows, error) {
+	policyType string, selectors *common.ResourceSelector) (pgx.Rows, error) {
 	sql, args, err := listResourceSQL(policyType, selectors)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list resource sql: %w", err)
@@ -158,7 +157,7 @@ func (c Client) ListResources(ctx context.Context,
 	return c.Query(ctx, sql, args...)
 }
 
-func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (string, []interface{}, error) {
+func listResourceSQL(policyType string, selectors *common.ResourceSelector) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Select("id", "resource").From("opentdf.resources")
@@ -172,9 +171,9 @@ func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (s
 		}
 
 		switch selector := selectors.Selector.(type) {
-		case *commonv1.ResourceSelector_Name:
+		case *common.ResourceSelector_Name:
 			builder = builder.Where(sq.Eq{"name": selector.Name})
-		case *commonv1.ResourceSelector_LabelSelector_:
+		case *common.ResourceSelector_LabelSelector_:
 			bLabels, err := json.Marshal(selector.LabelSelector.Labels)
 			if err != nil {
 				return "", nil, fmt.Errorf("failed to marshal labels: %w", err)
@@ -213,7 +212,7 @@ func getResourceSQL(id int32, policyType string) (string, []interface{}, error) 
 	return builder.ToSql()
 }
 
-func (c Client) UpdateResource(ctx context.Context, descriptor *commonv1.ResourceDescriptor,
+func (c Client) UpdateResource(ctx context.Context, descriptor *common.ResourceDescriptor,
 	resource []byte, policyType string) error {
 	sql, args, err := updateResourceSQL(descriptor, resource, policyType)
 	if err != nil {
@@ -227,7 +226,7 @@ func (c Client) UpdateResource(ctx context.Context, descriptor *commonv1.Resourc
 	return err
 }
 
-func updateResourceSQL(descriptor *commonv1.ResourceDescriptor,
+func updateResourceSQL(descriptor *common.ResourceDescriptor,
 	resource []byte, policyType string) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 

@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: acse/v1/acse.proto
+// source: acse/acse.proto
 
-package acsev1
+package acse
 
 import (
 	context "context"
@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SubjectEncodingService_ListSubjectMappings_FullMethodName  = "/acse.v1.SubjectEncodingService/ListSubjectMappings"
-	SubjectEncodingService_GetSubjectMapping_FullMethodName    = "/acse.v1.SubjectEncodingService/GetSubjectMapping"
-	SubjectEncodingService_CreateSubjectMapping_FullMethodName = "/acse.v1.SubjectEncodingService/CreateSubjectMapping"
-	SubjectEncodingService_UpdateSubjectMapping_FullMethodName = "/acse.v1.SubjectEncodingService/UpdateSubjectMapping"
-	SubjectEncodingService_DeleteSubjectMapping_FullMethodName = "/acse.v1.SubjectEncodingService/DeleteSubjectMapping"
+	SubjectEncodingService_ListSubjectMappings_FullMethodName  = "/acse.SubjectEncodingService/ListSubjectMappings"
+	SubjectEncodingService_GetSubjectMapping_FullMethodName    = "/acse.SubjectEncodingService/GetSubjectMapping"
+	SubjectEncodingService_CreateSubjectMapping_FullMethodName = "/acse.SubjectEncodingService/CreateSubjectMapping"
+	SubjectEncodingService_UpdateSubjectMapping_FullMethodName = "/acse.SubjectEncodingService/UpdateSubjectMapping"
+	SubjectEncodingService_DeleteSubjectMapping_FullMethodName = "/acse.SubjectEncodingService/DeleteSubjectMapping"
 )
 
 // SubjectEncodingServiceClient is the client API for SubjectEncodingService service.
@@ -229,7 +229,7 @@ func _SubjectEncodingService_DeleteSubjectMapping_Handler(srv interface{}, ctx c
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SubjectEncodingService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "acse.v1.SubjectEncodingService",
+	ServiceName: "acse.SubjectEncodingService",
 	HandlerType: (*SubjectEncodingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -254,5 +254,5 @@ var SubjectEncodingService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "acse/v1/acse.proto",
+	Metadata: "acse/acse.proto",
 }

@@ -8,8 +8,8 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v5"
-	acsev1 "github.com/opentdf/opentdf-v2-poc/gen/acse/v1"
-	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/acse"
+	"github.com/opentdf/opentdf-v2-poc/gen/common"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/pkg/services"
 	"google.golang.org/grpc"
@@ -19,7 +19,7 @@ import (
 )
 
 type SubjectEncoding struct {
-	acsev1.UnimplementedSubjectEncodingServiceServer
+	acse.UnimplementedSubjectEncodingServiceServer
 	dbClient *db.Client
 }
 
@@ -28,11 +28,11 @@ func NewSubjectEncodingServer(dbClient *db.Client, grpcServer *grpc.Server,
 	as := &SubjectEncoding{
 		dbClient: dbClient,
 	}
-	acsev1.RegisterSubjectEncodingServiceServer(grpcServer, as)
+	acse.RegisterSubjectEncodingServiceServer(grpcServer, as)
 	if grpcInprocess != nil {
-		acsev1.RegisterSubjectEncodingServiceServer(grpcInprocess, as)
+		acse.RegisterSubjectEncodingServiceServer(grpcInprocess, as)
 	}
-	err := acsev1.RegisterSubjectEncodingServiceHandlerServer(context.Background(), mux, as)
+	err := acse.RegisterSubjectEncodingServiceHandlerServer(context.Background(), mux, as)
 	if err != nil {
 		return fmt.Errorf("failed to register subject encoding service handler: %w", err)
 	}
@@ -40,7 +40,7 @@ func NewSubjectEncodingServer(dbClient *db.Client, grpcServer *grpc.Server,
 }
 
 func (s SubjectEncoding) CreateSubjectMapping(ctx context.Context,
-	req *acsev1.CreateSubjectMappingRequest) (*acsev1.CreateSubjectMappingResponse, error) {
+	req *acse.CreateSubjectMappingRequest) (*acse.CreateSubjectMappingResponse, error) {
 	slog.Debug("creating subject mapping")
 
 	// Set the version of the resource to 1 on create
@@ -48,27 +48,27 @@ func (s SubjectEncoding) CreateSubjectMapping(ctx context.Context,
 
 	resource, err := protojson.Marshal(req.SubjectMapping)
 	if err != nil {
-		return &acsev1.CreateSubjectMappingResponse{},
+		return &acse.CreateSubjectMappingResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
 	err = s.dbClient.CreateResource(ctx, req.SubjectMapping.Descriptor_, resource)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &acsev1.CreateSubjectMappingResponse{}, status.Error(codes.Internal,
+		return &acse.CreateSubjectMappingResponse{}, status.Error(codes.Internal,
 			fmt.Sprintf("%v: %v", services.ErrCreatingResource, err))
 	}
 
-	return &acsev1.CreateSubjectMappingResponse{}, nil
+	return &acse.CreateSubjectMappingResponse{}, nil
 }
 
 func (s SubjectEncoding) ListSubjectMappings(ctx context.Context,
-	req *acsev1.ListSubjectMappingsRequest) (*acsev1.ListSubjectMappingsResponse, error) {
-	mappings := &acsev1.ListSubjectMappingsResponse{}
+	req *acse.ListSubjectMappingsRequest) (*acse.ListSubjectMappingsResponse, error) {
+	mappings := &acse.ListSubjectMappingsResponse{}
 
 	rows, err := s.dbClient.ListResources(
 		ctx,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
 		req.Selector,
 	)
 	if err != nil {
@@ -80,7 +80,7 @@ func (s SubjectEncoding) ListSubjectMappings(ctx context.Context,
 	for rows.Next() {
 		var (
 			id       int32
-			mapping  = new(acsev1.SubjectMapping)
+			mapping  = new(acse.SubjectMapping)
 			bMapping []byte
 		)
 		err = rows.Scan(&id, &bMapping)
@@ -113,10 +113,10 @@ func (s SubjectEncoding) ListSubjectMappings(ctx context.Context,
 }
 
 func (s SubjectEncoding) GetSubjectMapping(ctx context.Context,
-	req *acsev1.GetSubjectMappingRequest) (*acsev1.GetSubjectMappingResponse, error) {
+	req *acse.GetSubjectMappingRequest) (*acse.GetSubjectMappingResponse, error) {
 	var (
-		mapping = &acsev1.GetSubjectMappingResponse{
-			SubjectMapping: new(acsev1.SubjectMapping),
+		mapping = &acse.GetSubjectMappingResponse{
+			SubjectMapping: new(acse.SubjectMapping),
 		}
 		id       int32
 		bMapping []byte
@@ -125,7 +125,7 @@ func (s SubjectEncoding) GetSubjectMapping(ctx context.Context,
 	row, err := s.dbClient.GetResource(
 		ctx,
 		req.Id,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
 	)
 	if err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
@@ -154,10 +154,10 @@ func (s SubjectEncoding) GetSubjectMapping(ctx context.Context,
 }
 
 func (s SubjectEncoding) UpdateSubjectMapping(ctx context.Context,
-	req *acsev1.UpdateSubjectMappingRequest) (*acsev1.UpdateSubjectMappingResponse, error) {
+	req *acse.UpdateSubjectMappingRequest) (*acse.UpdateSubjectMappingResponse, error) {
 	resource, err := protojson.Marshal(req.SubjectMapping)
 	if err != nil {
-		return &acsev1.UpdateSubjectMappingResponse{},
+		return &acse.UpdateSubjectMappingResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
@@ -165,26 +165,26 @@ func (s SubjectEncoding) UpdateSubjectMapping(ctx context.Context,
 		ctx,
 		req.SubjectMapping.Descriptor_,
 		resource,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
 	)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return &acsev1.UpdateSubjectMappingResponse{},
+		return &acse.UpdateSubjectMappingResponse{},
 			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
-	return &acsev1.UpdateSubjectMappingResponse{}, nil
+	return &acse.UpdateSubjectMappingResponse{}, nil
 }
 
 func (s SubjectEncoding) DeleteSubjectMapping(ctx context.Context,
-	req *acsev1.DeleteSubjectMappingRequest) (*acsev1.DeleteSubjectMappingResponse, error) {
+	req *acse.DeleteSubjectMappingRequest) (*acse.DeleteSubjectMappingResponse, error) {
 	if err := s.dbClient.DeleteResource(
 		ctx,
 		req.Id,
-		commonv1.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
+		common.PolicyResourceType_POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING.String(),
 	); err != nil {
 		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return &acsev1.DeleteSubjectMappingResponse{},
+		return &acse.DeleteSubjectMappingResponse{},
 			status.Error(codes.Internal, services.ErrDeletingResource)
 	}
-	return &acsev1.DeleteSubjectMappingResponse{}, nil
+	return &acse.DeleteSubjectMappingResponse{}, nil
 }

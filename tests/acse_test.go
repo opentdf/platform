@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	acsev1 "github.com/opentdf/opentdf-v2-poc/gen/acse/v1"
+	"github.com/opentdf/opentdf-v2-poc/gen/acse"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -12,7 +12,7 @@ import (
 type AcseSuite struct {
 	suite.Suite
 	conn   *grpc.ClientConn
-	client acsev1.SubjectEncodingServiceClient
+	client acse.SubjectEncodingServiceClient
 }
 
 func (suite *AcseSuite) SetupSuite() {
@@ -22,7 +22,7 @@ func (suite *AcseSuite) SetupSuite() {
 	}
 	suite.conn = conn
 
-	suite.client = acsev1.NewSubjectEncodingServiceClient(conn)
+	suite.client = acse.NewSubjectEncodingServiceClient(conn)
 }
 
 func (suite *AcseSuite) TearDownSuite() {

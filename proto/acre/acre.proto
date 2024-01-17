@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package acre.v1;
+package acre;
 
-import "attributes/v1/attributes.proto";
+import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
-import "common/v1/common.proto";
+import "common/common.proto";
 import "google/api/annotations.proto";
 
 /*
@@ -16,7 +16,7 @@ import "google/api/annotations.proto";
    A modular set of terms that are the "same".  Could be used across resource mappings
 */
 message Synonyms {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
   repeated string terms = 2;
 }
 
@@ -35,8 +35,8 @@ message Synonyms {
 
 */
 message ResourceMapping {
-  common.v1.ResourceDescriptor descriptor = 1;
-  attributes.v1.AttributeValueReference attribute_value_ref = 2;
+  common.ResourceDescriptor descriptor = 1;
+  attributes.AttributeValueReference attribute_value_ref = 2;
   SynonymRef synonym_ref = 3;
 }
 
@@ -49,7 +49,7 @@ message ResourceMapping {
      members: [USA, GBR, etc.]
 */
 message ResourceGroup {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
   //group value
   string value = 2;
   //List of member values
@@ -59,7 +59,7 @@ message ResourceGroup {
 // Reference to a ResourceMapping, one of descriptor or embedded value
 message ResourceMappingRef {
   oneof ref {
-    common.v1.ResourceDescriptor descriptor = 1;
+    common.ResourceDescriptor descriptor = 1;
     ResourceMapping resource_mapping = 2;
   }
 }
@@ -67,13 +67,13 @@ message ResourceMappingRef {
 // Reference to a Synonyms, one of descriptor or embedded value
 message SynonymRef {
   oneof ref {
-    common.v1.ResourceDescriptor descriptor = 1;
+    common.ResourceDescriptor descriptor = 1;
     Synonyms synonyms = 2;
   }
 }
 
 message ResourceEncodingRequestOptions {
-  common.v1.ResourceDescriptor descriptor = 1;
+  common.ResourceDescriptor descriptor = 1;
 }
 
 /*
@@ -81,7 +81,7 @@ message ResourceEncodingRequestOptions {
 */
 
 message ListResourceMappingsRequest {
-  common.v1.ResourceSelector selector = 1;
+  common.ResourceSelector selector = 1;
 }
 
 message ListResourceMappingsResponse {
@@ -117,7 +117,7 @@ message DeleteResourceMappingResponse {}
 */
 
 message ListResourceSynonymsRequest {
-  common.v1.ResourceSelector selector = 1;
+  common.ResourceSelector selector = 1;
 }
 
 message ListResourceSynonymsResponse {
@@ -152,7 +152,7 @@ message DeleteResourceSynonymResponse {}
    Resource Groups
 */
 message ListResourceGroupsRequest {
-  common.v1.ResourceSelector selector = 1;
+  common.ResourceSelector selector = 1;
 }
 
 message ListResourceGroupsResponse {

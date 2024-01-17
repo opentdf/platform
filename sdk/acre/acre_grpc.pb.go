@@ -19,27 +19,27 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ResourcEncodingService_ListResourceMappings_FullMethodName  = "/acre.ResourcEncodingService/ListResourceMappings"
-	ResourcEncodingService_GetResourceMapping_FullMethodName    = "/acre.ResourcEncodingService/GetResourceMapping"
-	ResourcEncodingService_CreateResourceMapping_FullMethodName = "/acre.ResourcEncodingService/CreateResourceMapping"
-	ResourcEncodingService_UpdateResourceMapping_FullMethodName = "/acre.ResourcEncodingService/UpdateResourceMapping"
-	ResourcEncodingService_DeleteResourceMapping_FullMethodName = "/acre.ResourcEncodingService/DeleteResourceMapping"
-	ResourcEncodingService_ListResourceSynonyms_FullMethodName  = "/acre.ResourcEncodingService/ListResourceSynonyms"
-	ResourcEncodingService_GetResourceSynonym_FullMethodName    = "/acre.ResourcEncodingService/GetResourceSynonym"
-	ResourcEncodingService_CreateResourceSynonym_FullMethodName = "/acre.ResourcEncodingService/CreateResourceSynonym"
-	ResourcEncodingService_UpdateResourceSynonym_FullMethodName = "/acre.ResourcEncodingService/UpdateResourceSynonym"
-	ResourcEncodingService_DeleteResourceSynonym_FullMethodName = "/acre.ResourcEncodingService/DeleteResourceSynonym"
-	ResourcEncodingService_ListResourceGroups_FullMethodName    = "/acre.ResourcEncodingService/ListResourceGroups"
-	ResourcEncodingService_GetResourceGroup_FullMethodName      = "/acre.ResourcEncodingService/GetResourceGroup"
-	ResourcEncodingService_CreateResourceGroup_FullMethodName   = "/acre.ResourcEncodingService/CreateResourceGroup"
-	ResourcEncodingService_UpdateResourceGroup_FullMethodName   = "/acre.ResourcEncodingService/UpdateResourceGroup"
-	ResourcEncodingService_DeleteResourceGroup_FullMethodName   = "/acre.ResourcEncodingService/DeleteResourceGroup"
+	ResourceEncodingService_ListResourceMappings_FullMethodName  = "/acre.ResourceEncodingService/ListResourceMappings"
+	ResourceEncodingService_GetResourceMapping_FullMethodName    = "/acre.ResourceEncodingService/GetResourceMapping"
+	ResourceEncodingService_CreateResourceMapping_FullMethodName = "/acre.ResourceEncodingService/CreateResourceMapping"
+	ResourceEncodingService_UpdateResourceMapping_FullMethodName = "/acre.ResourceEncodingService/UpdateResourceMapping"
+	ResourceEncodingService_DeleteResourceMapping_FullMethodName = "/acre.ResourceEncodingService/DeleteResourceMapping"
+	ResourceEncodingService_ListResourceSynonyms_FullMethodName  = "/acre.ResourceEncodingService/ListResourceSynonyms"
+	ResourceEncodingService_GetResourceSynonym_FullMethodName    = "/acre.ResourceEncodingService/GetResourceSynonym"
+	ResourceEncodingService_CreateResourceSynonym_FullMethodName = "/acre.ResourceEncodingService/CreateResourceSynonym"
+	ResourceEncodingService_UpdateResourceSynonym_FullMethodName = "/acre.ResourceEncodingService/UpdateResourceSynonym"
+	ResourceEncodingService_DeleteResourceSynonym_FullMethodName = "/acre.ResourceEncodingService/DeleteResourceSynonym"
+	ResourceEncodingService_ListResourceGroups_FullMethodName    = "/acre.ResourceEncodingService/ListResourceGroups"
+	ResourceEncodingService_GetResourceGroup_FullMethodName      = "/acre.ResourceEncodingService/GetResourceGroup"
+	ResourceEncodingService_CreateResourceGroup_FullMethodName   = "/acre.ResourceEncodingService/CreateResourceGroup"
+	ResourceEncodingService_UpdateResourceGroup_FullMethodName   = "/acre.ResourceEncodingService/UpdateResourceGroup"
+	ResourceEncodingService_DeleteResourceGroup_FullMethodName   = "/acre.ResourceEncodingService/DeleteResourceGroup"
 )
 
-// ResourcEncodingServiceClient is the client API for ResourcEncodingService service.
+// ResourceEncodingServiceClient is the client API for ResourceEncodingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ResourcEncodingServiceClient interface {
+type ResourceEncodingServiceClient interface {
 	// Resource Mappings
 	ListResourceMappings(ctx context.Context, in *ListResourceMappingsRequest, opts ...grpc.CallOption) (*ListResourceMappingsResponse, error)
 	GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error)
@@ -60,153 +60,153 @@ type ResourcEncodingServiceClient interface {
 	DeleteResourceGroup(ctx context.Context, in *DeleteResourceGroupRequest, opts ...grpc.CallOption) (*DeleteResourceGroupResponse, error)
 }
 
-type resourcEncodingServiceClient struct {
+type resourceEncodingServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewResourcEncodingServiceClient(cc grpc.ClientConnInterface) ResourcEncodingServiceClient {
-	return &resourcEncodingServiceClient{cc}
+func NewResourceEncodingServiceClient(cc grpc.ClientConnInterface) ResourceEncodingServiceClient {
+	return &resourceEncodingServiceClient{cc}
 }
 
-func (c *resourcEncodingServiceClient) ListResourceMappings(ctx context.Context, in *ListResourceMappingsRequest, opts ...grpc.CallOption) (*ListResourceMappingsResponse, error) {
+func (c *resourceEncodingServiceClient) ListResourceMappings(ctx context.Context, in *ListResourceMappingsRequest, opts ...grpc.CallOption) (*ListResourceMappingsResponse, error) {
 	out := new(ListResourceMappingsResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_ListResourceMappings_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_ListResourceMappings_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error) {
+func (c *resourceEncodingServiceClient) GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error) {
 	out := new(GetResourceMappingResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_GetResourceMapping_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_GetResourceMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) CreateResourceMapping(ctx context.Context, in *CreateResourceMappingRequest, opts ...grpc.CallOption) (*CreateResourceMappingResponse, error) {
+func (c *resourceEncodingServiceClient) CreateResourceMapping(ctx context.Context, in *CreateResourceMappingRequest, opts ...grpc.CallOption) (*CreateResourceMappingResponse, error) {
 	out := new(CreateResourceMappingResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_CreateResourceMapping_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_CreateResourceMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) UpdateResourceMapping(ctx context.Context, in *UpdateResourceMappingRequest, opts ...grpc.CallOption) (*UpdateResourceMappingResponse, error) {
+func (c *resourceEncodingServiceClient) UpdateResourceMapping(ctx context.Context, in *UpdateResourceMappingRequest, opts ...grpc.CallOption) (*UpdateResourceMappingResponse, error) {
 	out := new(UpdateResourceMappingResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_UpdateResourceMapping_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_UpdateResourceMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) DeleteResourceMapping(ctx context.Context, in *DeleteResourceMappingRequest, opts ...grpc.CallOption) (*DeleteResourceMappingResponse, error) {
+func (c *resourceEncodingServiceClient) DeleteResourceMapping(ctx context.Context, in *DeleteResourceMappingRequest, opts ...grpc.CallOption) (*DeleteResourceMappingResponse, error) {
 	out := new(DeleteResourceMappingResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_DeleteResourceMapping_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_DeleteResourceMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) ListResourceSynonyms(ctx context.Context, in *ListResourceSynonymsRequest, opts ...grpc.CallOption) (*ListResourceSynonymsResponse, error) {
+func (c *resourceEncodingServiceClient) ListResourceSynonyms(ctx context.Context, in *ListResourceSynonymsRequest, opts ...grpc.CallOption) (*ListResourceSynonymsResponse, error) {
 	out := new(ListResourceSynonymsResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_ListResourceSynonyms_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_ListResourceSynonyms_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) GetResourceSynonym(ctx context.Context, in *GetResourceSynonymRequest, opts ...grpc.CallOption) (*GetResourceSynonymResponse, error) {
+func (c *resourceEncodingServiceClient) GetResourceSynonym(ctx context.Context, in *GetResourceSynonymRequest, opts ...grpc.CallOption) (*GetResourceSynonymResponse, error) {
 	out := new(GetResourceSynonymResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_GetResourceSynonym_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_GetResourceSynonym_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) CreateResourceSynonym(ctx context.Context, in *CreateResourceSynonymRequest, opts ...grpc.CallOption) (*CreateResourceSynonymResponse, error) {
+func (c *resourceEncodingServiceClient) CreateResourceSynonym(ctx context.Context, in *CreateResourceSynonymRequest, opts ...grpc.CallOption) (*CreateResourceSynonymResponse, error) {
 	out := new(CreateResourceSynonymResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_CreateResourceSynonym_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_CreateResourceSynonym_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) UpdateResourceSynonym(ctx context.Context, in *UpdateResourceSynonymRequest, opts ...grpc.CallOption) (*UpdateResourceSynonymResponse, error) {
+func (c *resourceEncodingServiceClient) UpdateResourceSynonym(ctx context.Context, in *UpdateResourceSynonymRequest, opts ...grpc.CallOption) (*UpdateResourceSynonymResponse, error) {
 	out := new(UpdateResourceSynonymResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_UpdateResourceSynonym_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_UpdateResourceSynonym_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) DeleteResourceSynonym(ctx context.Context, in *DeleteResourceSynonymRequest, opts ...grpc.CallOption) (*DeleteResourceSynonymResponse, error) {
+func (c *resourceEncodingServiceClient) DeleteResourceSynonym(ctx context.Context, in *DeleteResourceSynonymRequest, opts ...grpc.CallOption) (*DeleteResourceSynonymResponse, error) {
 	out := new(DeleteResourceSynonymResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_DeleteResourceSynonym_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_DeleteResourceSynonym_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) ListResourceGroups(ctx context.Context, in *ListResourceGroupsRequest, opts ...grpc.CallOption) (*ListResourceGroupsResponse, error) {
+func (c *resourceEncodingServiceClient) ListResourceGroups(ctx context.Context, in *ListResourceGroupsRequest, opts ...grpc.CallOption) (*ListResourceGroupsResponse, error) {
 	out := new(ListResourceGroupsResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_ListResourceGroups_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_ListResourceGroups_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) GetResourceGroup(ctx context.Context, in *GetResourceGroupRequest, opts ...grpc.CallOption) (*GetResourceGroupResponse, error) {
+func (c *resourceEncodingServiceClient) GetResourceGroup(ctx context.Context, in *GetResourceGroupRequest, opts ...grpc.CallOption) (*GetResourceGroupResponse, error) {
 	out := new(GetResourceGroupResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_GetResourceGroup_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_GetResourceGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) CreateResourceGroup(ctx context.Context, in *CreateResourceGroupRequest, opts ...grpc.CallOption) (*CreateResourceGroupResponse, error) {
+func (c *resourceEncodingServiceClient) CreateResourceGroup(ctx context.Context, in *CreateResourceGroupRequest, opts ...grpc.CallOption) (*CreateResourceGroupResponse, error) {
 	out := new(CreateResourceGroupResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_CreateResourceGroup_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_CreateResourceGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) UpdateResourceGroup(ctx context.Context, in *UpdateResourceGroupRequest, opts ...grpc.CallOption) (*UpdateResourceGroupResponse, error) {
+func (c *resourceEncodingServiceClient) UpdateResourceGroup(ctx context.Context, in *UpdateResourceGroupRequest, opts ...grpc.CallOption) (*UpdateResourceGroupResponse, error) {
 	out := new(UpdateResourceGroupResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_UpdateResourceGroup_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_UpdateResourceGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourcEncodingServiceClient) DeleteResourceGroup(ctx context.Context, in *DeleteResourceGroupRequest, opts ...grpc.CallOption) (*DeleteResourceGroupResponse, error) {
+func (c *resourceEncodingServiceClient) DeleteResourceGroup(ctx context.Context, in *DeleteResourceGroupRequest, opts ...grpc.CallOption) (*DeleteResourceGroupResponse, error) {
 	out := new(DeleteResourceGroupResponse)
-	err := c.cc.Invoke(ctx, ResourcEncodingService_DeleteResourceGroup_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceEncodingService_DeleteResourceGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ResourcEncodingServiceServer is the server API for ResourcEncodingService service.
-// All implementations must embed UnimplementedResourcEncodingServiceServer
+// ResourceEncodingServiceServer is the server API for ResourceEncodingService service.
+// All implementations must embed UnimplementedResourceEncodingServiceServer
 // for forward compatibility
-type ResourcEncodingServiceServer interface {
+type ResourceEncodingServiceServer interface {
 	// Resource Mappings
 	ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error)
 	GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error)
@@ -225,408 +225,408 @@ type ResourcEncodingServiceServer interface {
 	CreateResourceGroup(context.Context, *CreateResourceGroupRequest) (*CreateResourceGroupResponse, error)
 	UpdateResourceGroup(context.Context, *UpdateResourceGroupRequest) (*UpdateResourceGroupResponse, error)
 	DeleteResourceGroup(context.Context, *DeleteResourceGroupRequest) (*DeleteResourceGroupResponse, error)
-	mustEmbedUnimplementedResourcEncodingServiceServer()
+	mustEmbedUnimplementedResourceEncodingServiceServer()
 }
 
-// UnimplementedResourcEncodingServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedResourcEncodingServiceServer struct {
+// UnimplementedResourceEncodingServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedResourceEncodingServiceServer struct {
 }
 
-func (UnimplementedResourcEncodingServiceServer) ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListResourceMappings not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetResourceMapping not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) CreateResourceMapping(context.Context, *CreateResourceMappingRequest) (*CreateResourceMappingResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) CreateResourceMapping(context.Context, *CreateResourceMappingRequest) (*CreateResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateResourceMapping not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) UpdateResourceMapping(context.Context, *UpdateResourceMappingRequest) (*UpdateResourceMappingResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) UpdateResourceMapping(context.Context, *UpdateResourceMappingRequest) (*UpdateResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateResourceMapping not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) DeleteResourceMapping(context.Context, *DeleteResourceMappingRequest) (*DeleteResourceMappingResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) DeleteResourceMapping(context.Context, *DeleteResourceMappingRequest) (*DeleteResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteResourceMapping not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) ListResourceSynonyms(context.Context, *ListResourceSynonymsRequest) (*ListResourceSynonymsResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) ListResourceSynonyms(context.Context, *ListResourceSynonymsRequest) (*ListResourceSynonymsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListResourceSynonyms not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) GetResourceSynonym(context.Context, *GetResourceSynonymRequest) (*GetResourceSynonymResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) GetResourceSynonym(context.Context, *GetResourceSynonymRequest) (*GetResourceSynonymResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetResourceSynonym not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) CreateResourceSynonym(context.Context, *CreateResourceSynonymRequest) (*CreateResourceSynonymResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) CreateResourceSynonym(context.Context, *CreateResourceSynonymRequest) (*CreateResourceSynonymResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateResourceSynonym not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) UpdateResourceSynonym(context.Context, *UpdateResourceSynonymRequest) (*UpdateResourceSynonymResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) UpdateResourceSynonym(context.Context, *UpdateResourceSynonymRequest) (*UpdateResourceSynonymResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateResourceSynonym not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) DeleteResourceSynonym(context.Context, *DeleteResourceSynonymRequest) (*DeleteResourceSynonymResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) DeleteResourceSynonym(context.Context, *DeleteResourceSynonymRequest) (*DeleteResourceSynonymResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteResourceSynonym not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) ListResourceGroups(context.Context, *ListResourceGroupsRequest) (*ListResourceGroupsResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) ListResourceGroups(context.Context, *ListResourceGroupsRequest) (*ListResourceGroupsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListResourceGroups not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) GetResourceGroup(context.Context, *GetResourceGroupRequest) (*GetResourceGroupResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) GetResourceGroup(context.Context, *GetResourceGroupRequest) (*GetResourceGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetResourceGroup not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) CreateResourceGroup(context.Context, *CreateResourceGroupRequest) (*CreateResourceGroupResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) CreateResourceGroup(context.Context, *CreateResourceGroupRequest) (*CreateResourceGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateResourceGroup not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) UpdateResourceGroup(context.Context, *UpdateResourceGroupRequest) (*UpdateResourceGroupResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) UpdateResourceGroup(context.Context, *UpdateResourceGroupRequest) (*UpdateResourceGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateResourceGroup not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) DeleteResourceGroup(context.Context, *DeleteResourceGroupRequest) (*DeleteResourceGroupResponse, error) {
+func (UnimplementedResourceEncodingServiceServer) DeleteResourceGroup(context.Context, *DeleteResourceGroupRequest) (*DeleteResourceGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteResourceGroup not implemented")
 }
-func (UnimplementedResourcEncodingServiceServer) mustEmbedUnimplementedResourcEncodingServiceServer() {
+func (UnimplementedResourceEncodingServiceServer) mustEmbedUnimplementedResourceEncodingServiceServer() {
 }
 
-// UnsafeResourcEncodingServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ResourcEncodingServiceServer will
+// UnsafeResourceEncodingServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ResourceEncodingServiceServer will
 // result in compilation errors.
-type UnsafeResourcEncodingServiceServer interface {
-	mustEmbedUnimplementedResourcEncodingServiceServer()
+type UnsafeResourceEncodingServiceServer interface {
+	mustEmbedUnimplementedResourceEncodingServiceServer()
 }
 
-func RegisterResourcEncodingServiceServer(s grpc.ServiceRegistrar, srv ResourcEncodingServiceServer) {
-	s.RegisterService(&ResourcEncodingService_ServiceDesc, srv)
+func RegisterResourceEncodingServiceServer(s grpc.ServiceRegistrar, srv ResourceEncodingServiceServer) {
+	s.RegisterService(&ResourceEncodingService_ServiceDesc, srv)
 }
 
-func _ResourcEncodingService_ListResourceMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_ListResourceMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListResourceMappingsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).ListResourceMappings(ctx, in)
+		return srv.(ResourceEncodingServiceServer).ListResourceMappings(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_ListResourceMappings_FullMethodName,
+		FullMethod: ResourceEncodingService_ListResourceMappings_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).ListResourceMappings(ctx, req.(*ListResourceMappingsRequest))
+		return srv.(ResourceEncodingServiceServer).ListResourceMappings(ctx, req.(*ListResourceMappingsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_GetResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_GetResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetResourceMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).GetResourceMapping(ctx, in)
+		return srv.(ResourceEncodingServiceServer).GetResourceMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_GetResourceMapping_FullMethodName,
+		FullMethod: ResourceEncodingService_GetResourceMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).GetResourceMapping(ctx, req.(*GetResourceMappingRequest))
+		return srv.(ResourceEncodingServiceServer).GetResourceMapping(ctx, req.(*GetResourceMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_CreateResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_CreateResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateResourceMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).CreateResourceMapping(ctx, in)
+		return srv.(ResourceEncodingServiceServer).CreateResourceMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_CreateResourceMapping_FullMethodName,
+		FullMethod: ResourceEncodingService_CreateResourceMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).CreateResourceMapping(ctx, req.(*CreateResourceMappingRequest))
+		return srv.(ResourceEncodingServiceServer).CreateResourceMapping(ctx, req.(*CreateResourceMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_UpdateResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_UpdateResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateResourceMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).UpdateResourceMapping(ctx, in)
+		return srv.(ResourceEncodingServiceServer).UpdateResourceMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_UpdateResourceMapping_FullMethodName,
+		FullMethod: ResourceEncodingService_UpdateResourceMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).UpdateResourceMapping(ctx, req.(*UpdateResourceMappingRequest))
+		return srv.(ResourceEncodingServiceServer).UpdateResourceMapping(ctx, req.(*UpdateResourceMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_DeleteResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_DeleteResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteResourceMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).DeleteResourceMapping(ctx, in)
+		return srv.(ResourceEncodingServiceServer).DeleteResourceMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_DeleteResourceMapping_FullMethodName,
+		FullMethod: ResourceEncodingService_DeleteResourceMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).DeleteResourceMapping(ctx, req.(*DeleteResourceMappingRequest))
+		return srv.(ResourceEncodingServiceServer).DeleteResourceMapping(ctx, req.(*DeleteResourceMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_ListResourceSynonyms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_ListResourceSynonyms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListResourceSynonymsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).ListResourceSynonyms(ctx, in)
+		return srv.(ResourceEncodingServiceServer).ListResourceSynonyms(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_ListResourceSynonyms_FullMethodName,
+		FullMethod: ResourceEncodingService_ListResourceSynonyms_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).ListResourceSynonyms(ctx, req.(*ListResourceSynonymsRequest))
+		return srv.(ResourceEncodingServiceServer).ListResourceSynonyms(ctx, req.(*ListResourceSynonymsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_GetResourceSynonym_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_GetResourceSynonym_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetResourceSynonymRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).GetResourceSynonym(ctx, in)
+		return srv.(ResourceEncodingServiceServer).GetResourceSynonym(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_GetResourceSynonym_FullMethodName,
+		FullMethod: ResourceEncodingService_GetResourceSynonym_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).GetResourceSynonym(ctx, req.(*GetResourceSynonymRequest))
+		return srv.(ResourceEncodingServiceServer).GetResourceSynonym(ctx, req.(*GetResourceSynonymRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_CreateResourceSynonym_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_CreateResourceSynonym_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateResourceSynonymRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).CreateResourceSynonym(ctx, in)
+		return srv.(ResourceEncodingServiceServer).CreateResourceSynonym(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_CreateResourceSynonym_FullMethodName,
+		FullMethod: ResourceEncodingService_CreateResourceSynonym_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).CreateResourceSynonym(ctx, req.(*CreateResourceSynonymRequest))
+		return srv.(ResourceEncodingServiceServer).CreateResourceSynonym(ctx, req.(*CreateResourceSynonymRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_UpdateResourceSynonym_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_UpdateResourceSynonym_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateResourceSynonymRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).UpdateResourceSynonym(ctx, in)
+		return srv.(ResourceEncodingServiceServer).UpdateResourceSynonym(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_UpdateResourceSynonym_FullMethodName,
+		FullMethod: ResourceEncodingService_UpdateResourceSynonym_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).UpdateResourceSynonym(ctx, req.(*UpdateResourceSynonymRequest))
+		return srv.(ResourceEncodingServiceServer).UpdateResourceSynonym(ctx, req.(*UpdateResourceSynonymRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_DeleteResourceSynonym_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_DeleteResourceSynonym_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteResourceSynonymRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).DeleteResourceSynonym(ctx, in)
+		return srv.(ResourceEncodingServiceServer).DeleteResourceSynonym(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_DeleteResourceSynonym_FullMethodName,
+		FullMethod: ResourceEncodingService_DeleteResourceSynonym_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).DeleteResourceSynonym(ctx, req.(*DeleteResourceSynonymRequest))
+		return srv.(ResourceEncodingServiceServer).DeleteResourceSynonym(ctx, req.(*DeleteResourceSynonymRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_ListResourceGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_ListResourceGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListResourceGroupsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).ListResourceGroups(ctx, in)
+		return srv.(ResourceEncodingServiceServer).ListResourceGroups(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_ListResourceGroups_FullMethodName,
+		FullMethod: ResourceEncodingService_ListResourceGroups_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).ListResourceGroups(ctx, req.(*ListResourceGroupsRequest))
+		return srv.(ResourceEncodingServiceServer).ListResourceGroups(ctx, req.(*ListResourceGroupsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_GetResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_GetResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetResourceGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).GetResourceGroup(ctx, in)
+		return srv.(ResourceEncodingServiceServer).GetResourceGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_GetResourceGroup_FullMethodName,
+		FullMethod: ResourceEncodingService_GetResourceGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).GetResourceGroup(ctx, req.(*GetResourceGroupRequest))
+		return srv.(ResourceEncodingServiceServer).GetResourceGroup(ctx, req.(*GetResourceGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_CreateResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_CreateResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateResourceGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).CreateResourceGroup(ctx, in)
+		return srv.(ResourceEncodingServiceServer).CreateResourceGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_CreateResourceGroup_FullMethodName,
+		FullMethod: ResourceEncodingService_CreateResourceGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).CreateResourceGroup(ctx, req.(*CreateResourceGroupRequest))
+		return srv.(ResourceEncodingServiceServer).CreateResourceGroup(ctx, req.(*CreateResourceGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_UpdateResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_UpdateResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateResourceGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).UpdateResourceGroup(ctx, in)
+		return srv.(ResourceEncodingServiceServer).UpdateResourceGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_UpdateResourceGroup_FullMethodName,
+		FullMethod: ResourceEncodingService_UpdateResourceGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).UpdateResourceGroup(ctx, req.(*UpdateResourceGroupRequest))
+		return srv.(ResourceEncodingServiceServer).UpdateResourceGroup(ctx, req.(*UpdateResourceGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourcEncodingService_DeleteResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceEncodingService_DeleteResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteResourceGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourcEncodingServiceServer).DeleteResourceGroup(ctx, in)
+		return srv.(ResourceEncodingServiceServer).DeleteResourceGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourcEncodingService_DeleteResourceGroup_FullMethodName,
+		FullMethod: ResourceEncodingService_DeleteResourceGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourcEncodingServiceServer).DeleteResourceGroup(ctx, req.(*DeleteResourceGroupRequest))
+		return srv.(ResourceEncodingServiceServer).DeleteResourceGroup(ctx, req.(*DeleteResourceGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// ResourcEncodingService_ServiceDesc is the grpc.ServiceDesc for ResourcEncodingService service.
+// ResourceEncodingService_ServiceDesc is the grpc.ServiceDesc for ResourceEncodingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ResourcEncodingService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "acre.ResourcEncodingService",
-	HandlerType: (*ResourcEncodingServiceServer)(nil),
+var ResourceEncodingService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "acre.ResourceEncodingService",
+	HandlerType: (*ResourceEncodingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "ListResourceMappings",
-			Handler:    _ResourcEncodingService_ListResourceMappings_Handler,
+			Handler:    _ResourceEncodingService_ListResourceMappings_Handler,
 		},
 		{
 			MethodName: "GetResourceMapping",
-			Handler:    _ResourcEncodingService_GetResourceMapping_Handler,
+			Handler:    _ResourceEncodingService_GetResourceMapping_Handler,
 		},
 		{
 			MethodName: "CreateResourceMapping",
-			Handler:    _ResourcEncodingService_CreateResourceMapping_Handler,
+			Handler:    _ResourceEncodingService_CreateResourceMapping_Handler,
 		},
 		{
 			MethodName: "UpdateResourceMapping",
-			Handler:    _ResourcEncodingService_UpdateResourceMapping_Handler,
+			Handler:    _ResourceEncodingService_UpdateResourceMapping_Handler,
 		},
 		{
 			MethodName: "DeleteResourceMapping",
-			Handler:    _ResourcEncodingService_DeleteResourceMapping_Handler,
+			Handler:    _ResourceEncodingService_DeleteResourceMapping_Handler,
 		},
 		{
 			MethodName: "ListResourceSynonyms",
-			Handler:    _ResourcEncodingService_ListResourceSynonyms_Handler,
+			Handler:    _ResourceEncodingService_ListResourceSynonyms_Handler,
 		},
 		{
 			MethodName: "GetResourceSynonym",
-			Handler:    _ResourcEncodingService_GetResourceSynonym_Handler,
+			Handler:    _ResourceEncodingService_GetResourceSynonym_Handler,
 		},
 		{
 			MethodName: "CreateResourceSynonym",
-			Handler:    _ResourcEncodingService_CreateResourceSynonym_Handler,
+			Handler:    _ResourceEncodingService_CreateResourceSynonym_Handler,
 		},
 		{
 			MethodName: "UpdateResourceSynonym",
-			Handler:    _ResourcEncodingService_UpdateResourceSynonym_Handler,
+			Handler:    _ResourceEncodingService_UpdateResourceSynonym_Handler,
 		},
 		{
 			MethodName: "DeleteResourceSynonym",
-			Handler:    _ResourcEncodingService_DeleteResourceSynonym_Handler,
+			Handler:    _ResourceEncodingService_DeleteResourceSynonym_Handler,
 		},
 		{
 			MethodName: "ListResourceGroups",
-			Handler:    _ResourcEncodingService_ListResourceGroups_Handler,
+			Handler:    _ResourceEncodingService_ListResourceGroups_Handler,
 		},
 		{
 			MethodName: "GetResourceGroup",
-			Handler:    _ResourcEncodingService_GetResourceGroup_Handler,
+			Handler:    _ResourceEncodingService_GetResourceGroup_Handler,
 		},
 		{
 			MethodName: "CreateResourceGroup",
-			Handler:    _ResourcEncodingService_CreateResourceGroup_Handler,
+			Handler:    _ResourceEncodingService_CreateResourceGroup_Handler,
 		},
 		{
 			MethodName: "UpdateResourceGroup",
-			Handler:    _ResourcEncodingService_UpdateResourceGroup_Handler,
+			Handler:    _ResourceEncodingService_UpdateResourceGroup_Handler,
 		},
 		{
 			MethodName: "DeleteResourceGroup",
-			Handler:    _ResourcEncodingService_DeleteResourceGroup_Handler,
+			Handler:    _ResourceEncodingService_DeleteResourceGroup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

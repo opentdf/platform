@@ -16,10 +16,10 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/logger"
 	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/pkg/services/acre"
-	"github.com/opentdf/opentdf-v2-poc/pkg/services/acse"
-	"github.com/opentdf/opentdf-v2-poc/pkg/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/pkg/services/keyaccessgrants"
+	"github.com/opentdf/opentdf-v2-poc/services/acre"
+	"github.com/opentdf/opentdf-v2-poc/services/acse"
+	"github.com/opentdf/opentdf-v2-poc/services/attributes"
+	"github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
 

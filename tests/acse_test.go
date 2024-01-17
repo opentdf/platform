@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	"github.com/opentdf/opentdf-v2-poc/gen/acse"
+	"github.com/opentdf/opentdf-v2-poc/sdk/acse"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

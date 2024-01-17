@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/opentdf/opentdf-v2-poc/gen/acre"
-	"github.com/opentdf/opentdf-v2-poc/gen/common"
+	"github.com/opentdf/opentdf-v2-poc/sdk/acre"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
 )

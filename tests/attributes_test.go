@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/opentdf/opentdf-v2-poc/gen/attributes"
-	"github.com/opentdf/opentdf-v2-poc/gen/common"
-	"github.com/opentdf/opentdf-v2-poc/pkg/services"
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
+	"github.com/opentdf/opentdf-v2-poc/services"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -46,16 +46,16 @@ func (suite *AttributesSuite) SetupSuite() {
 		suite.T().Fatal(err)
 	}
 
-	var attributesDef = make([]*attributes.AttributeDefinition, 0)
+	var attrs = make([]*attributes.AttributeDefinition, 0)
 
-	err = json.Unmarshal(testData, &attributesDef)
+	err = json.Unmarshal(testData, &attrs)
 
 	if err != nil {
 		slog.Error("could not unmarshal attributes.json", slog.String("error", err.Error()))
 		suite.T().Fatal(err)
 	}
 
-	for _, attr := range attributesDef {
+	for _, attr := range attrs {
 		_, err = suite.client.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
 			Definition: attr,
 		})

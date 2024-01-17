@@ -51,6 +51,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 func newSDK(conn *grpc.ClientConn) *SDK {
 	return &SDK{
+		conn:             conn,
 		Attributes:       attributes.NewAttributesServiceClient(conn),
 		ResourceEncoding: acre.NewResourcEncodingServiceClient(conn),
 		SubjectEncoding:  acse.NewSubjectEncodingServiceClient(conn),

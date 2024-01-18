@@ -15,15 +15,37 @@ import "google/api/annotations.proto";
 /*
    Map one or more domain specific terms (synonyms) to an attribute value by reference.
 
-   Example:
-   attributeValueRef: ref http://demo.com/attr/Classification/value/Confidential
-   synonymRef:
-     terms: ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+   Where: attributeId is an id of the following attribute
 
-   Example 2:
-   attributeValueRef: ref to http://demo.com/attr/Classification/Confidential
-   synonymRef:
-     terms: ["OFFICIAL-SENSITIVE"]
+     FQN: http://demo.com/attr/Classification/value/Confidential
+     UUID: 12345678-1234-1234-1234-123456789012
+
+   Example Request:
+
+     grpcurl -plaintext -d @ localhost:9000 resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM
+       {
+         "mapping": {
+           "name": "Classification",
+           "attribute_value_id": "12345678-1234-1234-1234-123456789012",
+           "terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+         }
+       }
+     EOM
+
+   Response:
+
+     {
+       "mapping": {
+         "metadata": {
+           "id": "12345678-1234-1234-1234-123456789012",
+           "created_at": "2020-01-01T00:00:00Z",
+           "updated_at": "2020-01-01T00:00:00Z"
+         },
+         "name": "Classification",
+         "attribute_value_id": "12345678-1234-1234-1234-123456789012",
+         "terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+       }
+     }
 
 */
 message ResourceMapping {
@@ -49,7 +71,7 @@ message ListResourceMappingsResponse {
 }
 
 message GetResourceMappingRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
 }
 
 message GetResourceMappingResponse {
@@ -72,159 +94,32 @@ message DeleteResourceMappingRequest {
 }
 message DeleteResourceMappingResponse {}
 
-/*
-   Synonyms
-*/
-
-message ListResourceSynonymsRequest {
-  common.ResourceSelector selector = 1;
-}
-
-message ListResourceSynonymsResponse {
-  repeated Synonyms synonyms = 1;
-}
-
-message GetResourceSynonymRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-}
-
-message GetResourceSynonymResponse {
-  Synonyms synonym = 1;
-}
-
-message CreateResourceSynonymRequest {
-  Synonyms synonym = 1 [(buf.validate.field).required = true];
-}
-message CreateResourceSynonymResponse {}
-
-message UpdateResourceSynonymRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-  Synonyms synonym = 2 [(buf.validate.field).required = true];
-}
-message UpdateResourceSynonymResponse {}
-
-message DeleteResourceSynonymRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-}
-message DeleteResourceSynonymResponse {}
-
-/*
-   Resource Groups
-*/
-message ListResourceGroupsRequest {
-  common.ResourceSelector selector = 1;
-}
-
-message ListResourceGroupsResponse {
-  repeated ResourceGroup groups = 1;
-}
-
-message GetResourceGroupRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-}
-
-message GetResourceGroupResponse {
-  ResourceGroup group = 1;
-}
-
-message CreateResourceGroupRequest {
-  ResourceGroup group = 1 [(buf.validate.field).required = true];
-}
-message CreateResourceGroupResponse {}
-
-message UpdateResourceGroupRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-  ResourceGroup group = 2 [(buf.validate.field).required = true];
-}
-message UpdateResourceGroupResponse {}
-
-message DeleteResourceGroupRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-}
-message DeleteResourceGroupResponse {}
-
 service ResourceEncodingService {
   /*
      Resource Mappings
   */
   rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
-    option (google.api.http) = {get: "/v1/encoding/resource/mappings"};
+    option (google.api.http) = {get: "/resource-mappings"};
   }
   rpc GetResourceMapping(GetResourceMappingRequest) returns (GetResourceMappingResponse) {
-    option (google.api.http) = {get: "/v1/encoding/resource/mappings/{id}"};
+    option (google.api.http) = {get: "/resource-mappings/{id}"};
   }
 
   rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {
     option (google.api.http) = {
-      post: "/v1/encoding/resource/mappings"
+      post: "/resource-mappings"
       body: "mapping"
     };
   }
 
   rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
     option (google.api.http) = {
-      post: "/v1/encoding/resource/mappings/{id}"
+      post: "/resource-mappings/{id}"
       body: "mapping"
     };
   }
 
   rpc DeleteResourceMapping(DeleteResourceMappingRequest) returns (DeleteResourceMappingResponse) {
-    option (google.api.http) = {delete: "/v1/encoding/resource/mappings/{id}"};
-  }
-
-  /*
-     Synonyms
-  */
-  rpc ListResourceSynonyms(ListResourceSynonymsRequest) returns (ListResourceSynonymsResponse) {
-    option (google.api.http) = {get: "/v1/encoding/resource/synonyms"};
-  }
-  rpc GetResourceSynonym(GetResourceSynonymRequest) returns (GetResourceSynonymResponse) {
-    option (google.api.http) = {get: "/v1/encoding/resource/synonyms/{id}"};
-  }
-
-  rpc CreateResourceSynonym(CreateResourceSynonymRequest) returns (CreateResourceSynonymResponse) {
-    option (google.api.http) = {
-      post: "/v1/encoding/resource/synonyms"
-      body: "synonym"
-    };
-  }
-
-  rpc UpdateResourceSynonym(UpdateResourceSynonymRequest) returns (UpdateResourceSynonymResponse) {
-    option (google.api.http) = {
-      post: "/v1/encoding/resource/synonyms/{id}"
-      body: "synonym"
-    };
-  }
-
-  rpc DeleteResourceSynonym(DeleteResourceSynonymRequest) returns (DeleteResourceSynonymResponse) {
-    option (google.api.http) = {delete: "/v1/encoding/resource/synonyms/{id}"};
-  }
-
-  /*
-     Resource Groups
-  */
-  rpc ListResourceGroups(ListResourceGroupsRequest) returns (ListResourceGroupsResponse) {
-    option (google.api.http) = {get: "/v1/encoding/resource/groups"};
-  }
-  rpc GetResourceGroup(GetResourceGroupRequest) returns (GetResourceGroupResponse) {
-    option (google.api.http) = {get: "/v1/encoding/resource/groups/{id}"};
-  }
-
-  rpc CreateResourceGroup(CreateResourceGroupRequest) returns (CreateResourceGroupResponse) {
-    option (google.api.http) = {
-      post: "/v1/encoding/resource/groups"
-      body: "group"
-    };
-  }
-
-  rpc UpdateResourceGroup(UpdateResourceGroupRequest) returns (UpdateResourceGroupResponse) {
-    option (google.api.http) = {
-      post: "/v1/encoding/resource/groups/{id}"
-      body: "group"
-    };
-  }
-
-  rpc DeleteResourceGroup(DeleteResourceGroupRequest) returns (DeleteResourceGroupResponse) {
-    option (google.api.http) = {delete: "/v1/encoding/resource/groups/{id}"};
+    option (google.api.http) = {delete: "/resource-mappings/{id}"};
   }
 }

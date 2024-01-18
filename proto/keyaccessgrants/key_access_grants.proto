@@ -11,9 +11,12 @@ import "google/api/annotations.proto";
    Descriptor for a KAS
 */
 message KeyAccessServer {
-  common.ResourceDescriptor descriptor = 1;
+  common.PolicyMetadata metadata = 1;
+
+  string id = 2;
+
   //Kas Url
-  string url = 2 [
+  string url = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).cel = {
       id: "fqn_format",
@@ -21,78 +24,9 @@ message KeyAccessServer {
       expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
     }
   ];
+
   //public key - optional since can also be retrieved via url
-  string public_key = 3;
-}
-
-/*
-   Shareable set of key access grants to help with encryption workflows
-*/
-message KeyAccessGrants {
-  common.ResourceDescriptor descriptor = 1;
-  /*
-     List of available key access servers
-     Example:
-     - id: KAS-USA-1
-       url: http://....
-       pubKey=xxx
-     - ....
-  */
-  repeated KeyAccessServer key_access_servers = 2;
-  // list of key access grants
-  repeated KeyAccessGrant key_access_grants = 3;
-}
-
-/*
-   Defines encryption settings for an attribute and it's values
-
-   Example: All attribute values for attribute "Classification":
-   attributeDefinition:
-     descriptor:
-       fqn: http://demo.com/attr/Classification
-     type: ALL_OF
-   attributeValueGrants:
-     - kasIds: [KAS-USA-1, KAS-GBR-1]
-
-   Example: Per attribute values for attribute "Classification":
-   attributeDefinition:
-     descriptor:
-       fqn: http://demo.com/attr/Classification
-     type: ALL_OF
-   attributeValueGrants:
-     - kasIds: [KAS-USA-1, KAS-GBR-1]
-       value:
-        descriptor:
-          value: TopSecret
-     - kasIds: [KAS-USA-3, KAS-GBR-2]
-       value:
-        descriptor:
-          value: Secret
-*/
-message KeyAccessGrant {
-  //the attribute associated with this
-  attributes.AttributeDefinition attribute_definition = 1;
-  // attribute value settings; if empty then applies to all values
-  repeated KeyAccessGrantAttributeValue attribute_value_grants = 2;
-}
-
-/*
-   Define the attribute value -> prioritized key access servers
-
-   Example: Apply to all attribute value for enclosed attribute definition:
-   kasIds: [KAS-USA-1, KAS-GBR-1]
-
-   Example: Applies to only single attribute value
-   kasIds: [KAS-USA-1, KAS-GBR-1]
-   value:
-     descriptor:
-       value: FVEY
-*/
-message KeyAccessGrantAttributeValue {
-  // optional - if this is empty - then applies to all attribute values of the enclosed attribute definition
-  attributes.AttributeValueReference value = 1;
-  //list of key access server ordered by priority.
-  repeated string kas_ids = 2;
+  string public_key = 4;
 }
 
 message GetKeyAccessGrantRequest {

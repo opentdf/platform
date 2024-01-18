@@ -6,74 +6,65 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 
-// Just a set of attributes
-message AttributeSet {
-  common.ResourceDescriptor descriptor = 1;
-  repeated AttributeDefinition definitions = 2;
+message Attribute {
+  // Namespace namespace = 1;
+  AttributeDefinition definition = 1;
+  AttributeDefinitionValue value = 2;
 }
 
 // Attribute Definition
 message AttributeDefinition {
   enum AttributeRuleType {
-    ATTRIBUTE_RULE_TYPE_UNSPECIFIED = 0;
-    ATTRIBUTE_RULE_TYPE_ALL_OF = 1;
-    ATTRIBUTE_RULE_TYPE_ANY_OF = 2;
-    ATTRIBUTE_RULE_TYPE_HIERARCHICAL = 3;
+    UNSPECIFIED = 0;
+    ALL_OF = 1;
+    ANY_OF = 2;
+    HIERARCHY = 3;
   }
-  common.ResourceDescriptor descriptor = 1;
+  // Optional metadata for the attribute definition
+  common.PolicyMetadata metadata = 1;
+
+  // generated uuid in database
+  string id = 2;
+
+  // namespace of the attribute
+  string namespace_id = 3 [(buf.validate.field).required = true];
+
   //attribute name
-  string name = 2 [(buf.validate.field).required = true];
+  string name = 4 [(buf.validate.field).required = true];
+
   // attribute rule enum
-  AttributeRuleType rule = 3 [
+  AttributeRuleType rule = 5 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
-  // possible values
-  repeated AttributeDefinitionValue values = 4;
-
-  //optional attribute group by filtering rules
-  repeated AttributeDefinitionValue group_by = 9;
-}
-
-// Reference to an attribute value, one of descriptor or embedded value
-message AttributeDefinitionReference {
-  oneof ref {
-    common.ResourceDescriptor descriptor = 1;
-    AttributeDefinition definition = 2;
-  }
 }
 
 // Definition of a single attribute value
 message AttributeDefinitionValue {
-  common.ResourceDescriptor descriptor = 1;
-  string value = 2;
+  common.PolicyMetadata metadata = 1;
+
+  // generated uuid in database
+  string id = 2;
+
+  string attribute_definition_id = 3 [(buf.validate.field).required = true];
+
+  string value = 4;
+
+  // list of attribute values that this value is related to (attribute group)
+  repeated string members = 5;
+
   //TODO - optional lock down pub key format if needed.  Per ATTR KEY?
-  string attribute_public_key = 3;
+  string attribute_public_key = 6;
 }
 
-// Reference to an attribute value, one of descriptor or embedded value
-message AttributeValueReference {
-  oneof ref {
-    common.ResourceDescriptor descriptor = 1;
-    AttributeDefinitionValue attribute_value = 2;
-  }
+message AttributeDefinitionKeyAccessGrant {
+  string attribute_definition_id = 1;
+  string key_access_servers_id = 2;
 }
 
-/*
-   represent an attribute value as a group with other attribute values as members
-
-   Example for Org1 FVEY:
-   id: 1
-   version: 1.0
-   namespace: demo.com
-   groupValue: http://demo.com/attr/relTo/FVEY
-   members: [http://demo.com/attr/relTo/USA,http://demo.com/attr/relTo/GBR,...]
-
-*/
-message AttributeGroup {
-  common.ResourceDescriptor descriptor = 1;
-  AttributeValueReference group_value = 2;
-  repeated AttributeValueReference member_values = 3;
+message AttributeValueKeyAccessGrant {
+  string attribute_value_id = 1;
+  string key_access_servers_id = 2;
 }
 
 /*
@@ -81,26 +72,25 @@ message AttributeGroup {
 */
 
 message GetAttributeRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
 }
 message GetAttributeResponse {
-  AttributeDefinition definition = 1;
+  Attribute attribute = 1;
 }
 
-message ListAttributesRequest {
-  common.ResourceSelector selector = 1;
-}
+message ListAttributesRequest {}
+
 message ListAttributesResponse {
-  repeated AttributeDefinition definitions = 1;
+  repeated Attribute attributes = 1;
 }
 
-message CreateAttributeRequest {
+message CreateAttributeDefinitionRequest {
   AttributeDefinition definition = 1 [(buf.validate.field).required = true];
 }
-message CreateAttributeResponse {}
+message CreateAttributeDefinitionResponse {}
 
-message UpdateAttributeRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
+message UpdateAttributeDefinitionRequest {
+  string id = 1 [(buf.validate.field).required = true];
   AttributeDefinition definition = 2 [(buf.validate.field).required = true];
 }
 message UpdateAttributeResponse {}

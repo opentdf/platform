@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package acse;
+package subjectmapping;
 
 import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
@@ -27,20 +27,24 @@ import "google/api/annotations.proto";
 
 */
 message SubjectMapping {
-  common.ResourceDescriptor descriptor = 1;
+  common.PolicyMetadata metadata = 1;
 
   enum Operator {
-    OPERATOR_UNSPECIFIED = 0;
-    OPERATOR_IN = 1;
-    OPERATOR_NOT_IN = 2;
+    UNSPECIFIED = 0;
+    IN = 1;
+    NOT_IN = 2;
   }
   //TODO should this be a list of values?
+
   // Attribute Value to be mapped to
-  attributes.AttributeValueReference attribute_value_ref = 2;
+  string attribute_value_id = 2;
+
   // Resource Attribute Key; NOT Attribute Definition Attribute name
   string subject_attribute = 3;
+
   // The list of comparison values for a resource's <attribute> value
   repeated string subject_values = 4;
+
   // the operator
   Operator operator = 5 [
     (buf.validate.field).enum.defined_only = true,

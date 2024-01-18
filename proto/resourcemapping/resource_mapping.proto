@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package acre;
+package resourcemapping;
 
 import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
@@ -11,14 +11,6 @@ import "google/api/annotations.proto";
    Access Control Resource Encodings (ACRE).  Structures supporting Resources and Attributes mappings
 
 */
-
-/*
-   A modular set of terms that are the "same".  Could be used across resource mappings
-*/
-message Synonyms {
-  common.ResourceDescriptor descriptor = 1;
-  repeated string terms = 2;
-}
 
 /*
    Map one or more domain specific terms (synonyms) to an attribute value by reference.
@@ -35,45 +27,13 @@ message Synonyms {
 
 */
 message ResourceMapping {
-  common.ResourceDescriptor descriptor = 1;
-  attributes.AttributeValueReference attribute_value_ref = 2;
-  SynonymRef synonym_ref = 3;
-}
+  common.PolicyMetadata metadata = 1;
 
-/*
-   represents modeling an resource code/tag as a group . Use if not in the bounds of an attribute
-   definition.  Otherwise use attributes.AttributeGroup
+  string name = 2;
 
-   Example:
-     value: NATO
-     members: [USA, GBR, etc.]
-*/
-message ResourceGroup {
-  common.ResourceDescriptor descriptor = 1;
-  //group value
-  string value = 2;
-  //List of member values
-  repeated string members = 3;
-}
+  string attribute_value_id = 3;
 
-// Reference to a ResourceMapping, one of descriptor or embedded value
-message ResourceMappingRef {
-  oneof ref {
-    common.ResourceDescriptor descriptor = 1;
-    ResourceMapping resource_mapping = 2;
-  }
-}
-
-// Reference to a Synonyms, one of descriptor or embedded value
-message SynonymRef {
-  oneof ref {
-    common.ResourceDescriptor descriptor = 1;
-    Synonyms synonyms = 2;
-  }
-}
-
-message ResourceEncodingRequestOptions {
-  common.ResourceDescriptor descriptor = 1;
+  repeated string terms = 4;
 }
 
 /*

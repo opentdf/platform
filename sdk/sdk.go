@@ -7,6 +7,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/acse"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/keyaccessgrants"
+	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -25,6 +26,7 @@ func (c Error) Error() string {
 type SDK struct {
 	conn             *grpc.ClientConn
 	Attributes       attributes.AttributesServiceClient
+	Namespaces       namespaces.NamespaceServiceClient
 	ResourceEncoding acre.ResourcEncodingServiceClient
 	SubjectEncoding  acse.SubjectEncodingServiceClient
 	KeyAccessGrants  keyaccessgrants.KeyAccessGrantsServiceClient
@@ -53,6 +55,7 @@ func newSDK(conn *grpc.ClientConn) *SDK {
 	return &SDK{
 		conn:             conn,
 		Attributes:       attributes.NewAttributesServiceClient(conn),
+		Namespaces:       namespaces.NewNamespaceServiceClient(conn),
 		ResourceEncoding: acre.NewResourcEncodingServiceClient(conn),
 		SubjectEncoding:  acse.NewSubjectEncodingServiceClient(conn),
 		KeyAccessGrants:  keyaccessgrants.NewKeyAccessGrantsServiceClient(conn),

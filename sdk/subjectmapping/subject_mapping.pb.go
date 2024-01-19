@@ -24,52 +24,52 @@ const (
 )
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
-type SubjectMapping_SubjectMappingOperatorType int32
+type SubjectMapping_SubjectMappingOperatorEnum int32
 
 const (
-	SubjectMapping_SUBJECT_MAPPING_OPERATOR_TYPE_UNSPECIFIED SubjectMapping_SubjectMappingOperatorType = 0
-	SubjectMapping_SUBJECT_MAPPING_OPERATOR_TYPE_IN          SubjectMapping_SubjectMappingOperatorType = 1
-	SubjectMapping_SUBJECT_MAPPING_OPERATOR_TYPE_NOT_IN      SubjectMapping_SubjectMappingOperatorType = 2
+	SubjectMapping_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED SubjectMapping_SubjectMappingOperatorEnum = 0
+	SubjectMapping_SUBJECT_MAPPING_OPERATOR_ENUM_IN          SubjectMapping_SubjectMappingOperatorEnum = 1
+	SubjectMapping_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN      SubjectMapping_SubjectMappingOperatorEnum = 2
 )
 
-// Enum value maps for SubjectMapping_SubjectMappingOperatorType.
+// Enum value maps for SubjectMapping_SubjectMappingOperatorEnum.
 var (
-	SubjectMapping_SubjectMappingOperatorType_name = map[int32]string{
-		0: "SUBJECT_MAPPING_OPERATOR_TYPE_UNSPECIFIED",
-		1: "SUBJECT_MAPPING_OPERATOR_TYPE_IN",
-		2: "SUBJECT_MAPPING_OPERATOR_TYPE_NOT_IN",
+	SubjectMapping_SubjectMappingOperatorEnum_name = map[int32]string{
+		0: "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+		1: "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
+		2: "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
 	}
-	SubjectMapping_SubjectMappingOperatorType_value = map[string]int32{
-		"SUBJECT_MAPPING_OPERATOR_TYPE_UNSPECIFIED": 0,
-		"SUBJECT_MAPPING_OPERATOR_TYPE_IN":          1,
-		"SUBJECT_MAPPING_OPERATOR_TYPE_NOT_IN":      2,
+	SubjectMapping_SubjectMappingOperatorEnum_value = map[string]int32{
+		"SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED": 0,
+		"SUBJECT_MAPPING_OPERATOR_ENUM_IN":          1,
+		"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN":      2,
 	}
 )
 
-func (x SubjectMapping_SubjectMappingOperatorType) Enum() *SubjectMapping_SubjectMappingOperatorType {
-	p := new(SubjectMapping_SubjectMappingOperatorType)
+func (x SubjectMapping_SubjectMappingOperatorEnum) Enum() *SubjectMapping_SubjectMappingOperatorEnum {
+	p := new(SubjectMapping_SubjectMappingOperatorEnum)
 	*p = x
 	return p
 }
 
-func (x SubjectMapping_SubjectMappingOperatorType) String() string {
+func (x SubjectMapping_SubjectMappingOperatorEnum) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (SubjectMapping_SubjectMappingOperatorType) Descriptor() protoreflect.EnumDescriptor {
+func (SubjectMapping_SubjectMappingOperatorEnum) Descriptor() protoreflect.EnumDescriptor {
 	return file_subjectmapping_subject_mapping_proto_enumTypes[0].Descriptor()
 }
 
-func (SubjectMapping_SubjectMappingOperatorType) Type() protoreflect.EnumType {
+func (SubjectMapping_SubjectMappingOperatorEnum) Type() protoreflect.EnumType {
 	return &file_subjectmapping_subject_mapping_proto_enumTypes[0]
 }
 
-func (x SubjectMapping_SubjectMappingOperatorType) Number() protoreflect.EnumNumber {
+func (x SubjectMapping_SubjectMappingOperatorEnum) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use SubjectMapping_SubjectMappingOperatorType.Descriptor instead.
-func (SubjectMapping_SubjectMappingOperatorType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use SubjectMapping_SubjectMappingOperatorEnum.Descriptor instead.
+func (SubjectMapping_SubjectMappingOperatorEnum) EnumDescriptor() ([]byte, []int) {
 	return file_subjectmapping_subject_mapping_proto_rawDescGZIP(), []int{0, 0}
 }
 
@@ -134,7 +134,7 @@ type SubjectMapping struct {
 	// The list of comparison values for a resource's <attribute> value
 	SubjectValues []string `protobuf:"bytes,4,rep,name=subject_values,json=subjectValues,proto3" json:"subject_values,omitempty"`
 	// the operator
-	Operator SubjectMapping_SubjectMappingOperatorType `protobuf:"varint,5,opt,name=operator,proto3,enum=subjectmapping.SubjectMapping_SubjectMappingOperatorType" json:"operator,omitempty"`
+	Operator SubjectMapping_SubjectMappingOperatorEnum `protobuf:"varint,5,opt,name=operator,proto3,enum=subjectmapping.SubjectMapping_SubjectMappingOperatorEnum" json:"operator,omitempty"`
 }
 
 func (x *SubjectMapping) Reset() {
@@ -197,11 +197,11 @@ func (x *SubjectMapping) GetSubjectValues() []string {
 	return nil
 }
 
-func (x *SubjectMapping) GetOperator() SubjectMapping_SubjectMappingOperatorType {
+func (x *SubjectMapping) GetOperator() SubjectMapping_SubjectMappingOperatorEnum {
 	if x != nil {
 		return x.Operator
 	}
-	return SubjectMapping_SUBJECT_MAPPING_OPERATOR_TYPE_UNSPECIFIED
+	return SubjectMapping_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED
 }
 
 type GetSubjectMappingRequest struct {
@@ -674,18 +674,18 @@ var file_subjectmapping_subject_mapping_proto_rawDesc = []byte{
 	0x0e, 0x32, 0x39, 0x2e, 0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x6d, 0x61, 0x70, 0x70, 0x69,
 	0x6e, 0x67, 0x2e, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e,
 	0x67, 0x2e, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67,
-	0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x54, 0x79, 0x70, 0x65, 0x42, 0x0b, 0xba, 0x48,
+	0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x45, 0x6e, 0x75, 0x6d, 0x42, 0x0b, 0xba, 0x48,
 	0x08, 0xc8, 0x01, 0x01, 0x82, 0x01, 0x02, 0x10, 0x01, 0x52, 0x08, 0x6f, 0x70, 0x65, 0x72, 0x61,
 	0x74, 0x6f, 0x72, 0x22, 0x9b, 0x01, 0x0a, 0x1a, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d,
-	0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x54, 0x79,
-	0x70, 0x65, 0x12, 0x2d, 0x0a, 0x29, 0x53, 0x55, 0x42, 0x4a, 0x45, 0x43, 0x54, 0x5f, 0x4d, 0x41,
-	0x50, 0x50, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x50, 0x45, 0x52, 0x41, 0x54, 0x4f, 0x52, 0x5f, 0x54,
-	0x59, 0x50, 0x45, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10,
+	0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x45, 0x6e,
+	0x75, 0x6d, 0x12, 0x2d, 0x0a, 0x29, 0x53, 0x55, 0x42, 0x4a, 0x45, 0x43, 0x54, 0x5f, 0x4d, 0x41,
+	0x50, 0x50, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x50, 0x45, 0x52, 0x41, 0x54, 0x4f, 0x52, 0x5f, 0x45,
+	0x4e, 0x55, 0x4d, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10,
 	0x00, 0x12, 0x24, 0x0a, 0x20, 0x53, 0x55, 0x42, 0x4a, 0x45, 0x43, 0x54, 0x5f, 0x4d, 0x41, 0x50,
-	0x50, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x50, 0x45, 0x52, 0x41, 0x54, 0x4f, 0x52, 0x5f, 0x54, 0x59,
-	0x50, 0x45, 0x5f, 0x49, 0x4e, 0x10, 0x01, 0x12, 0x28, 0x0a, 0x24, 0x53, 0x55, 0x42, 0x4a, 0x45,
+	0x50, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x50, 0x45, 0x52, 0x41, 0x54, 0x4f, 0x52, 0x5f, 0x45, 0x4e,
+	0x55, 0x4d, 0x5f, 0x49, 0x4e, 0x10, 0x01, 0x12, 0x28, 0x0a, 0x24, 0x53, 0x55, 0x42, 0x4a, 0x45,
 	0x43, 0x54, 0x5f, 0x4d, 0x41, 0x50, 0x50, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x50, 0x45, 0x52, 0x41,
-	0x54, 0x4f, 0x52, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x49, 0x4e, 0x10,
+	0x54, 0x4f, 0x52, 0x5f, 0x45, 0x4e, 0x55, 0x4d, 0x5f, 0x4e, 0x4f, 0x54, 0x5f, 0x49, 0x4e, 0x10,
 	0x02, 0x22, 0x32, 0x0a, 0x18, 0x47, 0x65, 0x74, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d,
 	0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a,
 	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x06, 0xba, 0x48, 0x03, 0xc8, 0x01,
@@ -807,7 +807,7 @@ func file_subjectmapping_subject_mapping_proto_rawDescGZIP() []byte {
 var file_subjectmapping_subject_mapping_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_subjectmapping_subject_mapping_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_subjectmapping_subject_mapping_proto_goTypes = []interface{}{
-	(SubjectMapping_SubjectMappingOperatorType)(0), // 0: subjectmapping.SubjectMapping.SubjectMappingOperatorType
+	(SubjectMapping_SubjectMappingOperatorEnum)(0), // 0: subjectmapping.SubjectMapping.SubjectMappingOperatorEnum
 	(*SubjectMapping)(nil),                         // 1: subjectmapping.SubjectMapping
 	(*GetSubjectMappingRequest)(nil),               // 2: subjectmapping.GetSubjectMappingRequest
 	(*GetSubjectMappingResponse)(nil),              // 3: subjectmapping.GetSubjectMappingResponse
@@ -823,7 +823,7 @@ var file_subjectmapping_subject_mapping_proto_goTypes = []interface{}{
 }
 var file_subjectmapping_subject_mapping_proto_depIdxs = []int32{
 	12, // 0: subjectmapping.SubjectMapping.metadata:type_name -> common.PolicyMetadata
-	0,  // 1: subjectmapping.SubjectMapping.operator:type_name -> subjectmapping.SubjectMapping.SubjectMappingOperatorType
+	0,  // 1: subjectmapping.SubjectMapping.operator:type_name -> subjectmapping.SubjectMapping.SubjectMappingOperatorEnum
 	1,  // 2: subjectmapping.GetSubjectMappingResponse.subject_mapping:type_name -> subjectmapping.SubjectMapping
 	1,  // 3: subjectmapping.ListSubjectMappingsResponse.subject_mappings:type_name -> subjectmapping.SubjectMapping
 	1,  // 4: subjectmapping.CreateSubjectMappingRequest.subject_mapping:type_name -> subjectmapping.SubjectMapping

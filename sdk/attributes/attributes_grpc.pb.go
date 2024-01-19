@@ -19,18 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AttributesService_GetAttribute_FullMethodName     = "/attributes.AttributesService/GetAttribute"
-	AttributesService_ListAttributes_FullMethodName   = "/attributes.AttributesService/ListAttributes"
-	AttributesService_GetDefinition_FullMethodName    = "/attributes.AttributesService/GetDefinition"
-	AttributesService_ListDefinitions_FullMethodName  = "/attributes.AttributesService/ListDefinitions"
-	AttributesService_CreateDefinition_FullMethodName = "/attributes.AttributesService/CreateDefinition"
-	AttributesService_UpdateDefinition_FullMethodName = "/attributes.AttributesService/UpdateDefinition"
-	AttributesService_DeleteDefinition_FullMethodName = "/attributes.AttributesService/DeleteDefinition"
-	AttributesService_GetValue_FullMethodName         = "/attributes.AttributesService/GetValue"
-	AttributesService_ListValues_FullMethodName       = "/attributes.AttributesService/ListValues"
-	AttributesService_CreateValue_FullMethodName      = "/attributes.AttributesService/CreateValue"
-	AttributesService_UpdateValue_FullMethodName      = "/attributes.AttributesService/UpdateValue"
-	AttributesService_DeleteValue_FullMethodName      = "/attributes.AttributesService/DeleteValue"
+	AttributesService_GetAttribute_FullMethodName        = "/attributes.AttributesService/GetAttribute"
+	AttributesService_ListAttributes_FullMethodName      = "/attributes.AttributesService/ListAttributes"
+	AttributesService_GetDefinition_FullMethodName       = "/attributes.AttributesService/GetDefinition"
+	AttributesService_ListDefinitions_FullMethodName     = "/attributes.AttributesService/ListDefinitions"
+	AttributesService_CreateDefinition_FullMethodName    = "/attributes.AttributesService/CreateDefinition"
+	AttributesService_UpdateDefinition_FullMethodName    = "/attributes.AttributesService/UpdateDefinition"
+	AttributesService_DeleteDefinition_FullMethodName    = "/attributes.AttributesService/DeleteDefinition"
+	AttributesService_GetValue_FullMethodName            = "/attributes.AttributesService/GetValue"
+	AttributesService_ListValues_FullMethodName          = "/attributes.AttributesService/ListValues"
+	AttributesService_CreateValue_FullMethodName         = "/attributes.AttributesService/CreateValue"
+	AttributesService_UpdateValue_FullMethodName         = "/attributes.AttributesService/UpdateValue"
+	AttributesService_DeleteValue_FullMethodName         = "/attributes.AttributesService/DeleteValue"
+	AttributesService_GetAttributeGroup_FullMethodName   = "/attributes.AttributesService/GetAttributeGroup"
+	AttributesService_ListAttributeGroups_FullMethodName = "/attributes.AttributesService/ListAttributeGroups"
 )
 
 // AttributesServiceClient is the client API for AttributesService service.
@@ -51,6 +53,21 @@ type AttributesServiceClient interface {
 	CreateValue(ctx context.Context, in *CreateValueRequest, opts ...grpc.CallOption) (*CreateValueResponse, error)
 	UpdateValue(ctx context.Context, in *UpdateValueRequest, opts ...grpc.CallOption) (*UpdateValueResponse, error)
 	DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error)
+	// *
+	// GetAttributeGroup returns the attribute group for the given value_id
+	//
+	// Example Request:
+	// {
+	// "value_id": "value-uuid"
+	// }
+	//
+	// Example Response:
+	// {
+	//
+	// }
+	GetAttributeGroup(ctx context.Context, in *GetAttributeGroupRequest, opts ...grpc.CallOption) (*GetAttributeGroupResponse, error)
+	// *
+	ListAttributeGroups(ctx context.Context, in *ListAttributeGroupsRequest, opts ...grpc.CallOption) (*ListAttributeGroupsResponse, error)
 }
 
 type attributesServiceClient struct {
@@ -169,6 +186,24 @@ func (c *attributesServiceClient) DeleteValue(ctx context.Context, in *DeleteVal
 	return out, nil
 }
 
+func (c *attributesServiceClient) GetAttributeGroup(ctx context.Context, in *GetAttributeGroupRequest, opts ...grpc.CallOption) (*GetAttributeGroupResponse, error) {
+	out := new(GetAttributeGroupResponse)
+	err := c.cc.Invoke(ctx, AttributesService_GetAttributeGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) ListAttributeGroups(ctx context.Context, in *ListAttributeGroupsRequest, opts ...grpc.CallOption) (*ListAttributeGroupsResponse, error) {
+	out := new(ListAttributeGroupsResponse)
+	err := c.cc.Invoke(ctx, AttributesService_ListAttributeGroups_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttributesServiceServer is the server API for AttributesService service.
 // All implementations must embed UnimplementedAttributesServiceServer
 // for forward compatibility
@@ -187,6 +222,21 @@ type AttributesServiceServer interface {
 	CreateValue(context.Context, *CreateValueRequest) (*CreateValueResponse, error)
 	UpdateValue(context.Context, *UpdateValueRequest) (*UpdateValueResponse, error)
 	DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error)
+	// *
+	// GetAttributeGroup returns the attribute group for the given value_id
+	//
+	// Example Request:
+	// {
+	// "value_id": "value-uuid"
+	// }
+	//
+	// Example Response:
+	// {
+	//
+	// }
+	GetAttributeGroup(context.Context, *GetAttributeGroupRequest) (*GetAttributeGroupResponse, error)
+	// *
+	ListAttributeGroups(context.Context, *ListAttributeGroupsRequest) (*ListAttributeGroupsResponse, error)
 	mustEmbedUnimplementedAttributesServiceServer()
 }
 
@@ -229,6 +279,12 @@ func (UnimplementedAttributesServiceServer) UpdateValue(context.Context, *Update
 }
 func (UnimplementedAttributesServiceServer) DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteValue not implemented")
+}
+func (UnimplementedAttributesServiceServer) GetAttributeGroup(context.Context, *GetAttributeGroupRequest) (*GetAttributeGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAttributeGroup not implemented")
+}
+func (UnimplementedAttributesServiceServer) ListAttributeGroups(context.Context, *ListAttributeGroupsRequest) (*ListAttributeGroupsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListAttributeGroups not implemented")
 }
 func (UnimplementedAttributesServiceServer) mustEmbedUnimplementedAttributesServiceServer() {}
 
@@ -459,6 +515,42 @@ func _AttributesService_DeleteValue_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttributesService_GetAttributeGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAttributeGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).GetAttributeGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_GetAttributeGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).GetAttributeGroup(ctx, req.(*GetAttributeGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_ListAttributeGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAttributeGroupsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).ListAttributeGroups(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_ListAttributeGroups_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).ListAttributeGroups(ctx, req.(*ListAttributeGroupsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AttributesService_ServiceDesc is the grpc.ServiceDesc for AttributesService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -513,6 +605,14 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteValue",
 			Handler:    _AttributesService_DeleteValue_Handler,
+		},
+		{
+			MethodName: "GetAttributeGroup",
+			Handler:    _AttributesService_GetAttributeGroup_Handler,
+		},
+		{
+			MethodName: "ListAttributeGroups",
+			Handler:    _AttributesService_ListAttributeGroups_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

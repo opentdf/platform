@@ -85,3 +85,50 @@ service NamespaceService {
       };
   }
 }
+
+/*
+
+    Namespace Service Examples
+
+    Create a Namespace:
+        Request:
+            grpcurl -plaintext -d @ localhost:9000 attributes.NamespaceService/CreateNamespace <<EOM
+            {
+                "namespace": {
+                "name": "example.com"
+                }
+            }
+            EOM
+        Response: 
+            {
+                "namespace": {
+                    "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
+                    "name": "example.com"
+                }
+            }
+
+    List Namespaces (assuming 3 have been created)
+        Request:
+            grpcurl -plaintext -d @ localhost:9000 attributes.NamespaceService/ListNamespaces <<EOM
+            {}
+            EOM
+        Response:
+            {
+                "namespaces": [
+                    {
+                        "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
+                        "name": "example.com"
+                    },
+                    {
+                        "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0b",
+                        "name": "loremipsum.com"
+                    },
+                    {
+                        "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0c",
+                        "name": "helloworld.com"
+                    }
+                ]
+            }
+
+
+*/

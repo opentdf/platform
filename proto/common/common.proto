@@ -3,13 +3,14 @@ syntax = "proto3";
 package common;
 
 import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
 
 // Struct to uniquely identify a resource with optional additional metadata
 message PolicyMetadata {
   // created_at set by server (entity who created will recorded in an audit event)
-  Timestamp created_at = 1;
+  google.protobuf.Timestamp created_at = 1;
   // updated_at set by server (entity who updated will recorded in an audit event)
-  Timestamp updated_at = 2;
+  google.protobuf.Timestamp updated_at = 2;
   // optional short description
   map<string, string> labels = 3;
   // optional long description

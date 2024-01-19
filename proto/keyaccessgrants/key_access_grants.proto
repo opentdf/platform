@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package keyaccessgrants;
 
-import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
@@ -36,9 +35,7 @@ message GetKeyAccessGrantResponse {
   KeyAccessGrants grants = 1;
 }
 
-message ListKeyAccessGrantsRequest {
-  common.ResourceSelector selector = 1;
-}
+message ListKeyAccessGrantsRequest {}
 message ListKeyAccessGrantsResponse {
   repeated KeyAccessGrants grants = 1;
 }

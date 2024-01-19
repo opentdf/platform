@@ -36,16 +36,16 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 }
 
 func (s AttributesService) CreateAttributeDefinition(ctx context.Context,
-	req *attributes.CreateDefinitionRequest) (*attributes.CreateDefinitionResponse, error) {
-	slog.Debug("creating new attribute definition", slog.String("name", req.Definition.Name))
+	req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error) {
+	slog.Debug("creating new attribute definition", slog.String("name", req.Attribute.Name))
 
-	if err := s.dbClient.CreateAttribute(ctx, req.Definition); err != nil {
+	if err := s.dbClient.CreateAttribute(ctx, req.Attribute); err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
-	slog.Debug("created new attribute definition", slog.String("name", req.Definition.Name))
-	return &attributes.CreateDefinitionResponse{}, nil
+	slog.Debug("created new attribute definition", slog.String("name", req.Attribute.Name))
+	return &attributes.CreateAttributeResponse{}, nil
 }
 
 func (s *AttributesService) ListAttributes(ctx context.Context,
@@ -62,7 +62,7 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	for rows.Next() {
 		var (
 			id          string
-			definition  = new(attributes.Definition)
+			definition  = new(attributes.Attribute)
 			bDefinition []byte
 		)
 		err = rows.Scan(&id, &bDefinition)

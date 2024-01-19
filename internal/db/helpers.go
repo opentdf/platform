@@ -19,7 +19,7 @@ func removeProtobufEnumPrefix(s string) string {
 	return s
 }
 
-func marshalPolicyMetadata(metadata *common.PolicyMetadata) ([]byte, error) {
+func marshalPolicyMetadata(metadata *common.PolicyMetadataMutable) ([]byte, error) {
 	if m, err := protojson.Marshal(metadata); err != nil {
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	} else {

@@ -20,16 +20,16 @@ func (c Client) ListAllAttributes(ctx context.Context) (pgx.Rows, error) {
 	return c.query(ctx, sql, args, err)
 }
 
-func getAttributeByDefinitionSql(definition_id string) (string, []interface{}, error) {
+func getAttributeByDefinitionSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Select("*").
 		Join("attribute_definitions ON attribute_definitions.id = attribute_values.id").
-		Where(sq.Eq{"id": definition_id}).
+		Where(sq.Eq{"id": id}).
 		From("attribute_values").
 		ToSql()
 }
-func (c Client) GetAttribute(ctx context.Context, definition_id string) (pgx.Row, error) {
-	sql, args, err := getAttributeByDefinitionSql(definition_id)
+func (c Client) GetAttribute(ctx context.Context, id string) (pgx.Row, error) {
+	sql, args, err := getAttributeByDefinitionSql(id)
 	return c.queryRow(ctx, sql, args, err)
 }
 
@@ -53,11 +53,11 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		Values(namespaceId, name, rule, metadata).
 		ToSql()
 }
-func (c Client) CreateAttribute(ctx context.Context, def *attributes.Definition) error {
-	metadata, err := marshalPolicyMetadata(def.Metadata)
+func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) error {
+	metadata, err := marshalPolicyMetadata(attr.Metadata)
 	if err != nil {
 		return err
 	}
-	sql, args, err := createAttributeSql(def.NamespaceId, def.Name, removeProtobufEnumPrefix(def.Rule.String()), metadata)
+	sql, args, err := createAttributeSql(attr.NamespaceId, attr.Name, removeProtobufEnumPrefix(attr.Rule.String()), metadata)
 	return c.exec(ctx, sql, args, err)
 }

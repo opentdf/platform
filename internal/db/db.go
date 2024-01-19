@@ -226,10 +226,6 @@ func (c Client) UpdateResource(ctx context.Context, descriptor *common.ResourceD
 	return err
 }
 
-func newStatementBuilder() sq.StatementBuilderType {
-	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-}
-
 func updateResourceSQL(descriptor *common.ResourceDescriptor,
 	resource []byte, policyType string) (string, []interface{}, error) {
 	psql := newStatementBuilder()
@@ -273,6 +269,11 @@ func deleteResourceSQL(id int32, policyType string) (string, []interface{}, erro
 
 	//nolint:wrapcheck // Wrapped error in DeleteResource
 	return builder.ToSql()
+}
+
+// Postgres specific statement builder
+func newStatementBuilder() sq.StatementBuilderType {
+	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 }
 
 // Common function for all queryRow calls

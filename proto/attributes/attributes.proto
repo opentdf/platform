@@ -9,7 +9,7 @@ import "google/api/annotations.proto";
 message Attribute {
   // Namespace namespace = 1;
   Definition definition = 1;
-  repeated Value value = 2;
+  repeated Value values = 2;
 }
 
 // Attribute Definition
@@ -98,13 +98,17 @@ message ListDefinitionsResponse {
 message CreateDefinitionRequest {
   Definition definition = 1 [(buf.validate.field).required = true];
 }
-message CreateDefinitionResponse {}
+message CreateDefinitionResponse {
+  Definition definition = 1;
+}
 
 message UpdateDefinitionRequest {
   string id = 1 [(buf.validate.field).required = true];
   Definition definition = 2 [(buf.validate.field).required = true];
 }
-message UpdateDefinitionResponse {}
+message UpdateDefinitionResponse {
+  Definition definition = 1;
+}
 
 message DeleteDefinitionRequest {
   string id = 1 [(buf.validate.field).required = true];
@@ -126,13 +130,17 @@ message ListValuesResponse {
 message CreateValueRequest {
   Value value = 1 [(buf.validate.field).required = true];
 }
-message CreateValueResponse {}
+message CreateValueResponse {
+  Value value = 1;
+}
 
 message UpdateValueRequest {
   string id = 1 [(buf.validate.field).required = true];
   Value value = 2 [(buf.validate.field).required = true];
 }
-message UpdateValueResponse {}
+message UpdateValueResponse {
+  Value value = 1;
+}
 
 message DeleteValueRequest {
   string id = 1 [(buf.validate.field).required = true];
@@ -264,3 +272,110 @@ service AttributesService {
   //   option (google.api.http) = {delete: "/attribute/groups/{id}"};
   // }
 }
+
+
+/*
+
+  Attribute Service Examples
+
+  CREATE a definition:
+    Request:
+        grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/CreateDefinition <<EOM
+        {
+          "definition": {
+            "namespace_id": "namespace-uuid",
+            "name": "relto",
+            "rule": "ALL_OF"
+          },
+          "metadata": {
+            "labels": {
+              "origin": "Country of Origin"
+            },
+            "description": "The relto attribute is used to describe the relationship of the resource to the country of origin."
+          }
+        }
+        EOM
+    Response:
+        {
+          "definition": {
+            "metadata": {
+              "created_at": "2020-07-28T20:20:20.000Z",
+              "updated_at": "2020-07-28T20:20:20.000Z",
+              "labels": {
+                "origin": "Country of Origin"
+              },
+              "description": "The relto attribute is used to describe the relationship of the resource to the country of origin."
+            },
+            "id": "relto-attribute-uuid",
+            "namespace_id": "namespace-uuid",
+            "name": "relto",
+            "rule": "ALL_OF"
+          }
+        }
+
+  Now CREATE two values assigned to it:
+    Request:
+        grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/CreateValue <<EOM
+        {
+          "value": {
+            "attribute_definition_id": "relto-attribute-uuid",
+            "value": "USA"
+          }
+        }
+        EOM
+        grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/CreateValue <<EOM
+        {
+          "value": {
+            "attribute_definition_id": "relto-attribute-uuid",
+            "value": "GBR"
+          }
+        }
+  
+  Now LIST all Attribute Definitions & their associated Value(s):
+    Request:
+        grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/ListAttributes <<EOM
+        {}
+        EOM
+    Response:
+        {
+          "attributes": [
+            {
+              "definition": {
+                "metadata": {
+                  "created_at": "2020-07-28T20:20:20.000Z",
+                  "updated_at": "2020-07-28T20:20:20.000Z",
+                  "labels": {
+                    "origin": "Country of Origin"
+                  },
+                  "description": "The relto attribute is used to describe the relationship of the resource to the country of origin."
+                },
+                "id": "relto-attribute-uuid",
+                "namespace_id": "namespace-uuid",
+                "name": "relto",
+                "rule": "ALL_OF"
+              },
+              "values": [
+                {
+                  "metadata": {
+                    "created_at": "2020-07-28T20:20:20.000Z",
+                    "updated_at": "2020-07-28T20:20:20.000Z"
+                  },
+                  "id": "relto-attribute-value-uuid",
+                  "attribute_definition_id": "relto-attribute-uuid",
+                  "value": "USA"
+                },
+                {
+                  "metadata": {
+                    "created_at": "2020-07-28T20:20:20.000Z",
+                    "updated_at": "2020-07-28T20:20:20.000Z"
+                  },
+                  "id": "relto-attribute-value-uuid",
+                  "attribute_definition_id": "relto-attribute-uuid",
+                  "value": "GBR"
+                }
+              ]
+            }
+          ]
+        }
+
+*/

@@ -31,44 +31,26 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
-var (
-	filter_KeyAccessGrantsService_ListKeyAccessGrants_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
-
-func request_KeyAccessGrantsService_ListKeyAccessGrants_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessGrantsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListKeyAccessGrantsRequest
+func request_KeyAccessServersService_ListKeyAccessServers_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessServersServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ListKeyAccessServersRequest
 	var metadata runtime.ServerMetadata
 
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_KeyAccessGrantsService_ListKeyAccessGrants_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := client.ListKeyAccessGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.ListKeyAccessServers(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_KeyAccessGrantsService_ListKeyAccessGrants_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessGrantsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListKeyAccessGrantsRequest
+func local_request_KeyAccessServersService_ListKeyAccessServers_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessServersServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ListKeyAccessServersRequest
 	var metadata runtime.ServerMetadata
 
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_KeyAccessGrantsService_ListKeyAccessGrants_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	msg, err := server.ListKeyAccessGrants(ctx, &protoReq)
+	msg, err := server.ListKeyAccessServers(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_KeyAccessGrantsService_GetKeyAccessGrant_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessGrantsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetKeyAccessGrantRequest
+func request_KeyAccessServersService_GetKeyAccessServer_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessServersServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetKeyAccessServerRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -83,18 +65,18 @@ func request_KeyAccessGrantsService_GetKeyAccessGrant_0(ctx context.Context, mar
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.Id, err = runtime.Int32(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.GetKeyAccessGrant(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetKeyAccessServer(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_KeyAccessGrantsService_GetKeyAccessGrant_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessGrantsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetKeyAccessGrantRequest
+func local_request_KeyAccessServersService_GetKeyAccessServer_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessServersServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetKeyAccessServerRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -109,59 +91,59 @@ func local_request_KeyAccessGrantsService_GetKeyAccessGrant_0(ctx context.Contex
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.Id, err = runtime.Int32(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.GetKeyAccessGrant(ctx, &protoReq)
+	msg, err := server.GetKeyAccessServer(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_KeyAccessGrantsService_CreateKeyAccessGrants_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessGrantsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateKeyAccessGrantsRequest
+func request_KeyAccessServersService_CreateKeyAccessServers_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessServersServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq CreateKeyAccessServerRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Grants); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Server); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.CreateKeyAccessGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.CreateKeyAccessServers(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_KeyAccessGrantsService_CreateKeyAccessGrants_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessGrantsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateKeyAccessGrantsRequest
+func local_request_KeyAccessServersService_CreateKeyAccessServers_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessServersServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq CreateKeyAccessServerRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Grants); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Server); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.CreateKeyAccessGrants(ctx, &protoReq)
+	msg, err := server.CreateKeyAccessServers(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_KeyAccessGrantsService_UpdateKeyAccessGrants_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessGrantsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateKeyAccessGrantsRequest
+func request_KeyAccessServersService_UpdateKeyAccessServers_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessServersServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UpdateKeyAccessServerRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Grants); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Server); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -182,20 +164,20 @@ func request_KeyAccessGrantsService_UpdateKeyAccessGrants_0(ctx context.Context,
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.UpdateKeyAccessGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UpdateKeyAccessServers(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_KeyAccessGrantsService_UpdateKeyAccessGrants_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessGrantsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateKeyAccessGrantsRequest
+func local_request_KeyAccessServersService_UpdateKeyAccessServers_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessServersServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UpdateKeyAccessServerRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
 	if berr != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Grants); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Server); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -216,13 +198,13 @@ func local_request_KeyAccessGrantsService_UpdateKeyAccessGrants_0(ctx context.Co
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.UpdateKeyAccessGrants(ctx, &protoReq)
+	msg, err := server.UpdateKeyAccessServers(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_KeyAccessGrantsService_DeleteKeyAccessGrants_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessGrantsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteKeyAccessGrantsRequest
+func request_KeyAccessServersService_DeleteKeyAccessServers_0(ctx context.Context, marshaler runtime.Marshaler, client KeyAccessServersServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteKeyAccessServerRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -237,18 +219,18 @@ func request_KeyAccessGrantsService_DeleteKeyAccessGrants_0(ctx context.Context,
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.Id, err = runtime.Int32(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.DeleteKeyAccessGrants(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.DeleteKeyAccessServers(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_KeyAccessGrantsService_DeleteKeyAccessGrants_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessGrantsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteKeyAccessGrantsRequest
+func local_request_KeyAccessServersService_DeleteKeyAccessServers_0(ctx context.Context, marshaler runtime.Marshaler, server KeyAccessServersServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteKeyAccessServerRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -263,23 +245,23 @@ func local_request_KeyAccessGrantsService_DeleteKeyAccessGrants_0(ctx context.Co
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
 
-	protoReq.Id, err = runtime.Int32(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.DeleteKeyAccessGrants(ctx, &protoReq)
+	msg, err := server.DeleteKeyAccessServers(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-// RegisterKeyAccessGrantsServiceHandlerServer registers the http handlers for service KeyAccessGrantsService to "mux".
-// UnaryRPC     :call KeyAccessGrantsServiceServer directly.
+// RegisterKeyAccessServersServiceHandlerServer registers the http handlers for service KeyAccessServersService to "mux".
+// UnaryRPC     :call KeyAccessServersServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterKeyAccessGrantsServiceHandlerFromEndpoint instead.
-func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server KeyAccessGrantsServiceServer) error {
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterKeyAccessServersServiceHandlerFromEndpoint instead.
+func RegisterKeyAccessServersServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server KeyAccessServersServiceServer) error {
 
-	mux.Handle("GET", pattern_KeyAccessGrantsService_ListKeyAccessGrants_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyAccessServersService_ListKeyAccessServers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -287,12 +269,12 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/ListKeyAccessGrants", runtime.WithHTTPPathPattern("/v1/grants"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/ListKeyAccessServers", runtime.WithHTTPPathPattern("/key-access-servers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_KeyAccessGrantsService_ListKeyAccessGrants_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_KeyAccessServersService_ListKeyAccessServers_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -300,11 +282,11 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_KeyAccessGrantsService_ListKeyAccessGrants_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_ListKeyAccessServers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyAccessGrantsService_GetKeyAccessGrant_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyAccessServersService_GetKeyAccessServer_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -312,12 +294,12 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/GetKeyAccessGrant", runtime.WithHTTPPathPattern("/v1/grants/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/GetKeyAccessServer", runtime.WithHTTPPathPattern("/key-access-servers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_KeyAccessGrantsService_GetKeyAccessGrant_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_KeyAccessServersService_GetKeyAccessServer_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -325,11 +307,11 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_KeyAccessGrantsService_GetKeyAccessGrant_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_GetKeyAccessServer_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_KeyAccessGrantsService_CreateKeyAccessGrants_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_KeyAccessServersService_CreateKeyAccessServers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -337,12 +319,12 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/CreateKeyAccessGrants", runtime.WithHTTPPathPattern("/v1/grants"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/CreateKeyAccessServers", runtime.WithHTTPPathPattern("/key-access-servers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_KeyAccessGrantsService_CreateKeyAccessGrants_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_KeyAccessServersService_CreateKeyAccessServers_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -350,11 +332,11 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_KeyAccessGrantsService_CreateKeyAccessGrants_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_CreateKeyAccessServers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PUT", pattern_KeyAccessGrantsService_UpdateKeyAccessGrants_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_KeyAccessServersService_UpdateKeyAccessServers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -362,12 +344,12 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/UpdateKeyAccessGrants", runtime.WithHTTPPathPattern("/v1/grants/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/UpdateKeyAccessServers", runtime.WithHTTPPathPattern("/key-access-servers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_KeyAccessGrantsService_UpdateKeyAccessGrants_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_KeyAccessServersService_UpdateKeyAccessServers_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -375,11 +357,11 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_KeyAccessGrantsService_UpdateKeyAccessGrants_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_UpdateKeyAccessServers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_KeyAccessGrantsService_DeleteKeyAccessGrants_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_KeyAccessServersService_DeleteKeyAccessServers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -387,12 +369,12 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/DeleteKeyAccessGrants", runtime.WithHTTPPathPattern("/v1/grants/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/DeleteKeyAccessServers", runtime.WithHTTPPathPattern("/key-access-servers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_KeyAccessGrantsService_DeleteKeyAccessGrants_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_KeyAccessServersService_DeleteKeyAccessServers_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -400,16 +382,16 @@ func RegisterKeyAccessGrantsServiceHandlerServer(ctx context.Context, mux *runti
 			return
 		}
 
-		forward_KeyAccessGrantsService_DeleteKeyAccessGrants_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_DeleteKeyAccessServers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
 	return nil
 }
 
-// RegisterKeyAccessGrantsServiceHandlerFromEndpoint is same as RegisterKeyAccessGrantsServiceHandler but
+// RegisterKeyAccessServersServiceHandlerFromEndpoint is same as RegisterKeyAccessServersServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterKeyAccessGrantsServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterKeyAccessServersServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.DialContext(ctx, endpoint, opts...)
 	if err != nil {
 		return err
@@ -429,129 +411,129 @@ func RegisterKeyAccessGrantsServiceHandlerFromEndpoint(ctx context.Context, mux 
 		}()
 	}()
 
-	return RegisterKeyAccessGrantsServiceHandler(ctx, mux, conn)
+	return RegisterKeyAccessServersServiceHandler(ctx, mux, conn)
 }
 
-// RegisterKeyAccessGrantsServiceHandler registers the http handlers for service KeyAccessGrantsService to "mux".
+// RegisterKeyAccessServersServiceHandler registers the http handlers for service KeyAccessServersService to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterKeyAccessGrantsServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterKeyAccessGrantsServiceHandlerClient(ctx, mux, NewKeyAccessGrantsServiceClient(conn))
+func RegisterKeyAccessServersServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterKeyAccessServersServiceHandlerClient(ctx, mux, NewKeyAccessServersServiceClient(conn))
 }
 
-// RegisterKeyAccessGrantsServiceHandlerClient registers the http handlers for service KeyAccessGrantsService
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "KeyAccessGrantsServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KeyAccessGrantsServiceClient"
+// RegisterKeyAccessServersServiceHandlerClient registers the http handlers for service KeyAccessServersService
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "KeyAccessServersServiceClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KeyAccessServersServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "KeyAccessGrantsServiceClient" to call the correct interceptors.
-func RegisterKeyAccessGrantsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client KeyAccessGrantsServiceClient) error {
+// "KeyAccessServersServiceClient" to call the correct interceptors.
+func RegisterKeyAccessServersServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client KeyAccessServersServiceClient) error {
 
-	mux.Handle("GET", pattern_KeyAccessGrantsService_ListKeyAccessGrants_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyAccessServersService_ListKeyAccessServers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/ListKeyAccessGrants", runtime.WithHTTPPathPattern("/v1/grants"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/ListKeyAccessServers", runtime.WithHTTPPathPattern("/key-access-servers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyAccessGrantsService_ListKeyAccessGrants_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyAccessServersService_ListKeyAccessServers_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyAccessGrantsService_ListKeyAccessGrants_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_ListKeyAccessServers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyAccessGrantsService_GetKeyAccessGrant_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyAccessServersService_GetKeyAccessServer_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/GetKeyAccessGrant", runtime.WithHTTPPathPattern("/v1/grants/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/GetKeyAccessServer", runtime.WithHTTPPathPattern("/key-access-servers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyAccessGrantsService_GetKeyAccessGrant_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyAccessServersService_GetKeyAccessServer_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyAccessGrantsService_GetKeyAccessGrant_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_GetKeyAccessServer_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_KeyAccessGrantsService_CreateKeyAccessGrants_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_KeyAccessServersService_CreateKeyAccessServers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/CreateKeyAccessGrants", runtime.WithHTTPPathPattern("/v1/grants"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/CreateKeyAccessServers", runtime.WithHTTPPathPattern("/key-access-servers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyAccessGrantsService_CreateKeyAccessGrants_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyAccessServersService_CreateKeyAccessServers_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyAccessGrantsService_CreateKeyAccessGrants_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_CreateKeyAccessServers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PUT", pattern_KeyAccessGrantsService_UpdateKeyAccessGrants_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_KeyAccessServersService_UpdateKeyAccessServers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/UpdateKeyAccessGrants", runtime.WithHTTPPathPattern("/v1/grants/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/UpdateKeyAccessServers", runtime.WithHTTPPathPattern("/key-access-servers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyAccessGrantsService_UpdateKeyAccessGrants_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyAccessServersService_UpdateKeyAccessServers_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyAccessGrantsService_UpdateKeyAccessGrants_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_UpdateKeyAccessServers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_KeyAccessGrantsService_DeleteKeyAccessGrants_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_KeyAccessServersService_DeleteKeyAccessServers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessGrantsService/DeleteKeyAccessGrants", runtime.WithHTTPPathPattern("/v1/grants/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/keyaccessgrants.KeyAccessServersService/DeleteKeyAccessServers", runtime.WithHTTPPathPattern("/key-access-servers/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyAccessGrantsService_DeleteKeyAccessGrants_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyAccessServersService_DeleteKeyAccessServers_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyAccessGrantsService_DeleteKeyAccessGrants_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyAccessServersService_DeleteKeyAccessServers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -559,25 +541,25 @@ func RegisterKeyAccessGrantsServiceHandlerClient(ctx context.Context, mux *runti
 }
 
 var (
-	pattern_KeyAccessGrantsService_ListKeyAccessGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "grants"}, ""))
+	pattern_KeyAccessServersService_ListKeyAccessServers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"key-access-servers"}, ""))
 
-	pattern_KeyAccessGrantsService_GetKeyAccessGrant_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "grants", "id"}, ""))
+	pattern_KeyAccessServersService_GetKeyAccessServer_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"key-access-servers", "id"}, ""))
 
-	pattern_KeyAccessGrantsService_CreateKeyAccessGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "grants"}, ""))
+	pattern_KeyAccessServersService_CreateKeyAccessServers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"key-access-servers"}, ""))
 
-	pattern_KeyAccessGrantsService_UpdateKeyAccessGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "grants", "id"}, ""))
+	pattern_KeyAccessServersService_UpdateKeyAccessServers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"key-access-servers", "id"}, ""))
 
-	pattern_KeyAccessGrantsService_DeleteKeyAccessGrants_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "grants", "id"}, ""))
+	pattern_KeyAccessServersService_DeleteKeyAccessServers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"key-access-servers", "id"}, ""))
 )
 
 var (
-	forward_KeyAccessGrantsService_ListKeyAccessGrants_0 = runtime.ForwardResponseMessage
+	forward_KeyAccessServersService_ListKeyAccessServers_0 = runtime.ForwardResponseMessage
 
-	forward_KeyAccessGrantsService_GetKeyAccessGrant_0 = runtime.ForwardResponseMessage
+	forward_KeyAccessServersService_GetKeyAccessServer_0 = runtime.ForwardResponseMessage
 
-	forward_KeyAccessGrantsService_CreateKeyAccessGrants_0 = runtime.ForwardResponseMessage
+	forward_KeyAccessServersService_CreateKeyAccessServers_0 = runtime.ForwardResponseMessage
 
-	forward_KeyAccessGrantsService_UpdateKeyAccessGrants_0 = runtime.ForwardResponseMessage
+	forward_KeyAccessServersService_UpdateKeyAccessServers_0 = runtime.ForwardResponseMessage
 
-	forward_KeyAccessGrantsService_DeleteKeyAccessGrants_0 = runtime.ForwardResponseMessage
+	forward_KeyAccessServersService_DeleteKeyAccessServers_0 = runtime.ForwardResponseMessage
 )

@@ -60,10 +60,11 @@ import "google/api/annotations.proto";
 message SubjectMapping {
   common.PolicyMetadata metadata = 1;
 
-  enum Operator {
-    UNSPECIFIED = 0;
-    IN = 1;
-    NOT_IN = 2;
+  // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+  enum SubjectMappingOperatorType {
+    SUBJECT_MAPPING_OPERATOR_TYPE_UNSPECIFIED = 0;
+    SUBJECT_MAPPING_OPERATOR_TYPE_IN = 1;
+    SUBJECT_MAPPING_OPERATOR_TYPE_NOT_IN = 2;
   }
   //TODO should this be a list of values?
 
@@ -77,7 +78,7 @@ message SubjectMapping {
   repeated string subject_values = 4;
 
   // the operator
-  Operator operator = 5 [
+  SubjectMappingOperatorType operator = 5 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];

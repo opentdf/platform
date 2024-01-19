@@ -19,32 +19,38 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AttributesService_GetAttribute_FullMethodName         = "/attributes.AttributesService/GetAttribute"
-	AttributesService_GetAttributeGroup_FullMethodName    = "/attributes.AttributesService/GetAttributeGroup"
-	AttributesService_ListAttributes_FullMethodName       = "/attributes.AttributesService/ListAttributes"
-	AttributesService_ListAttributeGroups_FullMethodName  = "/attributes.AttributesService/ListAttributeGroups"
-	AttributesService_CreateAttribute_FullMethodName      = "/attributes.AttributesService/CreateAttribute"
-	AttributesService_CreateAttributeGroup_FullMethodName = "/attributes.AttributesService/CreateAttributeGroup"
-	AttributesService_UpdateAttribute_FullMethodName      = "/attributes.AttributesService/UpdateAttribute"
-	AttributesService_UpdateAttributeGroup_FullMethodName = "/attributes.AttributesService/UpdateAttributeGroup"
-	AttributesService_DeleteAttribute_FullMethodName      = "/attributes.AttributesService/DeleteAttribute"
-	AttributesService_DeleteAttributeGroup_FullMethodName = "/attributes.AttributesService/DeleteAttributeGroup"
+	AttributesService_GetAttribute_FullMethodName     = "/attributes.AttributesService/GetAttribute"
+	AttributesService_ListAttributes_FullMethodName   = "/attributes.AttributesService/ListAttributes"
+	AttributesService_GetDefinition_FullMethodName    = "/attributes.AttributesService/GetDefinition"
+	AttributesService_ListDefinitions_FullMethodName  = "/attributes.AttributesService/ListDefinitions"
+	AttributesService_CreateDefinition_FullMethodName = "/attributes.AttributesService/CreateDefinition"
+	AttributesService_UpdateDefinition_FullMethodName = "/attributes.AttributesService/UpdateDefinition"
+	AttributesService_DeleteDefinition_FullMethodName = "/attributes.AttributesService/DeleteDefinition"
+	AttributesService_GetValue_FullMethodName         = "/attributes.AttributesService/GetValue"
+	AttributesService_ListValues_FullMethodName       = "/attributes.AttributesService/ListValues"
+	AttributesService_CreateValue_FullMethodName      = "/attributes.AttributesService/CreateValue"
+	AttributesService_UpdateValue_FullMethodName      = "/attributes.AttributesService/UpdateValue"
+	AttributesService_DeleteValue_FullMethodName      = "/attributes.AttributesService/DeleteValue"
 )
 
 // AttributesServiceClient is the client API for AttributesService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AttributesServiceClient interface {
+	// * Attribute (Definition & Value(s)) read-only convenience functions *
 	GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error)
-	GetAttributeGroup(ctx context.Context, in *GetAttributeGroupRequest, opts ...grpc.CallOption) (*GetAttributeGroupResponse, error)
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
-	ListAttributeGroups(ctx context.Context, in *ListAttributeGroupsRequest, opts ...grpc.CallOption) (*ListAttributeGroupsResponse, error)
-	CreateAttribute(ctx context.Context, in *CreateAttributeRequest, opts ...grpc.CallOption) (*CreateAttributeResponse, error)
-	CreateAttributeGroup(ctx context.Context, in *CreateAttributeGroupRequest, opts ...grpc.CallOption) (*CreateAttributeGroupResponse, error)
-	UpdateAttribute(ctx context.Context, in *UpdateAttributeRequest, opts ...grpc.CallOption) (*UpdateAttributeResponse, error)
-	UpdateAttributeGroup(ctx context.Context, in *UpdateAttributeGroupRequest, opts ...grpc.CallOption) (*UpdateAttributeGroupResponse, error)
-	DeleteAttribute(ctx context.Context, in *DeleteAttributeRequest, opts ...grpc.CallOption) (*DeleteAttributeResponse, error)
-	DeleteAttributeGroup(ctx context.Context, in *DeleteAttributeGroupRequest, opts ...grpc.CallOption) (*DeleteAttributeGroupResponse, error)
+	// * Attribute Definition *
+	GetDefinition(ctx context.Context, in *GetDefinitionRequest, opts ...grpc.CallOption) (*GetDefinitionResponse, error)
+	ListDefinitions(ctx context.Context, in *ListDefinitionsRequest, opts ...grpc.CallOption) (*ListDefinitionsResponse, error)
+	CreateDefinition(ctx context.Context, in *CreateDefinitionRequest, opts ...grpc.CallOption) (*CreateDefinitionResponse, error)
+	UpdateDefinition(ctx context.Context, in *UpdateDefinitionRequest, opts ...grpc.CallOption) (*UpdateDefinitionResponse, error)
+	DeleteDefinition(ctx context.Context, in *DeleteDefinitionRequest, opts ...grpc.CallOption) (*DeleteDefinitionResponse, error)
+	GetValue(ctx context.Context, in *GetValueRequest, opts ...grpc.CallOption) (*GetValueResponse, error)
+	ListValues(ctx context.Context, in *ListValuesRequest, opts ...grpc.CallOption) (*ListValuesResponse, error)
+	CreateValue(ctx context.Context, in *CreateValueRequest, opts ...grpc.CallOption) (*CreateValueResponse, error)
+	UpdateValue(ctx context.Context, in *UpdateValueRequest, opts ...grpc.CallOption) (*UpdateValueResponse, error)
+	DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error)
 }
 
 type attributesServiceClient struct {
@@ -64,15 +70,6 @@ func (c *attributesServiceClient) GetAttribute(ctx context.Context, in *GetAttri
 	return out, nil
 }
 
-func (c *attributesServiceClient) GetAttributeGroup(ctx context.Context, in *GetAttributeGroupRequest, opts ...grpc.CallOption) (*GetAttributeGroupResponse, error) {
-	out := new(GetAttributeGroupResponse)
-	err := c.cc.Invoke(ctx, AttributesService_GetAttributeGroup_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *attributesServiceClient) ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error) {
 	out := new(ListAttributesResponse)
 	err := c.cc.Invoke(ctx, AttributesService_ListAttributes_FullMethodName, in, out, opts...)
@@ -82,63 +79,90 @@ func (c *attributesServiceClient) ListAttributes(ctx context.Context, in *ListAt
 	return out, nil
 }
 
-func (c *attributesServiceClient) ListAttributeGroups(ctx context.Context, in *ListAttributeGroupsRequest, opts ...grpc.CallOption) (*ListAttributeGroupsResponse, error) {
-	out := new(ListAttributeGroupsResponse)
-	err := c.cc.Invoke(ctx, AttributesService_ListAttributeGroups_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) GetDefinition(ctx context.Context, in *GetDefinitionRequest, opts ...grpc.CallOption) (*GetDefinitionResponse, error) {
+	out := new(GetDefinitionResponse)
+	err := c.cc.Invoke(ctx, AttributesService_GetDefinition_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *attributesServiceClient) CreateAttribute(ctx context.Context, in *CreateAttributeRequest, opts ...grpc.CallOption) (*CreateAttributeResponse, error) {
-	out := new(CreateAttributeResponse)
-	err := c.cc.Invoke(ctx, AttributesService_CreateAttribute_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) ListDefinitions(ctx context.Context, in *ListDefinitionsRequest, opts ...grpc.CallOption) (*ListDefinitionsResponse, error) {
+	out := new(ListDefinitionsResponse)
+	err := c.cc.Invoke(ctx, AttributesService_ListDefinitions_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *attributesServiceClient) CreateAttributeGroup(ctx context.Context, in *CreateAttributeGroupRequest, opts ...grpc.CallOption) (*CreateAttributeGroupResponse, error) {
-	out := new(CreateAttributeGroupResponse)
-	err := c.cc.Invoke(ctx, AttributesService_CreateAttributeGroup_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) CreateDefinition(ctx context.Context, in *CreateDefinitionRequest, opts ...grpc.CallOption) (*CreateDefinitionResponse, error) {
+	out := new(CreateDefinitionResponse)
+	err := c.cc.Invoke(ctx, AttributesService_CreateDefinition_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *attributesServiceClient) UpdateAttribute(ctx context.Context, in *UpdateAttributeRequest, opts ...grpc.CallOption) (*UpdateAttributeResponse, error) {
-	out := new(UpdateAttributeResponse)
-	err := c.cc.Invoke(ctx, AttributesService_UpdateAttribute_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) UpdateDefinition(ctx context.Context, in *UpdateDefinitionRequest, opts ...grpc.CallOption) (*UpdateDefinitionResponse, error) {
+	out := new(UpdateDefinitionResponse)
+	err := c.cc.Invoke(ctx, AttributesService_UpdateDefinition_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *attributesServiceClient) UpdateAttributeGroup(ctx context.Context, in *UpdateAttributeGroupRequest, opts ...grpc.CallOption) (*UpdateAttributeGroupResponse, error) {
-	out := new(UpdateAttributeGroupResponse)
-	err := c.cc.Invoke(ctx, AttributesService_UpdateAttributeGroup_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) DeleteDefinition(ctx context.Context, in *DeleteDefinitionRequest, opts ...grpc.CallOption) (*DeleteDefinitionResponse, error) {
+	out := new(DeleteDefinitionResponse)
+	err := c.cc.Invoke(ctx, AttributesService_DeleteDefinition_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *attributesServiceClient) DeleteAttribute(ctx context.Context, in *DeleteAttributeRequest, opts ...grpc.CallOption) (*DeleteAttributeResponse, error) {
-	out := new(DeleteAttributeResponse)
-	err := c.cc.Invoke(ctx, AttributesService_DeleteAttribute_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) GetValue(ctx context.Context, in *GetValueRequest, opts ...grpc.CallOption) (*GetValueResponse, error) {
+	out := new(GetValueResponse)
+	err := c.cc.Invoke(ctx, AttributesService_GetValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *attributesServiceClient) DeleteAttributeGroup(ctx context.Context, in *DeleteAttributeGroupRequest, opts ...grpc.CallOption) (*DeleteAttributeGroupResponse, error) {
-	out := new(DeleteAttributeGroupResponse)
-	err := c.cc.Invoke(ctx, AttributesService_DeleteAttributeGroup_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) ListValues(ctx context.Context, in *ListValuesRequest, opts ...grpc.CallOption) (*ListValuesResponse, error) {
+	out := new(ListValuesResponse)
+	err := c.cc.Invoke(ctx, AttributesService_ListValues_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) CreateValue(ctx context.Context, in *CreateValueRequest, opts ...grpc.CallOption) (*CreateValueResponse, error) {
+	out := new(CreateValueResponse)
+	err := c.cc.Invoke(ctx, AttributesService_CreateValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) UpdateValue(ctx context.Context, in *UpdateValueRequest, opts ...grpc.CallOption) (*UpdateValueResponse, error) {
+	out := new(UpdateValueResponse)
+	err := c.cc.Invoke(ctx, AttributesService_UpdateValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error) {
+	out := new(DeleteValueResponse)
+	err := c.cc.Invoke(ctx, AttributesService_DeleteValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -149,16 +173,20 @@ func (c *attributesServiceClient) DeleteAttributeGroup(ctx context.Context, in *
 // All implementations must embed UnimplementedAttributesServiceServer
 // for forward compatibility
 type AttributesServiceServer interface {
+	// * Attribute (Definition & Value(s)) read-only convenience functions *
 	GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error)
-	GetAttributeGroup(context.Context, *GetAttributeGroupRequest) (*GetAttributeGroupResponse, error)
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
-	ListAttributeGroups(context.Context, *ListAttributeGroupsRequest) (*ListAttributeGroupsResponse, error)
-	CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error)
-	CreateAttributeGroup(context.Context, *CreateAttributeGroupRequest) (*CreateAttributeGroupResponse, error)
-	UpdateAttribute(context.Context, *UpdateAttributeRequest) (*UpdateAttributeResponse, error)
-	UpdateAttributeGroup(context.Context, *UpdateAttributeGroupRequest) (*UpdateAttributeGroupResponse, error)
-	DeleteAttribute(context.Context, *DeleteAttributeRequest) (*DeleteAttributeResponse, error)
-	DeleteAttributeGroup(context.Context, *DeleteAttributeGroupRequest) (*DeleteAttributeGroupResponse, error)
+	// * Attribute Definition *
+	GetDefinition(context.Context, *GetDefinitionRequest) (*GetDefinitionResponse, error)
+	ListDefinitions(context.Context, *ListDefinitionsRequest) (*ListDefinitionsResponse, error)
+	CreateDefinition(context.Context, *CreateDefinitionRequest) (*CreateDefinitionResponse, error)
+	UpdateDefinition(context.Context, *UpdateDefinitionRequest) (*UpdateDefinitionResponse, error)
+	DeleteDefinition(context.Context, *DeleteDefinitionRequest) (*DeleteDefinitionResponse, error)
+	GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error)
+	ListValues(context.Context, *ListValuesRequest) (*ListValuesResponse, error)
+	CreateValue(context.Context, *CreateValueRequest) (*CreateValueResponse, error)
+	UpdateValue(context.Context, *UpdateValueRequest) (*UpdateValueResponse, error)
+	DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error)
 	mustEmbedUnimplementedAttributesServiceServer()
 }
 
@@ -169,32 +197,38 @@ type UnimplementedAttributesServiceServer struct {
 func (UnimplementedAttributesServiceServer) GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAttribute not implemented")
 }
-func (UnimplementedAttributesServiceServer) GetAttributeGroup(context.Context, *GetAttributeGroupRequest) (*GetAttributeGroupResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetAttributeGroup not implemented")
-}
 func (UnimplementedAttributesServiceServer) ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAttributes not implemented")
 }
-func (UnimplementedAttributesServiceServer) ListAttributeGroups(context.Context, *ListAttributeGroupsRequest) (*ListAttributeGroupsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListAttributeGroups not implemented")
+func (UnimplementedAttributesServiceServer) GetDefinition(context.Context, *GetDefinitionRequest) (*GetDefinitionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDefinition not implemented")
 }
-func (UnimplementedAttributesServiceServer) CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateAttribute not implemented")
+func (UnimplementedAttributesServiceServer) ListDefinitions(context.Context, *ListDefinitionsRequest) (*ListDefinitionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDefinitions not implemented")
 }
-func (UnimplementedAttributesServiceServer) CreateAttributeGroup(context.Context, *CreateAttributeGroupRequest) (*CreateAttributeGroupResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateAttributeGroup not implemented")
+func (UnimplementedAttributesServiceServer) CreateDefinition(context.Context, *CreateDefinitionRequest) (*CreateDefinitionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateDefinition not implemented")
 }
-func (UnimplementedAttributesServiceServer) UpdateAttribute(context.Context, *UpdateAttributeRequest) (*UpdateAttributeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateAttribute not implemented")
+func (UnimplementedAttributesServiceServer) UpdateDefinition(context.Context, *UpdateDefinitionRequest) (*UpdateDefinitionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateDefinition not implemented")
 }
-func (UnimplementedAttributesServiceServer) UpdateAttributeGroup(context.Context, *UpdateAttributeGroupRequest) (*UpdateAttributeGroupResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateAttributeGroup not implemented")
+func (UnimplementedAttributesServiceServer) DeleteDefinition(context.Context, *DeleteDefinitionRequest) (*DeleteDefinitionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteDefinition not implemented")
 }
-func (UnimplementedAttributesServiceServer) DeleteAttribute(context.Context, *DeleteAttributeRequest) (*DeleteAttributeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteAttribute not implemented")
+func (UnimplementedAttributesServiceServer) GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetValue not implemented")
 }
-func (UnimplementedAttributesServiceServer) DeleteAttributeGroup(context.Context, *DeleteAttributeGroupRequest) (*DeleteAttributeGroupResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteAttributeGroup not implemented")
+func (UnimplementedAttributesServiceServer) ListValues(context.Context, *ListValuesRequest) (*ListValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListValues not implemented")
+}
+func (UnimplementedAttributesServiceServer) CreateValue(context.Context, *CreateValueRequest) (*CreateValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateValue not implemented")
+}
+func (UnimplementedAttributesServiceServer) UpdateValue(context.Context, *UpdateValueRequest) (*UpdateValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateValue not implemented")
+}
+func (UnimplementedAttributesServiceServer) DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteValue not implemented")
 }
 func (UnimplementedAttributesServiceServer) mustEmbedUnimplementedAttributesServiceServer() {}
 
@@ -227,24 +261,6 @@ func _AttributesService_GetAttribute_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_GetAttributeGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetAttributeGroupRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AttributesServiceServer).GetAttributeGroup(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AttributesService_GetAttributeGroup_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).GetAttributeGroup(ctx, req.(*GetAttributeGroupRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _AttributesService_ListAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListAttributesRequest)
 	if err := dec(in); err != nil {
@@ -263,128 +279,182 @@ func _AttributesService_ListAttributes_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_ListAttributeGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListAttributeGroupsRequest)
+func _AttributesService_GetDefinition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDefinitionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).ListAttributeGroups(ctx, in)
+		return srv.(AttributesServiceServer).GetDefinition(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_ListAttributeGroups_FullMethodName,
+		FullMethod: AttributesService_GetDefinition_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).ListAttributeGroups(ctx, req.(*ListAttributeGroupsRequest))
+		return srv.(AttributesServiceServer).GetDefinition(ctx, req.(*GetDefinitionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_CreateAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateAttributeRequest)
+func _AttributesService_ListDefinitions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDefinitionsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).CreateAttribute(ctx, in)
+		return srv.(AttributesServiceServer).ListDefinitions(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_CreateAttribute_FullMethodName,
+		FullMethod: AttributesService_ListDefinitions_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).CreateAttribute(ctx, req.(*CreateAttributeRequest))
+		return srv.(AttributesServiceServer).ListDefinitions(ctx, req.(*ListDefinitionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_CreateAttributeGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateAttributeGroupRequest)
+func _AttributesService_CreateDefinition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDefinitionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).CreateAttributeGroup(ctx, in)
+		return srv.(AttributesServiceServer).CreateDefinition(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_CreateAttributeGroup_FullMethodName,
+		FullMethod: AttributesService_CreateDefinition_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).CreateAttributeGroup(ctx, req.(*CreateAttributeGroupRequest))
+		return srv.(AttributesServiceServer).CreateDefinition(ctx, req.(*CreateDefinitionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_UpdateAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateAttributeRequest)
+func _AttributesService_UpdateDefinition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateDefinitionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).UpdateAttribute(ctx, in)
+		return srv.(AttributesServiceServer).UpdateDefinition(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_UpdateAttribute_FullMethodName,
+		FullMethod: AttributesService_UpdateDefinition_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).UpdateAttribute(ctx, req.(*UpdateAttributeRequest))
+		return srv.(AttributesServiceServer).UpdateDefinition(ctx, req.(*UpdateDefinitionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_UpdateAttributeGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateAttributeGroupRequest)
+func _AttributesService_DeleteDefinition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDefinitionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).UpdateAttributeGroup(ctx, in)
+		return srv.(AttributesServiceServer).DeleteDefinition(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_UpdateAttributeGroup_FullMethodName,
+		FullMethod: AttributesService_DeleteDefinition_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).UpdateAttributeGroup(ctx, req.(*UpdateAttributeGroupRequest))
+		return srv.(AttributesServiceServer).DeleteDefinition(ctx, req.(*DeleteDefinitionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_DeleteAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteAttributeRequest)
+func _AttributesService_GetValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).DeleteAttribute(ctx, in)
+		return srv.(AttributesServiceServer).GetValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_DeleteAttribute_FullMethodName,
+		FullMethod: AttributesService_GetValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).DeleteAttribute(ctx, req.(*DeleteAttributeRequest))
+		return srv.(AttributesServiceServer).GetValue(ctx, req.(*GetValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_DeleteAttributeGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteAttributeGroupRequest)
+func _AttributesService_ListValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).DeleteAttributeGroup(ctx, in)
+		return srv.(AttributesServiceServer).ListValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_DeleteAttributeGroup_FullMethodName,
+		FullMethod: AttributesService_ListValues_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).DeleteAttributeGroup(ctx, req.(*DeleteAttributeGroupRequest))
+		return srv.(AttributesServiceServer).ListValues(ctx, req.(*ListValuesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_CreateValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).CreateValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_CreateValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).CreateValue(ctx, req.(*CreateValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_UpdateValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).UpdateValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_UpdateValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).UpdateValue(ctx, req.(*UpdateValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_DeleteValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).DeleteValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_DeleteValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).DeleteValue(ctx, req.(*DeleteValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -401,40 +471,48 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AttributesService_GetAttribute_Handler,
 		},
 		{
-			MethodName: "GetAttributeGroup",
-			Handler:    _AttributesService_GetAttributeGroup_Handler,
-		},
-		{
 			MethodName: "ListAttributes",
 			Handler:    _AttributesService_ListAttributes_Handler,
 		},
 		{
-			MethodName: "ListAttributeGroups",
-			Handler:    _AttributesService_ListAttributeGroups_Handler,
+			MethodName: "GetDefinition",
+			Handler:    _AttributesService_GetDefinition_Handler,
 		},
 		{
-			MethodName: "CreateAttribute",
-			Handler:    _AttributesService_CreateAttribute_Handler,
+			MethodName: "ListDefinitions",
+			Handler:    _AttributesService_ListDefinitions_Handler,
 		},
 		{
-			MethodName: "CreateAttributeGroup",
-			Handler:    _AttributesService_CreateAttributeGroup_Handler,
+			MethodName: "CreateDefinition",
+			Handler:    _AttributesService_CreateDefinition_Handler,
 		},
 		{
-			MethodName: "UpdateAttribute",
-			Handler:    _AttributesService_UpdateAttribute_Handler,
+			MethodName: "UpdateDefinition",
+			Handler:    _AttributesService_UpdateDefinition_Handler,
 		},
 		{
-			MethodName: "UpdateAttributeGroup",
-			Handler:    _AttributesService_UpdateAttributeGroup_Handler,
+			MethodName: "DeleteDefinition",
+			Handler:    _AttributesService_DeleteDefinition_Handler,
 		},
 		{
-			MethodName: "DeleteAttribute",
-			Handler:    _AttributesService_DeleteAttribute_Handler,
+			MethodName: "GetValue",
+			Handler:    _AttributesService_GetValue_Handler,
 		},
 		{
-			MethodName: "DeleteAttributeGroup",
-			Handler:    _AttributesService_DeleteAttributeGroup_Handler,
+			MethodName: "ListValues",
+			Handler:    _AttributesService_ListValues_Handler,
+		},
+		{
+			MethodName: "CreateValue",
+			Handler:    _AttributesService_CreateValue_Handler,
+		},
+		{
+			MethodName: "UpdateValue",
+			Handler:    _AttributesService_UpdateValue_Handler,
+		},
+		{
+			MethodName: "DeleteValue",
+			Handler:    _AttributesService_DeleteValue_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

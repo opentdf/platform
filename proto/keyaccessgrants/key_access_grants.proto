@@ -28,56 +28,57 @@ message KeyAccessServer {
   string public_key = 4;
 }
 
-message GetKeyAccessGrantRequest {
+message GetKeyAccessServerRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message GetKeyAccessServerResponse {
+  KeyAccessServer server = 1;
+}
+
+message ListKeyAccessServersRequest {}
+message ListKeyAccessServersResponse {
+  repeated KeyAccessServer servers = 1;
+}
+
+message CreateKeyAccessServerRequest {
+  KeyAccessServer server = 1 [(buf.validate.field).required = true];
+}
+message CreateKeyAccessServerResponse {}
+
+message UpdateKeyAccessServerRequest {
   int32 id = 1 [(buf.validate.field).required = true];
+  KeyAccessServer server = 2 [(buf.validate.field).required = true];
 }
-message GetKeyAccessGrantResponse {
-  KeyAccessGrants grants = 1;
-}
+message UpdateKeyAccessServerResponse {}
 
-message ListKeyAccessGrantsRequest {}
-message ListKeyAccessGrantsResponse {
-  repeated KeyAccessGrants grants = 1;
+message DeleteKeyAccessServerRequest {
+  string id = 1 [(buf.validate.field).required = true];
 }
+message DeleteKeyAccessServerResponse {}
 
-message CreateKeyAccessGrantsRequest {
-  KeyAccessGrants grants = 1 [(buf.validate.field).required = true];
-}
-message CreateKeyAccessGrantsResponse {}
-
-message UpdateKeyAccessGrantsRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-  KeyAccessGrants grants = 2 [(buf.validate.field).required = true];
-}
-message UpdateKeyAccessGrantsResponse {}
-
-message DeleteKeyAccessGrantsRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-}
-message DeleteKeyAccessGrantsResponse {}
-
-service KeyAccessGrantsService {
-  rpc ListKeyAccessGrants(ListKeyAccessGrantsRequest) returns (ListKeyAccessGrantsResponse) {
-    option (google.api.http) = {get: "/v1/grants"};
-  }
-  rpc GetKeyAccessGrant(GetKeyAccessGrantRequest) returns (GetKeyAccessGrantResponse) {
-    option (google.api.http) = {get: "/v1/grants/{id}"};
+service KeyAccessServersService {
+  rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
+    option (google.api.http) = {get: "/key-access-servers"};
   }
 
-  rpc CreateKeyAccessGrants(CreateKeyAccessGrantsRequest) returns (CreateKeyAccessGrantsResponse) {
+  rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
+    option (google.api.http) = {get: "/key-access-servers/{id}"};
+  }
+
+  rpc CreateKeyAccessServers(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
     option (google.api.http) = {
-      post: "/v1/grants"
-      body: "grants"
+      post: "/key-access-servers"
+      body: "server"
     };
   }
-  rpc UpdateKeyAccessGrants(UpdateKeyAccessGrantsRequest) returns (UpdateKeyAccessGrantsResponse) {
+  rpc UpdateKeyAccessServers(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
     option (google.api.http) = {
-      put: "/v1/grants/{id}"
-      body: "grants"
+      put: "/key-access-servers/{id}"
+      body: "server"
     };
   }
 
-  rpc DeleteKeyAccessGrants(DeleteKeyAccessGrantsRequest) returns (DeleteKeyAccessGrantsResponse) {
-    option (google.api.http) = {delete: "/v1/grants/{id}"};
+  rpc DeleteKeyAccessServers(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
+    option (google.api.http) = {delete: "/key-access-servers/{id}"};
   }
 }

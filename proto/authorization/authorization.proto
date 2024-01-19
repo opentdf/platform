@@ -191,13 +191,13 @@ message GetEntitlementsRequest {
 
 message EntityEntitlements {
   string entity_id = 1;
-  repeated attributes.AttributeValueReference attribute_value_references = 2;
+  repeated string attribute_id = 2;
 }
 
 //A logical bucket of attributes belonging to a "Resource"
 message ResourceAttributes {
   string id = 1;
-  repeated attributes.AttributeValueReference attribute_value_references = 2;
+  repeated string attribute_id = 2;
 }
 
 /*

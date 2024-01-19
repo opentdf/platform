@@ -19,238 +19,238 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	KeyAccessGrantsService_ListKeyAccessGrants_FullMethodName   = "/keyaccessgrants.KeyAccessGrantsService/ListKeyAccessGrants"
-	KeyAccessGrantsService_GetKeyAccessGrant_FullMethodName     = "/keyaccessgrants.KeyAccessGrantsService/GetKeyAccessGrant"
-	KeyAccessGrantsService_CreateKeyAccessGrants_FullMethodName = "/keyaccessgrants.KeyAccessGrantsService/CreateKeyAccessGrants"
-	KeyAccessGrantsService_UpdateKeyAccessGrants_FullMethodName = "/keyaccessgrants.KeyAccessGrantsService/UpdateKeyAccessGrants"
-	KeyAccessGrantsService_DeleteKeyAccessGrants_FullMethodName = "/keyaccessgrants.KeyAccessGrantsService/DeleteKeyAccessGrants"
+	KeyAccessServersService_ListKeyAccessServers_FullMethodName   = "/keyaccessgrants.KeyAccessServersService/ListKeyAccessServers"
+	KeyAccessServersService_GetKeyAccessServer_FullMethodName     = "/keyaccessgrants.KeyAccessServersService/GetKeyAccessServer"
+	KeyAccessServersService_CreateKeyAccessServers_FullMethodName = "/keyaccessgrants.KeyAccessServersService/CreateKeyAccessServers"
+	KeyAccessServersService_UpdateKeyAccessServers_FullMethodName = "/keyaccessgrants.KeyAccessServersService/UpdateKeyAccessServers"
+	KeyAccessServersService_DeleteKeyAccessServers_FullMethodName = "/keyaccessgrants.KeyAccessServersService/DeleteKeyAccessServers"
 )
 
-// KeyAccessGrantsServiceClient is the client API for KeyAccessGrantsService service.
+// KeyAccessServersServiceClient is the client API for KeyAccessServersService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type KeyAccessGrantsServiceClient interface {
-	ListKeyAccessGrants(ctx context.Context, in *ListKeyAccessGrantsRequest, opts ...grpc.CallOption) (*ListKeyAccessGrantsResponse, error)
-	GetKeyAccessGrant(ctx context.Context, in *GetKeyAccessGrantRequest, opts ...grpc.CallOption) (*GetKeyAccessGrantResponse, error)
-	CreateKeyAccessGrants(ctx context.Context, in *CreateKeyAccessGrantsRequest, opts ...grpc.CallOption) (*CreateKeyAccessGrantsResponse, error)
-	UpdateKeyAccessGrants(ctx context.Context, in *UpdateKeyAccessGrantsRequest, opts ...grpc.CallOption) (*UpdateKeyAccessGrantsResponse, error)
-	DeleteKeyAccessGrants(ctx context.Context, in *DeleteKeyAccessGrantsRequest, opts ...grpc.CallOption) (*DeleteKeyAccessGrantsResponse, error)
+type KeyAccessServersServiceClient interface {
+	ListKeyAccessServers(ctx context.Context, in *ListKeyAccessServersRequest, opts ...grpc.CallOption) (*ListKeyAccessServersResponse, error)
+	GetKeyAccessServer(ctx context.Context, in *GetKeyAccessServerRequest, opts ...grpc.CallOption) (*GetKeyAccessServerResponse, error)
+	CreateKeyAccessServers(ctx context.Context, in *CreateKeyAccessServerRequest, opts ...grpc.CallOption) (*CreateKeyAccessServerResponse, error)
+	UpdateKeyAccessServers(ctx context.Context, in *UpdateKeyAccessServerRequest, opts ...grpc.CallOption) (*UpdateKeyAccessServerResponse, error)
+	DeleteKeyAccessServers(ctx context.Context, in *DeleteKeyAccessServerRequest, opts ...grpc.CallOption) (*DeleteKeyAccessServerResponse, error)
 }
 
-type keyAccessGrantsServiceClient struct {
+type keyAccessServersServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewKeyAccessGrantsServiceClient(cc grpc.ClientConnInterface) KeyAccessGrantsServiceClient {
-	return &keyAccessGrantsServiceClient{cc}
+func NewKeyAccessServersServiceClient(cc grpc.ClientConnInterface) KeyAccessServersServiceClient {
+	return &keyAccessServersServiceClient{cc}
 }
 
-func (c *keyAccessGrantsServiceClient) ListKeyAccessGrants(ctx context.Context, in *ListKeyAccessGrantsRequest, opts ...grpc.CallOption) (*ListKeyAccessGrantsResponse, error) {
-	out := new(ListKeyAccessGrantsResponse)
-	err := c.cc.Invoke(ctx, KeyAccessGrantsService_ListKeyAccessGrants_FullMethodName, in, out, opts...)
+func (c *keyAccessServersServiceClient) ListKeyAccessServers(ctx context.Context, in *ListKeyAccessServersRequest, opts ...grpc.CallOption) (*ListKeyAccessServersResponse, error) {
+	out := new(ListKeyAccessServersResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServersService_ListKeyAccessServers_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyAccessGrantsServiceClient) GetKeyAccessGrant(ctx context.Context, in *GetKeyAccessGrantRequest, opts ...grpc.CallOption) (*GetKeyAccessGrantResponse, error) {
-	out := new(GetKeyAccessGrantResponse)
-	err := c.cc.Invoke(ctx, KeyAccessGrantsService_GetKeyAccessGrant_FullMethodName, in, out, opts...)
+func (c *keyAccessServersServiceClient) GetKeyAccessServer(ctx context.Context, in *GetKeyAccessServerRequest, opts ...grpc.CallOption) (*GetKeyAccessServerResponse, error) {
+	out := new(GetKeyAccessServerResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServersService_GetKeyAccessServer_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyAccessGrantsServiceClient) CreateKeyAccessGrants(ctx context.Context, in *CreateKeyAccessGrantsRequest, opts ...grpc.CallOption) (*CreateKeyAccessGrantsResponse, error) {
-	out := new(CreateKeyAccessGrantsResponse)
-	err := c.cc.Invoke(ctx, KeyAccessGrantsService_CreateKeyAccessGrants_FullMethodName, in, out, opts...)
+func (c *keyAccessServersServiceClient) CreateKeyAccessServers(ctx context.Context, in *CreateKeyAccessServerRequest, opts ...grpc.CallOption) (*CreateKeyAccessServerResponse, error) {
+	out := new(CreateKeyAccessServerResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServersService_CreateKeyAccessServers_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyAccessGrantsServiceClient) UpdateKeyAccessGrants(ctx context.Context, in *UpdateKeyAccessGrantsRequest, opts ...grpc.CallOption) (*UpdateKeyAccessGrantsResponse, error) {
-	out := new(UpdateKeyAccessGrantsResponse)
-	err := c.cc.Invoke(ctx, KeyAccessGrantsService_UpdateKeyAccessGrants_FullMethodName, in, out, opts...)
+func (c *keyAccessServersServiceClient) UpdateKeyAccessServers(ctx context.Context, in *UpdateKeyAccessServerRequest, opts ...grpc.CallOption) (*UpdateKeyAccessServerResponse, error) {
+	out := new(UpdateKeyAccessServerResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServersService_UpdateKeyAccessServers_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyAccessGrantsServiceClient) DeleteKeyAccessGrants(ctx context.Context, in *DeleteKeyAccessGrantsRequest, opts ...grpc.CallOption) (*DeleteKeyAccessGrantsResponse, error) {
-	out := new(DeleteKeyAccessGrantsResponse)
-	err := c.cc.Invoke(ctx, KeyAccessGrantsService_DeleteKeyAccessGrants_FullMethodName, in, out, opts...)
+func (c *keyAccessServersServiceClient) DeleteKeyAccessServers(ctx context.Context, in *DeleteKeyAccessServerRequest, opts ...grpc.CallOption) (*DeleteKeyAccessServerResponse, error) {
+	out := new(DeleteKeyAccessServerResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServersService_DeleteKeyAccessServers_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// KeyAccessGrantsServiceServer is the server API for KeyAccessGrantsService service.
-// All implementations must embed UnimplementedKeyAccessGrantsServiceServer
+// KeyAccessServersServiceServer is the server API for KeyAccessServersService service.
+// All implementations must embed UnimplementedKeyAccessServersServiceServer
 // for forward compatibility
-type KeyAccessGrantsServiceServer interface {
-	ListKeyAccessGrants(context.Context, *ListKeyAccessGrantsRequest) (*ListKeyAccessGrantsResponse, error)
-	GetKeyAccessGrant(context.Context, *GetKeyAccessGrantRequest) (*GetKeyAccessGrantResponse, error)
-	CreateKeyAccessGrants(context.Context, *CreateKeyAccessGrantsRequest) (*CreateKeyAccessGrantsResponse, error)
-	UpdateKeyAccessGrants(context.Context, *UpdateKeyAccessGrantsRequest) (*UpdateKeyAccessGrantsResponse, error)
-	DeleteKeyAccessGrants(context.Context, *DeleteKeyAccessGrantsRequest) (*DeleteKeyAccessGrantsResponse, error)
-	mustEmbedUnimplementedKeyAccessGrantsServiceServer()
+type KeyAccessServersServiceServer interface {
+	ListKeyAccessServers(context.Context, *ListKeyAccessServersRequest) (*ListKeyAccessServersResponse, error)
+	GetKeyAccessServer(context.Context, *GetKeyAccessServerRequest) (*GetKeyAccessServerResponse, error)
+	CreateKeyAccessServers(context.Context, *CreateKeyAccessServerRequest) (*CreateKeyAccessServerResponse, error)
+	UpdateKeyAccessServers(context.Context, *UpdateKeyAccessServerRequest) (*UpdateKeyAccessServerResponse, error)
+	DeleteKeyAccessServers(context.Context, *DeleteKeyAccessServerRequest) (*DeleteKeyAccessServerResponse, error)
+	mustEmbedUnimplementedKeyAccessServersServiceServer()
 }
 
-// UnimplementedKeyAccessGrantsServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedKeyAccessGrantsServiceServer struct {
+// UnimplementedKeyAccessServersServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedKeyAccessServersServiceServer struct {
 }
 
-func (UnimplementedKeyAccessGrantsServiceServer) ListKeyAccessGrants(context.Context, *ListKeyAccessGrantsRequest) (*ListKeyAccessGrantsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListKeyAccessGrants not implemented")
+func (UnimplementedKeyAccessServersServiceServer) ListKeyAccessServers(context.Context, *ListKeyAccessServersRequest) (*ListKeyAccessServersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListKeyAccessServers not implemented")
 }
-func (UnimplementedKeyAccessGrantsServiceServer) GetKeyAccessGrant(context.Context, *GetKeyAccessGrantRequest) (*GetKeyAccessGrantResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetKeyAccessGrant not implemented")
+func (UnimplementedKeyAccessServersServiceServer) GetKeyAccessServer(context.Context, *GetKeyAccessServerRequest) (*GetKeyAccessServerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetKeyAccessServer not implemented")
 }
-func (UnimplementedKeyAccessGrantsServiceServer) CreateKeyAccessGrants(context.Context, *CreateKeyAccessGrantsRequest) (*CreateKeyAccessGrantsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateKeyAccessGrants not implemented")
+func (UnimplementedKeyAccessServersServiceServer) CreateKeyAccessServers(context.Context, *CreateKeyAccessServerRequest) (*CreateKeyAccessServerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateKeyAccessServers not implemented")
 }
-func (UnimplementedKeyAccessGrantsServiceServer) UpdateKeyAccessGrants(context.Context, *UpdateKeyAccessGrantsRequest) (*UpdateKeyAccessGrantsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateKeyAccessGrants not implemented")
+func (UnimplementedKeyAccessServersServiceServer) UpdateKeyAccessServers(context.Context, *UpdateKeyAccessServerRequest) (*UpdateKeyAccessServerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateKeyAccessServers not implemented")
 }
-func (UnimplementedKeyAccessGrantsServiceServer) DeleteKeyAccessGrants(context.Context, *DeleteKeyAccessGrantsRequest) (*DeleteKeyAccessGrantsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteKeyAccessGrants not implemented")
+func (UnimplementedKeyAccessServersServiceServer) DeleteKeyAccessServers(context.Context, *DeleteKeyAccessServerRequest) (*DeleteKeyAccessServerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteKeyAccessServers not implemented")
 }
-func (UnimplementedKeyAccessGrantsServiceServer) mustEmbedUnimplementedKeyAccessGrantsServiceServer() {
+func (UnimplementedKeyAccessServersServiceServer) mustEmbedUnimplementedKeyAccessServersServiceServer() {
 }
 
-// UnsafeKeyAccessGrantsServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to KeyAccessGrantsServiceServer will
+// UnsafeKeyAccessServersServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to KeyAccessServersServiceServer will
 // result in compilation errors.
-type UnsafeKeyAccessGrantsServiceServer interface {
-	mustEmbedUnimplementedKeyAccessGrantsServiceServer()
+type UnsafeKeyAccessServersServiceServer interface {
+	mustEmbedUnimplementedKeyAccessServersServiceServer()
 }
 
-func RegisterKeyAccessGrantsServiceServer(s grpc.ServiceRegistrar, srv KeyAccessGrantsServiceServer) {
-	s.RegisterService(&KeyAccessGrantsService_ServiceDesc, srv)
+func RegisterKeyAccessServersServiceServer(s grpc.ServiceRegistrar, srv KeyAccessServersServiceServer) {
+	s.RegisterService(&KeyAccessServersService_ServiceDesc, srv)
 }
 
-func _KeyAccessGrantsService_ListKeyAccessGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListKeyAccessGrantsRequest)
+func _KeyAccessServersService_ListKeyAccessServers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListKeyAccessServersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessGrantsServiceServer).ListKeyAccessGrants(ctx, in)
+		return srv.(KeyAccessServersServiceServer).ListKeyAccessServers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessGrantsService_ListKeyAccessGrants_FullMethodName,
+		FullMethod: KeyAccessServersService_ListKeyAccessServers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessGrantsServiceServer).ListKeyAccessGrants(ctx, req.(*ListKeyAccessGrantsRequest))
+		return srv.(KeyAccessServersServiceServer).ListKeyAccessServers(ctx, req.(*ListKeyAccessServersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessGrantsService_GetKeyAccessGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetKeyAccessGrantRequest)
+func _KeyAccessServersService_GetKeyAccessServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKeyAccessServerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessGrantsServiceServer).GetKeyAccessGrant(ctx, in)
+		return srv.(KeyAccessServersServiceServer).GetKeyAccessServer(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessGrantsService_GetKeyAccessGrant_FullMethodName,
+		FullMethod: KeyAccessServersService_GetKeyAccessServer_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessGrantsServiceServer).GetKeyAccessGrant(ctx, req.(*GetKeyAccessGrantRequest))
+		return srv.(KeyAccessServersServiceServer).GetKeyAccessServer(ctx, req.(*GetKeyAccessServerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessGrantsService_CreateKeyAccessGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateKeyAccessGrantsRequest)
+func _KeyAccessServersService_CreateKeyAccessServers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateKeyAccessServerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessGrantsServiceServer).CreateKeyAccessGrants(ctx, in)
+		return srv.(KeyAccessServersServiceServer).CreateKeyAccessServers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessGrantsService_CreateKeyAccessGrants_FullMethodName,
+		FullMethod: KeyAccessServersService_CreateKeyAccessServers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessGrantsServiceServer).CreateKeyAccessGrants(ctx, req.(*CreateKeyAccessGrantsRequest))
+		return srv.(KeyAccessServersServiceServer).CreateKeyAccessServers(ctx, req.(*CreateKeyAccessServerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessGrantsService_UpdateKeyAccessGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateKeyAccessGrantsRequest)
+func _KeyAccessServersService_UpdateKeyAccessServers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateKeyAccessServerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessGrantsServiceServer).UpdateKeyAccessGrants(ctx, in)
+		return srv.(KeyAccessServersServiceServer).UpdateKeyAccessServers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessGrantsService_UpdateKeyAccessGrants_FullMethodName,
+		FullMethod: KeyAccessServersService_UpdateKeyAccessServers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessGrantsServiceServer).UpdateKeyAccessGrants(ctx, req.(*UpdateKeyAccessGrantsRequest))
+		return srv.(KeyAccessServersServiceServer).UpdateKeyAccessServers(ctx, req.(*UpdateKeyAccessServerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessGrantsService_DeleteKeyAccessGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteKeyAccessGrantsRequest)
+func _KeyAccessServersService_DeleteKeyAccessServers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteKeyAccessServerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessGrantsServiceServer).DeleteKeyAccessGrants(ctx, in)
+		return srv.(KeyAccessServersServiceServer).DeleteKeyAccessServers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessGrantsService_DeleteKeyAccessGrants_FullMethodName,
+		FullMethod: KeyAccessServersService_DeleteKeyAccessServers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessGrantsServiceServer).DeleteKeyAccessGrants(ctx, req.(*DeleteKeyAccessGrantsRequest))
+		return srv.(KeyAccessServersServiceServer).DeleteKeyAccessServers(ctx, req.(*DeleteKeyAccessServerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// KeyAccessGrantsService_ServiceDesc is the grpc.ServiceDesc for KeyAccessGrantsService service.
+// KeyAccessServersService_ServiceDesc is the grpc.ServiceDesc for KeyAccessServersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var KeyAccessGrantsService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "keyaccessgrants.KeyAccessGrantsService",
-	HandlerType: (*KeyAccessGrantsServiceServer)(nil),
+var KeyAccessServersService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "keyaccessgrants.KeyAccessServersService",
+	HandlerType: (*KeyAccessServersServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ListKeyAccessGrants",
-			Handler:    _KeyAccessGrantsService_ListKeyAccessGrants_Handler,
+			MethodName: "ListKeyAccessServers",
+			Handler:    _KeyAccessServersService_ListKeyAccessServers_Handler,
 		},
 		{
-			MethodName: "GetKeyAccessGrant",
-			Handler:    _KeyAccessGrantsService_GetKeyAccessGrant_Handler,
+			MethodName: "GetKeyAccessServer",
+			Handler:    _KeyAccessServersService_GetKeyAccessServer_Handler,
 		},
 		{
-			MethodName: "CreateKeyAccessGrants",
-			Handler:    _KeyAccessGrantsService_CreateKeyAccessGrants_Handler,
+			MethodName: "CreateKeyAccessServers",
+			Handler:    _KeyAccessServersService_CreateKeyAccessServers_Handler,
 		},
 		{
-			MethodName: "UpdateKeyAccessGrants",
-			Handler:    _KeyAccessGrantsService_UpdateKeyAccessGrants_Handler,
+			MethodName: "UpdateKeyAccessServers",
+			Handler:    _KeyAccessServersService_UpdateKeyAccessServers_Handler,
 		},
 		{
-			MethodName: "DeleteKeyAccessGrants",
-			Handler:    _KeyAccessGrantsService_DeleteKeyAccessGrants_Handler,
+			MethodName: "DeleteKeyAccessServers",
+			Handler:    _KeyAccessServersService_DeleteKeyAccessServers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

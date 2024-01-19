@@ -6,46 +6,61 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 
-message Attribute {
-  // Namespace namespace = 1;
-  Definition definition = 1;
-  repeated Value values = 2;
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum AttributeRuleTypeEnum {
+  ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED = 0;
+  ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF = 1;
+  ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF = 2;
+  ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY = 3;
 }
 
-// Attribute Definition
-message Definition {
-  // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
-  enum AttributeRuleType {
-    ATTRIBUTE_RULE_TYPE_UNSPECIFIED = 0;
-    ATTRIBUTE_RULE_TYPE_ALL_OF = 1;
-    ATTRIBUTE_RULE_TYPE_ANY_OF = 2;
-    ATTRIBUTE_RULE_TYPE_HIERARCHY = 3;
-  }
+message Attribute {
+  // Namespace namespace = 1;
+  string id = 1;
+
   // Optional metadata for the attribute definition
-  common.PolicyMetadata metadata = 1;
+  common.PolicyMetadata metadata = 2;
 
-  // generated uuid in database
-  string id = 2;
-
-  // namespace of the attribute
-  string namespace_id = 3 [(buf.validate.field).required = true];
+  // TODO: enable this when merging with Jake's work
+  // namespace.Namespace namespace = 3;
 
   //attribute name
-  string name = 4 [(buf.validate.field).required = true];
+  string name = 5;
 
   // attribute rule enum
-  AttributeRuleType rule = 5 [
+  AttributeRuleTypeEnum rule = 6 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
+
+  repeated Value values = 7;
 }
 
-// Definition of a single attribute value
-message Value {
-  common.PolicyMetadata metadata = 1;
+message AttributeCreateUpdate {
+  // Optional metadata for the attribute definition
+  common.PolicyMetadataMutable metadata = 1;
 
+  // namespace of the attribute
+  string namespace_id = 2 [(buf.validate.field).required = true];
+
+  //attribute name
+  string name = 3 [(buf.validate.field).required = true];
+
+  // attribute rule enum
+  AttributeRuleTypeEnum rule = 4 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  // optional
+  repeated ValueCreateUpdate values = 5;
+}
+
+message Value {
   // generated uuid in database
-  string id = 2;
+  string id = 1;
+
+  common.PolicyMetadata metadata = 2;
 
   string attribute_definition_id = 3 [(buf.validate.field).required = true];
 
@@ -53,69 +68,71 @@ message Value {
 
   // list of attribute values that this value is related to (attribute group)
   repeated string members = 5;
-
-  //TODO - optional lock down pub key format if needed.  Per ATTR KEY?
-  string attribute_public_key = 6;
 }
 
-message DefinitionKeyAccessGrant {
+// Definition of a single attribute value
+message ValueCreateUpdate {
+  common.PolicyMetadataMutable metadata = 1;
+
+  string value = 2;
+
+  // list of attribute values that this value is related to (attribute group)
+  repeated string members = 3;
+}
+
+/*
+   Key Access Server Grants
+*/
+
+message DefinitionKeyAccessServerGrant {
   string attribute_definition_id = 1;
-  string key_access_servers_id = 2;
+  string key_access_server_id = 2;
 }
 
-message ValueKeyAccessGrant {
+message ValueKeyAccessServerGrant {
   string attribute_value_id = 1;
-  string key_access_servers_id = 2;
+  string key_access_server_id = 2;
 }
 
 /*
    Attribute Service Definitions
 */
 
-message GetAttributeRequest {
-  string definition_id = 1 [(buf.validate.field).required = true];
-}
-message GetAttributeResponse {
-  Attribute attribute = 1;
-}
-
 message ListAttributesRequest {}
 message ListAttributesResponse {
   repeated Attribute attributes = 1;
 }
 
-message GetDefinitionRequest {
+message GetAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message GetDefinitionResponse {
-  Definition definition = 1;
+message GetAttributeResponse {
+  Attribute attribute = 1;
 }
 
-message ListDefinitionsRequest {}
-message ListDefinitionsResponse {
-  repeated Definition definitions = 1;
+message CreateAttributeRequest {
+  AttributeCreateUpdate attribute = 1 [(buf.validate.field).required = true];
+}
+message CreateAttributeResponse {
+  Attribute attribute = 1;
 }
 
-message CreateDefinitionRequest {
-  Definition definition = 1 [(buf.validate.field).required = true];
-}
-message CreateDefinitionResponse {
-  Definition definition = 1;
-}
-
-message UpdateDefinitionRequest {
+message UpdateAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
-  Definition definition = 2 [(buf.validate.field).required = true];
+  AttributeCreateUpdate attribute = 2 [(buf.validate.field).required = true];
 }
-message UpdateDefinitionResponse {
-  Definition definition = 1;
+message UpdateAttributeResponse {
+  Attribute attribute = 1;
 }
 
-message DeleteDefinitionRequest {
+message DeleteAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteDefinitionResponse {}
+message DeleteAttributeResponse {}
 
+///
+/// Value RPC messages
+///
 message GetValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
@@ -129,7 +146,8 @@ message ListValuesResponse {
 }
 
 message CreateValueRequest {
-  Value value = 1 [(buf.validate.field).required = true];
+  string attribute_id = 1 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 2 [(buf.validate.field).required = true];
 }
 message CreateValueResponse {
   Value value = 1;
@@ -137,7 +155,7 @@ message CreateValueResponse {
 
 message UpdateValueRequest {
   string id = 1 [(buf.validate.field).required = true];
-  Value value = 2 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 2 [(buf.validate.field).required = true];
 }
 message UpdateValueResponse {
   Value value = 1;
@@ -148,234 +166,54 @@ message DeleteValueRequest {
 }
 message DeleteValueResponse {}
 
-// message GetAttributeGroupRequest {
-//   int32 id = 1 [(buf.validate.field).required = true];
-// }
-
-// message GetAttributeGroupResponse {
-//   AttributeGroup group = 1;
-// }
-
-// message ListAttributeGroupsRequest {
-//   common.ResourceSelector selector = 1;
-// }
-
-// message ListAttributeGroupsResponse {
-//   repeated AttributeGroup groups = 1;
-// }
-
-// message CreateAttributeGroupRequest {
-//   AttributeGroup group = 1 [(buf.validate.field).required = true];
-// }
-
-// message CreateAttributeGroupResponse {}
-
-// message UpdateAttributeGroupRequest {
-//   int32 id = 1 [(buf.validate.field).required = true];
-//   AttributeGroup group = 2 [(buf.validate.field).required = true];
-// }
-// message UpdateAttributeGroupResponse {}
-
-// message DeleteAttributeGroupRequest {
-//   int32 id = 1 [(buf.validate.field).required = true];
-// }
-// message DeleteAttributeGroupResponse {}
-
+///
+/// Attribute Service
+///
 service AttributesService {
-  /** Attribute (Definition & Value(s)) read-only convenience functions **/
+  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
+
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
-    option (google.api.http) = {get: "/attributes/{definition_id}"};
+    option (google.api.http) = {get: "/attributes/{id}"};
   }
 
-  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
-    option (google.api.http) = {get: "/attributes"};
-  }
-
-  /** Attribute Definition **/
-  rpc GetDefinition(GetDefinitionRequest) returns (GetDefinitionResponse) {
-    option (google.api.http) = {get: "/attribute/definitions/{id}"};
-  }
-
-  rpc ListDefinitions(ListDefinitionsRequest) returns (ListDefinitionsResponse) {
-    option (google.api.http) = {get: "/attribute/definitions"};
-  }
-
-  rpc CreateDefinition(CreateDefinitionRequest) returns (CreateDefinitionResponse) {
+  rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
     option (google.api.http) = {
-      post: "/attribute/definitions"
-      body: "definition"
+      post: "/attributes"
+      body: "attribute"
     };
   }
 
-  rpc UpdateDefinition(UpdateDefinitionRequest) returns (UpdateDefinitionResponse) {
+  rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {
     option (google.api.http) = {
-      post: "/attribute/definitions/{id}"
-      body: "definition"
+      post: "/attributes/{id}"
+      body: "attribute"
     };
   }
 
-  rpc DeleteDefinition(DeleteDefinitionRequest) returns (DeleteDefinitionResponse) {
-    option (google.api.http) = {delete: "/attribute/definitions/{id}"};
+  rpc DeleteAttribute(DeleteAttributeRequest) returns (DeleteAttributeResponse) {
+    option (google.api.http) = {delete: "/attributes/{id}"};
   }
 
   /** Attribute Value **/
-
   rpc GetValue(GetValueRequest) returns (GetValueResponse) {
-    option (google.api.http) = {get: "/attribute/values/{id}"};
-  }
-
-  rpc ListValues(ListValuesRequest) returns (ListValuesResponse) {
-    option (google.api.http) = {get: "/attribute/values"};
+    option (google.api.http) = {get: "/attributes/_/values/{id}"};
   }
 
   rpc CreateValue(CreateValueRequest) returns (CreateValueResponse) {
     option (google.api.http) = {
-      post: "/attribute/values"
+      post: "/attributes/{attribute_id}/values"
       body: "value"
     };
   }
 
   rpc UpdateValue(UpdateValueRequest) returns (UpdateValueResponse) {
     option (google.api.http) = {
-      post: "/attribute/values/{id}"
+      post: "/attributes/_/values/{id}"
       body: "value"
     };
   }
 
   rpc DeleteValue(DeleteValueRequest) returns (DeleteValueResponse) {
-    option (google.api.http) = {delete: "/attribute/values/{id}"};
+    option (google.api.http) = {delete: "/attributes/_/values/{id}"};
   }
-
-  /** Attribute Groups **/
-  // rpc GetAttributeGroup(GetAttributeGroupRequest) returns (GetAttributeGroupResponse) {
-  //   option (google.api.http) = {get: "/attribute/groups/{id}"};
-  // }
-
-  // rpc ListAttributeGroups(ListAttributeGroupsRequest) returns (ListAttributeGroupsResponse) {
-  //   option (google.api.http) = {get: "/attribute/groups"};
-  // }
-
-  // rpc CreateAttributeGroup(CreateAttributeGroupRequest) returns (CreateAttributeGroupResponse) {
-  //   option (google.api.http) = {
-  //     post: "/attributes/groups"
-  //     body: "group"
-  //   };
-  // }
-
-  // rpc UpdateAttributeGroup(UpdateAttributeGroupRequest) returns (UpdateAttributeGroupResponse) {
-  //   option (google.api.http) = {
-  //     post: "/attribute/groups/{id}"
-  //     body: "group"
-  //   };
-  // }
-
-  // rpc DeleteAttributeGroup(DeleteAttributeGroupRequest) returns (DeleteAttributeGroupResponse) {
-  //   option (google.api.http) = {delete: "/attribute/groups/{id}"};
-  // }
 }
-
-/*
-
-   Attribute Service Examples
-
-   CREATE a definition:
-     Request:
-         grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/CreateDefinition <<EOM
-         {
-           "definition": {
-             "namespace_id": "namespace-uuid",
-             "name": "relto",
-             "rule": "ALL_OF"
-           },
-           "metadata": {
-             "labels": {
-               "origin": "Country of Origin"
-             },
-             "description": "The relto attribute is used to describe the relationship of the resource to the country of origin."
-           }
-         }
-         EOM
-     Response:
-         {
-           "definition": {
-             "metadata": {
-               "created_at": "2020-07-28T20:20:20.000Z",
-               "updated_at": "2020-07-28T20:20:20.000Z",
-               "labels": {
-                 "origin": "Country of Origin"
-               },
-               "description": "The relto attribute is used to describe the relationship of the resource to the country of origin."
-             },
-             "id": "relto-attribute-uuid",
-             "namespace_id": "namespace-uuid",
-             "name": "relto",
-             "rule": "ALL_OF"
-           }
-         }
-
-   Now CREATE two values assigned to it:
-     Request:
-         grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/CreateValue <<EOM
-         {
-           "value": {
-             "attribute_definition_id": "relto-attribute-uuid",
-             "value": "USA"
-           }
-         }
-         EOM
-         grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/CreateValue <<EOM
-         {
-           "value": {
-             "attribute_definition_id": "relto-attribute-uuid",
-             "value": "GBR"
-           }
-         }
-
-   Now LIST all Attribute Definitions & their associated Value(s):
-     Request:
-         grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/ListAttributes <<EOM
-         {}
-         EOM
-     Response:
-         {
-           "attributes": [
-             {
-               "definition": {
-                 "metadata": {
-                   "created_at": "2020-07-28T20:20:20.000Z",
-                   "updated_at": "2020-07-28T20:20:20.000Z",
-                   "labels": {
-                     "origin": "Country of Origin"
-                   },
-                   "description": "The relto attribute is used to describe the relationship of the resource to the country of origin."
-                 },
-                 "id": "relto-attribute-uuid",
-                 "namespace_id": "namespace-uuid",
-                 "name": "relto",
-                 "rule": "ALL_OF"
-               },
-               "values": [
-                 {
-                   "metadata": {
-                     "created_at": "2020-07-28T20:20:20.000Z",
-                     "updated_at": "2020-07-28T20:20:20.000Z"
-                   },
-                   "id": "relto-attribute-value-uuid",
-                   "attribute_definition_id": "relto-attribute-uuid",
-                   "value": "USA"
-                 },
-                 {
-                   "metadata": {
-                     "created_at": "2020-07-28T20:20:20.000Z",
-                     "updated_at": "2020-07-28T20:20:20.000Z"
-                   },
-                   "id": "relto-attribute-value-uuid",
-                   "attribute_definition_id": "relto-attribute-uuid",
-                   "value": "GBR"
-                 }
-               ]
-             }
-           ]
-         }
-
-*/

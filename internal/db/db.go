@@ -228,7 +228,7 @@ func (c Client) UpdateResource(ctx context.Context, descriptor *common.ResourceD
 
 func updateResourceSQL(descriptor *common.ResourceDescriptor,
 	resource []byte, policyType string) (string, []interface{}, error) {
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	psql := newStatementBuilder()
 
 	builder := psql.Update("opentdf.resources")
 
@@ -269,4 +269,40 @@ func deleteResourceSQL(id int32, policyType string) (string, []interface{}, erro
 
 	//nolint:wrapcheck // Wrapped error in DeleteResource
 	return builder.ToSql()
+}
+
+// Postgres specific statement builder
+func newStatementBuilder() sq.StatementBuilderType {
+	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+}
+
+// Common function for all queryRow calls
+func (c Client) queryRow(ctx context.Context, sql string, args []interface{}, err error) (pgx.Row, error) {
+	if err != nil {
+		slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+		return nil, fmt.Errorf("failed to create get resource sql: %w", err)
+	}
+	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	return c.QueryRow(ctx, sql, args...), nil
+}
+
+// Common function for all query calls
+func (c Client) query(ctx context.Context, sql string, args []interface{}, err error) (pgx.Rows, error) {
+	if err != nil {
+		slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+		return nil, fmt.Errorf("failed to create list resource sql: %w", err)
+	}
+	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	return c.Query(ctx, sql, args...)
+}
+
+// Common function for all exec calls
+func (c Client) exec(ctx context.Context, sql string, args []interface{}, err error) error {
+	if err != nil {
+		slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+		return fmt.Errorf("failed to create list resource sql: %w", err)
+	}
+	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	_, err = c.Exec(ctx, sql, args...)
+	return err
 }

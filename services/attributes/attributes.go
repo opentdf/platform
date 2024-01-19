@@ -35,62 +35,24 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 	return nil
 }
 
-func (s AttributesService) CreateAttribute(ctx context.Context,
+func (s AttributesService) CreateAttributeDefinition(ctx context.Context,
 	req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error) {
-	slog.Debug("creating new attribute definition", slog.String("name", req.Definition.Name))
+	slog.Debug("creating new attribute definition", slog.String("name", req.Attribute.Name))
 
-	// Set the version of the resource to 1 on create
-	req.Definition.Descriptor_.Version = 1
-
-	resource, err := protojson.Marshal(req.Definition)
-	if err != nil {
-		return &attributes.CreateAttributeResponse{},
-			status.Error(codes.Internal, services.ErrCreatingResource)
-	}
-
-	err = s.dbClient.CreateResource(ctx, req.Definition.Descriptor_, resource)
-	if err != nil {
+	if err := s.dbClient.CreateAttribute(ctx, req.Attribute); err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &attributes.CreateAttributeResponse{},
-			status.Error(codes.Internal, services.ErrCreatingResource)
+		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
-	slog.Debug("created new attribute definition", slog.String("name", req.Definition.Name))
 
+	slog.Debug("created new attribute definition", slog.String("name", req.Attribute.Name))
 	return &attributes.CreateAttributeResponse{}, nil
-}
-
-func (s AttributesService) CreateAttributeGroup(ctx context.Context,
-	req *attributes.CreateAttributeGroupRequest) (*attributes.CreateAttributeGroupResponse, error) {
-	slog.Debug("creating new attribute group definition")
-
-	// Set the version of the resource to 1 on create
-	req.Group.Descriptor_.Version = 1
-
-	resource, err := protojson.Marshal(req.Group)
-	if err != nil {
-		return &attributes.CreateAttributeGroupResponse{},
-			status.Error(codes.Internal, services.ErrCreatingResource)
-	}
-
-	err = s.dbClient.CreateResource(ctx, req.Group.Descriptor_, resource)
-	if err != nil {
-		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &attributes.CreateAttributeGroupResponse{},
-			status.Error(codes.Internal, services.ErrCreatingResource)
-	}
-	return &attributes.CreateAttributeGroupResponse{}, nil
 }
 
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
 	attributesList := &attributes.ListAttributesResponse{}
 
-	rows, err := s.dbClient.ListResources(
-		ctx,
-		common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION.String(),
-		req.Selector,
-	)
-
+	rows, err := s.dbClient.ListAllAttributes(ctx)
 	if err != nil {
 		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return attributesList, status.Error(codes.Internal, services.ErrListingResource)
@@ -99,8 +61,8 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 
 	for rows.Next() {
 		var (
-			id          int32
-			definition  = new(attributes.AttributeDefinition)
+			id          string
+			definition  = new(attributes.Attribute)
 			bDefinition []byte
 		)
 		err = rows.Scan(&id, &bDefinition)

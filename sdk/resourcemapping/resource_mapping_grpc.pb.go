@@ -19,17 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ResourceEncodingService_ListResourceMappings_FullMethodName  = "/resourcemapping.ResourceEncodingService/ListResourceMappings"
-	ResourceEncodingService_GetResourceMapping_FullMethodName    = "/resourcemapping.ResourceEncodingService/GetResourceMapping"
-	ResourceEncodingService_CreateResourceMapping_FullMethodName = "/resourcemapping.ResourceEncodingService/CreateResourceMapping"
-	ResourceEncodingService_UpdateResourceMapping_FullMethodName = "/resourcemapping.ResourceEncodingService/UpdateResourceMapping"
-	ResourceEncodingService_DeleteResourceMapping_FullMethodName = "/resourcemapping.ResourceEncodingService/DeleteResourceMapping"
+	ResourceMappingService_ListResourceMappings_FullMethodName  = "/resourcemapping.ResourceMappingService/ListResourceMappings"
+	ResourceMappingService_GetResourceMapping_FullMethodName    = "/resourcemapping.ResourceMappingService/GetResourceMapping"
+	ResourceMappingService_CreateResourceMapping_FullMethodName = "/resourcemapping.ResourceMappingService/CreateResourceMapping"
+	ResourceMappingService_UpdateResourceMapping_FullMethodName = "/resourcemapping.ResourceMappingService/UpdateResourceMapping"
+	ResourceMappingService_DeleteResourceMapping_FullMethodName = "/resourcemapping.ResourceMappingService/DeleteResourceMapping"
 )
 
-// ResourceEncodingServiceClient is the client API for ResourceEncodingService service.
+// ResourceMappingServiceClient is the client API for ResourceMappingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ResourceEncodingServiceClient interface {
+type ResourceMappingServiceClient interface {
 	// Resource Mappings
 	ListResourceMappings(ctx context.Context, in *ListResourceMappingsRequest, opts ...grpc.CallOption) (*ListResourceMappingsResponse, error)
 	GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error)
@@ -38,221 +38,221 @@ type ResourceEncodingServiceClient interface {
 	DeleteResourceMapping(ctx context.Context, in *DeleteResourceMappingRequest, opts ...grpc.CallOption) (*DeleteResourceMappingResponse, error)
 }
 
-type resourceEncodingServiceClient struct {
+type resourceMappingServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewResourceEncodingServiceClient(cc grpc.ClientConnInterface) ResourceEncodingServiceClient {
-	return &resourceEncodingServiceClient{cc}
+func NewResourceMappingServiceClient(cc grpc.ClientConnInterface) ResourceMappingServiceClient {
+	return &resourceMappingServiceClient{cc}
 }
 
-func (c *resourceEncodingServiceClient) ListResourceMappings(ctx context.Context, in *ListResourceMappingsRequest, opts ...grpc.CallOption) (*ListResourceMappingsResponse, error) {
+func (c *resourceMappingServiceClient) ListResourceMappings(ctx context.Context, in *ListResourceMappingsRequest, opts ...grpc.CallOption) (*ListResourceMappingsResponse, error) {
 	out := new(ListResourceMappingsResponse)
-	err := c.cc.Invoke(ctx, ResourceEncodingService_ListResourceMappings_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceMappingService_ListResourceMappings_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourceEncodingServiceClient) GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error) {
+func (c *resourceMappingServiceClient) GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error) {
 	out := new(GetResourceMappingResponse)
-	err := c.cc.Invoke(ctx, ResourceEncodingService_GetResourceMapping_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceMappingService_GetResourceMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourceEncodingServiceClient) CreateResourceMapping(ctx context.Context, in *CreateResourceMappingRequest, opts ...grpc.CallOption) (*CreateResourceMappingResponse, error) {
+func (c *resourceMappingServiceClient) CreateResourceMapping(ctx context.Context, in *CreateResourceMappingRequest, opts ...grpc.CallOption) (*CreateResourceMappingResponse, error) {
 	out := new(CreateResourceMappingResponse)
-	err := c.cc.Invoke(ctx, ResourceEncodingService_CreateResourceMapping_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceMappingService_CreateResourceMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourceEncodingServiceClient) UpdateResourceMapping(ctx context.Context, in *UpdateResourceMappingRequest, opts ...grpc.CallOption) (*UpdateResourceMappingResponse, error) {
+func (c *resourceMappingServiceClient) UpdateResourceMapping(ctx context.Context, in *UpdateResourceMappingRequest, opts ...grpc.CallOption) (*UpdateResourceMappingResponse, error) {
 	out := new(UpdateResourceMappingResponse)
-	err := c.cc.Invoke(ctx, ResourceEncodingService_UpdateResourceMapping_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceMappingService_UpdateResourceMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourceEncodingServiceClient) DeleteResourceMapping(ctx context.Context, in *DeleteResourceMappingRequest, opts ...grpc.CallOption) (*DeleteResourceMappingResponse, error) {
+func (c *resourceMappingServiceClient) DeleteResourceMapping(ctx context.Context, in *DeleteResourceMappingRequest, opts ...grpc.CallOption) (*DeleteResourceMappingResponse, error) {
 	out := new(DeleteResourceMappingResponse)
-	err := c.cc.Invoke(ctx, ResourceEncodingService_DeleteResourceMapping_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ResourceMappingService_DeleteResourceMapping_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ResourceEncodingServiceServer is the server API for ResourceEncodingService service.
-// All implementations must embed UnimplementedResourceEncodingServiceServer
+// ResourceMappingServiceServer is the server API for ResourceMappingService service.
+// All implementations must embed UnimplementedResourceMappingServiceServer
 // for forward compatibility
-type ResourceEncodingServiceServer interface {
+type ResourceMappingServiceServer interface {
 	// Resource Mappings
 	ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error)
 	GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error)
 	CreateResourceMapping(context.Context, *CreateResourceMappingRequest) (*CreateResourceMappingResponse, error)
 	UpdateResourceMapping(context.Context, *UpdateResourceMappingRequest) (*UpdateResourceMappingResponse, error)
 	DeleteResourceMapping(context.Context, *DeleteResourceMappingRequest) (*DeleteResourceMappingResponse, error)
-	mustEmbedUnimplementedResourceEncodingServiceServer()
+	mustEmbedUnimplementedResourceMappingServiceServer()
 }
 
-// UnimplementedResourceEncodingServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedResourceEncodingServiceServer struct {
+// UnimplementedResourceMappingServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedResourceMappingServiceServer struct {
 }
 
-func (UnimplementedResourceEncodingServiceServer) ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error) {
+func (UnimplementedResourceMappingServiceServer) ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListResourceMappings not implemented")
 }
-func (UnimplementedResourceEncodingServiceServer) GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error) {
+func (UnimplementedResourceMappingServiceServer) GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetResourceMapping not implemented")
 }
-func (UnimplementedResourceEncodingServiceServer) CreateResourceMapping(context.Context, *CreateResourceMappingRequest) (*CreateResourceMappingResponse, error) {
+func (UnimplementedResourceMappingServiceServer) CreateResourceMapping(context.Context, *CreateResourceMappingRequest) (*CreateResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateResourceMapping not implemented")
 }
-func (UnimplementedResourceEncodingServiceServer) UpdateResourceMapping(context.Context, *UpdateResourceMappingRequest) (*UpdateResourceMappingResponse, error) {
+func (UnimplementedResourceMappingServiceServer) UpdateResourceMapping(context.Context, *UpdateResourceMappingRequest) (*UpdateResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateResourceMapping not implemented")
 }
-func (UnimplementedResourceEncodingServiceServer) DeleteResourceMapping(context.Context, *DeleteResourceMappingRequest) (*DeleteResourceMappingResponse, error) {
+func (UnimplementedResourceMappingServiceServer) DeleteResourceMapping(context.Context, *DeleteResourceMappingRequest) (*DeleteResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteResourceMapping not implemented")
 }
-func (UnimplementedResourceEncodingServiceServer) mustEmbedUnimplementedResourceEncodingServiceServer() {
+func (UnimplementedResourceMappingServiceServer) mustEmbedUnimplementedResourceMappingServiceServer() {
 }
 
-// UnsafeResourceEncodingServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ResourceEncodingServiceServer will
+// UnsafeResourceMappingServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ResourceMappingServiceServer will
 // result in compilation errors.
-type UnsafeResourceEncodingServiceServer interface {
-	mustEmbedUnimplementedResourceEncodingServiceServer()
+type UnsafeResourceMappingServiceServer interface {
+	mustEmbedUnimplementedResourceMappingServiceServer()
 }
 
-func RegisterResourceEncodingServiceServer(s grpc.ServiceRegistrar, srv ResourceEncodingServiceServer) {
-	s.RegisterService(&ResourceEncodingService_ServiceDesc, srv)
+func RegisterResourceMappingServiceServer(s grpc.ServiceRegistrar, srv ResourceMappingServiceServer) {
+	s.RegisterService(&ResourceMappingService_ServiceDesc, srv)
 }
 
-func _ResourceEncodingService_ListResourceMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceMappingService_ListResourceMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListResourceMappingsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceEncodingServiceServer).ListResourceMappings(ctx, in)
+		return srv.(ResourceMappingServiceServer).ListResourceMappings(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourceEncodingService_ListResourceMappings_FullMethodName,
+		FullMethod: ResourceMappingService_ListResourceMappings_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceEncodingServiceServer).ListResourceMappings(ctx, req.(*ListResourceMappingsRequest))
+		return srv.(ResourceMappingServiceServer).ListResourceMappings(ctx, req.(*ListResourceMappingsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourceEncodingService_GetResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceMappingService_GetResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetResourceMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceEncodingServiceServer).GetResourceMapping(ctx, in)
+		return srv.(ResourceMappingServiceServer).GetResourceMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourceEncodingService_GetResourceMapping_FullMethodName,
+		FullMethod: ResourceMappingService_GetResourceMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceEncodingServiceServer).GetResourceMapping(ctx, req.(*GetResourceMappingRequest))
+		return srv.(ResourceMappingServiceServer).GetResourceMapping(ctx, req.(*GetResourceMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourceEncodingService_CreateResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceMappingService_CreateResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateResourceMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceEncodingServiceServer).CreateResourceMapping(ctx, in)
+		return srv.(ResourceMappingServiceServer).CreateResourceMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourceEncodingService_CreateResourceMapping_FullMethodName,
+		FullMethod: ResourceMappingService_CreateResourceMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceEncodingServiceServer).CreateResourceMapping(ctx, req.(*CreateResourceMappingRequest))
+		return srv.(ResourceMappingServiceServer).CreateResourceMapping(ctx, req.(*CreateResourceMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourceEncodingService_UpdateResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceMappingService_UpdateResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateResourceMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceEncodingServiceServer).UpdateResourceMapping(ctx, in)
+		return srv.(ResourceMappingServiceServer).UpdateResourceMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourceEncodingService_UpdateResourceMapping_FullMethodName,
+		FullMethod: ResourceMappingService_UpdateResourceMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceEncodingServiceServer).UpdateResourceMapping(ctx, req.(*UpdateResourceMappingRequest))
+		return srv.(ResourceMappingServiceServer).UpdateResourceMapping(ctx, req.(*UpdateResourceMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourceEncodingService_DeleteResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ResourceMappingService_DeleteResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteResourceMappingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceEncodingServiceServer).DeleteResourceMapping(ctx, in)
+		return srv.(ResourceMappingServiceServer).DeleteResourceMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ResourceEncodingService_DeleteResourceMapping_FullMethodName,
+		FullMethod: ResourceMappingService_DeleteResourceMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceEncodingServiceServer).DeleteResourceMapping(ctx, req.(*DeleteResourceMappingRequest))
+		return srv.(ResourceMappingServiceServer).DeleteResourceMapping(ctx, req.(*DeleteResourceMappingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// ResourceEncodingService_ServiceDesc is the grpc.ServiceDesc for ResourceEncodingService service.
+// ResourceMappingService_ServiceDesc is the grpc.ServiceDesc for ResourceMappingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ResourceEncodingService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "resourcemapping.ResourceEncodingService",
-	HandlerType: (*ResourceEncodingServiceServer)(nil),
+var ResourceMappingService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "resourcemapping.ResourceMappingService",
+	HandlerType: (*ResourceMappingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "ListResourceMappings",
-			Handler:    _ResourceEncodingService_ListResourceMappings_Handler,
+			Handler:    _ResourceMappingService_ListResourceMappings_Handler,
 		},
 		{
 			MethodName: "GetResourceMapping",
-			Handler:    _ResourceEncodingService_GetResourceMapping_Handler,
+			Handler:    _ResourceMappingService_GetResourceMapping_Handler,
 		},
 		{
 			MethodName: "CreateResourceMapping",
-			Handler:    _ResourceEncodingService_CreateResourceMapping_Handler,
+			Handler:    _ResourceMappingService_CreateResourceMapping_Handler,
 		},
 		{
 			MethodName: "UpdateResourceMapping",
-			Handler:    _ResourceEncodingService_UpdateResourceMapping_Handler,
+			Handler:    _ResourceMappingService_UpdateResourceMapping_Handler,
 		},
 		{
 			MethodName: "DeleteResourceMapping",
-			Handler:    _ResourceEncodingService_DeleteResourceMapping_Handler,
+			Handler:    _ResourceMappingService_DeleteResourceMapping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

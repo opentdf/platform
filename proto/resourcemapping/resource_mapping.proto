@@ -2,25 +2,23 @@ syntax = "proto3";
 
 package resourcemapping;
 
-import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 
 /*
-   Access Control Resource Encodings (ACRE).  Structures supporting Resources and Attributes mappings
+   # Resource Mappings (aka Access Control Resource Encodings aka ACRE):  Structures supporting Resources and Attributes mappings
 
-*/
+   ## Examples
 
-/*
-   Map one or more domain specific terms (synonyms) to an attribute value by reference.
+   ### Where
 
-   Where: attributeId is an id of the following attribute
+   attributeId is an id of the following attribute
 
      FQN: http://demo.com/attr/Classification/value/Confidential
      UUID: 12345678-1234-1234-1234-123456789012
 
-   Example Request:
+   ### Request
 
      grpcurl -plaintext -d @ localhost:9000 resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM
        {
@@ -32,7 +30,7 @@ import "google/api/annotations.proto";
        }
      EOM
 
-   Response:
+   ### Response
 
      {
        "mapping": {
@@ -62,9 +60,7 @@ message ResourceMapping {
    Resource Mappings
 */
 
-message ListResourceMappingsRequest {
-  common.ResourceSelector selector = 1;
-}
+message ListResourceMappingsRequest {}
 
 message ListResourceMappingsResponse {
   repeated ResourceMapping mappings = 1;

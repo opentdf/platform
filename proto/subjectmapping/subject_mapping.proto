@@ -2,28 +2,59 @@ syntax = "proto3";
 
 package subjectmapping;
 
-import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 
 /*
-   Access Control Subject Encoding (ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
-*/
+   # Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
 
-/**
-   Define a mapping of an subject attribute to subject using a rule:
-   <subject.subjectAttribute> <operator IN/NOT_IN> [subjectValue]
+   ## Examples
 
-   Example subject mapping of a subject with nationality = CZE entitled to attribute relto:ZCE
-   From Existing Policy: "http://demo.com/attr/relto/value/CZE": {"nationality": ["CZE"]}
-   To Subject Mapping Policy:
+   ### Where:
+
+     - attribute_value_id represents the following attribute
+       - FQN: "http://demo.com/attr/relto/value/CZE"
+       - UUID: "12345678-1234-1234-1234-123456789012"
+
+   ### Request
+
+   ```bash
+   grpcurl -plaintext -d '{
+     "subject_mapping": {
+       "metadata": {
+         "description": "subject mapping 1",
+           "labels": {
+             "test-label": "test-value"
+           }
+       },
+       "attribute_value_id": "12345678-1234-1234-1234-123456789012",
+       "subject_attribute": "nationality",
+       "subject_values": ["CZE"],
+       "operator": "IN"
+     }
+   }' localhost:8080 SubjectMappingService.CreateSubjectMapping
+   ```
+
+   ### Response
+
+   ```
    {
-     attributeValueFQN: "http://demo.com/attr/relto/value/CZE"
-     subjectAttribute: "nationality"
-     subjectValues: ["CZE"]
-     operator: "IN"
+     "subject_mapping": {
+       "metadata": {
+         "id": "12345678-2222-1234-1234-123456789012",
+         "description": "subject mapping 1",
+         "labels": {
+           "test-label": "test-value"
+         }
+       },
+       "attribute_value_id": "12345678-1234-1234-1234-123456789012",
+       "subject_attribute": "nationality",
+       "subject_values": ["CZE"],
+       "operator": "IN"
+     }
    }
+   ```
 
 */
 message SubjectMapping {
@@ -55,15 +86,13 @@ message SubjectMapping {
 }
 
 message GetSubjectMappingRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
 }
 message GetSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
 }
 
-message ListSubjectMappingsRequest {
-  common.ResourceSelector selector = 1;
-}
+message ListSubjectMappingsRequest {}
 message ListSubjectMappingsResponse {
   repeated SubjectMapping subject_mappings = 1;
 }
@@ -74,39 +103,39 @@ message CreateSubjectMappingRequest {
 message CreateSubjectMappingResponse {}
 
 message UpdateSubjectMappingRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
   SubjectMapping subject_mapping = 2 [(buf.validate.field).required = true];
 }
 message UpdateSubjectMappingResponse {}
 
 message DeleteSubjectMappingRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteSubjectMappingResponse {}
 
-service SubjectEncodingService {
+service SubjectMappingService {
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
-    option (google.api.http) = {get: "/v1/encoding/subject/mappings"};
+    option (google.api.http) = {get: "/subject-mappings"};
   }
   rpc GetSubjectMapping(GetSubjectMappingRequest) returns (GetSubjectMappingResponse) {
-    option (google.api.http) = {get: "/v1/encoding/subject/mappings/{id}"};
+    option (google.api.http) = {get: "/subject-mappings/{id}"};
   }
 
   rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {
     option (google.api.http) = {
-      post: "/v1/encoding/subject/mappings"
+      post: "/subject-mappings"
       body: "subject_mapping"
     };
   }
 
   rpc UpdateSubjectMapping(UpdateSubjectMappingRequest) returns (UpdateSubjectMappingResponse) {
     option (google.api.http) = {
-      post: "/v1/encoding/subject/mappings/{id}"
+      post: "/subject-mappings/{id}"
       body: "subject_mapping"
     };
   }
 
   rpc DeleteSubjectMapping(DeleteSubjectMappingRequest) returns (DeleteSubjectMappingResponse) {
-    option (google.api.http) = {delete: "/v1/encoding/subjects/mappings/{id}"};
+    option (google.api.http) = {delete: "/subject-mappings/{id}"};
   }
 }

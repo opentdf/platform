@@ -35,28 +35,22 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 	return nil
 }
 
-func (s AttributesService) CreateAttribute(ctx context.Context,
-	req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error) {
+func (s AttributesService) CreateAttributeDefinition(ctx context.Context,
+	req *attributes.CreateDefinitionRequest) (*attributes.CreateDefinitionResponse, error) {
 	slog.Debug("creating new attribute definition", slog.String("name", req.Definition.Name))
-
-	// Set the version of the resource to 1 on create
-	req.Definition.Descriptor_.Version = 1
 
 	resource, err := protojson.Marshal(req.Definition)
 	if err != nil {
-		return &attributes.CreateAttributeResponse{},
-			status.Error(codes.Internal, services.ErrCreatingResource)
+		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
-	err = s.dbClient.CreateResource(ctx, req.Definition.Descriptor_, resource)
-	if err != nil {
+	if err = s.dbClient.CreateAttribute(ctx, req.Definition); err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return &attributes.CreateAttributeResponse{},
-			status.Error(codes.Internal, services.ErrCreatingResource)
+		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
-	slog.Debug("created new attribute definition", slog.String("name", req.Definition.Name))
 
-	return &attributes.CreateAttributeResponse{}, nil
+	slog.Debug("created new attribute definition", slog.String("name", req.Definition.Name))
+	return &attributes.CreateDefinitionResponse{}, nil
 }
 
 func (s AttributesService) CreateAttributeGroup(ctx context.Context,

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package keyaccessgrants;
+package keyaccessserverregistry;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
@@ -56,7 +56,7 @@ message DeleteKeyAccessServerRequest {
 }
 message DeleteKeyAccessServerResponse {}
 
-service KeyAccessServersService {
+service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
     option (google.api.http) = {get: "/key-access-servers"};
   }
@@ -65,20 +65,20 @@ service KeyAccessServersService {
     option (google.api.http) = {get: "/key-access-servers/{id}"};
   }
 
-  rpc CreateKeyAccessServers(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
     option (google.api.http) = {
       post: "/key-access-servers"
       body: "server"
     };
   }
-  rpc UpdateKeyAccessServers(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
     option (google.api.http) = {
       put: "/key-access-servers/{id}"
       body: "server"
     };
   }
 
-  rpc DeleteKeyAccessServers(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
+  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
     option (google.api.http) = {delete: "/key-access-servers/{id}"};
   }
 }

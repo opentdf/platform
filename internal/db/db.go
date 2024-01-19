@@ -66,9 +66,7 @@ func (c Config) buildURL() string {
 }
 
 func (c *Client) RunMigrations() (int, error) {
-	var (
-		applied int
-	)
+	var applied int
 
 	if !c.config.RunMigrations {
 		slog.Info("skipping migrations",
@@ -108,7 +106,8 @@ func (c *Client) RunMigrations() (int, error) {
 }
 
 func (c Client) CreateResource(ctx context.Context,
-	descriptor *common.ResourceDescriptor, resource []byte) error {
+	descriptor *common.ResourceDescriptor, resource []byte,
+) error {
 	sql, args, err := createResourceSQL(descriptor, resource)
 	if err != nil {
 		return fmt.Errorf("failed to create resource sql: %w", err)
@@ -122,7 +121,8 @@ func (c Client) CreateResource(ctx context.Context,
 }
 
 func createResourceSQL(descriptor *common.ResourceDescriptor,
-	resource []byte) (string, []interface{}, error) {
+	resource []byte,
+) (string, []interface{}, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	builder := psql.Insert("opentdf.resources")
@@ -145,7 +145,8 @@ func createResourceSQL(descriptor *common.ResourceDescriptor,
 }
 
 func (c Client) ListResources(ctx context.Context,
-	policyType string, selectors *common.ResourceSelector) (pgx.Rows, error) {
+	policyType string, selectors *common.ResourceSelector,
+) (pgx.Rows, error) {
 	sql, args, err := listResourceSQL(policyType, selectors)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list resource sql: %w", err)
@@ -213,7 +214,8 @@ func getResourceSQL(id int32, policyType string) (string, []interface{}, error) 
 }
 
 func (c Client) UpdateResource(ctx context.Context, descriptor *common.ResourceDescriptor,
-	resource []byte, policyType string) error {
+	resource []byte, policyType string,
+) error {
 	sql, args, err := updateResourceSQL(descriptor, resource, policyType)
 	if err != nil {
 		return fmt.Errorf("failed to create update resource sql: %w", err)
@@ -231,7 +233,8 @@ func newStatementBuilder() sq.StatementBuilderType {
 }
 
 func updateResourceSQL(descriptor *common.ResourceDescriptor,
-	resource []byte, policyType string) (string, []interface{}, error) {
+	resource []byte, policyType string,
+) (string, []interface{}, error) {
 	psql := newStatementBuilder()
 
 	builder := psql.Update("opentdf.resources")
@@ -273,6 +276,11 @@ func deleteResourceSQL(id int32, policyType string) (string, []interface{}, erro
 
 	//nolint:wrapcheck // Wrapped error in DeleteResource
 	return builder.ToSql()
+}
+
+// Postgres specific statement builder
+func newStatementBuilder() sq.StatementBuilderType {
+	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 }
 
 // Common function for all queryRow calls

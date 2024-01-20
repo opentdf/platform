@@ -41,9 +41,12 @@ func createNamespaceSql(namespace *namespaces.Namespace) (string, []interface{},
 		ToSql()
 }
 
-func (c Client) CreateNamespace(ctx context.Context, namespace *namespaces.Namespace) error {
+func (c Client) CreateNamespace(ctx context.Context, namespace *namespaces.Namespace) (pgx.Row, error) {
 	sql, args, err := createNamespaceSql(namespace)
-	return c.exec(ctx, sql, args, err)
+	if e := c.exec(ctx, sql, args, err); e != nil {
+		return nil, e
+	}
+	return c.GetNamespace(ctx, namespace.Id)
 }
 
 func updateNamespaceSql(namespace *namespaces.Namespace) (string, []interface{}, error) {
@@ -54,9 +57,12 @@ func updateNamespaceSql(namespace *namespaces.Namespace) (string, []interface{},
 		ToSql()
 }
 
-func (c Client) UpdateNamespace(ctx context.Context, namespace *namespaces.Namespace) error {
+func (c Client) UpdateNamespace(ctx context.Context, namespace *namespaces.Namespace) (pgx.Row, error) {
 	sql, args, err := updateNamespaceSql(namespace)
-	return c.exec(ctx, sql, args, err)
+	if e := c.exec(ctx, sql, args, err); e != nil {
+		return nil, e
+	}
+	return c.GetNamespace(ctx, namespace.Id)
 }
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {

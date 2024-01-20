@@ -20,6 +20,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/services/acse"
 	"github.com/opentdf/opentdf-v2-poc/services/attributes"
 	"github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
+	"github.com/opentdf/opentdf-v2-poc/services/namespaces"
 	"github.com/spf13/cobra"
 )
 
@@ -126,9 +127,7 @@ func createDatabaseClient(conf db.Config) (*db.Client, error) {
 
 //nolint:revive // the opa engine will be used in the future
 func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
-	var (
-		err error
-	)
+	var err error
 	slog.Info("registering acre server")
 	err = acre.NewResourceEncoding(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
@@ -151,6 +150,12 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	err = keyaccessgrants.NewKeyAccessGrantsServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register key access grants service: %w", err)
+	}
+
+	slog.Info("registering namespaces server")
+	err = namespaces.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	if err != nil {
+		return fmt.Errorf("could not register namespaces service: %w", err)
 	}
 
 	return nil

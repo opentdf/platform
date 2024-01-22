@@ -98,7 +98,7 @@ grpcurl -plaintext localhost:9000 attributes.v1.AttributesService/ListAttributes
 
 Our native gRPC service functions are generated from `proto` definitions using [Buf](https://buf.build/docs/introduction).
 
-The `Makefile` provides command scripts to invoke `Buf` and the `buf.gen.yaml`, including OpenAPI docs, grpc docs, and the
+The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` config, including OpenAPI docs, grpc docs, and the
 generated code.
 
 For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.

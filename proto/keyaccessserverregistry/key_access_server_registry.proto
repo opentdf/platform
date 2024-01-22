@@ -10,7 +10,7 @@ import "google/api/annotations.proto";
    Descriptor for a KAS
 */
 message KeyAccessServer {
-  common.PolicyMetadata metadata = 1;
+  common.Metadata metadata = 1;
 
   string id = 2;
 

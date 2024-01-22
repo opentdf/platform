@@ -19,7 +19,7 @@ message Attribute {
   string id = 1;
 
   // Optional metadata for the attribute definition
-  common.PolicyMetadata metadata = 2;
+  common.Metadata metadata = 2;
 
   // TODO: enable this when merging with Jake's work
   // namespace.Namespace namespace = 3;
@@ -38,7 +38,7 @@ message Attribute {
 
 message AttributeCreateUpdate {
   // Optional metadata for the attribute definition
-  common.PolicyMetadataMutable metadata = 1;
+  common.MetadataMutable metadata = 1;
 
   // namespace of the attribute
   string namespace_id = 2 [(buf.validate.field).required = true];
@@ -60,7 +60,7 @@ message Value {
   // generated uuid in database
   string id = 1;
 
-  common.PolicyMetadata metadata = 2;
+  common.Metadata metadata = 2;
 
   string attribute_definition_id = 3 [(buf.validate.field).required = true];
 
@@ -72,7 +72,7 @@ message Value {
 
 // Definition of a single attribute value
 message ValueCreateUpdate {
-  common.PolicyMetadataMutable metadata = 1;
+  common.MetadataMutable metadata = 1;
 
   string value = 2;
 
@@ -128,7 +128,9 @@ message UpdateAttributeResponse {
 message DeleteAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteAttributeResponse {}
+message DeleteAttributeResponse {
+  Attribute attribute = 1;
+}
 
 ///
 /// Value RPC messages

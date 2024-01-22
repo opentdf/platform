@@ -5,7 +5,7 @@ package common;
 import "google/protobuf/timestamp.proto";
 
 // Struct to uniquely identify a resource with optional additional metadata
-message PolicyMetadata {
+message Metadata {
   // created_at set by server (entity who created will recorded in an audit event)
   google.protobuf.Timestamp created_at = 1;
   // updated_at set by server (entity who updated will recorded in an audit event)
@@ -16,7 +16,7 @@ message PolicyMetadata {
   string description = 4;
 }
 
-message PolicyMetadataMutable {
+message MetadataMutable {
   // optional short description
   map<string, string> labels = 3;
   // optional long description

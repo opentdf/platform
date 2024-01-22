@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -73,31 +74,46 @@ func (c Config) buildURL() string {
 
 // Common function for all queryRow calls
 func (c Client) queryRow(ctx context.Context, sql string, args []interface{}, err error) (pgx.Row, error) {
-	if err != nil {
-		slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-		return nil, fmt.Errorf("failed to create get resource sql: %w", err)
-	}
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	if err != nil {
+		slog.Error("sql.error", "failed to query get resource sql", slog.String("error", err.Error()))
+		return nil, err
+	}
 	return c.QueryRow(ctx, sql, args...), nil
 }
 
 // Common function for all query calls
 func (c Client) query(ctx context.Context, sql string, args []interface{}, err error) (pgx.Rows, error) {
-	if err != nil {
-		slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-		return nil, fmt.Errorf("failed to create list resource sql: %w", err)
-	}
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	if err != nil {
+		return nil, err
+	}
 	return c.Query(ctx, sql, args...)
 }
 
 // Common function for all exec calls
 func (c Client) exec(ctx context.Context, sql string, args []interface{}, err error) error {
-	if err != nil {
-		slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-		return fmt.Errorf("failed to create list resource sql: %w", err)
-	}
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	if err != nil {
+		return err
+	}
 	_, err = c.Exec(ctx, sql, args...)
 	return err
+}
+
+//
+// Helper functions for building SQL
+//
+
+// Postgres uses $1, $2, etc. for placeholders
+func newStatementBuilder() sq.StatementBuilderType {
+	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+}
+
+func tableName(table string) string {
+	return Schema + "." + table
+}
+
+func tableField(table string, field string) string {
+	return table + "." + field
 }

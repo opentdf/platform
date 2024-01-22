@@ -6,16 +6,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type ImmutableMetadata struct {
-	CreatedAt *timestamppb.Timestamp
-	UpdatedAt *timestamppb.Timestamp
-}
-
-type MutableMetadata struct {
-	Labels      map[string]string
-	Description string
-}
-
 // Marshal policy metadata is used by the marshalCreateMetadata and marshalUpdateMetadata functions to enable
 // the creation and update of policy metadata without exposing it to developers. Take note of the immutableMetadata and
 // mutableMetadata parameters. The mutableMetadata is the metadata that is passed in by the developer. The immutableMetadata

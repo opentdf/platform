@@ -76,7 +76,6 @@ func (c Config) buildURL() string {
 func (c Client) queryRow(ctx context.Context, sql string, args []interface{}, err error) (pgx.Row, error) {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 	if err != nil {
-		slog.Error("sql.error", "failed to query get resource sql", slog.String("error", err.Error()))
 		return nil, err
 	}
 	return c.QueryRow(ctx, sql, args...), nil

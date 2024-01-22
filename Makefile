@@ -24,6 +24,7 @@ pre-build:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, please install it from https://golangci-lint.run/usage/install/" && exit 1)
+	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, please 'go install' it https://github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc" && exit 1)
 	@golangci-lint --version | grep "version 1.55" > /dev/null || (echo "golangci-lint version must be v1.55" && exit 1)
 
 lint: buf-lint golangci-lint

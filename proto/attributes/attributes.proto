@@ -19,7 +19,7 @@ message Attribute {
   string id = 1;
 
   // Optional metadata for the attribute definition
-  common.PolicyMetadata metadata = 2;
+  common.Metadata metadata = 2;
 
   // TODO: enable this when merging with Jake's work
   // namespace.Namespace namespace = 3;
@@ -38,7 +38,7 @@ message Attribute {
 
 message AttributeCreateUpdate {
   // Optional metadata for the attribute definition
-  common.PolicyMetadataMutable metadata = 1;
+  common.MetadataMutable metadata = 1;
 
   // namespace of the attribute
   string namespace_id = 2 [(buf.validate.field).required = true];
@@ -60,7 +60,7 @@ message Value {
   // generated uuid in database
   string id = 1;
 
-  common.PolicyMetadata metadata = 2;
+  common.Metadata metadata = 2;
 
   string attribute_definition_id = 3 [(buf.validate.field).required = true];
 
@@ -72,7 +72,7 @@ message Value {
 
 // Definition of a single attribute value
 message ValueCreateUpdate {
-  common.PolicyMetadataMutable metadata = 1;
+  common.MetadataMutable metadata = 1;
 
   string value = 2;
 
@@ -128,7 +128,9 @@ message UpdateAttributeResponse {
 message DeleteAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteAttributeResponse {}
+message DeleteAttributeResponse {
+  Attribute attribute = 1;
+}
 
 ///
 /// Value RPC messages
@@ -170,12 +172,20 @@ message DeleteValueResponse {}
 /// Attribute Service
 ///
 service AttributesService {
+  /*
+     List Attributes
+     Example:
+      grpcurl -plaintext -d '{"namespace_id": "namespace_id"}' localhost:8080 attributes.AttributesService/ListAttributes
+  */
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
 
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};
   }
 
+  // Create Attribute
+  // Example:
+  //  grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:8080 attributes.AttributesService/CreateAttribute
   rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
     option (google.api.http) = {
       post: "/attributes"
@@ -199,6 +209,9 @@ service AttributesService {
     option (google.api.http) = {get: "/attributes/_/values/{id}"};
   }
 
+  // Create Attribute Value
+  // Example:
+  //  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateValue
   rpc CreateValue(CreateValueRequest) returns (CreateValueResponse) {
     option (google.api.http) = {
       post: "/attributes/{attribute_id}/values"

@@ -47,7 +47,7 @@ import "google/api/annotations.proto";
 
 */
 message ResourceMapping {
-  common.PolicyMetadata metadata = 1;
+  common.Metadata metadata = 1;
 
   string name = 2;
 

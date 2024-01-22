@@ -58,7 +58,7 @@ import "google/api/annotations.proto";
 
 */
 message SubjectMapping {
-  common.PolicyMetadata metadata = 1;
+  common.Metadata metadata = 1;
 
   // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
   enum SubjectMappingOperatorEnum {

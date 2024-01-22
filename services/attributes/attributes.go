@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type AttributesService struct {
@@ -26,46 +27,6 @@ type AttributesService struct {
 func attributeRuleTypeEnumTransformer(rule string) attributes.AttributeRuleTypeEnum {
 	rule = "ATTRIBUTE_RULE_TYPE_ENUM" + rule
 	return attributes.AttributeRuleTypeEnum(attributes.AttributeRuleTypeEnum_value[rule])
-}
-
-func hydrateAttributeValuesFromJson(v []byte) (values []*attributes.Value, err error) {
-	var data []struct {
-		Id      string   `json:"id,omitempty"`
-		Value   string   `json:"value,omitempty"`
-		Members []string `json:"members,omitempty"`
-	}
-
-	if err = json.Unmarshal(v, &data); err != nil {
-		return nil, err
-	}
-
-	for _, v := range data {
-		values = append(values, &attributes.Value{
-			Id:      v.Id,
-			Value:   v.Value,
-			Members: v.Members,
-		})
-	}
-
-	return values, nil
-}
-
-func hydrateMetadataFromJson(m []byte) (metadata *common.PolicyMetadata, err error) {
-	var data struct {
-		CreatedAt   string            `json:"createdAt,omitempty"`
-		UpdatedAt   string            `json:"updatedAt,omitempty"`
-		Labels      map[string]string `json:"labels,omitempty"`
-		Description string            `json:"description,omitempty"`
-	}
-
-	if err = json.Unmarshal(m, &data); err != nil {
-		return nil, err
-	}
-
-	return &common.PolicyMetadata{
-		Labels:      data.Labels,
-		Description: data.Description,
-	}, nil
 }
 
 func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
@@ -139,11 +100,11 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 func (s *AttributesService) GetAttribute(ctx context.Context,
 	req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
 	var (
-		id         string
-		name       string
-		rule       string
-		metadata   []byte
-		valuesJson []byte
+		id           string
+		name         string
+		rule         string
+		metadataJson []byte
+		valuesJson   []byte
 	)
 
 	row, err := s.dbClient.GetAttribute(
@@ -155,7 +116,7 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 		return nil, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
-	err = row.Scan(&id, &name, &rule, &metadata, &valuesJson)
+	err = row.Scan(&id, &name, &rule, &metadataJson, &valuesJson)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			slog.Info(services.ErrNotFound, slog.String("id", req.Id))
@@ -165,17 +126,36 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 		return nil, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
-	attrVals, err := hydrateAttributeValuesFromJson(valuesJson)
-	if err != nil {
+	var metadata common.PolicyMetadata
+	if metadataJson != nil {
+		if err := protojson.Unmarshal(metadataJson, &metadata); err != nil {
+			slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+			return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		}
+	}
+
+	var raw []json.RawMessage
+	if err := json.Unmarshal(valuesJson, &raw); err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
+	values := make([]*attributes.Value, 0)
+	for _, r := range raw {
+		value := attributes.Value{}
+		if err := protojson.Unmarshal(r, &value); err != nil {
+			slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+			return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		}
+		values = append(values, &value)
+	}
+
 	attr := &attributes.Attribute{
-		Id:     id,
-		Name:   name,
-		Rule:   attributeRuleTypeEnumTransformer(rule),
-		Values: attrVals,
+		Id:       id,
+		Name:     name,
+		Rule:     attributeRuleTypeEnumTransformer(rule),
+		Values:   values,
+		Metadata: &metadata,
 	}
 
 	return &attributes.GetAttributeResponse{

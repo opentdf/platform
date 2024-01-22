@@ -8,10 +8,14 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 )
 
+const (
+	NamespacesTable = "namespaces"
+)
+
 func getNamespaceSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Select("*").
-		From("namespaces").
+		From(NamespacesTable).
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
@@ -24,7 +28,7 @@ func (c Client) GetNamespace(ctx context.Context, id string) (pgx.Row, error) {
 func listNamespacesSql() (string, []interface{}, error) {
 	return newStatementBuilder().
 		Select("*").
-		From("namespaces").
+		From(NamespacesTable).
 		ToSql()
 }
 
@@ -35,7 +39,7 @@ func (c Client) ListNamespaces(ctx context.Context) (pgx.Rows, error) {
 
 func createNamespaceSql(namespace *namespaces.Namespace) (string, []interface{}, error) {
 	return newStatementBuilder().
-		Insert("namespaces").
+		Insert(NamespacesTable).
 		Columns("name").
 		Values(namespace.Name).
 		ToSql()
@@ -51,7 +55,7 @@ func (c Client) CreateNamespace(ctx context.Context, namespace *namespaces.Names
 
 func updateNamespaceSql(namespace *namespaces.Namespace) (string, []interface{}, error) {
 	return newStatementBuilder().
-		Update("namespaces").
+		Update(NamespacesTable).
 		Set("name", namespace.Name).
 		Where(sq.Eq{"id": namespace.Id}).
 		ToSql()
@@ -67,7 +71,7 @@ func (c Client) UpdateNamespace(ctx context.Context, namespace *namespaces.Names
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
-		Delete("namespaces").
+		Delete(NamespacesTable).
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }

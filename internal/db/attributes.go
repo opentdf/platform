@@ -28,7 +28,9 @@ func selectAttributeValue() sq.SelectBuilder {
 				'members', `+tableField(AttributeValueTable, "members")+`
 			)
 		) AS values`,
-	).Join(AttributeValueTable + " ON " + AttributeValueTable + ".id = " + AttributeTable + ".id")
+	).
+		LeftJoin(AttributeValueTable + " ON " + AttributeValueTable + ".id = " + AttributeTable + ".id").
+		GroupBy(tableField(AttributeTable, "id"))
 }
 
 func listAllAttributesSql() (string, []interface{}, error) {
@@ -65,7 +67,7 @@ func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string
 
 func createAttributeSql(namespaceId string, name string, rule string, metadata []byte) (string, []interface{}, error) {
 	return newStatementBuilder().
-		Insert(AttributeValueTable).
+		Insert(AttributeTable).
 		Columns("namespace_id", "name", "rule", "metadata").
 		Values(namespaceId, name, rule, metadata).
 		ToSql()

@@ -10,46 +10,73 @@ import "google/api/annotations.proto";
    Descriptor for a KAS
 */
 message KeyAccessServer {
-  common.PolicyMetadata metadata = 1;
+  string id = 1 [(buf.validate.field).required = true];
 
-  string id = 2;
+  common.PolicyMetadata metadata = 2;
 
-  //Kas Url
-  string url = 3 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "fqn_format",
-      message: "FQN must start with a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
-    }
-  ];
+  string name = 3 [(buf.validate.field).required = true];
 
-  //public key - optional since can also be retrieved via url
-  string public_key = 4;
+  oneof public_key {
+    // kas public key url - optional since can also be retrieved via public key
+    string remote = 4;
+
+    //public key - optional since can also be retrieved via url
+    string local = 5;
+  }
+}
+
+message KeyAccessServerCreateUpdate {
+  // Optional metadata for the attribute definition
+  common.PolicyMetadataMutable metadata = 1;
+
+  string name = 2 [(buf.validate.field).required = true];
+
+  PublicKey public_key = 3 [(buf.validate.field).required = true];
+}
+
+message PublicKey {
+  oneof public_key {
+    // kas public key url - optional since can also be retrieved via public key
+    string remote = 1 [
+      (buf.validate.field).required = true,
+      (buf.validate.field).cel = {
+        id: "fqn_format",
+        message: "FQN must start with a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+        expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
+      }
+    ];
+
+    //public key - optional since can also be retrieved via url
+    string local = 2;
+  }
 }
 
 message GetKeyAccessServerRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message GetKeyAccessServerResponse {
-  KeyAccessServer server = 1;
+  KeyAccessServer key_access_server = 1;
 }
 
 message ListKeyAccessServersRequest {}
 message ListKeyAccessServersResponse {
-  repeated KeyAccessServer servers = 1;
+  repeated KeyAccessServer key_access_servers = 1;
 }
 
 message CreateKeyAccessServerRequest {
-  KeyAccessServer server = 1 [(buf.validate.field).required = true];
+  KeyAccessServerCreateUpdate key_access_server = 1 [(buf.validate.field).required = true];
 }
-message CreateKeyAccessServerResponse {}
+message CreateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
 
 message UpdateKeyAccessServerRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-  KeyAccessServer server = 2 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
+  KeyAccessServerCreateUpdate key_access_server = 2 [(buf.validate.field).required = true];
 }
-message UpdateKeyAccessServerResponse {}
+message UpdateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
 
 message DeleteKeyAccessServerRequest {
   string id = 1 [(buf.validate.field).required = true];
@@ -68,13 +95,13 @@ service KeyAccessServerRegistryService {
   rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
     option (google.api.http) = {
       post: "/key-access-servers"
-      body: "server"
+      body: "key_access_server"
     };
   }
   rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
     option (google.api.http) = {
       put: "/key-access-servers/{id}"
-      body: "server"
+      body: "key_access_server"
     };
   }
 

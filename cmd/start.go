@@ -144,7 +144,7 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	}
 
 	slog.Info("registering subject mapping service")
-	err = subjectmapping.NewSubjectEncodingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
+	err = subjectmapping.NewSubjectMappingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register subject mapping service: %w", err)
 	}

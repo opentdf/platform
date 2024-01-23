@@ -20,7 +20,7 @@ func subjectMappingOperatorEnumTransformIn(value string) string {
 }
 
 func subjectMappingOperatorEnumTransformOut(value string) subjectmapping.SubjectMappingOperatorEnum {
-	return subjectmapping.SubjectMappingOperatorEnum(subjectmapping.SubjectMappingOperatorEnum_value[SubjectMappingsOperatorEnumPrefix+value])
+	return subjectmapping.SubjectMappingOperatorEnum(subjectmapping.SubjectMappingOperatorEnum_value[SubjectMappingOperatorEnumPrefix+value])
 }
 
 func subjectMappingSelect() sq.SelectBuilder {
@@ -87,6 +87,18 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 		AttributeValue:   v,
 	}
 	return s, nil
+}
+
+func subjectMappingHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectMapping, error) {
+	list := make([]*subjectmapping.SubjectMapping, 0)
+	for rows.Next() {
+		s, err := subjectMappingHydrateItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, s)
+	}
+	return list, nil
 }
 
 ///
@@ -169,14 +181,105 @@ func (c *Client) GetSubjectMapping(ctx context.Context, id string) (*subjectmapp
 	return s, nil
 }
 
-// func (c *Client) ListSubjectMapping(ctx context.Context, descriptor string) ([]byte, error) {
-// 	return c.ReadResource(ctx, descriptor)
-// }
+func listSubjectMappingsSql() (string, []interface{}, error) {
+	return subjectMappingSelect().
+		From(SubjectMappingTable).
+		ToSql()
+}
+func (c *Client) ListSubjectMappings(ctx context.Context) ([]*subjectmapping.SubjectMapping, error) {
+	sql, args, err := listSubjectMappingsSql()
+	if err != nil {
+		return nil, err
+	}
 
-// func (c *Client) UpdateSubjectMapping(ctx context.Context, descriptor string, resource []byte) error {
-// 	return c.UpdateResource(ctx, descriptor, resource)
-// }
+	rows, err := c.query(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-// func (c *Client) DeleteSubjectMapping(ctx context.Context, descriptor string) error {
-// 	return c.DeleteResource(ctx, descriptor)
-// }
+	subjectMappings, err := subjectMappingHydrateList(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	return subjectMappings, nil
+}
+
+func updateSubjectMappingSql(id string, attribute_value_id string, operator string, subject_attribute string, subject_attribute_values []string, metadata []byte) (string, []interface{}, error) {
+	sb := newStatementBuilder().
+		Update(SubjectMappingTable)
+
+	if attribute_value_id != "" {
+		sb.Set("attribute_value_id", attribute_value_id)
+	}
+	if operator != "" {
+		sb.Set("operator", operator)
+	}
+	if subject_attribute != "" {
+		sb.Set("subject_attribute", subject_attribute)
+	}
+	if subject_attribute_values != nil {
+		sb.Set("subject_attribute_values", subject_attribute_values)
+	}
+	if metadata != nil {
+		sb.Set("metadata", metadata)
+	}
+
+	return sb.
+		Where(sq.Eq{"id": id}).
+		ToSql()
+}
+func (c *Client) UpdateSubjectMapping(ctx context.Context, id string, s *subjectmapping.SubjectMappingCreateUpdate) (*subjectmapping.SubjectMapping, error) {
+	prev, err := c.GetSubjectMapping(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	metadataJson, _, err := marshalUpdateMetadata(prev.Metadata, s.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	sql, args, err := updateSubjectMappingSql(
+		id,
+		s.AttributeValueId,
+		subjectMappingOperatorEnumTransformIn(s.Operator.String()),
+		s.SubjectAttribute,
+		s.SubjectValues,
+		metadataJson,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+
+	return prev, nil
+}
+
+func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
+	return newStatementBuilder().
+		Delete(SubjectMappingTable).
+		Where(sq.Eq{"id": id}).
+		ToSql()
+}
+func (c *Client) DeleteSubjectMapping(ctx context.Context, id string) (*subjectmapping.SubjectMapping, error) {
+	prev, err := c.GetSubjectMapping(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	sql, args, err := deleteSubjectMappingSql(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+
+	return prev, nil
+}

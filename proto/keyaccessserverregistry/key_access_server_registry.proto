@@ -12,7 +12,7 @@ import "google/api/annotations.proto";
 message KeyAccessServer {
   string id = 1 [(buf.validate.field).required = true];
 
-  common.PolicyMetadata metadata = 2;
+  common.Metadata metadata = 2;
 
   string name = 3 [(buf.validate.field).required = true];
 
@@ -27,7 +27,7 @@ message KeyAccessServer {
 
 message KeyAccessServerCreateUpdate {
   // Optional metadata for the attribute definition
-  common.PolicyMetadataMutable metadata = 1;
+  common.MetadataMutable metadata = 1;
 
   string name = 2 [(buf.validate.field).required = true];
 

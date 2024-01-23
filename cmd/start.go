@@ -16,10 +16,11 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/logger"
 	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/services/acre"
-	"github.com/opentdf/opentdf-v2-poc/services/acse"
+
+	// "github.com/opentdf/opentdf-v2-poc/services/acre"
+	// "github.com/opentdf/opentdf-v2-poc/services/acse"
 	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
+	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
 
@@ -129,11 +130,11 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	var (
 		err error
 	)
-	slog.Info("registering acre server")
-	err = acre.NewResourceEncoding(dbClient, otdf.GrpcServer, otdf.Mux)
-	if err != nil {
-		return fmt.Errorf("could not register acre service: %w", err)
-	}
+	// slog.Info("registering acre server")
+	// err = acre.NewResourceEncoding(dbClient, otdf.GrpcServer, otdf.Mux)
+	// if err != nil {
+	// 	return fmt.Errorf("could not register acre service: %w", err)
+	// }
 
 	slog.Info("registering attributes server")
 	err = attributes.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
@@ -141,17 +142,17 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 		return fmt.Errorf("could not register attributes service: %w", err)
 	}
 
-	slog.Info("registering acse server")
-	err = acse.NewSubjectEncodingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
-	if err != nil {
-		return fmt.Errorf("could not register acse service: %w", err)
-	}
+	// slog.Info("registering acse server")
+	// err = acse.NewSubjectEncodingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
+	// if err != nil {
+	// 	return fmt.Errorf("could not register acse service: %w", err)
+	// }
 
-	slog.Info("registering key access grants service")
-	err = keyaccessgrants.NewKeyAccessGrantsServer(dbClient, otdf.GrpcServer, otdf.Mux)
-	if err != nil {
-		return fmt.Errorf("could not register key access grants service: %w", err)
-	}
+	// slog.Info("registering key access grants service")
+	// err = keyaccessgrants.NewKeyAccessGrantsServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	// if err != nil {
+	// 	return fmt.Errorf("could not register key access grants service: %w", err)
+	// }
 
 	return nil
 }

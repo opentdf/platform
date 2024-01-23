@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package keyaccessserverregistry;
+package kasregistry;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
@@ -10,19 +10,13 @@ import "google/api/annotations.proto";
    Descriptor for a KAS
 */
 message KeyAccessServer {
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1;
 
   common.Metadata metadata = 2;
 
-  string name = 3 [(buf.validate.field).required = true];
+  string name = 3;
 
-  oneof public_key {
-    // kas public key url - optional since can also be retrieved via public key
-    string remote = 4;
-
-    //public key - optional since can also be retrieved via url
-    string local = 5;
-  }
+  PublicKey public_key = 4;
 }
 
 message KeyAccessServerCreateUpdate {
@@ -37,14 +31,11 @@ message KeyAccessServerCreateUpdate {
 message PublicKey {
   oneof public_key {
     // kas public key url - optional since can also be retrieved via public key
-    string remote = 1 [
-      (buf.validate.field).required = true,
-      (buf.validate.field).cel = {
-        id: "fqn_format",
-        message: "FQN must start with a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-        expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
-      }
-    ];
+    string remote = 1 [(buf.validate.field).cel = {
+      id: "fqn_format",
+      message: "FQN must start with a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
+    }];
 
     //public key - optional since can also be retrieved via url
     string local = 2;
@@ -81,7 +72,9 @@ message UpdateKeyAccessServerResponse {
 message DeleteKeyAccessServerRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteKeyAccessServerResponse {}
+message DeleteKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
 
 service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {

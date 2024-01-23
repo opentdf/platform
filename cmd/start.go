@@ -20,7 +20,7 @@ import (
 	// "github.com/opentdf/opentdf-v2-poc/services/acre"
 	// "github.com/opentdf/opentdf-v2-poc/services/acse"
 	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
+	"github.com/opentdf/opentdf-v2-poc/services/kasregistry"
 	"github.com/spf13/cobra"
 )
 
@@ -148,11 +148,11 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	// 	return fmt.Errorf("could not register acse service: %w", err)
 	// }
 
-	// slog.Info("registering key access grants service")
-	// err = keyaccessgrants.NewKeyAccessGrantsServer(dbClient, otdf.GrpcServer, otdf.Mux)
-	// if err != nil {
-	// 	return fmt.Errorf("could not register key access grants service: %w", err)
-	// }
+	slog.Info("registering key access server registry")
+	err = kasregistry.NewKeyAccessServerRegistryServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	if err != nil {
+		return fmt.Errorf("could not register key access grants service: %w", err)
+	}
 
 	return nil
 }

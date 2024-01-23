@@ -46,7 +46,7 @@ func (suite *AttributesSuite) SetupSuite() {
 		suite.T().Fatal(err)
 	}
 
-	var attrs = make([]*attributes.AttributeDefinition, 0)
+	var attrs = make([]*attributes.Attribute, 0)
 
 	err = json.Unmarshal(testData, &attrs)
 
@@ -57,7 +57,7 @@ func (suite *AttributesSuite) SetupSuite() {
 
 	for _, attr := range attrs {
 		_, err = suite.client.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
-			Definition: attr,
+			Attribute: attr,
 		})
 		if err != nil {
 			slog.Error("could not create attribute", slog.String("error", err.Error()))

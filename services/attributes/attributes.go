@@ -104,3 +104,73 @@ func (s *AttributesService) DeleteAttribute(ctx context.Context,
 
 	return rsp, nil
 }
+
+///
+/// Attribute Values
+///
+
+func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attributes.CreateValueRequest) (*attributes.CreateValueResponse, error) {
+	rsp := &attributes.CreateValueResponse{}
+
+	item, err := s.dbClient.CreateAttributeValue(ctx, req.Value)
+	if err != nil {
+		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+	}
+	rsp.Value = item
+
+	return rsp, nil
+}
+
+func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListValuesRequest) (*attributes.ListValuesResponse, error) {
+	rsp := &attributes.ListValuesResponse{}
+
+	list, err := s.dbClient.ListAllAttributeValues(ctx)
+	if err != nil {
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrListingResource)
+	}
+	rsp.Values = list
+
+	return rsp, nil
+}
+
+func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attributes.GetValueRequest) (*attributes.GetValueResponse, error) {
+	rsp := &attributes.GetValueResponse{}
+
+	item, err := s.dbClient.GetAttributeValue(ctx, req.Id)
+	if err != nil {
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+	}
+	rsp.Value = item
+
+	return rsp, nil
+}
+
+func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attributes.UpdateValueRequest) (*attributes.UpdateValueResponse, error) {
+	rsp := &attributes.UpdateValueResponse{}
+
+	a, err := s.dbClient.UpdateAttributeValue(ctx, req.Id, req.Value)
+	if err != nil {
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
+		return &attributes.UpdateValueResponse{},
+			status.Error(codes.Internal, services.ErrUpdatingResource)
+	}
+	rsp.Value = a
+
+	return rsp, nil
+}
+
+func (s *AttributesService) DeleteAttributeValue(ctx context.Context, req *attributes.DeleteValueRequest) (*attributes.DeleteValueResponse, error) {
+	rsp := &attributes.DeleteValueResponse{}
+
+	a, err := s.dbClient.DeleteAttributeValue(ctx, req.Id)
+	if err != nil {
+		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
+	}
+	rsp.Value = a
+
+	return rsp, nil
+}

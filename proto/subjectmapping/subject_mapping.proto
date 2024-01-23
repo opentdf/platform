@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package subjectmapping;
 
+import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
@@ -57,16 +58,40 @@ import "google/api/annotations.proto";
    ```
 
 */
-message SubjectMapping {
-  common.Metadata metadata = 1;
 
-  // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
-  enum SubjectMappingOperatorEnum {
-    SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0;
-    SUBJECT_MAPPING_OPERATOR_ENUM_IN = 1;
-    SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
-  }
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum SubjectMappingOperatorEnum {
+  SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0;
+  SUBJECT_MAPPING_OPERATOR_ENUM_IN = 1;
+  SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
+}
+
+message SubjectMapping {
+  string id = 1;
+
+  common.Metadata metadata = 2;
   //TODO should this be a list of values?
+
+  // Attribute Value to be mapped to
+  attributes.Value attribute_value = 3;
+
+  // Resource Attribute Key; NOT Attribute Definition Attribute name
+  string subject_attribute = 4;
+
+  // The list of comparison values for a resource's <attribute> value
+  repeated string subject_values = 5;
+
+  // the operator
+  SubjectMappingOperatorEnum operator = 6 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+  //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
+  // or treat the subject values as regex patterns applied to subject attribute
+}
+
+message SubjectMappingCreateUpdate {
+  common.MetadataMutable metadata = 1;
 
   // Attribute Value to be mapped to
   string attribute_value_id = 2;
@@ -99,20 +124,26 @@ message ListSubjectMappingsResponse {
 }
 
 message CreateSubjectMappingRequest {
-  SubjectMapping subject_mapping = 1 [(buf.validate.field).required = true];
+  SubjectMappingCreateUpdate subject_mapping = 1 [(buf.validate.field).required = true];
 }
-message CreateSubjectMappingResponse {}
+message CreateSubjectMappingResponse {
+  SubjectMapping subject_mapping = 1;
+}
 
 message UpdateSubjectMappingRequest {
   string id = 1 [(buf.validate.field).required = true];
-  SubjectMapping subject_mapping = 2 [(buf.validate.field).required = true];
+  SubjectMappingCreateUpdate subject_mapping = 2 [(buf.validate.field).required = true];
 }
-message UpdateSubjectMappingResponse {}
+message UpdateSubjectMappingResponse {
+  SubjectMapping subject_mapping = 1;
+}
 
 message DeleteSubjectMappingRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteSubjectMappingResponse {}
+message DeleteSubjectMappingResponse {
+  SubjectMapping subject_mapping = 1;
+}
 
 service SubjectMappingService {
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {

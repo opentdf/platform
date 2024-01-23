@@ -19,15 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AttributesService_ListAttributes_FullMethodName  = "/attributes.AttributesService/ListAttributes"
-	AttributesService_GetAttribute_FullMethodName    = "/attributes.AttributesService/GetAttribute"
-	AttributesService_CreateAttribute_FullMethodName = "/attributes.AttributesService/CreateAttribute"
-	AttributesService_UpdateAttribute_FullMethodName = "/attributes.AttributesService/UpdateAttribute"
-	AttributesService_DeleteAttribute_FullMethodName = "/attributes.AttributesService/DeleteAttribute"
-	AttributesService_GetValue_FullMethodName        = "/attributes.AttributesService/GetValue"
-	AttributesService_CreateValue_FullMethodName     = "/attributes.AttributesService/CreateValue"
-	AttributesService_UpdateValue_FullMethodName     = "/attributes.AttributesService/UpdateValue"
-	AttributesService_DeleteValue_FullMethodName     = "/attributes.AttributesService/DeleteValue"
+	AttributesService_ListAttributes_FullMethodName      = "/attributes.AttributesService/ListAttributes"
+	AttributesService_ListAttributeValues_FullMethodName = "/attributes.AttributesService/ListAttributeValues"
+	AttributesService_GetAttribute_FullMethodName        = "/attributes.AttributesService/GetAttribute"
+	AttributesService_CreateAttribute_FullMethodName     = "/attributes.AttributesService/CreateAttribute"
+	AttributesService_UpdateAttribute_FullMethodName     = "/attributes.AttributesService/UpdateAttribute"
+	AttributesService_DeleteAttribute_FullMethodName     = "/attributes.AttributesService/DeleteAttribute"
+	AttributesService_GetValue_FullMethodName            = "/attributes.AttributesService/GetValue"
+	AttributesService_CreateValue_FullMethodName         = "/attributes.AttributesService/CreateValue"
+	AttributesService_UpdateValue_FullMethodName         = "/attributes.AttributesService/UpdateValue"
+	AttributesService_DeleteValue_FullMethodName         = "/attributes.AttributesService/DeleteValue"
 )
 
 // AttributesServiceClient is the client API for AttributesService service.
@@ -38,6 +39,10 @@ type AttributesServiceClient interface {
 	// Example:
 	// grpcurl -plaintext -d '{"namespace_id": "namespace_id"}' localhost:8080 attributes.AttributesService/ListAttributes
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
+	// List Values
+	// Example:
+	// grpcurl -plaintext -d '{"attribute_id": "attribute_id"}' localhost:8080 attributes.AttributesService/ListValues
+	ListAttributeValues(ctx context.Context, in *ListValuesRequest, opts ...grpc.CallOption) (*ListValuesResponse, error)
 	GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error)
 	// Create Attribute
 	// Example:
@@ -68,6 +73,15 @@ func NewAttributesServiceClient(cc grpc.ClientConnInterface) AttributesServiceCl
 func (c *attributesServiceClient) ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error) {
 	out := new(ListAttributesResponse)
 	err := c.cc.Invoke(ctx, AttributesService_ListAttributes_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) ListAttributeValues(ctx context.Context, in *ListValuesRequest, opts ...grpc.CallOption) (*ListValuesResponse, error) {
+	out := new(ListValuesResponse)
+	err := c.cc.Invoke(ctx, AttributesService_ListAttributeValues_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +168,10 @@ type AttributesServiceServer interface {
 	// Example:
 	// grpcurl -plaintext -d '{"namespace_id": "namespace_id"}' localhost:8080 attributes.AttributesService/ListAttributes
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
+	// List Values
+	// Example:
+	// grpcurl -plaintext -d '{"attribute_id": "attribute_id"}' localhost:8080 attributes.AttributesService/ListValues
+	ListAttributeValues(context.Context, *ListValuesRequest) (*ListValuesResponse, error)
 	GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error)
 	// Create Attribute
 	// Example:
@@ -180,6 +198,9 @@ type UnimplementedAttributesServiceServer struct {
 
 func (UnimplementedAttributesServiceServer) ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAttributes not implemented")
+}
+func (UnimplementedAttributesServiceServer) ListAttributeValues(context.Context, *ListValuesRequest) (*ListValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListAttributeValues not implemented")
 }
 func (UnimplementedAttributesServiceServer) GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAttribute not implemented")
@@ -232,6 +253,24 @@ func _AttributesService_ListAttributes_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AttributesServiceServer).ListAttributes(ctx, req.(*ListAttributesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_ListAttributeValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListValuesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).ListAttributeValues(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_ListAttributeValues_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).ListAttributeValues(ctx, req.(*ListValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -390,6 +429,10 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAttributes",
 			Handler:    _AttributesService_ListAttributes_Handler,
+		},
+		{
+			MethodName: "ListAttributeValues",
+			Handler:    _AttributesService_ListAttributeValues_Handler,
 		},
 		{
 			MethodName: "GetAttribute",

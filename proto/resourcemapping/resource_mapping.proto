@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package resourcemapping;
 
+import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
@@ -47,13 +48,21 @@ import "google/api/annotations.proto";
 
 */
 message ResourceMapping {
-  common.Metadata metadata = 1;
+  string id = 1;
 
-  string name = 2;
+  common.Metadata metadata = 2;
 
-  string attribute_value_id = 3;
+  attributes.Value attribute_value = 3 [(buf.validate.field).required = true];
 
   repeated string terms = 4;
+}
+
+message ResourceMappingCreateUpdate {
+  common.MetadataMutable metadata = 1;
+
+  string attribute_value_id = 2;
+
+  repeated string terms = 3;
 }
 
 /*
@@ -63,7 +72,7 @@ message ResourceMapping {
 message ListResourceMappingsRequest {}
 
 message ListResourceMappingsResponse {
-  repeated ResourceMapping mappings = 1;
+  repeated ResourceMapping resource_mappings = 1;
 }
 
 message GetResourceMappingRequest {
@@ -71,24 +80,30 @@ message GetResourceMappingRequest {
 }
 
 message GetResourceMappingResponse {
-  ResourceMapping mapping = 1;
+  ResourceMapping resource_mapping = 1;
 }
 
 message CreateResourceMappingRequest {
-  ResourceMapping mapping = 1 [(buf.validate.field).required = true];
+  ResourceMappingCreateUpdate resource_mapping = 1 [(buf.validate.field).required = true];
 }
-message CreateResourceMappingResponse {}
+message CreateResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
 
 message UpdateResourceMappingRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
-  ResourceMapping mapping = 2 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
+  ResourceMappingCreateUpdate resource_mapping = 2 [(buf.validate.field).required = true];
 }
-message UpdateResourceMappingResponse {}
+message UpdateResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
 
 message DeleteResourceMappingRequest {
-  int32 id = 1 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteResourceMappingResponse {}
+message DeleteResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
 
 service ResourceMappingService {
   /*
@@ -104,14 +119,14 @@ service ResourceMappingService {
   rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {
     option (google.api.http) = {
       post: "/resource-mappings"
-      body: "mapping"
+      body: "resource_mapping"
     };
   }
 
   rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
     option (google.api.http) = {
       post: "/resource-mappings/{id}"
-      body: "mapping"
+      body: "resource_mapping"
     };
   }
 

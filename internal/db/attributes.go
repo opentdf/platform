@@ -17,7 +17,6 @@ import (
 )
 
 var AttributeTable = tableName(TableAttributes)
-var AttributeValueTable = tableName(TableAttributeValues)
 var AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
 
 func attributesRuleTypeEnumTransformIn(value string) string {
@@ -256,11 +255,17 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 }
 
 func updateAttributeSql(id string, name string, rule string, metadata []byte) (string, []interface{}, error) {
-	return newStatementBuilder().
-		Update(AttributeTable).
-		Set("name", name).
-		Set("rule", rule).
-		Set("metadata", metadata).
+	sb := newStatementBuilder().
+		Update(AttributeTable)
+
+	if name != "" {
+		sb = sb.Set("name", name)
+	}
+	if rule != "" {
+		sb = sb.Set("rule", rule)
+	}
+
+	return sb.Set("metadata", metadata).
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }

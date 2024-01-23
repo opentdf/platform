@@ -53,7 +53,7 @@ message AttributeCreateUpdate {
   ];
 
   // optional
-  repeated ValueCreateUpdate values = 5;
+  repeated ValueCreate values = 5;
 }
 
 message Value {
@@ -62,7 +62,7 @@ message Value {
 
   common.Metadata metadata = 2;
 
-  string attribute_definition_id = 3 [(buf.validate.field).required = true];
+  string attribute_id = 3 [(buf.validate.field).required = true];
 
   string value = 4;
 
@@ -70,8 +70,18 @@ message Value {
   repeated string members = 5;
 }
 
-// Definition of a single attribute value
-message ValueCreateUpdate {
+message ValueCreate {
+  common.MetadataMutable metadata = 1;
+
+  string attribute_id = 2 [(buf.validate.field).required = true];
+
+  string value = 3;
+
+  // list of attribute values that this value is related to (attribute group)
+  repeated string members = 4;
+}
+
+message ValueUpdate {
   common.MetadataMutable metadata = 1;
 
   string value = 2;
@@ -85,12 +95,12 @@ message ValueCreateUpdate {
 */
 
 message DefinitionKeyAccessServerGrant {
-  string attribute_definition_id = 1;
+  string attribute_id = 1;
   string key_access_server_id = 2;
 }
 
 message ValueKeyAccessServerGrant {
-  string attribute_value_id = 1;
+  string value_id = 1;
   string key_access_server_id = 2;
 }
 
@@ -149,7 +159,7 @@ message ListValuesResponse {
 
 message CreateValueRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
-  ValueCreateUpdate value = 2 [(buf.validate.field).required = true];
+  ValueCreate value = 2 [(buf.validate.field).required = true];
 }
 message CreateValueResponse {
   Value value = 1;
@@ -157,7 +167,7 @@ message CreateValueResponse {
 
 message UpdateValueRequest {
   string id = 1 [(buf.validate.field).required = true];
-  ValueCreateUpdate value = 2 [(buf.validate.field).required = true];
+  ValueUpdate value = 2 [(buf.validate.field).required = true];
 }
 message UpdateValueResponse {
   Value value = 1;
@@ -166,7 +176,9 @@ message UpdateValueResponse {
 message DeleteValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteValueResponse {}
+message DeleteValueResponse {
+  Value value = 1;
+}
 
 ///
 /// Attribute Service

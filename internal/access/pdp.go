@@ -1,8 +1,16 @@
 package access
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+
+	attrs "github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 )
+
+const AllOf string = "allOf"
+const AnyOf string = "anyOf"
+const Hierarchy string = "hierarchy"
 
 type Pdp struct {
 }
@@ -18,9 +26,9 @@ func NewPdp() *Pdp {
 // DetermineAccess will take data AttributeInstances, data AttributeDefinitions, and entity AttributeInstance sets, and
 // compare every data AttributeInstance against every entity's AttributeInstance set, generating a rolled-up decision
 // result for each entity, as well as a detailed breakdown of every data AttributeInstance comparison.
-func (pdp *Pdp) DetermineAccess(dataAttributes []attrs.AttributeInstance, entityAttributeSets map[string][]attrs.AttributeInstance, attributeDefinitions []attrs.AttributeDefinition, context *ctx.Context) (map[string]*Decision, error) {
-	pdp.log(context, slog.LevelDebug, "DetermineAccess")
-	determineCtx, evalSpan := tracer.Start(*context, "DetermineAccess")
+func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attrs.AttributeInstance, entityAttributeSets map[string][]attrs.AttributeInstance, attributeDefinitions []attrs.AttributeDefinition) (map[string]*Decision, error) {
+	slog.DebugContext(ctx, "DetermineAccess")
+	determineCtx, evalSpan := tracer.Start(*ctx, "DetermineAccess")
 	defer evalSpan.End()
 
 	// var result []Decision
@@ -42,8 +50,7 @@ func (pdp *Pdp) DetermineAccess(dataAttributes []attrs.AttributeInstance, entity
 	decisions := make(map[string]*Decision)
 	//Go through all the clustered data attrs by canonical name
 	for canonicalName, distinctValues := range clusteredDataAttrs {
-		pdp.log(&determineCtx, slog.LevelDebug, "Evaluating data attribute", "name", canonicalName)
-
+		slog.DebugContext(ctx, "Evaluating data attribute", "name", canonicalName)
 		//Correctness check - we should only have been given 1 AttributeDefinition for per attribute CanonicalName
 		//If not, then calling code is broken, so complain.
 		if len(clusteredDefinitions[canonicalName]) != 1 {
@@ -62,26 +69,26 @@ func (pdp *Pdp) DetermineAccess(dataAttributes []attrs.AttributeInstance, entity
 		//and the entity AttributeInstances that entity ID has, then that entity ID passed (or skipped) this rule.
 		filteredEntities := entityAttributeSets
 		if attrDefinition.GroupBy != nil {
-			pdp.log(&determineCtx, slog.LevelDebug, "Attribute Definition", "groupBy", attrDefinition, "name", canonicalName)
+			slog.DebugContext(ctx, "Attribute Definition", "groupBy", attrDefinition, "name", canonicalName)
 			filteredEntities = pdp.groupByFilterEntityAttributeInstances(&determineCtx, entityAttributeSets, attrDefinition.GroupBy)
-			pdp.log(&determineCtx, slog.LevelDebug, "For this definition, according to GroupBy", "found", len(filteredEntities), "of", len(entityAttributeSets))
+			slog.DebugContext(ctx, "For this definition, according to GroupBy", "found", len(filteredEntities), "of", len(entityAttributeSets))
 		}
 
 		var entityRuleDecision map[string]DataRuleResult
 		switch attrDefinition.Rule {
-		case ALL_OF:
+		case AllOf:
 			allOfContext, allOfSpan := tracer.Start(determineCtx, "AllOfRule resolution")
-			pdp.log(&allOfContext, slog.LevelDebug, "Evaluating under allOf", "name", canonicalName, "values", distinctValues)
+			slog.DebugContext(ctx, "Evaluating under allOf", "name", canonicalName, "values", distinctValues)
 			entityRuleDecision = pdp.allOfRule(&allOfContext, distinctValues, filteredEntities, attrDefinition.GroupBy)
 			allOfSpan.End()
-		case ANY_OF:
+		case AnyOf:
 			anyOfContext, anyOfSpan := tracer.Start(determineCtx, "AnyOfRule resolution")
-			pdp.log(&anyOfContext, slog.LevelDebug, "Evaluating under anyOf", "name", canonicalName, "values", distinctValues)
+			slog.DebugContext(ctx, "Evaluating under anyOf", "name", canonicalName, "values", distinctValues)
 			entityRuleDecision = pdp.anyOfRule(&anyOfContext, distinctValues, filteredEntities, attrDefinition.GroupBy)
 			anyOfSpan.End()
-		case HIERARCHY:
+		case Hierarchy:
 			hierarchyContext, hierarchySpan := tracer.Start(determineCtx, "HierarchyRule resolution")
-			pdp.log(&hierarchyContext, slog.LevelDebug, "Evaluating under hierarchy", "name", canonicalName, "values", distinctValues)
+			slog.DebugContext(ctx, "Evaluating under hierarchy", "name", canonicalName, "values", distinctValues)
 			entityRuleDecision = pdp.hierarchyRule(&hierarchyContext, distinctValues, filteredEntities, attrDefinition.GroupBy, attrDefinition.Order)
 			hierarchySpan.End()
 		default:
@@ -123,11 +130,11 @@ func (pdp *Pdp) DetermineAccess(dataAttributes []attrs.AttributeInstance, entity
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) allOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName []attrs.AttributeInstance, entityAttributes map[string][]attrs.AttributeInstance, groupBy *attrs.AttributeInstance) map[string]DataRuleResult {
+func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attrs.AttributeInstance, entityAttributes map[string][]attrs.AttributeInstance, groupBy *attrs.AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	//All of the data AttributeInstances in the arg have the same canonical name.
-	pdp.log(context, slog.LevelDebug, "Evaluating all-of decision", "name", dataAttrsBySingleCanonicalName[0].GetCanonicalName())
+	slog.DebugContext(ctx, "Evaluating all-of decision", "name", dataAttrsBySingleCanonicalName[0].GetCanonicalName())
 
 	//Go through every entity's AttributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
@@ -140,7 +147,7 @@ func (pdp *Pdp) allOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName [
 		//For every unqiue data AttributeInstance (that is, unique data attribute value) in this set of data AttributeInstances sharing the same canonical name...
 		for dvIndex, dataAttrVal := range dataAttrsBySingleCanonicalName {
 			dvCanonicalName := dataAttrVal.GetCanonicalName()
-			pdp.log(context, slog.LevelDebug, "Evaluating all-of decision for data attr %s with value %s", dvCanonicalName, dataAttrVal.Value)
+			slog.DebugContext(ctx, "Evaluating all-of decision for data attr %s with value %s", dvCanonicalName, dataAttrVal.Value)
 			//See if
 			// 1. there exists an entity AttributeInstance in the set of AttributeInstances
 			// with the same canonical name as the data AttributeInstance in question
@@ -152,7 +159,7 @@ func (pdp *Pdp) allOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName [
 			//then prepare a ValueFailure for that data AttributeInstance (that is, attribute value), for this entity
 			if !found {
 				denialMsg = fmt.Sprintf("AllOf not satisfied for canonical data attr+value %s and entity %s", dataAttrVal, entityId)
-				pdp.log(context, slog.LevelWarn, denialMsg)
+				slog.WarnContext(ctx, denialMsg)
 				//Append the ValueFailure to the set of entity value failures
 				valueFailures = append(valueFailures, ValueFailure{
 					DataAttribute: &dataAttrsBySingleCanonicalName[dvIndex],
@@ -180,12 +187,12 @@ func (pdp *Pdp) allOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName [
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) anyOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName []attrs.AttributeInstance, entityAttributes map[string][]attrs.AttributeInstance, groupBy *attrs.AttributeInstance) map[string]DataRuleResult {
+func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attrs.AttributeInstance, entityAttributes map[string][]attrs.AttributeInstance, groupBy *attrs.AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	dvCanonicalName := dataAttrsBySingleCanonicalName[0].GetCanonicalName()
 	//All of the data AttributeInstances in the arg have the same canonical name.
-	pdp.log(context, slog.LevelDebug, "Evaluating anyOf decision", "attr", dvCanonicalName)
+	slog.DebugContext(ctx, "Evaluating anyOf decision", "attr", dvCanonicalName)
 
 	//Go through every entity's AttributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
@@ -197,8 +204,7 @@ func (pdp *Pdp) anyOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName [
 
 		//For every unqiue data AttributeInstance (that is, value) in this set of data AttributeInstance sharing the same canonical name...
 		for dvIndex, dataAttrVal := range dataAttrsBySingleCanonicalName {
-			pdp.log(context, slog.LevelDebug, "Evaluating anyOf decision", "attr", dvCanonicalName, "value", dataAttrVal.Value)
-
+			slog.DebugContext(ctx, "Evaluating anyOf decision", "attr", dvCanonicalName, "value", dataAttrVal.Value)
 			//See if
 			// 1. there exists an entity AttributeInstance in the set of AttributeInstances
 			// with the same canonical name as the data AttributeInstance in question
@@ -210,8 +216,7 @@ func (pdp *Pdp) anyOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName [
 			//then prepare a ValueFailure for that data AttributeInstance and value, for this entity
 			if !found {
 				denialMsg = fmt.Sprintf("anyOf not satisfied for canonical data attr+value %s and entity %s - anyOf is permissive, so this doesn't mean overall failure", dataAttrVal, entityId)
-				pdp.log(context, slog.LevelDebug, denialMsg)
-
+				slog.WarnContext(ctx, denialMsg)
 				valueFailures = append(valueFailures, ValueFailure{
 					DataAttribute: &dataAttrsBySingleCanonicalName[dvIndex],
 					Message:       denialMsg,
@@ -224,7 +229,7 @@ func (pdp *Pdp) anyOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName [
 		//possess AT LEAST ONE of the values in its entity AttributeInstance cluster,
 		//and we have satisfied AnyOf
 		if len(valueFailures) < len(dataAttrsBySingleCanonicalName) {
-			pdp.log(context, slog.LevelDebug, "anyOf satisfied for canonical data", "attr", dvCanonicalName, "entityId", entityId)
+			slog.DebugContext(ctx, "anyOf satisfied for canonical data", "attr", dvCanonicalName, "entityId", entityId)
 			entityPassed = true
 		}
 		ruleResultsByEntity[entityId] = DataRuleResult{
@@ -245,14 +250,14 @@ func (pdp *Pdp) anyOfRule(context *ctx.Context, dataAttrsBySingleCanonicalName [
 //
 // If multiple entity AttributeInstances (that is, values) for a hierarchy AttributeDefinition are present for the same canonical name, the lowest will be chosen,
 // and the others ignored.
-func (pdp *Pdp) hierarchyRule(context *ctx.Context, dataAttrsBySingleCanonicalName []attrs.AttributeInstance, entityAttributes map[string][]attrs.AttributeInstance, groupBy *attrs.AttributeInstance, order []string) map[string]DataRuleResult {
+func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []attrs.AttributeInstance, entityAttributes map[string][]attrs.AttributeInstance, groupBy *attrs.AttributeInstance, order []string) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
-	highestDataInstance := pdp.getHighestRankedInstanceFromDataAttributes(context, order, dataAttrsBySingleCanonicalName)
+	highestDataInstance := pdp.getHighestRankedInstanceFromDataAttributes(ctx, order, dataAttrsBySingleCanonicalName)
 	if highestDataInstance == nil {
-		pdp.log(context, slog.LevelWarn, "No data attribute value found that matches attribute definition allowed values! All entity access will be rejected!")
+		slog.WarnContext(ctx, "No data attribute value found that matches attribute definition allowed values! All entity access will be rejected!")
 	} else {
-		pdp.log(context, slog.LevelDebug, "Highest ranked hierarchy value on data attributes found", "value", highestDataInstance)
+		slog.DebugContext(ctx, "Highest ranked hierarchy value on data attributes found", "value", highestDataInstance)
 	}
 	//All of the data AttributeInstances in the arg have the same canonical name.
 
@@ -267,7 +272,7 @@ func (pdp *Pdp) hierarchyRule(context *ctx.Context, dataAttrsBySingleCanonicalNa
 		if highestDataInstance != nil {
 			dvCanonicalName := highestDataInstance.GetCanonicalName()
 			//For every unique data AttributeInstance (that is, value) in this set of data AttributeInstances sharing the same canonical name...
-			pdp.log(context, slog.LevelDebug, "Evaluating hierarchy decision", "name", dvCanonicalName, "value", highestDataInstance.Value)
+			slog.DebugContext(ctx, "Evaluating hierarchy decision", "name", dvCanonicalName, "value", highestDataInstance.Value)
 
 			//Compare the (one or more) AttributeInstances (that is, values) for this canonical name to the (one) data AttributeInstance, and see which is "higher".
 			entityPassed = entityRankGreaterThanOrEqualToDataRank(order, highestDataInstance, entityAttrCluster[dvCanonicalName])
@@ -275,7 +280,7 @@ func (pdp *Pdp) hierarchyRule(context *ctx.Context, dataAttrsBySingleCanonicalNa
 			//If the rank of the data AttributeInstance (that is, value) is higher than the highest entity AttributeInstance, then FAIL.
 			if !entityPassed {
 				denialMsg := fmt.Sprintf("Hierarchy - Entity: %s hierarchy values rank below data hierarchy value of %s", entityId, highestDataInstance.Value)
-				pdp.log(context, slog.LevelWarn, denialMsg)
+				slog.WarnContext(ctx, denialMsg)
 
 				//Since there is only one data value we (ultimately) consider in a HierarchyRule, we will only ever
 				//have one ValueFailure per entity at most
@@ -290,7 +295,7 @@ func (pdp *Pdp) hierarchyRule(context *ctx.Context, dataAttrsBySingleCanonicalNa
 			//If every data attribute value we're comparing against is invalid (that is, none of them exist in the attribute definition)
 			//then we must fail and return a nil instance.
 			denialMsg := fmt.Sprintf("Hierarchy - No data values found exist in attribute definition, no hierarchy comparison possible, entity %s is denied", entityId)
-			pdp.log(context, slog.LevelWarn, denialMsg)
+			slog.WarnContext(ctx, denialMsg)
 			valueFailures = append(valueFailures, ValueFailure{
 				DataAttribute: nil,
 				Message:       denialMsg,
@@ -308,16 +313,16 @@ func (pdp *Pdp) hierarchyRule(context *ctx.Context, dataAttrsBySingleCanonicalNa
 
 // the purpose of a GroupBy property on an AttributeDefinition is to indicate which entities should be included in a rule evaluation, and which
 // entities should not be included. This function will check every entity's AttributeInstances, and filter out the entities
-// that lack the the GroupBy AttributeInstance, returning a new, reduced set of entities that all have the
+// that lack the GroupBy AttributeInstance, returning a new, reduced set of entities that all have the
 // GroupBy AttributeInstance.
-func (pdp *Pdp) groupByFilterEntityAttributeInstances(context *ctx.Context, entityAttributes map[string][]attrs.AttributeInstance, groupBy *attrs.AttributeInstance) map[string][]attrs.AttributeInstance {
-	pdp.log(context, slog.LevelDebug, "Filtering out entities with groupby", "groupby", groupBy)
+func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entityAttributes map[string][]attrs.AttributeInstance, groupBy *attrs.AttributeInstance) map[string][]attrs.AttributeInstance {
+	slog.DebugContext(ctx, "Filtering out entities with groupby", "groupby", groupBy)
 
 	filteredEntitySet := make(map[string][]attrs.AttributeInstance)
 
 	//Go through every entity's AttributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
-		pdp.log(context, slog.LevelDebug, "Filtering entity with groupby", "entityId", entityId, "groupBy", groupBy)
+		slog.DebugContext(ctx, "Filtering entity with groupby", "entityId", entityId, "groupBy", groupBy)
 		//If this entity has the groupBy AttributeInstance within its set of AttributeInstances
 		if findInstanceValueInCluster(groupBy, entityAttrs) {
 			//Then it will be included in the map of filtered entities.
@@ -338,7 +343,7 @@ func (pdp *Pdp) groupByFilterEntityAttributeInstances(context *ctx.Context, enti
 // present in the set of data AttributeInstances, and use that as the point of comparison, ignoring the "lower-ranked" data values.
 // If we find a data value that does not exist in the attribute definition's list of valid values, we will skip it
 // If NONE of the data values exist in the attribute defintiions list of valid values, return a nil instance
-func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(context *ctx.Context, order []string, dataAttributeCluster []attrs.AttributeInstance) *attrs.AttributeInstance {
+func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, order []string, dataAttributeCluster []attrs.AttributeInstance) *attrs.AttributeInstance {
 	//For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
 	//So initialize with the LEAST privileged rank in the defined order
 	var highestDVIndex int = (len(order) - 1)
@@ -347,17 +352,17 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(context *ctx.Context,
 		foundRank := getOrderOfValue(order, dataAttr.Value)
 		if foundRank == -1 {
 			msg := fmt.Sprintf("Data value %s is not in %s and is not a valid value for this attribute - ignoring this invalid value and continuing to look for a valid one...", dataAttr.Value, order)
-			pdp.log(context, slog.LevelWarn, msg)
+			slog.WarnContext(ctx, msg)
 			//If this isnt a valid data value, skip this iteration and look at the next one - maybe it is?
 			//If none of them are valid, we should return a nil instance
 			continue
 		}
-		pdp.log(context, slog.LevelDebug, "Found data", "rank", foundRank, "value", dataAttr.Value, "maxRank", highestDVIndex)
+		slog.DebugContext(ctx, "Found data", "rank", foundRank, "value", dataAttr.Value, "maxRank", highestDVIndex)
 		//If this rank is a "higher rank" (that is, a lower index) than the last one,
 		//(or it is the same rank, to handle cases where the lowest is the only)
 		//it becomes the new high water mark rank.
 		if foundRank <= highestDVIndex {
-			pdp.log(context, slog.LevelDebug, "Updating rank!")
+			slog.DebugContext(ctx, "Updating rank!")
 			highestDVIndex = foundRank
 			gotAttr := dataAttr
 			highestRankedInstance = &gotAttr

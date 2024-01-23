@@ -135,7 +135,7 @@ service NamespaceService {
     
     Update a Namespace:
         Request:
-            grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896","namespace":{"name":"example-test.com"}}' localhost:9000 namespaces.NamespaceService/UpdateNamespace
+            grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896","name":"example-test.com"}' localhost:9000 namespaces.NamespaceService/UpdateNamespace
         Response:
             {
                 "namespace": {

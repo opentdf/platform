@@ -299,7 +299,6 @@ func deleteAttributeSql(id string) (string, []interface{}, error) {
 		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
 		ToSql()
 }
-
 func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
 	// get attribute before deleting
 	a, err := c.GetAttribute(ctx, id)

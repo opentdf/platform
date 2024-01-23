@@ -9,8 +9,8 @@ type TDFReader struct {
 }
 
 const (
-	tdfManifestFileName = "0.manifest.json"
-	tdfPayloadFileName  = "0.payload"
+	TDFManifestFileName = "0.manifest.json"
+	TDFPayloadFileName  = "0.payload"
 )
 
 // NewTDFReader Create tdf reader instance.
@@ -28,7 +28,7 @@ func NewTDFReader(readSeeker io.ReadSeeker) (TDFReader, error) {
 
 // Manifest Return the manifest of the tdf.
 func (tdfReader TDFReader) Manifest() (string, error) {
-	fileContent, err := tdfReader.archiveReader.ReadAllFileData(tdfManifestFileName)
+	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName)
 	if err != nil {
 		return "", err
 	}
@@ -37,7 +37,7 @@ func (tdfReader TDFReader) Manifest() (string, error) {
 
 // ReadPayload Return the payload of given length from index.
 func (tdfReader TDFReader) ReadPayload(index, length int64) ([]byte, error) {
-	buf, err := tdfReader.archiveReader.ReadFileData(tdfPayloadFileName, index, length)
+	buf, err := tdfReader.archiveReader.ReadFileData(TDFPayloadFileName, index, length)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (tdfReader TDFReader) ReadPayload(index, length int64) ([]byte, error) {
 
 // PayloadSize Return the size of the payload.
 func (tdfReader TDFReader) PayloadSize() (int64, error) {
-	size, err := tdfReader.archiveReader.ReadFileSize(tdfPayloadFileName)
+	size, err := tdfReader.archiveReader.ReadFileSize(TDFPayloadFileName)
 	if err != nil {
 		return -1, err
 	}

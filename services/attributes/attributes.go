@@ -125,7 +125,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListValuesRequest) (*attributes.ListValuesResponse, error) {
 	rsp := &attributes.ListValuesResponse{}
 
-	list, err := s.dbClient.ListAllAttributeValues(ctx)
+	list, err := s.dbClient.ListAttributeValues(ctx, req.AttributeId)
 	if err != nil {
 		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrListingResource)

@@ -16,8 +16,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var AttributeTable = tableName(TableAttributes)
-var AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
+var (
+	AttributeTable              = tableName(TableAttributes)
+	AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
+)
 
 func attributesRuleTypeEnumTransformIn(value string) string {
 	return strings.TrimPrefix(value, AttributeRuleTypeEnumPrefix)
@@ -154,6 +156,7 @@ func listAllAttributesSql() (string, []interface{}, error) {
 		From(AttributeTable).
 		ToSql()
 }
+
 func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute, error) {
 	sql, args, err := listAllAttributesSql()
 	rows, err := c.query(ctx, sql, args, err)
@@ -178,9 +181,22 @@ func getAttributeSql(id string) (string, []interface{}, error) {
 		From(AttributeTable).
 		ToSql()
 }
-func (c Client) GetAttribute(ctx context.Context, id string) (pgx.Row, error) {
-	sql, args, err := getAttributeByDefinitionSql(id)
-	return c.queryRow(ctx, sql, args, err)
+
+func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+	sql, args, err := getAttributeSql(id)
+	row, err := c.queryRow(ctx, sql, args, err)
+	if err != nil {
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+	}
+
+	attribute, err := attributesHydrateItem(row)
+	if err != nil {
+		slog.Error("could not hydrate item", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+	}
+
+	return attribute, nil
 }
 
 func getAttributesByNamespaceSql(namespaceId string) (string, []interface{}, error) {
@@ -189,7 +205,8 @@ func getAttributesByNamespaceSql(namespaceId string) (string, []interface{}, err
 		From(AttributeTable).
 		ToSql()
 }
-func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string) (pgx.Rows, error) {
+
+func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string) ([]*attributes.Attribute, error) {
 	sql, args, err := getAttributesByNamespaceSql(namespaceId)
 
 	rows, err := c.query(ctx, sql, args, err)
@@ -215,6 +232,7 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
+
 func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(attr.Metadata)
 	if err != nil {
@@ -257,6 +275,7 @@ func updateAttributeSql(id string, name string, rule string, metadata []byte) (s
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
+
 func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	// get attribute before updating
 	a, err := c.GetAttribute(ctx, id)
@@ -285,8 +304,10 @@ func deleteAttributeSql(id string) (string, []interface{}, error) {
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
-func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) error {
-	metadata, err := marshalPolicyMetadata(attr.Metadata)
+
+func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+	// get attribute before deleting
+	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
 		return nil, status.Error(status.Code(err), services.ErrDeletingResource)
 	}

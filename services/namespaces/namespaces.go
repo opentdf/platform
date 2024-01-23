@@ -2,6 +2,7 @@ package namespaces
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -71,6 +72,9 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 	id, err := ns.dbClient.CreateNamespace(ctx, req.Name)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
+		if errors.Is(err, db.ErrUniqueConstraintViolation) {
+			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
+		}
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
@@ -90,6 +94,9 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req.Name)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
+		if errors.Is(err, db.ErrUniqueConstraintViolation) {
+			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
+		}
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
 

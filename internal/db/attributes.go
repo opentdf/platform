@@ -156,7 +156,6 @@ func listAllAttributesSql() (string, []interface{}, error) {
 		From(AttributeTable).
 		ToSql()
 }
-
 func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute, error) {
 	sql, args, err := listAllAttributesSql()
 	rows, err := c.query(ctx, sql, args, err)
@@ -181,7 +180,6 @@ func getAttributeSql(id string) (string, []interface{}, error) {
 		From(AttributeTable).
 		ToSql()
 }
-
 func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
 	sql, args, err := getAttributeSql(id)
 	row, err := c.queryRow(ctx, sql, args, err)
@@ -201,11 +199,10 @@ func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attrib
 
 func getAttributesByNamespaceSql(namespaceId string) (string, []interface{}, error) {
 	return attributesSelect().
-		Where(sq.Eq{"namespace_id": namespaceId}).
+		Where(sq.Eq{tableField(AttributeTable, "namespace_id"): namespaceId}).
 		From(AttributeTable).
 		ToSql()
 }
-
 func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string) ([]*attributes.Attribute, error) {
 	sql, args, err := getAttributesByNamespaceSql(namespaceId)
 
@@ -232,7 +229,6 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
-
 func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(attr.Metadata)
 	if err != nil {
@@ -272,10 +268,9 @@ func updateAttributeSql(id string, name string, rule string, metadata []byte) (s
 	}
 
 	return sb.Set("metadata", metadata).
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
 		ToSql()
 }
-
 func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	// get attribute before updating
 	a, err := c.GetAttribute(ctx, id)
@@ -301,7 +296,7 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 func deleteAttributeSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Delete(AttributeTable).
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
 		ToSql()
 }
 

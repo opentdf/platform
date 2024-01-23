@@ -1,5 +1,13 @@
 package db
 
+import (
+	"testing"
+
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
+	"gotest.tools/v3/assert"
+)
+
 // var (
 // 	//nolint:gochecknoglobals // Test data and should be reintialized for each test
 // 	resourceDescriptor = &common.ResourceDescriptor{
@@ -86,3 +94,16 @@ package db
 
 // 	assert.Equal(t, "postgres://postgres:postgres@localhost:5432/opentdf?sslmode=require", url)
 // }
+
+func Test_Get_Constraint_Name(t *testing.T) {
+	assert.Equal(t, "test_pk_key", getConstraintName("test", "pk"))
+	assert.Equal(t, "test_fk_key", getConstraintName("test", "fk"))
+	assert.Equal(t, "table_column_key", getConstraintName("table", "column"))
+}
+
+func Test_Is_Constraint_Violation(t *testing.T) {
+	assert.Equal(t, true, IsConstraintViolation(&pgconn.PgError{Message: "duplicate key value violates unique constraint \"table_column_key\"", Code: pgerrcode.UniqueViolation}, "table", "column"))
+	assert.Equal(t, true, IsConstraintViolation(&pgconn.PgError{Message: "duplicate key value violates unique constraint \"attributes_namespaces_name_key\"", Code: pgerrcode.UniqueViolation}, "attributes_namespaces", "name"))
+	assert.Equal(t, false, IsConstraintViolation(&pgconn.PgError{Message: "duplicate key value violates unique constraint \"attributes_namespaces_name_key\"", Code: pgerrcode.UniqueViolation}, "attributes_namespaces", "id"))
+	assert.Equal(t, false, IsConstraintViolation(&pgconn.PgError{Message: "duplicate key value violates unique constraint \"attributes_namespaces_name_key\"", Code: pgerrcode.CaseNotFound}, "attributes_namespaces", "name"))
+}

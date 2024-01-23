@@ -39,7 +39,7 @@ message ListNamespacesResponse {
 }
 
 message CreateNamespaceRequest {
-  Namespace namespace = 1 [(buf.validate.field).required = true];
+  string name = 1 [(buf.validate.field).required = true];
 }
 message CreateNamespaceResponse {
   Namespace namespace = 1;
@@ -47,7 +47,7 @@ message CreateNamespaceResponse {
 
 message UpdateNamespaceRequest {
   string id = 1 [(buf.validate.field).required = true];
-  Namespace namespace = 2 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).required = true];
 }
 message UpdateNamespaceResponse {
   Namespace namespace = 1;
@@ -92,13 +92,7 @@ service NamespaceService {
 
     Create a Namespace:
         Request:
-            grpcurl -plaintext -d @ localhost:9000 attributes.NamespaceService/CreateNamespace <<EOM
-            {
-                "namespace": {
-                "name": "example.com"
-                }
-            }
-            EOM
+            grpcurl -d '{"name":"example.com"}' -plaintext localhost:9000 namespaces.NamespaceService/CreateNamespace
         Response: 
             {
                 "namespace": {
@@ -109,9 +103,7 @@ service NamespaceService {
 
     List Namespaces (assuming 3 have been created)
         Request:
-            grpcurl -plaintext -d @ localhost:9000 attributes.NamespaceService/ListNamespaces <<EOM
-            {}
-            EOM
+            grpcurl -plaintext -d '{}' localhost:9000 namespaces.NamespaceService/ListNamespaces
         Response:
             {
                 "namespaces": [
@@ -130,5 +122,31 @@ service NamespaceService {
                 ]
             }
 
+    Get a Namespace:
+        Request:
+            grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896"}' localhost:9000 namespaces.NamespaceService/GetNamespace
+        Response:
+            {
+                "namespace": {
+                    "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
+                    "name": "example.com"
+                }
+            }
+    
+    Update a Namespace:
+        Request:
+            grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896","namespace":{"name":"example-test.com"}}' localhost:9000 namespaces.NamespaceService/UpdateNamespace
+        Response:
+            {
+                "namespace": {
+                    "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
+                    "name": "example.com"
+                }
+            }
 
+    Delete a Namespace:
+        Request:
+            grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896"}' localhost:9000 namespaces.NamespaceService/DeleteNamespace
+        Response:
+            {}
 */

@@ -30,10 +30,175 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type KeyAccessServerRegistryServiceClient interface {
+	// Request Examples:
+	// {}
+	//
+	// Response Examples:
+	// {
+	// "key_access_servers": [
+	// {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// },
+	// {
+	// "id": "cad1fc87-1193-456b-a217-d5cdae1fa67a",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971990",
+	// "nanos": 303386000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971990",
+	// "nanos": 303386000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas3",
+	// "public_key": {
+	// "local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+	// }
+	// }
+	// ]
+	// }
 	ListKeyAccessServers(ctx context.Context, in *ListKeyAccessServersRequest, opts ...grpc.CallOption) (*ListKeyAccessServersResponse, error)
+	// Request Examples:
+	// {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732"
+	// }
+	//
+	// Response Examples:
+	// {
+	// "key_access_server": {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
 	GetKeyAccessServer(ctx context.Context, in *GetKeyAccessServerRequest, opts ...grpc.CallOption) (*GetKeyAccessServerResponse, error)
+	// Request Examples:
+	// {
+	// "key_access_server": {
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
+	//
+	// Response Examples:
+	// {
+	// "key_access_server": {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
 	CreateKeyAccessServer(ctx context.Context, in *CreateKeyAccessServerRequest, opts ...grpc.CallOption) (*CreateKeyAccessServerResponse, error)
+	// Request Examples:
+	// {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "key_access_server": {
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
+	//
+	// Response Examples:
+	// {
+	// "key_access_server": {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
 	UpdateKeyAccessServer(ctx context.Context, in *UpdateKeyAccessServerRequest, opts ...grpc.CallOption) (*UpdateKeyAccessServerResponse, error)
+	// Request Examples:
+	// {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732"
+	// }
+	//
+	// Response Examples:
+	// {
+	// "key_access_server": {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
 	DeleteKeyAccessServer(ctx context.Context, in *DeleteKeyAccessServerRequest, opts ...grpc.CallOption) (*DeleteKeyAccessServerResponse, error)
 }
 
@@ -94,10 +259,175 @@ func (c *keyAccessServerRegistryServiceClient) DeleteKeyAccessServer(ctx context
 // All implementations must embed UnimplementedKeyAccessServerRegistryServiceServer
 // for forward compatibility
 type KeyAccessServerRegistryServiceServer interface {
+	// Request Examples:
+	// {}
+	//
+	// Response Examples:
+	// {
+	// "key_access_servers": [
+	// {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// },
+	// {
+	// "id": "cad1fc87-1193-456b-a217-d5cdae1fa67a",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971990",
+	// "nanos": 303386000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971990",
+	// "nanos": 303386000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas3",
+	// "public_key": {
+	// "local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+	// }
+	// }
+	// ]
+	// }
 	ListKeyAccessServers(context.Context, *ListKeyAccessServersRequest) (*ListKeyAccessServersResponse, error)
+	// Request Examples:
+	// {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732"
+	// }
+	//
+	// Response Examples:
+	// {
+	// "key_access_server": {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
 	GetKeyAccessServer(context.Context, *GetKeyAccessServerRequest) (*GetKeyAccessServerResponse, error)
+	// Request Examples:
+	// {
+	// "key_access_server": {
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
+	//
+	// Response Examples:
+	// {
+	// "key_access_server": {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
 	CreateKeyAccessServer(context.Context, *CreateKeyAccessServerRequest) (*CreateKeyAccessServerResponse, error)
+	// Request Examples:
+	// {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "key_access_server": {
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
+	//
+	// Response Examples:
+	// {
+	// "key_access_server": {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
 	UpdateKeyAccessServer(context.Context, *UpdateKeyAccessServerRequest) (*UpdateKeyAccessServerResponse, error)
+	// Request Examples:
+	// {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732"
+	// }
+	//
+	// Response Examples:
+	// {
+	// "key_access_server": {
+	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "updated_at": {
+	// "seconds": "1705971719",
+	// "nanos": 534029000
+	// },
+	// "description": "test kas instance"
+	// },
+	// "name": "kas2",
+	// "public_key": {
+	// "remote": "https://platform.virtru.com/kas1"
+	// }
+	// }
+	// }
 	DeleteKeyAccessServer(context.Context, *DeleteKeyAccessServerRequest) (*DeleteKeyAccessServerResponse, error)
 	mustEmbedUnimplementedKeyAccessServerRegistryServiceServer()
 }

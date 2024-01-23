@@ -152,7 +152,9 @@ message GetValueResponse {
   Value value = 1;
 }
 
-message ListValuesRequest {}
+message ListValuesRequest {
+  string attribute_id = 1 [(buf.validate.field).required = true];
+}
 message ListValuesResponse {
   repeated Value values = 1;
 }
@@ -190,6 +192,13 @@ service AttributesService {
       grpcurl -plaintext -d '{"namespace_id": "namespace_id"}' localhost:8080 attributes.AttributesService/ListAttributes
   */
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
+
+  /*
+     List Values
+     Example:
+      grpcurl -plaintext -d '{"attribute_id": "attribute_id"}' localhost:8080 attributes.AttributesService/ListValues
+  */
+  rpc ListAttributeValues(ListValuesRequest) returns (ListValuesResponse) {}
 
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};

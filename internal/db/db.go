@@ -18,7 +18,7 @@ var (
 	TableAttributes                    = "attribute_definitions"
 	TableAttributeValues               = "attribute_values"
 	TableNamespaces                    = "attribute_namespaces"
-	TableKeyAccessServerRegistry       = "key_access_server"
+	TableKeyAccessServerRegistry       = "key_access_servers"
 	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"
 	TableAttributeValueKeyAccessGrants = "attribute_value_key_access_grants"
 	TableResourceMappings              = "resource_mappings"

@@ -1,0 +1,280 @@
+syntax = "proto3";
+
+package kasregistry;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/api/annotations.proto";
+
+/*
+   Descriptor for a KAS
+*/
+message KeyAccessServer {
+  string id = 1;
+
+  common.Metadata metadata = 2;
+
+  string name = 3;
+
+  PublicKey public_key = 4;
+}
+
+message KeyAccessServerCreateUpdate {
+  // Optional metadata for the attribute definition
+  common.MetadataMutable metadata = 1;
+
+  string name = 2 [(buf.validate.field).required = true];
+
+  PublicKey public_key = 3 [(buf.validate.field).required = true];
+}
+
+message PublicKey {
+  oneof public_key {
+    // kas public key url - optional since can also be retrieved via public key
+    string remote = 1 [(buf.validate.field).cel = {
+      id: "fqn_format",
+      message: "FQN must start with a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
+    }];
+
+    //public key - optional since can also be retrieved via url
+    string local = 2;
+  }
+}
+
+message GetKeyAccessServerRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message GetKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message ListKeyAccessServersRequest {}
+message ListKeyAccessServersResponse {
+  repeated KeyAccessServer key_access_servers = 1;
+}
+
+message CreateKeyAccessServerRequest {
+  KeyAccessServerCreateUpdate key_access_server = 1 [(buf.validate.field).required = true];
+}
+message CreateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message UpdateKeyAccessServerRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  KeyAccessServerCreateUpdate key_access_server = 2 [(buf.validate.field).required = true];
+}
+message UpdateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message DeleteKeyAccessServerRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeleteKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+service KeyAccessServerRegistryService {
+  /*
+     Request Examples:
+     {}
+
+     Response Examples:
+     {
+     "key_access_servers": [
+         {
+             "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+             "metadata": {
+                 "labels": [],
+                 "created_at": {
+                     "seconds": "1705971719",
+                     "nanos": 534029000
+                 },
+                 "updated_at": {
+                     "seconds": "1705971719",
+                     "nanos": 534029000
+                 },
+                 "description": "test kas instance"
+             },
+             "name": "kas2",
+             "public_key": {
+                 "remote": "https://platform.virtru.com/kas1"
+             }
+         },
+         {
+             "id": "cad1fc87-1193-456b-a217-d5cdae1fa67a",
+             "metadata": {
+                 "labels": [],
+                 "created_at": {
+                     "seconds": "1705971990",
+                     "nanos": 303386000
+                 },
+                 "updated_at": {
+                     "seconds": "1705971990",
+                     "nanos": 303386000
+                 },
+                 "description": "test kas instance"
+             },
+             "name": "kas3",
+             "public_key": {
+                 "local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+             }
+         }
+       ]
+     }
+  */
+  rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
+    option (google.api.http) = {get: "/key-access-servers"};
+  }
+
+  /*
+     Request Examples:
+     {
+       "id": "71eae02f-6837-4980-8a2c-70abf6b68732"
+     }
+
+     Response Examples:
+     {
+       "key_access_server": {
+           "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+           "metadata": {
+               "labels": [],
+               "created_at": {
+                   "seconds": "1705971719",
+                   "nanos": 534029000
+               },
+               "updated_at": {
+                   "seconds": "1705971719",
+                   "nanos": 534029000
+               },
+               "description": "test kas instance"
+           },
+           "name": "kas2",
+           "public_key": {
+               "remote": "https://platform.virtru.com/kas1"
+           }
+       }
+     }
+  */
+  rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
+    option (google.api.http) = {get: "/key-access-servers/{id}"};
+  }
+
+  /*
+     Request Examples:
+     {
+       "key_access_server": {
+         "name": "kas2",
+         "public_key": {
+           "remote": "https://platform.virtru.com/kas1"
+         }
+       }
+     }
+
+     Response Examples:
+     {
+       "key_access_server": {
+           "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+           "metadata": {
+               "labels": [],
+               "created_at": {
+                   "seconds": "1705971719",
+                   "nanos": 534029000
+               },
+               "updated_at": {
+                   "seconds": "1705971719",
+                   "nanos": 534029000
+               },
+               "description": "test kas instance"
+           },
+           "name": "kas2",
+           "public_key": {
+               "remote": "https://platform.virtru.com/kas1"
+           }
+       }
+     }
+  */
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
+    option (google.api.http) = {
+      post: "/key-access-servers"
+      body: "key_access_server"
+    };
+  }
+
+  /*
+     Request Examples:
+     {
+       "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+       "key_access_server": {
+         "name": "kas2",
+         "public_key": {
+           "remote": "https://platform.virtru.com/kas1"
+         }
+       }
+     }
+
+     Response Examples:
+     {
+       "key_access_server": {
+           "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+           "metadata": {
+               "labels": [],
+               "created_at": {
+                   "seconds": "1705971719",
+                   "nanos": 534029000
+               },
+               "updated_at": {
+                   "seconds": "1705971719",
+                   "nanos": 534029000
+               },
+               "description": "test kas instance"
+           },
+           "name": "kas2",
+           "public_key": {
+               "remote": "https://platform.virtru.com/kas1"
+           }
+       }
+     }
+  */
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
+    option (google.api.http) = {
+      put: "/key-access-servers/{id}"
+      body: "key_access_server"
+    };
+  }
+
+  /*
+     Request Examples:
+     {
+       "id": "71eae02f-6837-4980-8a2c-70abf6b68732"
+     }
+
+     Response Examples:
+     {
+       "key_access_server": {
+           "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
+           "metadata": {
+               "labels": [],
+               "created_at": {
+                   "seconds": "1705971719",
+                   "nanos": 534029000
+               },
+               "updated_at": {
+                   "seconds": "1705971719",
+                   "nanos": 534029000
+               },
+               "description": "test kas instance"
+           },
+           "name": "kas2",
+           "public_key": {
+               "remote": "https://platform.virtru.com/kas1"
+           }
+       }
+     }
+  */
+  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
+    option (google.api.http) = {delete: "/key-access-servers/{id}"};
+  }
+}

@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS opentdf.key_access_servers
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key_access_server VARCHAR NOT NULL UNIQUE,
-    public_key VARCHAR NOT NULL,
+    public_key JSONB NOT NULL,
     metadata JSONB
 );
 

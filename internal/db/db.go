@@ -28,6 +28,16 @@ var (
 	TableSubjectMappings               = "subject_mappings"
 )
 
+type Error string
+
+func (e Error) Error() string {
+	return string(e)
+}
+
+const (
+	ErrUniqueConstraintViolation Error = "error value must be unique"
+)
+
 // We can rename this but wanted to get mocks working.
 type PgxIface interface {
 	Acquire(ctx context.Context) (*pgxpool.Conn, error)
@@ -116,8 +126,8 @@ func getConstraintName(table string, column string) string {
 	return fmt.Sprintf("%s_%s_key", table, column)
 }
 
-func NewUniqueAlreadyExistsError(value string, table string) error {
-	return fmt.Errorf("value [%s] already exists in [%s] and must be unique", value, table)
+func NewUniqueAlreadyExistsError(value string) error {
+	return fmt.Errorf("value [%s] already exists and must be unique", value)
 }
 
 //

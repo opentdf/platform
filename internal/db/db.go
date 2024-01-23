@@ -2,11 +2,14 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -98,6 +101,23 @@ func (c Client) exec(ctx context.Context, sql string, args []interface{}, err er
 	}
 	_, err = c.Exec(ctx, sql, args...)
 	return err
+}
+
+// Common function to test constraint violations
+func IsConstraintViolation(err error, table string, column string) bool {
+	var e *pgconn.PgError
+	if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation && strings.Contains(err.Error(), getConstraintName(table, column)) {
+		return true
+	}
+	return false
+}
+
+func getConstraintName(table string, column string) string {
+	return fmt.Sprintf("%s_%s_key", table, column)
+}
+
+func NewUniqueAlreadyExistsError(value string, table string) error {
+	return fmt.Errorf("value [%s] already exists in [%s] and must be unique", value, table)
 }
 
 //

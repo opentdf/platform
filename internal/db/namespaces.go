@@ -33,12 +33,12 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 		return nil, err
 	}
 
-	var namespace *namespaces.Namespace
+	namespace := namespaces.Namespace{Id: "", Name: ""}
 	if err := row.Scan(&namespace.Id, &namespace.Name); err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrGettingResource)
 	}
-	return namespace, nil
+	return &namespace, nil
 }
 
 func listNamespacesSql() (string, []interface{}, error) {
@@ -72,17 +72,17 @@ func (c Client) ListNamespaces(ctx context.Context) ([]*namespaces.Namespace, er
 	return namespacesList, nil
 }
 
-func createNamespaceSql(namespace *namespaces.Namespace) (string, []interface{}, error) {
+func createNamespaceSql(name string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Insert(NamespacesTable).
 		Columns("name").
-		Values(namespace.Name).
+		Values(name).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
-func (c Client) CreateNamespace(ctx context.Context, namespace *namespaces.Namespace) (string, error) {
-	sql, args, err := createNamespaceSql(namespace)
+func (c Client) CreateNamespace(ctx context.Context, name string) (string, error) {
+	sql, args, err := createNamespaceSql(name)
 	var id string
 	if r, e := c.queryRow(ctx, sql, args, err); e != nil {
 		return "", e
@@ -92,20 +92,20 @@ func (c Client) CreateNamespace(ctx context.Context, namespace *namespaces.Names
 	return id, nil
 }
 
-func updateNamespaceSql(namespace *namespaces.Namespace) (string, []interface{}, error) {
+func updateNamespaceSql(id string, name string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Update(NamespacesTable).
-		Set("name", namespace.Name).
-		Where(sq.Eq{tableField(NamespacesTable, "id"): namespace.Id}).
+		Set("name", name).
+		Where(sq.Eq{tableField(NamespacesTable, "id"): id}).
 		ToSql()
 }
 
-func (c Client) UpdateNamespace(ctx context.Context, namespace *namespaces.Namespace) (*namespaces.Namespace, error) {
-	sql, args, err := updateNamespaceSql(namespace)
+func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*namespaces.Namespace, error) {
+	sql, args, err := updateNamespaceSql(id, name)
 	if e := c.exec(ctx, sql, args, err); e != nil {
 		return nil, e
 	}
-	return c.GetNamespace(ctx, namespace.Id)
+	return c.GetNamespace(ctx, id)
 }
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {

@@ -65,16 +65,16 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespaces.Ge
 }
 
 func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces.CreateNamespaceRequest) (*namespaces.CreateNamespaceResponse, error) {
-	slog.Debug("creating new namespace", slog.String("name", req.Namespace.Name))
+	slog.Debug("creating new namespace", slog.String("name", req.Name))
 	rsp := &namespaces.CreateNamespaceResponse{}
 
-	id, err := ns.dbClient.CreateNamespace(ctx, req.Namespace)
+	id, err := ns.dbClient.CreateNamespace(ctx, req.Name)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
-	slog.Debug("created new namespace", slog.String("name", req.Namespace.Name))
+	slog.Debug("created new namespace", slog.String("name", req.Name))
 	rsp.Namespace = &namespaces.Namespace{
 		Id: id,
 		// TODO: are we responding with id only or the entire new namespace?
@@ -84,16 +84,16 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 }
 
 func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces.UpdateNamespaceRequest) (*namespaces.UpdateNamespaceResponse, error) {
-	slog.Debug("updating namespace", slog.String("name", req.Namespace.Name))
+	slog.Debug("updating namespace", slog.String("name", req.Name))
 	rsp := &namespaces.UpdateNamespaceResponse{}
 
-	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Namespace)
+	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req.Name)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
 
-	slog.Debug("updated namespace", slog.String("name", req.Namespace.Name))
+	slog.Debug("updated namespace", slog.String("name", req.Name))
 	rsp.Namespace = namespace
 
 	return rsp, nil

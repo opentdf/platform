@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: keyaccessserverregistry/key_access_server_registry.proto
+// source: kasregistry/key_access_server_registry.proto
 
-package keyaccessserverregistry
+package kasregistry
 
 import (
 	context "context"
@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	KeyAccessServerRegistryService_ListKeyAccessServers_FullMethodName  = "/keyaccessserverregistry.KeyAccessServerRegistryService/ListKeyAccessServers"
-	KeyAccessServerRegistryService_GetKeyAccessServer_FullMethodName    = "/keyaccessserverregistry.KeyAccessServerRegistryService/GetKeyAccessServer"
-	KeyAccessServerRegistryService_CreateKeyAccessServer_FullMethodName = "/keyaccessserverregistry.KeyAccessServerRegistryService/CreateKeyAccessServer"
-	KeyAccessServerRegistryService_UpdateKeyAccessServer_FullMethodName = "/keyaccessserverregistry.KeyAccessServerRegistryService/UpdateKeyAccessServer"
-	KeyAccessServerRegistryService_DeleteKeyAccessServer_FullMethodName = "/keyaccessserverregistry.KeyAccessServerRegistryService/DeleteKeyAccessServer"
+	KeyAccessServerRegistryService_ListKeyAccessServers_FullMethodName  = "/kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers"
+	KeyAccessServerRegistryService_GetKeyAccessServer_FullMethodName    = "/kasregistry.KeyAccessServerRegistryService/GetKeyAccessServer"
+	KeyAccessServerRegistryService_CreateKeyAccessServer_FullMethodName = "/kasregistry.KeyAccessServerRegistryService/CreateKeyAccessServer"
+	KeyAccessServerRegistryService_UpdateKeyAccessServer_FullMethodName = "/kasregistry.KeyAccessServerRegistryService/UpdateKeyAccessServer"
+	KeyAccessServerRegistryService_DeleteKeyAccessServer_FullMethodName = "/kasregistry.KeyAccessServerRegistryService/DeleteKeyAccessServer"
 )
 
 // KeyAccessServerRegistryServiceClient is the client API for KeyAccessServerRegistryService service.
@@ -229,7 +229,7 @@ func _KeyAccessServerRegistryService_DeleteKeyAccessServer_Handler(srv interface
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var KeyAccessServerRegistryService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "keyaccessserverregistry.KeyAccessServerRegistryService",
+	ServiceName: "kasregistry.KeyAccessServerRegistryService",
 	HandlerType: (*KeyAccessServerRegistryServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -254,5 +254,5 @@ var KeyAccessServerRegistryService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "keyaccessserverregistry/key_access_server_registry.proto",
+	Metadata: "kasregistry/key_access_server_registry.proto",
 }

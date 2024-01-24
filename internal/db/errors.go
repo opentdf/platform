@@ -20,11 +20,12 @@ const (
 	ErrNotNullViolation          DbError = "error: value cannot be null"
 	ErrForeignKeyViolation       DbError = "error: value must exist in another table"
 	ErrRestrictViolation         DbError = "error: value cannot be deleted due to restriction"
+	ErrNotFound                  DbError = "error: value not found"
 )
 
 // Validate is a PostgreSQL constraint violation for specific table-column value
 func IsConstraintViolationForColumnVal(err error, table string, column string) bool {
-	if e := IsPostgresBadValueError(err); e != nil {
+	if e := IsPostgresInvalidQueryErr(err); e != nil {
 		if errors.Is(e, ErrUniqueConstraintViolation) && strings.Contains(err.Error(), getConstraintName(table, column)) {
 			return true
 		}
@@ -33,17 +34,19 @@ func IsConstraintViolationForColumnVal(err error, table string, column string) b
 }
 
 // Get helpful error message for PostgreSQL violation
-func IsPostgresBadValueError(err error) error {
+func IsPostgresInvalidQueryErr(err error) error {
 	if e := isPgError(err); e != nil {
 		switch e.Code {
 		case pgerrcode.UniqueViolation:
-			return ErrUniqueConstraintViolation
+			return errors.Join(ErrUniqueConstraintViolation, e)
 		case pgerrcode.NotNullViolation:
-			return ErrNotNullViolation
+			return errors.Join(ErrNotNullViolation, e)
 		case pgerrcode.ForeignKeyViolation:
-			return ErrForeignKeyViolation
+			return errors.Join(ErrForeignKeyViolation, e)
 		case pgerrcode.RestrictViolation:
-			return ErrRestrictViolation
+			return errors.Join(ErrRestrictViolation, e)
+		case pgerrcode.CaseNotFound:
+			return errors.Join(ErrNotFound, e)
 		default:
 			return nil
 		}

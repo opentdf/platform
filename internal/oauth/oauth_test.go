@@ -139,7 +139,7 @@ func setupWiremock(t *testing.T, ctx context.Context) (tc.Container, *url.URL) {
 	return wiremock, wiremockUrl
 }
 
-func TestGettingAccessTokenFromRealIDP(t *testing.T) {
+func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	ctx := context.Background()
 
 	wiremock, wiremockUrl := setupWiremock(t, ctx)

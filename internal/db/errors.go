@@ -25,7 +25,7 @@ const (
 
 // Validate is a PostgreSQL constraint violation for specific table-column value
 func IsConstraintViolationForColumnVal(err error, table string, column string) bool {
-	if e := IsPostgresInvalidQueryErr(err); e != nil {
+	if e := WrapIfKnownInvalidQueryErr(err); e != nil {
 		if errors.Is(e, ErrUniqueConstraintViolation) && strings.Contains(err.Error(), getConstraintName(table, column)) {
 			return true
 		}
@@ -34,7 +34,7 @@ func IsConstraintViolationForColumnVal(err error, table string, column string) b
 }
 
 // Get helpful error message for PostgreSQL violation
-func IsPostgresInvalidQueryErr(err error) error {
+func WrapIfKnownInvalidQueryErr(err error) error {
 	if e := isPgError(err); e != nil {
 		switch e.Code {
 		case pgerrcode.UniqueViolation:
@@ -48,10 +48,10 @@ func IsPostgresInvalidQueryErr(err error) error {
 		case pgerrcode.CaseNotFound:
 			return errors.Join(ErrNotFound, e)
 		default:
-			return nil
+			return e
 		}
 	}
-	return nil
+	return err
 }
 
 func isPgError(err error) *pgconn.PgError {

@@ -82,6 +82,11 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
+	conf.DB.Host = "127.0.0.1"
+	// if err != nil {
+	// 	slog.Error("could not get postgres host", slog.String("error", err.Error()))
+	// 	panic(err)
+	// }
 	conf.DB.Port = port.Int()
 
 	dbClient, err := db.NewClient(conf.DB)

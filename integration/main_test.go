@@ -1,25 +1,39 @@
-package tests
+package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/creasty/defaults"
-	"github.com/opentdf/opentdf-v2-poc/cmd"
-	"github.com/opentdf/opentdf-v2-poc/internal/config"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/internal/opa"
-	"github.com/opentdf/opentdf-v2-poc/internal/server"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+var DBClient *db.Client
+var fixtures Fixtures
+
+func init() {
+	fmt.Print("=====================================================================================\n\n")
+	fmt.Print("  Integration Tests\n\n")
+	fmt.Print("  Testcontainers is used to run these integration tests. To get this working please\n")
+	fmt.Print("  ensure you have Docker installed and running. If you are using Podman, please set\n")
+	fmt.Print("  the following environment variables:\n\n")
+	fmt.Print("    export TESTCONTAINERS_PODMAN=true;\n")
+	fmt.Print("    export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;\n")
+	fmt.Print("    export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock;\n\n")
+	fmt.Print("  For more information please see: https://www.testcontainers.org/\n\n")
+	fmt.Print("=====================================================================================\n\n")
+}
+
 func TestMain(m *testing.M) {
 	ctx := context.Background()
-	conf := &config.Config{}
+	// conf := &config.Config{}
+	conf := Config
 
 	if err := defaults.Set(conf); err != nil {
 		slog.Error("could not set defaults", slog.String("error", err.Error()))
@@ -58,6 +72,7 @@ func TestMain(m *testing.M) {
 		Started: true,
 	}
 
+	slog.Info("📀 starting postgres container")
 	postgres, err := tc.GenericContainer(context.Background(), req)
 	if err != nil {
 		slog.Error("could not start postgres container", slog.String("error", err.Error()))
@@ -66,6 +81,7 @@ func TestMain(m *testing.M) {
 
 	// Cleanup the container
 	defer func() {
+		slog.Info("🛑 stopping postgres container")
 		if err := postgres.Terminate(ctx); err != nil {
 			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
 			return
@@ -84,47 +100,48 @@ func TestMain(m *testing.M) {
 
 	conf.DB.Port = port.Int()
 
-	dbClient, err := db.NewClient(conf.DB)
+	DBClient, err := db.NewClient(conf.DB)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		panic(err)
 	}
 
-	applied, err := dbClient.RunMigrations()
+	applied, err := DBClient.RunMigrations()
 	if err != nil {
 		slog.Error("issue running migrations", slog.String("error", err.Error()))
 		panic(err)
 	}
+	slog.Info("🚚 applied migrations", slog.Int("count", applied))
 
-	slog.Info("applied migrations", slog.Int("count", applied))
+	fixtures = NewFixture(DBClient)
 
-	otdf, err := server.NewOpenTDFServer(conf.Server)
-	if err != nil {
-		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
-		panic(err)
-	}
-	defer otdf.Stop()
+	// otdf, err := server.NewOpenTDFServer(conf.Server)
+	// if err != nil {
+	// 	slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
+	// 	panic(err)
+	// }
+	// defer otdf.Stop()
 
-	slog.Info("starting opa engine")
-	// Start the opa engine
-	conf.OPA.Embedded = true
-	eng, err := opa.NewEngine(conf.OPA)
-	if err != nil {
-		slog.Error("could not start opa engine", slog.String("error", err.Error()))
-		panic(err)
-	}
-	defer eng.Stop(context.Background())
+	// slog.Info("starting opa engine")
+	// // Start the opa engine
+	// conf.OPA.Embedded = true
+	// eng, err := opa.NewEngine(conf.OPA)
+	// if err != nil {
+	// 	slog.Error("could not start opa engine", slog.String("error", err.Error()))
+	// 	panic(err)
+	// }
+	// defer eng.Stop(context.Background())
 
-	// Register the services
-	err = cmd.RegisterServices(*conf, otdf, dbClient, eng)
-	if err != nil {
-		slog.Error("issue registering services", slog.String("error", err.Error()))
-		panic(err)
-	}
+	// // Register the services
+	// err = cmd.RegisterServices(*conf, otdf, dbClient, eng)
+	// if err != nil {
+	// 	slog.Error("issue registering services", slog.String("error", err.Error()))
+	// 	panic(err)
+	// }
 
-	// Start the server
-	slog.Info("starting opentdf server", slog.Int("grpcPort", conf.Server.Grpc.Port), slog.Int("httpPort", conf.Server.HTTP.Port))
-	otdf.Run()
+	// // Start the server
+	// slog.Info("starting opentdf server", slog.Int("grpcPort", conf.Server.Grpc.Port), slog.Int("httpPort", conf.Server.HTTP.Port))
+	// otdf.Run()
 
 	m.Run()
 }

@@ -13,7 +13,7 @@ import (
 )
 
 var SubjectMappingTable = tableName(TableSubjectMappings)
-var SubjectMappingOperatorEnumPrefix = "SUBJECT_MAPPINGS_OPERATOR_ENUM_"
+var SubjectMappingOperatorEnumPrefix = "SUBJECT_MAPPING_OPERATOR_ENUM_"
 
 func subjectMappingOperatorEnumTransformIn(value string) string {
 	return strings.TrimPrefix(value, SubjectMappingOperatorEnumPrefix)

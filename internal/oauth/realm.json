@@ -5,15 +5,9 @@
   "users": [
     {
       "id": "a0c4554c-23cd-4a5b-bf4e-f8e74bd1f666",
-      "createdTimestamp": 1705603580902,
       "username": "service-account-testclient",
       "enabled": true,
-      "totp": false,
-      "emailVerified": false,
-      "serviceAccountClientId": "testclient",
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "notBefore": 0
+      "serviceAccountClientId": "testclient"
     }
   ],
   "clients": [
@@ -35,20 +29,6 @@
       "fullScopeAllowed": true,
       "protocolMappers": [
         {
-          "id": "aa898f8a-848e-4a82-8ac6-98e5b7fc677a",
-          "name": "Client Host",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usersessionmodel-note-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.session.note": "clientHost",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "clientHost",
-            "jsonType.label": "String"
-          }
-        },
-        {
           "id": "d0da2ac6-67f4-4da9-88f5-132a8e86b301",
           "name": "Client ID",
           "protocol": "openid-connect",
@@ -59,20 +39,6 @@
             "id.token.claim": "true",
             "access.token.claim": "true",
             "claim.name": "client_id",
-            "jsonType.label": "String"
-          }
-        },
-        {
-          "id": "a37f6fd6-6edf-45ce-95af-c622b51ea5b1",
-          "name": "Client IP Address",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usersessionmodel-note-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.session.note": "clientAddress",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "clientAddress",
             "jsonType.label": "String"
           }
         }

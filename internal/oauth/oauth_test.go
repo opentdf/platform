@@ -95,14 +95,6 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 		t.Fatalf("error creating realm: %s", string(body))
 	}
 
-	req, _ = http.NewRequest("GET", keycloakBase+"/admin/realms/test/clients/14228007-9004-4ff8-a239-d7117f54e452/client-secret", nil)
-	req.Header.Add("authorization", "Bearer "+accessToken)
-	res, err = client.Do(req)
-	body, _ := io.ReadAll(res.Body)
-	if err != nil || res.StatusCode != 200 {
-		t.Fatalf("error setting test credentials: %s", string(body))
-	}
-
 	return keycloak, keycloakBase + "/realms/test/protocol/openid-connect/token"
 }
 

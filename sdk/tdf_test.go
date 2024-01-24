@@ -87,7 +87,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				publicKey: "",
 			},
 		},
 	},
@@ -96,7 +96,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				publicKey: "",
 			},
 		},
 	},
@@ -150,7 +150,8 @@ func TestSimpleTDF(t *testing.T) {
 	inBuf := bytes.NewBufferString("Virtru")
 	bufReader := bytes.NewReader(inBuf.Bytes())
 
-	fileWriter, err := os.Create("secure-text.tdf")
+	tdfFilename := "secure-text.tdf"
+	fileWriter, err := os.Create(tdfFilename)
 	if err != nil {
 		t.Fatalf("os.Create failed: %v", err)
 	}
@@ -162,6 +163,8 @@ func TestSimpleTDF(t *testing.T) {
 	}(fileWriter)
 
 	err = Create(*tdfConfig, bufReader, fileWriter)
+
+	_ = os.Remove(tdfFilename)
 	if err != nil {
 		t.Fatalf("tdf.Create failed: %v", err)
 	}
@@ -179,7 +182,7 @@ func TestTDF(t *testing.T) {
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
 			kasInfoList[index].url = server.URL
-			kasInfoList[index].publicKey = mockKasPublicKey
+			kasInfoList[index].publicKey = ""
 		}
 
 		tdfConfig, err := NewTDFConfig()
@@ -332,35 +335,31 @@ func runKas(t *testing.T) (*httptest.Server, string, string) {
 
 		r.Header.Set(kContentTypeKey, kContentTypeJSONValue)
 
-		if r.URL.Path == kasPublicKeyPath {
-			kasPublicKeyResponse := fmt.Sprintf(`%v`, mockKasPublicKey)
-
-			//w.Write([]byte(`{"value":"fixed"}`))
-
-			//kasPublicKeyResponse := strings.ReplaceAll(mockKasPublicKey, "\n\t", "\n")
-			//kasPublicKeyResponse := fmt.Sprintf("\"%s\"", mockKasPublicKey)
-			_, err := w.Write([]byte(kasPublicKeyResponse))
+		switch {
+		case r.URL.Path == kasPublicKeyPath:
+			kasPublicKeyResponse, err := json.Marshal(mockKasPublicKey)
+			if err != nil {
+				t.Fatalf("json.Marshal failed: %v", err)
+			}
+			w.WriteHeader(http.StatusOK)
+			_, err = w.Write(kasPublicKeyResponse)
 			if err != nil {
 				t.Fatalf("http.ResponseWriter.Write failed: %v", err)
 			}
-			w.WriteHeader(http.StatusOK)
-		} else if r.URL.Path == kRewrapV2 {
+		case r.URL.Path == kRewrapV2:
 			requestBody, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Fatalf("io.ReadAll failed: %v", err)
 			}
-
 			var data map[string]string
 			err = json.Unmarshal(requestBody, &data)
 			if err != nil {
 				t.Fatalf("json.Unmarsha failed: %v", err)
 			}
-
 			tokenString, ok := data[kSignedRequestToken]
 			if !ok {
 				t.Fatalf("signed token missing in rewrap response")
 			}
-
 			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(signingPubKey))
 				if err != nil {
@@ -369,7 +368,6 @@ func runKas(t *testing.T) (*httptest.Server, string, string) {
 
 				return signingRSAPublicKey, nil
 			})
-
 			var rewrapRequest = ""
 			if err != nil {
 				t.Fatalf("jwt.ParseWithClaims failed:%v", err)
@@ -378,51 +376,43 @@ func runKas(t *testing.T) (*httptest.Server, string, string) {
 			} else {
 				t.Fatalf("unknown claims type, cannot proceed")
 			}
-
 			err = json.Unmarshal([]byte(rewrapRequest), &data)
 			if err != nil {
 				t.Fatalf("json.Unmarshal failed: %v", err)
 			}
-
 			wrappedKey, err := crypto.Base64Decode([]byte(data["wrappedKey"]))
 			if err != nil {
 				t.Fatalf("crypto.Base64Decode failed: %v", err)
 			}
-
 			kasPrivateKey := strings.ReplaceAll(mockKasPrivateKey, "\n\t", "\n")
 			asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
 			if err != nil {
 				t.Fatalf("crypto.NewAsymDecryption failed: %v", err)
 			}
-
 			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
 			if err != nil {
 				t.Fatalf("crypto.Decrypt failed: %v", err)
 			}
-
 			asymEncrypt, err := crypto.NewAsymEncryption(data[kClientPublicKey])
 			if err != nil {
 				t.Fatalf("crypto.NewAsymEncryption failed: %v", err)
 			}
-
 			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 			if err != nil {
 				t.Fatalf("crypto.encrypt failed: %v", err)
 			}
-
 			response, err := json.Marshal(map[string]string{
 				kEntityWrappedKey: string(crypto.Base64Encode(entityWrappedKey)),
 			})
 			if err != nil {
 				t.Fatalf("json.Marshal failed: %v", err)
 			}
-
 			w.WriteHeader(http.StatusOK)
 			_, err = w.Write(response)
 			if err != nil {
 				t.Fatalf("http.ResponseWriter.Write failed: %v", err)
 			}
-		} else {
+		default:
 			t.Fatalf("expected to request: %s", r.URL.Path)
 		}
 	}))

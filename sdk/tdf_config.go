@@ -70,12 +70,9 @@ func NewTDFConfig() (*TDFConfig, error) {
 	}
 
 	tdfConfig := TDFConfig{}
-	tdfConfig.attributes = make([]string, 0)
-	tdfConfig.kasInfoList = make([]KASInfo, 0)
 	tdfConfig.tdfPublicKey = tdfPublicKey
 	tdfConfig.tdfPrivateKey = tdfPrivateKey
 	tdfConfig.defaultSegmentSize = defaultSegmentSize
-	tdfConfig.assertions = make([]Assertion, 0)
 	tdfConfig.enableEncryption = true
 	tdfConfig.tdfFormat = JSONFormat
 	tdfConfig.integrityAlgorithm = HS256

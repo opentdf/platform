@@ -116,7 +116,6 @@ func newSplitKeyFromKasInfo(kasInfoList []KASInfo, attributes []string, metaData
 func newSplitKeyFromManifest(authConfig AuthConfig, manifest Manifest) (splitKey, error) {
 	sKey := splitKey{}
 
-	sKey.tdfKeyAccessObjects = make([]tdfKeyAccess, 0)
 	for _, keyAccessObj := range manifest.EncryptionInformation.KeyAccessObjs {
 		keyAccessAsMap, err := structToMap(keyAccessObj)
 		if err != nil {
@@ -172,7 +171,6 @@ func newSplitKeyFromManifest(authConfig AuthConfig, manifest Manifest) (splitKey
 func (splitKey splitKey) getManifest() (*Manifest, error) {
 	manifest := Manifest{}
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
-	manifest.EncryptionInformation.KeyAccessObjs = make([]KeyAccess, 0)
 
 	policyObj, err := splitKey.createPolicyObject()
 	if err != nil {
@@ -304,8 +302,6 @@ func (splitKey splitKey) createPolicyObject() (policyObject, error) {
 
 	policyObj := policyObject{}
 	policyObj.UUID = uuidObj.String()
-	policyObj.Body.Dissem = make([]string, 0)
-	policyObj.Body.DataAttributes = make([]attributeObject, 0)
 
 	for _, attribute := range splitKey.attributes {
 		attributeObj := attributeObject{}

@@ -59,6 +59,13 @@ func isPgError(err error) *pgconn.PgError {
 	if errors.As(err, &e) {
 		return e
 	}
+	// The error is not of type PgError if a SELECT query resulted in no rows
+	if strings.Contains(err.Error(), "no rows in result set") {
+		return &pgconn.PgError{
+			Code:    pgerrcode.CaseNotFound,
+			Message: "err: no rows in result set",
+		}
+	}
 	return nil
 }
 
@@ -67,5 +74,5 @@ func getConstraintName(table string, column string) string {
 }
 
 func NewUniqueAlreadyExistsError(value string) error {
-	return fmt.Errorf("value [%s] already exists and must be unique", value)
+	return errors.Join(fmt.Errorf("value [%s] already exists and must be unique", value), ErrUniqueConstraintViolation)
 }

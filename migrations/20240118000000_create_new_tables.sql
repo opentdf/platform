@@ -58,7 +58,6 @@ CREATE TABLE IF NOT EXISTS opentdf.resource_mappings
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attribute_value_id UUID NOT NULL REFERENCES opentdf.attribute_values(id),
-    name VARCHAR NOT NULL,
     terms VARCHAR[],
     metadata JSONB
 );

@@ -35,7 +35,7 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 
 	namespace := namespaces.Namespace{Id: "", Name: ""}
 	if err := row.Scan(&namespace.Id, &namespace.Name); err != nil {
-		if e := IsPostgresInvalidQueryErr(err); e != nil {
+		if e := WrapIfKnownInvalidQueryErr(err); e != nil {
 			slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
 			return nil, e
 		}
@@ -128,7 +128,7 @@ func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*n
 			return nil, e
 		}
 
-		if err := IsPostgresInvalidQueryErr(e); err != nil {
+		if err := WrapIfKnownInvalidQueryErr(e); err != nil {
 			if errors.Is(err, ErrNotFound) {
 				slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
 			}

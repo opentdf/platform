@@ -145,40 +145,40 @@ message DeleteAttributeResponse {
 ///
 /// Value RPC messages
 ///
-message GetValueRequest {
+message GetAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message GetValueResponse {
+message GetAttributeValueResponse {
   Value value = 1;
 }
 
-message ListValuesRequest {
+message ListAttributeValuesRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
 }
-message ListValuesResponse {
+message ListAttributeValuesResponse {
   repeated Value values = 1;
 }
 
-message CreateValueRequest {
+message CreateAttributeValueRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
   ValueCreate value = 2 [(buf.validate.field).required = true];
 }
-message CreateValueResponse {
+message CreateAttributeValueResponse {
   Value value = 1;
 }
 
-message UpdateValueRequest {
+message UpdateAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
   ValueUpdate value = 2 [(buf.validate.field).required = true];
 }
-message UpdateValueResponse {
+message UpdateAttributeValueResponse {
   Value value = 1;
 }
 
-message DeleteValueRequest {
+message DeleteAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteValueResponse {
+message DeleteAttributeValueResponse {
   Value value = 1;
 }
 
@@ -198,7 +198,7 @@ service AttributesService {
      Example:
       grpcurl -plaintext -d '{"attribute_id": "attribute_id"}' localhost:8080 attributes.AttributesService/ListValues
   */
-  rpc ListAttributeValues(ListValuesRequest) returns (ListValuesResponse) {}
+  rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {}
 
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};
@@ -226,28 +226,28 @@ service AttributesService {
   }
 
   /** Attribute Value **/
-  rpc GetValue(GetValueRequest) returns (GetValueResponse) {
+  rpc GetAttributeValue(GetAttributeValueRequest) returns (GetAttributeValueResponse) {
     option (google.api.http) = {get: "/attributes/_/values/{id}"};
   }
 
   // Create Attribute Value
   // Example:
   //  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateValue
-  rpc CreateValue(CreateValueRequest) returns (CreateValueResponse) {
+  rpc CreateAttributeValue(CreateAttributeValueRequest) returns (CreateAttributeValueResponse) {
     option (google.api.http) = {
       post: "/attributes/{attribute_id}/values"
       body: "value"
     };
   }
 
-  rpc UpdateValue(UpdateValueRequest) returns (UpdateValueResponse) {
+  rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {
     option (google.api.http) = {
       post: "/attributes/_/values/{id}"
       body: "value"
     };
   }
 
-  rpc DeleteValue(DeleteValueRequest) returns (DeleteValueResponse) {
+  rpc DeleteAttributeValue(DeleteAttributeValueRequest) returns (DeleteAttributeValueResponse) {
     option (google.api.http) = {delete: "/attributes/_/values/{id}"};
   }
 }

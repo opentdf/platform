@@ -109,68 +109,63 @@ func (s *AttributesService) DeleteAttribute(ctx context.Context,
 /// Attribute Values
 ///
 
-func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attributes.CreateValueRequest) (*attributes.CreateValueResponse, error) {
-	rsp := &attributes.CreateValueResponse{}
-
+func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attributes.CreateAttributeValueRequest) (*attributes.CreateAttributeValueResponse, error) {
 	item, err := s.dbClient.CreateAttributeValue(ctx, req.Value)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
-	rsp.Value = item
 
-	return rsp, nil
+	return &attributes.CreateAttributeValueResponse{
+		Value: item,
+	}, nil
 }
 
-func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListValuesRequest) (*attributes.ListValuesResponse, error) {
-	rsp := &attributes.ListValuesResponse{}
-
+func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
 	list, err := s.dbClient.ListAttributeValues(ctx, req.AttributeId)
 	if err != nil {
 		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrListingResource)
 	}
-	rsp.Values = list
 
-	return rsp, nil
+	return &attributes.ListAttributeValuesResponse{
+		Values: list,
+	}, nil
 }
 
-func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attributes.GetValueRequest) (*attributes.GetValueResponse, error) {
-	rsp := &attributes.GetValueResponse{}
-
+func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attributes.GetAttributeValueRequest) (*attributes.GetAttributeValueResponse, error) {
 	item, err := s.dbClient.GetAttributeValue(ctx, req.Id)
 	if err != nil {
 		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrGettingResource)
 	}
-	rsp.Value = item
 
-	return rsp, nil
+	return &attributes.GetAttributeValueResponse{
+		Value: item,
+	}, nil
 }
 
-func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attributes.UpdateValueRequest) (*attributes.UpdateValueResponse, error) {
-	rsp := &attributes.UpdateValueResponse{}
-
+func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attributes.UpdateAttributeValueRequest) (*attributes.UpdateAttributeValueResponse, error) {
 	a, err := s.dbClient.UpdateAttributeValue(ctx, req.Id, req.Value)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return &attributes.UpdateValueResponse{},
+		return nil,
 			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
-	rsp.Value = a
 
-	return rsp, nil
+	return &attributes.UpdateAttributeValueResponse{
+		Value: a,
+	}, nil
 }
 
-func (s *AttributesService) DeleteAttributeValue(ctx context.Context, req *attributes.DeleteValueRequest) (*attributes.DeleteValueResponse, error) {
-	rsp := &attributes.DeleteValueResponse{}
-
+func (s *AttributesService) DeleteAttributeValue(ctx context.Context, req *attributes.DeleteAttributeValueRequest) (*attributes.DeleteAttributeValueResponse, error) {
 	a, err := s.dbClient.DeleteAttributeValue(ctx, req.Id)
 	if err != nil {
 		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
 	}
-	rsp.Value = a
 
-	return rsp, nil
+	return &attributes.DeleteAttributeValueResponse{
+		Value: a,
+	}, nil
 }

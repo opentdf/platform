@@ -1,41 +1,153 @@
 package oauth_test
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/opentdf-v2-poc/internal/oauth"
+	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-/*
-*
+func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context) (tc.Container, string) {
+	containerReq := tc.ContainerRequest{
+		Image:        "ghcr.io/opentdf/keycloak:sha-ce2f709",
+		ExposedPorts: []string{"8082/tcp"},
+		Cmd:          []string{"start-dev --http-port=8082"},
+		Files:        []tc.ContainerFile{},
+		Env: map[string]string{
+			"KEYCLOAK_ADMIN":          "admin",
+			"KEYCLOAK_ADMIN_PASSWORD": "admin",
+		},
+		WaitingFor: wait.ForLog("Running the server"),
+	}
+	keycloak, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+		ContainerRequest: containerReq,
+		Started:          true,
+	})
+	if err != nil {
+		t.Fatalf("error starting keycloak container: %v", err)
+	}
+	_, _ = keycloak.ContainerIP(ctx)
+	port, _ := keycloak.MappedPort(ctx, "8082")
+	keycloakBase := fmt.Sprintf("http://localhost:%s", port.Port())
 
-	To run set these envvars:
-	IDP_TOKEN_ENDPOINT: the url that provides DPoP
-	IDP_SCOPES: the list of (space-separated scopes that the access token should provide)
-	IDP_CLIENT_ID: the ID of the client
-	One of:
-	  * IDP_CLIENT_SECRET: the client secret, if using client secret credentials
-		* IDP_PRIVATE_KEY: if using private_key_jwt authentication (we currently assume RS256)
+	client := http.Client{}
 
-//
-*
-*/
+	formData := url.Values{}
+	formData.Add("username", "admin")
+	formData.Add("password", "admin")
+	formData.Add("grant_type", "password")
+	formData.Add("client_id", "admin-cli")
+
+	req, _ := http.NewRequest("POST", keycloakBase+"/realms/master/protocol/openid-connect/token", strings.NewReader(formData.Encode()))
+	req.Header.Add("content-type", "application/x-www-form-urlencoded")
+
+	res, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	var responseMap map[string]interface{}
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(&responseMap)
+	if err != nil {
+		t.Fatalf("error decoding response: %v", err)
+	}
+	accessToken := responseMap["access_token"].(string)
+
+	realmFile, err := os.ReadFile("./realm.json")
+	if err != nil {
+		panic(err)
+	}
+
+	realmJson := strings.Replace(string(realmFile), "<claimsprovider url>", claimsProviderUrl.String(), -1)
+
+	req, _ = http.NewRequest("POST", keycloakBase+"/admin/realms", strings.NewReader(realmJson))
+	req.Header.Add("authorization", "Bearer "+accessToken)
+	req.Header.Add("content-type", "application/json")
+
+	res, err = client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	if res.StatusCode != 201 {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("error creating realm: %s", string(body))
+	}
+
+	req, _ = http.NewRequest("GET", keycloakBase+"/admin/realms/test/clients/14228007-9004-4ff8-a239-d7117f54e452/client-secret", nil)
+	req.Header.Add("authorization", "Bearer "+accessToken)
+	res, err = client.Do(req)
+	body, _ := io.ReadAll(res.Body)
+	if err != nil || res.StatusCode != 200 {
+		t.Fatalf("error setting test credentials: %s", string(body))
+	}
+
+	return keycloak, keycloakBase + "/realms/test/protocol/openid-connect/token"
+}
+
+func setupWiremock(t *testing.T, ctx context.Context) (tc.Container, *url.URL) {
+	listenPort, _ := nat.NewPort("tcp", "8181")
+	req := tc.ContainerRequest{
+		Image:      "wiremock/wiremock:3.3.1",
+		Cmd:        []string{fmt.Sprintf("--port=%s", listenPort.Port())},
+		WaitingFor: wait.ForLog("extensions:"),
+		Files: []tc.ContainerFile{
+			{
+				HostFilePath:      "./claims.json",
+				ContainerFilePath: "/home/wiremock/mappings/claims.json",
+				FileMode:          0o444,
+			},
+		},
+	}
+	wiremock, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	containerIP, err := wiremock.ContainerIP(ctx)
+	if err != nil {
+		t.Fatalf("error getting endpoint from keycloak: %v", err)
+	}
+
+	wiremockUrl, err := url.Parse(fmt.Sprintf("http://%s:8181/claims", containerIP))
+	if err != nil {
+		panic(err)
+	}
+	return wiremock, wiremockUrl
+}
+
 func TestGettingAccessTokenFromRealIDP(t *testing.T) {
+	ctx := context.Background()
+
+	wiremock, wiremockUrl := setupWiremock(t, ctx)
+	defer wiremock.Terminate(ctx)
+
+	keycloak, idpEndpoint := setupKeycloak(t, wiremockUrl, ctx)
+	defer keycloak.Terminate(ctx)
+
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
@@ -46,68 +158,51 @@ func TestGettingAccessTokenFromRealIDP(t *testing.T) {
 	dpopJWK.Set("use", "sig")
 	dpopJWK.Set("alg", jwa.RS256.String())
 
-	var idpEndpoint = os.Getenv("IDP_TOKEN_ENDPOINT")
-	if idpEndpoint == "" {
-		t.Fatal("cannot run test if IDP_TOKEN_ENDPOINT is not specified")
-	}
-
-	idpScopes := os.Getenv("IDP_SCOPES")
-	scopes := []string{}
-	if idpScopes == "" {
-		t.Log("No scopes for the access token specified")
-	} else {
-		scopes = strings.Split(idpScopes, " ")
-	}
-
-	var clientId = os.Getenv("IDP_CLIENT_ID")
-	if clientId == "" {
-		t.Fatal("cannot run test if IDP_CLIENT_ID not specified")
-	}
-
-	var clientCredentials oauth.ClientCredentials
-	if pkBase64 := os.Getenv("IDP_PRIVATE_KEY"); pkBase64 != "" {
-		pkPEM, err := base64.StdEncoding.DecodeString(pkBase64)
-		if err != nil {
-			t.Fatalf("error base64 decoding private PEM key: %v", err)
-		}
-		pkDER, _ := pem.Decode([]byte(pkPEM))
-		if pkDER == nil {
-			t.Fatalf("could not get private key from IDP_PRIVATE_KEY")
-		}
-		pk, err := x509.ParsePKCS8PrivateKey(pkDER.Bytes)
-		if err != nil {
-			t.Fatalf("error parsing IDP_PRIVATE_KEY PEM: %v", err)
-		}
-
-		privateJWK, err := jwk.FromRaw(pk)
-		if err != nil {
-			t.Fatalf("couldn't create private jwk from value in IDP_PRIVATE_KEY_JWT")
-		}
-		privateJWK.Set("alg", jwa.RS256.String())
-
-		clientCredentials = oauth.ClientCredentials{
-			ClientId:   clientId,
-			ClientAuth: privateJWK,
-		}
-	} else if clientSecret := os.Getenv("IDP_CLIENT_SECRET"); clientSecret != "" {
-		clientCredentials = oauth.ClientCredentials{
-			ClientId:   clientId,
-			ClientAuth: clientSecret,
-		}
-	} else {
-		t.Fatalf("one of IDP_PRIVATE_KEY or IDP_CLIENT_SECRET must be specified")
+	clientCredentials := oauth.ClientCredentials{
+		ClientId:   "testclient",
+		ClientAuth: "abcd1234",
 	}
 
 	tok, err := oauth.GetAccessToken(
 		idpEndpoint,
-		scopes,
+		[]string{"testscope"},
 		clientCredentials,
 		dpopJWK)
 
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
-	if tok.Type() != "DPoP" {
+	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
+	if err != nil {
+		t.Errorf("error parsing token received from IDP: %v", err)
+	}
+
+	// if this is our custom implementation from keycloak then we know what the
+	//    structure is and can verify that we are getting back something that has
+	//    our public key embedded in a particular way
+	if claims, ok := tokenDetails.Get("tdf_claims"); ok {
+		claimsMap := claims.(map[string]interface{})
+		tokenDpopKey := claimsMap["client_public_signing_key"].(string)
+		if tokenDpopKey == "" {
+			t.Fatalf("no client_public_signing key in claims: %v", claimsMap)
+		} else {
+			keyDER, _ := pem.Decode([]byte(tokenDpopKey))
+			if keyDER == nil {
+				t.Fatalf("error parsing key from IDP token")
+			} else {
+				tokenPublicKey, err := x509.ParsePKIXPublicKey(keyDER.Bytes)
+				if err != nil {
+					t.Fatalf("error parsing public key from DER: %v", err)
+				} else {
+					pubkey := tokenPublicKey.(*rsa.PublicKey)
+					if pubkey.E != dpopKey.E || pubkey.N.String() != dpopKey.N.String() {
+						t.Fatalf("didn't get back the same key in the dpop header: (%d, %d) != (%d, %d)", pubkey.E, pubkey.N, dpopKey.E, dpopKey.N)
+					}
+				}
+			}
+		}
+	} else if strings.EqualFold(tok.Type(), "DPoP") {
+		// if not, just make sure that they gave us a token that has the right type
 		t.Fatalf("got the wrong kind of access token: %s: %v", tok.Type(), tok)
 	}
 }

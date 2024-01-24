@@ -146,31 +146,12 @@ func deleteNamespaceSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Delete(NamespacesTable).
 		Where(sq.Eq{"id": id}).
+		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
 func (c Client) DeleteNamespace(ctx context.Context, id string) error {
 	sql, args, err := deleteNamespaceSql(id)
 
-	if rows, e := c.query(ctx, sql, args, err); e != nil {
-		if err := IsPostgresInvalidQueryErr(e); err != nil {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
-			return err
-		}
-
-		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return e
-
-	} else if rows != nil {
-		deleted, e := rows.Values()
-		if len(deleted) == 0 {
-			slog.Error(services.ErrNotFound, slog.String("error", "no rows found to delete"))
-			return ErrNotFound
-		}
-
-		slog.Error(services.ErrDeletingResource, slog.String("error", e.Error()))
-		return e
-	}
-
-	return nil
+	return c.exec(ctx, sql, args, err)
 }

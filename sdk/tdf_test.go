@@ -198,7 +198,7 @@ func TestSimpleTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		metaData, err := GetMetaData(*authConfig, readSeeker)
+		metaData, err := GetMetadata(*authConfig, readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}

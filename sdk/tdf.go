@@ -264,8 +264,8 @@ func GetPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) e
 	return nil
 }
 
-// GetMetaData return the meta present in tdf.
-func GetMetaData(authConfig AuthConfig, reader io.ReadSeeker) (string, error) {
+// GetMetadata return the meta present in tdf.
+func GetMetadata(authConfig AuthConfig, reader io.ReadSeeker) (string, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {

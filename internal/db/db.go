@@ -2,14 +2,11 @@ package db
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
-	"strings"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,16 +23,6 @@ var (
 	TableAttributeValueKeyAccessGrants = "attribute_value_key_access_grants"
 	TableResourceMappings              = "resource_mappings"
 	TableSubjectMappings               = "subject_mappings"
-)
-
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
-}
-
-const (
-	ErrUniqueConstraintViolation Error = "error value must be unique"
 )
 
 // We can rename this but wanted to get mocks working.
@@ -111,23 +98,6 @@ func (c Client) exec(ctx context.Context, sql string, args []interface{}, err er
 	}
 	_, err = c.Exec(ctx, sql, args...)
 	return err
-}
-
-// Common function to test constraint violations
-func IsConstraintViolation(err error, table string, column string) bool {
-	var e *pgconn.PgError
-	if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation && strings.Contains(err.Error(), getConstraintName(table, column)) {
-		return true
-	}
-	return false
-}
-
-func getConstraintName(table string, column string) string {
-	return fmt.Sprintf("%s_%s_key", table, column)
-}
-
-func NewUniqueAlreadyExistsError(value string) error {
-	return fmt.Errorf("value [%s] already exists and must be unique", value)
 }
 
 //

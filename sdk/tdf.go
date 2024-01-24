@@ -263,3 +263,32 @@ func GetPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) e
 
 	return nil
 }
+
+// GetMetaData return the meta present in tdf.
+func GetMetaData(authConfig AuthConfig, reader io.ReadSeeker) (string, error) {
+	// create tdf reader
+	tdfReader, err := archive.NewTDFReader(reader)
+	if err != nil {
+		return "", fmt.Errorf("archive.NewTDFReader failed: %w", err)
+	}
+
+	manifest, err := tdfReader.Manifest()
+	if err != nil {
+		return "", fmt.Errorf("tdfReader.Manifest failed: %w", err)
+	}
+
+	manifestObj := &Manifest{}
+	err = json.Unmarshal([]byte(manifest), manifestObj)
+	if err != nil {
+		return "", fmt.Errorf("json.Unmarshal failed:%w", err)
+	}
+
+	// create a split key
+	sKey, err := newSplitKeyFromManifest(authConfig, *manifestObj)
+	if err != nil {
+		return "", fmt.Errorf("fail to create a new split key: %w", err)
+	}
+
+	// There will be at least one key access in tdf
+	return sKey.tdfKeyAccessObjects[0].metaData, nil
+}

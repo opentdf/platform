@@ -59,25 +59,25 @@ func NewTDFConfig() (*TDFConfig, error) {
 		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
 	}
 
-	tdfPublicKey, err := rsaKeyPair.PublicKeyInPemFormat()
+	publicKey, err := rsaKeyPair.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
-	tdfPrivateKey, err := rsaKeyPair.PublicKeyInPemFormat()
+	privateKey, err := rsaKeyPair.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
-	tdfConfig := TDFConfig{}
-	tdfConfig.tdfPublicKey = tdfPublicKey
-	tdfConfig.tdfPrivateKey = tdfPrivateKey
-	tdfConfig.defaultSegmentSize = defaultSegmentSize
-	tdfConfig.enableEncryption = true
-	tdfConfig.tdfFormat = JSONFormat
-	tdfConfig.integrityAlgorithm = HS256
-	tdfConfig.segmentIntegrityAlgorithm = GMAC
-	return &tdfConfig, nil
+	return &TDFConfig{
+		tdfPrivateKey:             privateKey,
+		tdfPublicKey:              publicKey,
+		defaultSegmentSize:        defaultSegmentSize,
+		enableEncryption:          true,
+		tdfFormat:                 JSONFormat,
+		integrityAlgorithm:        HS256,
+		segmentIntegrityAlgorithm: GMAC,
+	}, nil
 }
 
 // AddKasInformation Add all the kas urls and their corresponding public keys

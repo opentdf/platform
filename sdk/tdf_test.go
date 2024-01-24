@@ -126,48 +126,126 @@ func init() {
 }
 
 func TestSimpleTDF(t *testing.T) {
-	server, _, _ := runKas(t)
+	server, signingPubKey, signingPrivateKey := runKas(t)
 	defer server.Close()
 
-	// Create TDFConfig
-	tdfConfig, err := NewTDFConfig()
-	if err != nil {
-		t.Fatalf("Fail to create tdf config: %v", err)
-	}
-
-	kasURLs := []KASInfo{
-		{
-			url:       "http://localhost:65432/api/kas",
-			publicKey: mockKasPublicKey,
-		},
-	}
-
-	err = tdfConfig.AddKasInformation(kasURLs)
-	if err != nil {
-		t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-	}
-
-	inBuf := bytes.NewBufferString("Virtru")
-	bufReader := bytes.NewReader(inBuf.Bytes())
+	metaDataStr := `{"displayName" : "openTDF go sdk"}`
 
 	tdfFilename := "secure-text.tdf"
-	fileWriter, err := os.Create(tdfFilename)
-	if err != nil {
-		t.Fatalf("os.Create failed: %v", err)
-	}
-	defer func(fileWriter *os.File) {
-		err := fileWriter.Close()
+	plainText := "Virtru"
+	{
+		// Create TDFConfig
+		tdfConfig, err := NewTDFConfig()
 		if err != nil {
-			t.Fatalf("Fail to close the file: %v", err)
+			t.Fatalf("Fail to create tdf config: %v", err)
 		}
-	}(fileWriter)
 
-	err = Create(*tdfConfig, bufReader, fileWriter)
+		kasURLs := []KASInfo{
+			{
+				url:       server.URL,
+				publicKey: "",
+			},
+		}
+
+		err = tdfConfig.AddKasInformation(kasURLs)
+		if err != nil {
+			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
+		}
+
+		tdfConfig.SetMetaData(metaDataStr)
+
+		inBuf := bytes.NewBufferString(plainText)
+		bufReader := bytes.NewReader(inBuf.Bytes())
+
+		fileWriter, err := os.Create(tdfFilename)
+		if err != nil {
+			t.Fatalf("os.Create failed: %v", err)
+		}
+		defer func(fileWriter *os.File) {
+			err := fileWriter.Close()
+			if err != nil {
+				t.Fatalf("Fail to close the file: %v", err)
+			}
+		}(fileWriter)
+
+		err = Create(*tdfConfig, bufReader, fileWriter)
+		if err != nil {
+			t.Fatalf("tdf.Create failed: %v", err)
+		}
+	}
+
+	// test meta data
+	{
+		readSeeker, err := os.Open(tdfFilename)
+		if err != nil {
+			t.Fatalf("Fail to open archive file:%s %v", tdfFilename, err)
+		}
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file:%v", err)
+			}
+		}(readSeeker)
+
+		// create auth config
+		authConfig, err := NewAuthConfig()
+		if err != nil {
+			t.Fatalf("Fail to close archive file:%v", err)
+		}
+
+		// override the signing keys to get the mock working.
+		authConfig.signingPublicKey = signingPubKey
+		authConfig.signingPrivateKey = signingPrivateKey
+
+		metaData, err := GetMetaData(*authConfig, readSeeker)
+		if err != nil {
+			t.Fatalf("Fail to get meta data from tdf:%v", err)
+		}
+
+		if metaDataStr != metaData {
+			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, metaData)
+		}
+	}
+
+	// test decrypt
+	{
+		readSeeker, err := os.Open(tdfFilename)
+		if err != nil {
+			t.Fatalf("Fail to open archive file:%s %v", tdfFilename, err)
+		}
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file:%v", err)
+			}
+		}(readSeeker)
+
+		// writer
+		buf := bytes.NewBuffer(make([]byte, 0, len(plainText)))
+
+		// create auth config
+		authConfig, err := NewAuthConfig()
+		if err != nil {
+			t.Fatalf("Fail to close archive file:%v", err)
+		}
+
+		// override the signing keys to get the mock working.
+		authConfig.signingPublicKey = signingPubKey
+		authConfig.signingPrivateKey = signingPrivateKey
+
+		err = GetPayload(*authConfig, readSeeker, buf)
+		if err != nil {
+			t.Fatalf("Fail to decrypt tdf:%v", err)
+		}
+
+		if buf.String() != plainText {
+			t.Errorf("decrypt test failed expected %v, got %v", plainText, buf.String())
+		}
+	}
 
 	_ = os.Remove(tdfFilename)
-	if err != nil {
-		t.Fatalf("tdf.Create failed: %v", err)
-	}
 }
 
 func TestTDF(t *testing.T) {
@@ -226,7 +304,7 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 	// open file
 	readSeeker, err := os.Open(plainTextFilename)
 	if err != nil {
-		t.Fatalf("Fail to open plain text file:%s %v", "plain.txt", err)
+		t.Fatalf("Fail to open plain text file:%s %v", plainTextFilename, err)
 	}
 
 	defer func(readSeeker *os.File) {
@@ -257,7 +335,7 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 func testDecrypt(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileName string) {
 	readSeeker, err := os.Open(tdfFile)
 	if err != nil {
-		t.Fatalf("Fail to open archive file:%s %v", "plain.txt", err)
+		t.Fatalf("Fail to open archive file:%s %v", tdfFile, err)
 	}
 
 	defer func(readSeeker *os.File) {

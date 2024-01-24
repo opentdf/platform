@@ -88,8 +88,8 @@ func (c Client) CreateNamespace(ctx context.Context, name string) (string, error
 	if r, e := c.queryRow(ctx, sql, args, err); e != nil {
 		return "", e
 	} else if e := r.Scan(&id); e != nil {
-		if IsConstraintViolation(e, TableNamespaces, "name") {
-			return "", errors.Join(NewUniqueAlreadyExistsError(name), e, ErrUniqueConstraintViolation)
+		if IsConstraintViolationForColumnVal(e, TableNamespaces, "name") {
+			return "", errors.Join(NewUniqueAlreadyExistsError(name), e)
 		}
 		return "", e
 	}
@@ -107,8 +107,8 @@ func updateNamespaceSql(id string, name string) (string, []interface{}, error) {
 func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*namespaces.Namespace, error) {
 	sql, args, err := updateNamespaceSql(id, name)
 	if e := c.exec(ctx, sql, args, err); e != nil {
-		if IsConstraintViolation(e, TableNamespaces, "name") {
-			return nil, errors.Join(NewUniqueAlreadyExistsError(name), e, ErrUniqueConstraintViolation)
+		if IsConstraintViolationForColumnVal(e, TableNamespaces, "name") {
+			return nil, errors.Join(NewUniqueAlreadyExistsError(name), e)
 		}
 		return nil, e
 	}

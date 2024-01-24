@@ -22,12 +22,13 @@ func Test_Is_Constraint_Violation_For_Column_Val(t *testing.T) {
 	assert.Equal(t, false, IsConstraintViolationForColumnVal(&pgconn.PgError{Message: "duplicate key value violates unique constraint \"attributes_namespaces_name_key\"", Code: pgerrcode.CaseNotFound}, "attributes_namespaces", "name"))
 }
 
-func Test_Is_Postgres_Bad_Value_Error(t *testing.T) {
-	assert.Equal(t, ErrUniqueConstraintViolation, IsPostgresBadValueError(&pgconn.PgError{Code: pgerrcode.UniqueViolation}))
-	assert.Equal(t, ErrNotNullViolation, IsPostgresBadValueError(&pgconn.PgError{Code: pgerrcode.NotNullViolation}))
-	assert.Equal(t, ErrForeignKeyViolation, IsPostgresBadValueError(&pgconn.PgError{Code: pgerrcode.ForeignKeyViolation}))
-	assert.Equal(t, ErrRestrictViolation, IsPostgresBadValueError(&pgconn.PgError{Code: pgerrcode.RestrictViolation}))
-	assert.Equal(t, nil, IsPostgresBadValueError(&pgconn.PgError{Code: pgerrcode.CaseNotFound}))
+func Test_Is_Postgres_Invalid_Query_Error(t *testing.T) {
+	assert.ErrorIs(t, IsPostgresInvalidQueryErr(&pgconn.PgError{Code: pgerrcode.UniqueViolation}), ErrUniqueConstraintViolation)
+	assert.ErrorIs(t, IsPostgresInvalidQueryErr(&pgconn.PgError{Code: pgerrcode.NotNullViolation}), ErrNotNullViolation)
+	assert.ErrorIs(t, IsPostgresInvalidQueryErr(&pgconn.PgError{Code: pgerrcode.ForeignKeyViolation}), ErrForeignKeyViolation)
+	assert.ErrorIs(t, IsPostgresInvalidQueryErr(&pgconn.PgError{Code: pgerrcode.RestrictViolation}), ErrRestrictViolation)
+	assert.ErrorIs(t, IsPostgresInvalidQueryErr(&pgconn.PgError{Code: pgerrcode.CaseNotFound}), ErrNotFound)
+	assert.Assert(t, IsPostgresInvalidQueryErr(&pgconn.PgError{Code: pgerrcode.DataException}) == nil)
 }
 
 func Test_Is_Pg_Error(t *testing.T) {

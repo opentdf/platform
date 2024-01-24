@@ -51,10 +51,10 @@ func createAttributeValueSql(
 	return newStatementBuilder().
 		Insert(AttributeValueTable).
 		Columns(
-			tableField(AttributeValueTable, "attribute_id"),
-			tableField(AttributeValueTable, "value"),
-			tableField(AttributeValueTable, "members"),
-			tableField(AttributeValueTable, "metadata"),
+			"attribute_definition_id",
+			"value",
+			"members",
+			"metadata",
 		).
 		Values(
 			attribute_id,
@@ -133,7 +133,7 @@ func listAttributeValuesSql(attribute_id string) (string, []interface{}, error) 
 			tableField(AttributeValueTable, "metadata"),
 		).
 		From(AttributeValueTable).
-		Where(sq.Eq{tableField(AttributeValueTable, "attribute_id"): attribute_id}).
+		Where(sq.Eq{tableField(AttributeValueTable, "attribute_definition_id"): attribute_id}).
 		ToSql()
 }
 func (c Client) ListAttributeValues(ctx context.Context, attribute_id string) ([]*attributes.Value, error) {
@@ -165,15 +165,15 @@ func updateAttributeValueSql(
 		Update(AttributeValueTable)
 
 	if value != "" {
-		sb = sb.Set(tableField(AttributeValueTable, "value"), value)
+		sb = sb.Set("value", value)
 	}
 	if members != nil {
-		sb = sb.Set(tableField(AttributeValueTable, "members"), members)
+		sb = sb.Set("members", members)
 	}
-	sb.Set(tableField(AttributeValueTable, "metadata"), metadata)
+	sb.Set("metadata", metadata)
 
 	return sb.
-		Where(sq.Eq{tableField(AttributeValueTable, "id"): id}).
+		Where(sq.Eq{"id": id}).
 		ToSql()
 }
 func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueUpdate) (*attributes.Value, error) {

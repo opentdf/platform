@@ -55,6 +55,10 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 }
 
 func isPgError(err error) *pgconn.PgError {
+	if err == nil {
+		return nil
+	}
+
 	var e *pgconn.PgError
 	if errors.As(err, &e) {
 		return e

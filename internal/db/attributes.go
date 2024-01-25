@@ -16,8 +16,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var AttributeTable = tableName(TableAttributes)
-var AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
+var (
+	AttributeTable              = tableName(TableAttributes)
+	AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
+)
 
 func attributesRuleTypeEnumTransformIn(value string) string {
 	return strings.TrimPrefix(value, AttributeRuleTypeEnumPrefix)
@@ -197,7 +199,7 @@ func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attrib
 
 func getAttributesByNamespaceSql(namespaceId string) (string, []interface{}, error) {
 	return attributesSelect().
-		Where(sq.Eq{"namespace_id": namespaceId}).
+		Where(sq.Eq{tableField(AttributeTable, "namespace_id"): namespaceId}).
 		From(AttributeTable).
 		ToSql()
 }
@@ -266,7 +268,7 @@ func updateAttributeSql(id string, name string, rule string, metadata []byte) (s
 	}
 
 	return sb.Set("metadata", metadata).
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
 		ToSql()
 }
 func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
@@ -294,7 +296,7 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 func deleteAttributeSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Delete(AttributeTable).
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
 		ToSql()
 }
 func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {

@@ -5,7 +5,7 @@ CREATE SCHEMA IF NOT EXISTS opentdf;
 CREATE TYPE attribute_definition_rule AS ENUM ('UNSPECIFIED', 'ALL_OF', 'ANY_OF', 'HIERARCHY');
 CREATE TYPE subject_mappings_operator AS ENUM ('UNSPECIFIED', 'IN', 'NOT_IN');
 
-CREATE TABLE IF NOT EXISTS opentdf.namespaces
+CREATE TABLE IF NOT EXISTS opentdf.attribute_namespaces
 (
     -- generate on create
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS opentdf.namespaces
 CREATE TABLE IF NOT EXISTS opentdf.attribute_definitions
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    namespace_id UUID NOT NULL REFERENCES opentdf.namespaces(id),
+    namespace_id UUID NOT NULL REFERENCES opentdf.attribute_namespaces(id),
     name VARCHAR NOT NULL,
     rule attribute_definition_rule NOT NULL,
     metadata JSONB,
@@ -82,7 +82,7 @@ DROP TABLE IF EXISTS opentdf.attribute_definition_key_access_grants;
 DROP TABLE IF EXISTS opentdf.key_access_servers;
 DROP TABLE IF EXISTS opentdf.attribute_values;
 DROP TABLE IF EXISTS opentdf.attribute_definitions;
-DROP TABLE IF EXISTS opentdf.namespaces;
+DROP TABLE IF EXISTS opentdf.attribute_namespaces;
 
 DROP TYPE attribute_definition_rule;
 DROP TYPE subject_mappings_operator;

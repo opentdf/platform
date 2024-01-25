@@ -5,6 +5,7 @@ import (
 
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/keyaccessserverregistry"
+	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
 	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 	"google.golang.org/grpc"
@@ -24,6 +25,7 @@ func (c Error) Error() string {
 
 type SDK struct {
 	conn                    *grpc.ClientConn
+	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
@@ -49,6 +51,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	return &SDK{
 		conn:                    conn,
 		Attributes:              attributes.NewAttributesServiceClient(conn),
+		Namespaces:              namespaces.NewNamespaceServiceClient(conn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(conn),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(conn),
 		KeyAccessServerRegistry: keyaccessserverregistry.NewKeyAccessServerRegistryServiceClient(conn),

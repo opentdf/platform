@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package entityresolution;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/api/annotations.proto";
+
+
+/* EntityResolutionRequest related */
+
+message EntityIdentifiers {
+  string identifier = 1;
+  string type = 2;
+}
+
+message EntityResolutionRequest {
+  repeated EntityIdentifiers entity_identifiers = 1;
+}
+
+/* EntityResolutionResponse related */
+
+message AdditionalProp {}
+
+message OriginalId {
+  string identifier = 1;
+  string type = 2;
+}
+
+message EntityRepresentations {
+  AdditionalProp additionalProp1 = 1;
+}
+
+message EntityResolutionPayload {
+  repeated EntityRepresentations entityRepresentations = 1;
+  OriginalId original_id = 2;
+}
+
+message EntityResolutionResponse {
+  repeated EntityResolutionPayload entityRepresentationsPayload = 1;
+}
+
+service EntityResolutionService {
+  rpc EntityResolution(EntityResolutionRequest) returns (EntityResolutionResponse) {
+    option (google.api.http) = {
+      post: "/v1/entity-resolution/resolve"
+      body: "entity_identifiers"
+    };
+  }
+}

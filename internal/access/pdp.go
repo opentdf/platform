@@ -19,27 +19,26 @@ func NewPdp() *Pdp {
 // To refactor below
 /////////////////////////
 
-// DetermineAccess will take data AttributeInstances, data AttributeDefinitions, and entity AttributeInstance sets, and
-// compare every data AttributeInstance against every entity's AttributeInstance set, generating a rolled-up decision
-// result for each entity, as well as a detailed breakdown of every data AttributeInstance comparison.
-func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []AttributeInstance, entityAttributeSets map[string][]AttributeInstance, attributeDefinitions []attrs.AttributeDefinition) (map[string]*Decision, error) {
+// DetermineAccess will take data AttributeInstances, data AttributeDefinitions, and entity attributeInstance sets, and
+// compare every data attributeInstance against every entity's attributeInstance set, generating a rolled-up decision
+// result for each entity, as well as a detailed breakdown of every data attributeInstance comparison.
+func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attributeInstance, entityAttributeSets map[string][]attributeInstance, attributeDefinitions []attrs.AttributeDefinition) (map[string]*Decision, error) {
 	slog.DebugContext(ctx, "DetermineAccess")
 
-	// var result []Decision
 	//Cluster (e.g. group) all the Data AttributeInstances by CanonicalName (that is, "<namespace>/attr/<attrname>")
 	//AttributeInstances in the same cluster/group (keyed by CanonicalName) will be different "instances" of the same attribute,
 	//potentially with different values.
 	//
 	//(e.g. we may have one cluster keyed by "https://authority.org/attr/MyAttr"
-	//with two attributes having differening values inside that cluster:
+	//with two attributes having different values inside that cluster:
 	// - "https://authority.org/attr/MyAttr/value/Value1")
 	// - "https://authority.org/attr/MyAttr/value/Value2")
-	clusteredDataAttrs := ClusterByCanonicalName(dataAttributes)
-	//Similarly, cluster (e.g. group) all the previously-fetched AttributeDefinitions (one definition per Data AttributeInstance)
+	clusteredDataAttrs := ClusterByCanonicalNameAI(dataAttributes)
+	//Similarly, cluster (e.g. group) all the previously-fetched AttributeDefinitions (one definition per Data attributeInstance)
 	//by CanonicalName (that is, "<namespace>/attr/<attrname>")
 	//
 	//Unlike with AttributeInstances, there should only be *one* AttributeDefinition per CanonicalName (e.g "https://authority.org/attr/MyAttr")
-	clusteredDefinitions := ClusterByCanonicalName(attributeDefinitions)
+	clusteredDefinitions := ClusterByCanonicalNameAD(attributeDefinitions)
 
 	decisions := make(map[string]*Decision)
 	//Go through all the clustered data attrs by canonical name
@@ -48,7 +47,7 @@ func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []AttributeI
 		//Correctness check - we should only have been given 1 AttributeDefinition for per attribute CanonicalName
 		//If not, then calling code is broken, so complain.
 		if len(clusteredDefinitions[canonicalName]) != 1 {
-			return nil, fmt.Errorf("Internal error! Expected 1 AttributeDefinition per attribute CanonicalName %s", canonicalName)
+			return nil, fmt.Errorf("internal error! Expected 1 AttributeDefinition per attribute CanonicalName %s", canonicalName)
 		}
 		//For every canonical name we have a cluster for in the data attr set,
 		//look up its AttributeDefinition (again, should be exactly 1)
@@ -78,7 +77,7 @@ func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []AttributeI
 			entityRuleDecision = pdp.anyOfRule(ctx, distinctValues, filteredEntities, attrDefinition.GroupBy)
 		case attrs.AttributeDefinition_ATTRIBUTE_RULE_TYPE_HIERARCHICAL:
 			slog.DebugContext(ctx, "Evaluating under hierarchy", "name", canonicalName, "values", distinctValues)
-			entityRuleDecision = pdp.hierarchyRule(ctx, distinctValues, filteredEntities, attrDefinition.GroupBy, attrDefinition.Order)
+			entityRuleDecision = pdp.hierarchyRule(ctx, distinctValues, filteredEntities, attrDefinition.GroupBy, attrDefinition.Values)
 		default:
 			return nil, fmt.Errorf("unrecognized AttributeDefinition rule: %s", attrDefinition.Rule)
 		}
@@ -113,38 +112,38 @@ func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []AttributeI
 	return decisions, nil
 }
 
-// AllOf the Data AttributeInstance CanonicalName+Value pairs should be present in AllOf the Entity's AttributeInstance sets
+// AllOf the Data attributeInstance CanonicalName+Value pairs should be present in AllOf the Entity's attributeInstance sets
 // Accepts
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance, groupBy *AttributeInstance) map[string]DataRuleResult {
+func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy []*attrs.AttributeDefinitionValue) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	//All of the data AttributeInstances in the arg have the same canonical name.
 	slog.DebugContext(ctx, "Evaluating all-of decision", "name", dataAttrsBySingleCanonicalName[0].GetCanonicalName())
 
-	//Go through every entity's AttributeInstance set...
+	//Go through every entity's attributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
 		var valueFailures []ValueFailure
 		//Default to DENY
 		entityPassed := false
 		//Cluster entity AttributeInstances by canonical name...
-		entityAttrCluster := ClusterByCanonicalName(entityAttrs)
+		entityAttrCluster := ClusterByCanonicalNameAI(entityAttrs)
 
-		//For every unqiue data AttributeInstance (that is, unique data attribute value) in this set of data AttributeInstances sharing the same canonical name...
+		//For every unique data attributeInstance (that is, unique data attribute value) in this set of data AttributeInstances sharing the same canonical name...
 		for dvIndex, dataAttrVal := range dataAttrsBySingleCanonicalName {
 			dvCanonicalName := dataAttrVal.GetCanonicalName()
 			slog.DebugContext(ctx, "Evaluating all-of decision for data attr %s with value %s", dvCanonicalName, dataAttrVal.Value)
 			//See if
-			// 1. there exists an entity AttributeInstance in the set of AttributeInstances
-			// with the same canonical name as the data AttributeInstance in question
-			// 2. It has the same VALUE as the data AttributeInstance in question
-			found := findInstanceValueInCluster(&dataAttrsBySingleCanonicalName[dvIndex], entityAttrCluster[dvCanonicalName])
+			// 1. there exists an entity attributeInstance in the set of AttributeInstances
+			// with the same canonical name as the data attributeInstance in question
+			// 2. It has the same VALUE as the data attributeInstance in question
+			found := findInstanceValueInClusterAI(&dataAttrsBySingleCanonicalName[dvIndex], entityAttrCluster[dvCanonicalName])
 
 			denialMsg := ""
-			//If we did not find the data AttributeInstance canonical name + value in the entity AttributeInstance set,
-			//then prepare a ValueFailure for that data AttributeInstance (that is, attribute value), for this entity
+			//If we did not find the data attributeInstance canonical name + value in the entity attributeInstance set,
+			//then prepare a ValueFailure for that data attributeInstance (that is, attribute value), for this entity
 			if !found {
 				denialMsg = fmt.Sprintf("AllOf not satisfied for canonical data attr+value %s and entity %s", dataAttrVal, entityId)
 				slog.WarnContext(ctx, denialMsg)
@@ -170,38 +169,38 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 	return ruleResultsByEntity
 }
 
-// AnyOf the Data AttributeInstance CanonicalName+Value pairs can be present in AnyOf the Entity's AttributeInstance sets
+// AnyOf the Data attributeInstance CanonicalName+Value pairs can be present in AnyOf the Entity's attributeInstance sets
 // Accepts
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance, groupBy *AttributeInstance) map[string]DataRuleResult {
+func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy []*attrs.AttributeDefinitionValue) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	dvCanonicalName := dataAttrsBySingleCanonicalName[0].GetCanonicalName()
 	//All of the data AttributeInstances in the arg have the same canonical name.
 	slog.DebugContext(ctx, "Evaluating anyOf decision", "attr", dvCanonicalName)
 
-	//Go through every entity's AttributeInstance set...
+	//Go through every entity's attributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
 		var valueFailures []ValueFailure
 		//Default to DENY
 		entityPassed := false
 		//Cluster entity AttributeInstances by canonical name...
-		entityAttrCluster := ClusterByCanonicalName(entityAttrs)
+		entityAttrCluster := ClusterByCanonicalNameAI(entityAttrs)
 
-		//For every unqiue data AttributeInstance (that is, value) in this set of data AttributeInstance sharing the same canonical name...
+		//For every unique data attributeInstance (that is, value) in this set of data attributeInstance sharing the same canonical name...
 		for dvIndex, dataAttrVal := range dataAttrsBySingleCanonicalName {
 			slog.DebugContext(ctx, "Evaluating anyOf decision", "attr", dvCanonicalName, "value", dataAttrVal.Value)
 			//See if
-			// 1. there exists an entity AttributeInstance in the set of AttributeInstances
-			// with the same canonical name as the data AttributeInstance in question
-			// 2. It has the same VALUE as the data AttributeInstance in question
-			found := findInstanceValueInCluster(&dataAttrsBySingleCanonicalName[dvIndex], entityAttrCluster[dvCanonicalName])
+			// 1. there exists an entity attributeInstance in the set of AttributeInstances
+			// with the same canonical name as the data attributeInstance in question
+			// 2. It has the same VALUE as the data attributeInstance in question
+			found := findInstanceValueInClusterAI(&dataAttrsBySingleCanonicalName[dvIndex], entityAttrCluster[dvCanonicalName])
 
 			denialMsg := ""
-			//If we did not find the data AttributeInstance canonical name + value in the entity AttributeInstance set,
-			//then prepare a ValueFailure for that data AttributeInstance and value, for this entity
+			//If we did not find the data attributeInstance canonical name + value in the entity attributeInstance set,
+			//then prepare a ValueFailure for that data attributeInstance and value, for this entity
 			if !found {
 				denialMsg = fmt.Sprintf("anyOf not satisfied for canonical data attr+value %s and entity %s - anyOf is permissive, so this doesn't mean overall failure", dataAttrVal, entityId)
 				slog.WarnContext(ctx, denialMsg)
@@ -212,9 +211,9 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 			}
 		}
 
-		//AnyOf - IF there were fewer value failures for this entity, for this AttributeInstance canonical name,
-		//then there are distict data values, for this AttributeInstance canonical name, THEN this entity must
-		//possess AT LEAST ONE of the values in its entity AttributeInstance cluster,
+		//AnyOf - IF there were fewer value failures for this entity, for this attributeInstance canonical name,
+		//then there are distict data values, for this attributeInstance canonical name, THEN this entity must
+		//possess AT LEAST ONE of the values in its entity attributeInstance cluster,
 		//and we have satisfied AnyOf
 		if len(valueFailures) < len(dataAttrsBySingleCanonicalName) {
 			slog.DebugContext(ctx, "anyOf satisfied for canonical data", "attr", dvCanonicalName, "entityId", entityId)
@@ -230,15 +229,15 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 	return ruleResultsByEntity
 }
 
-// Hierarchy rule compares the HIGHEST (that is, numerically lowest index) data AttributeInstance (that is, value) for a given AttributeInstance canonical name
-// with the LOWEST (that is, numerically highest index) entity value for a given AttributeInstance canonical name.
+// Hierarchy rule compares the HIGHEST (that is, numerically lowest index) data attributeInstance (that is, value) for a given attributeInstance canonical name
+// with the LOWEST (that is, numerically highest index) entity value for a given attributeInstance canonical name.
 //
 // If multiple data values (that is, AttributeInstances) for a given hierarchy AttributeDefinition are present for the same canonical name, the highest will be chosen and
 // the others ignored.
 //
 // If multiple entity AttributeInstances (that is, values) for a hierarchy AttributeDefinition are present for the same canonical name, the lowest will be chosen,
 // and the others ignored.
-func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance, groupBy *AttributeInstance, order []string) map[string]DataRuleResult {
+func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy []*attrs.AttributeDefinitionValue, order []*attrs.AttributeDefinitionValue) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	highestDataInstance := pdp.getHighestRankedInstanceFromDataAttributes(ctx, order, dataAttrsBySingleCanonicalName)
@@ -249,23 +248,23 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalNam
 	}
 	//All of the data AttributeInstances in the arg have the same canonical name.
 
-	//Go through every entity's AttributeInstance set...
+	//Go through every entity's attributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
 		//Default to DENY
 		entityPassed := false
 		valueFailures := []ValueFailure{}
 		//Cluster entity AttributeInstances by canonical name...
-		entityAttrCluster := ClusterByCanonicalName(entityAttrs)
+		entityAttrCluster := ClusterByCanonicalNameAI(entityAttrs)
 
 		if highestDataInstance != nil {
 			dvCanonicalName := highestDataInstance.GetCanonicalName()
-			//For every unique data AttributeInstance (that is, value) in this set of data AttributeInstances sharing the same canonical name...
+			//For every unique data attributeInstance (that is, value) in this set of data AttributeInstances sharing the same canonical name...
 			slog.DebugContext(ctx, "Evaluating hierarchy decision", "name", dvCanonicalName, "value", highestDataInstance.Value)
 
-			//Compare the (one or more) AttributeInstances (that is, values) for this canonical name to the (one) data AttributeInstance, and see which is "higher".
+			//Compare the (one or more) AttributeInstances (that is, values) for this canonical name to the (one) data attributeInstance, and see which is "higher".
 			entityPassed = entityRankGreaterThanOrEqualToDataRank(order, highestDataInstance, entityAttrCluster[dvCanonicalName])
 
-			//If the rank of the data AttributeInstance (that is, value) is higher than the highest entity AttributeInstance, then FAIL.
+			//If the rank of the data attributeInstance (that is, value) is higher than the highest entity attributeInstance, then FAIL.
 			if !entityPassed {
 				denialMsg := fmt.Sprintf("Hierarchy - Entity: %s hierarchy values rank below data hierarchy value of %s", entityId, highestDataInstance.Value)
 				slog.WarnContext(ctx, denialMsg)
@@ -301,17 +300,17 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalNam
 
 // the purpose of a GroupBy property on an AttributeDefinition is to indicate which entities should be included in a rule evaluation, and which
 // entities should not be included. This function will check every entity's AttributeInstances, and filter out the entities
-// that lack the GroupBy AttributeInstance, returning a new, reduced set of entities that all have the
-// GroupBy AttributeInstance.
-func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entityAttributes map[string][]AttributeInstance, groupBy *AttributeInstance) map[string][]AttributeInstance {
+// that lack the GroupBy attributeInstance, returning a new, reduced set of entities that all have the
+// GroupBy attributeInstance.
+func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entityAttributes map[string][]attributeInstance, groupBy []*attrs.AttributeDefinitionValue) map[string][]attributeInstance {
 	slog.DebugContext(ctx, "Filtering out entities with groupby", "groupby", groupBy)
 
-	filteredEntitySet := make(map[string][]AttributeInstance)
+	filteredEntitySet := make(map[string][]attributeInstance)
 
-	//Go through every entity's AttributeInstance set...
+	//Go through every entity's attributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
 		slog.DebugContext(ctx, "Filtering entity with groupby", "entityId", entityId, "groupBy", groupBy)
-		//If this entity has the groupBy AttributeInstance within its set of AttributeInstances
+		//If this entity has the groupBy attributeInstance within its set of AttributeInstances
 		if findInstanceValueInCluster(groupBy, entityAttrs) {
 			//Then it will be included in the map of filtered entities.
 			filteredEntitySet[entityId] = entityAttrs
@@ -330,12 +329,12 @@ func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entit
 // So, in a scenario where there are multiple data values to choose from, grab the "highest" ranked value
 // present in the set of data AttributeInstances, and use that as the point of comparison, ignoring the "lower-ranked" data values.
 // If we find a data value that does not exist in the attribute definition's list of valid values, we will skip it
-// If NONE of the data values exist in the attribute defintiions list of valid values, return a nil instance
-func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, order []string, dataAttributeCluster []AttributeInstance) *AttributeInstance {
+// If NONE of the data values exist in the attribute definitions list of valid values, return a nil instance
+func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, order []*attrs.AttributeDefinitionValue, dataAttributeCluster []attributeInstance) *attributeInstance {
 	//For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
 	//So initialize with the LEAST privileged rank in the defined order
 	var highestDVIndex int = (len(order) - 1)
-	var highestRankedInstance *AttributeInstance = nil
+	var highestRankedInstance *attributeInstance = nil
 	for _, dataAttr := range dataAttributeCluster {
 		foundRank := getOrderOfValue(order, dataAttr.Value)
 		if foundRank == -1 {
@@ -348,7 +347,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 		slog.DebugContext(ctx, "Found data", "rank", foundRank, "value", dataAttr.Value, "maxRank", highestDVIndex)
 		//If this rank is a "higher rank" (that is, a lower index) than the last one,
 		//(or it is the same rank, to handle cases where the lowest is the only)
-		//it becomes the new high water mark rank.
+		//it becomes the new high watermark rank.
 		if foundRank <= highestDVIndex {
 			slog.DebugContext(ctx, "Updating rank!")
 			highestDVIndex = foundRank
@@ -359,35 +358,40 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 	return highestRankedInstance
 }
 
-// Given a single AttributeInstance, and an arbitrary set of AttributeInstances,
-// look thru that set of instances for an instance whose value and canonical name matches the single instance
-func findInstanceValueInCluster(instance *AttributeInstance, cluster []AttributeInstance) bool {
+// Given a single attributeInstance, and an arbitrary set of AttributeInstances,
+// look through that set of instances for an instance whose value and canonical name matches the single instance
+func findInstanceValueInCluster(instance *attrs.AttributeDefinitionValue, cluster []attributeInstance) bool {
 	for i := range cluster {
-		if cluster[i].Value == instance.Value && cluster[i].GetCanonicalName() == instance.GetCanonicalName() {
+		if cluster[i].Value == instance.Value && cluster[i].GetCanonicalName() == GetCanonicalNameADV(instance) {
 			return true
 		}
 	}
 	return false
 }
 
-// Given set of ordered/ranked values, a data singular AttributeInstance, and a set of entity AttributeInstances,
+func findInstanceValueInClusterAI(a *attributeInstance, instances []attributeInstance) bool {
+	// FIXME implement
+	return false
+}
+
+// Given set of ordered/ranked values, a data singular attributeInstance, and a set of entity AttributeInstances,
 // determine if the entity AttributeInstances include a ranked value that equals or exceeds
-// the rank of the data AttributeInstance value.
+// the rank of the data attributeInstance value.
 // For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
-func entityRankGreaterThanOrEqualToDataRank(order []string, dataAttribute *AttributeInstance, entityAttributeCluster []AttributeInstance) bool {
+func entityRankGreaterThanOrEqualToDataRank(order []*attrs.AttributeDefinitionValue, dataAttribute *attributeInstance, entityAttributeCluster []attributeInstance) bool {
 	//default to least-perm
 	result := false
 	dvIndex := getOrderOfValue(order, dataAttribute.Value)
-	// Compute the rank of the entity AttributetInstance value against the rank of the data AttributeInstance value
+	// Compute the rank of the entity AttributeInstance value against the rank of the data attributeInstance value
 	// While, for hierarchy, we only ever have a singular data value we're checking
-	// for a given data AttributeInstance canonical name,
-	// we may have *several* entity values for a given entity AttributeInstance canonical name -
+	// for a given data attributeInstance canonical name,
+	// we may have *several* entity values for a given entity attributeInstance canonical name -
 	// so if an entity has multiple values that can be compared for the hierarchy rule,
 	// we check all of them and go with the value that has the least-significant index when deciding access
 	for _, entityAttribute := range entityAttributeCluster {
-		//Ideally, the caller will have already ensured all the entity AttributeInstance we've been provided
-		//have the same canonical name as the data AttributeInstance we're comparing against,
-		// but if they haven't for some reason only consider matching entity AttributeInstance
+		//Ideally, the caller will have already ensured all the entity attributeInstance we've been provided
+		//have the same canonical name as the data attributeInstance we're comparing against,
+		// but if they haven't for some reason only consider matching entity attributeInstance
 		if dataAttribute.GetCanonicalName() == entityAttribute.GetCanonicalName() {
 			evIndex := getOrderOfValue(order, entityAttribute.Value)
 			//If the entity value isn't IN the order at all,
@@ -396,7 +400,7 @@ func entityRankGreaterThanOrEqualToDataRank(order []string, dataAttribute *Attri
 			if evIndex == -1 {
 				evIndex = len(order) + 1
 			}
-			//If, at any point, we find an entity AttributeInstance value that is below the data AttributeInstance value in rank,
+			//If, at any point, we find an entity attributeInstance value that is below the data attributeInstance value in rank,
 			// (that is, numerically greater than the data rank)
 			// (or if the data value itself is < 0, indicating it's not actually part of the defined order)
 			//then we must immediately assume failure for this entity
@@ -412,13 +416,13 @@ func entityRankGreaterThanOrEqualToDataRank(order []string, dataAttribute *Attri
 	return result
 }
 
-// Given a set of ordered/ranked values and a singular AttributeInstance,
-// return the rank #/index of the singular AttributeInstance
-func getOrderOfValue(order []string, value string) int {
+// Given a set of ordered/ranked values and a singular attributeInstance,
+// return the rank #/index of the singular attributeInstance
+func getOrderOfValue(order []*attrs.AttributeDefinitionValue, value string) int {
 	//For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
 	dvIndex := -1 // -1 == Not Found in the set - this should always be a failure.
 	for index := range order {
-		if order[index] == value {
+		if order[index].Value == value {
 			dvIndex = index
 		}
 	}
@@ -428,19 +432,19 @@ func getOrderOfValue(order []string, value string) int {
 }
 
 // A Decision represents the overall access decision for a specific entity,
-// - that is, the aggregate result of comparing entity AttributeInstances to every data AttributeInstance.
+// - that is, the aggregate result of comparing entity AttributeInstances to every data attributeInstance.
 type Decision struct {
 	//The important bit - does this entity Have Access or not, for this set of data attribute values
 	//This will be TRUE if, for *every* DataRuleResult in Results, EntityRuleResult.Passed == TRUE
 	//Otherwise, it will be false
 	Access bool `json:"access" example:"false"`
-	//Results will contain at most 1 DataRuleResult for each data AttributeInstance.
+	//Results will contain at most 1 DataRuleResult for each data attributeInstance.
 	//e.g. if we compare an entity's AttributeInstances against 5 data AttributeInstances,
 	//then there will be 5 rule results, each indicating whether this entity "passed" validation
-	//for that data AttributeInstance or not.
+	//for that data attributeInstance or not.
 	//
 	//If an entity was skipped for a particular rule evaluation because of a GroupBy clause
-	//on the AttributeDefinition for a given data AttributeInstance, however, then there may be
+	//on the AttributeDefinition for a given data attributeInstance, however, then there may be
 	// FEWER DataRuleResults then there are DataRules
 	//
 	//e.g. there are 5 data AttributeInstances, and two entities each with a set of AttributeInstances,
@@ -473,8 +477,8 @@ type DataRuleResult struct {
 	ValueFailures []ValueFailure `json:"value_failures"`
 }
 
-// ValueFailure indicates, for a given entity and data AttributeInstance, which data values
-// (aka specific data AttributeInstance) the entity "failed" on.
+// ValueFailure indicates, for a given entity and data attributeInstance, which data values
+// (aka specific data attributeInstance) the entity "failed" on.
 //
 // There may be multiple "instances" (that is, AttributeInstances) of a single AttributeDefinition on both data and entities,
 // each with a different value.
@@ -484,7 +488,7 @@ type DataRuleResult struct {
 // it is up to the rule itself (anyof/allof/hierarchy) to translate this into an overall failure or not.
 type ValueFailure struct {
 	//The data attribute w/value that "caused" the denial
-	DataAttribute *AttributeInstance `json:"data_attribute"`
+	DataAttribute *attributeInstance `json:"data_attribute"`
 	//Optional denial message
 	Message string `json:"message" example:"Criteria NOT satisfied for entity: {entity_id} - lacked attribute value: {attribute}"`
 }
@@ -492,16 +496,15 @@ type ValueFailure struct {
 // Clusterable is an interface that either AttributeInstances or AttributeDefinitions can implement,
 // to support easily "clustering" or grouping a slice of either by their shared CanonicalName or Authority.
 type Clusterable interface {
-	// Type constraint (generics)
-	// Both AttributeDefinitions and AttributeInstances are clusterable
-	AttributeInstance | attrs.AttributeDefinition
-
-	// Returns the canonical URI representation of this clusterable thing, in the format
+	// GetCanonicalName Returns the canonical URI representation of this clusterable thing, in the format
 	//  <scheme>://<hostname>/attr/<name>
 	GetCanonicalName() string
-	// Returns the authority of this clusterable thing, in the format
+	// GetAuthority Returns the authority of this clusterable thing, in the format
 	//  <scheme>://<hostname>
 	GetAuthority() string
+	GroupBy() *attributeInstance
+	Rule() attrs.AttributeDefinition_AttributeRuleType
+	Order() []string
 }
 
 // ClusterByAuthority takes a slice of Clusterables, and returns them as a map,
@@ -516,11 +519,11 @@ func ClusterByAuthority[attrCluster Clusterable](attrs []attrCluster) map[string
 	return clusters
 }
 
-// ClusterByCanonicalName takes a slice of Clusterables (AttributeInstance OR AttributeDefinition),
+// ClusterByCanonicalName takes a slice of Clusterable (attributeInstance OR AttributeDefinition),
 // and returns them as a map, where the map is keyed by each unique CanonicalName
 // (e.g. Authority+Name, 'https://myauthority.org/attr/<name>') found in the slice of Clusterables
-func ClusterByCanonicalName[attrCluster Clusterable](attrs []attrCluster) map[string][]attrCluster {
-	clusters := make(map[string][]attrCluster)
+func ClusterByCanonicalName(attrs []Clusterable) map[string][]Clusterable {
+	clusters := make(map[string][]Clusterable)
 
 	for _, instance := range attrs {
 		clusters[instance.GetCanonicalName()] = append(clusters[instance.GetCanonicalName()], instance)
@@ -529,19 +532,41 @@ func ClusterByCanonicalName[attrCluster Clusterable](attrs []attrCluster) map[st
 	return clusters
 }
 
+// ClusterByCanonicalNameAD takes a slice of Clusterable (attributeInstance OR AttributeDefinition),
+// and returns them as a map, where the map is keyed by each unique CanonicalName
+// (e.g. Authority+Name, 'https://myauthority.org/attr/<name>') found in the slice of Clusterables
+func ClusterByCanonicalNameAD(ads []attrs.AttributeDefinition) map[string][]attrs.AttributeDefinition {
+	clusters := make(map[string][]attrs.AttributeDefinition)
+	// FIXME
+	//for _, instance := range attrs {
+	//	clusters[instance.GetCanonicalName()] = append(clusters[instance.GetCanonicalName()], instance)
+	//}
+
+	return clusters
+}
+
+func ClusterByCanonicalNameAI(attributes []attributeInstance) map[string][]attributeInstance {
+	clusters := make(map[string][]attributeInstance)
+	return clusters
+}
+
 // GetCanonicalName Returns the canonical URI representation of this AttributeDefinition:
 //
 //	<scheme>://<hostname>/attr/<name>
-func GetCanonicalName(attrdef AttributeInstance) string {
+func GetCanonicalName(attrdef attributeInstance) string {
 	return fmt.Sprintf("%s/attr/%s",
 		attrdef.Authority,
 		attrdef.Name,
 	)
 }
 
+func GetCanonicalNameADV(instance *attrs.AttributeDefinitionValue) string {
+	return instance.Value
+}
+
 // GetAuthority Returns the authority of this AttributeDefinition:
 //
 //	<scheme>://<hostname>
-func GetAuthority(attrdef AttributeInstance) string {
+func GetAuthority(attrdef attributeInstance) string {
 	return attrdef.Authority
 }

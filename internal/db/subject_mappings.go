@@ -24,22 +24,22 @@ func subjectMappingOperatorEnumTransformOut(value string) subjectmapping.Subject
 
 func subjectMappingSelect() sq.SelectBuilder {
 	t := Tables.SubjectMappings
+	aT := Tables.AttributeValues
 	return newStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("operator"),
 		t.Field("subject_attribute"),
 		t.Field("subject_attribute_values"),
 		t.Field("metadata"),
-		"JSON_AGG("+
-			"JSON_BUILD_OBJECT("+
-			"'id', "+tableField(AttributeValueTable, "id")+", "+
-			"'value', "+tableField(AttributeValueTable, "value")+","+
-			"'members', "+tableField(AttributeValueTable, "members")+
-			")"+
+		"JSON_BUILD_OBJECT("+
+			"'id', "+aT.Field("id")+", "+
+			"'value', "+aT.Field("value")+","+
+			"'members', "+aT.Field("members")+
 			") AS attribute_value",
 	).
-		LeftJoin(AttributeValueTable + " ON " + t.Field("id") + " = " + t.Field("id")).
-		GroupBy(tableField(t.Name(), "id"))
+		LeftJoin(aT.Name() + " ON " + t.Field("id") + " = " + t.Field("id")).
+		GroupBy(t.Field("id")).
+		GroupBy(aT.Field("id"))
 }
 
 func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, error) {
@@ -72,8 +72,8 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 	}
 
 	v := &attributes.Value{}
-	if metadataJson != nil {
-		if err := protojson.Unmarshal(metadataJson, v); err != nil {
+	if attributeValueJson != nil {
+		if err := protojson.Unmarshal(attributeValueJson, v); err != nil {
 			return nil, err
 		}
 	}
@@ -164,7 +164,7 @@ func getSubjectMappingSql(id string) (string, []interface{}, error) {
 	t := Tables.SubjectMappings
 	return subjectMappingSelect().
 		From(t.Name()).
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 func (c *Client) GetSubjectMapping(ctx context.Context, id string) (*subjectmapping.SubjectMapping, error) {

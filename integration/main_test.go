@@ -9,30 +9,41 @@ import (
 	"time"
 
 	"github.com/creasty/defaults"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-var DBClient *db.Client
 var fixtures Fixtures
 
 func init() {
-	fmt.Print("=====================================================================================\n\n")
-	fmt.Print("  Integration Tests\n\n")
-	fmt.Print("  Testcontainers is used to run these integration tests. To get this working please\n")
-	fmt.Print("  ensure you have Docker installed and running. If you are using Podman, please set\n")
-	fmt.Print("  the following environment variables:\n\n")
-	fmt.Print("    export TESTCONTAINERS_PODMAN=true;\n")
-	fmt.Print("    export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;\n")
-	fmt.Print("    export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock;\n\n")
-	fmt.Print("  For more information please see: https://www.testcontainers.org/\n\n")
-	fmt.Print("=====================================================================================\n\n")
+	fmt.Println("====================================================================================")
+	fmt.Println("")
+	fmt.Println(" Integration Tests")
+	fmt.Println("")
+	fmt.Println(" Testcontainers is used to run these integration tests. To get this working please")
+	fmt.Println(" ensure you have Docker/Podman installed and running.")
+	fmt.Println("")
+	fmt.Println(" If using Podman, export these variables:")
+	fmt.Println("   export TESTCONTAINERS_PODMAN=true;")
+	fmt.Println("   export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;")
+	fmt.Println("   export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock;")
+	fmt.Println("")
+	fmt.Println(" For more information please see: https://www.testcontainers.org/")
+	fmt.Println("")
+	fmt.Println(" ---------------------------------------------------------------------------------")
+	fmt.Println("")
+	fmt.Println(" Test runner hanging at '📀 starting postgres container'?")
+	fmt.Println(" Try restarting Docker/Podman and running the tests again.")
+	fmt.Println("")
+	fmt.Println("   Docker: docker-machine restart")
+	fmt.Println("   Podman: podman machine stop;podman machine start")
+	fmt.Println("")
+	fmt.Println("====================================================================================")
+	fmt.Println("")
 }
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
-	// conf := &config.Config{}
 	conf := Config
 
 	if err := defaults.Set(conf); err != nil {
@@ -81,7 +92,6 @@ func TestMain(m *testing.M) {
 
 	// Cleanup the container
 	defer func() {
-		slog.Info("🛑 stopping postgres container")
 		if err := postgres.Terminate(ctx); err != nil {
 			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
 			return
@@ -100,20 +110,22 @@ func TestMain(m *testing.M) {
 
 	conf.DB.Port = port.Int()
 
-	DBClient, err := db.NewClient(conf.DB)
+	db := NewDBInterface("test_opentdf")
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		panic(err)
 	}
 
-	applied, err := DBClient.RunMigrations()
+	slog.Info("🚚 applying migrations")
+	applied, err := db.Client.RunMigrations()
 	if err != nil {
 		slog.Error("issue running migrations", slog.String("error", err.Error()))
 		panic(err)
 	}
 	slog.Info("🚚 applied migrations", slog.Int("count", applied))
 
-	fixtures = NewFixture(DBClient)
+	slog.Info("🏠 loading fixtures")
+	loadFixtureData()
 
 	// otdf, err := server.NewOpenTDFServer(conf.Server)
 	// if err != nil {

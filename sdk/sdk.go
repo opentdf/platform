@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/keyaccessserverregistry"
+	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
 	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 	"google.golang.org/grpc"
@@ -27,7 +27,7 @@ type SDK struct {
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
-	KeyAccessServerRegistry keyaccessserverregistry.KeyAccessServerRegistryServiceClient
+	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -51,7 +51,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Attributes:              attributes.NewAttributesServiceClient(conn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(conn),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(conn),
-		KeyAccessServerRegistry: keyaccessserverregistry.NewKeyAccessServerRegistryServiceClient(conn),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(conn),
 	}, nil
 }
 

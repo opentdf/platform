@@ -12,7 +12,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var SubjectMappingTable = tableName(TableSubjectMappings)
 var SubjectMappingOperatorEnumPrefix = "SUBJECT_MAPPING_OPERATOR_ENUM_"
 
 func subjectMappingOperatorEnumTransformIn(value string) string {
@@ -24,12 +23,13 @@ func subjectMappingOperatorEnumTransformOut(value string) subjectmapping.Subject
 }
 
 func subjectMappingSelect() sq.SelectBuilder {
+	t := Tables.SubjectMappings
 	return newStatementBuilder().Select(
-		tableField(SubjectMappingTable, "id"),
-		tableField(SubjectMappingTable, "operator"),
-		tableField(SubjectMappingTable, "subject_attribute"),
-		tableField(SubjectMappingTable, "subject_attribute_values"),
-		tableField(SubjectMappingTable, "metadata"),
+		t.Field("id"),
+		t.Field("operator"),
+		t.Field("subject_attribute"),
+		t.Field("subject_attribute_values"),
+		t.Field("metadata"),
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
 			"'id', "+tableField(AttributeValueTable, "id")+", "+
@@ -38,8 +38,8 @@ func subjectMappingSelect() sq.SelectBuilder {
 			")"+
 			") AS attribute_value",
 	).
-		LeftJoin(AttributeValueTable + " ON " + tableField(AttributeValueTable, "id") + " = " + tableField(SubjectMappingTable, "id")).
-		GroupBy(tableField(SubjectMappingTable, "id"))
+		LeftJoin(AttributeValueTable + " ON " + t.Field("id") + " = " + t.Field("id")).
+		GroupBy(tableField(t.Name(), "id"))
 }
 
 func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, error) {
@@ -106,8 +106,9 @@ func subjectMappingHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectMapping,
 ///
 
 func createSubjectMappingSql(attribute_value_id string, operator string, subject_attribute string, subject_attribute_values []string, metadata []byte) (string, []interface{}, error) {
+	t := Tables.SubjectMappings
 	return newStatementBuilder().
-		Insert(SubjectMappingTable).
+		Insert(t.Name()).
 		Columns(
 			"attribute_value_id",
 			"operator",
@@ -160,8 +161,9 @@ func (c *Client) CreateSubjectMapping(ctx context.Context, s *subjectmapping.Sub
 }
 
 func getSubjectMappingSql(id string) (string, []interface{}, error) {
+	t := Tables.SubjectMappings
 	return subjectMappingSelect().
-		From(SubjectMappingTable).
+		From(t.Name()).
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
@@ -182,8 +184,9 @@ func (c *Client) GetSubjectMapping(ctx context.Context, id string) (*subjectmapp
 }
 
 func listSubjectMappingsSql() (string, []interface{}, error) {
+	t := Tables.SubjectMappings
 	return subjectMappingSelect().
-		From(SubjectMappingTable).
+		From(t.Name()).
 		ToSql()
 }
 func (c *Client) ListSubjectMappings(ctx context.Context) ([]*subjectmapping.SubjectMapping, error) {
@@ -207,8 +210,9 @@ func (c *Client) ListSubjectMappings(ctx context.Context) ([]*subjectmapping.Sub
 }
 
 func updateSubjectMappingSql(id string, attribute_value_id string, operator string, subject_attribute string, subject_attribute_values []string, metadata []byte) (string, []interface{}, error) {
+	t := Tables.SubjectMappings
 	sb := newStatementBuilder().
-		Update(SubjectMappingTable)
+		Update(t.Name())
 
 	if attribute_value_id != "" {
 		sb.Set("attribute_value_id", attribute_value_id)
@@ -261,8 +265,9 @@ func (c *Client) UpdateSubjectMapping(ctx context.Context, id string, s *subject
 }
 
 func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
+	t := Tables.SubjectMappings
 	return newStatementBuilder().
-		Delete(SubjectMappingTable).
+		Delete(t.Name()).
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }

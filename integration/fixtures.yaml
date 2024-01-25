@@ -132,22 +132,23 @@ subject_mappings:
       - attribute_value_id
       - operator
       - subject_attribute
+      - subject_attribute_values
   data:
-  subject_mapping_subject_attribute1:
-    id: 00000000-0000-0000-0000-000000000000
-    attribute_value_id: 00000000-0000-0000-0000-000000000000
-    operator: IN
-    subject_attribute: subject_attribute1
-    subject_attribute_values:
-      - value1
-      - value2
+    subject_mapping_subject_attribute1:
+      id: 00000000-0000-0000-0000-000000000000
+      attribute_value_id: 00000000-0000-0000-0000-000000000000
+      operator: IN
+      subject_attribute: subject_attribute1
+      subject_attribute_values:
+        - value1
+        - value2
 
-  subject_mapping_subject_attribute2:
-    id: 00000000-0000-0000-0000-000000000001
-    attribute_value_id: 00000000-0000-0000-0000-000000000001
-    operator: NOT_IN
-    subject_attribute: subject_attribute2
-    subject_attribute_values:
-      - value1
-      - value2
-      - value3
+    subject_mapping_subject_attribute2:
+      id: 00000000-0000-0000-0000-000000000001
+      attribute_value_id: 00000000-0000-0000-0000-000000000001
+      operator: NOT_IN
+      subject_attribute: subject_attribute2
+      subject_attribute_values:
+        - value1
+        - value2
+        - value3

@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 	"github.com/stretchr/testify/assert"
@@ -15,46 +13,60 @@ import (
 
 type SubjectMappingsSuite struct {
 	suite.Suite
-	client *db.Client
+	schema string
+	f      Fixtures
+	db     DBInterface
 	ctx    context.Context
 }
 
 func (s *SubjectMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.SubjectMappings test suite")
 	s.ctx = context.Background()
-
-	var err error
-	// s.client, err = db.NewClient(Config.DB)
-	s.client = DBClient
-	if err != nil {
-		slog.Error("issue creating database client", slog.String("error", err.Error()))
-		panic(err)
-	}
-
-	// TODO: Create test suite schema (i.e. opentdf_test_subject_mappings)
-	// TODO: Run migrations
-	fixtures.provisionData()
+	s.schema = "test_opentdf_subject_mappings"
+	s.db = NewDBInterface(s.schema)
+	s.f = NewFixture(s.db)
+	s.f.Provision()
 }
 
 func (s *SubjectMappingsSuite) TearDownSuite() {
 	slog.Info("tearing down db.SubjectMappings test suite")
-
-	// Temporarily: Truncate all tables
-	fixtures.truncateAllTables()
+	s.f.TearDown()
 }
 
 func (s *SubjectMappingsSuite) Test_CreateSubjectMapping() {
 	metadata := &common.MetadataMutable{}
+
+	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	mapping := &subjectmapping.SubjectMappingCreateUpdate{
-		AttributeValueId: uuid.New().String(),
+		AttributeValueId: attrValue.Id,
 		Operator:         subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 		SubjectAttribute: "subject_attribute--test",
 		SubjectValues:    []string{"subject_attribute_values--test1", "subject_attribute_values--test2"},
 		Metadata:         metadata,
 	}
-	createdMapping, err := s.client.CreateSubjectMapping(s.ctx, mapping)
+	createdMapping, err := s.db.Client.CreateSubjectMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
+}
+
+func (s *SubjectMappingsSuite) Test_GetSubjectMapping() {
+	metadata := &common.MetadataMutable{}
+
+	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	mapping := &subjectmapping.SubjectMappingCreateUpdate{
+		AttributeValueId: attrValue.Id,
+		Operator:         subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+		SubjectAttribute: "subject_attribute--test",
+		SubjectValues:    []string{"subject_attribute_values--test1", "subject_attribute_values--test2"},
+		Metadata:         metadata,
+	}
+	createdMapping, err := s.db.Client.CreateSubjectMapping(s.ctx, mapping)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdMapping)
+
+	gotMapping, err := s.db.Client.GetSubjectMapping(s.ctx, createdMapping.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotMapping)
 }
 
 func TestSubjectMappingSuite(t *testing.T) {

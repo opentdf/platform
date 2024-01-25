@@ -50,15 +50,13 @@ func (s *SubjectMappingsSuite) Test_CreateSubjectMapping() {
 }
 
 func (s *SubjectMappingsSuite) Test_GetSubjectMapping() {
-	metadata := &common.MetadataMutable{}
-
 	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	mapping := &subjectmapping.SubjectMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Operator:         subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 		SubjectAttribute: "subject_attribute--test",
 		SubjectValues:    []string{"subject_attribute_values--test1", "subject_attribute_values--test2"},
-		Metadata:         metadata,
+		Metadata:         &common.MetadataMutable{},
 	}
 	createdMapping, err := s.db.Client.CreateSubjectMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)

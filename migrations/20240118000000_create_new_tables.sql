@@ -4,7 +4,7 @@
 CREATE TYPE attribute_definition_rule AS ENUM ('UNSPECIFIED', 'ALL_OF', 'ANY_OF', 'HIERARCHY');
 CREATE TYPE subject_mappings_operator AS ENUM ('UNSPECIFIED', 'IN', 'NOT_IN');
 
-CREATE TABLE IF NOT EXISTS namespaces
+CREATE TABLE IF NOT EXISTS attribute_namespaces
 (
     -- generate on create
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS namespaces
 CREATE TABLE IF NOT EXISTS attribute_definitions
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    namespace_id UUID NOT NULL REFERENCES namespaces(id),
+    namespace_id UUID NOT NULL REFERENCES attribute_namespaces(id),
     name VARCHAR NOT NULL,
     rule attribute_definition_rule NOT NULL,
     metadata JSONB,
@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS resource_mappings
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
-    name VARCHAR NOT NULL,
     terms VARCHAR[],
     metadata JSONB
 );
@@ -82,7 +81,7 @@ DROP TABLE IF EXISTS attribute_definition_key_access_grants;
 DROP TABLE IF EXISTS key_access_servers;
 DROP TABLE IF EXISTS attribute_values;
 DROP TABLE IF EXISTS attribute_definitions;
-DROP TABLE IF EXISTS namespaces;
+DROP TABLE IF EXISTS attribute_namespaces;
 
 DROP TYPE attribute_definition_rule;
 DROP TYPE subject_mappings_operator;

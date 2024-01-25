@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -131,6 +132,11 @@ func TestSimpleTDF(t *testing.T) {
 
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
 
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -153,6 +159,7 @@ func TestSimpleTDF(t *testing.T) {
 		}
 
 		tdfConfig.SetMetaData(metaDataStr)
+		tdfConfig.AddAttributes(attributes)
 
 		inBuf := bytes.NewBufferString(plainText)
 		bufReader := bytes.NewReader(inBuf.Bytes())
@@ -205,6 +212,15 @@ func TestSimpleTDF(t *testing.T) {
 
 		if metaDataStr != metaData {
 			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, metaData)
+		}
+
+		dataAttributes, err := GetAttributes(readSeeker)
+		if err != nil {
+			t.Fatalf("Fail to get policy from tdf:%v", err)
+		}
+
+		if reflect.DeepEqual(attributes, dataAttributes) != true {
+			t.Errorf("attributes test failed expected %v, got %v", attributes, dataAttributes)
 		}
 	}
 

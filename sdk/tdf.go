@@ -292,3 +292,46 @@ func GetMetadata(authConfig AuthConfig, reader io.ReadSeeker) (string, error) {
 	// There will be at least one key access in tdf
 	return sKey.tdfKeyAccessObjects[0].metaData, nil
 }
+
+// GetAttributes return the attributes present in tdf.
+func GetAttributes(reader io.ReadSeeker) ([]string, error) {
+	// create tdf reader
+	tdfReader, err := archive.NewTDFReader(reader)
+	if err != nil {
+		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+	}
+
+	manifest, err := tdfReader.Manifest()
+	if err != nil {
+		return nil, fmt.Errorf("tdfReader.Manifest failed: %w", err)
+	}
+
+	manifestObj := &Manifest{}
+	err = json.Unmarshal([]byte(manifest), manifestObj)
+	if err != nil {
+		return nil, fmt.Errorf("json.Unmarshal failed:%w", err)
+	}
+
+	policy, err := crypto.Base64Decode([]byte(manifestObj.Policy))
+	if err != nil {
+		return nil, fmt.Errorf("crypto.Base64Decode failed:%w", err)
+	}
+
+	return attributesFromPolicy(policy)
+}
+
+func attributesFromPolicy(policy []byte) ([]string, error) {
+	policyObj := policyObject{}
+	err := json.Unmarshal(policy, &policyObj)
+	if err != nil {
+		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
+	}
+
+	attributes := make([]string, 0)
+	attributeObjs := policyObj.Body.DataAttributes
+	for _, attributeObj := range attributeObjs {
+		attributes = append(attributes, attributeObj.Attribute)
+	}
+
+	return attributes, nil
+}

@@ -16,7 +16,7 @@ func TestAttributeInstanceFromURL(t *testing.T) {
 			i: &AttributeInstance{"http://a.co", "a", "b"},
 		},
 		"noval": {
-			a: "http://a.co/attr/a/value/a",
+			a: "http://a.co/attr/a/value/",
 			e: InvalidAttributeError("http://a.co/attr/a/value/"),
 		},
 	}
@@ -35,12 +35,13 @@ func TestAttributeInstanceFromURL(t *testing.T) {
 				var parseError InvalidAttributeError
 				if errors.As(err, &parseError) {
 					if parseError != test.e {
-						t.Errorf("parse failure: invalid err: %v => %v, should be %v", test.a, err, test.e)
+						t.Errorf("parse failure expected: incorrect err: %v => %v, should be %v", test.a, err, test.e)
 					}
+				} else if err != nil {
+					t.Errorf("parse failure expected: incorrect err: %v => %v", test.a, err)
 				} else {
-					t.Errorf("parse failure: invalid err: %v => %v", test.a, err)
+					t.Errorf("parse failure expected: incorrect err: %v => %v, should be %v", test.a, err, test.e)
 				}
-				t.Errorf("mismatch: expected %v, got %v", *test.i, *actual)
 			}
 		})
 	}

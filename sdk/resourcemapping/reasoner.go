@@ -8,15 +8,45 @@ import (
 )
 
 type GrantService interface {
-	ByAttributeValue(attr string) (*KeyAccessGrant, error)
+	ByAttribute(attr *attributes.AttributeInstance) (*KeyAccessGrant, error)
 }
 
 type Reasoner struct {
-	grantService *GrantService
+	grantService GrantService
 }
 
-func NewReasoner(grantService *GrantService) *Reasoner {
+func NewReasoner(grantService GrantService) *Reasoner {
 	return &Reasoner{grantService}
+}
+
+type singleAttributeClause struct {
+	def    *attributes.AttributeDefinition
+	values []attributes.AttributeInstance
+}
+
+type attributeBooleanExpression struct {
+	must []singleAttributeClause
+}
+
+func (r *Reasoner) constructAttributeBoolean(policy ...*attributes.AttributeInstance) (*attributeBooleanExpression, error) {
+	prefixes := make(map[string]singleAttributeClause)
+	for _, a := range policy {
+		p := a.Prefix()
+		if clause, ok := prefixes[p]; ok {
+			clause.values = append(clause.values, *a)
+		} else {
+			kag, err := r.grantService.ByAttribute(a)
+			if err != nil {
+				return nil, err
+			}
+			prefixes[p] = singleAttributeClause{kag.AttributeDefinition, []attributes.AttributeInstance{*a}}
+		}
+	}
+	must := make([]singleAttributeClause, 0, len(prefixes))[0:0]
+	for _, value := range prefixes {
+		must = append(must, value)
+	}
+	return &attributeBooleanExpression{must}, nil
 }
 
 type Rule attributes.AttributeDefinition_AttributeRuleType

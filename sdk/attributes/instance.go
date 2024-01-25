@@ -2,6 +2,7 @@ package attributes
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 )
 
@@ -21,7 +22,11 @@ func AttributeInstanceFromURL(s string) (*AttributeInstance, error) {
 }
 
 func (a *AttributeInstance) String() string {
-	return fmt.Sprintf("%s/attr/%s/value/%s", a.Authority, a.Name, a.Value)
+	return fmt.Sprintf("%s/attr/%s/value/%s", a.Authority, url.QueryEscape(a.Name), url.QueryEscape(a.Value))
+}
+
+func (a *AttributeInstance) Prefix() string {
+	return fmt.Sprintf("%s/attr/%s", a.Authority, url.QueryEscape(a.Name))
 }
 
 type InvalidAttributeError string

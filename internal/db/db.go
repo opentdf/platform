@@ -87,7 +87,8 @@ func (c Client) query(ctx context.Context, sql string, args []interface{}, err e
 	if err != nil {
 		return nil, err
 	}
-	return c.Query(ctx, sql, args...)
+	r, e := c.Query(ctx, sql, args...)
+	return r, WrapIfKnownInvalidQueryErr(e)
 }
 
 // Common function for all exec calls
@@ -97,7 +98,7 @@ func (c Client) exec(ctx context.Context, sql string, args []interface{}, err er
 		return err
 	}
 	_, err = c.Exec(ctx, sql, args...)
-	return err
+	return WrapIfKnownInvalidQueryErr(err)
 }
 
 //

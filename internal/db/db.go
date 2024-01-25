@@ -13,8 +13,6 @@ import (
 )
 
 var (
-	Schema = "opentdf"
-
 	TableAttributes                    = "attribute_definitions"
 	TableAttributeValues               = "attribute_values"
 	TableNamespaces                    = "attribute_namespaces"
@@ -24,6 +22,48 @@ var (
 	TableResourceMappings              = "resource_mappings"
 	TableSubjectMappings               = "subject_mappings"
 )
+
+var Tables struct {
+	Attributes                    Table
+	AttributeValues               Table
+	Namespaces                    Table
+	KeyAccessServerRegistry       Table
+	AttributeKeyAccessGrants      Table
+	AttributeValueKeyAccessGrants Table
+	ResourceMappings              Table
+	SubjectMappings               Table
+}
+
+type Table struct {
+	name       string
+	schema     string
+	withSchema bool
+}
+
+func NewTable(name string, schema string) Table {
+	return Table{
+		name:       name,
+		schema:     schema,
+		withSchema: true,
+	}
+}
+
+func (t Table) WithoutSchema() Table {
+	nT := NewTable(t.name, t.schema)
+	nT.withSchema = false
+	return nT
+}
+
+func (t Table) Name() string {
+	if t.withSchema {
+		return t.schema + "." + string(t.name)
+	}
+	return string(t.name)
+}
+
+func (t Table) Field(field string) string {
+	return t.Name() + "." + field
+}
 
 // We can rename this but wanted to get mocks working.
 type PgxIface interface {
@@ -44,11 +84,22 @@ type Config struct {
 	Password      string `yaml:"password" default:"changeme"`
 	RunMigrations bool   `yaml:"runMigrations" default:"true"`
 	SSLMode       string `yaml:"sslmode" default:"prefer"`
+	Schema        string `yaml:"schema" default:"opentdf"`
 }
 
 type Client struct {
 	PgxIface
 	config Config
+	Tables struct {
+		Attributes                    Table
+		AttributeValues               Table
+		Namespaces                    Table
+		KeyAccessServerRegistry       Table
+		AttributeKeyAccessGrants      Table
+		AttributeValueKeyAccessGrants Table
+		ResourceMappings              Table
+		SubjectMappings               Table
+	}
 }
 
 func NewClient(config Config) (*Client, error) {
@@ -56,6 +107,16 @@ func NewClient(config Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
+
+	Tables.Attributes = NewTable(TableAttributes, config.Schema)
+	Tables.AttributeValues = NewTable(TableAttributeValues, config.Schema)
+	Tables.Namespaces = NewTable(TableNamespaces, config.Schema)
+	Tables.KeyAccessServerRegistry = NewTable(TableKeyAccessServerRegistry, config.Schema)
+	Tables.AttributeKeyAccessGrants = NewTable(TableAttributeKeyAccessGrants, config.Schema)
+	Tables.AttributeValueKeyAccessGrants = NewTable(TableAttributeValueKeyAccessGrants, config.Schema)
+	Tables.ResourceMappings = NewTable(TableResourceMappings, config.Schema)
+	Tables.SubjectMappings = NewTable(TableSubjectMappings, config.Schema)
+
 	return &Client{
 		PgxIface: pool,
 		config:   config,
@@ -111,7 +172,7 @@ func newStatementBuilder() sq.StatementBuilderType {
 }
 
 func tableName(table string) string {
-	return Schema + "." + table
+	return table
 }
 
 func tableField(table string, field string) string {

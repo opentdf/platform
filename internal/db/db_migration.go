@@ -24,6 +24,11 @@ func (c *Client) RunMigrations() (int, error) {
 		return applied, nil
 	}
 
+	// create the schema
+	c.Exec(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
+	// set the search path
+	c.Exec(context.Background(), fmt.Sprintf("SET search_path TO %s", c.config.Schema))
+
 	pool, ok := c.PgxIface.(*pgxpool.Pool)
 	if !ok || pool == nil {
 		return applied, fmt.Errorf("failed to cast pgxpool.Pool")

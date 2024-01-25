@@ -1,0 +1,154 @@
+##
+# Namespaces
+##
+namespaces:
+  metadata: 
+    table_name: namespaces
+    columns: 
+      - id
+      - name
+  data:
+    example.com:
+      id: 00000000-0000-0000-0000-000000000000
+      name: example.com
+    example.net:
+      id: 00000000-0000-0000-0000-000000000001
+      name: example.net
+    example.org:
+      id: 00000000-0000-0000-0000-000000000002
+      name: example.org
+
+##
+# Attributes
+#
+# Attribute Rule Enum: UNSPECIFIED, ANY_OF, ALL_OF, HIERARCHY
+##
+attributes:
+  metadata: 
+    table_name: attribute_definitions
+    columns: 
+      - id
+      - namespace_id
+      - name
+      - rule
+  data:
+    example.com/attr/attr1:
+      id: 00000000-0000-0000-0000-000000000000
+      namespace_id: 00000000-0000-0000-0000-000000000000
+      name: attr1
+      rule: ANY_OF
+    example.com/attr/attr2:
+      id: 00000000-0000-0000-0000-000000000001
+      namespace_id: 00000000-0000-0000-0000-000000000000
+      name: attr2
+      rule: ALL_OF
+
+    example.net/attr/attr1:
+      id: 00000000-0000-0000-0000-000000000002
+      namespace_id: 00000000-0000-0000-0000-000000000001
+      name: attr1
+      rule: ANY_OF
+    example.net/attr/attr2:
+      id: 00000000-0000-0000-0000-000000000003
+      namespace_id: 00000000-0000-0000-0000-000000000001
+      name: attr2
+      rule: ALL_OF
+    example.net/attr/attr3:
+      id: 00000000-0000-0000-0000-000000000004
+      namespace_id: 00000000-0000-0000-0000-000000000001
+      name: attr3
+      rule: HIERARCHY
+
+    example.org/attr/attr1:
+      id: 00000000-0000-0000-0000-000000000005
+      namespace_id: 00000000-0000-0000-0000-000000000002
+      name: attr1
+      rule: ANY_OF
+    example.org/attr/attr2:
+      id: 00000000-0000-0000-0000-000000000006
+      namespace_id: 00000000-0000-0000-0000-000000000002
+      name: attr2
+      rule: ALL_OF
+    example.org/attr/attr3:
+      id: 00000000-0000-0000-0000-000000000007
+      namespace_id: 00000000-0000-0000-0000-000000000002
+      name: attr3
+      rule: HIERARCHY
+
+##
+# Attribute Values
+##
+attribute_values:
+  metadata: 
+    table_name: attribute_values
+    columns: 
+      - id
+      - attribute_definition_id
+      - value
+      - members
+  data:
+    example.com/attr/attr1/value/value1:
+      id: 00000000-0000-0000-0000-000000000000
+      attribute_definition_id: 00000000-0000-0000-0000-000000000000
+      value: value1
+    example.com_attr1/value/value2:
+      id: 00000000-0000-0000-0000-000000000001
+      attribute_definition_id: 00000000-0000-0000-0000-000000000000
+      value: value2
+      members:
+        # example.com/attr/attr2/value/value1
+        - 00000000-0000-0000-0000-000000000002
+        # example.net/attr/attr1/value/value1
+        - 00000000-0000-0000-0000-000000000004
+
+    example.com/attr/attr2/value/value1:
+      id: 00000000-0000-0000-0000-000000000002
+      attribute_definition_id: 00000000-0000-0000-0000-000000000001
+      value: value1
+    example.com/attr/attr2/value/value2:
+      id: 00000000-0000-0000-0000-000000000003
+      attribute_definition_id: 00000000-0000-0000-0000-000000000001
+      value: value2
+
+    example.net/attr/attr1/value/value1:
+      id: 00000000-0000-0000-0000-000000000004
+      attribute_definition_id: 00000000-0000-0000-0000-000000000002
+      value: value1
+    example.net/attr/attr1/value/value2:
+      id: 00000000-0000-0000-0000-000000000005
+      attribute_definition_id: 00000000-0000-0000-0000-000000000002
+      value: value2
+
+## 
+# Subject Mappings
+#
+# Operator Enum: UNSPECIFIED, IN, NOT_IN
+##
+subject_mappings:
+  metadata: 
+    table_name: subject_mappings
+    columns: 
+      - id
+      - attribute_value_id
+      - operator
+      - subject_attribute
+      - subject_attribute_values
+  data:
+    subject_mapping_subject_attribute1:
+      id: 00000000-0000-0000-0000-000000000000
+      attribute_value_id: 00000000-0000-0000-0000-000000000000
+      operator: IN
+      subject_attribute: subject_attribute1
+      subject_attribute_values:
+        - value1
+        - value2
+
+    subject_mapping_subject_attribute2:
+      id: 00000000-0000-0000-0000-000000000001
+      attribute_value_id: 00000000-0000-0000-0000-000000000001
+      operator: NOT_IN
+      subject_attribute: subject_attribute2
+      subject_attribute_values:
+        - value1
+        - value2
+        - value3

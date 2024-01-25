@@ -19,7 +19,7 @@ import (
 )
 
 type ClientCredentials struct {
-	ClientAuth interface{}
+	ClientAuth interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
 	ClientId   string
 }
 

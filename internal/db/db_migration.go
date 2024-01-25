@@ -17,17 +17,17 @@ func (c *Client) RunMigrations() (int, error) {
 		applied int
 	)
 
-	// create the schema
-	c.Exec(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
-	// set the search path
-	c.Exec(context.Background(), fmt.Sprintf("SET search_path TO %s", c.config.Schema))
-
 	if !c.config.RunMigrations {
 		slog.Info("skipping migrations",
 			slog.String("reason", "runMigrations is false"),
 			slog.Bool("runMigrations", c.config.RunMigrations))
 		return applied, nil
 	}
+
+	// create the schema
+	c.Exec(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
+	// set the search path
+	c.Exec(context.Background(), fmt.Sprintf("SET search_path TO %s", c.config.Schema))
 
 	pool, ok := c.PgxIface.(*pgxpool.Pool)
 	if !ok || pool == nil {

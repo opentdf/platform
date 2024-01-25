@@ -32,8 +32,7 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 }
 
 func (s AttributesService) CreateAttribute(ctx context.Context,
-	req *attributes.CreateAttributeRequest,
-) (*attributes.CreateAttributeResponse, error) {
+	req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error) {
 	slog.Debug("creating new attribute definition", slog.String("name", req.Attribute.Name))
 	rsp := &attributes.CreateAttributeResponse{}
 
@@ -49,8 +48,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 }
 
 func (s *AttributesService) ListAttributes(ctx context.Context,
-	req *attributes.ListAttributesRequest,
-) (*attributes.ListAttributesResponse, error) {
+	req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
 	rsp := &attributes.ListAttributesResponse{}
 
 	list, err := s.dbClient.ListAllAttributes(ctx)
@@ -65,8 +63,7 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 
 //nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s *AttributesService) GetAttribute(ctx context.Context,
-	req *attributes.GetAttributeRequest,
-) (*attributes.GetAttributeResponse, error) {
+	req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
 	rsp := &attributes.GetAttributeResponse{}
 
 	item, err := s.dbClient.GetAttribute(ctx, req.Id)
@@ -80,8 +77,7 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 }
 
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
-	req *attributes.UpdateAttributeRequest,
-) (*attributes.UpdateAttributeResponse, error) {
+	req *attributes.UpdateAttributeRequest) (*attributes.UpdateAttributeResponse, error) {
 	rsp := &attributes.UpdateAttributeResponse{}
 
 	a, err := s.dbClient.UpdateAttribute(ctx, req.Id, req.Attribute)
@@ -96,8 +92,7 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 }
 
 func (s *AttributesService) DeleteAttribute(ctx context.Context,
-	req *attributes.DeleteAttributeRequest,
-) (*attributes.DeleteAttributeResponse, error) {
+	req *attributes.DeleteAttributeRequest) (*attributes.DeleteAttributeResponse, error) {
 	rsp := &attributes.DeleteAttributeResponse{}
 
 	a, err := s.dbClient.DeleteAttribute(ctx, req.Id)

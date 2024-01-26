@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS attribute_values
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attribute_definition_id UUID NOT NULL REFERENCES attribute_definitions(id),
     value VARCHAR NOT NULL,
-    members UUID[] NOT NULL,
+    members UUID[],
     metadata JSONB,
     UNIQUE (attribute_definition_id, value)
 );

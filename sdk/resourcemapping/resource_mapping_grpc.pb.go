@@ -30,11 +30,194 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ResourceMappingServiceClient interface {
-	// Resource Mappings
+	// Request Example:
+	// - empty body
+	//
+	// Response Example:
+	// {
+	// "resource_mappings": [
+	// {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// ]
+	// }
 	ListResourceMappings(ctx context.Context, in *ListResourceMappingsRequest, opts ...grpc.CallOption) (*ListResourceMappingsResponse, error)
+	// Request Example:
+	// {
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e"
+	// }
+	//
+	// Response Example:
+	// {
+	// "resource_mapping": {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// }
 	GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error)
+	// Request Example:
+	// {
+	// "resource_mapping": {
+	// "attribute_value_id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ]
+	// }
+	// }
+	//
+	// Response Example:
+	// {
+	// "resource_mapping": {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// }
 	CreateResourceMapping(ctx context.Context, in *CreateResourceMappingRequest, opts ...grpc.CallOption) (*CreateResourceMappingResponse, error)
+	// Request Example:
+	// {
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "resource_mapping": {
+	// "attribute_value_id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// "NEWTERM"
+	// ]
+	// }
+	// }
+	//
+	// Response Example:
+	// {
+	// "resource_mapping": {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// }
 	UpdateResourceMapping(ctx context.Context, in *UpdateResourceMappingRequest, opts ...grpc.CallOption) (*UpdateResourceMappingResponse, error)
+	// Request Example:
+	// {
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e"
+	// }
+	//
+	// Response Example:
+	// {
+	// "resource_mapping": {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// }
 	DeleteResourceMapping(ctx context.Context, in *DeleteResourceMappingRequest, opts ...grpc.CallOption) (*DeleteResourceMappingResponse, error)
 }
 
@@ -95,11 +278,194 @@ func (c *resourceMappingServiceClient) DeleteResourceMapping(ctx context.Context
 // All implementations must embed UnimplementedResourceMappingServiceServer
 // for forward compatibility
 type ResourceMappingServiceServer interface {
-	// Resource Mappings
+	// Request Example:
+	// - empty body
+	//
+	// Response Example:
+	// {
+	// "resource_mappings": [
+	// {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// ]
+	// }
 	ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error)
+	// Request Example:
+	// {
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e"
+	// }
+	//
+	// Response Example:
+	// {
+	// "resource_mapping": {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// }
 	GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error)
+	// Request Example:
+	// {
+	// "resource_mapping": {
+	// "attribute_value_id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ]
+	// }
+	// }
+	//
+	// Response Example:
+	// {
+	// "resource_mapping": {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// }
 	CreateResourceMapping(context.Context, *CreateResourceMappingRequest) (*CreateResourceMappingResponse, error)
+	// Request Example:
+	// {
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "resource_mapping": {
+	// "attribute_value_id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// "NEWTERM"
+	// ]
+	// }
+	// }
+	//
+	// Response Example:
+	// {
+	// "resource_mapping": {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// }
 	UpdateResourceMapping(context.Context, *UpdateResourceMappingRequest) (*UpdateResourceMappingResponse, error)
+	// Request Example:
+	// {
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e"
+	// }
+	//
+	// Response Example:
+	// {
+	// "resource_mapping": {
+	// "terms": [
+	// "TOPSECRET",
+	// "TS",
+	// ],
+	// "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706103276",
+	// "nanos": 510718000
+	// },
+	// "updated_at": {
+	// "seconds": "1706107873",
+	// "nanos": 399786000
+	// },
+	// "description": ""
+	// },
+	// "attribute_value": {
+	// "members": [],
+	// "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// }
+	// }
 	DeleteResourceMapping(context.Context, *DeleteResourceMappingRequest) (*DeleteResourceMappingResponse, error)
 	mustEmbedUnimplementedResourceMappingServiceServer()
 }

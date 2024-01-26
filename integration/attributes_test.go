@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/stretchr/testify/assert"
@@ -160,13 +161,13 @@ func (s *AttributesSuite) Test_GetAttribute() {
 
 	for _, f := range fixtures {
 		gotAttr, err := s.db.Client.GetAttribute(s.ctx, f.Id)
+		fmt.Println("here", gotAttr, err)
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), gotAttr)
 		assert.Equal(s.T(), f.Id, gotAttr.Id)
 		assert.Equal(s.T(), f.Name, gotAttr.Name)
-		assert.Equal(s.T(), fmt.Sprintf("ATTRIBUTE_RULE_TYPE_ENUM_%s", f.Rule), gotAttr.Rule.Enum().String())
-		// TODO: enhance protos with namespace Id now that they're put together
-		// assert.Equal(s.T(), f.NamespaceId, gotAttr.NamespaceId)
+		assert.Equal(s.T(), fmt.Sprintf("%s%s", db.AttributeRuleTypeEnumPrefix, f.Rule), gotAttr.Rule.Enum().String())
+		assert.Equal(s.T(), f.NamespaceId, gotAttr.NamespaceId)
 	}
 }
 
@@ -212,10 +213,13 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	// change name and rule
 	update := &attributes.AttributeCreateUpdate{
 		Name:        fmt.Sprintf("%s_updated_name", attr.Name),
-		NamespaceId: attr.NamespaceId,
+		NamespaceId: fixtureNamespaceId,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
+	fmt.Printf("here %v", createdAttr)
+	fmt.Printf("here %v", update)
 	resp, err := s.db.Client.UpdateAttribute(s.ctx, createdAttr.Id, update)
+	fmt.Println("here", err)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), resp)
 
@@ -236,32 +240,32 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 	assert.Nil(s.T(), resp)
 }
 
-// TODO: enhance protos with namespace Id now that they're put together
-// func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
-// 	original := &attributes.AttributeCreateUpdate{
-// 		Name:        "test__update_attribute_namespace_immutable",
-// 		NamespaceId: fixtures.GetNamespaceKey("example.com").Id,
-// 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
-// 	}
-// 	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, original)
-// 	assert.Nil(s.T(), err)
-// 	assert.NotNil(s.T(), createdAttr)
+func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
+	original := &attributes.AttributeCreateUpdate{
+		Name:        "test__update_attribute_namespace_immutable",
+		NamespaceId: fixtures.GetNamespaceKey("example.com").Id,
+		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+	}
+	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, original)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdAttr)
 
-// 	update := &attributes.AttributeCreateUpdate{
-// 		Name:        original.Name,
-// 		NamespaceId: fixtures.GetNamespaceKey("example.net").Id,
-// 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
-// 	}
-// 	resp, err := s.db.Client.UpdateAttribute(s.ctx, createdAttr.Id, update)
-// 	assert.NotNil(s.T(), err)
-// 	assert.Nil(s.T(), resp)
+	// should error on attempt to change namespace
+	update := &attributes.AttributeCreateUpdate{
+		Name:        original.Name,
+		NamespaceId: fixtures.GetNamespaceKey("example.net").Id,
+		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+	}
+	resp, err := s.db.Client.UpdateAttribute(s.ctx, createdAttr.Id, update)
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
 
-// 	// namespace should not have changed
-// 	updated, err := s.db.Client.GetAttribute(s.ctx, createdAttr.Id)
-// 	assert.Nil(s.T(), err)
-// 	assert.NotNil(s.T(), updated)
-// 	assert.Equal(s.T(), original.NamespaceId, updated.NamespaceId)
-// }
+	// validate namespace should not have been changed
+	updated, err := s.db.Client.GetAttribute(s.ctx, createdAttr.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updated)
+	assert.Equal(s.T(), original.NamespaceId, updated.NamespaceId)
+}
 
 func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFails() {
 	fixtureData := fixtures.GetAttributeKey("example.org/attr/attr3")

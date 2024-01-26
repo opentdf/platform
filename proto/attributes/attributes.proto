@@ -189,7 +189,7 @@ service AttributesService {
   /*
      List Attributes
      Example:
-      grpcurl -plaintext -d '{"namespace_id": "348f3698-a0c9-4ed6-a90c-e589aaf59c5"}' localhost:9000 attributes.AttributesService/ListAttributes
+      grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
   */
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
 
@@ -206,7 +206,7 @@ service AttributesService {
 
   // Create Attribute
   // Example:
-  //  grpcurl -plaintext -d '{"attribute": {"namespace_id": "348f3698-a0c9-4ed6-a90c-e589aaf59c57", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+  //  grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:8080 attributes.AttributesService/CreateAttribute
   rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
     option (google.api.http) = {
       post: "/attributes"

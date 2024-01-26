@@ -21,19 +21,19 @@ message Attribute {
   // Optional metadata for the attribute definition
   common.Metadata metadata = 2;
 
-  // TODO: enable this when merging with Jake's work
-  // namespace.Namespace namespace = 3;
+  // namespace of the attribute
+  string namespace_id = 3;
 
   //attribute name
-  string name = 5;
+  string name = 4;
 
   // attribute rule enum
-  AttributeRuleTypeEnum rule = 6 [
+  AttributeRuleTypeEnum rule = 5 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
 
-  repeated Value values = 7;
+  repeated Value values = 6;
 }
 
 message AttributeCreateUpdate {

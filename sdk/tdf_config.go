@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 type TDFFormat = int
@@ -28,8 +29,8 @@ const (
 const kHTTPOk = 200
 
 type KASInfo struct {
-	url       string
-	publicKey string // Public key can be empty.
+	URL       string
+	PublicKey string // Public key can be empty.
 }
 
 type TDFConfig struct {
@@ -44,6 +45,8 @@ type TDFConfig struct {
 	assertions                []Assertion
 	attributes                []string
 	kasInfoList               []KASInfo
+	OnEncryptedMetaDataCreate func(kao *KeyAccess) ([]byte, error)
+	OnSplitKeyBuild           func(kao *KeyAccess) ([]byte, error)
 }
 
 const (
@@ -85,16 +88,16 @@ func NewTDFConfig() (*TDFConfig, error) {
 func (tdfConfig *TDFConfig) AddKasInformation(kasInfoList []KASInfo) error {
 	for _, kasInfo := range kasInfoList {
 		newEntry := KASInfo{}
-		newEntry.url = kasInfo.url
-		newEntry.publicKey = kasInfo.publicKey
+		newEntry.URL = kasInfo.URL
+		newEntry.PublicKey = kasInfo.PublicKey
 
-		if newEntry.publicKey != "" {
+		if newEntry.PublicKey != "" {
 			tdfConfig.kasInfoList = append(tdfConfig.kasInfoList, newEntry)
 			continue
 		}
 
 		// get kas public
-		kasPubKeyURL, err := url.JoinPath(kasInfo.url, kasPublicKeyPath)
+		kasPubKeyURL, err := url.JoinPath(kasInfo.URL, kasPublicKeyPath)
 		if err != nil {
 			return fmt.Errorf("url.Parse failed: %w", err)
 		}
@@ -129,7 +132,7 @@ func (tdfConfig *TDFConfig) AddKasInformation(kasInfoList []KASInfo) error {
 			return fmt.Errorf("json.NewDecoder.Decode failed: %w", err)
 		}
 
-		newEntry.publicKey = fmt.Sprintf("%s", jsonResponse)
+		newEntry.PublicKey = fmt.Sprintf("%s", jsonResponse)
 
 		tdfConfig.kasInfoList = append(tdfConfig.kasInfoList, newEntry)
 	}

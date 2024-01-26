@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/internal/archive"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"log/slog"
 	"strings"
+
+	"github.com/opentdf/opentdf-v2-poc/internal/archive"
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 var (
@@ -33,31 +34,36 @@ const (
 )
 
 // Create tdf
-func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
+func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TDF, error) {
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
-		return fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
 	_, err = reader.Seek(0, io.SeekStart)
 	if err != nil {
-		return fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
 	if inputSize > maxFileSizeSupported {
-		return errFileTooLarge
+		return nil, errFileTooLarge
 	}
 
 	// create a split key
-	splitKey, err := newSplitKeyFromKasInfo(tdfConfig.kasInfoList, tdfConfig.attributes, tdfConfig.metaData)
+	// splitKey, err := newSplitKeyFromKasInfo(tdfConfig.kasInfoList, tdfConfig.attributes, tdfConfig.metaData)
+	// if err != nil {
+	// 	return fmt.Errorf("fail to create a new split key: %w", err)
+	// }
+
+	tdf, err := newTDF(tdfConfig.kasInfoList, tdfConfig.attributes, tdfConfig.metaData, tdfConfig.OnEncryptedMetaDataCreate, tdfConfig.OnSplitKeyBuild)
 	if err != nil {
-		return fmt.Errorf("fail to create a new split key: %w", err)
+		return nil, fmt.Errorf("fail to create a new tdf: %w", err)
 	}
 
-	manifest, err := splitKey.getManifest()
-	if err != nil {
-		return fmt.Errorf("fail to create manifest: %w", err)
-	}
+	// manifest, err := splitKey.getManifest()
+	// if err != nil {
+	// 	return fmt.Errorf("fail to create manifest: %w", err)
+	// }
 
 	segmentSize := tdfConfig.defaultSegmentSize
 	totalSegments := inputSize / segmentSize
@@ -83,7 +89,7 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
 
 	err = tdfWriter.SetPayloadSize(payloadSize)
 	if err != nil {
-		return fmt.Errorf("archive.SetPayloadSize failed: %w", err)
+		return nil, fmt.Errorf("archive.SetPayloadSize failed: %w", err)
 	}
 
 	var readPos int64
@@ -97,26 +103,26 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
 
 		n, err := reader.Read(readBuf.Bytes()[:readSize])
 		if err != nil {
-			return fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
 		if int64(n) != readSize {
-			return fmt.Errorf("io.ReadSeeker.Read size missmatch")
+			return nil, fmt.Errorf("io.ReadSeeker.Read size missmatch")
 		}
 
-		cipherData, err := splitKey.encrypt(readBuf.Bytes()[:readSize])
+		cipherData, err := tdf.encrypt(readBuf.Bytes()[:readSize])
 		if err != nil {
-			return fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
 		err = tdfWriter.AppendPayload(cipherData)
 		if err != nil {
-			return fmt.Errorf("io.writer.Write failed: %w", err)
+			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
 		}
 
-		payloadSig, err := splitKey.getSignature(cipherData, tdfConfig.segmentIntegrityAlgorithm)
+		payloadSig, err := tdf.getSignature(cipherData, tdfConfig.segmentIntegrityAlgorithm)
 		if err != nil {
-			return fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
 		aggregateHash += payloadSig
@@ -125,56 +131,56 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
 		segmentInfo.Hash = string(crypto.Base64Encode([]byte(payloadSig)))
 		segmentInfo.Size = readSize
 		segmentInfo.EncryptedSize = int64(len(cipherData))
-		manifest.EncryptionInformation.IntegrityInformation.Segments =
-			append(manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
+		tdf.Manifest.EncryptionInformation.IntegrityInformation.Segments =
+			append(tdf.Manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
 
 		totalSegments--
 		readPos += readSize
 	}
 
-	aggregateHashSig, err := splitKey.getSignature([]byte(aggregateHash), tdfConfig.integrityAlgorithm)
+	aggregateHashSig, err := tdf.getSignature([]byte(aggregateHash), tdfConfig.integrityAlgorithm)
 	if err != nil {
-		return fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 	}
 
 	sig := string(crypto.Base64Encode([]byte(aggregateHashSig)))
-	manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
+	tdf.Manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
 
 	integrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.integrityAlgorithm == HS256 {
 		integrityAlgStr = hmacIntegrityAlgorithm
 	}
-	manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm = integrityAlgStr
+	tdf.Manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm = integrityAlgStr
 
-	manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize = segmentSize
-	manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize = encryptedSegmentSize
+	tdf.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize = segmentSize
+	tdf.Manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize = encryptedSegmentSize
 
 	segIntegrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
 		segIntegrityAlgStr = hmacIntegrityAlgorithm
 	}
 
-	manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm = segIntegrityAlgStr
-	manifest.EncryptionInformation.Method.IsStreamable = true
+	tdf.Manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm = segIntegrityAlgStr
+	tdf.Manifest.EncryptionInformation.Method.IsStreamable = true
 
 	// add payload info
-	manifest.Payload.MimeType = defaultMimeType
-	manifest.Payload.Protocol = tdfAsZip
-	manifest.Payload.Type = tdfZipReference
-	manifest.Payload.URL = archive.TDFPayloadFileName
-	manifest.Payload.IsEncrypted = true
+	tdf.Manifest.Payload.MimeType = defaultMimeType
+	tdf.Manifest.Payload.Protocol = tdfAsZip
+	tdf.Manifest.Payload.Type = tdfZipReference
+	tdf.Manifest.Payload.URL = archive.TDFPayloadFileName
+	tdf.Manifest.Payload.IsEncrypted = true
 
-	manifestAsStr, err := json.Marshal(manifest)
+	manifestAsStr, err := json.Marshal(tdf.Manifest)
 	if err != nil {
-		return fmt.Errorf("json.Marshal failed:%w", err)
+		return nil, fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
 	err = tdfWriter.AppendManifest(string(manifestAsStr))
 	if err != nil {
-		return fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
+		return nil, fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
 	}
 
-	return nil
+	return tdf, nil
 }
 
 // GetPayload decrypt the tdf and write the data to writer.

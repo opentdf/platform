@@ -7,15 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 const (
@@ -64,6 +65,145 @@ var (
 	errKasPubKeyMissing = errors.New("split-key: kas public key is missing")
 )
 
+type TDF struct {
+	Manifest *Manifest
+	key      []byte
+	crypto   crypto.AesGcm
+	// config Config
+}
+
+func newTDF(kasInfoList []KASInfo, attributes []string, metaData string, onMetadataCreate func(kao *KeyAccess) ([]byte, error), onSplitKeyBuild func(kao *KeyAccess) ([]byte, error)) (*TDF, error) {
+	var (
+		manifest   = new(Manifest)
+		payloadKey = make([]byte, kKeySize)
+		err        error
+	)
+	// for encode only do we require a kas
+	if len(kasInfoList) == 0 {
+		return nil, errInvalidKasInfo
+	}
+
+	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
+
+	// Build policy
+	policy := policyObject{
+		UUID: uuid.NewString(),
+	}
+	policy.Body.DataAttributes = make([]attributeObject, len(attributes))
+	for i, attribute := range attributes {
+		policy.Body.DataAttributes[i].Attribute = attribute
+	}
+
+	policyObjectAsStr, err := json.Marshal(policy)
+	if err != nil {
+		return nil, fmt.Errorf("json.Marshal failed:%w", err)
+	}
+
+	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
+
+	// Build key access objects
+
+	for _, kasInfo := range kasInfoList {
+		// What if its a kas url?
+		if len(kasInfo.PublicKey) == 0 {
+			return nil, errKasPubKeyMissing
+		}
+
+		keyAccess := KeyAccess{}
+		keyAccess.KeyType = kWrapped
+		keyAccess.KasURL = kasInfo.URL
+		keyAccess.Protocol = kKasProtocol
+
+		// wrap the key with kas public key
+		asymEncrypt, err := crypto.NewAsymEncryption(kasInfo.PublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("crypto.NewAsymEncryption failed:%w", err)
+		}
+
+		// Generate Policy Key
+		key, err := crypto.RandomBytes(kKeySize)
+		if err != nil {
+			return nil, fmt.Errorf("crypto.RandomBytes failed:%w", err)
+		}
+		fmt.Println("policy key", hex.EncodeToString(key))
+		// Wrap policy key
+		encryptData, err := asymEncrypt.Encrypt(key)
+		if err != nil {
+			return nil, fmt.Errorf("crypto.AsymEncryption.encrypt failed:%w", err)
+		}
+		keyAccess.WrappedKey = string(crypto.Base64Encode(encryptData))
+
+		// add policyBinding
+		policyBinding := hex.EncodeToString(crypto.CalculateSHA256Hmac(key, base64PolicyObject))
+		keyAccess.PolicyBinding = string(crypto.Base64Encode([]byte(policyBinding)))
+
+		// we need to inject custom metatdata
+		if onMetadataCreate != nil {
+
+			bMetaData, err := onMetadataCreate(&keyAccess)
+			if err != nil {
+				return nil, fmt.Errorf("onMetadataCreate failed:%w", err)
+			}
+			fmt.Println("metadata", string(bMetaData))
+			keyAccess.EncryptedMetadata = string(bMetaData)
+		}
+
+		// XOR the key with the payload key
+		var (
+			builtKey []byte
+		)
+		if onSplitKeyBuild != nil {
+			builtKey, err = onSplitKeyBuild(&keyAccess)
+			if err != nil {
+				return nil, fmt.Errorf("onSplitKeyBuild failed:%w", err)
+			}
+		} else {
+			builtKey = key
+		}
+		for i := range builtKey {
+			payloadKey[i] ^= key[i]
+		}
+
+		// We have to encrypt metadata after onSplitKeyBuild
+		if len(keyAccess.EncryptedMetadata) > 0 {
+			// We have to encrypt the metadata with the policy key
+			pkGCM, err := crypto.NewAESGcm(key)
+			if err != nil {
+				return nil, fmt.Errorf("crypto.NewAESGcm failed:%w", err)
+			}
+			encryptedMetaData, err := pkGCM.Encrypt([]byte(keyAccess.EncryptedMetadata))
+			if err != nil {
+				return nil, fmt.Errorf("crypto.AesGcm.encrypt failed:%w", err)
+			}
+
+			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(encryptedMetaData))
+		}
+
+		manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
+
+	}
+
+	// create the split key by XOR all the keys in key access object.
+	// for _, keyAccessObj := range tdfKeyAccessObjs {
+
+	// 	for keyByteIndex, keyByte := range keyAccessObj.wrappedKey {
+	// 		sKey.key[keyByteIndex] ^= keyByte
+	// 	}
+	// }
+
+	// Create new AES GCM with payload key
+	gcm, err := crypto.NewAESGcm(payloadKey)
+	if err != nil {
+		return nil, fmt.Errorf(" crypto.NewAESGcm failed:%w", err)
+	}
+
+	return &TDF{
+		Manifest: manifest,
+		crypto:   gcm,
+		key:      payloadKey,
+	}, nil
+}
+
 // newSplitKeyFromKasInfo create a instance of split key object.
 func newSplitKeyFromKasInfo(kasInfoList []KASInfo, attributes []string, metaData string) (splitKey, error) {
 	if len(kasInfoList) == 0 {
@@ -72,13 +212,13 @@ func newSplitKeyFromKasInfo(kasInfoList []KASInfo, attributes []string, metaData
 
 	tdfKeyAccessObjs := make([]tdfKeyAccess, 0)
 	for _, kasInfo := range kasInfoList {
-		if len(kasInfo.publicKey) == 0 {
+		if len(kasInfo.PublicKey) == 0 {
 			return splitKey{}, errKasPubKeyMissing
 		}
 
 		keyAccess := tdfKeyAccess{}
-		keyAccess.kasPublicKey = kasInfo.publicKey
-		keyAccess.kasURL = kasInfo.url
+		keyAccess.kasPublicKey = kasInfo.PublicKey
+		keyAccess.kasURL = kasInfo.URL
 		keyAccess.metaData = metaData
 
 		key, err := crypto.RandomBytes(kKeySize)
@@ -240,6 +380,15 @@ func (splitKey splitKey) encrypt(data []byte) ([]byte, error) {
 	return buf, nil
 }
 
+func (splitKey TDF) encrypt(data []byte) ([]byte, error) {
+	buf, err := splitKey.crypto.Encrypt(data)
+	if err != nil {
+		return nil, fmt.Errorf("AesGcm.encrypt failed:%w", err)
+	}
+
+	return buf, nil
+}
+
 // decrypt the data using the split key.
 func (splitKey splitKey) decrypt(data []byte) ([]byte, error) {
 	buf, err := splitKey.aesGcm.Decrypt(data)
@@ -283,6 +432,18 @@ func (splitKey splitKey) validateRootSignature(manifest *Manifest) (bool, error)
 
 // getSignature calculate signature of data of the given algorithm.
 func (splitKey splitKey) getSignature(data []byte, alg IntegrityAlgorithm) (string, error) {
+	if alg == HS256 {
+		hmac := crypto.CalculateSHA256Hmac(splitKey.key[:], data)
+		return hex.EncodeToString(hmac), nil
+	}
+	if kGMACPayloadLength > len(data) {
+		return "", fmt.Errorf("fail to create gmac signature")
+	}
+
+	return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
+}
+
+func (splitKey TDF) getSignature(data []byte, alg IntegrityAlgorithm) (string, error) {
 	if alg == HS256 {
 		hmac := crypto.CalculateSHA256Hmac(splitKey.key[:], data)
 		return hex.EncodeToString(hmac), nil

@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -71,4 +72,19 @@ func (keyPair RsaKeyPair) KeySize() (int, error) {
 		return -1, errors.New("failed to return key size")
 	}
 	return keyPair.privateKey.N.BitLen(), nil
+}
+
+func (keyPair RsaKeyPair) PublicKeyFingerPrint() (string, error) {
+	if keyPair.privateKey == nil {
+		return "", errors.New("failed to generate public key finger print")
+	}
+
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&keyPair.privateKey.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
+	}
+
+	publicKeyFingerPrint := md5.Sum(publicKeyBytes)
+
+	return fmt.Sprintf("%x", publicKeyFingerPrint), nil
 }

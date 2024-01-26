@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/jackc/pgerrcode"
@@ -16,11 +17,11 @@ func (e DbError) Error() string {
 }
 
 const (
-	ErrUniqueConstraintViolation DbError = "error: value must be unique"
-	ErrNotNullViolation          DbError = "error: value cannot be null"
-	ErrForeignKeyViolation       DbError = "error: value must exist in another table"
-	ErrRestrictViolation         DbError = "error: value cannot be deleted due to restriction"
-	ErrNotFound                  DbError = "error: value not found"
+	ErrUniqueConstraintViolation DbError = "ErrUniqueConstraintViolation: value must be unique"
+	ErrNotNullViolation          DbError = "ErrNotNullViolation: value cannot be null"
+	ErrForeignKeyViolation       DbError = "ErrForeignKeyViolation: value is referenced by another table"
+	ErrRestrictViolation         DbError = "ErrRestrictViolation: value cannot be deleted due to restriction"
+	ErrNotFound                  DbError = "ErrNotFound: value not found"
 )
 
 // Validate is a PostgreSQL constraint violation for specific table-column value
@@ -36,6 +37,7 @@ func IsConstraintViolationForColumnVal(err error, table string, column string) b
 // Get helpful error message for PostgreSQL violation
 func WrapIfKnownInvalidQueryErr(err error) error {
 	if e := isPgError(err); e != nil {
+		slog.Error("Encountered database error", slog.String("error", e.Error()))
 		switch e.Code {
 		case pgerrcode.UniqueViolation:
 			return errors.Join(ErrUniqueConstraintViolation, e)

@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -275,8 +277,12 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 	// get attribute before updating
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
-		slog.Error(services.ErrDeletingResource, slog.String("scope", "getAttribute"), slog.String("error", err.Error()))
+		slog.Error(services.ErrUpdatingResource, slog.String("scope", "getAttribute"), slog.String("error", err.Error()))
 		return nil, status.Error(status.Code(err), services.ErrUpdatingResource)
+	}
+	if a.NamespaceId != attr.NamespaceId {
+	slog.Error(services.ErrUpdatingResource, slog.String("scope", "namespaceId"), slog.String("error", errors.Join(ErrRestrictViolation, fmt.Errorf("cannot change namespaceId")).Error()))
+		return nil, status.Error(codes.InvalidArgument, services.ErrUpdatingResource)
 	}
 
 	metadataJson, _, err := marshalUpdateMetadata(a.Metadata, attr.Metadata)

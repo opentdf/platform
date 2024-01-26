@@ -69,7 +69,7 @@ func (s *SubjectMappingsSuite) Test_GetSubjectMapping() {
 
 func TestSubjectMappingSuite(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping attributes integration tests")
+		t.Skip("skipping subject_mappings integration tests")
 	}
 	suite.Run(t, new(SubjectMappingsSuite))
 }

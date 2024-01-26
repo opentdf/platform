@@ -19,7 +19,7 @@ const (
 	ErrUniqueConstraintViolation DbError = "error: value must be unique"
 	ErrNotNullViolation          DbError = "error: value cannot be null"
 	ErrForeignKeyViolation       DbError = "error: value must exist in another table"
-	ErrRestrictViolation         DbError = "error: value cannot be deleted due to restriction"
+	ErrRestrictViolation         DbError = "error: value cannot be altered due to restriction"
 	ErrNotFound                  DbError = "error: value not found"
 )
 

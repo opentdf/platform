@@ -161,7 +161,6 @@ func (s *AttributesSuite) Test_GetAttribute() {
 
 	for _, f := range fixtures {
 		gotAttr, err := s.db.Client.GetAttribute(s.ctx, f.Id)
-		fmt.Println("here", gotAttr, err)
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), gotAttr)
 		assert.Equal(s.T(), f.Id, gotAttr.Id)
@@ -216,10 +215,7 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 		NamespaceId: fixtureNamespaceId,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
-	fmt.Printf("here %v", createdAttr)
-	fmt.Printf("here %v", update)
 	resp, err := s.db.Client.UpdateAttribute(s.ctx, createdAttr.Id, update)
-	fmt.Println("here", err)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), resp)
 

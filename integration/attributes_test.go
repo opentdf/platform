@@ -167,7 +167,7 @@ func (s *AttributesSuite) Test_GetAttribute() {
 		assert.Equal(s.T(), f.Id, gotAttr.Id)
 		assert.Equal(s.T(), f.Name, gotAttr.Name)
 		assert.Equal(s.T(), fmt.Sprintf("%s%s", db.AttributeRuleTypeEnumPrefix, f.Rule), gotAttr.Rule.Enum().String())
-		assert.Equal(s.T(), f.NamespaceId, gotAttr.NamespaceId)
+		assert.Equal(s.T(), f.NamespaceId, gotAttr.Namespace.Id)
 	}
 }
 
@@ -264,7 +264,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 	updated, err := s.db.Client.GetAttribute(s.ctx, createdAttr.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
-	assert.Equal(s.T(), original.NamespaceId, updated.NamespaceId)
+	assert.Equal(s.T(), original.NamespaceId, updated.Namespace.Id)
 }
 
 func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFails() {

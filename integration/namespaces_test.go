@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
@@ -18,6 +19,8 @@ type NamespacesSuite struct {
 	db     DBInterface
 	ctx    context.Context
 }
+
+const nonExistantNamespaceId = "88888888-2222-3333-4444-999999999999"
 
 func (s *NamespacesSuite) SetupSuite() {
 	slog.Info("setting up db.Namespaces test suite")
@@ -45,12 +48,13 @@ func (s *NamespacesSuite) Test_CreateNamespace() {
 	testData := getNamespaceFixtures()
 
 	for _, ns := range testData {
+		ns.Name = strings.Replace(ns.Name, "example", "test", 1)
 		createdNamespace, err := s.db.Client.CreateNamespace(s.ctx, ns.Name)
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), createdNamespace)
 	}
 
-	// Creating a namespace with the same name should fail
+	// Creating a namespace with a name conflict should fail
 	for _, ns := range testData {
 		_, err := s.db.Client.CreateNamespace(s.ctx, ns.Name)
 		assert.NotNil(s.T(), err)
@@ -61,12 +65,6 @@ func (s *NamespacesSuite) Test_CreateNamespace() {
 func (s *NamespacesSuite) Test_GetNamespace() {
 	testData := getNamespaceFixtures()
 
-	for _, ns := range testData {
-		createdNamespace, err := s.db.Client.CreateNamespace(s.ctx, ns.Name)
-		assert.Nil(s.T(), err)
-		assert.NotNil(s.T(), createdNamespace)
-	}
-
 	for _, test := range testData {
 		gotNamespace, err := s.db.Client.GetNamespace(s.ctx, test.Id)
 		assert.Nil(s.T(), err)
@@ -75,8 +73,8 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 		assert.Equal(s.T(), test.Name, gotNamespace.Name)
 	}
 
-	// Getting a namespace with an nonexistant ID should fail
-	_, err := s.db.Client.GetNamespace(s.ctx, "some-nonexistant-uuid")
+	// Getting a namespace with an nonexistant id should fail
+	_, err := s.db.Client.GetNamespace(s.ctx, nonExistantNamespaceId)
 	assert.NotNil(s.T(), err)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
@@ -84,35 +82,18 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 func (s *NamespacesSuite) Test_ListNamespaces() {
 	testData := getNamespaceFixtures()
 
-	// Listing when there are none should return an empty list and no error
-	expectedNone, err := s.db.Client.ListNamespaces(s.ctx)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), expectedNone)
-	assert.Equal(s.T(), 0, len(expectedNone))
-
-	for _, ns := range testData {
-		createdNamespace, err := s.db.Client.CreateNamespace(s.ctx, ns.Name)
-		assert.Nil(s.T(), err)
-		assert.NotNil(s.T(), createdNamespace)
-	}
-
 	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNamespaces)
-	assert.Equal(s.T(), len(testData), len(gotNamespaces))
+	assert.GreaterOrEqual(s.T(), len(gotNamespaces), len(testData))
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace() {
 	testData := getNamespaceFixtures()
 
-	for _, ns := range testData {
-		createdNamespace, err := s.db.Client.CreateNamespace(s.ctx, ns.Name)
-		assert.Nil(s.T(), err)
-		assert.NotNil(s.T(), createdNamespace)
-	}
-
-	for _, ns := range testData {
+	for i, ns := range testData {
 		updatedName := fmt.Sprintf("%s-updated", ns.Name)
+		testData[i].Name = updatedName
 		updatedNamespace, err := s.db.Client.UpdateNamespace(s.ctx, ns.Id, updatedName)
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), updatedNamespace)
@@ -120,30 +101,46 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	}
 
 	// Update when the namespace does not exist should fail
-	_, err := s.db.Client.UpdateNamespace(s.ctx, "some-nonexistant-uuid", "new-namespace.com")
+	_, err := s.db.Client.UpdateNamespace(s.ctx, nonExistantNamespaceId, "new-namespace.com")
 	assert.NotNil(s.T(), err)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+
+	// Update to a conflict should fail
+	gotNamespace, e := s.db.Client.UpdateNamespace(s.ctx, testData[0].Id, testData[1].Name)
+	assert.Nil(s.T(), gotNamespace)
+	assert.NotNil(s.T(), e)
+	assert.ErrorIs(s.T(), e, db.ErrUniqueConstraintViolation)
 }
 
 func (s *NamespacesSuite) Test_DeleteNamespace() {
 	testData := getNamespaceFixtures()
 
-	for _, ns := range testData {
-		createdNamespace, err := s.db.Client.CreateNamespace(s.ctx, ns.Name)
-		assert.Nil(s.T(), err)
-		assert.NotNil(s.T(), createdNamespace)
-	}
-
+	// Deletion should fail when the namespace is referenced as FK in attribute(s)
 	for _, ns := range testData {
 		err := s.db.Client.DeleteNamespace(s.ctx, ns.Id)
-		assert.Nil(s.T(), err)
+		assert.NotNil(s.T(), err)
+		assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 	}
 
-	// Listing should find no namespaces after deleting all
+	// Deletion should succeed when NOT referenced as FK in attribute(s)
+	newNamespaceId, err := s.db.Client.CreateNamespace(s.ctx, "new-namespace.com")
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", newNamespaceId)
+
+	err = s.db.Client.DeleteNamespace(s.ctx, newNamespaceId)
+	assert.Nil(s.T(), err)
+
+	// Deleted namespace should not be found on List
 	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNamespaces)
-	assert.Equal(s.T(), 0, len(gotNamespaces))
+	for _, ns := range gotNamespaces {
+		assert.NotEqual(s.T(), newNamespaceId, ns.Id)
+	}
+
+	// Deleted namespace should not be found on Get
+	_, err = s.db.Client.GetNamespace(s.ctx, newNamespaceId)
+	assert.NotNil(s.T(), err)
 }
 
 func TestNamespacesSuite(t *testing.T) {

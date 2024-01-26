@@ -143,6 +143,7 @@ func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*n
 }
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {
+	// TODO: handle delete cascade, dangerous deletion via special rpc, or "soft-delete" status change
 	return newStatementBuilder().
 		Delete(NamespacesTable).
 		Where(sq.Eq{"id": id}).
@@ -153,5 +154,15 @@ func deleteNamespaceSql(id string) (string, []interface{}, error) {
 func (c Client) DeleteNamespace(ctx context.Context, id string) error {
 	sql, args, err := deleteNamespaceSql(id)
 
-	return c.exec(ctx, sql, args, err)
+	e := c.exec(ctx, sql, args, err)
+	if e != nil {
+		if errors.Is(e, ErrNotFound) {
+			slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
+		} else if errors.Is(e, ErrForeignKeyViolation) {
+			slog.Error(services.ErrConflict, slog.String("error", e.Error()))
+		} else {
+			slog.Error(services.ErrDeletingResource, slog.String("error", e.Error()))
+		}
+	}
+	return e
 }

@@ -3,7 +3,7 @@
 ##
 namespaces:
   metadata: 
-    table_name: namespaces
+    table_name: attribute_namespaces
     columns: 
       - id
       - name

@@ -4,6 +4,7 @@ import "io"
 
 type TDFWriter struct {
 	archiveWriter *Writer
+	totalBytes    int64
 }
 
 // NewTDFWriter Create tdf writer instance.
@@ -38,7 +39,7 @@ func (tdfWriter *TDFWriter) AppendPayload(data []byte) error {
 	return tdfWriter.archiveWriter.AddData(data)
 }
 
-// Close Completed adding all the files in zip archive.
-func (tdfWriter *TDFWriter) Close() error {
-	return tdfWriter.archiveWriter.Close()
+// Finish Finished adding all the files in zip archive.
+func (tdfWriter *TDFWriter) Finish() (int64, error) {
+	return tdfWriter.archiveWriter.Finish()
 }

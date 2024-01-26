@@ -62,6 +62,7 @@ type Writer struct {
 	fileInfoEntries []FileInfo
 	writeState      WriteState
 	isZip64         bool
+	totalBytes      int64
 }
 
 // NewWriter Create tdf3 writer instance.
@@ -137,13 +138,13 @@ func (writer *Writer) AddData(data []byte) error {
 			return fmt.Errorf("binary.Write failed: %w", err)
 		}
 
-		_, err = writer.writer.Write(buf.Bytes())
+		err = writer.writeData(buf.Bytes())
 		if err != nil {
 			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
 
 		// write the file name
-		_, err = writer.writer.Write([]byte(writer.FileInfo.filename))
+		err = writer.writeData([]byte(writer.FileInfo.filename))
 		if err != nil {
 			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
@@ -161,7 +162,7 @@ func (writer *Writer) AddData(data []byte) error {
 				return fmt.Errorf("binary.Write failed: %w", err)
 			}
 
-			_, err = writer.writer.Write(buf.Bytes())
+			err = writer.writeData(buf.Bytes())
 			if err != nil {
 				return fmt.Errorf("io.Writer.Write failed: %w", err)
 			}
@@ -176,7 +177,7 @@ func (writer *Writer) AddData(data []byte) error {
 	}
 
 	// now write the contents
-	_, err := writer.writer.Write(data)
+	err := writer.writeData(data)
 	if err != nil {
 		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
@@ -214,7 +215,7 @@ func (writer *Writer) AddData(data []byte) error {
 				return fmt.Errorf("binary.Write failed: %w", err)
 			}
 
-			_, err = writer.writer.Write(buf.Bytes())
+			err = writer.writeData(buf.Bytes())
 			if err != nil {
 				return fmt.Errorf("io.Writer.Write failed: %w", err)
 			}
@@ -238,7 +239,7 @@ func (writer *Writer) AddData(data []byte) error {
 				return fmt.Errorf("binary.Write failed: %w", err)
 			}
 
-			_, err = writer.writer.Write(buf.Bytes())
+			err = writer.writeData(buf.Bytes())
 			if err != nil {
 				return fmt.Errorf("io.Writer.Write failed: %w", err)
 			}
@@ -256,19 +257,19 @@ func (writer *Writer) AddData(data []byte) error {
 	return nil
 }
 
-// Close Completed adding all the files in zip archive.
-func (writer *Writer) Close() error {
+// Finish Finished adding all the files in zip archive.
+func (writer *Writer) Finish() (int64, error) {
 	err := writer.writeCentralDirectory()
 	if err != nil {
-		return err
+		return writer.totalBytes, err
 	}
 
 	err = writer.writeEndOfCentralDirectory()
 	if err != nil {
-		return fmt.Errorf("io.Writer.Write failed: %w", err)
+		return writer.totalBytes, fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
 
-	return nil
+	return writer.totalBytes, nil
 }
 
 // WriteCentralDirectory write central directory struct into archive.
@@ -313,13 +314,13 @@ func (writer *Writer) writeCentralDirectory() error {
 			return fmt.Errorf("binary.Write failed: %w", err)
 		}
 
-		_, err = writer.writer.Write(buf.Bytes())
+		err = writer.writeData(buf.Bytes())
 		if err != nil {
 			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
 
 		// write the filename
-		_, err = writer.writer.Write([]byte(writer.fileInfoEntries[i].filename))
+		err = writer.writeData([]byte(writer.fileInfoEntries[i].filename))
 		if err != nil {
 			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
@@ -339,7 +340,7 @@ func (writer *Writer) writeCentralDirectory() error {
 				return fmt.Errorf("binary.Write failed: %w", err)
 			}
 
-			_, err = writer.writer.Write(buf.Bytes())
+			err = writer.writeData(buf.Bytes())
 			if err != nil {
 				return fmt.Errorf("io.Writer.Write failed: %w", err)
 			}
@@ -391,7 +392,7 @@ func (writer *Writer) writeEndOfCentralDirectory() error {
 		return fmt.Errorf("binary.Write failed: %w", err)
 	}
 
-	_, err = writer.writer.Write(buf.Bytes())
+	err = writer.writeData(buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
@@ -420,7 +421,7 @@ func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
 		return fmt.Errorf("binary.Write failed: %w", err)
 	}
 
-	_, err = writer.writer.Write(buf.Bytes())
+	err = writer.writeData(buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
@@ -444,10 +445,11 @@ func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
 		return fmt.Errorf("binary.Write failed: %w", err)
 	}
 
-	_, err = writer.writer.Write(buf.Bytes())
+	err = writer.writeData(buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
+
 	return nil
 }
 
@@ -457,4 +459,14 @@ func (writer *Writer) getTimeDateUnMSDosFormat() (uint16, uint16) {
 	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/2), 29))
 	dateInDos := (t.Year()-80)<<9 | int((t.Month()+1)<<5) | t.Day()
 	return uint16(timeInDos), uint16(dateInDos)
+}
+
+func (writer *Writer) writeData(data []byte) error {
+	n, err := writer.writer.Write(data)
+	if err != nil {
+		return err
+	}
+
+	writer.totalBytes += int64(n)
+	return nil
 }

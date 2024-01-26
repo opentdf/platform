@@ -10,12 +10,14 @@ import (
 type TDF3Entry struct {
 	manifest    string
 	payloadSize int64
+	tdfSize     int64
 }
 
 var TDF3Tests = []TDF3Entry{ //nolint:gochecknoglobals // This global is used as test harness for other tests
 	{
 		manifest:    "some manifest",
 		payloadSize: oneKB,
+		tdfSize:     1291,
 	},
 	{
 		manifest: `{
@@ -63,6 +65,7 @@ var TDF3Tests = []TDF3Entry{ //nolint:gochecknoglobals // This global is used as
 	}
 }`,
 		payloadSize: 10 * oneMB,
+		tdfSize:     10487693,
 	},
 	{
 		manifest: `{
@@ -110,6 +113,7 @@ var TDF3Tests = []TDF3Entry{ //nolint:gochecknoglobals // This global is used as
 	}
 }`,
 		payloadSize: 3 * oneGB,
+		tdfSize:     3145729933,
 	},
 	{
 		manifest: `{
@@ -157,6 +161,7 @@ var TDF3Tests = []TDF3Entry{ //nolint:gochecknoglobals // This global is used as
 	}
 }`,
 		payloadSize: 10 * oneGB,
+		tdfSize:     10485762121,
 	},
 }
 
@@ -190,12 +195,6 @@ func writeTDFs(t *testing.T) {
 		}(writer)
 
 		tdf3Writer := NewTDFWriter(writer)
-		defer func(tdf3Writer *TDFWriter) {
-			err := tdf3Writer.Close()
-			if err != nil {
-				t.Fatalf("Fail to close tdf3 writer: %v", err)
-			}
-		}(tdf3Writer)
 
 		// write payload
 		totalBytes := tdf3Entry.payloadSize
@@ -224,6 +223,15 @@ func writeTDFs(t *testing.T) {
 		err = tdf3Writer.AppendManifest(tdf3Entry.manifest)
 		if err != nil {
 			t.Fatalf("Fail to add payload to tdf3 writer: %v", err)
+		}
+
+		tdfSize, err := tdf3Writer.Finish()
+		if err != nil {
+			t.Fatalf("Fail to close tdf3 writer: %v", err)
+		}
+
+		if tdfSize != tdf3Entry.tdfSize {
+			t.Errorf("tdf size test failed expected %v, got %v", tdfSize, tdf3Entry.tdfSize)
 		}
 	}
 }

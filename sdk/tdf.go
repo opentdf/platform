@@ -8,7 +8,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/archive"
 	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
-	"log/slog"
 	"strings"
 )
 
@@ -33,30 +32,31 @@ const (
 )
 
 // Create tdf
-func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
+func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (int64, error) {
+	toalBytes := int64(0)
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
-		return fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return toalBytes, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
 	_, err = reader.Seek(0, io.SeekStart)
 	if err != nil {
-		return fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return toalBytes, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
 	if inputSize > maxFileSizeSupported {
-		return errFileTooLarge
+		return toalBytes, errFileTooLarge
 	}
 
 	// create a split key
 	splitKey, err := newSplitKeyFromKasInfo(tdfConfig.kasInfoList, tdfConfig.attributes, tdfConfig.metaData)
 	if err != nil {
-		return fmt.Errorf("fail to create a new split key: %w", err)
+		return toalBytes, fmt.Errorf("fail to create a new split key: %w", err)
 	}
 
 	manifest, err := splitKey.getManifest()
 	if err != nil {
-		return fmt.Errorf("fail to create manifest: %w", err)
+		return toalBytes, fmt.Errorf("fail to create manifest: %w", err)
 	}
 
 	segmentSize := tdfConfig.defaultSegmentSize
@@ -74,16 +74,9 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
 	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
 	tdfWriter := archive.NewTDFWriter(writer)
 
-	defer func(tdfWriter *archive.TDFWriter) {
-		err := tdfWriter.Close()
-		if err != nil {
-			slog.Error("http.Response failed to close:%w", err)
-		}
-	}(tdfWriter)
-
 	err = tdfWriter.SetPayloadSize(payloadSize)
 	if err != nil {
-		return fmt.Errorf("archive.SetPayloadSize failed: %w", err)
+		return toalBytes, fmt.Errorf("archive.SetPayloadSize failed: %w", err)
 	}
 
 	var readPos int64
@@ -97,26 +90,26 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
 
 		n, err := reader.Read(readBuf.Bytes()[:readSize])
 		if err != nil {
-			return fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+			return toalBytes, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
 		if int64(n) != readSize {
-			return fmt.Errorf("io.ReadSeeker.Read size missmatch")
+			return toalBytes, fmt.Errorf("io.ReadSeeker.Read size missmatch")
 		}
 
 		cipherData, err := splitKey.encrypt(readBuf.Bytes()[:readSize])
 		if err != nil {
-			return fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+			return toalBytes, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
 		err = tdfWriter.AppendPayload(cipherData)
 		if err != nil {
-			return fmt.Errorf("io.writer.Write failed: %w", err)
+			return toalBytes, fmt.Errorf("io.writer.Write failed: %w", err)
 		}
 
 		payloadSig, err := splitKey.getSignature(cipherData, tdfConfig.segmentIntegrityAlgorithm)
 		if err != nil {
-			return fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+			return toalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
 		aggregateHash += payloadSig
@@ -134,7 +127,7 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
 
 	aggregateHashSig, err := splitKey.getSignature([]byte(aggregateHash), tdfConfig.integrityAlgorithm)
 	if err != nil {
-		return fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+		return toalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 	}
 
 	sig := string(crypto.Base64Encode([]byte(aggregateHashSig)))
@@ -166,67 +159,75 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) error {
 
 	manifestAsStr, err := json.Marshal(manifest)
 	if err != nil {
-		return fmt.Errorf("json.Marshal failed:%w", err)
+		return toalBytes, fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
 	err = tdfWriter.AppendManifest(string(manifestAsStr))
 	if err != nil {
-		return fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
+		return toalBytes, fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
 	}
 
-	return nil
+	totalBytes, err := tdfWriter.Finish()
+	if err != nil {
+		return toalBytes, fmt.Errorf("TDFWriter.Finish failed:%w", err)
+	}
+
+	return totalBytes, nil
 }
 
 // GetPayload decrypt the tdf and write the data to writer.
-func GetPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) error {
+func GetPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) (int64, error) {
+
+	totalBytes := int64(0)
+
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
-		return fmt.Errorf("archive.NewTDFReader failed: %w", err)
+		return totalBytes, fmt.Errorf("archive.NewTDFReader failed: %w", err)
 	}
 
 	manifest, err := tdfReader.Manifest()
 	if err != nil {
-		return fmt.Errorf("tdfReader.Manifest failed: %w", err)
+		return totalBytes, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
 	manifestObj := &Manifest{}
 	err = json.Unmarshal([]byte(manifest), manifestObj)
 	if err != nil {
-		return fmt.Errorf("json.Unmarshal failed:%w", err)
+		return totalBytes, fmt.Errorf("json.Unmarshal failed:%w", err)
 	}
 
 	// create a split key
 	sKey, err := newSplitKeyFromManifest(authConfig, *manifestObj)
 	if err != nil {
-		return fmt.Errorf("fail to create a new split key: %w", err)
+		return totalBytes, fmt.Errorf("fail to create a new split key: %w", err)
 	}
 
 	res, err := sKey.validateRootSignature(manifestObj)
 	if err != nil {
-		return fmt.Errorf("splitKey.validateRootSignature failed: %w", err)
+		return totalBytes, fmt.Errorf("splitKey.validateRootSignature failed: %w", err)
 	}
 
 	if !res {
-		return errRootSigValidation
+		return totalBytes, errRootSigValidation
 	}
 
 	segSize := manifestObj.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
 	encryptedSegSize := manifestObj.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
 
 	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
-		return errSegSizeMismatch
+		return totalBytes, errSegSizeMismatch
 	}
 
 	var payloadReadOffset int64
 	for _, seg := range manifestObj.EncryptionInformation.IntegrityInformation.Segments {
 		readBuf, err := tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
 		if err != nil {
-			return fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
+			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
 
 		if int64(len(readBuf)) != seg.EncryptedSize {
-			return errTDFReaderFailed
+			return totalBytes, errTDFReaderFailed
 		}
 
 		segHashAlg := manifestObj.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
@@ -237,31 +238,32 @@ func GetPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) e
 
 		payloadSig, err := sKey.getSignature(readBuf, sigAlg)
 		if err != nil {
-			return fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
 		if seg.Hash != string(crypto.Base64Encode([]byte(payloadSig))) {
-			return errSegSigValidation
+			return totalBytes, errSegSigValidation
 		}
 
 		writeBuf, err := sKey.decrypt(readBuf)
 		if err != nil {
-			return fmt.Errorf("splitKey.decrypt failed: %w", err)
+			return totalBytes, fmt.Errorf("splitKey.decrypt failed: %w", err)
 		}
 
 		n, err := writer.Write(writeBuf)
 		if err != nil {
-			return fmt.Errorf("io.writer.write failed: %w", err)
+			return totalBytes, fmt.Errorf("io.writer.write failed: %w", err)
 		}
 
 		if n != len(writeBuf) {
-			return errWriteFailed
+			return totalBytes, errWriteFailed
 		}
 
 		payloadReadOffset += seg.EncryptedSize
+		totalBytes += int64(n)
 	}
 
-	return nil
+	return totalBytes, nil
 }
 
 // GetMetadata return the meta present in tdf.

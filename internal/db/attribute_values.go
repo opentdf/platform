@@ -65,14 +65,14 @@ func createAttributeValueSql(
 		Suffix("RETURNING id").
 		ToSql()
 }
-func (c Client) CreateAttributeValue(ctx context.Context, v *attributes.ValueCreate) (*attributes.Value, error) {
+func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(v.Metadata)
 	if err != nil {
 		return nil, err
 	}
 
 	sql, args, err := createAttributeValueSql(
-		v.AttributeId,
+		attributeId,
 		v.Value,
 		v.Members,
 		metadataJson,
@@ -176,7 +176,7 @@ func updateAttributeValueSql(
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
-func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueUpdate) (*attributes.Value, error) {
+func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {
 		return nil, err

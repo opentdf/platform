@@ -3,7 +3,7 @@ package crypto
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -57,7 +57,7 @@ func (asymEncryption AsymEncryption) Encrypt(data []byte) ([]byte, error) {
 		return nil, errors.New("failed to encrypt, public key is empty")
 	}
 
-	bytes, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, asymEncryption.publicKey, data, nil)
+	bytes, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, asymEncryption.publicKey, data, nil)
 	if err != nil {
 		return nil, fmt.Errorf("rsa.EncryptOAEP failed: %w", err)
 	}

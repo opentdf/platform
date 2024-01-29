@@ -24,7 +24,8 @@ type ZipEntryInfo struct {
 }
 
 var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used as test harness for other tests
-	files []ZipEntryInfo
+	files       []ZipEntryInfo
+	archiveSize int64
 }{
 	{
 		[]ZipEntryInfo{
@@ -41,6 +42,7 @@ var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used a
 				10,
 			},
 		},
+		358,
 	},
 	{
 		[]ZipEntryInfo{
@@ -69,6 +71,7 @@ var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used a
 				oneKB,
 			},
 		},
+		6778,
 	},
 	{
 		[]ZipEntryInfo{
@@ -97,6 +100,7 @@ var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used a
 				oneMB + oneKB,
 			},
 		},
+		526397048,
 	},
 
 	{
@@ -114,6 +118,7 @@ var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used a
 				tenGB,
 			},
 		},
+		12582912572,
 	},
 }
 
@@ -191,9 +196,13 @@ func customZip(t *testing.T) {
 			}
 		}
 
-		err = archiveWriter.Close()
+		archiveSize, err := archiveWriter.Finish()
 		if err != nil {
 			t.Fatalf("Fail to close to archive: %v", err)
+		}
+
+		if archiveSize != test.archiveSize {
+			t.Errorf("archive size test failed expected %v, got %v", archiveSize, test.archiveSize)
 		}
 	}
 }

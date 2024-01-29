@@ -43,7 +43,7 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 
 	bytes, err := asymDecryption.privateKey.Decrypt(nil,
 		data,
-		&rsa.OAEPOptions{Hash: crypto.SHA256})
+		&rsa.OAEPOptions{Hash: crypto.SHA1})
 	if err != nil {
 		return nil, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
 	}

@@ -9,6 +9,8 @@ require (
 	github.com/bufbuild/protovalidate-go v0.4.3
 	github.com/creasty/defaults v1.7.0
 	github.com/go-chi/cors v1.2.1
+	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/google/uuid v1.4.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1
 	github.com/jackc/pgx/v5 v5.5.0
@@ -54,7 +56,6 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/cel-go v0.18.2 // indirect
-	github.com/google/uuid v1.4.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.2 // indirect

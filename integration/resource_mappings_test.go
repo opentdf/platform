@@ -89,9 +89,10 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 		Terms:            []string{},
 	}
 	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
-	// TODO: verify this test & behavior is correct. Terms are not required?
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
+	assert.NotNil(s.T(), createdMapping.Terms)
+	assert.Equal(s.T(), len(createdMapping.Terms), 0)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
@@ -187,8 +188,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
 
-	// TODO: check the update response directly if response behavior is unified across services?
-	// get after update
+	// get after update to verify db reflects changes made
 	got, err := s.db.Client.GetResourceMapping(s.ctx, createdMapping.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)

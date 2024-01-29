@@ -46,7 +46,7 @@ type FixtureData struct {
 	Namespaces struct {
 		Metadata FixtureMetadata                 `yaml:"metadata"`
 		Data     map[string]FixtureDataNamespace `yaml:"data"`
-	} `yaml:"namespaces"`
+	} `yaml:"attribute_namespaces"`
 	Attributes struct {
 		Metadata FixtureMetadata                 `yaml:"metadata"`
 		Data     map[string]FixtureDataAttribute `yaml:"data"`

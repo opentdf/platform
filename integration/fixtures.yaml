@@ -1,10 +1,10 @@
 ##
 # Namespaces
 ##
-namespaces:
-  metadata: 
-    table_name: namespaces
-    columns: 
+attribute_namespaces:
+  metadata:
+    table_name: attribute_namespaces
+    columns:
       - id
       - name
   data:
@@ -24,9 +24,9 @@ namespaces:
 # Attribute Rule Enum: UNSPECIFIED, ANY_OF, ALL_OF, HIERARCHY
 ##
 attributes:
-  metadata: 
+  metadata:
     table_name: attribute_definitions
-    columns: 
+    columns:
       - id
       - namespace_id
       - name
@@ -79,9 +79,9 @@ attributes:
 # Attribute Values
 ##
 attribute_values:
-  metadata: 
+  metadata:
     table_name: attribute_values
-    columns: 
+    columns:
       - id
       - attribute_definition_id
       - value
@@ -119,15 +119,15 @@ attribute_values:
       attribute_definition_id: 00000000-0000-0000-0000-000000000002
       value: value2
 
-## 
+##
 # Subject Mappings
 #
 # Operator Enum: UNSPECIFIED, IN, NOT_IN
 ##
 subject_mappings:
-  metadata: 
+  metadata:
     table_name: subject_mappings
-    columns: 
+    columns:
       - id
       - attribute_value_id
       - operator

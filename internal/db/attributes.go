@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
+	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -51,6 +54,8 @@ func attributesSelect() sq.SelectBuilder {
 		tableField(AttributeTable, "name"),
 		tableField(AttributeTable, "rule"),
 		tableField(AttributeTable, "metadata"),
+		tableField(AttributeTable, "namespace_id"),
+		tableField(NamespacesTable, "name"),
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
 			"'id', "+tableField(AttributeValueTable, "id")+", "+
@@ -60,18 +65,21 @@ func attributesSelect() sq.SelectBuilder {
 			") AS values",
 	).
 		LeftJoin(AttributeValueTable + " ON " + AttributeValueTable + ".id = " + AttributeTable + ".id").
-		GroupBy(tableField(AttributeTable, "id"))
+		LeftJoin(NamespacesTable + " ON " + NamespacesTable + ".id = " + AttributeTable + ".namespace_id").
+		GroupBy(tableField(AttributeTable, "id"), tableField(NamespacesTable, "name"))
 }
 
 func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 	var (
-		id           string
-		name         string
-		rule         string
-		metadataJson []byte
-		valuesJson   []byte
+		id            string
+		name          string
+		rule          string
+		metadataJson  []byte
+		namespaceId   string
+		namespaceName string
+		valuesJson    []byte
 	)
-	err := row.Scan(&id, &name, &rule, &metadataJson, &valuesJson)
+	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, err
@@ -94,11 +102,12 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 	}
 
 	attr := &attributes.Attribute{
-		Id:       id,
-		Name:     name,
-		Rule:     attributesRuleTypeEnumTransformOut(rule),
-		Metadata: m,
-		Values:   v,
+		Id:        id,
+		Name:      name,
+		Rule:      attributesRuleTypeEnumTransformOut(rule),
+		Metadata:  m,
+		Values:    v,
+		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
 	}
 
 	return attr, nil
@@ -109,13 +118,15 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 	for rows.Next() {
 		slog.Info("next")
 		var (
-			id           string
-			name         string
-			rule         string
-			metadataJson []byte
-			valuesJson   []byte
+			id            string
+			name          string
+			rule          string
+			metadataJson  []byte
+			namespaceId   string
+			namespaceName string
+			valuesJson    []byte
 		)
-		err := rows.Scan(&id, &name, &rule, &metadataJson, &valuesJson)
+		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson)
 		if err != nil {
 			return nil, err
 		}
@@ -124,6 +135,10 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 			Id:   id,
 			Name: name,
 			Rule: attributesRuleTypeEnumTransformOut(rule),
+			Namespace: &namespaces.Namespace{
+				Id:   namespaceId,
+				Name: namespaceName,
+			},
 		}
 
 		if metadataJson != nil {
@@ -252,6 +267,9 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 		Name:     attr.Name,
 		Rule:     attr.Rule,
 		Metadata: metadata,
+		Namespace: &namespaces.Namespace{
+			Id: attr.NamespaceId,
+		},
 	}
 	return a, nil
 }
@@ -275,8 +293,15 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 	// get attribute before updating
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
-		slog.Error(services.ErrDeletingResource, slog.String("scope", "getAttribute"), slog.String("error", err.Error()))
+		slog.Error(services.ErrUpdatingResource, slog.String("scope", "getAttribute"), slog.String("error", err.Error()))
 		return nil, status.Error(status.Code(err), services.ErrUpdatingResource)
+	}
+	if a.Namespace.Id != attr.NamespaceId {
+		slog.Error(services.ErrUpdatingResource,
+			slog.String("scope", "namespaceId"),
+			slog.String("error", errors.Join(ErrRestrictViolation, fmt.Errorf("cannot change namespaceId")).Error()),
+		)
+		return nil, status.Error(codes.InvalidArgument, services.ErrUpdatingResource)
 	}
 
 	metadataJson, _, err := marshalUpdateMetadata(a.Metadata, attr.Metadata)
@@ -289,6 +314,7 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
 
+	// TODO: see if returning the old is the behavior we should consistently implement throughout services
 	// return the attribute before updating
 	return a, nil
 }

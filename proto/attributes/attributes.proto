@@ -4,6 +4,7 @@ package attributes;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
+import "namespaces/namespaces.proto";
 import "google/api/annotations.proto";
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
@@ -15,25 +16,24 @@ enum AttributeRuleTypeEnum {
 }
 
 message Attribute {
-  // Namespace namespace = 1;
   string id = 1;
 
   // Optional metadata for the attribute definition
   common.Metadata metadata = 2;
 
-  // TODO: enable this when merging with Jake's work
-  // namespace.Namespace namespace = 3;
+  // namespace of the attribute
+  namespaces.Namespace namespace = 3;
 
   //attribute name
-  string name = 5;
+  string name = 4;
 
   // attribute rule enum
-  AttributeRuleTypeEnum rule = 6 [
+  AttributeRuleTypeEnum rule = 5 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
 
-  repeated Value values = 7;
+  repeated Value values = 6;
 }
 
 message AttributeCreateUpdate {
@@ -189,7 +189,7 @@ service AttributesService {
   /*
      List Attributes
      Example:
-      grpcurl -plaintext -d '{"namespace_id": "namespace_id"}' localhost:8080 attributes.AttributesService/ListAttributes
+      grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
   */
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
 

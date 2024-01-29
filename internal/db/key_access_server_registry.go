@@ -27,6 +27,7 @@ func listAllKeyAccessServersSql() (string, []interface{}, error) {
 		From(KeyAccessServerTable).
 		ToSql()
 }
+
 func (c Client) ListKeyAccessServers(ctx context.Context) ([]*kasr.KeyAccessServer, error) {
 	sql, args, err := listAllKeyAccessServersSql()
 
@@ -54,8 +55,10 @@ func (c Client) ListKeyAccessServers(ctx context.Context) ([]*kasr.KeyAccessServ
 			return err
 		}
 
-		if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
-			return err
+		if metadataJSON != nil {
+			if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
+				return err
+			}
 		}
 
 		keyAccessServer.Id = id
@@ -81,6 +84,7 @@ func getKeyAccessServerSql(id string) (string, []interface{}, error) {
 		From(KeyAccessServerTable).
 		ToSql()
 }
+
 func (c Client) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAccessServer, error) {
 	sql, args, err := getKeyAccessServerSql(id)
 

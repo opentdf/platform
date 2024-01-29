@@ -5,6 +5,7 @@ package attributes;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
+import "kasregistry/kasregistry.proto";
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
 enum AttributeRuleTypeEnum {
@@ -34,6 +35,8 @@ message Attribute {
   ];
 
   repeated Value values = 7;
+
+  repeated kasregistry.KeyAccessServer grants = 8;
 }
 
 message AttributeCreateUpdate {
@@ -54,6 +57,8 @@ message AttributeCreateUpdate {
 
   // optional
   repeated ValueCreate values = 5;
+
+  repeated kasregistry.KeyAccessServer grants = 8;
 }
 
 message Value {
@@ -180,6 +185,15 @@ message DeleteAttributeValueRequest {
 }
 message DeleteAttributeValueResponse {
   Value value = 1;
+}
+
+/*
+   Assign Key Access Server to Attribute and Value
+*/
+
+message AssignKeyAccessServerRequest {
+  string attribute_id = 1 [(buf.validate.field).required = true];
+  string key_access_server_id = 2 [(buf.validate.field).required = true];
 }
 
 ///

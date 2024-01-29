@@ -2,11 +2,11 @@ package oauth_test
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -65,33 +65,22 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 		t.Errorf("error parsing token received from IDP: %v", err)
 	}
 
-	// if this is our custom implementation from keycloak then we know what the
-	//    structure is and can verify that we are getting back something that has
-	//    our public key embedded in a particular way
-	if claims, ok := tokenDetails.Get("tdf_claims"); ok {
-		claimsMap := claims.(map[string]interface{})
-		tokenDpopKey := claimsMap["client_public_signing_key"].(string)
-		if tokenDpopKey == "" {
-			t.Fatalf("no client_public_signing key in claims: %v", claimsMap)
+	if cnfClaim, ok := tokenDetails.Get("cnf"); ok {
+		cnfClaimsMap := cnfClaim.(map[string]interface{})
+		idpKeyFingerprint := cnfClaimsMap["jkt"].(string)
+		if idpKeyFingerprint == "" {
+			t.Fatalf("no cnf.jkt key in claims: %v", cnfClaimsMap)
 		} else {
-			keyDER, _ := pem.Decode([]byte(tokenDpopKey))
-			if keyDER == nil {
-				t.Fatalf("error parsing key from IDP token")
-			} else {
-				tokenPublicKey, err := x509.ParsePKIXPublicKey(keyDER.Bytes)
-				if err != nil {
-					t.Fatalf("error parsing public key from DER: %v", err)
-				} else {
-					pubkey := tokenPublicKey.(*rsa.PublicKey)
-					if pubkey.E != dpopKey.E || pubkey.N.String() != dpopKey.N.String() {
-						t.Fatalf("didn't get back the same key in the dpop header: (%d, %d) != (%d, %d)", pubkey.E, pubkey.N, dpopKey.E, dpopKey.N)
-					}
-				}
+			pk, _ := dpopJWK.PublicKey()
+			hash, _ := pk.Thumbprint(crypto.SHA256)
+
+			expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
+			if expectedThumbprint != idpKeyFingerprint {
+				t.Fatalf("didn't get expected fingerprint [%s], got [%s]", expectedThumbprint, idpKeyFingerprint)
 			}
 		}
-	} else if strings.EqualFold(tok.Type(), "DPoP") {
-		// if not, just make sure that they gave us a token that has the right type
-		t.Fatalf("got the wrong kind of access token: %s: %v", tok.Type(), tok)
+	} else {
+		t.Fatal("no cnf claim in token")
 	}
 }
 
@@ -398,7 +387,6 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	if err != nil {
 		t.Fatalf("error starting keycloak container: %v", err)
 	}
-	_, _ = keycloak.ContainerIP(ctx)
 	port, _ := keycloak.MappedPort(ctx, "8082")
 	keycloakBase := fmt.Sprintf("http://localhost:%s", port.Port())
 

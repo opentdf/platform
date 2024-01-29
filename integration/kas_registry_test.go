@@ -50,9 +50,9 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
 			if item.Id == fixture.Id {
 				assert.Equal(s.T(), fixture.Id, item.Id)
 				if item.PublicKey.GetRemote() != "" {
-					assert.Equal(s.T(), fixture.PubKey.PublicKey, item.PublicKey.GetRemote())
+					assert.Equal(s.T(), fixture.PubKey.Remote, item.PublicKey.GetRemote())
 				} else {
-					assert.Equal(s.T(), fixture.PubKey.PublicKey, item.PublicKey.GetLocal())
+					assert.Equal(s.T(), fixture.PubKey.Local, item.PublicKey.GetLocal())
 				}
 				assert.Equal(s.T(), fixture.KeyAccessServer, item.Name)
 			}

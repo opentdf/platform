@@ -51,14 +51,13 @@ type FixtureDataResourceMapping struct {
 	Terms            []string `yaml:"terms"`
 }
 
-type FixtureDataPublicKey struct {
-	PublicKey string `yaml:"remote" json:"remote"`
-}
-
 type FixtureDataKasRegistry struct {
-	Id              string               `yaml:"id"`
-	KeyAccessServer string               `yaml:"key_access_server"`
-	PubKey          FixtureDataPublicKey `yaml:"public_key" json:"public_key"`
+	Id              string `yaml:"id"`
+	KeyAccessServer string `yaml:"key_access_server"`
+	PubKey          struct {
+		Remote string `yaml:"remote" json:"remote,omitempty"`
+		Local  string `yaml:"local" json:"local,omitempty"`
+	} `yaml:"public_key" json:"public_key"`
 }
 
 type FixtureData struct {
@@ -266,6 +265,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 			f.db.StringWrap(d.Id),
 			f.db.StringWrap(d.KeyAccessServer),
 		}
+
 		if pubKeyJson, err := json.Marshal(d.PubKey); err != nil {
 			slog.Error("⛔️ 📦 issue with KAS registry public key JSON - check fixtures.yaml for issues")
 			panic("issue with KAS registry public key JSON")

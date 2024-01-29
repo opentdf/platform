@@ -37,7 +37,7 @@ const (
 type AttributesServiceClient interface {
 	// List Attributes
 	// Example:
-	// grpcurl -plaintext -d '{"namespace_id": "348f3698-a0c9-4ed6-a90c-e589aaf59c5"}' localhost:9000 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
 	// List Values
 	// Example:
@@ -47,7 +47,7 @@ type AttributesServiceClient interface {
 	// Create Attribute
 	// Example:
 	//
-	//	grpcurl -plaintext -d '{"attribute": {"namespace_id": "348f3698-a0c9-4ed6-a90c-e589aaf59c57", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+	//	grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:8080 attributes.AttributesService/CreateAttribute
 	CreateAttribute(ctx context.Context, in *CreateAttributeRequest, opts ...grpc.CallOption) (*CreateAttributeResponse, error)
 	UpdateAttribute(ctx context.Context, in *UpdateAttributeRequest, opts ...grpc.CallOption) (*UpdateAttributeResponse, error)
 	DeleteAttribute(ctx context.Context, in *DeleteAttributeRequest, opts ...grpc.CallOption) (*DeleteAttributeResponse, error)
@@ -166,7 +166,7 @@ func (c *attributesServiceClient) DeleteAttributeValue(ctx context.Context, in *
 type AttributesServiceServer interface {
 	// List Attributes
 	// Example:
-	// grpcurl -plaintext -d '{"namespace_id": "348f3698-a0c9-4ed6-a90c-e589aaf59c5"}' localhost:9000 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
 	// List Values
 	// Example:
@@ -176,7 +176,7 @@ type AttributesServiceServer interface {
 	// Create Attribute
 	// Example:
 	//
-	//	grpcurl -plaintext -d '{"attribute": {"namespace_id": "348f3698-a0c9-4ed6-a90c-e589aaf59c57", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+	//	grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:8080 attributes.AttributesService/CreateAttribute
 	CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error)
 	UpdateAttribute(context.Context, *UpdateAttributeRequest) (*UpdateAttributeResponse, error)
 	DeleteAttribute(context.Context, *DeleteAttributeRequest) (*DeleteAttributeResponse, error)

@@ -53,7 +53,7 @@ message AttributeCreateUpdate {
   ];
 
   // optional
-  repeated ValueCreate values = 5;
+  repeated ValueCreateUpdate values = 5;
 }
 
 message Value {
@@ -70,18 +70,7 @@ message Value {
   repeated string members = 5;
 }
 
-message ValueCreate {
-  common.MetadataMutable metadata = 1;
-
-  string attribute_id = 2 [(buf.validate.field).required = true];
-
-  string value = 3;
-
-  // list of attribute values that this value is related to (attribute group)
-  repeated string members = 4;
-}
-
-message ValueUpdate {
+message ValueCreateUpdate {
   common.MetadataMutable metadata = 1;
 
   string value = 2;
@@ -161,15 +150,16 @@ message ListAttributeValuesResponse {
 
 message CreateAttributeValueRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
-  ValueCreate value = 2 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 2 [(buf.validate.field).required = true];
 }
 message CreateAttributeValueResponse {
   Value value = 1;
 }
 
 message UpdateAttributeValueRequest {
-  string id = 1 [(buf.validate.field).required = true];
-  ValueUpdate value = 2 [(buf.validate.field).required = true];
+  string attribute_id = 1 [(buf.validate.field).required = true];
+  string id = 2 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 3 [(buf.validate.field).required = true];
 }
 message UpdateAttributeValueResponse {
   Value value = 1;
@@ -242,7 +232,7 @@ service AttributesService {
 
   rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {
     option (google.api.http) = {
-      post: "/attributes/_/values/{id}"
+      post: "/attributes/{attribute_id}/values/{id}"
       body: "value"
     };
   }

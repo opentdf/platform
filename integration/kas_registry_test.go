@@ -133,7 +133,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 	}
 
 	kasRegistry := &kasr.KeyAccessServerCreateUpdate{
-		Name:      "test create key access server",
+		Name:      "testing creation with local key",
 		PublicKey: pubKey,
 		Metadata:  metadata,
 	}
@@ -156,7 +156,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
 		},
 	}
 	testKas := &kasr.KeyAccessServerCreateUpdate{
-		Name:      "test create key access server",
+		Name:      "testing update with remote key",
 		PublicKey: pubKey,
 	}
 	createdKas, err := s.db.Client.CreateKeyAccessServer(s.ctx, testKas)
@@ -213,7 +213,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 		},
 	}
 	testKas := &kasr.KeyAccessServerCreateUpdate{
-		Name:      "test create key access server",
+		Name:      "test delete",
 		PublicKey: pubKey,
 	}
 	createdKas, err := s.db.Client.CreateKeyAccessServer(s.ctx, testKas)

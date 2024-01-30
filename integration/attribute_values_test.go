@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var nonexistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
+var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {
 	suite.Suite
@@ -81,7 +81,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
-	attr, err := s.db.Client.GetAttributeValue(s.ctx, nonexistentAttributeValueUuid)
+	attr, err := s.db.Client.GetAttributeValue(s.ctx, nonExistentAttributeValueUuid)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), attr)
 }
@@ -155,7 +155,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 // 		AttributeId: attrDef.Id,
 // 		Members: []string{
 // 			fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-// 			nonexistentAttributeValueUuid,
+// 			nonExistentAttributeValueUuid,
 // 		},
 // 	}
 // 	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, value)
@@ -226,7 +226,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
 	updatedValue := &attributes.ValueUpdate{
 		Value: "updated value testing update",
 	}
-	updated, err := s.db.Client.UpdateAttributeValue(s.ctx, nonexistentAttributeValueUuid, updatedValue)
+	updated, err := s.db.Client.UpdateAttributeValue(s.ctx, nonExistentAttributeValueUuid, updatedValue)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
 }
@@ -253,7 +253,7 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute() {
 }
 
 func (s *AttributeValuesSuite) Test_DeleteAttribute_NotFound() {
-	resp, err := s.db.Client.DeleteAttributeValue(s.ctx, nonexistentAttributeValueUuid)
+	resp, err := s.db.Client.DeleteAttributeValue(s.ctx, nonExistentAttributeValueUuid)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
 }

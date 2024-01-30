@@ -23,14 +23,13 @@ type AttributesSuite struct {
 
 var (
 	fixtureNamespaceId string
-	nonexistantAttrId  string
+	nonExistentAttrId  = "00000000-6789-4321-9876-123456765436"
 )
 
 func (s *AttributesSuite) SetupSuite() {
 	slog.Info("setting up db.Attributes test suite")
-	fixtureNamespaceId = fixtures.GetNamespaceKey("example.com").Id
-	nonexistantAttrId = "00000000-6789-4321-9876-123456765436"
 	s.ctx = context.Background()
+	fixtureNamespaceId = fixtures.GetNamespaceKey("example.com").Id
 	s.schema = "test_opentdf_attribute_definitions"
 	s.db = NewDBInterface(s.schema)
 	s.f = NewFixture(s.db)
@@ -172,7 +171,7 @@ func (s *AttributesSuite) Test_GetAttribute() {
 
 func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 	// this uuid does not exist
-	gotAttr, err := s.db.Client.GetAttribute(s.ctx, nonexistantAttrId)
+	gotAttr, err := s.db.Client.GetAttribute(s.ctx, nonExistentAttrId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), gotAttr)
 	// TODO: should be a not found error here
@@ -231,7 +230,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 		NamespaceId: fixtureNamespaceId,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
-	resp, err := s.db.Client.UpdateAttribute(s.ctx, nonexistantAttrId, update)
+	resp, err := s.db.Client.UpdateAttribute(s.ctx, nonExistentAttrId, update)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
 }

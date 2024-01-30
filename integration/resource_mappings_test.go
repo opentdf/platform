@@ -12,10 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var (
-	nonexistentAttributeValueUuid  = "78909865-8888-9999-9999-000000000000"
-	nonexistentResourceMappingUuid = "45674556-8888-9999-9999-000001230000"
-)
+var nonexistentResourceMappingUuid = "45674556-8888-9999-9999-000001230000"
 
 type ResourceMappingsSuite struct {
 	suite.Suite
@@ -135,7 +132,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
 func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 	metadata := &common.MetadataMutable{}
 
-	attrValue := fixtures.GetAttributeValueKey("example.com_attr1/value/value2")
+	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,

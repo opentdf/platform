@@ -91,7 +91,7 @@ attribute_values:
       id: 00000000-0000-0000-0000-000000000000
       attribute_definition_id: 00000000-0000-0000-0000-000000000000
       value: value1
-    example.com_attr1/value/value2:
+    example.com/attr/attr1/value/value2:
       id: 00000000-0000-0000-0000-000000000001
       attribute_definition_id: 00000000-0000-0000-0000-000000000000
       value: value2

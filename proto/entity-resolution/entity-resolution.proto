@@ -27,12 +27,12 @@ message OriginalId {
   string type = 2;
 }
 
-message EntityRepresentations {
-  AdditionalProp additionalProp1 = 1;
+message EntityRepresentation {
+  map<string, string> additional_props = 1;
 }
 
 message EntityResolutionPayload {
-  repeated EntityRepresentations entityRepresentations = 1;
+  repeated EntityRepresentation entityRepresentations = 1;
   OriginalId original_id = 2;
 }
 
@@ -41,7 +41,7 @@ message EntityResolutionResponse {
 }
 
 service EntityResolutionService {
-  rpc EntityResolution(EntityResolutionRequest) returns (EntityResolutionResponse) {
+  rpc DoEntityResolution(EntityResolutionRequest) returns (EntityResolutionResponse) {
     option (google.api.http) = {
       post: "/v1/entity-resolution/resolve"
       body: "entity_identifiers"

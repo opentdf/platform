@@ -53,7 +53,7 @@ This should bring up a grpc server on port **9000** and http server on port **80
 Create Attribute
 
 ```bash
-grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM  
+grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM
 {
     "definition": {
         "name": "relto",
@@ -93,3 +93,12 @@ List Attributes
 ```bash
 grpcurl -plaintext localhost:9000 attributes.v1.AttributesService/ListAttributes
 ```
+
+### Generation
+
+Our native gRPC service functions are generated from `proto` definitions using [Buf](https://buf.build/docs/introduction).
+
+The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` config, including OpenAPI docs, grpc docs, and the
+generated code.
+
+For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.

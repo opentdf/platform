@@ -112,8 +112,10 @@ func (c Client) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAcc
 		return nil, err
 	}
 
-	if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
-		return nil, err
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
+			return nil, err
+		}
 	}
 
 	return &kasr.KeyAccessServer{

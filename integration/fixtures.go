@@ -52,9 +52,9 @@ type FixtureDataResourceMapping struct {
 }
 
 type FixtureDataKasRegistry struct {
-	Id              string `yaml:"id"`
-	KeyAccessServer string `yaml:"key_access_server"`
-	PubKey          struct {
+	Id     string `yaml:"id"`
+	Uri    string `yaml:"uri"`
+	PubKey struct {
 		Remote string `yaml:"remote" json:"remote,omitempty"`
 		Local  string `yaml:"local" json:"local,omitempty"`
 	} `yaml:"public_key" json:"public_key"`
@@ -263,7 +263,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 	for _, d := range fixtureData.KasRegistries.Data {
 		v := []string{
 			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.KeyAccessServer),
+			f.db.StringWrap(d.Uri),
 		}
 
 		if pubKeyJson, err := json.Marshal(d.PubKey); err != nil {

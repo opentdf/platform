@@ -57,16 +57,12 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 			assert.Equal(s.T(), f1.Id, item.Id)
 			assert.Equal(s.T(), f1.Value, item.Value)
 			assert.Equal(s.T(), len(f1.Members), len(item.Members))
-			// TODO: do we want a LIST of attr values to include the parent definition id?
-			// note: proto includes the definition id in response but not our sql
-			// assert.Equal(s.T(), f1.AttributeDefinitionId, item.AttributeId)
+			assert.Equal(s.T(), f1.AttributeDefinitionId, item.AttributeId)
 		} else if item.Id == f2.Id {
 			assert.Equal(s.T(), f2.Id, item.Id)
 			assert.Equal(s.T(), f2.Value, item.Value)
 			assert.Equal(s.T(), len(f2.Members), len(item.Members))
-			// TODO: do we want a LIST of attr values to include the parent definition id?
-			// note: proto includes the definition id in response but not our sql
-			// assert.Equal(s.T(), f2.AttributeDefinitionId, item.AttributeId)
+			assert.Equal(s.T(), f2.AttributeDefinitionId, item.AttributeId)
 		}
 	}
 }

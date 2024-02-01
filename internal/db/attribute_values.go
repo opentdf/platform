@@ -162,7 +162,8 @@ func updateAttributeValueSql(
 	members []string,
 	metadata []byte) (string, []interface{}, error) {
 	sb := newStatementBuilder().
-		Update(AttributeValueTable)
+		Update(AttributeValueTable).
+		Set("metadata", metadata)
 
 	if value != "" {
 		sb = sb.Set("value", value)
@@ -170,7 +171,6 @@ func updateAttributeValueSql(
 	if members != nil {
 		sb = sb.Set("members", members)
 	}
-	sb.Set("metadata", metadata)
 
 	return sb.
 		Where(sq.Eq{"id": id}).

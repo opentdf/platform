@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// TODO: test failure of create/update with invalid member id's [https://github.com/opentdf/opentdf-v2-poc/issues/105]
+
 var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {
@@ -95,12 +97,11 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 		Description: "test create attribute value description",
 	}
 
-	value := &attributes.ValueCreate{
-		Value:       "value create with members test value",
-		AttributeId: attrDef.Id,
-		Metadata:    metadata,
+	value := &attributes.ValueCreateUpdate{
+		Value:    "value create with members test value",
+		Metadata: metadata,
 	}
-	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, value)
+	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, attrDef.Id, value)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdValue)
 
@@ -123,16 +124,15 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 		Description: "testing create with members",
 	}
 
-	value := &attributes.ValueCreate{
-		Value:       "value3",
-		AttributeId: attrDef.Id,
+	value := &attributes.ValueCreateUpdate{
+		Value: "value3",
 		Members: []string{
 			fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
 			fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value2").Id,
 		},
 		Metadata: metadata,
 	}
-	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, value)
+	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, attrDef.Id, value)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdValue)
 
@@ -146,84 +146,60 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	assert.EqualValues(s.T(), createdValue.Members, got.Members)
 }
 
-// TODO: prevent invalid value id's as members so create fails?
-// func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMembers_Fails() {
-// 	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
-
-// 	value := &attributes.ValueCreate{
-// 		Value:       "invalid members test value",
-// 		AttributeId: attrDef.Id,
-// 		Members: []string{
-// 			fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-// 			nonExistentAttributeValueUuid,
-// 		},
-// 	}
-// 	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, value)
-// 	assert.NotNil(s.T(), err)
-// 	assert.Nil(s.T(), createdValue)
-// }
-
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {
-	value := &attributes.ValueCreate{
-		Value:       "some value",
-		AttributeId: nonExistentAttrId,
+	value := &attributes.ValueCreateUpdate{
+		Value: "some value",
 	}
-	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, value)
+	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, nonExistentAttrId, value)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), createdValue)
 }
 
-// TODO: rework after https://github.com/opentdf/opentdf-v2-poc/pull/100
-// func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
-// 	// create a value
-// 	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
-// 	metadata := &common.MetadataMutable{
-// 		Labels: map[string]string{
-// 			"name": "created attribute value",
-// 		},
-// 		Description: "created attribute value",
-// 	}
+func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
+	// create a value
+	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
+	metadata := &common.MetadataMutable{
+		Labels: map[string]string{
+			"name": "created attribute value",
+		},
+		Description: "created attribute value",
+	}
 
-// 	value := &attributes.ValueCreate{
-// 		Value:       "created value testing update",
-// 		AttributeId: attrDef.Id,
-// 		Metadata:    metadata,
-// 	}
-// 	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, value)
-// 	assert.Nil(s.T(), err)
-// 	assert.NotNil(s.T(), createdValue)
+	value := &attributes.ValueCreateUpdate{
+		Value:    "created value testing update",
+		Metadata: metadata,
+	}
+	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdValue)
 
-// 	// update the created value
-// 	updatedValue := &attributes.ValueUpdate{
-// 		Value: "updated value testing update",
-// 		Metadata: &common.MetadataMutable{
-// 			Labels: map[string]string{
-// 				"name": "updated attribute value",
-// 			},
-// 			Description: "updated attribute value",
-// 		},
-// 	}
-// 	updated, err := s.db.Client.UpdateAttributeValue(s.ctx, createdValue.Id, updatedValue)
-// 	assert.Nil(s.T(), err)
-// 	assert.NotNil(s.T(), updated)
+	// update the created value
+	updatedValue := &attributes.ValueCreateUpdate{
+		Value: "updated value testing update",
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"name": "updated attribute value",
+			},
+			Description: "updated attribute value",
+		},
+	}
+	updated, err := s.db.Client.UpdateAttributeValue(s.ctx, createdValue.Id, updatedValue)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updated)
 
-// 	// get it again and compare
-// 	got, err := s.db.Client.GetAttributeValue(s.ctx, createdValue.Id)
-//  // TODO: why is the response from the subsequent get not reflecting changed metadata?
-// 	fmt.Printf("updated response %+v", updated)
-// 	fmt.Printf("got %+v", got)
-// 	fmt.Printf("updated with value %+v", updatedValue)
-// 	assert.Nil(s.T(), err)
-// 	assert.NotNil(s.T(), got)
-// 	assert.Equal(s.T(), updated.Id, got.Id)
-// 	assert.Equal(s.T(), updatedValue.Value, got.Value)
-// 	assert.Equal(s.T(), updatedValue.Metadata.Description, got.Metadata.Description)
-// 	assert.EqualValues(s.T(), updatedValue.Metadata.Labels, got.Metadata.Labels)
-// 	assert.Equal(s.T(), len(updatedValue.Members), len(got.Members))
-// }
+	// get it again and compare
+	got, err := s.db.Client.GetAttributeValue(s.ctx, createdValue.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), updated.Id, got.Id)
+	assert.Equal(s.T(), updatedValue.Value, got.Value)
+	assert.Equal(s.T(), updatedValue.Metadata.Description, got.Metadata.Description)
+	assert.EqualValues(s.T(), updatedValue.Metadata.Labels, got.Metadata.Labels)
+	assert.Equal(s.T(), len(updatedValue.Members), len(got.Members))
+}
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
-	updatedValue := &attributes.ValueUpdate{
+	updatedValue := &attributes.ValueCreateUpdate{
 		Value: "updated value testing update",
 	}
 	updated, err := s.db.Client.UpdateAttributeValue(s.ctx, nonExistentAttributeValueUuid, updatedValue)
@@ -233,11 +209,10 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
 
 func (s *AttributeValuesSuite) Test_DeleteAttribute() {
 	// create a value
-	value := &attributes.ValueCreate{
-		Value:       "created value testing delete",
-		AttributeId: fixtures.GetAttributeKey("example.net/attr/attr1").Id,
+	value := &attributes.ValueCreateUpdate{
+		Value: "created value testing delete",
 	}
-	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, value)
+	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, fixtures.GetAttributeKey("example.net/attr/attr1").Id, value)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdValue)
 

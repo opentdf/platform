@@ -21,6 +21,7 @@ import (
 
 var (
 	AttributeTable              = tableName(TableAttributes)
+	NamespacesTable             = tableName(TableNamespaces)
 	AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
 )
 
@@ -64,8 +65,8 @@ func attributesSelect() sq.SelectBuilder {
 			")"+
 			") AS values",
 	).
-		LeftJoin(AttributeValueTable + " ON " + AttributeValueTable + ".id = " + AttributeTable + ".id").
-		LeftJoin(NamespacesTable + " ON " + NamespacesTable + ".id = " + AttributeTable + ".namespace_id").
+		LeftJoin(AttributeValueTable+" ON "+AttributeValueTable+".id = "+AttributeTable+".id").
+		LeftJoin(NamespacesTable+" ON "+NamespacesTable+".id = "+AttributeTable+".namespace_id").
 		GroupBy(tableField(AttributeTable, "id"), tableField(NamespacesTable, "name"))
 }
 
@@ -171,6 +172,7 @@ func listAllAttributesSql() (string, []interface{}, error) {
 		From(AttributeTable).
 		ToSql()
 }
+
 func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute, error) {
 	sql, args, err := listAllAttributesSql()
 	rows, err := c.query(ctx, sql, args, err)
@@ -195,6 +197,7 @@ func getAttributeSql(id string) (string, []interface{}, error) {
 		From(AttributeTable).
 		ToSql()
 }
+
 func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
 	sql, args, err := getAttributeSql(id)
 	row, err := c.queryRow(ctx, sql, args, err)
@@ -218,6 +221,7 @@ func getAttributesByNamespaceSql(namespaceId string) (string, []interface{}, err
 		From(AttributeTable).
 		ToSql()
 }
+
 func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string) ([]*attributes.Attribute, error) {
 	sql, args, err := getAttributesByNamespaceSql(namespaceId)
 
@@ -244,6 +248,7 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
+
 func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(attr.Metadata)
 	if err != nil {
@@ -289,6 +294,7 @@ func updateAttributeSql(id string, name string, rule string, metadata []byte) (s
 		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
 		ToSql()
 }
+
 func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	// get attribute before updating
 	a, err := c.GetAttribute(ctx, id)
@@ -325,6 +331,7 @@ func deleteAttributeSql(id string) (string, []interface{}, error) {
 		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
 		ToSql()
 }
+
 func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
 	// get attribute before deleting
 	a, err := c.GetAttribute(ctx, id)

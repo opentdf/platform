@@ -376,6 +376,16 @@ func request_AttributesService_UpdateAttributeValue_0(ctx context.Context, marsh
 		_   = err
 	)
 
+	val, ok = pathParams["attribute_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "attribute_id")
+	}
+
+	protoReq.AttributeId, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "attribute_id", err)
+	}
+
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -409,6 +419,16 @@ func local_request_AttributesService_UpdateAttributeValue_0(ctx context.Context,
 		err error
 		_   = err
 	)
+
+	val, ok = pathParams["attribute_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "attribute_id")
+	}
+
+	protoReq.AttributeId, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "attribute_id", err)
+	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -641,7 +661,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -862,7 +882,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -916,7 +936,7 @@ var (
 
 	pattern_AttributesService_CreateAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2}, []string{"attributes", "attribute_id", "values"}, ""))
 
-	pattern_AttributesService_UpdateAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"attributes", "_", "values", "id"}, ""))
+	pattern_AttributesService_UpdateAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"attributes", "attribute_id", "values", "id"}, ""))
 
 	pattern_AttributesService_DeleteAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"attributes", "_", "values", "id"}, ""))
 )

@@ -46,9 +46,11 @@ func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, 
 		return nil, err
 	}
 
-	err = protojson.Unmarshal(metadataJSON, metadata)
-	if err != nil {
-		return nil, err
+	if metadataJSON != nil {
+		err = protojson.Unmarshal(metadataJSON, metadata)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = protojson.Unmarshal(attributeValueJSON, attributeValue)

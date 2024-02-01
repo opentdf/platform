@@ -152,3 +152,32 @@ subject_mappings:
         - value1
         - value2
         - value3
+
+##
+# Resource Mappings
+#
+##
+resource_mappings:
+  metadata:
+    table_name: resource_mappings
+    columns:
+      - id
+      - attribute_value_id
+      - terms
+  data:
+    resource_mapping_to_attribute_value1:
+      id: 00000000-0000-0000-0000-000000000000
+      attribute_value_id: 00000000-0000-0000-0000-000000000000
+      terms:
+        - TS
+        - TOPSECRET
+    resource_mapping_to_attribute_value2:
+      id: 00000000-0000-0000-0000-000000000001
+      attribute_value_id: 00000000-0000-0000-0000-000000000001
+      terms:
+        - test0
+    resource_mapping_to_attribute_value3:
+      id: 00000000-0000-0000-0000-000000000002
+      attribute_value_id: 00000000-0000-0000-0000-000000000005
+      terms:
+        - helloworld

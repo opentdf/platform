@@ -42,6 +42,12 @@ type FixtureDataSubjectMapping struct {
 	SubjectAttributeValues []string `yaml:"subject_attribute_values"`
 }
 
+type FixtureDataResourceMapping struct {
+	Id               string   `yaml:"id"`
+	AttributeValueId string   `yaml:"attribute_value_id"`
+	Terms            []string `yaml:"terms"`
+}
+
 type FixtureData struct {
 	Namespaces struct {
 		Metadata FixtureMetadata                 `yaml:"metadata"`
@@ -59,6 +65,10 @@ type FixtureData struct {
 		Metadata FixtureMetadata                      `yaml:"metadata"`
 		Data     map[string]FixtureDataSubjectMapping `yaml:"data"`
 	} `yaml:"subject_mappings"`
+	ResourceMappings struct {
+		Metadata FixtureMetadata                       `yaml:"metadata"`
+		Data     map[string]FixtureDataResourceMapping `yaml:"data"`
+	} `yaml:"resource_mappings"`
 }
 
 func loadFixtureData() {
@@ -116,6 +126,14 @@ func (f *Fixtures) GetSubjectMappingKey(key string) FixtureDataSubjectMapping {
 	return fixtureData.SubjectMappings.Data[key]
 }
 
+func (f *Fixtures) GetResourceMappingKey(key string) FixtureDataResourceMapping {
+	if fixtureData.ResourceMappings.Data[key].Id == "" {
+		slog.Error("could not find resource-mappings", slog.String("id", key))
+		panic("could not find resource-mappings")
+	}
+	return fixtureData.ResourceMappings.Data[key]
+}
+
 func (f *Fixtures) Provision() {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.schema))
 	f.db.Client.RunMigrations()
@@ -128,12 +146,15 @@ func (f *Fixtures) Provision() {
 	aV := f.provisionAttributeValues()
 	slog.Info("📦 provisioning subject mapping data")
 	sM := f.provisionSubjectMappings()
+	slog.Info("📦 provisioning resource mapping data")
+	rM := f.provisionResourceMappings()
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
 		slog.Int64("attributes", a),
 		slog.Int64("attribute_values", aV),
 		slog.Int64("subject_mappings", sM),
+		slog.Int64("resource_mappings", rM),
 	)
 }
 
@@ -196,6 +217,18 @@ func (f *Fixtures) provisionSubjectMappings() int64 {
 		})
 	}
 	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionResourceMappings() int64 {
+	var values [][]string
+	for _, d := range fixtureData.ResourceMappings.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.Id),
+			f.db.StringWrap(d.AttributeValueId),
+			f.db.StringArrayWrap(d.Terms),
+		})
+	}
+	return f.provision(fixtureData.ResourceMappings.Metadata.TableName, fixtureData.ResourceMappings.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provision(t string, c []string, v [][]string) (rows int64) {

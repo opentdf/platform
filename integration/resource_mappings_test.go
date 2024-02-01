@@ -12,10 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var (
-	nonexistentAttributeValueUuid  = "78909865-8888-9999-9999-000000000000"
-	nonexistentResourceMappingUuid = "45674556-8888-9999-9999-000001230000"
-)
+var nonExistentResourceMappingUuid = "45674556-8888-9999-9999-000001230000"
 
 type ResourceMappingsSuite struct {
 	suite.Suite
@@ -70,7 +67,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeVa
 	metadata := &common.MetadataMutable{}
 
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
-		AttributeValueId: nonexistentAttributeValueUuid,
+		AttributeValueId: nonExistentAttributeValueUuid,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
 	}
@@ -127,7 +124,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
-	mapping, err := s.db.Client.GetResourceMapping(s.ctx, nonexistentResourceMappingUuid)
+	mapping, err := s.db.Client.GetResourceMapping(s.ctx, nonExistentResourceMappingUuid)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), mapping)
 }
@@ -135,7 +132,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
 func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 	metadata := &common.MetadataMutable{}
 
-	attrValue := fixtures.GetAttributeValueKey("example.com_attr1/value/value2")
+	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
@@ -214,7 +211,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 		AttributeValueId: createdMapping.AttributeValue.Id,
 		Terms:            []string{"asdf updated term1"},
 	}
-	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, nonexistentResourceMappingUuid, updatedMapping)
+	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUuid, updatedMapping)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
 }
@@ -231,7 +228,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 
 	// update the created with new metadata and terms
 	updatedMapping := &resourcemapping.ResourceMappingCreateUpdate{
-		AttributeValueId: nonexistentAttributeValueUuid,
+		AttributeValueId: nonExistentAttributeValueUuid,
 		Terms:            []string{"testing-2"},
 	}
 	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, createdMapping.Id, updatedMapping)
@@ -259,7 +256,7 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMappingWithUnknownIdFails() {
-	deleted, err := s.db.Client.DeleteResourceMapping(s.ctx, nonexistentResourceMappingUuid)
+	deleted, err := s.db.Client.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUuid)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), deleted)
 }

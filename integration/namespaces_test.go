@@ -20,7 +20,7 @@ type NamespacesSuite struct {
 	ctx    context.Context
 }
 
-const nonExistantNamespaceId = "88888888-2222-3333-4444-999999999999"
+const nonExistentNamespaceId = "88888888-2222-3333-4444-999999999999"
 
 func (s *NamespacesSuite) SetupSuite() {
 	slog.Info("setting up db.Namespaces test suite")
@@ -73,8 +73,8 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 		assert.Equal(s.T(), test.Name, gotNamespace.Name)
 	}
 
-	// Getting a namespace with an nonexistant id should fail
-	_, err := s.db.Client.GetNamespace(s.ctx, nonExistantNamespaceId)
+	// Getting a namespace with an nonExistent id should fail
+	_, err := s.db.Client.GetNamespace(s.ctx, nonExistentNamespaceId)
 	assert.NotNil(s.T(), err)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
@@ -101,7 +101,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	}
 
 	// Update when the namespace does not exist should fail
-	_, err := s.db.Client.UpdateNamespace(s.ctx, nonExistantNamespaceId, "new-namespace.com")
+	_, err := s.db.Client.UpdateNamespace(s.ctx, nonExistentNamespaceId, "new-namespace.com")
 	assert.NotNil(s.T(), err)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 

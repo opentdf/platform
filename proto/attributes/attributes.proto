@@ -191,9 +191,22 @@ message DeleteAttributeValueResponse {
    Assign Key Access Server to Attribute and Value
 */
 
-message AssignKeyAccessServerRequest {
+message AssignKeyAccessServerToAttributeRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
   string key_access_server_id = 2 [(buf.validate.field).required = true];
+}
+
+message AssignKeyAccessServerToAttributeResponse {
+  string id = 1;
+}
+
+message AssignKeyAccessServerToValueRequest {
+  string value_id = 1 [(buf.validate.field).required = true];
+  string key_access_server_id = 2 [(buf.validate.field).required = true];
+}
+
+message AssignKeyAccessServerToValueResponse {
+  string id = 1;
 }
 
 ///
@@ -263,5 +276,19 @@ service AttributesService {
 
   rpc DeleteAttributeValue(DeleteAttributeValueRequest) returns (DeleteAttributeValueResponse) {
     option (google.api.http) = {delete: "/attributes/_/values/{id}"};
+  }
+
+  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
+    option (google.api.http) = {
+      post: "/attributes/{attribute_id}/keyaccessserver"
+      body: "key_access_server_id"
+    };
+  }
+
+  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
+    option (google.api.http) = {
+      post: "/attributes/_/values/{value_id}/keyaccessserver"
+      body: "key_access_server_id"
+    };
   }
 }

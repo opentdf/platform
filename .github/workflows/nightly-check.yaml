@@ -1,0 +1,15 @@
+name: "Nightly Checks"
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  vulncheck:
+    name: vulncheck
+    runs-on: ubuntu-22.04
+    steps:
+      - name: govluncheck
+        uses: golang/govulncheck-action@7da72f730e37eeaad891fcff0a532d27ed737cd4
+        with:
+          go-version-file: 'go.mod'

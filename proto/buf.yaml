@@ -12,6 +12,8 @@ breaking:
 lint:
   use:
     - DEFAULT
+  except:
+    - PACKAGE_VERSION_SUFFIX
   ignore_only:
     PACKAGE_VERSION_SUFFIX:
       - google/api/annotations.proto

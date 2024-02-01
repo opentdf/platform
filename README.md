@@ -25,9 +25,12 @@ With go 1.18 or higher:
 
 3. `air`
 
-This should bring up a grpc server on port 9000 and http server on port 8080. Air will watch for changes and restart the server.
+This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
 
 ### Test
+
+> [!WARNING]
+> GRPC and reflection is disabled by default. Please see the `opentdf.yaml` for more details (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43))
 
 ```bash
   grpcurl -plaintext localhost:9000 list
@@ -50,7 +53,7 @@ This should bring up a grpc server on port 9000 and http server on port 8080. Ai
 Create Attribute
 
 ```bash
-grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM  
+grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM
 {
     "definition": {
         "name": "relto",
@@ -91,3 +94,11 @@ List Attributes
 grpcurl -plaintext localhost:9000 attributes.v1.AttributesService/ListAttributes
 ```
 
+### Generation
+
+Our native gRPC service functions are generated from `proto` definitions using [Buf](https://buf.build/docs/introduction).
+
+The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` config, including OpenAPI docs, grpc docs, and the
+generated code.
+
+For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.

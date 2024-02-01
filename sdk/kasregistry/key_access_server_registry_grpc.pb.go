@@ -50,7 +50,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -69,7 +69,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas3",
+	// "uri": "kas3",
 	// "public_key": {
 	// "local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
 	// }
@@ -98,7 +98,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -108,7 +108,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	// Request Examples:
 	// {
 	// "key_access_server": {
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -131,7 +131,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -142,7 +142,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	// {
 	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
 	// "key_access_server": {
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -165,7 +165,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -193,7 +193,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -279,7 +279,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -298,7 +298,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas3",
+	// "uri": "kas3",
 	// "public_key": {
 	// "local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
 	// }
@@ -327,7 +327,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -337,7 +337,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	// Request Examples:
 	// {
 	// "key_access_server": {
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -360,7 +360,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -371,7 +371,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	// {
 	// "id": "71eae02f-6837-4980-8a2c-70abf6b68732",
 	// "key_access_server": {
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -394,7 +394,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }
@@ -422,7 +422,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	// },
 	// "description": "test kas instance"
 	// },
-	// "name": "kas2",
+	// "uri": "kas2",
 	// "public_key": {
 	// "remote": "https://platform.virtru.com/kas1"
 	// }

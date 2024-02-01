@@ -16,7 +16,7 @@ func keyAccessServerSelect() sq.SelectBuilder {
 	return newStatementBuilder().
 		Select(
 			"id",
-			"key_access_server",
+			"uri",
 			"public_key",
 			"metadata",
 		)
@@ -27,6 +27,7 @@ func listAllKeyAccessServersSql() (string, []interface{}, error) {
 		From(KeyAccessServerTable).
 		ToSql()
 }
+
 func (c Client) ListKeyAccessServers(ctx context.Context) ([]*kasr.KeyAccessServer, error) {
 	sql, args, err := listAllKeyAccessServersSql()
 
@@ -38,12 +39,12 @@ func (c Client) ListKeyAccessServers(ctx context.Context) ([]*kasr.KeyAccessServ
 
 	var (
 		id            string
-		name          string
+		uri           string
 		publicKeyJSON []byte
 		metadataJSON  []byte
 	)
 
-	_, err = pgx.ForEachRow(rows, []any{&id, &name, &publicKeyJSON, &metadataJSON}, func() error {
+	_, err = pgx.ForEachRow(rows, []any{&id, &uri, &publicKeyJSON, &metadataJSON}, func() error {
 		var (
 			keyAccessServer = new(kasr.KeyAccessServer)
 			publicKey       = new(kasr.PublicKey)
@@ -54,12 +55,14 @@ func (c Client) ListKeyAccessServers(ctx context.Context) ([]*kasr.KeyAccessServ
 			return err
 		}
 
-		if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
-			return err
+		if metadataJSON != nil {
+			if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
+				return err
+			}
 		}
 
 		keyAccessServer.Id = id
-		keyAccessServer.Name = name
+		keyAccessServer.Uri = uri
 		keyAccessServer.PublicKey = publicKey
 		keyAccessServer.Metadata = metadata
 
@@ -81,6 +84,7 @@ func getKeyAccessServerSql(id string) (string, []interface{}, error) {
 		From(KeyAccessServerTable).
 		ToSql()
 }
+
 func (c Client) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAccessServer, error) {
 	sql, args, err := getKeyAccessServerSql(id)
 
@@ -90,13 +94,13 @@ func (c Client) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAcc
 	}
 
 	var (
-		name          string
+		uri           string
 		publicKeyJSON []byte
 		publicKey     = new(kasr.PublicKey)
 		metadataJSON  []byte
 		metadata      = new(common.Metadata)
 	)
-	err = row.Scan(&id, &name, &publicKeyJSON, &metadataJSON)
+	err = row.Scan(&id, &uri, &publicKeyJSON, &metadataJSON)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, err
@@ -108,23 +112,25 @@ func (c Client) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAcc
 		return nil, err
 	}
 
-	if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
-		return nil, err
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
+			return nil, err
+		}
 	}
 
 	return &kasr.KeyAccessServer{
 		Metadata:  metadata,
 		Id:        id,
-		Name:      name,
+		Uri:       uri,
 		PublicKey: publicKey,
 	}, nil
 }
 
-func createKeyAccessServerSQL(name string, publicKey, metadata []byte) (string, []interface{}, error) {
+func createKeyAccessServerSQL(uri string, publicKey, metadata []byte) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Insert(KeyAccessServerTable).
-		Columns("key_access_server", "public_key", "metadata").
-		Values(name, publicKey, metadata).
+		Columns("uri", "public_key", "metadata").
+		Values(uri, publicKey, metadata).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
@@ -140,7 +146,7 @@ func (c Client) CreateKeyAccessServer(ctx context.Context, keyAccessServer *kasr
 		return nil, err
 	}
 
-	sql, args, err := createKeyAccessServerSQL(keyAccessServer.Name, pkBytes, metadataBytes)
+	sql, args, err := createKeyAccessServerSQL(keyAccessServer.Uri, pkBytes, metadataBytes)
 
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
@@ -154,17 +160,17 @@ func (c Client) CreateKeyAccessServer(ctx context.Context, keyAccessServer *kasr
 	}
 
 	return &kasr.KeyAccessServer{
-		Metadata:  newMetadata,
-		Id:        id,
-		Name:      keyAccessServer.Name,
-		PublicKey: keyAccessServer.PublicKey,
+		Metadata:        newMetadata,
+		Id:              id,
+		Uri: keyAccessServer.Uri,
+		PublicKey:       keyAccessServer.PublicKey,
 	}, nil
 }
 
-func updateKeyAccessServerSQL(id, name string, publicKey, metadata []byte) (string, []interface{}, error) {
+func updateKeyAccessServerSQL(id, keyAccessServer string, publicKey, metadata []byte) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Update(KeyAccessServerTable).
-		Set("key_access_server", name).
+		Set("uri", keyAccessServer).
 		Set("public_key", publicKey).
 		Set("metadata", metadata).
 		Where(sq.Eq{"id": id}).
@@ -187,7 +193,7 @@ func (c Client) UpdateKeyAccessServer(ctx context.Context, id string, keyAccessS
 		return nil, err
 	}
 
-	sql, args, err := updateKeyAccessServerSQL(id, keyAccessServer.Name, publicKeyJSON, metadataJSON)
+	sql, args, err := updateKeyAccessServerSQL(id, keyAccessServer.Uri, publicKeyJSON, metadataJSON)
 
 	if err = c.exec(ctx, sql, args, err); err != nil {
 		return nil, err

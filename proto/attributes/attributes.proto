@@ -32,7 +32,7 @@ message AttributeDefinition {
   repeated AttributeDefinitionValue values = 4;
 
   //optional attribute group by filtering rules
-  repeated AttributeDefinitionValue group_by = 9;
+  AttributeDefinitionValue group_by = 9;
 }
 
 // Reference to an attribute value, one of descriptor or embedded value

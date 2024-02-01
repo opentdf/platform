@@ -2,8 +2,7 @@ package access
 
 import (
 	ctx "context"
-	"go.uber.org/zap"
-	"log/slog"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"testing"
 
 	attrs "github.com/opentdf/opentdf-v2-poc/sdk/attributes"
@@ -16,26 +15,28 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
 		{
-			Authority: attrAuthorities[0],
-			Name:      "MyAttr",
-			Rule:      "anyOf",
-			Order:     []string{"Value1", "Value2"},
+			Descriptor_: &common.ResourceDescriptor{
+				Namespace: attrAuthorities[0],
+			},
+			Name:   "MyAttr",
+			Rule:   attrs.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
+			Values: []string{"Value1", "Value2"},
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
-			Value:     mockAttrDefinitions[0].Order[1],
+			Value:     mockAttrDefinitions[0].Values[1].Value,
 		},
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
-			Value:     mockAttrDefinitions[0].Order[0],
+			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -49,7 +50,7 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDPWithSlog(slog.Default())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(
@@ -69,8 +70,6 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 }
 
 func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -82,7 +81,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -94,7 +93,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -108,7 +107,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -123,8 +122,6 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 }
 
 func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -136,7 +133,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -148,7 +145,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -162,7 +159,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -177,8 +174,6 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 }
 
 func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -190,7 +185,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -202,7 +197,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -216,7 +211,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -231,8 +226,6 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 }
 
 func Test_AccessPDP_AnyOf_GroupBy(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID1 := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	entityID2 := "bubble@squeak.biz"
 	attrAuthorities := []string{"https://example.org", "https://loop.doop"}
@@ -242,7 +235,7 @@ func Test_AccessPDP_AnyOf_GroupBy(t *testing.T) {
 			Name:      "MyAttr",
 			Rule:      "anyOf",
 			Order:     []string{"Value1", "Value2"},
-			GroupBy: &attrs.AttributeInstance{
+			GroupBy: &attributeInstance{
 				Authority: attrAuthorities[0],
 				Name:      "AttrToGroupBy",
 				Value:     "GroupByWithThisValue",
@@ -255,7 +248,7 @@ func Test_AccessPDP_AnyOf_GroupBy(t *testing.T) {
 			Order:     []string{"Value1", "Value2"},
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -272,7 +265,7 @@ func Test_AccessPDP_AnyOf_GroupBy(t *testing.T) {
 			Value:     mockAttrDefinitions[1].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID1: {
 			{
 				Authority: "https://example.org",
@@ -302,7 +295,7 @@ func Test_AccessPDP_AnyOf_GroupBy(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -325,8 +318,6 @@ func Test_AccessPDP_AnyOf_GroupBy(t *testing.T) {
 }
 
 func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -338,7 +329,7 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -350,10 +341,10 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -368,8 +359,6 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 }
 
 func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	//There are no data attribute instances in this test so the data attribute definitions
@@ -383,8 +372,8 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{}
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -398,7 +387,7 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -411,8 +400,6 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 }
 
 func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDecisions(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID1 := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	entityID2 := "bubble@squeak.biz"
 	attrAuthorities := []string{"https://example.org", "https://loop.doop"}
@@ -422,7 +409,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 			Name:      "MyAttr",
 			Rule:      "anyOf",
 			Order:     []string{"Value1", "Value2"},
-			GroupBy: &attrs.AttributeInstance{
+			GroupBy: &attributeInstance{
 				Authority: attrAuthorities[0],
 				Name:      "AttrToGroupBy",
 				Value:     "GroupByWithThisValue",
@@ -435,7 +422,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 			Order:     []string{"Value1", "Value2"},
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -447,7 +434,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID1: {
 			{
 				Authority: "https://example.org",
@@ -473,7 +460,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -491,8 +478,6 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 
 // AllOf tests
 func Test_AccessPDP_AllOf_Pass(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -504,7 +489,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -516,7 +501,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -535,7 +520,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -549,8 +534,6 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 }
 
 func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -562,7 +545,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -574,7 +557,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -593,7 +576,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
@@ -608,8 +591,6 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 }
 
 func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -621,7 +602,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -633,7 +614,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -647,7 +628,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -661,8 +642,6 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 }
 
 func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -674,7 +653,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -686,7 +665,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -705,7 +684,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -719,8 +698,6 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 }
 
 func Test_AccessPDP_AllOf_GroupBy(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID1 := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	entityID2 := "bubble@squeak.biz"
 	attrAuthorities := []string{"https://example.org", "https://loop.doop"}
@@ -730,7 +707,7 @@ func Test_AccessPDP_AllOf_GroupBy(t *testing.T) {
 			Name:      "MyAttr",
 			Rule:      "allOf",
 			Order:     []string{"Value1", "Value2"},
-			GroupBy: &attrs.AttributeInstance{
+			GroupBy: &attributeInstance{
 				Authority: attrAuthorities[0],
 				Name:      "AttrToGroupBy",
 				Value:     "GroupByWithThisValue",
@@ -743,7 +720,7 @@ func Test_AccessPDP_AllOf_GroupBy(t *testing.T) {
 			Order:     []string{"Value1", "Value2"},
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -760,7 +737,7 @@ func Test_AccessPDP_AllOf_GroupBy(t *testing.T) {
 			Value:     mockAttrDefinitions[1].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID1: {
 			{
 				Authority: "https://example.org",
@@ -800,7 +777,7 @@ func Test_AccessPDP_AllOf_GroupBy(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -823,8 +800,6 @@ func Test_AccessPDP_AllOf_GroupBy(t *testing.T) {
 
 // Hierarchy tests
 func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -836,7 +811,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -848,7 +823,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -862,7 +837,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -875,8 +850,6 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -888,7 +861,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -900,7 +873,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -919,7 +892,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -932,8 +905,6 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -945,14 +916,14 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
 			Value:     mockAttrDefinitions[0].Order[2],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -961,7 +932,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -974,8 +945,6 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -987,7 +956,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -999,7 +968,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1018,7 +987,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -1031,8 +1000,6 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 }
 
 func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -1044,7 +1011,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -1056,7 +1023,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[1],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1075,7 +1042,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -1088,8 +1055,6 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -1101,7 +1066,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -1113,7 +1078,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1127,7 +1092,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -1140,8 +1105,6 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 }
 
 func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -1153,14 +1116,14 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
 			Value:     "UberPrivileged",
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1174,7 +1137,7 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -1188,8 +1151,6 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 }
 
 func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -1201,7 +1162,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -1213,7 +1174,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1227,7 +1188,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -1240,8 +1201,6 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 }
 
 func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -1253,14 +1212,14 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
 			Value:     mockAttrDefinitions[0].Order[1],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.net",
@@ -1274,7 +1233,7 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -1288,8 +1247,6 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 }
 
 func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
 	mockAttrDefinitions := []attrs.AttributeDefinition{
@@ -1301,7 +1258,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -1313,7 +1270,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 			Value:     mockAttrDefinitions[0].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1332,7 +1289,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 
@@ -1345,8 +1302,6 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 }
 
 func Test_AccessPDP_Hierarchy_GroupBy(t *testing.T) {
-	zapLog, _ := zap.NewDevelopment()
-
 	entityID1 := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	entityID2 := "bubble@squeak.biz"
 	attrAuthorities := []string{"https://example.org", "https://loop.doop"}
@@ -1356,7 +1311,7 @@ func Test_AccessPDP_Hierarchy_GroupBy(t *testing.T) {
 			Name:      "MyAttr",
 			Rule:      "hierarchy",
 			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-			GroupBy: &attrs.AttributeInstance{
+			GroupBy: &attributeInstance{
 				Authority: attrAuthorities[0],
 				Name:      "AttrToGroupBy",
 				Value:     "GroupByWithThisValue",
@@ -1369,7 +1324,7 @@ func Test_AccessPDP_Hierarchy_GroupBy(t *testing.T) {
 			Order:     []string{"Value1", "Value2"},
 		},
 	}
-	mockDataAttrs := []attrs.AttributeInstance{
+	mockDataAttrs := []attributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -1386,7 +1341,7 @@ func Test_AccessPDP_Hierarchy_GroupBy(t *testing.T) {
 			Value:     mockAttrDefinitions[1].Order[0],
 		},
 	}
-	mockEntityAttrs := map[string][]attrs.AttributeInstance{
+	mockEntityAttrs := map[string][]attributeInstance{
 		entityID1: {
 			{
 				Authority: "https://example.org",
@@ -1416,7 +1371,7 @@ func Test_AccessPDP_Hierarchy_GroupBy(t *testing.T) {
 			},
 		},
 	}
-	accessPDP := NewAccessPDP(zapLog.Sugar())
+	accessPDP := NewPdp()
 	context := ctx.Background()
 	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
 

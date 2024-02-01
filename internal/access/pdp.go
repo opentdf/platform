@@ -15,10 +15,6 @@ func NewPdp() *Pdp {
 	return &Pdp{}
 }
 
-/////////////////////////
-// To refactor below
-/////////////////////////
-
 // DetermineAccess will take data AttributeInstances, data AttributeDefinitions, and entity attributeInstance sets, and
 // compare every data attributeInstance against every entity's attributeInstance set, generating a rolled-up decision
 // result for each entity, as well as a detailed breakdown of every data attributeInstance comparison.
@@ -117,7 +113,7 @@ func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attributeI
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy []*attrs.AttributeDefinitionValue) map[string]DataRuleResult {
+func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy *attrs.AttributeDefinitionValue) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	//All of the data AttributeInstances in the arg have the same canonical name.
@@ -174,7 +170,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy []*attrs.AttributeDefinitionValue) map[string]DataRuleResult {
+func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy *attrs.AttributeDefinitionValue) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	dvCanonicalName := dataAttrsBySingleCanonicalName[0].GetCanonicalName()
@@ -237,7 +233,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 //
 // If multiple entity AttributeInstances (that is, values) for a hierarchy AttributeDefinition are present for the same canonical name, the lowest will be chosen,
 // and the others ignored.
-func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy []*attrs.AttributeDefinitionValue, order []*attrs.AttributeDefinitionValue) map[string]DataRuleResult {
+func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy *attrs.AttributeDefinitionValue, order []*attrs.AttributeDefinitionValue) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	highestDataInstance := pdp.getHighestRankedInstanceFromDataAttributes(ctx, order, dataAttrsBySingleCanonicalName)
@@ -302,7 +298,7 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalNam
 // entities should not be included. This function will check every entity's AttributeInstances, and filter out the entities
 // that lack the GroupBy attributeInstance, returning a new, reduced set of entities that all have the
 // GroupBy attributeInstance.
-func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entityAttributes map[string][]attributeInstance, groupBy []*attrs.AttributeDefinitionValue) map[string][]attributeInstance {
+func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entityAttributes map[string][]attributeInstance, groupBy *attrs.AttributeDefinitionValue) map[string][]attributeInstance {
 	slog.DebugContext(ctx, "Filtering out entities with groupby", "groupby", groupBy)
 
 	filteredEntitySet := make(map[string][]attributeInstance)

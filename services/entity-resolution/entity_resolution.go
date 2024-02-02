@@ -38,7 +38,7 @@ const (
 )
 
 func (s EntityService) EntityResolution(ctx context.Context,
-	req *entity_resolution.EntityResolutionRequest) (*entity_resolution.EntityResolutionResponse, error) {
+	req *entity_resolution.EntityResolutionServiceDoEntityResolutionRequest) (*entity_resolution.EntityResolutionServiceDoEntityResolutionResponse, error) {
 	payload := req.GetEntityIdentifiers()
 	var kcConfig KeyCloakConfg = KeyCloakConfg{}
 	var resolvedEntities []*entity_resolution.EntityResolutionPayload
@@ -46,7 +46,7 @@ func (s EntityService) EntityResolution(ctx context.Context,
 
 	kcConnector, err := getKCClient(kcConfig)
 	if err != nil {
-		return &entity_resolution.EntityResolutionResponse{},
+		return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
@@ -62,18 +62,18 @@ func (s EntityService) EntityResolution(ctx context.Context,
 		case TypeUsername:
 			getUserParams = gocloak.GetUsersParams{Username: &payload[i].Identifier, Exact: &exactMatch}
 		case "":
-			return &entity_resolution.EntityResolutionResponse{},
+			return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
 				status.Error(codes.InvalidArgument, services.ErrNotFound)
 		default:
 			typeErr := fmt.Errorf("Unknown Type %s for identifier %s", ident.GetType(), ident.GetIdentifier())
-			return &entity_resolution.EntityResolutionResponse{},
+			return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
 				status.Error(codes.InvalidArgument, typeErr.Error())
 		}
 
 		users, userErr := kcConnector.client.GetUsers(ctx, kcConnector.token.AccessToken, kcConfig.Realm, getUserParams)
 		if userErr != nil {
 			slog.Error("Error getting user", getUserParams.String())
-			return &entity_resolution.EntityResolutionResponse{},
+			return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
 				status.Error(codes.Internal, services.ErrGettingResource)
 		} else if len(users) == 1 {
 			user := users[0]
@@ -91,14 +91,14 @@ func (s EntityService) EntityResolution(ctx context.Context,
 				)
 				if groupErr != nil {
 					slog.Error("Error getting group", "group", groupErr)
-					return &entity_resolution.EntityResolutionResponse{},
+					return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
 						status.Error(codes.Internal, services.ErrGettingResource)
 				} else if len(groups) == 1 {
 					slog.Error("Group found for", "identifier", ident.Identifier)
 					group := groups[0]
 					expandedRepresentations, exErr := expandGroup(*group.ID, kcConnector, &kcConfig, ctx)
 					if exErr != nil {
-						return &entity_resolution.EntityResolutionResponse{},
+						return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
 							status.Error(codes.Internal, services.ErrGettingResource)
 					} else {
 						keycloakEntities = expandedRepresentations
@@ -112,7 +112,7 @@ func (s EntityService) EntityResolution(ctx context.Context,
 			json, err := typeToGenericJSONMap(er)
 			if err != nil {
 				slog.Error("Error serializing entity representation!", "error", err)
-				return &entity_resolution.EntityResolutionResponse{},
+				return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
 					status.Error(codes.Internal, services.ErrCreatingResource)
 			}
 			jsonEntities = append(jsonEntities, json)
@@ -126,7 +126,7 @@ func (s EntityService) EntityResolution(ctx context.Context,
 		)
 	}
 
-	return &entity_resolution.EntityResolutionResponse{
+	return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{
 		EntityRepresentationsPayload: resolvedEntities,
 	}, nil
 }

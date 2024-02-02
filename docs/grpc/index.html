@@ -630,6 +630,53 @@
         
           
           <li>
+            <a href="#entityresolution%2fentity_resolution.proto">entityresolution/entity_resolution.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#entityresolution.AdditionalProp"><span class="badge">M</span>AdditionalProp</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.EntityIdentifiers"><span class="badge">M</span>EntityIdentifiers</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.EntityRepresentation"><span class="badge">M</span>EntityRepresentation</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.EntityRepresentation.AdditionalPropsEntry"><span class="badge">M</span>EntityRepresentation.AdditionalPropsEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.EntityResolutionPayload"><span class="badge">M</span>EntityResolutionPayload</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.EntityResolutionServiceDoEntityResolutionRequest"><span class="badge">M</span>EntityResolutionServiceDoEntityResolutionRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.EntityResolutionServiceDoEntityResolutionResponse"><span class="badge">M</span>EntityResolutionServiceDoEntityResolutionResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.OriginalId"><span class="badge">M</span>OriginalId</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#entityresolution.EntityResolutionService"><span class="badge">S</span>EntityResolutionService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#keyaccessgrants%2fkey_access_grants.proto">keyaccessgrants/key_access_grants.proto</a>
             <ul>
               
@@ -3928,6 +3975,270 @@ or treat the subject values as regex patterns applied to subject attribute </p><
                 <td>POST</td>
                 <td>/v1/entitlements</td>
                 <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="entityresolution/entity_resolution.proto">entityresolution/entity_resolution.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="entityresolution.AdditionalProp">AdditionalProp</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="entityresolution.EntityIdentifiers">EntityIdentifiers</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>identifier</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.EntityRepresentation">EntityRepresentation</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>additional_props</td>
+                  <td><a href="#entityresolution.EntityRepresentation.AdditionalPropsEntry">EntityRepresentation.AdditionalPropsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.EntityRepresentation.AdditionalPropsEntry">EntityRepresentation.AdditionalPropsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.EntityResolutionPayload">EntityResolutionPayload</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_representations</td>
+                  <td><a href="#entityresolution.EntityRepresentation">EntityRepresentation</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>original_id</td>
+                  <td><a href="#entityresolution.OriginalId">OriginalId</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.EntityResolutionServiceDoEntityResolutionRequest">EntityResolutionServiceDoEntityResolutionRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_identifiers</td>
+                  <td><a href="#entityresolution.EntityIdentifiers">EntityIdentifiers</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.EntityResolutionServiceDoEntityResolutionResponse">EntityResolutionServiceDoEntityResolutionResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_representations_payload</td>
+                  <td><a href="#entityresolution.EntityResolutionPayload">EntityResolutionPayload</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.OriginalId">OriginalId</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>identifier</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="entityresolution.EntityResolutionService">EntityResolutionService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>DoEntityResolution</td>
+                <td><a href="#entityresolution.EntityResolutionServiceDoEntityResolutionRequest">EntityResolutionServiceDoEntityResolutionRequest</a></td>
+                <td><a href="#entityresolution.EntityResolutionServiceDoEntityResolutionResponse">EntityResolutionServiceDoEntityResolutionResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>DoEntityResolution</td>
+                <td>POST</td>
+                <td>/v1/entity-resolution/resolve</td>
+                <td>entity_identifiers</td>
               </tr>
               
             

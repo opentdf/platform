@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	entity_resolution "github.com/opentdf/opentdf-v2-poc/sdk/entity-resolution"
+	entity_resolution "github.com/opentdf/opentdf-v2-poc/sdk/entityresolution"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

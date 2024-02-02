@@ -12,11 +12,11 @@ message EntityIdentifiers {
   string type = 2;
 }
 
-message EntityResolutionRequest {
+message EntityResolutionServiceDoEntityResolutionRequest {
   repeated EntityIdentifiers entity_identifiers = 1;
 }
 
-/* EntityResolutionResponse related */
+/* EntityResolutionServiceDoEntityResolutionResponse related */
 
 message AdditionalProp {}
 
@@ -30,16 +30,16 @@ message EntityRepresentation {
 }
 
 message EntityResolutionPayload {
-  repeated EntityRepresentation entityRepresentations = 1;
+  repeated EntityRepresentation entity_representations = 1;
   OriginalId original_id = 2;
 }
 
-message EntityResolutionResponse {
-  repeated EntityResolutionPayload entityRepresentationsPayload = 1;
+message EntityResolutionServiceDoEntityResolutionResponse {
+  repeated EntityResolutionPayload entity_representations_payload = 1;
 }
 
 service EntityResolutionService {
-  rpc DoEntityResolution(EntityResolutionRequest) returns (EntityResolutionResponse) {
+  rpc DoEntityResolution(EntityResolutionServiceDoEntityResolutionRequest) returns (EntityResolutionServiceDoEntityResolutionResponse) {
     option (google.api.http) = {
       post: "/v1/entity-resolution/resolve"
       body: "entity_identifiers"

@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: entity-resolution/entity-resolution.proto
+// source: entityresolution/entity_resolution.proto
 
-package entity_resolution
+package entityresolution
 
 import (
 	context "context"
@@ -26,7 +26,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EntityResolutionServiceClient interface {
-	DoEntityResolution(ctx context.Context, in *EntityResolutionRequest, opts ...grpc.CallOption) (*EntityResolutionResponse, error)
+	DoEntityResolution(ctx context.Context, in *EntityResolutionServiceDoEntityResolutionRequest, opts ...grpc.CallOption) (*EntityResolutionServiceDoEntityResolutionResponse, error)
 }
 
 type entityResolutionServiceClient struct {
@@ -37,8 +37,8 @@ func NewEntityResolutionServiceClient(cc grpc.ClientConnInterface) EntityResolut
 	return &entityResolutionServiceClient{cc}
 }
 
-func (c *entityResolutionServiceClient) DoEntityResolution(ctx context.Context, in *EntityResolutionRequest, opts ...grpc.CallOption) (*EntityResolutionResponse, error) {
-	out := new(EntityResolutionResponse)
+func (c *entityResolutionServiceClient) DoEntityResolution(ctx context.Context, in *EntityResolutionServiceDoEntityResolutionRequest, opts ...grpc.CallOption) (*EntityResolutionServiceDoEntityResolutionResponse, error) {
+	out := new(EntityResolutionServiceDoEntityResolutionResponse)
 	err := c.cc.Invoke(ctx, EntityResolutionService_DoEntityResolution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (c *entityResolutionServiceClient) DoEntityResolution(ctx context.Context, 
 // All implementations must embed UnimplementedEntityResolutionServiceServer
 // for forward compatibility
 type EntityResolutionServiceServer interface {
-	DoEntityResolution(context.Context, *EntityResolutionRequest) (*EntityResolutionResponse, error)
+	DoEntityResolution(context.Context, *EntityResolutionServiceDoEntityResolutionRequest) (*EntityResolutionServiceDoEntityResolutionResponse, error)
 	mustEmbedUnimplementedEntityResolutionServiceServer()
 }
 
@@ -58,7 +58,7 @@ type EntityResolutionServiceServer interface {
 type UnimplementedEntityResolutionServiceServer struct {
 }
 
-func (UnimplementedEntityResolutionServiceServer) DoEntityResolution(context.Context, *EntityResolutionRequest) (*EntityResolutionResponse, error) {
+func (UnimplementedEntityResolutionServiceServer) DoEntityResolution(context.Context, *EntityResolutionServiceDoEntityResolutionRequest) (*EntityResolutionServiceDoEntityResolutionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DoEntityResolution not implemented")
 }
 func (UnimplementedEntityResolutionServiceServer) mustEmbedUnimplementedEntityResolutionServiceServer() {
@@ -76,7 +76,7 @@ func RegisterEntityResolutionServiceServer(s grpc.ServiceRegistrar, srv EntityRe
 }
 
 func _EntityResolutionService_DoEntityResolution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EntityResolutionRequest)
+	in := new(EntityResolutionServiceDoEntityResolutionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func _EntityResolutionService_DoEntityResolution_Handler(srv interface{}, ctx co
 		FullMethod: EntityResolutionService_DoEntityResolution_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EntityResolutionServiceServer).DoEntityResolution(ctx, req.(*EntityResolutionRequest))
+		return srv.(EntityResolutionServiceServer).DoEntityResolution(ctx, req.(*EntityResolutionServiceDoEntityResolutionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -106,5 +106,5 @@ var EntityResolutionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "entity-resolution/entity-resolution.proto",
+	Metadata: "entityresolution/entity_resolution.proto",
 }

@@ -1,0 +1,531 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "keyaccessgrants/key_access_grants.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "KeyAccessGrantsService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/grants": {
+      "get": {
+        "operationId": "KeyAccessGrantsService_ListKeyAccessGrants",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/keyaccessgrantsListKeyAccessGrantsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "selector.namespace",
+            "description": "namespace of referenced resource",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "selector.version",
+            "description": "version of reference resource",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "selector.name",
+            "description": "name of referenced resource",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "selector.labelSelector.labels",
+            "description": "labels to match a against a resource\n\nThis is a request variable of the map type. The query format is \"map_name[key]=value\", e.g. If the map name is Age, the key type is string, and the value type is integer, the query parameter is expressed as Age[\"bob\"]=18",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "KeyAccessGrantsService"
+        ]
+      },
+      "post": {
+        "operationId": "KeyAccessGrantsService_CreateKeyAccessGrants",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/keyaccessgrantsCreateKeyAccessGrantsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "grants",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/keyaccessgrantsKeyAccessGrants"
+            }
+          }
+        ],
+        "tags": [
+          "KeyAccessGrantsService"
+        ]
+      }
+    },
+    "/v1/grants/{id}": {
+      "get": {
+        "operationId": "KeyAccessGrantsService_GetKeyAccessGrant",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/keyaccessgrantsGetKeyAccessGrantResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "KeyAccessGrantsService"
+        ]
+      },
+      "delete": {
+        "operationId": "KeyAccessGrantsService_DeleteKeyAccessGrants",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/keyaccessgrantsDeleteKeyAccessGrantsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "KeyAccessGrantsService"
+        ]
+      },
+      "put": {
+        "operationId": "KeyAccessGrantsService_UpdateKeyAccessGrants",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/keyaccessgrantsUpdateKeyAccessGrantsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "grants",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/keyaccessgrantsKeyAccessGrants"
+            }
+          }
+        ],
+        "tags": [
+          "KeyAccessGrantsService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "AttributeDefinitionAttributeRuleType": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_HIERARCHICAL"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_UNSPECIFIED"
+    },
+    "ResourceSelectorLabelSelector": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "labels to match a against a resource"
+        }
+      },
+      "title": "Define a label selector"
+    },
+    "attributesAttributeDefinition": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/commonResourceDescriptor"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/AttributeDefinitionAttributeRuleType",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/attributesAttributeDefinitionValue"
+          },
+          "title": "possible values"
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/attributesAttributeDefinitionValue"
+          },
+          "title": "optional attribute group by filtering rules"
+        }
+      },
+      "title": "Attribute Definition"
+    },
+    "attributesAttributeDefinitionValue": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/commonResourceDescriptor"
+        },
+        "value": {
+          "type": "string"
+        },
+        "attributePublicKey": {
+          "type": "string",
+          "title": "TODO - optional lock down pub key format if needed.  Per ATTR KEY?"
+        }
+      },
+      "title": "Definition of a single attribute value"
+    },
+    "attributesAttributeValueReference": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/commonResourceDescriptor"
+        },
+        "attributeValue": {
+          "$ref": "#/definitions/attributesAttributeDefinitionValue"
+        }
+      },
+      "title": "Reference to an attribute value, one of descriptor or embedded value"
+    },
+    "commonPolicyResourceType": {
+      "type": "string",
+      "enum": [
+        "POLICY_RESOURCE_TYPE_UNSPECIFIED",
+        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING",
+        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM",
+        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING",
+        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP",
+        "POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING",
+        "POLICY_RESOURCE_TYPE_KEY_ACCESS",
+        "POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION",
+        "POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP",
+        "POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS"
+      ],
+      "default": "POLICY_RESOURCE_TYPE_UNSPECIFIED"
+    },
+    "commonResourceDependency": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "title": "namespace of referenced resource"
+        },
+        "version": {
+          "type": "string",
+          "title": "version of reference resource"
+        },
+        "type": {
+          "$ref": "#/definitions/commonPolicyResourceType",
+          "title": "type of dependency"
+        }
+      },
+      "title": "Define a resource dependency"
+    },
+    "commonResourceDescriptor": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/commonPolicyResourceType"
+        },
+        "id": {
+          "type": "integer",
+          "format": "int32",
+          "title": "unique resource identifier"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int32",
+          "title": "resource version"
+        },
+        "name": {
+          "type": "string",
+          "title": "resource name"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "resource namespace; used to partition resources, support by namespace AuthN and enable federation"
+        },
+        "fqn": {
+          "type": "string",
+          "description": "optional fully qualified name of the resource.  FQN is used to support direct references and to eliminate the need\nfor clients to compose an FQN at run time.\n\nthe fqn may be specific to the resource type."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "optional short description / label"
+        },
+        "description": {
+          "type": "string",
+          "title": "optional long description"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/commonResourceDependency"
+          },
+          "title": "optional list of resource dependencies"
+        }
+      },
+      "title": "Struct to uniquely identify a resource with optional additional metadata"
+    },
+    "commonResourceSelector": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "title": "namespace of referenced resource"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int32",
+          "title": "version of reference resource"
+        },
+        "name": {
+          "type": "string",
+          "title": "name of referenced resource"
+        },
+        "labelSelector": {
+          "$ref": "#/definitions/ResourceSelectorLabelSelector",
+          "title": "labels to match a against a resource"
+        }
+      },
+      "title": "Define a resource selector"
+    },
+    "keyaccessgrantsCreateKeyAccessGrantsResponse": {
+      "type": "object"
+    },
+    "keyaccessgrantsDeleteKeyAccessGrantsResponse": {
+      "type": "object"
+    },
+    "keyaccessgrantsGetKeyAccessGrantResponse": {
+      "type": "object",
+      "properties": {
+        "grants": {
+          "$ref": "#/definitions/keyaccessgrantsKeyAccessGrants"
+        }
+      }
+    },
+    "keyaccessgrantsKeyAccessGrant": {
+      "type": "object",
+      "properties": {
+        "attributeDefinition": {
+          "$ref": "#/definitions/attributesAttributeDefinition",
+          "title": "the attribute associated with this"
+        },
+        "attributeValueGrants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/keyaccessgrantsKeyAccessGrantAttributeValue"
+          },
+          "title": "attribute value settings; if empty then applies to all values"
+        }
+      },
+      "description": "Example: All attribute values for attribute \"Classification\":\nattributeDefinition:\ndescriptor:\nfqn: http://demo.com/attr/Classification\ntype: ALL_OF\nattributeValueGrants:\n- kasIds: [KAS-USA-1, KAS-GBR-1]\n\nExample: Per attribute values for attribute \"Classification\":\nattributeDefinition:\ndescriptor:\nfqn: http://demo.com/attr/Classification\ntype: ALL_OF\nattributeValueGrants:\n- kasIds: [KAS-USA-1, KAS-GBR-1]\nvalue:\ndescriptor:\nvalue: TopSecret\n- kasIds: [KAS-USA-3, KAS-GBR-2]\nvalue:\ndescriptor:\nvalue: Secret",
+      "title": "Defines encryption settings for an attribute and it's values"
+    },
+    "keyaccessgrantsKeyAccessGrantAttributeValue": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/attributesAttributeValueReference",
+          "title": "optional - if this is empty - then applies to all attribute values of the enclosed attribute definition"
+        },
+        "kasIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "list of key access server ordered by priority."
+        }
+      },
+      "description": "Example: Apply to all attribute value for enclosed attribute definition:\nkasIds: [KAS-USA-1, KAS-GBR-1]\n\nExample: Applies to only single attribute value\nkasIds: [KAS-USA-1, KAS-GBR-1]\nvalue:\ndescriptor:\nvalue: FVEY",
+      "title": "Define the attribute value -\u003e prioritized key access servers"
+    },
+    "keyaccessgrantsKeyAccessGrants": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/commonResourceDescriptor"
+        },
+        "keyAccessServers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/keyaccessgrantsKeyAccessServer"
+          },
+          "description": "List of available key access servers\nExample:\n- id: KAS-USA-1\nurl: http://....\npubKey=xxx\n- ...."
+        },
+        "keyAccessGrants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/keyaccessgrantsKeyAccessGrant"
+          },
+          "title": "list of key access grants"
+        }
+      },
+      "title": "Shareable set of key access grants to help with encryption workflows"
+    },
+    "keyaccessgrantsKeyAccessServer": {
+      "type": "object",
+      "properties": {
+        "descriptor": {
+          "$ref": "#/definitions/commonResourceDescriptor"
+        },
+        "url": {
+          "type": "string",
+          "title": "Kas Url"
+        },
+        "publicKey": {
+          "type": "string",
+          "title": "public key - optional since can also be retrieved via url"
+        }
+      },
+      "title": "Descriptor for a KAS"
+    },
+    "keyaccessgrantsListKeyAccessGrantsResponse": {
+      "type": "object",
+      "properties": {
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/keyaccessgrantsKeyAccessGrants"
+          }
+        }
+      }
+    },
+    "keyaccessgrantsUpdateKeyAccessGrantsResponse": {
+      "type": "object"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com. As of May 2023, there are no widely used type server\nimplementations and no plans to implement one.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        }
+      },
+      "additionalProperties": {},
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}

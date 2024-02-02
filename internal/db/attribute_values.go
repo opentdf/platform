@@ -228,3 +228,46 @@ func (c Client) DeleteAttributeValue(ctx context.Context, id string) (*attribute
 
 	return prev, nil
 }
+
+func assignKeyAccessServerToValueSql(valueID, keyAccessServerID string) (string, []interface{}, error) {
+	t := Tables.AttributeValueKeyAccessGrants
+	return newStatementBuilder().
+		Insert(t.Name()).
+		Columns("attribute_value_id", "key_access_server_id").
+		Values(valueID, keyAccessServerID).
+		ToSql()
+}
+
+func (c Client) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
+	sql, args, err := assignKeyAccessServerToValueSql(k.ValueId, k.KeyAccessServerId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+
+	return k, nil
+}
+
+func removeKeyAccessServerFromValueSql(valueID, keyAccessServerID string) (string, []interface{}, error) {
+	t := Tables.AttributeValueKeyAccessGrants
+	return newStatementBuilder().
+		Delete(t.Name()).
+		Where(sq.Eq{"attribute_value_id": valueID, "key_access_server_id": keyAccessServerID}).
+		ToSql()
+}
+
+func (c Client) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
+	sql, args, err := removeKeyAccessServerFromValueSql(k.ValueId, k.KeyAccessServerId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+
+	return k, nil
+}

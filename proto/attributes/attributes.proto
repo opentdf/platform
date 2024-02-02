@@ -4,8 +4,9 @@ package attributes;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
-import "namespaces/namespaces.proto";
 import "google/api/annotations.proto";
+import "kasregistry/key_access_server_registry.proto";
+import "namespaces/namespaces.proto";
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
 enum AttributeRuleTypeEnum {
@@ -33,7 +34,9 @@ message Attribute {
     (buf.validate.field).required = true
   ];
 
-  repeated Value values = 6;
+  repeated Value values = 7;
+
+  repeated kasregistry.KeyAccessServer grants = 8;
 }
 
 message AttributeCreateUpdate {
@@ -68,6 +71,9 @@ message Value {
 
   // list of attribute values that this value is related to (attribute group)
   repeated string members = 5;
+
+  // list of key access servers
+  repeated kasregistry.KeyAccessServer grants = 6;
 }
 
 message ValueCreateUpdate {
@@ -83,12 +89,12 @@ message ValueCreateUpdate {
    Key Access Server Grants
 */
 
-message DefinitionKeyAccessServerGrant {
+message AttributeKeyAccessServer {
   string attribute_id = 1;
   string key_access_server_id = 2;
 }
 
-message ValueKeyAccessServerGrant {
+message ValueKeyAccessServer {
   string value_id = 1;
   string key_access_server_id = 2;
 }
@@ -172,14 +178,106 @@ message DeleteAttributeValueResponse {
   Value value = 1;
 }
 
+/*
+   Assign Key Access Server to Attribute and Value
+*/
+
+message AssignKeyAccessServerToAttributeRequest {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToAttributeResponse {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromAttributeRequest {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromAttributeResponse {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToValueRequest {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToValueResponse {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromValueRequest {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromValueResponse {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
 ///
 /// Attribute Service
 ///
 service AttributesService {
   /*
-     List Attributes
-     Example:
-      grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
+      List Attributes
+      Example:
+       grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
+
+       Response:
+       {
+         "attributes": [
+             {
+                 "values": [
+                     {
+                         "members": [],
+                         "grants": [
+                             {
+                                 "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
+                                 "metadata": null,
+                                 "uri": "kas10",
+                                 "public_key": {
+                                     "remote": "https://example.com/kas"
+                                 }
+                             }
+                         ],
+                         "id": "e2140c39-f478-43cf-9559-0067d596654f",
+                         "metadata": null,
+                         "attribute_id": "",
+                         "value": "value1"
+                     }
+                 ],
+                 "grants": [
+                     {
+                         "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
+                         "metadata": null,
+                         "uri": "kas10",
+                         "public_key": {
+                             "remote": "https://example.com/kas"
+                         }
+                     }
+                 ],
+                 "id": "2dc75d97-f6a4-4036-9a6a-acc99171fff1",
+                 "metadata": {
+                     "labels": [],
+                     "created_at": {
+                         "seconds": "1706878441",
+                         "nanos": 147178000
+                     },
+                     "updated_at": {
+                         "seconds": "1706878441",
+                         "nanos": 147178000
+                     },
+                     "description": ""
+                 },
+                 "namespace": {
+                     "id": "c85d126a-c2f2-4bb6-bc6d-a513015363cb",
+                     "name": "demo.com"
+                 },
+                 "name": "test",
+                 "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
+             }
+         ]
+     }
   */
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
 
@@ -239,5 +337,107 @@ service AttributesService {
 
   rpc DeleteAttributeValue(DeleteAttributeValueRequest) returns (DeleteAttributeValueResponse) {
     option (google.api.http) = {delete: "/attributes/_/values/{id}"};
+  }
+
+  /*
+      Assign Key Access Server to Attribute
+
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
+
+      Example Request:
+      {
+        "attribute_key_access_server": {
+          "attribute_id": "attribute_id",
+          "key_access_server_id
+      }
+
+      Example Response:
+      {
+        "attribute_key_access_server": {
+          "attribute_id": "attribute_id",
+          "key_access_server_id: "key_access_server_id"
+      }
+  */
+  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
+    option (google.api.http) = {
+      post: "/attributes/keyaccessserver/assign"
+      body: "attribute_key_access_server"
+    };
+  }
+
+  /*
+      Remove Key Access Server to Attribute
+
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
+
+      Example Request:
+      {
+        "attribute_key_access_server": {
+          "attribute_id": "attribute_id",
+          "key_access_server_id
+      }
+
+      Example Response:
+      {
+        "attribute_key_access_server": {
+          "attribute_id": "attribute_id",
+          "key_access_server_id: "key_access_server_id"
+      }
+  */
+  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
+    option (google.api.http) = {
+      post: "/attributes/keyaccessserver/remove"
+      body: "attribute_key_access_server"
+    };
+  }
+
+  /*
+      Assign Key Access Server to Value
+
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToValue
+
+      Example Request:
+      {
+        "attribute_key_access_server": {
+          "value_id": "attribute_id",
+          "key_access_server_id
+      }
+
+      Example Response:
+      {
+        "attribute_key_access_server": {
+          "value_id": "attribute_id",
+          "key_access_server_id: "key_access_server_id"
+      }
+  */
+  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
+    option (google.api.http) = {
+      post: "/attributes/values/keyaccessserver/assign"
+      body: "value_key_access_server"
+    };
+  }
+
+  /*
+     Remove Key Access Server to Value
+     grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemoveKeyAccessServerFromValue
+
+     Example Request:
+     {
+       "value_key_access_server": {
+         "value_id": "value_id",
+         "key_access_server_id
+     }
+
+     Example Response:
+     {
+       "value_key_access_server": {
+         "value_id": "value_id",
+         "key_access_server_id
+  */
+  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
+    option (google.api.http) = {
+      post: "/attributes/values/keyaccessserver/remove"
+      body: "value_key_access_server"
+    };
   }
 }

@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package authorization;
 
-import "attributes/attributes.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 

@@ -2,6 +2,7 @@ package integration
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -30,11 +31,21 @@ type FixtureDataAttribute struct {
 	Rule        string `yaml:"rule"`
 }
 
+type FixtureDataAttributeKeyAccessServer struct {
+	AttributeID       string `yaml:"attribute_id"`
+	KeyAccessServerID string `yaml:"key_access_server_id"`
+}
+
 type FixtureDataAttributeValue struct {
 	Id                    string   `yaml:"id"`
 	AttributeDefinitionId string   `yaml:"attribute_definition_id"`
 	Value                 string   `yaml:"value"`
 	Members               []string `yaml:"members"`
+}
+
+type FixtureDataAttributeValueKeyAccessServer struct {
+	ValueID           string `yaml:"value_id"`
+	KeyAccessServerID string `yaml:"key_access_server_id"`
 }
 
 type FixtureDataSubjectMapping struct {
@@ -69,11 +80,13 @@ type FixtureData struct {
 		Metadata FixtureMetadata                 `yaml:"metadata"`
 		Data     map[string]FixtureDataAttribute `yaml:"data"`
 	} `yaml:"attributes"`
-	AttributeValues struct {
+	AttributeKeyAccessServer []FixtureDataAttributeKeyAccessServer `yaml:"attribute_key_access_servers"`
+	AttributeValues          struct {
 		Metadata FixtureMetadata                      `yaml:"metadata"`
 		Data     map[string]FixtureDataAttributeValue `yaml:"data"`
 	} `yaml:"attribute_values"`
-	SubjectMappings struct {
+	AttributeValueKeyAccessServer []FixtureDataAttributeValueKeyAccessServer `yaml:"attribute_value_key_access_servers"`
+	SubjectMappings               struct {
 		Metadata FixtureMetadata                      `yaml:"metadata"`
 		Data     map[string]FixtureDataSubjectMapping `yaml:"data"`
 	} `yaml:"subject_mappings"`
@@ -98,6 +111,7 @@ func loadFixtureData() {
 		slog.Error("could not unmarshal "+fixtureFilename, slog.String("error", err.Error()))
 		panic(err)
 	}
+	fmt.Println(fixtureData)
 }
 
 type Fixtures struct {
@@ -174,6 +188,10 @@ func (f *Fixtures) Provision() {
 	rM := f.provisionResourceMappings()
 	slog.Info("📦 provisioning kas registry data")
 	kas := f.provisionKasRegistry()
+	slog.Info("📦 provisioning attribute key access server data")
+	akas := f.provisionAttributeKeyAccessServer()
+	slog.Info("📦 provisioning attribute value key access server data")
+	akas = f.provisionAttributeValueKeyAccessServer()
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
@@ -182,6 +200,8 @@ func (f *Fixtures) Provision() {
 		slog.Int64("subject_mappings", sM),
 		slog.Int64("resource_mappings", rM),
 		slog.Int64("kas_registry", kas),
+		slog.Int64("attribute_key_access_server", akas),
+		slog.Int64("attribute_value_key_access_server", akas),
 	)
 }
 
@@ -275,6 +295,28 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 		values = append(values, v)
 	}
 	return f.provision(fixtureData.KasRegistries.Metadata.TableName, fixtureData.KasRegistries.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionAttributeKeyAccessServer() int64 {
+	var values [][]string
+	for _, d := range fixtureData.AttributeKeyAccessServer {
+		values = append(values, []string{
+			f.db.StringWrap(d.AttributeID),
+			f.db.StringWrap(d.KeyAccessServerID),
+		})
+	}
+	return f.provision("attribute_definition_key_access_grants", []string{"attribute_definition_id", "key_access_server_id"}, values)
+}
+
+func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
+	var values [][]string
+	for _, d := range fixtureData.AttributeValueKeyAccessServer {
+		values = append(values, []string{
+			f.db.StringWrap(d.ValueID),
+			f.db.StringWrap(d.KeyAccessServerID),
+		})
+	}
+	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
 }
 
 func (f *Fixtures) provision(t string, c []string, v [][]string) (rows int64) {

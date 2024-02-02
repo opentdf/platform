@@ -169,3 +169,51 @@ func (s *AttributesService) DeleteAttributeValue(ctx context.Context, req *attri
 		Value: a,
 	}, nil
 }
+
+func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context, req *attributes.AssignKeyAccessServerToAttributeRequest) (*attributes.AssignKeyAccessServerToAttributeResponse, error) {
+	attributeKas, err := s.dbClient.AssignKeyAccessServerToAttribute(ctx, req.AttributeKeyAccessServer)
+	if err != nil {
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+	}
+
+	return &attributes.AssignKeyAccessServerToAttributeResponse{
+		AttributeKeyAccessServer: attributeKas,
+	}, nil
+}
+
+func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *attributes.RemoveKeyAccessServerFromAttributeRequest) (*attributes.RemoveKeyAccessServerFromAttributeResponse, error) {
+	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.AttributeKeyAccessServer)
+	if err != nil {
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+	}
+
+	return &attributes.RemoveKeyAccessServerFromAttributeResponse{
+		AttributeKeyAccessServer: attributeKas,
+	}, nil
+}
+
+func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, req *attributes.AssignKeyAccessServerToValueRequest) (*attributes.AssignKeyAccessServerToValueResponse, error) {
+	valueKas, err := s.dbClient.AssignKeyAccessServerToValue(ctx, req.ValueKeyAccessServer)
+	if err != nil {
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+	}
+
+	return &attributes.AssignKeyAccessServerToValueResponse{
+		ValueKeyAccessServer: valueKas,
+	}, nil
+}
+
+func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *attributes.RemoveKeyAccessServerFromValueRequest) (*attributes.RemoveKeyAccessServerFromValueResponse, error) {
+	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.ValueKeyAccessServer)
+	if err != nil {
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+	}
+
+	return &attributes.RemoveKeyAccessServerFromValueResponse{
+		ValueKeyAccessServer: valueKas,
+	}, nil
+}

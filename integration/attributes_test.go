@@ -22,14 +22,16 @@ type AttributesSuite struct {
 }
 
 var (
-	fixtureNamespaceId string
-	nonExistentAttrId  = "00000000-6789-4321-9876-123456765436"
+	fixtureNamespaceId       string
+	nonExistentAttrId        = "00000000-6789-4321-9876-123456765436"
+	fixtureKeyAccessServerId string
 )
 
 func (s *AttributesSuite) SetupSuite() {
 	slog.Info("setting up db.Attributes test suite")
 	s.ctx = context.Background()
 	fixtureNamespaceId = fixtures.GetNamespaceKey("example.com").Id
+	fixtureKeyAccessServerId = fixtures.GetKasRegistryKey("key_access_server_1").Id
 	s.schema = "test_opentdf_attribute_definitions"
 	s.db = NewDBInterface(s.schema)
 	s.f = NewFixture(s.db)
@@ -301,6 +303,74 @@ func (s *AttributesSuite) Test_DeleteAttribute() {
 	resp, err := s.db.Client.GetAttribute(s.ctx, createdAttr.Id)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_Attribute_Not_Found() {
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       nonExistentAttrId,
+		KeyAccessServerId: fixtureKeyAccessServerId,
+	}
+	resp, err := s.db.Client.AssignKeyAccessServerToAttribute(s.ctx, aKas)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr1").Id,
+		KeyAccessServerId: nonExistentAttrId,
+	}
+	resp, err := s.db.Client.AssignKeyAccessServerToAttribute(s.ctx, aKas)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr2").Id,
+		KeyAccessServerId: fixtureKeyAccessServerId,
+	}
+	resp, err := s.db.Client.AssignKeyAccessServerToAttribute(s.ctx, aKas)
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), resp)
+	assert.Equal(s.T(), aKas, resp)
+}
+
+func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_Attribute_Not_Found() {
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       nonExistentAttrId,
+		KeyAccessServerId: fixtureKeyAccessServerId,
+	}
+	resp, err := s.db.Client.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr1").Id,
+		KeyAccessServerId: nonExistentAttrId,
+	}
+	resp, err := s.db.Client.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr2").Id,
+		KeyAccessServerId: fixtureKeyAccessServerId,
+	}
+	resp, err := s.db.Client.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), resp)
+	assert.Equal(s.T(), aKas, resp)
 }
 
 func TestAttributesSuite(t *testing.T) {

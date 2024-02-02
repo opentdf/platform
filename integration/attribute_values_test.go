@@ -14,7 +14,9 @@ import (
 
 // TODO: test failure of create/update with invalid member id's [https://github.com/opentdf/opentdf-v2-poc/issues/105]
 
-var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
+var (
+	nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
+)
 
 type AttributeValuesSuite struct {
 	suite.Suite
@@ -27,6 +29,7 @@ type AttributeValuesSuite struct {
 func (s *AttributeValuesSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeValues test suite")
 	s.ctx = context.Background()
+	fixtureKeyAccessServerId = fixtures.GetKasRegistryKey("key_access_server_1").Id
 	s.schema = "test_opentdf_attribute_values"
 	s.db = NewDBInterface(s.schema)
 	s.f = NewFixture(s.db)
@@ -227,6 +230,80 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute_NotFound() {
 	resp, err := s.db.Client.DeleteAttributeValue(s.ctx, nonExistentAttributeValueUuid)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_Value_Not_Found() {
+	v := &attributes.ValueKeyAccessServer{
+		ValueId:           nonExistentAttributeValueUuid,
+		KeyAccessServerId: fixtureKeyAccessServerId,
+	}
+
+	resp, err := s.db.Client.AssignKeyAccessServerToValue(s.ctx, v)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_KeyAccessServer_Not_Found() {
+	v := &attributes.ValueKeyAccessServer{
+		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
+		KeyAccessServerId: "non-existent-kas-id",
+	}
+
+	resp, err := s.db.Client.AssignKeyAccessServerToValue(s.ctx, v)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
+	v := &attributes.ValueKeyAccessServer{
+		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
+		KeyAccessServerId: fixtureKeyAccessServerId,
+	}
+
+	resp, err := s.db.Client.AssignKeyAccessServerToValue(s.ctx, v)
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), resp)
+	assert.Equal(s.T(), v, resp)
+}
+
+func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_Value_Not_Found() {
+	v := &attributes.ValueKeyAccessServer{
+		ValueId:           nonExistentAttributeValueUuid,
+		KeyAccessServerId: fixtureKeyAccessServerId,
+	}
+
+	resp, err := s.db.Client.RemoveKeyAccessServerFromValue(s.ctx, v)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_KeyAccessServer_Not_Found() {
+	v := &attributes.ValueKeyAccessServer{
+		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
+		KeyAccessServerId: "non-existent-kas-id",
+	}
+
+	resp, err := s.db.Client.RemoveKeyAccessServerFromValue(s.ctx, v)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), resp)
+}
+
+func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
+	v := &attributes.ValueKeyAccessServer{
+		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
+		KeyAccessServerId: fixtureKeyAccessServerId,
+	}
+
+	resp, err := s.db.Client.RemoveKeyAccessServerFromValue(s.ctx, v)
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), resp)
+	assert.Equal(s.T(), v, resp)
 }
 
 func TestAttributeValuesSuite(t *testing.T) {

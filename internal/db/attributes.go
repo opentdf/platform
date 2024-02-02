@@ -315,3 +315,40 @@ func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Att
 	// return the attribute before deleting
 	return a, nil
 }
+
+func assignKeyAccessServerToAttributeSql(attributeID, keyAccessServerID string) (string, []interface{}, error) {
+	t := Tables.AttributeKeyAccessGrants
+	return newStatementBuilder().
+		Insert(t.Name()).
+		Columns("attribute_definition_id", "key_access_server_id").
+		Values(attributeID, keyAccessServerID).
+		ToSql()
+}
+
+func (c Client) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
+	sql, args, err := assignKeyAccessServerToAttributeSql(k.AttributeId, k.KeyAccessServerId)
+
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+
+	return k, nil
+}
+
+func removeKeyAccessServerFromAttributeSql(attributeID, keyAccessServerID string) (string, []interface{}, error) {
+	t := Tables.AttributeKeyAccessGrants
+	return newStatementBuilder().
+		Delete(t.Name()).
+		Where(sq.Eq{"attribute_definition_id": attributeID, "key_access_server_id": keyAccessServerID}).
+		ToSql()
+}
+
+func (c Client) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
+	sql, args, err := removeKeyAccessServerFromAttributeSql(k.AttributeId, k.KeyAccessServerId)
+
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+
+	return k, nil
+}

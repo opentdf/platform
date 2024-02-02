@@ -19,16 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AttributesService_ListAttributes_FullMethodName       = "/attributes.AttributesService/ListAttributes"
-	AttributesService_ListAttributeValues_FullMethodName  = "/attributes.AttributesService/ListAttributeValues"
-	AttributesService_GetAttribute_FullMethodName         = "/attributes.AttributesService/GetAttribute"
-	AttributesService_CreateAttribute_FullMethodName      = "/attributes.AttributesService/CreateAttribute"
-	AttributesService_UpdateAttribute_FullMethodName      = "/attributes.AttributesService/UpdateAttribute"
-	AttributesService_DeleteAttribute_FullMethodName      = "/attributes.AttributesService/DeleteAttribute"
-	AttributesService_GetAttributeValue_FullMethodName    = "/attributes.AttributesService/GetAttributeValue"
-	AttributesService_CreateAttributeValue_FullMethodName = "/attributes.AttributesService/CreateAttributeValue"
-	AttributesService_UpdateAttributeValue_FullMethodName = "/attributes.AttributesService/UpdateAttributeValue"
-	AttributesService_DeleteAttributeValue_FullMethodName = "/attributes.AttributesService/DeleteAttributeValue"
+	AttributesService_ListAttributes_FullMethodName                     = "/attributes.AttributesService/ListAttributes"
+	AttributesService_ListAttributeValues_FullMethodName                = "/attributes.AttributesService/ListAttributeValues"
+	AttributesService_GetAttribute_FullMethodName                       = "/attributes.AttributesService/GetAttribute"
+	AttributesService_CreateAttribute_FullMethodName                    = "/attributes.AttributesService/CreateAttribute"
+	AttributesService_UpdateAttribute_FullMethodName                    = "/attributes.AttributesService/UpdateAttribute"
+	AttributesService_DeleteAttribute_FullMethodName                    = "/attributes.AttributesService/DeleteAttribute"
+	AttributesService_GetAttributeValue_FullMethodName                  = "/attributes.AttributesService/GetAttributeValue"
+	AttributesService_CreateAttributeValue_FullMethodName               = "/attributes.AttributesService/CreateAttributeValue"
+	AttributesService_UpdateAttributeValue_FullMethodName               = "/attributes.AttributesService/UpdateAttributeValue"
+	AttributesService_DeleteAttributeValue_FullMethodName               = "/attributes.AttributesService/DeleteAttributeValue"
+	AttributesService_AssignKeyAccessServerToAttribute_FullMethodName   = "/attributes.AttributesService/AssignKeyAccessServerToAttribute"
+	AttributesService_AssignKeyAccessServerToValue_FullMethodName       = "/attributes.AttributesService/AssignKeyAccessServerToValue"
+	AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName = "/attributes.AttributesService/RemoveKeyAccessServerFromAttribute"
+	AttributesService_RemoveKeyAccessServerFromValue_FullMethodName     = "/attributes.AttributesService/RemoveKeyAccessServerFromValue"
 )
 
 // AttributesServiceClient is the client API for AttributesService service.
@@ -60,6 +64,10 @@ type AttributesServiceClient interface {
 	CreateAttributeValue(ctx context.Context, in *CreateAttributeValueRequest, opts ...grpc.CallOption) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error)
 	DeleteAttributeValue(ctx context.Context, in *DeleteAttributeValueRequest, opts ...grpc.CallOption) (*DeleteAttributeValueResponse, error)
+	AssignKeyAccessServerToAttribute(ctx context.Context, in *AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToAttributeResponse, error)
+	AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error)
+	RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error)
+	RemoveKeyAccessServerFromValue(ctx context.Context, in *RemoveKeyAccessServerFromValueRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromValueResponse, error)
 }
 
 type attributesServiceClient struct {
@@ -160,6 +168,42 @@ func (c *attributesServiceClient) DeleteAttributeValue(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *attributesServiceClient) AssignKeyAccessServerToAttribute(ctx context.Context, in *AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToAttributeResponse, error) {
+	out := new(AssignKeyAccessServerToAttributeResponse)
+	err := c.cc.Invoke(ctx, AttributesService_AssignKeyAccessServerToAttribute_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error) {
+	out := new(AssignKeyAccessServerToValueResponse)
+	err := c.cc.Invoke(ctx, AttributesService_AssignKeyAccessServerToValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error) {
+	out := new(RemoveKeyAccessServerFromAttributeResponse)
+	err := c.cc.Invoke(ctx, AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) RemoveKeyAccessServerFromValue(ctx context.Context, in *RemoveKeyAccessServerFromValueRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromValueResponse, error) {
+	out := new(RemoveKeyAccessServerFromValueResponse)
+	err := c.cc.Invoke(ctx, AttributesService_RemoveKeyAccessServerFromValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttributesServiceServer is the server API for AttributesService service.
 // All implementations must embed UnimplementedAttributesServiceServer
 // for forward compatibility
@@ -189,6 +233,10 @@ type AttributesServiceServer interface {
 	CreateAttributeValue(context.Context, *CreateAttributeValueRequest) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error)
 	DeleteAttributeValue(context.Context, *DeleteAttributeValueRequest) (*DeleteAttributeValueResponse, error)
+	AssignKeyAccessServerToAttribute(context.Context, *AssignKeyAccessServerToAttributeRequest) (*AssignKeyAccessServerToAttributeResponse, error)
+	AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error)
+	RemoveKeyAccessServerFromAttribute(context.Context, *RemoveKeyAccessServerFromAttributeRequest) (*RemoveKeyAccessServerFromAttributeResponse, error)
+	RemoveKeyAccessServerFromValue(context.Context, *RemoveKeyAccessServerFromValueRequest) (*RemoveKeyAccessServerFromValueResponse, error)
 	mustEmbedUnimplementedAttributesServiceServer()
 }
 
@@ -225,6 +273,18 @@ func (UnimplementedAttributesServiceServer) UpdateAttributeValue(context.Context
 }
 func (UnimplementedAttributesServiceServer) DeleteAttributeValue(context.Context, *DeleteAttributeValueRequest) (*DeleteAttributeValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAttributeValue not implemented")
+}
+func (UnimplementedAttributesServiceServer) AssignKeyAccessServerToAttribute(context.Context, *AssignKeyAccessServerToAttributeRequest) (*AssignKeyAccessServerToAttributeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AssignKeyAccessServerToAttribute not implemented")
+}
+func (UnimplementedAttributesServiceServer) AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AssignKeyAccessServerToValue not implemented")
+}
+func (UnimplementedAttributesServiceServer) RemoveKeyAccessServerFromAttribute(context.Context, *RemoveKeyAccessServerFromAttributeRequest) (*RemoveKeyAccessServerFromAttributeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveKeyAccessServerFromAttribute not implemented")
+}
+func (UnimplementedAttributesServiceServer) RemoveKeyAccessServerFromValue(context.Context, *RemoveKeyAccessServerFromValueRequest) (*RemoveKeyAccessServerFromValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveKeyAccessServerFromValue not implemented")
 }
 func (UnimplementedAttributesServiceServer) mustEmbedUnimplementedAttributesServiceServer() {}
 
@@ -419,6 +479,78 @@ func _AttributesService_DeleteAttributeValue_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttributesService_AssignKeyAccessServerToAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AssignKeyAccessServerToAttributeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).AssignKeyAccessServerToAttribute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_AssignKeyAccessServerToAttribute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).AssignKeyAccessServerToAttribute(ctx, req.(*AssignKeyAccessServerToAttributeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_AssignKeyAccessServerToValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AssignKeyAccessServerToValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).AssignKeyAccessServerToValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_AssignKeyAccessServerToValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).AssignKeyAccessServerToValue(ctx, req.(*AssignKeyAccessServerToValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_RemoveKeyAccessServerFromAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveKeyAccessServerFromAttributeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).RemoveKeyAccessServerFromAttribute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).RemoveKeyAccessServerFromAttribute(ctx, req.(*RemoveKeyAccessServerFromAttributeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_RemoveKeyAccessServerFromValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveKeyAccessServerFromValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).RemoveKeyAccessServerFromValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_RemoveKeyAccessServerFromValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).RemoveKeyAccessServerFromValue(ctx, req.(*RemoveKeyAccessServerFromValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AttributesService_ServiceDesc is the grpc.ServiceDesc for AttributesService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -465,6 +597,22 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAttributeValue",
 			Handler:    _AttributesService_DeleteAttributeValue_Handler,
+		},
+		{
+			MethodName: "AssignKeyAccessServerToAttribute",
+			Handler:    _AttributesService_AssignKeyAccessServerToAttribute_Handler,
+		},
+		{
+			MethodName: "AssignKeyAccessServerToValue",
+			Handler:    _AttributesService_AssignKeyAccessServerToValue_Handler,
+		},
+		{
+			MethodName: "RemoveKeyAccessServerFromAttribute",
+			Handler:    _AttributesService_RemoveKeyAccessServerFromAttribute_Handler,
+		},
+		{
+			MethodName: "RemoveKeyAccessServerFromValue",
+			Handler:    _AttributesService_RemoveKeyAccessServerFromValue_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

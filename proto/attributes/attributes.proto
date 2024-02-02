@@ -5,7 +5,7 @@ package attributes;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
-import "kasregistry/kasregistry.proto";
+import "kasregistry/key_access_server_registry.proto";
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
 enum AttributeRuleTypeEnum {
@@ -57,8 +57,6 @@ message AttributeCreateUpdate {
 
   // optional
   repeated ValueCreate values = 5;
-
-  repeated kasregistry.KeyAccessServer grants = 8;
 }
 
 message Value {
@@ -99,12 +97,12 @@ message ValueUpdate {
    Key Access Server Grants
 */
 
-message DefinitionKeyAccessServerGrant {
+message AttributeKeyAccessServer {
   string attribute_id = 1;
   string key_access_server_id = 2;
 }
 
-message ValueKeyAccessServerGrant {
+message ValueKeyAccessServer {
   string value_id = 1;
   string key_access_server_id = 2;
 }
@@ -192,21 +190,35 @@ message DeleteAttributeValueResponse {
 */
 
 message AssignKeyAccessServerToAttributeRequest {
-  string attribute_id = 1 [(buf.validate.field).required = true];
-  string key_access_server_id = 2 [(buf.validate.field).required = true];
+  AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToAttributeResponse {
-  string id = 1;
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromAttributeRequest {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromAttributeResponse {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToValueRequest {
-  string value_id = 1 [(buf.validate.field).required = true];
-  string key_access_server_id = 2 [(buf.validate.field).required = true];
+  ValueKeyAccessServer value_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToValueResponse {
-  string id = 1;
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromValueRequest {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromValueResponse {
+  ValueKeyAccessServer value_key_access_server = 1;
 }
 
 ///
@@ -280,15 +292,29 @@ service AttributesService {
 
   rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
     option (google.api.http) = {
-      post: "/attributes/{attribute_id}/keyaccessserver"
-      body: "key_access_server_id"
+      post: "/attributes/keyaccessserver/assign"
+      body: "attribute_key_access_server"
     };
   }
 
   rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
     option (google.api.http) = {
-      post: "/attributes/_/values/{value_id}/keyaccessserver"
-      body: "key_access_server_id"
+      post: "/attributes/values/keyaccessserver/assign"
+      body: "value_key_access_server"
+    };
+  }
+
+  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
+    option (google.api.http) = {
+      post: "/attributes/keyaccessserver/remove"
+      body: "attribute_key_access_server"
+    };
+  }
+
+  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
+    option (google.api.http) = {
+      post: "/attributes/values/keyaccessserver/remove"
+      body: "value_key_access_server"
     };
   }
 }

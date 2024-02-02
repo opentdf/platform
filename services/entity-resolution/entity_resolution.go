@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	entity_resolution "github.com/opentdf/opentdf-v2-poc/sdk/entity-resolution"
 	"github.com/opentdf/opentdf-v2-poc/services"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"log/slog"
@@ -44,7 +45,7 @@ func (s EntityService) EntityResolution(ctx context.Context,
 	var resolvedEntities []*entity_resolution.EntityResolutionPayload
 	slog.Debug("EntityResolution invoked with", "payload", payload)
 
-	kcConnector, err := getKCClient(nil)
+	kcConnector, err := getKCClient(kcConfig)
 	if err != nil {
 		return &entity_resolution.EntityResolutionResponse{},
 			status.Error(codes.Internal, services.ErrCreatingResource)
@@ -150,17 +151,49 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable) (*entity_res
 	return &genericMap, nil
 }
 
-func getKCClient(kcConfig any) (*KeyCloakConnector, error) {
-	// TODO
+func getKCClient(kcConfig KeyCloakConfg) (*KeyCloakConnector, error) {
+	var client *gocloak.GoCloak
 	slog.Info("getKCClient invoked: ", kcConfig)
-	var client gocloak.GoCloak
 
-	return &KeyCloakConnector{token: nil, client: client}, nil
+	if kcConfig.LegacyKeycloak {
+		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
+		client = gocloak.NewClient(kcConfig.Url)
+	} else {
+		client = gocloak.NewClient(kcConfig.Url, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
+	}
+
+	ctxb := context.Background()
+	token, err := client.LoginClient(ctxb, kcConfig.ClientId, kcConfig.ClientSecret, kcConfig.Realm)
+	if err != nil {
+		slog.Warn("Error connecting to keycloak!", zap.Error(err))
+		return nil, err
+	}
+	keycloakConnector := KeyCloakConnector{token: token, client: *client}
+
+	return &keycloakConnector, nil
 }
 
 func expandGroup(groupID string, kcConnector *KeyCloakConnector, kcConfig *KeyCloakConfg, ctx context.Context) ([]*gocloak.User, error) {
-	// TODO
 	slog.Info("expandGroup invoked: ", groupID, kcConnector, kcConfig, ctx)
 	var entityRepresentations []*gocloak.User
+	slog.Debug("Add members of group", groupID)
+
+	grp, err := kcConnector.client.GetGroup(ctx, kcConnector.token.AccessToken, kcConfig.Realm, groupID)
+	if err == nil {
+		grpMembers, memberErr := kcConnector.client.GetGroupMembers(ctx, kcConnector.token.AccessToken, kcConfig.Realm,
+			*grp.ID, gocloak.GetGroupsParams{})
+		if memberErr == nil {
+			slog.Debug("Adding members", "amount", len(grpMembers), "from group", *grp.Name)
+			for i := 0; i < len(grpMembers); i++ {
+				user := grpMembers[i]
+				entityRepresentations = append(entityRepresentations, user)
+			}
+		} else {
+			slog.Error("Error getting group members", memberErr)
+			err = memberErr
+		}
+	} else {
+		slog.Error("Error getting group", err)
+	}
 	return entityRepresentations, nil
 }

@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package entityresolution;
 
-import "common/common.proto";
 import "google/api/annotations.proto";
 
 

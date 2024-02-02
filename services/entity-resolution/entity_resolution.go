@@ -8,7 +8,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	entity_resolution "github.com/opentdf/opentdf-v2-poc/sdk/entity-resolution"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"log/slog"
@@ -165,7 +164,7 @@ func getKCClient(kcConfig KeyCloakConfg) (*KeyCloakConnector, error) {
 	ctxb := context.Background()
 	token, err := client.LoginClient(ctxb, kcConfig.ClientId, kcConfig.ClientSecret, kcConfig.Realm)
 	if err != nil {
-		slog.Warn("Error connecting to keycloak!", zap.Error(err))
+		slog.Warn("Error connecting to keycloak!", err)
 		return nil, err
 	}
 	keycloakConnector := KeyCloakConnector{token: token, client: *client}

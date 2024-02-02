@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -11,6 +12,24 @@ import (
 )
 
 var KeyAccessServerTable = tableName(TableKeyAccessServerRegistry)
+
+func keyAccessServerProtojson(keyAccessServerJSON []byte) ([]*kasr.KeyAccessServer, error) {
+	var (
+		keyAccessServers []*kasr.KeyAccessServer
+		raw              []json.RawMessage
+	)
+	if err := json.Unmarshal(keyAccessServerJSON, &raw); err != nil {
+		return nil, err
+	}
+	for _, r := range raw {
+		kas := kasr.KeyAccessServer{}
+		if err := protojson.Unmarshal(r, &kas); err != nil {
+			return nil, err
+		}
+		keyAccessServers = append(keyAccessServers, &kas)
+	}
+	return keyAccessServers, nil
+}
 
 func keyAccessServerSelect() sq.SelectBuilder {
 	return newStatementBuilder().
@@ -160,10 +179,10 @@ func (c Client) CreateKeyAccessServer(ctx context.Context, keyAccessServer *kasr
 	}
 
 	return &kasr.KeyAccessServer{
-		Metadata:        newMetadata,
-		Id:              id,
-		Uri: keyAccessServer.Uri,
-		PublicKey:       keyAccessServer.PublicKey,
+		Metadata:  newMetadata,
+		Id:        id,
+		Uri:       keyAccessServer.Uri,
+		PublicKey: keyAccessServer.PublicKey,
 	}, nil
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
+	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc/codes"
@@ -33,20 +34,23 @@ func attributesRuleTypeEnumTransformOut(value string) attributes.AttributeRuleTy
 	return attributes.AttributeRuleTypeEnum(attributes.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
 }
 
-func attributesValuesProtojson(valuesJson []byte, values []*attributes.Value) error {
-	var raw []json.RawMessage
+func attributesValuesProtojson(valuesJson []byte) ([]*attributes.Value, error) {
+	var (
+		raw    []json.RawMessage
+		values []*attributes.Value
+	)
 	if err := json.Unmarshal(valuesJson, &raw); err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, r := range raw {
 		value := attributes.Value{}
 		if err := protojson.Unmarshal(r, &value); err != nil {
-			return err
+			return nil, err
 		}
 		values = append(values, &value)
 	}
-	return nil
+	return values, nil
 }
 
 func attributesSelect() sq.SelectBuilder {
@@ -61,13 +65,34 @@ func attributesSelect() sq.SelectBuilder {
 			"JSON_BUILD_OBJECT("+
 			"'id', "+tableField(AttributeValueTable, "id")+", "+
 			"'value', "+tableField(AttributeValueTable, "value")+","+
-			"'members', "+tableField(AttributeValueTable, "members")+
+			"'members', "+tableField(AttributeValueTable, "members")+","+
+			"'grants', ("+
+			"SELECT JSON_AGG("+
+			"JSON_BUILD_OBJECT("+
+			"'id', kas.id, "+
+			"'uri', kas.uri, "+
+			"'public_key', kas.public_key"+
 			")"+
-			") AS values",
+			") "+
+			"FROM "+KeyAccessServerTable+" kas "+
+			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
+			"WHERE avkag.attribute_value_id = "+AttributeValueTable+".id"+
+			")"+
+			")) AS values",
+		"JSON_AGG("+
+			"JSON_BUILD_OBJECT("+
+			"'id', "+tableField(KeyAccessServerTable, "id")+", "+
+			"'uri', "+tableField(KeyAccessServerTable, "uri")+", "+
+			"'public_key', "+tableField(KeyAccessServerTable, "public_key")+
+			")"+
+			") AS grants",
 	).
-		LeftJoin(AttributeValueTable+" ON "+AttributeValueTable+".id = "+AttributeTable+".id").
+		LeftJoin(AttributeValueTable+" ON "+AttributeValueTable+".attribute_definition_id = "+AttributeTable+".id").
 		LeftJoin(NamespacesTable+" ON "+NamespacesTable+".id = "+AttributeTable+".namespace_id").
+		LeftJoin(Tables.AttributeKeyAccessGrants.Name()+" ON "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".attribute_definition_id = "+AttributeTable+".id").
+		LeftJoin(KeyAccessServerTable+" ON "+KeyAccessServerTable+".id = "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".key_access_server_id").
 		GroupBy(tableField(AttributeTable, "id"), tableField(NamespacesTable, "name"))
+
 }
 
 func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
@@ -79,8 +104,9 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		namespaceId   string
 		namespaceName string
 		valuesJson    []byte
+		grants        []byte
 	)
-	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson)
+	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson, &grants)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, err
@@ -95,9 +121,17 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		}
 	}
 
-	v := make([]*attributes.Value, 0)
+	var v []*attributes.Value
 	if valuesJson != nil {
-		if err := attributesValuesProtojson(valuesJson, v); err != nil {
+		v, err = attributesValuesProtojson(valuesJson)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var k []*kasregistry.KeyAccessServer
+	if grants != nil {
+		k, err = keyAccessServerProtojson(grants)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -109,6 +143,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		Metadata:  m,
 		Values:    v,
 		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
+		Grants:    k,
 	}
 
 	return attr, nil
@@ -126,8 +161,9 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 			namespaceId   string
 			namespaceName string
 			valuesJson    []byte
+			grants        []byte
 		)
-		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson)
+		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson, &grants)
 		if err != nil {
 			return nil, err
 		}
@@ -151,11 +187,19 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 		}
 
 		if valuesJson != nil {
-			v := make([]*attributes.Value, 0)
-			if err := attributesValuesProtojson(valuesJson, v); err != nil {
+			v, err := attributesValuesProtojson(valuesJson)
+			if err != nil {
 				return nil, err
 			}
 			attribute.Values = v
+		}
+
+		if grants != nil {
+			k, err := keyAccessServerProtojson(grants)
+			if err != nil {
+				return nil, err
+			}
+			attribute.Grants = k
 		}
 
 		list = append(list, attribute)

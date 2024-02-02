@@ -75,6 +75,10 @@ attributes:
       name: attr3
       rule: HIERARCHY
 
+attribute_key_access_servers:
+  - attribute_id: 00000000-0000-0000-0000-000000000000
+    key_access_server_id: 00000000-0000-0000-0000-000000000000
+
 ##
 # Attribute Values
 ##
@@ -118,6 +122,10 @@ attribute_values:
       id: 00000000-0000-0000-0000-000000000005
       attribute_definition_id: 00000000-0000-0000-0000-000000000002
       value: value2
+
+attribute_value_key_access_servers:
+  - value_id: 00000000-0000-0000-0000-000000000000
+    key_access_server_id: 00000000-0000-0000-0000-000000000000
 
 ##
 # Subject Mappings

@@ -110,7 +110,7 @@ func (s *AttributesService) DeleteAttribute(ctx context.Context,
 ///
 
 func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attributes.CreateAttributeValueRequest) (*attributes.CreateAttributeValueResponse, error) {
-	item, err := s.dbClient.CreateAttributeValue(ctx, req.Value)
+	item, err := s.dbClient.CreateAttributeValue(ctx, req.AttributeId, req.Value)
 	if err != nil {
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)

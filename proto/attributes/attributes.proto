@@ -6,6 +6,7 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 import "kasregistry/key_access_server_registry.proto";
+import "namespaces/namespaces.proto";
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
 enum AttributeRuleTypeEnum {
@@ -16,20 +17,19 @@ enum AttributeRuleTypeEnum {
 }
 
 message Attribute {
-  // Namespace namespace = 1;
   string id = 1;
 
   // Optional metadata for the attribute definition
   common.Metadata metadata = 2;
 
-  // TODO: enable this when merging with Jake's work
-  // namespace.Namespace namespace = 3;
+  // namespace of the attribute
+  namespaces.Namespace namespace = 3;
 
   //attribute name
-  string name = 5;
+  string name = 4;
 
   // attribute rule enum
-  AttributeRuleTypeEnum rule = 6 [
+  AttributeRuleTypeEnum rule = 5 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
@@ -56,7 +56,7 @@ message AttributeCreateUpdate {
   ];
 
   // optional
-  repeated ValueCreate values = 5;
+  repeated ValueCreateUpdate values = 5;
 }
 
 message Value {
@@ -73,18 +73,7 @@ message Value {
   repeated string members = 5;
 }
 
-message ValueCreate {
-  common.MetadataMutable metadata = 1;
-
-  string attribute_id = 2 [(buf.validate.field).required = true];
-
-  string value = 3;
-
-  // list of attribute values that this value is related to (attribute group)
-  repeated string members = 4;
-}
-
-message ValueUpdate {
+message ValueCreateUpdate {
   common.MetadataMutable metadata = 1;
 
   string value = 2;
@@ -164,15 +153,16 @@ message ListAttributeValuesResponse {
 
 message CreateAttributeValueRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
-  ValueCreate value = 2 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 2 [(buf.validate.field).required = true];
 }
 message CreateAttributeValueResponse {
   Value value = 1;
 }
 
 message UpdateAttributeValueRequest {
-  string id = 1 [(buf.validate.field).required = true];
-  ValueUpdate value = 2 [(buf.validate.field).required = true];
+  string attribute_id = 1 [(buf.validate.field).required = true];
+  string id = 2 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 3 [(buf.validate.field).required = true];
 }
 message UpdateAttributeValueResponse {
   Value value = 1;
@@ -228,7 +218,7 @@ service AttributesService {
   /*
      List Attributes
      Example:
-      grpcurl -plaintext -d '{"namespace_id": "namespace_id"}' localhost:8080 attributes.AttributesService/ListAttributes
+      grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
   */
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
 
@@ -281,7 +271,7 @@ service AttributesService {
 
   rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {
     option (google.api.http) = {
-      post: "/attributes/_/values/{id}"
+      post: "/attributes/{attribute_id}/values/{id}"
       body: "value"
     };
   }

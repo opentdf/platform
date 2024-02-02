@@ -10,13 +10,12 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/services"
 )
 
-var NamespacesTable = tableName(TableNamespaces)
-
 func getNamespaceSql(id string) (string, []interface{}, error) {
+	t := Tables.Namespaces
 	return newStatementBuilder().
 		Select("*").
-		From(NamespacesTable).
-		Where(sq.Eq{tableField(NamespacesTable, "id"): id}).
+		From(t.Name()).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
@@ -48,9 +47,10 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 }
 
 func listNamespacesSql() (string, []interface{}, error) {
+	t := Tables.Namespaces
 	return newStatementBuilder().
 		Select("*").
-		From(NamespacesTable).
+		From(t.Name()).
 		ToSql()
 }
 
@@ -82,8 +82,9 @@ func (c Client) ListNamespaces(ctx context.Context) ([]*namespaces.Namespace, er
 }
 
 func createNamespaceSql(name string) (string, []interface{}, error) {
+	t := Tables.Namespaces
 	return newStatementBuilder().
-		Insert(NamespacesTable).
+		Insert(t.Name()).
 		Columns("name").
 		Values(name).
 		Suffix("RETURNING \"id\"").
@@ -111,10 +112,11 @@ func (c Client) CreateNamespace(ctx context.Context, name string) (string, error
 }
 
 func updateNamespaceSql(id string, name string) (string, []interface{}, error) {
+	t := Tables.Namespaces
 	return newStatementBuilder().
-		Update(NamespacesTable).
+		Update(t.Name()).
 		Set("name", name).
-		Where(sq.Eq{tableField(NamespacesTable, "id"): id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
@@ -143,9 +145,11 @@ func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*n
 }
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {
+	t := Tables.Namespaces
+	// TODO: handle delete cascade, dangerous deletion via special rpc, or "soft-delete" status change
 	return newStatementBuilder().
-		Delete(NamespacesTable).
-		Where(sq.Eq{"id": id}).
+		Delete(t.Name()).
+		Where(sq.Eq{t.Field("id"): id}).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
@@ -153,5 +157,15 @@ func deleteNamespaceSql(id string) (string, []interface{}, error) {
 func (c Client) DeleteNamespace(ctx context.Context, id string) error {
 	sql, args, err := deleteNamespaceSql(id)
 
-	return c.exec(ctx, sql, args, err)
+	e := c.exec(ctx, sql, args, err)
+	if e != nil {
+		if errors.Is(e, ErrNotFound) {
+			slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
+		} else if errors.Is(e, ErrForeignKeyViolation) {
+			slog.Error(services.ErrConflict, slog.String("error", e.Error()))
+		} else {
+			slog.Error(services.ErrDeletingResource, slog.String("error", e.Error()))
+		}
+	}
+	return e
 }

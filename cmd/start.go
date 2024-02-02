@@ -132,10 +132,10 @@ func createDatabaseClient(conf db.Config) (*db.Client, error) {
 //nolint:revive // the opa engine will be used in the future
 func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
 	var err error
-	slog.Info("registering acre server")
+	slog.Info("registering resource mappings server")
 	err = resourcemapping.NewResourceMappingServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
-		return fmt.Errorf("could not register acre service: %w", err)
+		return fmt.Errorf("could not register resource mappings service: %w", err)
 	}
 
 	slog.Info("registering attributes server")
@@ -144,10 +144,10 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 		return fmt.Errorf("could not register attributes service: %w", err)
 	}
 
-	slog.Info("registering subject mapping service")
+	slog.Info("registering subject mappings service")
 	err = subjectmapping.NewSubjectMappingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
 	if err != nil {
-		return fmt.Errorf("could not register subject mapping service: %w", err)
+		return fmt.Errorf("could not register subject mappings service: %w", err)
 	}
 
 	slog.Info("registering key access server registry")

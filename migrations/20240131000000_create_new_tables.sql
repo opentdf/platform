@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS attribute_values
 CREATE TABLE IF NOT EXISTS key_access_servers
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    key_access_server VARCHAR NOT NULL UNIQUE,
+    uri VARCHAR NOT NULL UNIQUE,
     public_key JSONB NOT NULL,
     metadata JSONB
 );

@@ -41,7 +41,7 @@ const (
 type AttributesServiceClient interface {
 	// List Attributes
 	// Example:
-	// grpcurl -plaintext -d '{"namespace_id": "namespace_id"}' localhost:8080 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
 	// List Values
 	// Example:
@@ -210,7 +210,7 @@ func (c *attributesServiceClient) RemoveKeyAccessServerFromValue(ctx context.Con
 type AttributesServiceServer interface {
 	// List Attributes
 	// Example:
-	// grpcurl -plaintext -d '{"namespace_id": "namespace_id"}' localhost:8080 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
 	// List Values
 	// Example:

@@ -295,8 +295,8 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error
 
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
 	v := &attributes.ValueKeyAccessServer{
-		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-		KeyAccessServerId: fixtureKeyAccessServerId,
+		ValueId:           fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1").Id,
+		KeyAccessServerId: fixtures.GetKasRegistryKey("key_access_server_1").Id,
 	}
 
 	resp, err := s.db.Client.RemoveKeyAccessServerFromValue(s.ctx, v)

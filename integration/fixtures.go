@@ -191,7 +191,7 @@ func (f *Fixtures) Provision() {
 	slog.Info("📦 provisioning attribute key access server data")
 	akas := f.provisionAttributeKeyAccessServer()
 	slog.Info("📦 provisioning attribute value key access server data")
-	akas = f.provisionAttributeValueKeyAccessServer()
+	avkas := f.provisionAttributeValueKeyAccessServer()
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
@@ -201,7 +201,7 @@ func (f *Fixtures) Provision() {
 		slog.Int64("resource_mappings", rM),
 		slog.Int64("kas_registry", kas),
 		slog.Int64("attribute_key_access_server", akas),
-		slog.Int64("attribute_value_key_access_server", akas),
+		slog.Int64("attribute_value_key_access_server", avkas),
 	)
 }
 

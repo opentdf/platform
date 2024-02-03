@@ -18,7 +18,6 @@ jobs:
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
         with:
           version: v1.55
-          only-new-issues: true
   unit:
     name: unit tests
     runs-on: ubuntu-22.04

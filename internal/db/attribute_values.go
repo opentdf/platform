@@ -14,11 +14,11 @@ var AttributeValueTable = tableName(TableAttributeValues)
 
 func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 	var (
-		id             string
-		value          string
-		members        []string
-		metadataJson   []byte
-		attributeId    string
+		id           string
+		value        string
+		members      []string
+		metadataJson []byte
+		attributeId  string
 	)
 	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId); err != nil {
 		return nil, err
@@ -32,10 +32,10 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 	}
 
 	v := &attributes.Value{
-		Id:       id,
-		Value:    value,
-		Members:  members,
-		Metadata: m,
+		Id:          id,
+		Value:       value,
+		Members:     members,
+		Metadata:    m,
 		AttributeId: attributeId,
 	}
 	return v, nil
@@ -256,6 +256,7 @@ func removeKeyAccessServerFromValueSql(valueID, keyAccessServerID string) (strin
 	return newStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{"attribute_value_id": valueID, "key_access_server_id": keyAccessServerID}).
+		Suffix("IS TRUE RETURNING *").
 		ToSql()
 }
 
@@ -265,7 +266,7 @@ func (c Client) RemoveKeyAccessServerFromValue(ctx context.Context, k *attribute
 		return nil, err
 	}
 
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if _, err := c.queryCount(ctx, sql, args); err != nil {
 		return nil, err
 	}
 

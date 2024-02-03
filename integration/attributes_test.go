@@ -363,8 +363,8 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr2").Id,
-		KeyAccessServerId: fixtureKeyAccessServerId,
+		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr1").Id,
+		KeyAccessServerId: fixtures.GetKasRegistryKey("key_access_server_1").Id,
 	}
 	resp, err := s.db.Client.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
 

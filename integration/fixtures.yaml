@@ -78,6 +78,8 @@ attributes:
 attribute_key_access_servers:
   - attribute_id: 00000000-0000-0000-0000-000000000000
     key_access_server_id: 00000000-0000-0000-0000-000000000000
+  - attribute_id: 00000000-0000-0000-0000-000000000000
+    key_access_server_id: 00000000-0000-0000-0000-000000000001
 
 ##
 # Attribute Values
@@ -126,6 +128,8 @@ attribute_values:
 attribute_value_key_access_servers:
   - value_id: 00000000-0000-0000-0000-000000000000
     key_access_server_id: 00000000-0000-0000-0000-000000000000
+  - value_id: 00000000-0000-0000-0000-000000000000
+    key_access_server_id: 00000000-0000-0000-0000-000000000001
 
 ##
 # Subject Mappings

@@ -152,6 +152,27 @@ func (c Client) query(ctx context.Context, sql string, args []interface{}, err e
 	return r, WrapIfKnownInvalidQueryErr(e)
 }
 
+func (c Client) queryCount(ctx context.Context, sql string, args []interface{}) (int, error) {
+	rows, err := c.query(ctx, sql, args, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		if _, err := rows.Values(); err != nil {
+			return 0, err
+		}
+		count++
+	}
+	if count == 0 {
+		return 0, pgx.ErrNoRows
+	}
+
+	return count, nil
+}
+
 // Common function for all exec calls
 func (c Client) exec(ctx context.Context, sql string, args []interface{}, err error) error {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))

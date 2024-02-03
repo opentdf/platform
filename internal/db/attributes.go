@@ -417,13 +417,17 @@ func removeKeyAccessServerFromAttributeSql(attributeID, keyAccessServerID string
 	return newStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{"attribute_definition_id": attributeID, "key_access_server_id": keyAccessServerID}).
+		Suffix("IS TRUE RETURNING *").
 		ToSql()
 }
 
 func (c Client) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
 	sql, args, err := removeKeyAccessServerFromAttributeSql(k.AttributeId, k.KeyAccessServerId)
+	if err != nil {
+		return nil, err
+	}
 
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if _, err := c.queryCount(ctx, sql, args); err != nil {
 		return nil, err
 	}
 

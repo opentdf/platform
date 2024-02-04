@@ -11,7 +11,7 @@ type AuthConfig struct {
 	authToken         string
 }
 
-// NewAuthConfig Create a new instance of authConfig
+// NewAuthConfig CreateTDF a new instance of authConfig
 func NewAuthConfig() (*AuthConfig, error) {
 	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {

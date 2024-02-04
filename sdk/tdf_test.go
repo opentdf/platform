@@ -2,7 +2,9 @@ package sdk
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
@@ -21,17 +23,19 @@ const (
 	// tenKB     = 10 * oneKB
 	oneMB     = 1024 * 1024
 	hundredMB = 100 * oneMB
-	// oneGB     = 10 * hundredMB
+	oneGB     = 10 * hundredMB
 	// tenGB     = 10 * oneGB
 )
 
 const (
 	stepSize int64 = 2 * oneMB
+	char           = 'a'
 )
 
 type tdfTest struct {
 	fileSize    int64
 	tdfFileSize int64
+	checksum    string
 	kasInfoList []KASInfo
 }
 
@@ -83,10 +87,11 @@ var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
 	qcddVKB624a93ZBssn7OivnR
 	-----END PRIVATE KEY-----`
 
-var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
+var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 	{
 		fileSize:    5,
 		tdfFileSize: 1580,
+		checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -97,6 +102,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 	{
 		fileSize:    oneKB,
 		tdfFileSize: 2604,
+		checksum:    "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -107,6 +113,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 	{
 		fileSize:    hundredMB,
 		tdfFileSize: 104866456,
+		checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -115,6 +122,144 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 			{
 				url:       "http://localhost:65432/api/kas",
 				publicKey: mockKasPublicKey,
+			},
+		},
+	},
+	{
+		fileSize:    5 * hundredMB,
+		tdfFileSize: 524324256,
+		checksum:    "d2fb707e70a804cf2ea770c9229295689831b4c88879c62bdb966e77e7336f18",
+		kasInfoList: []KASInfo{
+			{
+				url:       "http://localhost:65432/api/kas",
+				publicKey: mockKasPublicKey,
+			},
+			{
+				url:       "http://localhost:65432/api/kas",
+				publicKey: mockKasPublicKey,
+			},
+		},
+	},
+	//{
+	//	fileSize:    2 * oneGB,
+	//	tdfFileSize: 2097291006,
+	//	checksum:    "57bb3422770a98f193baa6f0fd67dd9743dc07c868abd95ad0606dff0bee32b4",
+	//	kasInfoList: []KASInfo{
+	//		{
+	//			url:       "http://localhost:65432/api/kas",
+	//			publicKey: mockKasPublicKey,
+	//		},
+	//		{
+	//			url:       "http://localhost:65432/api/kas",
+	//			publicKey: mockKasPublicKey,
+	//		},
+	//	},
+	//},
+	//{
+	//	fileSize:    4 * oneGB,
+	//	tdfFileSize: 4194580006,
+	//	checksum:    "a9c267f8600c18263250a10b0ab7995528cf80fc85275ab5a36ada3e350519fd",
+	//	kasInfoList: []KASInfo{
+	//		{
+	//			url:       "http://localhost:65432/api/kas",
+	//			publicKey: mockKasPublicKey,
+	//		},
+	//		{
+	//			url:       "http://localhost:65432/api/kas",
+	//			publicKey: mockKasPublicKey,
+	//		},
+	//	},
+	//},
+	//{
+	//	fileSize:    6 * oneGB,
+	//	tdfFileSize: 6291869194,
+	//	checksum:    "1a48fc773889be3361e9ca826fad32c191b10309f03996e1d233e02bc4c4b979",
+	//	kasInfoList: []KASInfo{
+	//		{
+	//			url:       "http://localhost:65432/api/kas",
+	//			publicKey: mockKasPublicKey,
+	//		},
+	//		{
+	//			url:       "http://localhost:65432/api/kas",
+	//			publicKey: mockKasPublicKey,
+	//		},
+	//	},
+	//},
+	//{
+	//	fileSize:    20 * oneGB,
+	//	tdfFileSize: 20972892194,
+	//	checksum:    "bd218f6cc4dc038d5707a276b0fdd5d1b3725cebe4e2e7b475cf2d09d551af08",
+	//	kasInfoList: []KASInfo{
+	//		{
+	//			url:       "http://localhost:65432/api/kas",
+	//			publicKey: mockKasPublicKey,
+	//		},
+	//		{
+	//			url:       "http://localhost:65432/api/kas",
+	//			publicKey: mockKasPublicKey,
+	//		},
+	//	},
+	//},
+}
+
+type TestReadAt struct {
+	segmentSize     int64
+	dataOffset      int64
+	dataLength      int
+	expectedPayload string
+}
+
+type partialReadTdfTest struct { //nolint:gochecknoglobals // requires for testing tdf
+	payload     string
+	kasInfoList []KASInfo
+	readAtTests []TestReadAt
+}
+
+const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
+	{
+		payload: payload, // len: 62
+		kasInfoList: []KASInfo{
+			{
+				url:       "http://localhost:65432/api/kas",
+				publicKey: mockKasPublicKey,
+			},
+			{
+				url:       "http://localhost:65432/api/kas",
+				publicKey: mockKasPublicKey,
+			},
+		},
+		readAtTests: []TestReadAt{
+			{
+				segmentSize:     2,
+				dataOffset:      26,
+				dataLength:      26,
+				expectedPayload: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+			},
+			{
+				segmentSize:     2 * oneMB,
+				dataOffset:      61,
+				dataLength:      1,
+				expectedPayload: "9",
+			},
+			{
+				segmentSize:     2,
+				dataOffset:      0,
+				dataLength:      62,
+				expectedPayload: payload,
+			},
+			{
+				segmentSize:     int64(len(payload)),
+				dataOffset:      0,
+				dataLength:      len(payload),
+				expectedPayload: payload,
+			},
+			{
+				segmentSize:     1,
+				dataOffset:      26,
+				dataLength:      26,
+				expectedPayload: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 			},
 		},
 	},
@@ -126,7 +271,7 @@ func init() {
 	// create a buffer and write with 0xff
 	buffer = make([]byte, stepSize)
 	for index := 0; index < len(buffer); index++ {
-		buffer[index] = 'a'
+		buffer[index] = char
 	}
 }
 
@@ -145,7 +290,7 @@ func TestSimpleTDF(t *testing.T) {
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
-		// Create TDFConfig
+		// CreateTDF TDFConfig
 		tdfConfig, err := NewTDFConfig()
 		if err != nil {
 			t.Fatalf("Fail to create tdf config: %v", err)
@@ -171,7 +316,7 @@ func TestSimpleTDF(t *testing.T) {
 
 		fileWriter, err := os.Create(tdfFilename)
 		if err != nil {
-			t.Fatalf("os.Create failed: %v", err)
+			t.Fatalf("os.CreateTDF failed: %v", err)
 		}
 		defer func(fileWriter *os.File) {
 			err := fileWriter.Close()
@@ -180,9 +325,9 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(fileWriter)
 
-		tdfSize, err := Create(*tdfConfig, bufReader, fileWriter)
+		tdfSize, err := CreateTDF(*tdfConfig, bufReader, fileWriter)
 		if err != nil {
-			t.Fatalf("tdf.Create failed: %v", err)
+			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}
 
 		if tdfSize != expectedTdfSize {
@@ -214,16 +359,17 @@ func TestSimpleTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		metaData, err := GetMetadata(*authConfig, readSeeker)
+		r, err := NewReader(*authConfig, readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
 
-		if metaDataStr != metaData {
-			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, metaData)
+		unencryptedMetaData := r.UnencryptedMetadata()
+		if metaDataStr != unencryptedMetaData {
+			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, unencryptedMetaData)
 		}
 
-		dataAttributes, err := GetAttributes(readSeeker)
+		dataAttributes, err := r.DataAttributes()
 		if err != nil {
 			t.Fatalf("Fail to get policy from tdf:%v", err)
 		}
@@ -259,7 +405,7 @@ func TestSimpleTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		payloadSize, err := GetPayload(*authConfig, readSeeker, &buf)
+		payloadSize, err := GetTDFPayload(*authConfig, readSeeker, &buf)
 		if err != nil {
 			t.Fatalf("Fail to decrypt tdf:%v", err)
 		}
@@ -269,7 +415,145 @@ func TestSimpleTDF(t *testing.T) {
 		}
 	}
 
+	// test reader
+	{
+		readSeeker, err := os.Open(tdfFilename)
+		if err != nil {
+			t.Fatalf("Fail to open archive file:%s %v", tdfFilename, err)
+		}
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file:%v", err)
+			}
+		}(readSeeker)
+
+		buf := make([]byte, 8)
+		// create auth config
+		authConfig, err := NewAuthConfig()
+		if err != nil {
+			t.Fatalf("Fail to close archive file:%v", err)
+		}
+
+		// override the signing keys to get the mock working.
+		authConfig.signingPublicKey = signingPubKey
+		authConfig.signingPrivateKey = signingPrivateKey
+
+		r, err := NewReader(*authConfig, readSeeker)
+		if err != nil {
+			t.Fatalf("Fail to create reader:%v", err)
+		}
+
+		offset := 2
+		n, err := r.ReadAt(buf, int64(offset))
+		if err != nil && errors.Is(err, io.EOF) != true {
+			t.Fatalf("Fail to read from reader:%v", err)
+		}
+
+		expectedPlainTxt := plainText[offset : offset+n]
+		if string(buf[:n]) != expectedPlainTxt {
+			t.Errorf("decrypt test failed expected %v, got %v", expectedPlainTxt, string(buf))
+		}
+	}
+
 	_ = os.Remove(tdfFilename)
+}
+
+func TestTDFReader(t *testing.T) {
+	server, signingPubKey, signingPrivateKey := runKas(t)
+	defer server.Close()
+
+	for _, test := range partialTDFTestHarnesses { // create .txt file
+		kasInfoList := test.kasInfoList
+		for index := range kasInfoList {
+			kasInfoList[index].url = server.URL
+			kasInfoList[index].publicKey = ""
+		}
+
+		tdfConfig, err := NewTDFConfig()
+		if err != nil {
+			t.Fatalf("Fail to create tdf config: %v", err)
+		}
+
+		err = tdfConfig.AddKasInformation(kasInfoList)
+		if err != nil {
+			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
+		}
+
+		// create auth config
+		authConfig, err := NewAuthConfig()
+		if err != nil {
+			t.Fatalf("Fail to close archive file:%v", err)
+		}
+
+		for _, readAtTest := range test.readAtTests {
+			tdfConfig.SetDefaultSegmentSize(readAtTest.segmentSize)
+
+			tdfBuf := bytes.Buffer{}
+			readSeeker := bytes.NewReader([]byte(test.payload))
+			_, err = CreateTDF(*tdfConfig, readSeeker, io.Writer(&tdfBuf))
+			if err != nil {
+				t.Fatalf("tdf.CreateTDF failed: %v", err)
+			}
+
+			// override the signing keys to get the mock working.
+			authConfig.signingPublicKey = signingPubKey
+			authConfig.signingPrivateKey = signingPrivateKey
+
+			// test reader
+			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
+			r, err := NewReader(*authConfig, tdfReadSeeker)
+			if err != nil {
+				t.Fatalf("failed to read tdf: %v", err)
+			}
+
+			rbuf := make([]byte, readAtTest.dataLength)
+			n, err := r.ReadAt(rbuf, readAtTest.dataOffset)
+			if err != nil {
+				t.Fatalf("Fail to read from reader:%v", err)
+			}
+
+			if n != readAtTest.dataLength {
+				t.Errorf("decrypt test failed expected length %v, got %v", readAtTest.dataLength, n)
+			}
+
+			if string(rbuf) != readAtTest.expectedPayload {
+				t.Errorf("decrypt test failed expected %v, got %v", readAtTest.expectedPayload, string(rbuf))
+			}
+
+			// Test Read
+			plainTextFile := "text.txt"
+			{
+				fileWriter, err := os.Create(plainTextFile)
+
+				if err != nil {
+					t.Fatalf("os.CreateTDF failed: %v", err)
+				}
+				defer func(fileWriter *os.File) {
+					err := fileWriter.Close()
+					if err != nil {
+						t.Fatalf("Fail to close the tdf file: %v", err)
+					}
+				}(fileWriter)
+
+				_, err = io.Copy(fileWriter, r)
+				if err != nil {
+					t.Fatalf("Fail to copy into file: %v", err)
+				}
+			}
+
+			fileData, err := os.ReadFile(plainTextFile)
+			if err != nil {
+				t.Fatalf("os.ReadFile failed: %v", err)
+			}
+
+			if string(fileData) != test.payload {
+				t.Errorf("decrypt test failed expected %v, got %v", test.payload, string(fileData))
+			}
+			_ = os.Remove(plainTextFile)
+		}
+	}
 }
 
 func TestTDF(t *testing.T) {
@@ -311,12 +595,14 @@ func TestTDF(t *testing.T) {
 		authConfig.signingPrivateKey = signingPrivateKey
 
 		// test decrypt
-		testDecrypt(t, *authConfig, tdfFileName, decryptedTdfFileName, test.fileSize)
+		testDecrypt(t, *authConfig, tdfFileName, decryptedTdfFileName, test)
+
+		// test decrypt with reader
+		testDecryptWithReader(t, *authConfig, tdfFileName, decryptedTdfFileName, test)
 
 		// Remove the test files
 		_ = os.Remove(plaintTextFileName)
 		_ = os.Remove(tdfFileName)
-		_ = os.Remove(decryptedTdfFileName)
 	}
 }
 
@@ -341,17 +627,17 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 	fileWriter, err := os.Create(tdfFileName)
 
 	if err != nil {
-		t.Fatalf("os.Create failed: %v", err)
+		t.Fatalf("os.CreateTDF failed: %v", err)
 	}
 	defer func(fileWriter *os.File) {
 		err := fileWriter.Close()
 		if err != nil {
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
-	}(fileWriter) // Create TDFConfig
-	tdfSize, err := Create(tdfConfig, readSeeker, fileWriter)
+	}(fileWriter) // CreateTDF TDFConfig
+	tdfSize, err := CreateTDF(tdfConfig, readSeeker, fileWriter)
 	if err != nil {
-		t.Fatalf("tdf.Create failed: %v", err)
+		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
 
 	if tdfSize != test.tdfFileSize {
@@ -359,7 +645,51 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 	}
 }
 
-func testDecrypt(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileName string, payloadSize int64) {
+func testDecrypt(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileName string, test tdfTest) {
+	{
+		readSeeker, err := os.Open(tdfFile)
+		if err != nil {
+			t.Fatalf("Fail to open archive file:%s %v", tdfFile, err)
+		}
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file:%v", err)
+			}
+		}(readSeeker)
+
+		fileWriter, err := os.Create(decryptedTdfFileName)
+		if err != nil {
+			t.Fatalf("os.CreateTDF failed: %v", err)
+		}
+
+		defer func(fileWriter *os.File) {
+			err := fileWriter.Close()
+			if err != nil {
+				t.Fatalf("Fail to close the file: %v", err)
+			}
+		}(fileWriter) // CreateTDF TDFConfig
+
+		decryptedData, err := GetTDFPayload(authConfig, readSeeker, fileWriter)
+		if err != nil {
+			t.Fatalf("tdf.CreateTDF failed: %v", err)
+		}
+
+		if test.fileSize != decryptedData {
+			t.Errorf("payload size test failed expected %v, got %v", test.fileSize, decryptedData)
+		}
+	}
+
+	res := checkIdentical(t, decryptedTdfFileName, test.checksum)
+	if !res {
+		t.Errorf("decrypted text didn't match palin text")
+	}
+
+	_ = os.Remove(decryptedTdfFileName)
+}
+
+func testDecryptWithReader(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileName string, test tdfTest) {
 	readSeeker, err := os.Open(tdfFile)
 	if err != nil {
 		t.Fatalf("Fail to open archive file:%s %v", tdfFile, err)
@@ -372,32 +702,56 @@ func testDecrypt(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileN
 		}
 	}(readSeeker)
 
-	fileWriter, err := os.Create(decryptedTdfFileName)
+	r, err := NewReader(authConfig, readSeeker)
 	if err != nil {
-		t.Fatalf("os.Create failed: %v", err)
+		t.Fatalf("failed to read tdf: %v", err)
 	}
 
-	defer func(fileWriter *os.File) {
-		err := fileWriter.Close()
+	{
+		fileWriter, err := os.Create(decryptedTdfFileName)
+
 		if err != nil {
-			t.Fatalf("Fail to close the file: %v", err)
+			t.Fatalf("os.CreateTDF failed: %v", err)
 		}
-	}(fileWriter) // Create TDFConfig
+		defer func(fileWriter *os.File) {
+			err := fileWriter.Close()
+			if err != nil {
+				t.Fatalf("Fail to close the tdf file: %v", err)
+			}
+		}(fileWriter)
 
-	decryptedData, err := GetPayload(authConfig, readSeeker, fileWriter)
-	if err != nil {
-		t.Fatalf("tdf.Create failed: %v", err)
+		_, err = io.Copy(fileWriter, r)
+		if err != nil {
+			t.Fatalf("Fail to copy into file: %v", err)
+		}
 	}
 
-	if payloadSize != decryptedData {
-		t.Errorf("payload size test failed expected %v, got %v", payloadSize, decryptedData)
+	res := checkIdentical(t, decryptedTdfFileName, test.checksum)
+	if !res {
+		t.Errorf("decrypted text didn't match palin text")
 	}
+
+	var bufSize int64 = 5
+	buf := make([]byte, bufSize)
+	resultBuf := bytes.Repeat([]byte{char}, int(bufSize))
+
+	// read last 5 bytes
+	n, err := r.ReadAt(buf, test.fileSize-(bufSize))
+	if err != nil && errors.Is(err, io.EOF) != true {
+		t.Fatalf("sdk.Reader.ReadAt failed: %v", err)
+	}
+
+	if !bytes.Equal(buf[:n], resultBuf[:n]) {
+		t.Errorf("decrypted text didn't match palin text with ReadAt interface")
+	}
+
+	_ = os.Remove(decryptedTdfFileName)
 }
 
 func createFileName(t *testing.T, buf []byte, filename string, size int64) {
 	f, err := os.Create(filename)
 	if err != nil {
-		t.Fatalf("os.Create failed: %v", err)
+		t.Fatalf("os.CreateTDF failed: %v", err)
 	}
 
 	totalBytes := size
@@ -527,4 +881,26 @@ func runKas(t *testing.T) (*httptest.Server, string, string) {
 	}))
 
 	return server, signingPubKey, signingPrivateKey
+}
+
+func checkIdentical(t *testing.T, file, checksum string) bool {
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatalf("os.Open failed: %v", err)
+	}
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+
+		}
+	}(f)
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		t.Fatalf("io.Copy failed: %v", err)
+	}
+	c := h.Sum(nil)
+
+	// slog.Info(fmt.Sprintf("%x", c))
+	return checksum == fmt.Sprintf("%x", c)
 }

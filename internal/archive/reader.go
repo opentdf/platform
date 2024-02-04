@@ -262,9 +262,13 @@ func readBytes(readerSeeker io.ReadSeeker, index, size int64) ([]byte, error) {
 	}
 
 	buf := make([]byte, size)
-	_, err = readerSeeker.Read(buf)
+	n, err := readerSeeker.Read(buf)
+	if errors.Is(err, io.EOF) {
+		return buf[:n], io.EOF
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("readerSeeker.Read failed: %w", err)
+		return buf[:n], fmt.Errorf("readerSeeker.Read failed: %w", err)
 	}
 
 	return buf, nil

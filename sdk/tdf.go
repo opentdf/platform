@@ -34,12 +34,6 @@ const (
 	tdfZipReference        = "reference"
 )
 
-type SegmentInfo struct {
-	index         int64
-	size          int64
-	encryptedSize int64
-}
-
 type Reader struct {
 	tdfReader   archive.TDFReader
 	sKey        splitKey

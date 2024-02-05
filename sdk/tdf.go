@@ -32,7 +32,7 @@ const (
 )
 
 // Create tdf
-func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (int64, error) {
+func Create(authConfig AuthConfig, tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (int64, error) {
 	toalBytes := int64(0)
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
@@ -170,6 +170,11 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (int64,
 	totalBytes, err := tdfWriter.Finish()
 	if err != nil {
 		return toalBytes, fmt.Errorf("TDFWriter.Finish failed:%w", err)
+	}
+
+	err = splitKey.Upsert(authConfig, manifest)
+	if err != nil {
+		return 0, err
 	}
 
 	return totalBytes, nil

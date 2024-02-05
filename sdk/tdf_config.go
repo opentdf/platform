@@ -80,6 +80,10 @@ func NewTDFConfig() (*TDFConfig, error) {
 	}, nil
 }
 
+func NewKasInfo(url string) KASInfo {
+	return KASInfo{url: url}
+}
+
 // AddKasInformation Add all the kas urls and their corresponding public keys
 // that is required to create and read the tdf.
 func (tdfConfig *TDFConfig) AddKasInformation(kasInfoList []KASInfo) error {

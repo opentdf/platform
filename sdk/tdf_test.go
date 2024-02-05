@@ -134,6 +134,16 @@ func TestSimpleTDF(t *testing.T) {
 	server, signingPubKey, signingPrivateKey := runKas(t)
 	defer server.Close()
 
+	// create auth config
+	authConfig, err := NewAuthConfig()
+	if err != nil {
+		t.Fatalf("Fail to close archive file:%v", err)
+	}
+
+	// override the signing keys to get the mock working.
+	authConfig.signingPublicKey = signingPubKey
+	authConfig.signingPrivateKey = signingPrivateKey
+
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
 
 	attributes := []string{
@@ -180,7 +190,7 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(fileWriter)
 
-		tdfSize, err := Create(*tdfConfig, bufReader, fileWriter)
+		tdfSize, err := Create(*authConfig, *tdfConfig, bufReader, fileWriter)
 		if err != nil {
 			t.Fatalf("tdf.Create failed: %v", err)
 		}
@@ -203,16 +213,6 @@ func TestSimpleTDF(t *testing.T) {
 				t.Fatalf("Fail to close archive file:%v", err)
 			}
 		}(readSeeker)
-
-		// create auth config
-		authConfig, err := NewAuthConfig()
-		if err != nil {
-			t.Fatalf("Fail to close archive file:%v", err)
-		}
-
-		// override the signing keys to get the mock working.
-		authConfig.signingPublicKey = signingPubKey
-		authConfig.signingPrivateKey = signingPrivateKey
 
 		metaData, err := GetMetadata(*authConfig, readSeeker)
 		if err != nil {
@@ -324,6 +324,11 @@ func TestTDF(t *testing.T) {
 func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileName string, test tdfTest) {
 	// create a plain text file
 	createFileName(t, buffer, plainTextFilename, test.fileSize)
+	// create auth config
+	authConfig, err := NewAuthConfig()
+	if err != nil {
+		t.Fatalf("Fail to close archive file:%v", err)
+	}
 
 	// open file
 	readSeeker, err := os.Open(plainTextFilename)
@@ -349,7 +354,7 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
 	}(fileWriter) // Create TDFConfig
-	tdfSize, err := Create(tdfConfig, readSeeker, fileWriter)
+	tdfSize, err := Create(*authConfig, tdfConfig, readSeeker, fileWriter)
 	if err != nil {
 		t.Fatalf("tdf.Create failed: %v", err)
 	}

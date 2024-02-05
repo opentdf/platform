@@ -25,7 +25,7 @@ type KeyAccess struct {
 	Protocol          string `json:"protocol"`
 	WrappedKey        string `json:"wrappedKey"`
 	PolicyBinding     string `json:"policyBinding"`
-	EncryptedMetadata string `json:"encryptedMetadata"`
+	EncryptedMetadata string `json:"encryptedMetadata,omitempty"`
 }
 
 type Method struct {
@@ -70,4 +70,9 @@ type policyObject struct {
 		DataAttributes []attributeObject `json:"dataAttributes"`
 		Dissem         []string          `json:"dissem"`
 	}
+}
+
+type EncryptedMetadata struct {
+	Cipher string `json:"ciphertext"`
+	Iv     string `json:"iv"`
 }

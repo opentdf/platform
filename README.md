@@ -35,19 +35,26 @@ This should bring up a grpc server on port **9000** and http server on port **80
 ```bash
   grpcurl -plaintext localhost:9000 list
 
-  acre.v1.ResourcEncodingService
-  attributes.v1.AttributesService
+  attributes.AttributesService
   grpc.reflection.v1.ServerReflection
   grpc.reflection.v1alpha.ServerReflection
+  kasregistry.KeyAccessServerRegistryService
+  namespaces.NamespaceService
+  resourcemapping.ResourceMappingService
+  subjectmapping.SubjectMappingService
 
-  grpcurl -plaintext localhost:9000 list attributes.v1.AttributesService
+  grpcurl -plaintext localhost:9000 list attributes.AttributesService
 
-  attributes.v1.AttributesService.CreateAttribute
-  attributes.v1.AttributesService.DeleteAttribute
-  attributes.v1.AttributesService.GetAttribute
-  attributes.v1.AttributesService.ListAttributes
-  attributes.v1.AttributesService.UpdateAttribute
-
+  attributes.AttributesService.CreateAttribute
+  attributes.AttributesService.CreateAttributeValue
+  attributes.AttributesService.DeleteAttribute
+  attributes.AttributesService.DeleteAttributeValue
+  attributes.AttributesService.GetAttribute
+  attributes.AttributesService.GetAttributeValue
+  attributes.AttributesService.ListAttributeValues
+  attributes.AttributesService.ListAttributes
+  attributes.AttributesService.UpdateAttribute
+  attributes.AttributesService.UpdateAttributeValue
 ```
 
 Create Attribute

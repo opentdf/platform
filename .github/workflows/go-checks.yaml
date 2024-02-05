@@ -39,4 +39,4 @@ jobs:
           go-version: '1.21'
           cache: false
       - name: Integration Tests with the Go CLI
-        run: go test ./tests -race
+        run: go test ./integration -race

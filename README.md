@@ -15,7 +15,7 @@ With go 1.18 or higher:
 
 [Buf](https://buf.build/docs/ecosystem/cli-overview)
 
-`brew install buf`
+`brew install buf grpcurl goose`
 
 ### Run
 
@@ -23,14 +23,16 @@ With go 1.18 or higher:
 
 2. `cp example-opentdf.yaml opentdf.yaml` and update the values
 
-3. `air`
+3. `goose -dir=./migrations postgres "postgres://postgres:changeme@localhost:5432/opentdf" up`
+
+4. `air`
 
 This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
 
 ### Test
 
 ```bash
-  grpcurl -plaintext localhost:9000 list
+  grpcurl -plaintext localhost:9999 list
 
   attributes.AttributesService
   grpc.reflection.v1.ServerReflection
@@ -57,7 +59,7 @@ This should bring up a grpc server on port **9000** and http server on port **80
 Create Attribute
 
 ```bash
-grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM
+grpcurl -plaintext -d @ localhost:9999 attributes.AttributesService/CreateAttribute <<EOM
 {
     "definition": {
         "name": "relto",

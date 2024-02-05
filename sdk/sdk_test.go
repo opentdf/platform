@@ -6,13 +6,15 @@ import (
 
 	"github.com/opentdf/opentdf-v2-poc/sdk"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/keyaccessserverregistry"
+	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
 	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 )
 
-var goodPlatformEndpoint = "localhost:9000"
-var badPlatformEndpoint = "localhost:9999"
+var (
+	goodPlatformEndpoint = "localhost:9000"
+	badPlatformEndpoint  = "localhost:9999"
+)
 
 func GetMethods(i interface{}) (m []string) {
 	r := reflect.TypeOf(i)
@@ -91,7 +93,7 @@ func Test_ShouldHaveSameMethods(t *testing.T) {
 		},
 		{
 			name:     "KeyAccessGrants",
-			expected: GetMethods(reflect.TypeOf(keyaccessserverregistry.NewKeyAccessServerRegistryServiceClient(sdk.Conn()))),
+			expected: GetMethods(reflect.TypeOf(kasregistry.NewKeyAccessServerRegistryServiceClient(sdk.Conn()))),
 			actual:   GetMethods(reflect.TypeOf(sdk.KeyAccessServerRegistry)),
 		},
 	}

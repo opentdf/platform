@@ -29,9 +29,6 @@ This should bring up a grpc server on port **9000** and http server on port **80
 
 ### Test
 
-> [!WARNING]
-> GRPC and reflection is disabled by default. Please see the `opentdf.yaml` for more details (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43))
-
 ```bash
   grpcurl -plaintext localhost:9000 list
 

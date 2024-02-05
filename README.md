@@ -21,9 +21,9 @@ With go 1.18 or higher:
 
 1. `docker-compose -f opentdf-compose.yaml up`
 
-2. `cp example-opentdf.yaml opentdf.yaml` and update the values
+2. `goose -dir=./migrations postgres "postgres://postgres:changeme@localhost:5432/opentdf" up`
 
-3. `goose -dir=./migrations postgres "postgres://postgres:changeme@localhost:5432/opentdf" up`
+3. `cp example-opentdf.yaml opentdf.yaml` and update the values
 
 4. `air`
 

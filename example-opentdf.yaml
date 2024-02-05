@@ -36,9 +36,9 @@ services:
               - "msExchMailboxGuid"
               - "msExchMailboxSecurityDescriptor"
 server:
-  # grpc:
-  #   port: 9000
-  #   reflectionEnabled: true # Default is false
+  grpc:
+    port: 9000
+    reflectionEnabled: true # Default is false
   http:
     port: 8080
 opa:

@@ -59,7 +59,7 @@ This should bring up a grpc server on port **9000** and http server on port **80
 Create Attribute
 
 ```bash
-grpcurl -plaintext -d @ localhost:9000 attributes.AttributesService/CreateAttribute <<EOM
+grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM
 {
     "definition": {
         "name": "relto",

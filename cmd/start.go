@@ -16,10 +16,15 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/logger"
 	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/services/acre"
-	"github.com/opentdf/opentdf-v2-poc/services/acse"
+	"github.com/opentdf/opentdf-v2-poc/services/resourcemapping"
+
+	// "github.com/opentdf/opentdf-v2-poc/services/acre"
 	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
+	"github.com/opentdf/opentdf-v2-poc/services/kasregistry"
+	"github.com/opentdf/opentdf-v2-poc/services/subjectmapping"
+
+	"github.com/opentdf/opentdf-v2-poc/services/namespaces"
+	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
 
@@ -126,13 +131,11 @@ func createDatabaseClient(conf db.Config) (*db.Client, error) {
 
 //nolint:revive // the opa engine will be used in the future
 func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
-	var (
-		err error
-	)
-	slog.Info("registering acre server")
-	err = acre.NewResourceEncoding(dbClient, otdf.GrpcServer, otdf.Mux)
+	var err error
+	slog.Info("registering resource mappings server")
+	err = resourcemapping.NewResourceMappingServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
-		return fmt.Errorf("could not register acre service: %w", err)
+		return fmt.Errorf("could not register resource mappings service: %w", err)
 	}
 
 	slog.Info("registering attributes server")
@@ -141,16 +144,22 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 		return fmt.Errorf("could not register attributes service: %w", err)
 	}
 
-	slog.Info("registering acse server")
-	err = acse.NewSubjectEncodingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
+	slog.Info("registering subject mappings service")
+	err = subjectmapping.NewSubjectMappingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
 	if err != nil {
-		return fmt.Errorf("could not register acse service: %w", err)
+		return fmt.Errorf("could not register subject mappings service: %w", err)
 	}
 
-	slog.Info("registering key access grants service")
-	err = keyaccessgrants.NewKeyAccessGrantsServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	slog.Info("registering key access server registry")
+	err = kasregistry.NewKeyAccessServerRegistryServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register key access grants service: %w", err)
+	}
+
+	slog.Info("registering namespaces server")
+	err = namespaces.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	if err != nil {
+		return fmt.Errorf("could not register namespaces service: %w", err)
 	}
 
 	return nil

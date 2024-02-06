@@ -28,7 +28,7 @@ const (
 	kClientPublicKey        = "clientPublicKey"
 	kSignedRequestToken     = "signedRequestToken"
 	kKasURL                 = "url"
-	kRewrapV2               = "/v2/upsert"
+	kRewrapV2               = "/v2/rewrap"
 	kAuthorizationKey       = "Authorization"
 	kContentTypeKey         = "Content-Type"
 	kAcceptKey              = "Accept"

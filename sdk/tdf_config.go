@@ -52,7 +52,7 @@ const (
 	kasPublicKeyPath   = "/kas_public_key"
 )
 
-// NewTDFConfig Create a new instance of tdf config.
+// NewTDFConfig CreateTDF a new instance of tdf config.
 func NewTDFConfig() (*TDFConfig, error) {
 	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {

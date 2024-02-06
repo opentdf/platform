@@ -276,7 +276,7 @@ func init() {
 }
 
 func TestSimpleTDF(t *testing.T) {
-	server, signingPubKey, signingPrivateKey := runKas(t)
+	server, signingPubKey, signingPrivateKey := runKas()
 	defer server.Close()
 
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
@@ -379,42 +379,6 @@ func TestSimpleTDF(t *testing.T) {
 		}
 	}
 
-	// test decrypt
-	{
-		readSeeker, err := os.Open(tdfFilename)
-		if err != nil {
-			t.Fatalf("Fail to open archive file:%s %v", tdfFilename, err)
-		}
-
-		defer func(readSeeker *os.File) {
-			err := readSeeker.Close()
-			if err != nil {
-				t.Fatalf("Fail to close archive file:%v", err)
-			}
-		}(readSeeker)
-
-		// writer
-		var buf bytes.Buffer
-		// create auth config
-		authConfig, err := NewAuthConfig()
-		if err != nil {
-			t.Fatalf("Fail to close archive file:%v", err)
-		}
-
-		// override the signing keys to get the mock working.
-		authConfig.signingPublicKey = signingPubKey
-		authConfig.signingPrivateKey = signingPrivateKey
-
-		payloadSize, err := GetTDFPayload(*authConfig, readSeeker, &buf)
-		if err != nil {
-			t.Fatalf("Fail to decrypt tdf:%v", err)
-		}
-
-		if string(buf.Bytes()[:payloadSize]) != plainText {
-			t.Errorf("decrypt test failed expected %v, got %v", plainText, buf.String())
-		}
-	}
-
 	// test reader
 	{
 		readSeeker, err := os.Open(tdfFilename)
@@ -461,7 +425,7 @@ func TestSimpleTDF(t *testing.T) {
 }
 
 func TestTDFReader(t *testing.T) {
-	server, signingPubKey, signingPrivateKey := runKas(t)
+	server, signingPubKey, signingPrivateKey := runKas()
 	defer server.Close()
 
 	for _, test := range partialTDFTestHarnesses { // create .txt file
@@ -557,7 +521,7 @@ func TestTDFReader(t *testing.T) {
 }
 
 func TestTDF(t *testing.T) {
-	server, signingPubKey, signingPrivateKey := runKas(t)
+	server, signingPubKey, signingPrivateKey := runKas()
 	defer server.Close()
 
 	for index, test := range testHarnesses { // create .txt file
@@ -594,9 +558,6 @@ func TestTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		// test decrypt
-		testDecrypt(t, *authConfig, tdfFileName, decryptedTdfFileName, test)
-
 		// test decrypt with reader
 		testDecryptWithReader(t, *authConfig, tdfFileName, decryptedTdfFileName, test)
 
@@ -606,10 +567,83 @@ func TestTDF(t *testing.T) {
 	}
 }
 
+func BenchmarkReader(b *testing.B) {
+	test := tdfTest{
+		fileSize: 10 * oneMB,
+		kasInfoList: []KASInfo{
+			{
+				url:       "http://localhost:65432/api/kas",
+				publicKey: mockKasPublicKey,
+			},
+		},
+	}
+
+	server, signingPubKey, signingPrivateKey := runKas()
+	defer server.Close()
+
+	kasInfoList := test.kasInfoList
+	for index := range kasInfoList {
+		kasInfoList[index].url = server.URL
+		kasInfoList[index].publicKey = ""
+	}
+
+	tdfConfig, err := NewTDFConfig()
+	if err != nil {
+		b.Fatalf("Fail to create tdf config: %v", err)
+	}
+
+	err = tdfConfig.AddKasInformation(kasInfoList)
+	if err != nil {
+		b.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
+	}
+
+	// encrypt
+	// create a buffer and write with 0xff
+	inBuf := make([]byte, test.fileSize)
+	for index := 0; index < len(inBuf); index++ {
+		inBuf[index] = char
+	}
+
+	tdfBuf := bytes.Buffer{}
+	readSeeker := bytes.NewReader(inBuf)
+	_, err = CreateTDF(*tdfConfig, readSeeker, io.Writer(&tdfBuf))
+	if err != nil {
+		b.Fatalf("tdf.CreateTDF failed: %v", err)
+	}
+
+	// create auth config
+	authConfig, err := NewAuthConfig()
+	if err != nil {
+		b.Fatalf("Fail to close archive file:%v", err)
+	}
+
+	// override the signing keys to get the mock working.
+	authConfig.signingPublicKey = signingPubKey
+	authConfig.signingPrivateKey = signingPrivateKey
+
+	readSeeker = bytes.NewReader(tdfBuf.Bytes())
+	r, err := NewReader(*authConfig, readSeeker)
+	if err != nil {
+		b.Fatalf("failed to read tdf: %v", err)
+	}
+
+	outBuf := bytes.Buffer{}
+	for i := 0; i < b.N; i++ {
+		n, err := r.WriteTo(io.Writer(&outBuf))
+		if err != nil {
+			b.Fatalf("io.Writer failed: %v", err)
+		}
+
+		if !bytes.Equal(outBuf.Bytes()[:n], inBuf) {
+			b.Errorf("Input buffer is different from out buffer decrypt test failed")
+		}
+	}
+}
+
 // create tdf
 func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileName string, test tdfTest) {
 	// create a plain text file
-	createFileName(t, buffer, plainTextFilename, test.fileSize)
+	createFileName(buffer, plainTextFilename, test.fileSize)
 
 	// open file
 	readSeeker, err := os.Open(plainTextFilename)
@@ -643,50 +677,6 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 	if tdfSize != test.tdfFileSize {
 		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfSize)
 	}
-}
-
-func testDecrypt(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileName string, test tdfTest) {
-	{
-		readSeeker, err := os.Open(tdfFile)
-		if err != nil {
-			t.Fatalf("Fail to open archive file:%s %v", tdfFile, err)
-		}
-
-		defer func(readSeeker *os.File) {
-			err := readSeeker.Close()
-			if err != nil {
-				t.Fatalf("Fail to close archive file:%v", err)
-			}
-		}(readSeeker)
-
-		fileWriter, err := os.Create(decryptedTdfFileName)
-		if err != nil {
-			t.Fatalf("os.CreateTDF failed: %v", err)
-		}
-
-		defer func(fileWriter *os.File) {
-			err := fileWriter.Close()
-			if err != nil {
-				t.Fatalf("Fail to close the file: %v", err)
-			}
-		}(fileWriter) // CreateTDF TDFConfig
-
-		decryptedData, err := GetTDFPayload(authConfig, readSeeker, fileWriter)
-		if err != nil {
-			t.Fatalf("tdf.CreateTDF failed: %v", err)
-		}
-
-		if test.fileSize != decryptedData {
-			t.Errorf("payload size test failed expected %v, got %v", test.fileSize, decryptedData)
-		}
-	}
-
-	res := checkIdentical(t, decryptedTdfFileName, test.checksum)
-	if !res {
-		t.Errorf("decrypted text didn't match palin text")
-	}
-
-	_ = os.Remove(decryptedTdfFileName)
 }
 
 func testDecryptWithReader(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileName string, test tdfTest) {
@@ -748,10 +738,10 @@ func testDecryptWithReader(t *testing.T, authConfig AuthConfig, tdfFile, decrypt
 	_ = os.Remove(decryptedTdfFileName)
 }
 
-func createFileName(t *testing.T, buf []byte, filename string, size int64) {
+func createFileName(buf []byte, filename string, size int64) {
 	f, err := os.Create(filename)
 	if err != nil {
-		t.Fatalf("os.CreateTDF failed: %v", err)
+		panic(fmt.Sprintf("os.CreateTDF failed: %v", err))
 	}
 
 	totalBytes := size
@@ -766,34 +756,34 @@ func createFileName(t *testing.T, buf []byte, filename string, size int64) {
 		}
 		_, err := f.Write(buf[:bytesToWrite])
 		if err != nil {
-			t.Fatalf("io.Write failed: %v", err)
+			panic(fmt.Sprintf("io.Write failed: %v", err))
 		}
 	}
 	err = f.Close()
 	if err != nil {
-		t.Fatalf("os.Close failed: %v", err)
+		panic(fmt.Sprintf("os.Close failed: %v", err))
 	}
 }
 
-func runKas(t *testing.T) (*httptest.Server, string, string) {
+func runKas() (*httptest.Server, string, string) {
 	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
-		t.Fatalf("crypto.NewRSAKeyPair: %v", err)
+		panic(fmt.Sprintf("crypto.NewRSAKeyPair: %v", err))
 	}
 
 	signingPubKey, err := signingKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		t.Fatalf("crypto.PublicKeyInPemFormat failed: %v", err)
+		panic(fmt.Sprintf("crypto.PublicKeyInPemFormat failed: %v", err))
 	}
 
 	signingPrivateKey, err := signingKeyPair.PrivateKeyInPemFormat()
 	if err != nil {
-		t.Fatalf("crypto.PrivateKeyInPemFormat failed: %v", err)
+		panic(fmt.Sprintf("crypto.PrivateKeyInPemFormat failed: %v", err))
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(kAcceptKey) != kContentTypeJSONValue {
-			t.Fatalf("expected Accept: application/json header, got: %s", r.Header.Get("Accept"))
+			panic(fmt.Sprintf("expected Accept: application/json header, got: %s", r.Header.Get("Accept")))
 		}
 
 		r.Header.Set(kContentTypeKey, kContentTypeJSONValue)
@@ -802,26 +792,26 @@ func runKas(t *testing.T) (*httptest.Server, string, string) {
 		case r.URL.Path == kasPublicKeyPath:
 			kasPublicKeyResponse, err := json.Marshal(mockKasPublicKey)
 			if err != nil {
-				t.Fatalf("json.Marshal failed: %v", err)
+				panic(fmt.Sprintf("json.Marshal failed: %v", err))
 			}
 			w.WriteHeader(http.StatusOK)
 			_, err = w.Write(kasPublicKeyResponse)
 			if err != nil {
-				t.Fatalf("http.ResponseWriter.Write failed: %v", err)
+				panic(fmt.Sprintf("http.ResponseWriter.Write failed: %v", err))
 			}
 		case r.URL.Path == kRewrapV2:
 			requestBody, err := io.ReadAll(r.Body)
 			if err != nil {
-				t.Fatalf("io.ReadAll failed: %v", err)
+				panic(fmt.Sprintf("io.ReadAll failed: %v", err))
 			}
 			var data map[string]string
 			err = json.Unmarshal(requestBody, &data)
 			if err != nil {
-				t.Fatalf("json.Unmarsha failed: %v", err)
+				panic(fmt.Sprintf("json.Unmarsha failed: %v", err))
 			}
 			tokenString, ok := data[kSignedRequestToken]
 			if !ok {
-				t.Fatalf("signed token missing in rewrap response")
+				panic("signed token missing in rewrap response")
 			}
 			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(signingPubKey))
@@ -833,50 +823,50 @@ func runKas(t *testing.T) (*httptest.Server, string, string) {
 			})
 			var rewrapRequest = ""
 			if err != nil {
-				t.Fatalf("jwt.ParseWithClaims failed:%v", err)
+				panic(fmt.Sprintf("jwt.ParseWithClaims failed:%v", err))
 			} else if claims, fine := token.Claims.(*rewrapJWTClaims); fine {
 				rewrapRequest = claims.Body
 			} else {
-				t.Fatalf("unknown claims type, cannot proceed")
+				panic("unknown claims type, cannot proceed")
 			}
 			err = json.Unmarshal([]byte(rewrapRequest), &data)
 			if err != nil {
-				t.Fatalf("json.Unmarshal failed: %v", err)
+				panic(fmt.Sprintf("json.Unmarshal failed: %v", err))
 			}
 			wrappedKey, err := crypto.Base64Decode([]byte(data["wrappedKey"]))
 			if err != nil {
-				t.Fatalf("crypto.Base64Decode failed: %v", err)
+				panic(fmt.Sprintf("crypto.Base64Decode failed: %v", err))
 			}
 			kasPrivateKey := strings.ReplaceAll(mockKasPrivateKey, "\n\t", "\n")
 			asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
 			if err != nil {
-				t.Fatalf("crypto.NewAsymDecryption failed: %v", err)
+				panic(fmt.Sprintf("crypto.NewAsymDecryption failed: %v", err))
 			}
 			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
 			if err != nil {
-				t.Fatalf("crypto.Decrypt failed: %v", err)
+				panic(fmt.Sprintf("crypto.Decrypt failed: %v", err))
 			}
 			asymEncrypt, err := crypto.NewAsymEncryption(data[kClientPublicKey])
 			if err != nil {
-				t.Fatalf("crypto.NewAsymEncryption failed: %v", err)
+				panic(fmt.Sprintf("crypto.NewAsymEncryption failed: %v", err))
 			}
 			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 			if err != nil {
-				t.Fatalf("crypto.encrypt failed: %v", err)
+				panic(fmt.Sprintf("crypto.encrypt failed: %v", err))
 			}
 			response, err := json.Marshal(map[string]string{
 				kEntityWrappedKey: string(crypto.Base64Encode(entityWrappedKey)),
 			})
 			if err != nil {
-				t.Fatalf("json.Marshal failed: %v", err)
+				panic(fmt.Sprintf("json.Marshal failed: %v", err))
 			}
 			w.WriteHeader(http.StatusOK)
 			_, err = w.Write(response)
 			if err != nil {
-				t.Fatalf("http.ResponseWriter.Write failed: %v", err)
+				panic(fmt.Sprintf("http.ResponseWriter.Write failed: %v", err))
 			}
 		default:
-			t.Fatalf("expected to request: %s", r.URL.Path)
+			panic(fmt.Sprintf("expected to request: %s", r.URL.Path))
 		}
 	}))
 

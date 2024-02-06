@@ -248,6 +248,57 @@ func (reader *Reader) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// WriteTo writes data to writer until there's no more data to write or
+// when an error occurs.
+func (reader *Reader) WriteTo(writer io.Writer) (n int64, err error) {
+	var totalBytes int64
+	var payloadReadOffset int64
+	for _, seg := range reader.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		readBuf, err := reader.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+		if err != nil {
+			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
+		}
+
+		if int64(len(readBuf)) != seg.EncryptedSize {
+			return totalBytes, errTDFReaderFailed
+		}
+
+		segHashAlg := reader.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		sigAlg := HS256
+		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
+			sigAlg = GMAC
+		}
+
+		payloadSig, err := reader.sKey.getSignature(readBuf, sigAlg)
+		if err != nil {
+			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+		}
+
+		if seg.Hash != string(crypto.Base64Encode([]byte(payloadSig))) {
+			return totalBytes, errSegSigValidation
+		}
+
+		writeBuf, err := reader.sKey.decrypt(readBuf)
+		if err != nil {
+			return totalBytes, fmt.Errorf("splitKey.decrypt failed: %w", err)
+		}
+
+		n, err := writer.Write(writeBuf)
+		if err != nil {
+			return totalBytes, fmt.Errorf("io.writer.write failed: %w", err)
+		}
+
+		if n != len(writeBuf) {
+			return totalBytes, errWriteFailed
+		}
+
+		payloadReadOffset += seg.EncryptedSize
+		totalBytes += int64(n)
+	}
+
+	return totalBytes, nil
+}
+
 // ReadAt reads len(p) bytes into p starting at offset off
 // in the underlying input source. It returns the number
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
@@ -377,95 +428,4 @@ func (reader *Reader) DataAttributes() ([]string, error) {
 	}
 
 	return attributes, nil
-}
-
-// GetTDFPayload decrypt the tdf and write the data to writer.
-func GetTDFPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) (int64, error) {
-
-	totalBytes := int64(0)
-
-	// create tdf reader
-	tdfReader, err := archive.NewTDFReader(reader)
-	if err != nil {
-		return totalBytes, fmt.Errorf("archive.NewTDFReader failed: %w", err)
-	}
-
-	manifest, err := tdfReader.Manifest()
-	if err != nil {
-		return totalBytes, fmt.Errorf("tdfReader.Manifest failed: %w", err)
-	}
-
-	manifestObj := &Manifest{}
-	err = json.Unmarshal([]byte(manifest), manifestObj)
-	if err != nil {
-		return totalBytes, fmt.Errorf("json.Unmarshal failed:%w", err)
-	}
-
-	// create a split key
-	sKey, err := newSplitKeyFromManifest(authConfig, *manifestObj)
-	if err != nil {
-		return totalBytes, fmt.Errorf("fail to create a new split key: %w", err)
-	}
-
-	res, err := sKey.validateRootSignature(manifestObj)
-	if err != nil {
-		return totalBytes, fmt.Errorf("splitKey.validateRootSignature failed: %w", err)
-	}
-
-	if !res {
-		return totalBytes, errRootSigValidation
-	}
-
-	segSize := manifestObj.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	encryptedSegSize := manifestObj.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
-
-	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
-		return totalBytes, errSegSizeMismatch
-	}
-
-	var payloadReadOffset int64
-	for _, seg := range manifestObj.EncryptionInformation.IntegrityInformation.Segments {
-		readBuf, err := tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
-		if err != nil {
-			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
-		}
-
-		if int64(len(readBuf)) != seg.EncryptedSize {
-			return totalBytes, errTDFReaderFailed
-		}
-
-		segHashAlg := manifestObj.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
-		sigAlg := HS256
-		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
-			sigAlg = GMAC
-		}
-
-		payloadSig, err := sKey.getSignature(readBuf, sigAlg)
-		if err != nil {
-			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
-		}
-
-		if seg.Hash != string(crypto.Base64Encode([]byte(payloadSig))) {
-			return totalBytes, errSegSigValidation
-		}
-
-		writeBuf, err := sKey.decrypt(readBuf)
-		if err != nil {
-			return totalBytes, fmt.Errorf("splitKey.decrypt failed: %w", err)
-		}
-
-		n, err := writer.Write(writeBuf)
-		if err != nil {
-			return totalBytes, fmt.Errorf("io.writer.write failed: %w", err)
-		}
-
-		if n != len(writeBuf) {
-			return totalBytes, errWriteFailed
-		}
-
-		payloadReadOffset += seg.EncryptedSize
-		totalBytes += int64(n)
-	}
-
-	return totalBytes, nil
 }

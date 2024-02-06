@@ -28,9 +28,7 @@ const (
 	kClientPublicKey        = "clientPublicKey"
 	kSignedRequestToken     = "signedRequestToken"
 	kKasURL                 = "url"
-	kKeyAccess              = "keyAccess"
 	kRewrapV2               = "/v2/rewrap"
-	kUpsertV2               = "/v2/upsert"
 	kAuthorizationKey       = "Authorization"
 	kContentTypeKey         = "Content-Type"
 	kAcceptKey              = "Accept"
@@ -330,41 +328,6 @@ func (splitKey splitKey) createPolicyObject() (policyObject, error) {
 	return policyObj, nil
 }
 
-func (splitKey splitKey) Upsert(authConfig AuthConfig, manifest *Manifest) error {
-	clientKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	clientPubKey, err := clientKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
-	}
-
-	requestBody := RequestBody{manifest.KeyAccessObjs[0], clientPubKey, manifest.EncryptionInformation.Policy}
-
-	response, err := splitKey.handleKasRequest(kUpsertV2, &requestBody, authConfig)
-	if err != nil {
-		slog.Error("failed http request")
-		return err
-	}
-	responseBody, err := io.ReadAll(response.Body)
-	if err != nil {
-		return fmt.Errorf("io.ReadAll failed: %w", err)
-	}
-	if response.StatusCode != kHTTPOk {
-		return fmt.Errorf("http requestfailed status code:%d response: %s", response.StatusCode, responseBody)
-	}
-
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			slog.Error("Fail to close HTTP response")
-		}
-	}(response.Body)
-
-	return nil
-}
 func (splitKey splitKey) handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) (*http.Response, error) {
 	kasURL := body.KasURL
 

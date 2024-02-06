@@ -86,7 +86,7 @@ var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
 var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 	{
 		fileSize:    5,
-		tdfFileSize: 1580,
+		tdfFileSize: 1557,
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -96,7 +96,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 	},
 	{
 		fileSize:    oneKB,
-		tdfFileSize: 2604,
+		tdfFileSize: 2581,
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -106,7 +106,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 	},
 	{
 		fileSize:    hundredMB,
-		tdfFileSize: 104866456,
+		tdfFileSize: 104866410,
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -151,7 +151,7 @@ func TestSimpleTDF(t *testing.T) {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(1989)
+	expectedTdfSize := int64(2073)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{

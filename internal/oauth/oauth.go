@@ -26,6 +26,10 @@ type ClientFlowCredentials struct {
 	DPoPKey     jwk.Key
 }
 
+func (clientCredentials ClientFlowCredentials) GetDPoPKey() (jwk.Key, error) {
+	return clientCredentials.DPoPKey, nil
+}
+
 func (clientCredentials ClientFlowCredentials) GetAccessToken() (string, error) {
 	// this misses the flow where the Authorization server can tell us the next nonce to use.
 	// missing this flow costs us a bit in efficiency (a round trip per access token) but this is

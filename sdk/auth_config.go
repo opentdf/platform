@@ -30,7 +30,7 @@ func NewAuthConfig() (*AuthConfig, error) {
 
 	privateKey, err := rsaKeyPair.PrivateKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("crypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
 	return &AuthConfig{signingPublicKey: publicKey, signingPrivateKey: privateKey}, nil

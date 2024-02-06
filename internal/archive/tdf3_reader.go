@@ -37,11 +37,7 @@ func (tdfReader TDFReader) Manifest() (string, error) {
 
 // ReadPayload Return the payload of given length from index.
 func (tdfReader TDFReader) ReadPayload(index, length int64) ([]byte, error) {
-	buf, err := tdfReader.archiveReader.ReadFileData(TDFPayloadFileName, index, length)
-	if err != nil {
-		return nil, err
-	}
-	return buf, nil
+	return tdfReader.archiveReader.ReadFileData(TDFPayloadFileName, index, length)
 }
 
 // PayloadSize Return the size of the payload.

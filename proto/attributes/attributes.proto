@@ -163,7 +163,6 @@ message CreateAttributeValueResponse {
 }
 
 message UpdateAttributeValueRequest {
-  string attribute_id = 1 [(buf.validate.field).required = true];
   string id = 2 [(buf.validate.field).required = true];
   ValueCreateUpdate value = 3 [(buf.validate.field).required = true];
 }
@@ -315,7 +314,7 @@ service AttributesService {
 
   /** Attribute Value **/
   rpc GetAttributeValue(GetAttributeValueRequest) returns (GetAttributeValueResponse) {
-    option (google.api.http) = {get: "/attributes/_/values/{id}"};
+    option (google.api.http) = {get: "/attributes/*/values/{id}"};
   }
 
   // Create Attribute Value
@@ -330,13 +329,13 @@ service AttributesService {
 
   rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {
     option (google.api.http) = {
-      post: "/attributes/{attribute_id}/values/{id}"
+      post: "/attributes/*/values/{id}"
       body: "value"
     };
   }
 
   rpc DeleteAttributeValue(DeleteAttributeValueRequest) returns (DeleteAttributeValueResponse) {
-    option (google.api.http) = {delete: "/attributes/_/values/{id}"};
+    option (google.api.http) = {delete: "/attributes/*/values/{id}"};
   }
 
   /*

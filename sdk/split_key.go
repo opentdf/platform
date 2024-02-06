@@ -324,6 +324,7 @@ func (splitKey splitKey) createPolicyObject() (policyObject, error) {
 		attributeObj := attributeObject{}
 		attributeObj.Attribute = attribute
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
+		policyObj.Body.Dissem = make([]string, 0)
 	}
 
 	return policyObj, nil

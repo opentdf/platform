@@ -69,7 +69,7 @@ type policyObject struct {
 	Body struct {
 		DataAttributes []attributeObject `json:"dataAttributes"`
 		Dissem         []string          `json:"dissem"`
-	}
+	} `json:"body"`
 }
 
 type EncryptedMetadata struct {

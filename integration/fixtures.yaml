@@ -1,0 +1,218 @@
+##
+# Namespaces
+##
+attribute_namespaces:
+  metadata:
+    table_name: attribute_namespaces
+    columns:
+      - id
+      - name
+  data:
+    example.com:
+      id: 00000000-0000-0000-0000-000000000000
+      name: example.com
+    example.net:
+      id: 00000000-0000-0000-0000-000000000001
+      name: example.net
+    example.org:
+      id: 00000000-0000-0000-0000-000000000002
+      name: example.org
+
+##
+# Attributes
+#
+# Attribute Rule Enum: UNSPECIFIED, ANY_OF, ALL_OF, HIERARCHY
+##
+attributes:
+  metadata:
+    table_name: attribute_definitions
+    columns:
+      - id
+      - namespace_id
+      - name
+      - rule
+  data:
+    example.com/attr/attr1:
+      id: 00000000-0000-0000-0000-000000000000
+      namespace_id: 00000000-0000-0000-0000-000000000000
+      name: attr1
+      rule: ANY_OF
+    example.com/attr/attr2:
+      id: 00000000-0000-0000-0000-000000000001
+      namespace_id: 00000000-0000-0000-0000-000000000000
+      name: attr2
+      rule: ALL_OF
+
+    example.net/attr/attr1:
+      id: 00000000-0000-0000-0000-000000000002
+      namespace_id: 00000000-0000-0000-0000-000000000001
+      name: attr1
+      rule: ANY_OF
+    example.net/attr/attr2:
+      id: 00000000-0000-0000-0000-000000000003
+      namespace_id: 00000000-0000-0000-0000-000000000001
+      name: attr2
+      rule: ALL_OF
+    example.net/attr/attr3:
+      id: 00000000-0000-0000-0000-000000000004
+      namespace_id: 00000000-0000-0000-0000-000000000001
+      name: attr3
+      rule: HIERARCHY
+
+    example.org/attr/attr1:
+      id: 00000000-0000-0000-0000-000000000005
+      namespace_id: 00000000-0000-0000-0000-000000000002
+      name: attr1
+      rule: ANY_OF
+    example.org/attr/attr2:
+      id: 00000000-0000-0000-0000-000000000006
+      namespace_id: 00000000-0000-0000-0000-000000000002
+      name: attr2
+      rule: ALL_OF
+    example.org/attr/attr3:
+      id: 00000000-0000-0000-0000-000000000007
+      namespace_id: 00000000-0000-0000-0000-000000000002
+      name: attr3
+      rule: HIERARCHY
+
+attribute_key_access_servers:
+  - attribute_id: 00000000-0000-0000-0000-000000000000
+    key_access_server_id: 00000000-0000-0000-0000-000000000000
+  - attribute_id: 00000000-0000-0000-0000-000000000000
+    key_access_server_id: 00000000-0000-0000-0000-000000000001
+
+##
+# Attribute Values
+##
+attribute_values:
+  metadata:
+    table_name: attribute_values
+    columns:
+      - id
+      - attribute_definition_id
+      - value
+      - members
+  data:
+    example.com/attr/attr1/value/value1:
+      id: 00000000-0000-0000-0000-000000000000
+      attribute_definition_id: 00000000-0000-0000-0000-000000000000
+      value: value1
+    example.com/attr/attr1/value/value2:
+      id: 00000000-0000-0000-0000-000000000001
+      attribute_definition_id: 00000000-0000-0000-0000-000000000000
+      value: value2
+      members:
+        # example.com/attr/attr2/value/value1
+        - 00000000-0000-0000-0000-000000000002
+        # example.net/attr/attr1/value/value1
+        - 00000000-0000-0000-0000-000000000004
+
+    example.com/attr/attr2/value/value1:
+      id: 00000000-0000-0000-0000-000000000002
+      attribute_definition_id: 00000000-0000-0000-0000-000000000001
+      value: value1
+    example.com/attr/attr2/value/value2:
+      id: 00000000-0000-0000-0000-000000000003
+      attribute_definition_id: 00000000-0000-0000-0000-000000000001
+      value: value2
+
+    example.net/attr/attr1/value/value1:
+      id: 00000000-0000-0000-0000-000000000004
+      attribute_definition_id: 00000000-0000-0000-0000-000000000002
+      value: value1
+    example.net/attr/attr1/value/value2:
+      id: 00000000-0000-0000-0000-000000000005
+      attribute_definition_id: 00000000-0000-0000-0000-000000000002
+      value: value2
+
+attribute_value_key_access_servers:
+  - value_id: 00000000-0000-0000-0000-000000000000
+    key_access_server_id: 00000000-0000-0000-0000-000000000000
+  - value_id: 00000000-0000-0000-0000-000000000000
+    key_access_server_id: 00000000-0000-0000-0000-000000000001
+
+##
+# Subject Mappings
+#
+# Operator Enum: UNSPECIFIED, IN, NOT_IN
+##
+subject_mappings:
+  metadata:
+    table_name: subject_mappings
+    columns:
+      - id
+      - attribute_value_id
+      - operator
+      - subject_attribute
+      - subject_attribute_values
+  data:
+    subject_mapping_subject_attribute1:
+      id: 00000000-0000-0000-0000-000000000000
+      attribute_value_id: 00000000-0000-0000-0000-000000000000
+      operator: IN
+      subject_attribute: subject_attribute1
+      subject_attribute_values:
+        - value1
+        - value2
+
+    subject_mapping_subject_attribute2:
+      id: 00000000-0000-0000-0000-000000000001
+      attribute_value_id: 00000000-0000-0000-0000-000000000001
+      operator: NOT_IN
+      subject_attribute: subject_attribute2
+      subject_attribute_values:
+        - value1
+        - value2
+        - value3
+
+##
+# Resource Mappings
+#
+##
+resource_mappings:
+  metadata:
+    table_name: resource_mappings
+    columns:
+      - id
+      - attribute_value_id
+      - terms
+  data:
+    resource_mapping_to_attribute_value1:
+      id: 00000000-0000-0000-0000-000000000000
+      attribute_value_id: 00000000-0000-0000-0000-000000000000
+      terms:
+        - TS
+        - TOPSECRET
+    resource_mapping_to_attribute_value2:
+      id: 00000000-0000-0000-0000-000000000001
+      attribute_value_id: 00000000-0000-0000-0000-000000000001
+      terms:
+        - test0
+    resource_mapping_to_attribute_value3:
+      id: 00000000-0000-0000-0000-000000000002
+      attribute_value_id: 00000000-0000-0000-0000-000000000005
+      terms:
+        - helloworld
+
+##
+# KAS Registry (key access server registry)
+#
+##
+kas_registry:
+  metadata:
+    table_name: key_access_servers
+    columns:
+      - id
+      - uri
+      - public_key
+  data:
+    key_access_server_1:
+      id: 00000000-0000-0000-0000-000000000000
+      uri: kas.example.com
+      public_key:
+        remote: https://kas.example.com/public_key
+    key_access_server_2:
+      id: 00000000-0000-0000-0000-000000000001
+      uri: https://local.kas.com:3000
+      public_key:
+        local: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==

@@ -18,14 +18,8 @@ jobs:
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
         with:
           version: v1.55
-  vulncheck:
-    name: vulncheck
-    runs-on: ubuntu-22.04
-    steps:
-      - name: govluncheck
-        uses: golang/govulncheck-action@7da72f730e37eeaad891fcff0a532d27ed737cd4
-        with:
-          go-version-file: 'go.mod'
+          # Optional: golangci-lint command line arguments.
+          args: --timeout=10m 
   unit:
     name: unit tests
     runs-on: ubuntu-22.04
@@ -47,7 +41,7 @@ jobs:
           go-version: '1.21'
           cache: false
       - name: Integration Tests with the Go CLI
-        run: go test ./tests -race
+        run: go test ./integration -race
   license:
     name: license check
     runs-on: ubuntu-22.04

@@ -18,8 +18,14 @@
 # vendor/
 
 # Go workspace file
-go.work
+#go.work
 
 tmp/
 .DS_Store
 __pycache__
+
+# GoLand IDE
+.idea/
+
+opentdf.yaml
+.vscode/settings.json

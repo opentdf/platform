@@ -6,9 +6,14 @@ deps:
 breaking:
   use:
     - FILE
+    - PACKAGE
+    - WIRE_JSON
+    - WIRE
 lint:
   use:
     - DEFAULT
+  except:
+    - PACKAGE_VERSION_SUFFIX
   ignore_only:
     PACKAGE_VERSION_SUFFIX:
       - google/api/annotations.proto

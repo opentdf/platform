@@ -81,7 +81,7 @@ func Test_ShouldHaveSameMethods(t *testing.T) {
 		},
 		{
 			name:     "ResourceEncoding",
-			expected: GetMethods(reflect.TypeOf(acre.NewResourcEncodingServiceClient(sdk.Conn()))),
+			expected: GetMethods(reflect.TypeOf(acre.NewResourceEncodingServiceClient(sdk.Conn()))),
 			actual:   GetMethods(reflect.TypeOf(sdk.ResourceEncoding)),
 		},
 		{

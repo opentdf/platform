@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/internal/archive"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"strings"
+
+	"github.com/opentdf/opentdf-v2-poc/internal/archive"
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 var (
@@ -176,7 +177,7 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (int64,
 }
 
 // GetPayload decrypt the tdf and write the data to writer.
-func GetPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) (int64, error) {
+func GetPayload(kasClient KasClient, reader io.ReadSeeker, writer io.Writer) (int64, error) {
 
 	totalBytes := int64(0)
 
@@ -198,7 +199,7 @@ func GetPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) (
 	}
 
 	// create a split key
-	sKey, err := newSplitKeyFromManifest(authConfig, *manifestObj)
+	sKey, err := newSplitKeyFromManifest(kasClient, *manifestObj)
 	if err != nil {
 		return totalBytes, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -267,7 +268,7 @@ func GetPayload(authConfig AuthConfig, reader io.ReadSeeker, writer io.Writer) (
 }
 
 // GetMetadata return the meta present in tdf.
-func GetMetadata(authConfig AuthConfig, reader io.ReadSeeker) (string, error) {
+func GetMetadata(kasClient KasClient, authConfig AuthConfig, reader io.ReadSeeker) (string, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
@@ -286,7 +287,7 @@ func GetMetadata(authConfig AuthConfig, reader io.ReadSeeker) (string, error) {
 	}
 
 	// create a split key
-	sKey, err := newSplitKeyFromManifest(authConfig, *manifestObj)
+	sKey, err := newSplitKeyFromManifest(kasClient, *manifestObj)
 	if err != nil {
 		return "", fmt.Errorf("fail to create a new split key: %w", err)
 	}

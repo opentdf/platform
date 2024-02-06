@@ -3,6 +3,7 @@ package sdk
 import (
 	"errors"
 
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/opentdf-v2-poc/sdk/acre"
 	"github.com/opentdf/opentdf-v2-poc/sdk/acse"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
@@ -22,10 +23,15 @@ func (c Error) Error() string {
 	return string(c)
 }
 
+type Credentials interface {
+	GetAccessToken() (string, error)
+	GetDPoPKey() (jwk.Key, error)
+}
+
 type SDK struct {
 	conn             *grpc.ClientConn
 	Attributes       attributes.AttributesServiceClient
-	ResourceEncoding acre.ResourcEncodingServiceClient
+	ResourceEncoding acre.ResourceEncodingServiceClient
 	SubjectEncoding  acse.SubjectEncodingServiceClient
 	KeyAccessGrants  keyaccessgrants.KeyAccessGrantsServiceClient
 }
@@ -53,7 +59,7 @@ func newSDK(conn *grpc.ClientConn) *SDK {
 	return &SDK{
 		conn:             conn,
 		Attributes:       attributes.NewAttributesServiceClient(conn),
-		ResourceEncoding: acre.NewResourcEncodingServiceClient(conn),
+		ResourceEncoding: acre.NewResourceEncodingServiceClient(conn),
 		SubjectEncoding:  acse.NewSubjectEncodingServiceClient(conn),
 		KeyAccessGrants:  keyaccessgrants.NewKeyAccessGrantsServiceClient(conn),
 	}

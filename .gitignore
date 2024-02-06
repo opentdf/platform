@@ -28,3 +28,4 @@ __pycache__
 .idea/
 
 opentdf.yaml
+.vscode/settings.json

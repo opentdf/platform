@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestNewOidcAuthConfig(t *testing.T) {
+func TestNewOIDCAuthConfig(t *testing.T) {
 	expectedAccessToken := "Bearer fail"
 	clientId := "idk"
 	clientSecret := "secret password"
@@ -34,7 +35,7 @@ func TestNewOidcAuthConfig(t *testing.T) {
 	u, _ := url.Parse(s.URL)
 	host, port, _ := net.SplitHostPort(u.Host)
 
-	authConfig, err := NewOidcAuthConfig("http://"+host+":"+port, realm, clientId, clientSecret, subjectToken)
+	authConfig, err := NewOIDCAuthConfig(context.TODO(), "http://"+host+":"+port, realm, clientId, clientSecret, subjectToken)
 
 	if err != nil {
 		t.Fatalf("authconfig failed: %v", err)

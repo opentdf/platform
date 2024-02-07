@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
@@ -36,25 +37,25 @@ func NewAuthConfig() (*AuthConfig, error) {
 	return &AuthConfig{signingPublicKey: publicKey, signingPrivateKey: privateKey}, nil
 }
 
-func NewOidcAuthConfig(host, realm, clientId, clientSecret, subjectToken string) (*AuthConfig, error) {
+func NewOIDCAuthConfig(ctx context.Context, host, realm, clientId, clientSecret, subjectToken string) (*AuthConfig, error) {
 	authConfig, err := NewAuthConfig()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create auth config:%w", err)
+		return nil, err
 	}
 
-	authConfig.authToken, err = authConfig.fetchOIDCAccessToken(host, realm, clientId, clientSecret, subjectToken)
+	authConfig.authToken, err = authConfig.fetchOIDCAccessToken(ctx, host, realm, clientId, clientSecret, subjectToken)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to fetch acces token:%w", err)
 	}
 	return authConfig, nil
 }
-func (a *AuthConfig) fetchOIDCAccessToken(host, realm, clientId, clientSecret, subjectToken string) (string, error) {
+func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clientId, clientSecret, subjectToken string) (string, error) {
 	data := url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:token-exchange"}, "client_id": {clientId}, "client_secret": {clientSecret}, "subject_token": {subjectToken}, "requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"}}
 
 	body := strings.NewReader(data.Encode())
 	kcURL := fmt.Sprintf("%s/auth/realms/%s/protocol/openid-connect/token", host, realm)
 
-	req, err := http.NewRequest(http.MethodPost, kcURL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, kcURL, body)
 	if err != nil {
 		return "", err
 	}

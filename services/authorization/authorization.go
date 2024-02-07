@@ -11,8 +11,8 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
 	// "github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	// "google.golang.org/grpc/codes"
+	// "google.golang.org/grpc/status"
 )
 
 type AuthorizationService struct {
@@ -34,7 +34,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 
 	rsp := &authorization.GetDecisionsResponse{}
 
-	var empty_decisionResponses []authorization.DecisionResponse
+	var empty_decisionResponses []*authorization.DecisionResponse
 	
 	rsp.DecisionResponses = empty_decisionResponses
 
@@ -46,7 +46,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 
 	rsp := &authorization.GetEntitlementsResponse{}
 
-	var empty_entityEntitlements []authorization.EntityEntitlements
+	var empty_entityEntitlements []*authorization.EntityEntitlements
 	
 	rsp.Entitlements = empty_entityEntitlements
 

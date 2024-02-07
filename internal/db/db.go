@@ -2,8 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -12,12 +10,60 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	commonv1 "github.com/opentdf/opentdf-v2-poc/gen/common/v1"
-	"github.com/opentdf/opentdf-v2-poc/migrations"
-	"github.com/pressly/goose/v3"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+var (
+	TableAttributes                    = "attribute_definitions"
+	TableAttributeValues               = "attribute_values"
+	TableNamespaces                    = "attribute_namespaces"
+	TableKeyAccessServerRegistry       = "key_access_servers"
+	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"
+	TableAttributeValueKeyAccessGrants = "attribute_value_key_access_grants"
+	TableResourceMappings              = "resource_mappings"
+	TableSubjectMappings               = "subject_mappings"
+)
+
+var Tables struct {
+	Attributes                    Table
+	AttributeValues               Table
+	Namespaces                    Table
+	KeyAccessServerRegistry       Table
+	AttributeKeyAccessGrants      Table
+	AttributeValueKeyAccessGrants Table
+	ResourceMappings              Table
+	SubjectMappings               Table
+}
+
+type Table struct {
+	name       string
+	schema     string
+	withSchema bool
+}
+
+func NewTable(name string, schema string) Table {
+	return Table{
+		name:       name,
+		schema:     schema,
+		withSchema: true,
+	}
+}
+
+func (t Table) WithoutSchema() Table {
+	nT := NewTable(t.name, t.schema)
+	nT.withSchema = false
+	return nT
+}
+
+func (t Table) Name() string {
+	if t.withSchema {
+		return t.schema + "." + string(t.name)
+	}
+	return string(t.name)
+}
+
+func (t Table) Field(field string) string {
+	return t.Name() + "." + field
+}
 
 // We can rename this but wanted to get mocks working.
 type PgxIface interface {
@@ -37,226 +83,119 @@ type Config struct {
 	User          string `yaml:"user" default:"postgres"`
 	Password      string `yaml:"password" default:"changeme"`
 	RunMigrations bool   `yaml:"runMigrations" default:"true"`
-	// TODO: add support for sslmode
+	SSLMode       string `yaml:"sslmode" default:"prefer"`
+	Schema        string `yaml:"schema" default:"opentdf"`
 }
 
 type Client struct {
 	PgxIface
 	config Config
+	Tables struct {
+		Attributes                    Table
+		AttributeValues               Table
+		Namespaces                    Table
+		KeyAccessServerRegistry       Table
+		AttributeKeyAccessGrants      Table
+		AttributeValueKeyAccessGrants Table
+		ResourceMappings              Table
+		SubjectMappings               Table
+	}
 }
 
 func NewClient(config Config) (*Client, error) {
 	pool, err := pgxpool.New(context.Background(), config.buildURL())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
+
+	Tables.Attributes = NewTable(TableAttributes, config.Schema)
+	Tables.AttributeValues = NewTable(TableAttributeValues, config.Schema)
+	Tables.Namespaces = NewTable(TableNamespaces, config.Schema)
+	Tables.KeyAccessServerRegistry = NewTable(TableKeyAccessServerRegistry, config.Schema)
+	Tables.AttributeKeyAccessGrants = NewTable(TableAttributeKeyAccessGrants, config.Schema)
+	Tables.AttributeValueKeyAccessGrants = NewTable(TableAttributeValueKeyAccessGrants, config.Schema)
+	Tables.ResourceMappings = NewTable(TableResourceMappings, config.Schema)
+	Tables.SubjectMappings = NewTable(TableSubjectMappings, config.Schema)
+
 	return &Client{
 		PgxIface: pool,
 		config:   config,
-	}, err
+	}, nil
 }
 
 func (c Config) buildURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s",
+	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		c.User,
 		c.Password,
 		net.JoinHostPort(c.Host, fmt.Sprint(c.Port)),
 		c.Database,
+		c.SSLMode,
 	)
 }
 
-func (c *Client) RunMigrations() (int, error) {
-	var (
-		applied int
-	)
-
-	if !c.config.RunMigrations {
-		slog.Info("skipping migrations",
-			slog.String("reason", "runMigrations is false"),
-			slog.Bool("runMigrations", c.config.RunMigrations))
-		return applied, nil
-	}
-
-	pool, ok := c.PgxIface.(*pgxpool.Pool)
-	if !ok || pool == nil {
-		return applied, fmt.Errorf("failed to cast pgxpool.Pool")
-	}
-
-	conn := stdlib.OpenDBFromPool(pool)
-	defer conn.Close()
-
-	provider, err := goose.NewProvider(goose.DialectPostgres, conn, migrations.MigrationsFS)
-	if err != nil {
-		return applied, errors.Join(fmt.Errorf("failed to create goose provider"), err)
-	}
-
-	res, err := provider.Up(context.Background())
-	if err != nil {
-		return applied, errors.Join(fmt.Errorf("failed to run migrations"), err)
-	}
-
-	for _, r := range res {
-		if r.Error != nil {
-			return applied, errors.Join(fmt.Errorf("failed to run migrations"), err)
-		}
-		if !r.Empty {
-			applied++
-		}
-	}
-
-	return applied, nil
-}
-
-func (c Client) CreateResource(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) error {
-	sql, args, err := createResourceSQL(descriptor, resource)
-	if err != nil {
-		return err
-	}
-
+// Common function for all queryRow calls
+func (c Client) queryRow(ctx context.Context, sql string, args []interface{}, err error) (pgx.Row, error) {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-
-	_, err = c.Exec(context.TODO(), sql, args...)
-
-	return err
-}
-
-func createResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage) (string, []interface{}, error) {
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
-	builder := psql.Insert("opentdf.resources")
-
-	builder = builder.Columns("name", "namespace", "version", "fqn", "labels", "description", "policytype", "resource")
-
-	builder = builder.Values(
-		descriptor.Name,
-		descriptor.Namespace,
-		descriptor.Version,
-		descriptor.Fqn,
-		descriptor.Labels,
-		descriptor.Description,
-		descriptor.Type.String(),
-		resource,
-	)
-
-	return builder.ToSql()
-}
-
-func (c Client) ListResources(policyType string, selectors *commonv1.ResourceSelector) (pgx.Rows, error) {
-	sql, args, err := listResourceSQL(policyType, selectors)
 	if err != nil {
 		return nil, err
 	}
+	return c.QueryRow(ctx, sql, args...), nil
+}
 
+// Common function for all query calls
+func (c Client) query(ctx context.Context, sql string, args []interface{}, err error) (pgx.Rows, error) {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-
-	// Rows error check should not flag this https://github.com/jingyugao/rowserrcheck/issues/32
-	return c.Query(context.TODO(), sql, args...)
-}
-
-func listResourceSQL(policyType string, selectors *commonv1.ResourceSelector) (string, []interface{}, error) {
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
-	builder := psql.Select("id", "resource").From("opentdf.resources")
-
-	builder = builder.Where(sq.Eq{"policytype": policyType})
-
-	if selectors != nil {
-		// Set the namespace if it is not empty
-		if selectors.Namespace != "" {
-			builder = builder.Where(sq.Eq{"namespace": selectors.Namespace})
-		}
-
-		switch selector := selectors.Selector.(type) {
-		case *commonv1.ResourceSelector_Name:
-			builder = builder.Where(sq.Eq{"name": selector.Name})
-		case *commonv1.ResourceSelector_LabelSelector_:
-			bLabels, err := json.Marshal(selector.LabelSelector.Labels)
-			if err != nil {
-				return "", nil, err
-			}
-			builder = builder.Where(sq.Expr("labels @> ?::jsonb", bLabels))
-		}
-		// Set the version if it is not empty
-		if selectors.Version != 0 {
-			builder = builder.Where(sq.Eq{"version": selectors.Version})
-		}
-	}
-
-	return builder.ToSql()
-}
-
-func (c Client) GetResource(id int32, policyType string) pgx.Row {
-	sql, args, err := getResourceSQL(id, policyType)
 	if err != nil {
-		return nil
+		return nil, err
+	}
+	r, e := c.Query(ctx, sql, args...)
+	return r, WrapIfKnownInvalidQueryErr(e)
+}
+
+func (c Client) queryCount(ctx context.Context, sql string, args []interface{}) (int, error) {
+	rows, err := c.query(ctx, sql, args, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		if _, err := rows.Values(); err != nil {
+			return 0, err
+		}
+		count++
+	}
+	if count == 0 {
+		return 0, pgx.ErrNoRows
 	}
 
+	return count, nil
+}
+
+// Common function for all exec calls
+func (c Client) exec(ctx context.Context, sql string, args []interface{}, err error) error {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-
-	return c.QueryRow(context.TODO(), sql, args...)
-}
-
-func getResourceSQL(id int32, policyType string) (string, []interface{}, error) {
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
-	builder := psql.Select("id", "resource").From("opentdf.resources")
-
-	builder = builder.Where(sq.Eq{"id": id, "policytype": policyType})
-
-	return builder.ToSql()
-}
-
-func (c Client) UpdateResource(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage, policyType string) error {
-	sql, args, err := updateResourceSQL(descriptor, resource, policyType)
 	if err != nil {
 		return err
 	}
-
-	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-
-	_, err = c.Exec(context.TODO(), sql, args...)
-
-	return err
+	_, err = c.Exec(ctx, sql, args...)
+	return WrapIfKnownInvalidQueryErr(err)
 }
 
-func updateResourceSQL(descriptor *commonv1.ResourceDescriptor, resource protoreflect.ProtoMessage, policyType string) (string, []interface{}, error) {
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+//
+// Helper functions for building SQL
+//
 
-	builder := psql.Update("opentdf.resources")
-
-	builder = builder.Set("name", descriptor.Name)
-	builder = builder.Set("namespace", descriptor.Namespace)
-	builder = builder.Set("version", descriptor.Version)
-	builder = builder.Set("description", descriptor.Description)
-	builder = builder.Set("fqn", descriptor.Fqn)
-	builder = builder.Set("labels", descriptor.Labels)
-	builder = builder.Set("policyType", policyType)
-	builder = builder.Set("resource", resource)
-
-	builder = builder.Where(sq.Eq{"id": descriptor.Id})
-
-	return builder.ToSql()
+// Postgres uses $1, $2, etc. for placeholders
+func newStatementBuilder() sq.StatementBuilderType {
+	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 }
 
-func (c Client) DeleteResource(id int32, policyType string) error {
-	sql, args, err := deleteResourceSQL(id, policyType)
-	if err != nil {
-		return err
-	}
-
-	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-
-	_, err = c.Exec(context.TODO(), sql, args...)
-
-	return err
+func tableName(table string) string {
+	return table
 }
 
-func deleteResourceSQL(id int32, policyType string) (string, []interface{}, error) {
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
-	builder := psql.Delete("opentdf.resources")
-
-	builder = builder.Where(sq.Eq{"id": id, "policytype": policyType})
-
-	return builder.ToSql()
+func tableField(table string, field string) string {
+	return table + "." + field
 }

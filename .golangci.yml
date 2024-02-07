@@ -11,7 +11,9 @@ run:
   # Timeout for analysis, e.g. 30s, 5m.
   # Default: 1m
   timeout: 5m
-
+  skip-files:
+    - ".*\\.pb\\.go"
+    - ".*\\.pb\\.gw.go"
 
 # This file contains only configs which differ from defaults.
 # All possible options can be found here https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
@@ -154,7 +156,21 @@ linters-settings:
     # Default: false
     all: true
 
-
+  lll:
+    line-length: 120
+  
+  wrapcheck:
+    ignoreSigs:
+      - "status.Error("
+      - ".Errorf("
+      - "errors.New("
+      - "errors.Unwrap("
+      - "errors.Join("
+      - ".Wrap("
+      - ".Wrapf("
+      - ".WithMessage("
+      - ".WithMessagef("
+      - ".WithStack("
 linters:
   disable-all: true
   enable:

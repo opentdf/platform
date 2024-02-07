@@ -4,12 +4,13 @@
 package cmd
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
-// rootCmd represents the base command when called without any subcommands.
+//nolint:gochecknoglobals // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "opentdf",
 	Short: "A brief description of your application",
@@ -29,6 +30,7 @@ to quickly create a Cobra application.`,
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
+		slog.Error("issue starting opentdf", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 }

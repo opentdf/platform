@@ -36,6 +36,7 @@ The server configuration is used to define how the application runs its server.
   - `port`: The port number for the grpc server.
   - `reflection`: Whether to enable reflection for the grpc server.
 - `http`: The configuration for the http server.
+  - `enabled`: Whether to enable the http server. (default: true)
   - `port`: The port number for the http server.
 
 Example:
@@ -57,7 +58,7 @@ The database configuration is used to define how the application connects to its
 - `port`: The port number for the database.
 - `user`: The username for the database.
 - `password`: The password for the database.
-
+- `sslmode`: The ssl mode for the database (default: prefer).
 Example:
 
 ```yaml
@@ -66,6 +67,7 @@ db:
   port: 5432
   user: postgres
   password: changeme
+  sslmode: require
 ```
 
 ## OPA Configuration
@@ -82,88 +84,3 @@ opa:
 ```
 
 ## Services Configuration
-
-### Entitlements
-
-This section configures the entitlements providers.
-
-- `providers`: A list of providers to use for entitlements.
-
-Example:
-
-```yaml
-services:
-  entitlements:
-    providers:
-    ...
-```
-
-#### LDAP Provider
-
-- `type`: Specifies the type of provider, here it's ldap.
-- `name`: A unique name for the provider.
-- `ldap`: LDAP specific configuration.
-  - `baseDN`: The base Distinguished Name for LDAP queries.
-  - `host`: LDAP server host address.
-  - `port`: Port number for LDAP server.
-  - `bindUsername`: Username for binding to the LDAP server.
-  - `bindPassword`: Password for binding, fetched from environment or k8s secret.
-    - `fromEnv`: Fetches the secret from an environment variable.
-    - `fromK8sSecret`: Fetches the secret from a k8s secret.
-  - `attributeFilters`: Defines attributes to exclude in queries.
-    - `exclude`: A list of attributes to exclude.
-    - `include`: A list of attributes to include.
-
-Example:
-
-```yaml
-services:
-  entitlements:
-    providers:
-      - type: ldap
-        name: ad-1
-        ldap:  
-          baseDN: "dc=dev,dc=virtruqa,dc=com"
-          host: ""
-          port: 389
-          bindUsername: ""
-          bindPassword:
-            fromEnv: "LDAP_BIND_PASSWORD"
-          attributeFilters:
-            exclude:
-              - "objectSid"
-              - "objectGUID"
-              - "msExchMailboxGuid"
-              - "msExchMailboxSecurityDescriptor"
-```
-
-#### Keycloak Provider
-
-- `type`: Specifies the type of provider, here it's keycloak.
-- `name`: A unique name for the provider.
-- `keycloak`: Keycloak specific configuration.
-  - `host`: Keycloak server host address.
-  - `realm`: Keycloak realm name.
-  - `clientId`: Keycloak client id.
-  - `clientSecret`: Keycloak client secret, fetched from environment or k8s secret.
-    - `fromEnv`: Fetches the secret from an environment variable.
-    - `fromK8sSecret`: Fetches the secret from a k8s secret.
-  - `attributeFilters`: Defines attributes to exclude in queries.
-    - `exclude`: A list of attributes to exclude.
-    - `include`: A list of attributes to include.
-
-Example:
-
-```yaml
-services:
-  entitlements:
-    providers:
-      - type: keycloak
-        name: keycloak-1
-        keycloak:
-          host: "https://keycloak.example.com/auth"
-          realm: "example"
-          clientId: "example"
-          clientSecret:
-            fromEnv: "KEYCLOAK_CLIENT_SECRET"
-```

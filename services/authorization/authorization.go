@@ -1,0 +1,54 @@
+package authorization
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
+	"github.com/opentdf/opentdf-v2-poc/services"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+type AuthorizationService struct {
+	authoriztion.UnimplementedAuthorizationServiceServer
+}
+
+func NewAuthorizationServer(g *grpc.Server, s *runtime.ServeMux) error {
+	as := &AuthorizationService{}
+	authorization.RegisterAuthorizationServiceServer(g, ns)
+	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, ns)
+	if err != nil {
+		return fmt.Errorf("failed to register authorization service handler: %w", err)
+	}
+	return nil
+}
+
+func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
+	slog.Debug("getting decisions")
+
+	rsp := &authorization.GetDecisionsResponse{}
+
+	var empty_decisionResponses []DecisionResponse
+	
+	rsp.DecisionResponses = empty_decisionResponses
+
+	return rsp, nil
+}
+
+func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+	slog.Debug("getting entitlements")
+
+	rsp := &authorization.GetEntitlementsResponse{}
+
+	var empty_entityEntitlements []EntityEntitlements
+	
+	rsp.Entitlements = empty_entityEntitlements
+
+	return rsp, nil
+}

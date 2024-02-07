@@ -2,6 +2,8 @@
 
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
+- [Policy Config Schema](./migrations/20240131000000_diagram.md)
+- [Policy Config Testing Diagram](./integration/testing_diagram.png)
 
 ## Development
 
@@ -106,3 +108,4 @@ The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` 
 generated code.
 
 For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.
+

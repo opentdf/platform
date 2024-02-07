@@ -163,8 +163,8 @@ message CreateAttributeValueResponse {
 }
 
 message UpdateAttributeValueRequest {
-  string id = 2 [(buf.validate.field).required = true];
-  ValueCreateUpdate value = 3 [(buf.validate.field).required = true];
+  string id = 1 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 2 [(buf.validate.field).required = true];
 }
 message UpdateAttributeValueResponse {
   Value value = 1;

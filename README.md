@@ -19,6 +19,10 @@ With go 1.18 or higher:
 
 `brew install buf`
 
+[grpcurl](https://github.com/fullstorydev/grpcurl)
+
+`brew install grpcurl`
+
 ### Run
 
 1. `docker-compose -f opentdf-compose.yaml up`

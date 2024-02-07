@@ -23,6 +23,10 @@ func (c Error) Error() string {
 	return string(c)
 }
 
+type Unwrapper interface {
+	Unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
+}
+
 type SDK struct {
 	conn                    *grpc.ClientConn
 	Namespaces              namespaces.NamespaceServiceClient

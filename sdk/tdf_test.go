@@ -90,7 +90,7 @@ var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
 var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 	{
 		fileSize:    5,
-		tdfFileSize: 1580,
+		tdfFileSize: 1557,
 		checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 		kasInfoList: []KASInfo{
 			{
@@ -101,7 +101,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	},
 	{
 		fileSize:    oneKB,
-		tdfFileSize: 2604,
+		tdfFileSize: 2581,
 		checksum:    "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
 		kasInfoList: []KASInfo{
 			{
@@ -112,7 +112,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	},
 	{
 		fileSize:    hundredMB,
-		tdfFileSize: 104866456,
+		tdfFileSize: 104866410,
 		checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 		kasInfoList: []KASInfo{
 			{
@@ -127,7 +127,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	},
 	{
 		fileSize:    5 * hundredMB,
-		tdfFileSize: 524324256,
+		tdfFileSize: 524324210,
 		checksum:    "d2fb707e70a804cf2ea770c9229295689831b4c88879c62bdb966e77e7336f18",
 		kasInfoList: []KASInfo{
 			{
@@ -286,7 +286,7 @@ func TestSimpleTDF(t *testing.T) {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(1989)
+	expectedTdfSize := int64(2069)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -524,7 +524,8 @@ func TestTDF(t *testing.T) {
 	server, signingPubKey, signingPrivateKey := runKas()
 	defer server.Close()
 
-	for index, test := range testHarnesses { // create .txt file
+	for index, test := range testHarnesses {
+		// create .txt file
 		plaintTextFileName := strconv.Itoa(index) + ".txt"
 		tdfFileName := plaintTextFileName + ".tdf"
 		decryptedTdfFileName := tdfFileName + ".txt"
@@ -829,11 +830,13 @@ func runKas() (*httptest.Server, string, string) {
 			} else {
 				panic("unknown claims type, cannot proceed")
 			}
-			err = json.Unmarshal([]byte(rewrapRequest), &data)
+
+			bodyData := RequestBody{}
+			err = json.Unmarshal([]byte(rewrapRequest), &bodyData)
 			if err != nil {
 				panic(fmt.Sprintf("json.Unmarshal failed: %v", err))
 			}
-			wrappedKey, err := crypto.Base64Decode([]byte(data["wrappedKey"]))
+			wrappedKey, err := crypto.Base64Decode([]byte(bodyData.WrappedKey))
 			if err != nil {
 				panic(fmt.Sprintf("crypto.Base64Decode failed: %v", err))
 			}
@@ -846,7 +849,7 @@ func runKas() (*httptest.Server, string, string) {
 			if err != nil {
 				panic(fmt.Sprintf("crypto.Decrypt failed: %v", err))
 			}
-			asymEncrypt, err := crypto.NewAsymEncryption(data[kClientPublicKey])
+			asymEncrypt, err := crypto.NewAsymEncryption(bodyData.ClientPublicKey)
 			if err != nil {
 				panic(fmt.Sprintf("crypto.NewAsymEncryption failed: %v", err))
 			}

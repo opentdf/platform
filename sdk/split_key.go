@@ -59,6 +59,12 @@ type tdfKeyAccess struct {
 	metaData     string
 }
 
+type RequestBody struct {
+	KeyAccess       `json:"keyAccess"`
+	ClientPublicKey string `json:"clientPublicKey"`
+	Policy          string `json:"policy"`
+}
+
 var (
 	errInvalidKasInfo   = errors.New("split-key: kas information is missing")
 	errKasPubKeyMissing = errors.New("split-key: kas public key is missing")
@@ -117,13 +123,8 @@ func newSplitKeyFromManifest(authConfig AuthConfig, manifest Manifest) (splitKey
 	sKey := splitKey{}
 
 	for _, keyAccessObj := range manifest.EncryptionInformation.KeyAccessObjs {
-		keyAccessAsMap, err := structToMap(keyAccessObj)
-		if err != nil {
-			return splitKey{}, fmt.Errorf("fail to convert key access object to map:%w", err)
-		}
-
-		keyAccessAsMap[kPolicy] = manifest.EncryptionInformation.Policy
-		key, err := sKey.rewrap(authConfig, keyAccessAsMap)
+		requestBody := RequestBody{keyAccessObj, "", manifest.EncryptionInformation.Policy}
+		key, err := sKey.rewrap(authConfig, &requestBody)
 		if err != nil {
 			return splitKey{}, fmt.Errorf(" splitKey.rewrap failed:%w", err)
 		}
@@ -131,7 +132,6 @@ func newSplitKeyFromManifest(authConfig AuthConfig, manifest Manifest) (splitKey
 		for keyByteIndex, keyByte := range key {
 			sKey.key[keyByteIndex] ^= keyByte
 		}
-
 		keyAccess := tdfKeyAccess{}
 		keyAccess.kasURL = keyAccessObj.KasURL
 		keyAccess.wrappedKey = [32]byte(key)
@@ -146,8 +146,15 @@ func newSplitKeyFromManifest(authConfig AuthConfig, manifest Manifest) (splitKey
 			if err != nil {
 				return splitKey{}, fmt.Errorf("crypto.Base64Decode failed:%w", err)
 			}
+			metadata := EncryptedMetadata{}
+			err = json.Unmarshal(decodedMetaData, &metadata)
+			if err != nil {
+				return splitKey{}, fmt.Errorf("json.Unmarshal failed:%w", err)
 
-			metaData, err := gcm.Decrypt(decodedMetaData)
+			}
+			encodedCipherText := metadata.Cipher
+			cipherText, _ := crypto.Base64Decode([]byte(encodedCipherText))
+			metaData, err := gcm.Decrypt(cipherText)
 			if err != nil {
 				return splitKey{}, fmt.Errorf("crypto.AesGcm.encrypt failed:%w", err)
 			}
@@ -218,7 +225,16 @@ func (splitKey splitKey) getManifest() (*Manifest, error) {
 				return nil, fmt.Errorf("crypto.AesGcm.encrypt failed:%w", err)
 			}
 
-			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(encryptedMetaData))
+			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
+			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)), Iv: string(crypto.Base64Encode(iv))}
+
+			metadataJson, err := json.Marshal(metadata)
+			if err != nil {
+				return nil, fmt.Errorf(" json.Marshal failed:%w", err)
+
+			}
+
+			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(metadataJson))
 		}
 
 		manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
@@ -226,7 +242,6 @@ func (splitKey splitKey) getManifest() (*Manifest, error) {
 
 	manifest.EncryptionInformation.Policy = string(base64PolicyObject)
 	manifest.EncryptionInformation.Method.Algorithm = kGCMCipherAlgorithm
-
 	return &manifest, nil
 }
 
@@ -307,34 +322,16 @@ func (splitKey splitKey) createPolicyObject() (policyObject, error) {
 		attributeObj := attributeObject{}
 		attributeObj.Attribute = attribute
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
+		policyObj.Body.Dissem = make([]string, 0)
 	}
 
 	return policyObj, nil
 }
 
-func (splitKey splitKey) rewrap(authConfig AuthConfig, requestBody map[string]interface{}) ([]byte, error) {
-	kasURL, ok := requestBody[kKasURL]
-	if !ok {
-		return nil, fmt.Errorf("kas url is missing in key access object")
-	}
+func (splitKey splitKey) handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) (*http.Response, error) {
+	kasURL := body.KasURL
 
-	clientKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	clientPubKey, err := clientKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
-	}
-
-	clientPrivateKey, err := clientKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("crypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-
-	requestBody[kClientPublicKey] = clientPubKey
-	requestBodyData, err := json.Marshal(requestBody)
+	requestBodyData, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
@@ -365,12 +362,11 @@ func (splitKey splitKey) rewrap(authConfig AuthConfig, requestBody map[string]in
 		return nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
 
-	kasRewrapURL, err := url.JoinPath(fmt.Sprintf("%v", kasURL), kRewrapV2)
+	kasRequestURL, err := url.JoinPath(fmt.Sprintf("%v", kasURL), kasPath)
 	if err != nil {
 		return nil, fmt.Errorf("url.JoinPath failed: %w", err)
 	}
-
-	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, kasRewrapURL,
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, kasRequestURL,
 		bytes.NewBuffer(signedTokenRequestBody))
 	if err != nil {
 		return nil, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
@@ -386,8 +382,38 @@ func (splitKey splitKey) rewrap(authConfig AuthConfig, requestBody map[string]in
 	client := &http.Client{}
 
 	response, err := client.Do(request)
+	if err != nil {
+		slog.Error("failed http request")
+		return nil, err
+	}
+
+	return response, nil
+}
+func (splitKey splitKey) rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
+
+	clientKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
+	if err != nil {
+		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
+	}
+
+	clientPubKey, err := clientKeyPair.PublicKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
+	}
+	requestBody.ClientPublicKey = clientPubKey
+
+	clientPrivateKey, err := clientKeyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
+	}
+
+	response, err := splitKey.handleKasRequest(kRewrapV2, requestBody, authConfig)
+	if err != nil {
+		slog.Error("failed http request")
+		return nil, err
+	}
 	if response.StatusCode != kHTTPOk {
-		return nil, fmt.Errorf("%s failed status code:%d", kasRewrapURL, response.StatusCode)
+		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)
 	}
 
 	defer func(Body io.ReadCloser) {

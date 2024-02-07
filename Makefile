@@ -1,26 +1,8 @@
-# Go parameters
-V_GOCMD=go
-V_GOBUILD=$(V_GOCMD) build
-V_GOCLEAN=$(V_GOCMD) clean
-V_GOTEST=$(V_GOCMD) test
-V_BINARY_NAME=myapp
+.PHONY: all toolcheck lint test clean build docker-build buf-generate
 
-# Docker parameters
-V_DOCKER_BUILD_CMD=docker build
-V_DOCKER_IMAGE_NAME=opentdf
+all: toolcheck lint test build
 
-# Buf parameters
-V_BUFLINT=buf lint proto
-V_BUFGENERATE=buf generate proto
-
-# GolangCI-Lint
-V_GOLANGCILINT=golangci-lint run
-
-.PHONY: all lint buf-lint buf-generate golangci-lint test clean build docker-build
-
-all: pre-build lint test build
-
-pre-build:
+toolcheck:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, please install it from https://golangci-lint.run/usage/install/" && exit 1)
@@ -30,36 +12,34 @@ pre-build:
 go.work go.work.sum:
 	go work init . examples/attributes sdk
 
-lint: buf-lint golangci-lint
-
-buf-lint:
-	@$(V_BUFLINT) || (exit_code=$$?; \
+lint:
+	buf lint proto || (exit_code=$$?; \
 	 if [ $$exit_code -eq 100 ]; then \
       echo "Buf lint exited with code 100, treating as success"; \
 		else \
 			echo "Buf lint exited with code $$exit_code"; \
 			exit $$exit_code; \
 		fi)
+	golangci-lint run
 
 buf-generate:
-	$(V_BUFGENERATE)
-
-golangci-lint:
-	$(V_GOLANGCILINT)
-
-test-short:
-	$(V_GOTEST) ./... -race -short
+	buf generate proto
 
 test:
-	$(V_GOTEST) ./... -race
+	go test ./... -race
 
 clean:
-	$(V_GOCLEAN)
-	rm -f $(V_BINARY_NAME)
+	go clean
+	(cd sdk && go clean && rm -f sdk)
+	rm -f serviceapp
 
-build:
-	$(V_GOBUILD) -o $(V_BINARY_NAME) -v
+build: go.work serviceapp 
+
+serviceapp: go.work go.mod go.sum main.go $(shell find cmd internal services)
+	go build -o serviceapp -v ./main.go
+
+sdk/sdk: go.work sdk/go.mod sdk/go.sum $(shell find cmd internal services)
+	(cd sdk && go build)
 
 docker-build: build
-	$(V_DOCKER_BUILD_CMD) -t $(V_DOCKER_IMAGE_NAME) .
-
+	docker build -t opentdf .

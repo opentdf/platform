@@ -114,17 +114,11 @@ func newSplitKeyFromKasInfo(kasInfoList []KASInfo, attributes []string, metaData
 }
 
 // newSplitKeyFromManifest create a instance of split key from(parsing) the manifest.
-func newSplitKeyFromManifest(kasClient KasClient, manifest Manifest) (splitKey, error) {
+func newSplitKeyFromManifest(rewrapper Rewrapper, manifest Manifest) (splitKey, error) {
 	sKey := splitKey{}
 
 	for _, keyAccessObj := range manifest.EncryptionInformation.KeyAccessObjs {
-		keyAccessAsMap, err := structToMap(keyAccessObj)
-		if err != nil {
-			return splitKey{}, fmt.Errorf("fail to convert key access object to map:%w", err)
-		}
-
-		keyAccessAsMap[kPolicy] = manifest.EncryptionInformation.Policy
-		key, err := kasClient.Rewrap(keyAccessObj, manifest.EncryptionInformation.Policy)
+		key, err := rewrapper.Rewrap(keyAccessObj, manifest.EncryptionInformation.Policy)
 		if err != nil {
 			return splitKey{}, fmt.Errorf(" splitKey.rewrap failed:%w", err)
 		}

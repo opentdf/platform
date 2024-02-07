@@ -47,8 +47,8 @@ func (clientCredentials ClientFlowCredentials) GetAccessToken() (string, error) 
 
 	defer resp.Body.Close()
 
-	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
-		nonceReq, err := clientCredentials.getRequest(nonceHeader)
+	if nonce := resp.Header.Get("dpop-nonce"); nonce != "" && resp.StatusCode == http.StatusBadRequest {
+		nonceReq, err := clientCredentials.getRequest(nonce)
 		if err != nil {
 			return "", err
 		}

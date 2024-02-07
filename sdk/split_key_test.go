@@ -3,14 +3,10 @@ package sdk
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 func TestNewSplitKeyFromKasInfo(t *testing.T) {
@@ -44,6 +40,14 @@ func TestNewSplitKeyFromKasInfo(t *testing.T) {
 			t.Fatalf("fail: meta data missing from the manifest")
 		}
 	}
+}
+
+type FakeRewrapper struct {
+	rewrapFunc func(keyAccess KeyAccess, policy string) ([]byte, error)
+}
+
+func (fake FakeRewrapper) Rewrap(keyAccess KeyAccess, policy string) ([]byte, error) {
+	return fake.rewrapFunc(keyAccess, policy)
 }
 
 //nolint:gocognit
@@ -129,69 +133,23 @@ func TestNewSplitKeyFromManifest(t *testing.T) {
     "isEncrypted": true
   }
 }`
-	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
+	dpopKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		t.Fatalf("crypto.NewRSAKeyPair: %v", err)
 	}
 
-	signingPubKey, err := signingKeyPair.PublicKeyInPemFormat()
+	dpopPublicKey, err := dpopKeyPair.PublicKeyInPemFormat()
 	if err != nil {
 		t.Fatalf("crypto.PublicKeyInPemFormat failed: %v", err)
 	}
 
-	signingPrivateKey, err := signingKeyPair.PrivateKeyInPemFormat()
+	dopPrivateKey, err := dpopKeyPair.PrivateKeyInPemFormat()
 	if err != nil {
 		t.Fatalf("crypto.PrivateKeyInPemFormat failed: %v", err)
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != kRewrapV2 {
-			t.Fatalf("expected to request '%s', got: %s", kRewrapV2, r.URL.Path)
-		}
-		if r.Header.Get(kAcceptKey) != kContentTypeJSONValue {
-			t.Fatalf("expected Accept: application/json header, got: %s", r.Header.Get("Accept"))
-		}
-
-		requestBody, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Fatalf("io.ReadAll failed: %v", err)
-		}
-
-		var data map[string]string
-		err = json.Unmarshal(requestBody, &data)
-		if err != nil {
-			t.Fatalf("json.Unmarsha failed: %v", err)
-		}
-
-		tokenString, ok := data[kSignedRequestToken]
-		if !ok {
-			t.Fatalf("signed token missing in rewrap response")
-		}
-
-		token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(signingPubKey))
-			if err != nil {
-				return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
-			}
-
-			return signingRSAPublicKey, nil
-		})
-
-		var rewrapRequest = ""
-		if err != nil {
-			t.Fatalf("jwt.ParseWithClaims failed:%v", err)
-		} else if claims, fine := token.Claims.(*rewrapJWTClaims); fine {
-			rewrapRequest = claims.Body
-		} else {
-			t.Fatalf("unknown claims type, cannot proceed")
-		}
-
-		err = json.Unmarshal([]byte(rewrapRequest), &data)
-		if err != nil {
-			t.Fatalf("json.Unmarshal failed: %v", err)
-		}
-
-		wrappedKey, err := crypto.Base64Decode([]byte(data["wrappedKey"]))
+	rewrapper := FakeRewrapper{rewrapFunc: func(keyAccess KeyAccess, policy string) ([]byte, error) {
+		wrappedKey, err := crypto.Base64Decode([]byte(keyAccess.WrappedKey))
 		if err != nil {
 			t.Fatalf("crypto.Base64Decode failed: %v", err)
 		}
@@ -207,7 +165,7 @@ func TestNewSplitKeyFromManifest(t *testing.T) {
 			t.Fatalf("crypto.Decrypt failed: %v", err)
 		}
 
-		asymEncrypt, err := crypto.NewAsymEncryption(data[kClientPublicKey])
+		asymEncrypt, err := crypto.NewAsymEncryption(dpopPublicKey)
 		if err != nil {
 			t.Fatalf("crypto.NewAsymEncryption failed: %v", err)
 		}
@@ -217,20 +175,9 @@ func TestNewSplitKeyFromManifest(t *testing.T) {
 			t.Fatalf("crypto.encrypt failed: %v", err)
 		}
 
-		response, err := json.Marshal(map[string]string{
-			kEntityWrappedKey: string(crypto.Base64Encode(entityWrappedKey)),
-		})
-		if err != nil {
-			t.Fatalf("json.Marshal failed: %v", err)
-		}
-
-		w.WriteHeader(http.StatusOK)
-		_, err = w.Write(response)
-		if err != nil {
-			t.Fatalf("http.ResponseWriter.Write failed: %v", err)
-		}
-	}))
-	defer server.Close()
+		return entityWrappedKey, nil
+	},
+	}
 
 	manifestObj := &Manifest{}
 	err = json.Unmarshal([]byte(sampleManifest), manifestObj)
@@ -240,11 +187,10 @@ func TestNewSplitKeyFromManifest(t *testing.T) {
 
 	// mock the kas url
 	for index := range manifestObj.EncryptionInformation.KeyAccessObjs {
-		manifestObj.EncryptionInformation.KeyAccessObjs[index].KasURL = server.URL
+		manifestObj.EncryptionInformation.KeyAccessObjs[index].KasURL = "http://kas" + string(index) + ".example.org"
 	}
 
-	authConfig := AuthConfig{signingPrivateKey: signingPrivateKey, signingPublicKey: signingPubKey}
-	sKey, err := newSplitKeyFromManifest(authConfig, *manifestObj)
+	sKey, err := newSplitKeyFromManifest(rewrapper, *manifestObj)
 	if err != nil {
 		t.Errorf("newSplitKeyFromManifest failed: %v", err)
 	}

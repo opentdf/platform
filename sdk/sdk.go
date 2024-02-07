@@ -23,9 +23,26 @@ func (c Error) Error() string {
 	return string(c)
 }
 
+type Rewrapper interface {
+	Rewrap(keyAccess KeyAccess, policy string) ([]byte, error)
+}
+
 type Credentials interface {
 	GetAccessToken() (string, error)
 	GetDPoPKey() (jwk.Key, error)
+}
+
+type AccessTokenCredentials struct {
+	AccessToken string
+	DPoPKey     jwk.Key
+}
+
+func (creds AccessTokenCredentials) GetAccessToken() (string, error) {
+	return creds.AccessToken, nil
+}
+
+func (creds AccessTokenCredentials) GetDPoPKey() (jwk.Key, error) {
+	return creds.DPoPKey, nil
 }
 
 type SDK struct {

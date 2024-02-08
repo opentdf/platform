@@ -171,9 +171,9 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
 		Description: "updated description",
 	}
 	updatedKas := &kasr.KeyAccessServerCreateUpdate{
-		Uri: "updatedUri.com",
-		PublicKey:       pubKey,
-		Metadata:        updatedMetadata,
+		Uri:       "updatedUri.com",
+		PublicKey: pubKey,
+		Metadata:  updatedMetadata,
 	}
 	updated, err := s.db.Client.UpdateKeyAccessServer(s.ctx, createdKas.Id, updatedKas)
 	assert.Nil(s.T(), err)
@@ -197,8 +197,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
 		},
 	}
 	updatedKas := &kasr.KeyAccessServerCreateUpdate{
-		Uri: "someKasUri.com",
-		PublicKey:       pubKey,
+		Uri:       "someKasUri.com",
+		PublicKey: pubKey,
 	}
 	resp, err := s.db.Client.UpdateKeyAccessServer(s.ctx, nonExistentKasRegistryId, updatedKas)
 	assert.NotNil(s.T(), err)
@@ -213,8 +213,8 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 		},
 	}
 	testKas := &kasr.KeyAccessServerCreateUpdate{
-		Uri: "deleting.net",
-		PublicKey:       pubKey,
+		Uri:       "deleting.net",
+		PublicKey: pubKey,
 	}
 	createdKas, err := s.db.Client.CreateKeyAccessServer(s.ctx, testKas)
 	assert.Nil(s.T(), err)

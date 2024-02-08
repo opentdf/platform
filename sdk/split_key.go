@@ -465,18 +465,3 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 
 	return key, nil
 }
-
-func structToMap(structObj interface{}) (map[string]interface{}, error) {
-	structData, err := json.Marshal(structObj)
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %w", err)
-	}
-
-	mapData := make(map[string]interface{})
-	err = json.Unmarshal(structData, &mapData)
-	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
-	}
-
-	return mapData, nil
-}

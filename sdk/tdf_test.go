@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/golang-jwt/jwt"
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 const (
@@ -134,6 +135,11 @@ func TestSimpleTDF(t *testing.T) {
 	server, signingPubKey, signingPrivateKey := runKas(t)
 	defer server.Close()
 
+	fakeUnwrapper, err := NewFakeUnwrapper(mockKasPrivateKey)
+	if err != nil {
+		t.Fatalf("error creating fake unwrapper: %v", err)
+	}
+
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
 
 	attributes := []string{
@@ -158,7 +164,7 @@ func TestSimpleTDF(t *testing.T) {
 			},
 		}
 
-		err = tdfConfig.AddKasInformation(kasURLs)
+		err = tdfConfig.AddKasInformation(fakeUnwrapper, kasURLs)
 		if err != nil {
 			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
 		}
@@ -204,17 +210,7 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(readSeeker)
 
-		// create auth config
-		authConfig, err := NewAuthConfig()
-		if err != nil {
-			t.Fatalf("Fail to close archive file:%v", err)
-		}
-
-		// override the signing keys to get the mock working.
-		authConfig.signingPublicKey = signingPubKey
-		authConfig.signingPrivateKey = signingPrivateKey
-
-		metaData, err := GetMetadata(*authConfig, readSeeker)
+		metaData, err := GetMetadata(fakeUnwrapper, readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
@@ -259,7 +255,7 @@ func TestSimpleTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		payloadSize, err := GetPayload(*authConfig, readSeeker, &buf)
+		payloadSize, err := GetPayload(fakeUnwrapper, readSeeker, &buf)
 		if err != nil {
 			t.Fatalf("Fail to decrypt tdf:%v", err)
 		}
@@ -273,8 +269,12 @@ func TestSimpleTDF(t *testing.T) {
 }
 
 func TestTDF(t *testing.T) {
-	server, signingPubKey, signingPrivateKey := runKas(t)
+	server, _, _ := runKas(t)
 	defer server.Close()
+	fakeUnwrapper, err := NewFakeUnwrapper(mockKasPrivateKey)
+	if err != nil {
+		t.Fatalf("failed to create fake rewrapper: %v", err)
+	}
 
 	for index, test := range testHarnesses { // create .txt file
 		plaintTextFileName := strconv.Itoa(index) + ".txt"
@@ -284,7 +284,7 @@ func TestTDF(t *testing.T) {
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
 			kasInfoList[index].url = server.URL
-			kasInfoList[index].publicKey = ""
+			kasInfoList[index].publicKey = mockKasPublicKey
 		}
 
 		tdfConfig, err := NewTDFConfig()
@@ -292,7 +292,7 @@ func TestTDF(t *testing.T) {
 			t.Fatalf("Fail to create tdf config: %v", err)
 		}
 
-		err = tdfConfig.AddKasInformation(kasInfoList)
+		err = tdfConfig.AddKasInformation(fakeUnwrapper, kasInfoList)
 		if err != nil {
 			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
 		}
@@ -300,18 +300,8 @@ func TestTDF(t *testing.T) {
 		// test encrypt
 		testEncrypt(t, *tdfConfig, plaintTextFileName, tdfFileName, test)
 
-		// create auth config
-		authConfig, err := NewAuthConfig()
-		if err != nil {
-			t.Fatalf("Fail to close archive file:%v", err)
-		}
-
-		// override the signing keys to get the mock working.
-		authConfig.signingPublicKey = signingPubKey
-		authConfig.signingPrivateKey = signingPrivateKey
-
 		// test decrypt
-		testDecrypt(t, *authConfig, tdfFileName, decryptedTdfFileName, test.fileSize)
+		testDecrypt(t, fakeUnwrapper, tdfFileName, decryptedTdfFileName, test.fileSize)
 
 		// Remove the test files
 		_ = os.Remove(plaintTextFileName)
@@ -359,7 +349,7 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 	}
 }
 
-func testDecrypt(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileName string, payloadSize int64) {
+func testDecrypt(t *testing.T, unwrapper Unwrapper, tdfFile, decryptedTdfFileName string, payloadSize int64) {
 	readSeeker, err := os.Open(tdfFile)
 	if err != nil {
 		t.Fatalf("Fail to open archive file:%s %v", tdfFile, err)
@@ -384,7 +374,7 @@ func testDecrypt(t *testing.T, authConfig AuthConfig, tdfFile, decryptedTdfFileN
 		}
 	}(fileWriter) // Create TDFConfig
 
-	decryptedData, err := GetPayload(authConfig, readSeeker, fileWriter)
+	decryptedData, err := GetPayload(unwrapper, readSeeker, fileWriter)
 	if err != nil {
 		t.Fatalf("tdf.Create failed: %v", err)
 	}

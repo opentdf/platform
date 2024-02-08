@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 type TDFFormat = int
@@ -82,7 +83,7 @@ func NewTDFConfig() (*TDFConfig, error) {
 
 // AddKasInformation Add all the kas urls and their corresponding public keys
 // that is required to create and read the tdf.
-func (tdfConfig *TDFConfig) AddKasInformation(kasInfoList []KASInfo) error {
+func (tdfConfig *TDFConfig) AddKasInformation(unwrapper Unwrapper, kasInfoList []KASInfo) error {
 	for _, kasInfo := range kasInfoList {
 		newEntry := KASInfo{}
 		newEntry.url = kasInfo.url

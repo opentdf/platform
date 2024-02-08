@@ -1,8 +1,13 @@
 package sdk
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -42,12 +47,52 @@ func TestNewSplitKeyFromKasInfo(t *testing.T) {
 	}
 }
 
-type FakeRewrapper struct {
-	rewrapFunc func(keyAccess KeyAccess, policy string) ([]byte, error)
+type FakeUnwrapper struct {
+	decrypt      crypto.AsymDecryption
+	publicKeyPEM string
 }
 
-func (fake FakeRewrapper) Rewrap(keyAccess KeyAccess, policy string) ([]byte, error) {
-	return fake.rewrapFunc(keyAccess, policy)
+func NewFakeUnwrapper(kasPrivateKey string) (FakeUnwrapper, error) {
+	block, _ := pem.Decode([]byte(kasPrivateKey))
+	if block == nil {
+		return FakeUnwrapper{}, errors.New("failed to parse PEM formatted private key")
+	}
+
+	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return FakeUnwrapper{}, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
+	}
+	if err != nil {
+		privKey, err = x509.ParsePKCS1PrivateKey([]byte(kasPrivateKey))
+		if err != nil {
+			return FakeUnwrapper{}, fmt.Errorf("could not create fake unwrapper:%v", err)
+		}
+	}
+	publicKey := privKey.(*rsa.PrivateKey).PublicKey
+	privateBlock := pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: x509.MarshalPKCS1PublicKey(&publicKey),
+	}
+	publicKeyPEM := new(strings.Builder)
+	pem.Encode(publicKeyPEM, &privateBlock)
+	asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
+	if err != nil {
+		return FakeUnwrapper{}, err
+	}
+
+	return FakeUnwrapper{decrypt: asymDecrypt, publicKeyPEM: publicKeyPEM.String()}, nil
+}
+
+func (fake FakeUnwrapper) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
+	wrappedKey, err := crypto.Base64Decode([]byte(keyAccess.WrappedKey))
+	if err != nil {
+		return nil, err
+	}
+	return fake.decrypt.Decrypt(wrappedKey)
+}
+
+func (fake FakeUnwrapper) GetKASInfo(keyAccess KeyAccess) (KASInfo, error) {
+	return KASInfo{url: keyAccess.KasURL, publicKey: fake.publicKeyPEM}, nil
 }
 
 //nolint:gocognit
@@ -133,50 +178,9 @@ func TestNewSplitKeyFromManifest(t *testing.T) {
     "isEncrypted": true
   }
 }`
-	dpopKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
+	rewrapper, err := NewFakeUnwrapper(kasPrivateKey)
 	if err != nil {
-		t.Fatalf("crypto.NewRSAKeyPair: %v", err)
-	}
-
-	dpopPublicKey, err := dpopKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		t.Fatalf("crypto.PublicKeyInPemFormat failed: %v", err)
-	}
-
-	dopPrivateKey, err := dpopKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		t.Fatalf("crypto.PrivateKeyInPemFormat failed: %v", err)
-	}
-
-	rewrapper := FakeRewrapper{rewrapFunc: func(keyAccess KeyAccess, policy string) ([]byte, error) {
-		wrappedKey, err := crypto.Base64Decode([]byte(keyAccess.WrappedKey))
-		if err != nil {
-			t.Fatalf("crypto.Base64Decode failed: %v", err)
-		}
-
-		kasPrivateKey = strings.ReplaceAll(kasPrivateKey, "\n\t", "\n")
-		asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
-		if err != nil {
-			t.Fatalf("crypto.NewAsymDecryption failed: %v", err)
-		}
-
-		symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-		if err != nil {
-			t.Fatalf("crypto.Decrypt failed: %v", err)
-		}
-
-		asymEncrypt, err := crypto.NewAsymEncryption(dpopPublicKey)
-		if err != nil {
-			t.Fatalf("crypto.NewAsymEncryption failed: %v", err)
-		}
-
-		entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-		if err != nil {
-			t.Fatalf("crypto.encrypt failed: %v", err)
-		}
-
-		return entityWrappedKey, nil
-	},
+		t.Fatalf("error creating fake unwrapper: %v", err)
 	}
 
 	manifestObj := &Manifest{}
@@ -187,7 +191,7 @@ func TestNewSplitKeyFromManifest(t *testing.T) {
 
 	// mock the kas url
 	for index := range manifestObj.EncryptionInformation.KeyAccessObjs {
-		manifestObj.EncryptionInformation.KeyAccessObjs[index].KasURL = "http://kas" + string(index) + ".example.org"
+		manifestObj.EncryptionInformation.KeyAccessObjs[index].KasURL = "http://kas" + fmt.Sprint(index) + ".example.org"
 	}
 
 	sKey, err := newSplitKeyFromManifest(rewrapper, *manifestObj)

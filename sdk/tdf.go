@@ -177,7 +177,7 @@ func Create(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (int64,
 }
 
 // GetPayload decrypt the tdf and write the data to writer.
-func GetPayload(kasClient KasClient, reader io.ReadSeeker, writer io.Writer) (int64, error) {
+func GetPayload(unwrapper Unwrapper, reader io.ReadSeeker, writer io.Writer) (int64, error) {
 
 	totalBytes := int64(0)
 
@@ -199,7 +199,7 @@ func GetPayload(kasClient KasClient, reader io.ReadSeeker, writer io.Writer) (in
 	}
 
 	// create a split key
-	sKey, err := newSplitKeyFromManifest(kasClient, *manifestObj)
+	sKey, err := newSplitKeyFromManifest(unwrapper, *manifestObj)
 	if err != nil {
 		return totalBytes, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -268,7 +268,7 @@ func GetPayload(kasClient KasClient, reader io.ReadSeeker, writer io.Writer) (in
 }
 
 // GetMetadata return the meta present in tdf.
-func GetMetadata(kasClient KasClient, authConfig AuthConfig, reader io.ReadSeeker) (string, error) {
+func GetMetadata(unwrapper Unwrapper, reader io.ReadSeeker) (string, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
@@ -287,7 +287,7 @@ func GetMetadata(kasClient KasClient, authConfig AuthConfig, reader io.ReadSeeke
 	}
 
 	// create a split key
-	sKey, err := newSplitKeyFromManifest(kasClient, *manifestObj)
+	sKey, err := newSplitKeyFromManifest(unwrapper, *manifestObj)
 	if err != nil {
 		return "", fmt.Errorf("fail to create a new split key: %w", err)
 	}

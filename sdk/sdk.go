@@ -3,7 +3,6 @@ package sdk
 import (
 	"errors"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/opentdf-v2-poc/sdk/acre"
 	"github.com/opentdf/opentdf-v2-poc/sdk/acse"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
@@ -21,28 +20,6 @@ type Error string
 
 func (c Error) Error() string {
 	return string(c)
-}
-
-type Rewrapper interface {
-	Rewrap(keyAccess KeyAccess, policy string) ([]byte, error)
-}
-
-type Credentials interface {
-	GetAccessToken() (string, error)
-	GetDPoPKey() (jwk.Key, error)
-}
-
-type AccessTokenCredentials struct {
-	AccessToken string
-	DPoPKey     jwk.Key
-}
-
-func (creds AccessTokenCredentials) GetAccessToken() (string, error) {
-	return creds.AccessToken, nil
-}
-
-func (creds AccessTokenCredentials) GetDPoPKey() (jwk.Key, error) {
-	return creds.DPoPKey, nil
 }
 
 type SDK struct {

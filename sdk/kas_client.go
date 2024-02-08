@@ -3,21 +3,64 @@ package sdk
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	kas "github.com/opentdf/backend-go/pkg/access"
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+type Unwrapper interface {
+	Unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
+	GetKASInfo(keyAccess KeyAccess) (KASInfo, error)
+}
+
 type KasClient struct {
-	credentials Credentials
-	accessToken string
-	dpopKey     jwk.Key
+	creds DPoPBoundCredentials
+}
+
+type AccessToken string
+
+type DPoPBoundCredentials interface {
+	GetAccessToken() (AccessToken, error)
+	GetAsymDecryption() crypto.AsymDecryption
+	GetDPoPKey() (jwk.Key, error)
+	RefreshAccessToken() error
+}
+
+/*
+*
+Credentials that come from a previous interaction with the IdP, along
+with the key that has been bound to the access token
+*
+*/
+type AccessTokenCredentials struct {
+	AccessToken AccessToken
+	// TODO: make this nicer by creating a new abstraction in the crypto package
+	AsymDecryption crypto.AsymDecryption
+	DPoPKey        jwk.Key
+}
+
+func (creds AccessTokenCredentials) GetAccessToken() (AccessToken, error) {
+	return creds.AccessToken, nil
+}
+
+func (creds AccessTokenCredentials) GetAsymDecryption() crypto.AsymDecryption {
+	return creds.AsymDecryption
+}
+
+func (creds AccessTokenCredentials) RefreshAccessToken() error {
+	return errors.New("can't refresh access token since these credentials do not interact with the IDP")
+}
+
+func (creds AccessTokenCredentials) GetDPoPKey() (jwk.Key, error) {
+	return creds.DPoPKey, nil
 }
 
 type requestBody struct {
@@ -30,23 +73,7 @@ type requestBody struct {
 	EncryptedMetaData string `json:"encryptedMetadata"`
 }
 
-type requestClaims struct {
-	jwt.RegisteredClaims
-	RequestBody string `json:"requestBody"`
-}
-
-func (client *KasClient) refreshAccessToken() error {
-	token, err := client.credentials.GetAccessToken()
-	if err != nil {
-		return fmt.Errorf("Error getting access token: %w", err)
-	}
-
-	client.accessToken = token
-
-	return nil
-}
-
-func (client *KasClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapResponse, error) {
+func (client KasClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapResponse, error) {
 	rewrapRequest, err := client.getRewrapRequest(keyAccess, policy)
 	if err != nil {
 		return nil, err
@@ -56,6 +83,7 @@ func (client *KasClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (
 	if err != nil {
 		return nil, fmt.Errorf("Error connecting to kas: %w", err)
 	}
+	defer conn.Close()
 
 	ctx := context.Background()
 	serviceClient := kas.NewAccessServiceClient(conn)
@@ -63,17 +91,17 @@ func (client *KasClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (
 	return serviceClient.Rewrap(ctx, rewrapRequest)
 }
 
-func (client *KasClient) Rewrap(keyAccess KeyAccess, policy string) ([]byte, error) {
-	if client.accessToken == "" {
-		client.refreshAccessToken()
-	}
+func (client KasClient) GetKASInfo(keyAccess KeyAccess) (KASInfo, error) {
+	return KASInfo{}, nil
+}
 
+func (client KasClient) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 	response, err := client.makeRewrapRequest(keyAccess, policy)
 
 	if err != nil {
 		switch status.Code(err) {
 		case codes.Unauthenticated:
-			client.refreshAccessToken()
+			client.creds.RefreshAccessToken()
 			response, err = client.makeRewrapRequest(keyAccess, policy)
 			if err != nil {
 				return nil, fmt.Errorf("Error making rewrap request: %w", err)
@@ -83,10 +111,15 @@ func (client *KasClient) Rewrap(keyAccess KeyAccess, policy string) ([]byte, err
 		}
 	}
 
-	return response.EntityWrappedKey, nil
+	key, err := client.creds.GetAsymDecryption().Decrypt(response.EntityWrappedKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return key, nil
 }
 
-func (client *KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapRequest, error) {
+func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapRequest, error) {
 	requestBody := requestBody{
 		Policy:            policy,
 		KeyType:           keyAccess.KeyType,
@@ -100,28 +133,28 @@ func (client *KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*
 	if err != nil {
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)
 	}
-	requestClaims := requestClaims{
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(60 * time.Second)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-		string(requestBodyJson),
-	}
 
-	signingMethod := jwt.GetSigningMethod(client.dpopKey.Algorithm().String())
-	token := jwt.NewWithClaims(signingMethod, requestClaims)
+	tok, err := jwt.NewBuilder().
+		IssuedAt(time.Now()).
+		Claim("requestBody", requestBodyJson).
+		Expiration(time.Now().Add(60 * time.Second)).Build()
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create jwt: %w", err)
+		return nil, fmt.Errorf("failed to create jwt: %v", err)
 	}
 
-	signedToken, err := token.SignedString(client.dpopKey)
+	dpopKey, _ := client.creds.GetDPoPKey()
+
+	signedToken, err := jwt.Sign(tok, jwt.WithKey(dpopKey.Algorithm(), dpopKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
 
+	accessToken, _ := client.creds.GetAccessToken()
+
 	rewrapRequest := kas.RewrapRequest{
-		Bearer:             client.accessToken,
-		SignedRequestToken: signedToken,
+		Bearer:             string(accessToken),
+		SignedRequestToken: string(signedToken),
 	}
 	return &rewrapRequest, nil
 }

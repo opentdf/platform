@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"testing"
 
-	// "github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/suite"
 )

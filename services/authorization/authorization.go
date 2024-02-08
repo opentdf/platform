@@ -2,17 +2,12 @@ package authorization
 
 import (
 	"context"
-	// "errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	// "github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
-	// "github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
-	// "google.golang.org/grpc/codes"
-	// "google.golang.org/grpc/status"
 )
 
 type AuthorizationService struct {

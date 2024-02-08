@@ -15,31 +15,33 @@ import (
 
 var fixtures Fixtures
 
+const note = `
+====================================================================================
+
+ Integration Tests
+
+ Testcontainers is used to run these integration tests. To get this working please
+ ensure you have Docker/Podman installed and running.
+
+ If using Podman, export these variables:
+   export TESTCONTAINERS_PODMAN=true;
+   export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;
+   export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock;
+
+ For more information please see: https://www.testcontainers.org/
+
+ ---------------------------------------------------------------------------------
+
+ Test runner hanging at '📀 starting postgres container'?
+ Try restarting Docker/Podman and running the tests again.
+
+   Docker: docker-machine restart
+   Podman: podman machine stop;podman machine start
+
+====================================================================================`
+
 func init() {
-	fmt.Println("====================================================================================")
-	fmt.Println("")
-	fmt.Println(" Integration Tests")
-	fmt.Println("")
-	fmt.Println(" Testcontainers is used to run these integration tests. To get this working please")
-	fmt.Println(" ensure you have Docker/Podman installed and running.")
-	fmt.Println("")
-	fmt.Println(" If using Podman, export these variables:")
-	fmt.Println("   export TESTCONTAINERS_PODMAN=true;")
-	fmt.Println("   export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;")
-	fmt.Println("   export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock;")
-	fmt.Println("")
-	fmt.Println(" For more information please see: https://www.testcontainers.org/")
-	fmt.Println("")
-	fmt.Println(" ---------------------------------------------------------------------------------")
-	fmt.Println("")
-	fmt.Println(" Test runner hanging at '📀 starting postgres container'?")
-	fmt.Println(" Try restarting Docker/Podman and running the tests again.")
-	fmt.Println("")
-	fmt.Println("   Docker: docker-machine restart")
-	fmt.Println("   Podman: podman machine stop;podman machine start")
-	fmt.Println("")
-	fmt.Println("====================================================================================")
-	fmt.Println("")
+	fmt.Println(note)
 }
 
 func TestMain(m *testing.M) {
@@ -117,7 +119,7 @@ func TestMain(m *testing.M) {
 	}
 
 	slog.Info("🚚 applying migrations")
-	applied, err := db.Client.RunMigrations()
+	applied, err := db.Client.RunMigrations(ctx)
 	if err != nil {
 		slog.Error("issue running migrations", slog.String("error", err.Error()))
 		panic(err)

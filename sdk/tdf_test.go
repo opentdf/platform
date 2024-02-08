@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 const (
@@ -884,7 +885,7 @@ func checkIdentical(t *testing.T, file, checksum string) bool {
 	defer func(f *os.File) {
 		err := f.Close()
 		if err != nil {
-
+			t.Fatalf("f.Close failed: %v", err)
 		}
 	}(f)
 

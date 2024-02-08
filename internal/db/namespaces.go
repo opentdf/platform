@@ -32,7 +32,7 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 		return nil, err
 	}
 
-	namespace := namespaces.Namespace{Id: "", Name: ""}
+	namespace := &namespaces.Namespace{Id: "", Name: ""}
 	if err := row.Scan(&namespace.Id, &namespace.Name); err != nil {
 		if e := WrapIfKnownInvalidQueryErr(err); e != nil {
 			slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
@@ -43,7 +43,7 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 		return nil, err
 	}
 
-	return &namespace, nil
+	return namespace, nil
 }
 
 func listNamespacesSql() (string, []interface{}, error) {

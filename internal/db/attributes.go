@@ -15,8 +15,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -92,7 +90,6 @@ func attributesSelect() sq.SelectBuilder {
 		LeftJoin(Tables.AttributeKeyAccessGrants.Name()+" ON "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".attribute_definition_id = "+AttributeTable+".id").
 		LeftJoin(KeyAccessServerTable+" ON "+KeyAccessServerTable+".id = "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".key_access_server_id").
 		GroupBy(tableField(AttributeTable, "id"), tableField(NamespacesTable, "name"))
-
 }
 
 func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
@@ -108,8 +105,9 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 	)
 	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson, &grants)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, err
+		if e := WrapIfKnownInvalidQueryErr(err); e != nil {
+			slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
+			return nil, e
 		}
 		return nil, err
 	}
@@ -165,6 +163,12 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 		)
 		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson, &grants)
 		if err != nil {
+			if e := WrapIfKnownInvalidQueryErr(err); e != nil {
+				slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
+				return nil, e
+			}
+
+			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 			return nil, err
 		}
 
@@ -221,14 +225,15 @@ func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute,
 	sql, args, err := listAllAttributesSql()
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return nil, err
 	}
 	defer rows.Close()
 
 	list, err := attributesHydrateList(rows)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
+		return nil, err
 	}
 	slog.Info("list", slog.Any("list", list))
 
@@ -246,14 +251,14 @@ func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attrib
 	sql, args, err := getAttributeSql(id)
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		slog.Error(services.ErrGettingResource, slog.String("attributeId", id), slog.String("error", err.Error()))
+		return nil, err
 	}
 
 	attribute, err := attributesHydrateItem(row)
 	if err != nil {
-		slog.Error("could not hydrate item", slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		slog.Error("could not hydrate item", slog.String("attributeId", id), slog.String("error", err.Error()))
+		return nil, err
 	}
 
 	return attribute, nil
@@ -271,14 +276,14 @@ func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string
 
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
-		return nil, status.Error(codes.Internal, services.ErrListingResource)
+		return nil, err
 	}
 	defer rows.Close()
 
 	list, err := attributesHydrateList(rows)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		slog.Error(services.ErrGettingResource, slog.String("namespaceId", namespaceId), slog.String("error", err.Error()))
+		return nil, err
 	}
 
 	return list, nil
@@ -296,19 +301,26 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(attr.Metadata)
 	if err != nil {
-		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+		slog.Error(services.ErrCreatingResource, slog.Any("attribute", attr), slog.String("error", err.Error()))
+		return nil, err
 	}
 
 	sql, args, err := createAttributeSql(attr.NamespaceId, attr.Name, attributesRuleTypeEnumTransformIn(attr.Rule.String()), metadataJson)
 	// TODO: abstract error checking to be DRY
 	// TODO: check for constraint violation
-	// - duplicate name
-	// - namespace id exists
+	// - duplicate name VERIFY THIS IS DONE
+	// - namespace id exists VERIFY THIS IS DONE
 	var id string
 	if r, err := c.queryRow(ctx, sql, args, err); err != nil {
-		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+		slog.Error(services.ErrCreatingResource, slog.Any("attribute", attr), slog.String("error", err.Error()))
+		return nil, err
 	} else if err := r.Scan(&id); err != nil {
-		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+		if e := WrapIfKnownInvalidQueryErr(err); e != nil {
+			slog.Error(services.ErrCreatingResource, slog.Any("attribute", attr), slog.String("error", e.Error()))
+			return nil, e
+		}
+		slog.Error(services.ErrCreatingResource, slog.Any("attribute", attr), slog.String("error", err.Error()))
+		return nil, err
 	}
 
 	a := &attributes.Attribute{
@@ -344,24 +356,24 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
 		slog.Error(services.ErrUpdatingResource, slog.String("scope", "getAttribute"), slog.String("error", err.Error()))
-		return nil, status.Error(status.Code(err), services.ErrUpdatingResource)
+		return nil, err
 	}
 	if a.Namespace.Id != attr.NamespaceId {
 		slog.Error(services.ErrUpdatingResource,
 			slog.String("scope", "namespaceId"),
 			slog.String("error", errors.Join(ErrRestrictViolation, fmt.Errorf("cannot change namespaceId")).Error()),
 		)
-		return nil, status.Error(codes.InvalidArgument, services.ErrUpdatingResource)
+		return nil, errors.Join(ErrRestrictViolation, fmt.Errorf("cannot change namespaceId"))
 	}
 
 	metadataJson, _, err := marshalUpdateMetadata(a.Metadata, attr.Metadata)
 	if err != nil {
-		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+		return nil, err
 	}
 
 	sql, args, err := updateAttributeSql(id, attr.Name, attributesRuleTypeEnumTransformIn(attr.Rule.String()), metadataJson)
 	if err := c.exec(ctx, sql, args, err); err != nil {
-		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+		return nil, err
 	}
 
 	// TODO: see if returning the old is the behavior we should consistently implement throughout services
@@ -380,13 +392,13 @@ func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Att
 	// get attribute before deleting
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
-		return nil, status.Error(status.Code(err), services.ErrDeletingResource)
+		return nil, err
 	}
 
 	sql, args, err := deleteAttributeSql(id)
 
 	if err := c.exec(ctx, sql, args, err); err != nil {
-		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
+		return nil, err
 	}
 
 	// return the attribute before deleting

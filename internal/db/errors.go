@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -22,6 +23,7 @@ const (
 	ErrForeignKeyViolation       DbError = "ErrForeignKeyViolation: value is referenced by another table"
 	ErrRestrictViolation         DbError = "ErrRestrictViolation: value cannot be deleted due to restriction"
 	ErrNotFound                  DbError = "ErrNotFound: value not found"
+	ErrInvalidEnumValue		     DbError = "ErrInvalidEnumValue: not a valid enum value"
 )
 
 // Validate is a PostgreSQL constraint violation for specific table-column value
@@ -49,6 +51,8 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 			return errors.Join(ErrRestrictViolation, e)
 		case pgerrcode.CaseNotFound:
 			return errors.Join(ErrNotFound, e)
+		case pgerrcode.InvalidTextRepresentation:
+			return errors.Join(ErrInvalidEnumValue, e)
 		default:
 			return e
 		}
@@ -66,7 +70,7 @@ func isPgError(err error) *pgconn.PgError {
 		return e
 	}
 	// The error is not of type PgError if a SELECT query resulted in no rows
-	if strings.Contains(err.Error(), "no rows in result set") {
+	if strings.Contains(err.Error(), "no rows in result set") || err == pgx.ErrNoRows {
 		return &pgconn.PgError{
 			Code:    pgerrcode.CaseNotFound,
 			Message: "err: no rows in result set",

@@ -1,4 +1,6 @@
-.PHONY: all toolcheck lint test clean build docker-build buf-generate
+.PHONY: all toolcheck lint test clean build docker-build buf-generate sdk/sdk
+
+LINT_OPTIONS ?= --new
 
 all: toolcheck lint test build
 
@@ -20,26 +22,32 @@ lint:
 			echo "Buf lint exited with code $$exit_code"; \
 			exit $$exit_code; \
 		fi)
-	golangci-lint run
+	golangci-lint run $(LINT_OPTIONS)
+	golangci-lint run $(LINT_OPTIONS) --path-prefix sdk
+	golangci-lint run $(LINT_OPTIONS) --path-prefix examples/attributes
 
 buf-generate:
 	buf generate proto
 
 test:
 	go test ./... -race
+	go test sdk/... -race
+	go test examples/attributes/... -race
 
 clean:
 	go clean
-	(cd sdk && go clean && rm -f sdk)
 	rm -f serviceapp
 
-build: go.work serviceapp 
+build: go.work serviceapp sdk/sdk example/attributes/attributes
 
 serviceapp: go.work go.mod go.sum main.go $(shell find cmd internal services)
 	go build -o serviceapp -v ./main.go
 
-sdk/sdk: go.work sdk/go.mod sdk/go.sum $(shell find cmd internal services)
+sdk/sdk: go.work sdk/go.mod sdk/go.sum $(shell find sdk)
 	(cd sdk && go build)
+
+example/attributes/attributes: go.work example/attributes/go.mod example/attributes/go.sum $(shell find example/attributes)
+	(cd example/attributes && go build -o attributes)
 
 docker-build: build
 	docker build -t opentdf .

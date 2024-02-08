@@ -29,7 +29,7 @@ jobs:
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
         with:
           version: v1.55
-          only-new-issues: false
+          only-new-issues: true
           working-directory: ${{ matrix.directory }}
   unit:
     name: unit tests

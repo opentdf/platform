@@ -1,6 +1,6 @@
 .PHONY: all toolcheck lint test clean build docker-build buf-generate sdk/sdk
 
-LINT_OPTIONS ?= --new
+LINT_OPTIONS?=--new
 
 all: toolcheck lint test build
 

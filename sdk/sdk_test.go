@@ -5,14 +5,15 @@ import (
 	"testing"
 
 	"github.com/opentdf/opentdf-v2-poc/sdk"
-	"github.com/opentdf/opentdf-v2-poc/sdk/acre"
-	"github.com/opentdf/opentdf-v2-poc/sdk/acse"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/keyaccessgrants"
+	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
+	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 )
 
-var goodPlatformEndpoint = "localhost:9000"
-var badPlatformEndpoint = "localhost:9999"
+var (
+	goodPlatformEndpoint = "localhost:9000"
+	badPlatformEndpoint  = "localhost:9999"
+)
 
 func GetMethods(i interface{}) (m []string) {
 	r := reflect.TypeOf(i)
@@ -37,13 +38,13 @@ func Test_ShouldCreateNewSDK(t *testing.T) {
 	if sdk.Attributes == nil {
 		t.Errorf("Expected Attributes client, got nil")
 	}
-	if sdk.ResourceEncoding == nil {
+	if sdk.ResourceMapping == nil {
 		t.Errorf("Expected ResourceEncoding client, got nil")
 	}
-	if sdk.SubjectEncoding == nil {
+	if sdk.SubjectMapping == nil {
 		t.Errorf("Expected SubjectEncoding client, got nil")
 	}
-	if sdk.KeyAccessGrants == nil {
+	if sdk.KeyAccessServerRegistry == nil {
 		t.Errorf("Expected KeyAccessGrants client, got nil")
 	}
 }
@@ -80,19 +81,14 @@ func Test_ShouldHaveSameMethods(t *testing.T) {
 			actual:   GetMethods(reflect.TypeOf(sdk.Attributes)),
 		},
 		{
-			name:     "ResourceEncoding",
-			expected: GetMethods(reflect.TypeOf(acre.NewResourceEncodingServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.ResourceEncoding)),
-		},
-		{
 			name:     "SubjectEncoding",
-			expected: GetMethods(reflect.TypeOf(acse.NewSubjectEncodingServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.SubjectEncoding)),
+			expected: GetMethods(reflect.TypeOf(subjectmapping.NewSubjectMappingServiceClient(sdk.Conn()))),
+			actual:   GetMethods(reflect.TypeOf(sdk.SubjectMapping)),
 		},
 		{
 			name:     "KeyAccessGrants",
-			expected: GetMethods(reflect.TypeOf(keyaccessgrants.NewKeyAccessGrantsServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.KeyAccessGrants)),
+			expected: GetMethods(reflect.TypeOf(kasregistry.NewKeyAccessServerRegistryServiceClient(sdk.Conn()))),
+			actual:   GetMethods(reflect.TypeOf(sdk.KeyAccessServerRegistry)),
 		},
 	}
 

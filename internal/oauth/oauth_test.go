@@ -46,22 +46,21 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	dpopJWK.Set("use", "sig")
 	dpopJWK.Set("alg", jwa.RS256.String())
 
-	idpUrl, _ := url.Parse(idpEndpoint)
-
-	clientCredentials := oauth.ClientFlowCredentials{
-		ClientId:    "testclient",
-		ClientAuth:  "abcd1234",
-		DPoPKey:     dpopJWK,
-		Scopes:      []string{"testscope"},
-		IDPEndpoint: *idpUrl,
+	clientCredentials := oauth.ClientCredentials{
+		ClientId:   "testclient",
+		ClientAuth: "abcd1234",
 	}
 
-	tok, err := clientCredentials.GetAccessToken()
+	tok, err := oauth.GetAccessToken(
+		idpEndpoint,
+		[]string{"testscope"},
+		clientCredentials,
+		dpopJWK)
 
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
-	tokenDetails, err := jwt.ParseString(tok, jwt.WithVerify(false))
+	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
 	if err != nil {
 		t.Errorf("error parsing token received from IDP: %v", err)
 	}
@@ -121,15 +120,11 @@ func TestClientSecretNoNonce(t *testing.T) {
 	}))
 	defer server.Close()
 
-	idpUrl, _ := url.Parse(server.URL + "/token")
-	clientCredentials := oauth.ClientFlowCredentials{
-		ClientId:    "theclient",
-		ClientAuth:  "thesecret",
-		Scopes:      []string{"scope1", "scope2"},
-		IDPEndpoint: *idpUrl,
-		DPoPKey:     dpopJWK,
+	clientCredentials := oauth.ClientCredentials{
+		ClientId:   "theclient",
+		ClientAuth: "thesecret",
 	}
-	_, err = clientCredentials.GetAccessToken()
+	_, err = oauth.GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	if err != nil {
 		t.Errorf("didn't get a token back from the IdP: %v", err)
 	}
@@ -196,15 +191,11 @@ func TestClientSecretWithNonce(t *testing.T) {
 	}))
 	defer server.Close()
 
-	idpUrl, _ := url.Parse(server.URL + "/token")
-	clientCredentials := oauth.ClientFlowCredentials{
-		ClientId:    "theclient",
-		ClientAuth:  "thesecret",
-		Scopes:      []string{"scope1", "scope2"},
-		IDPEndpoint: *idpUrl,
-		DPoPKey:     dpopJWK,
+	clientCredentials := oauth.ClientCredentials{
+		ClientId:   "theclient",
+		ClientAuth: "thesecret",
 	}
-	_, err = clientCredentials.GetAccessToken()
+	_, err = oauth.GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	if err != nil {
 		t.Errorf("didn't get a token back from the IdP: %v", err)
 	}
@@ -234,9 +225,9 @@ func TestSignedJWTWithNonce(t *testing.T) {
 
 	timesCalled := 0
 
-	var serverUrl string
-	getServerUrl := func() string {
-		return serverUrl
+	var url string
+	getUrl := func() string {
+		return url
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +238,7 @@ func TestSignedJWTWithNonce(t *testing.T) {
 		}
 		r.ParseForm()
 
-		validateClientAssertionAuth(r, t, getServerUrl, "theclient", clientPublicKey)
+		validateClientAssertionAuth(r, t, getUrl, "theclient", clientPublicKey)
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
@@ -288,17 +279,14 @@ func TestSignedJWTWithNonce(t *testing.T) {
 	}))
 	defer server.Close()
 
-	idpURL, _ := url.Parse(server.URL + "/token")
-	serverUrl = idpURL.String()
-	clientCredentials := oauth.ClientFlowCredentials{
-		ClientId:    "theclient",
-		ClientAuth:  clientAuthJWK,
-		DPoPKey:     dpopJWK,
-		Scopes:      []string{"scope1", "scope2"},
-		IDPEndpoint: *idpURL,
+	clientCredentials := oauth.ClientCredentials{
+		ClientId:   "theclient",
+		ClientAuth: clientAuthJWK,
 	}
 
-	_, err = clientCredentials.GetAccessToken()
+	url = server.URL + "/token"
+
+	_, err = oauth.GetAccessToken(url, []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	if err != nil {
 		t.Errorf("didn't get a token back from the IdP: %v", err)
 	}

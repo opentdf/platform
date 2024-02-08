@@ -2,6 +2,8 @@
 
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
+- [Policy Config Schema](./migrations/20240131000000_diagram.md)
+- [Policy Config Testing Diagram](./integration/testing_diagram.png)
 
 ## Development
 
@@ -17,6 +19,10 @@ With go 1.18 or higher:
 
 `brew install buf`
 
+[grpcurl](https://github.com/fullstorydev/grpcurl)
+
+`brew install grpcurl`
+
 ### Run
 
 1. `docker-compose -f opentdf-compose.yaml up`
@@ -29,25 +35,29 @@ This should bring up a grpc server on port **9000** and http server on port **80
 
 ### Test
 
-> [!WARNING]
-> GRPC and reflection is disabled by default. Please see the `opentdf.yaml` for more details (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43))
-
 ```bash
   grpcurl -plaintext localhost:9000 list
 
-  acre.v1.ResourcEncodingService
-  attributes.v1.AttributesService
+  attributes.AttributesService
   grpc.reflection.v1.ServerReflection
   grpc.reflection.v1alpha.ServerReflection
+  kasregistry.KeyAccessServerRegistryService
+  namespaces.NamespaceService
+  resourcemapping.ResourceMappingService
+  subjectmapping.SubjectMappingService
 
-  grpcurl -plaintext localhost:9000 list attributes.v1.AttributesService
+  grpcurl -plaintext localhost:9000 list attributes.AttributesService
 
-  attributes.v1.AttributesService.CreateAttribute
-  attributes.v1.AttributesService.DeleteAttribute
-  attributes.v1.AttributesService.GetAttribute
-  attributes.v1.AttributesService.ListAttributes
-  attributes.v1.AttributesService.UpdateAttribute
-
+  attributes.AttributesService.CreateAttribute
+  attributes.AttributesService.CreateAttributeValue
+  attributes.AttributesService.DeleteAttribute
+  attributes.AttributesService.DeleteAttributeValue
+  attributes.AttributesService.GetAttribute
+  attributes.AttributesService.GetAttributeValue
+  attributes.AttributesService.ListAttributeValues
+  attributes.AttributesService.ListAttributes
+  attributes.AttributesService.UpdateAttribute
+  attributes.AttributesService.UpdateAttributeValue
 ```
 
 Create Attribute
@@ -102,3 +112,4 @@ The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` 
 generated code.
 
 For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.
+

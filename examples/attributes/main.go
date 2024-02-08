@@ -4,34 +4,13 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/opentdf/opentdf-v2-poc/sdk"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 )
 
 func main() {
-	definition := attributes.AttributeDefinition{
-		Name: "relto",
-		Rule: attributes.AttributeDefinition_ATTRIBUTE_RULE_TYPE_ANY_OF,
-		Values: []*attributes.AttributeDefinitionValue{
-			{
-				Value: "USA",
-			},
-			{
-				Value: "GBR",
-			},
-		},
-		Descriptor_: &common.ResourceDescriptor{
-			Version:     1,
-			Namespace:   "demo.com",
-			Fqn:         "http://demo.com/attr/relto",
-			Description: "The relto attribute is used to describe the relationship of the resource to the country of origin. ",
-			Labels:      map[string]string{"origin": "Country of Origin"},
-			Type:        common.PolicyResourceType_POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION,
-		},
-	}
-
 	s, err := sdk.New("localhost:9000", sdk.WithInsecureConn())
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
@@ -40,7 +19,11 @@ func main() {
 	defer s.Close()
 
 	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
-		Definition: &definition,
+		Attribute: &attributes.AttributeCreateUpdate{
+			Name:        "relto",
+			NamespaceId: "",
+			Rule:        *attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF.Enum(),
+		},
 	})
 	if err != nil {
 		slog.Error("could not create attribute", slog.String("error", err.Error()))
@@ -54,11 +37,16 @@ func main() {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
-	for _, attr := range allAttr.Definitions {
+	for _, attr := range allAttr.Attributes {
+		slog.Info("attribute", slog.String("id", attr.Id))
 		slog.Info("attribute", slog.String("name", attr.Name))
 		slog.Info("attribute", slog.String("rule", attr.Rule.String()))
-		for _, val := range attr.Values {
-			slog.Info("attribute", slog.String("name", attr.Name), slog.String("value", val.Value))
+		slog.Info("attribute", slog.Any("metadata", attr.Metadata))
+		for i, val := range attr.Values {
+			slog.Info("attribute: "+strconv.Itoa(i), slog.String("id", val.Id))
+			slog.Info("attribute: "+strconv.Itoa(i), slog.String("value", val.Value))
+			slog.Info("attribute: "+strconv.Itoa(i), slog.Any("members", val.Members))
+			slog.Info("attribute: "+strconv.Itoa(i), slog.Any("metadata", val.Metadata))
 		}
 	}
 

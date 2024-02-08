@@ -18,60 +18,17 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type ClientFlowCredentials struct {
-	ClientAuth  interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
-	ClientId    string
-	Scopes      []string
-	IDPEndpoint url.URL
-	DPoPKey     jwk.Key
+type ClientCredentials struct {
+	ClientAuth interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
+	ClientId   string
 }
 
-func (clientCredentials ClientFlowCredentials) GetDPoPKey() (jwk.Key, error) {
-	return clientCredentials.DPoPKey, nil
-}
-
-func (clientCredentials ClientFlowCredentials) GetAccessToken() (string, error) {
-	// this misses the flow where the Authorization server can tell us the next nonce to use.
-	// missing this flow costs us a bit in efficiency (a round trip per access token) but this is
-	// still correct because
-	req, err := clientCredentials.getRequest("")
-	if err != nil {
-		return "", err
-	}
-
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
-	}
-
-	defer resp.Body.Close()
-
-	if nonce := resp.Header.Get("dpop-nonce"); nonce != "" && resp.StatusCode == http.StatusBadRequest {
-		nonceReq, err := clientCredentials.getRequest(nonce)
-		if err != nil {
-			return "", err
-		}
-		nonceResp, err := client.Do(nonceReq)
-		if err != nil {
-			return "", fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
-		}
-
-		defer nonceResp.Body.Close()
-
-		return processResponse(nonceResp)
-	}
-
-	return processResponse(resp)
-
-}
-
-func (clientCredentials ClientFlowCredentials) getRequest(dpopNonce string) (*http.Request, error) {
-	req, err := http.NewRequest("POST", clientCredentials.IDPEndpoint.String(), nil)
+func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
+	req, err := http.NewRequest("POST", tokenEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
-	dpop, err := getDPoPAssertion(clientCredentials.DPoPKey, "POST", clientCredentials.IDPEndpoint.String(), dpopNonce)
+	dpop, err := getDPoPAssertion(*privateJWK, "POST", tokenEndpoint, dpopNonce)
 	if err != nil {
 		return nil, err
 	}
@@ -82,15 +39,15 @@ func (clientCredentials ClientFlowCredentials) getRequest(dpopNonce string) (*ht
 	formData := url.Values{}
 	formData.Set("grant_type", "client_credentials")
 	formData.Set("client_id", clientCredentials.ClientId)
-	if len(clientCredentials.Scopes) > 0 {
-		formData.Set("scope", strings.Join(clientCredentials.Scopes, " "))
+	if len(scopes) > 0 {
+		formData.Set("scope", strings.Join(scopes, " "))
 	}
 
 	switch ca := clientCredentials.ClientAuth.(type) {
 	case string:
 		req.SetBasicAuth(clientCredentials.ClientId, string(ca))
 	case jwk.Key:
-		signedToken, err := getSignedToken(clientCredentials.ClientId, clientCredentials.IDPEndpoint.String(), ca)
+		signedToken, err := getSignedToken(clientCredentials.ClientId, tokenEndpoint, ca)
 		if err != nil {
 			return nil, fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
 		}
@@ -133,23 +90,59 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 	return jwt.Sign(tok, jwt.WithKey(alg, key, jws.WithProtectedHeaders(headers)))
 }
 
-func processResponse(resp *http.Response) (string, error) {
+// this misses the flow where the Authorization server can tell us the next nonce to use.
+// missing this flow costs us a bit in efficiency (a round trip per access token) but this is
+// still correct because
+func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*oauth2.Token, error) {
+	req, err := getRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
+		nonceReq, err := getRequest(tokenEndpoint, nonceHeader, scopes, clientCredentials, &dpopPrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		nonceResp, err := client.Do(nonceReq)
+		if err != nil {
+			return nil, fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
+		}
+
+		defer nonceResp.Body.Close()
+
+		return processResponse(nonceResp)
+	}
+
+	return processResponse(resp)
+
+}
+
+func processResponse(resp *http.Response) (*oauth2.Token, error) {
 	respBytes, err := io.ReadAll(resp.Body)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("got status %d when making request to IdP: %s", resp.StatusCode, string(respBytes))
+		return nil, fmt.Errorf("got status %d when making request to IdP: %s", resp.StatusCode, string(respBytes))
 	}
 
 	if err != nil {
-		return "", fmt.Errorf("error reading bytes from response: %w", err)
+		return nil, fmt.Errorf("error reading bytes from response: %w", err)
 	}
 
 	var token *oauth2.Token
 	if err := json.Unmarshal(respBytes, &token); err != nil {
-		return "", fmt.Errorf("error unmarshaling token from response: %w", err)
+		return nil, fmt.Errorf("error unmarshaling token from response: %w", err)
 	}
 
-	return token.AccessToken, nil
+	return token, nil
 }
 
 func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce string) (string, error) {

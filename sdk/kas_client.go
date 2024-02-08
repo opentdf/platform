@@ -3,14 +3,11 @@ package sdk
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	kas "github.com/opentdf/backend-go/pkg/access"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,45 +22,7 @@ type KasClient struct {
 	creds DPoPBoundCredentials
 }
 
-type AccessToken string
-
-type DPoPBoundCredentials interface {
-	GetAccessToken() (AccessToken, error)
-	GetAsymDecryption() crypto.AsymDecryption
-	GetDPoPKey() (jwk.Key, error)
-	RefreshAccessToken() error
-}
-
-/*
-*
-Credentials that come from a previous interaction with the IdP, along
-with the key that has been bound to the access token
-*
-*/
-type AccessTokenCredentials struct {
-	AccessToken AccessToken
-	// TODO: make this nicer by creating a new abstraction in the crypto package
-	AsymDecryption crypto.AsymDecryption
-	DPoPKey        jwk.Key
-}
-
-func (creds AccessTokenCredentials) GetAccessToken() (AccessToken, error) {
-	return creds.AccessToken, nil
-}
-
-func (creds AccessTokenCredentials) GetAsymDecryption() crypto.AsymDecryption {
-	return creds.AsymDecryption
-}
-
-func (creds AccessTokenCredentials) RefreshAccessToken() error {
-	return errors.New("can't refresh access token since these credentials do not interact with the IDP")
-}
-
-func (creds AccessTokenCredentials) GetDPoPKey() (jwk.Key, error) {
-	return creds.DPoPKey, nil
-}
-
-type requestBody struct {
+type rewrapRequestBody struct {
 	Policy            string `json:"policy"`
 	KeyType           string `json:"type"`
 	KasUrl            string `json:"url"`
@@ -73,6 +32,7 @@ type requestBody struct {
 	EncryptedMetaData string `json:"encryptedMetadata"`
 }
 
+// TODO: use a single connection and pass in a context. It should come from how the client is using the library
 func (client KasClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapResponse, error) {
 	rewrapRequest, err := client.getRewrapRequest(keyAccess, policy)
 	if err != nil {
@@ -120,7 +80,7 @@ func (client KasClient) Unwrap(keyAccess KeyAccess, policy string) ([]byte, erro
 }
 
 func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapRequest, error) {
-	requestBody := requestBody{
+	requestBody := rewrapRequestBody{
 		Policy:            policy,
 		KeyType:           keyAccess.KeyType,
 		KasUrl:            keyAccess.KasURL,
@@ -137,7 +97,8 @@ func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 	tok, err := jwt.NewBuilder().
 		IssuedAt(time.Now()).
 		Claim("requestBody", requestBodyJson).
-		Expiration(time.Now().Add(60 * time.Second)).Build()
+		Expiration(time.Now().Add(60 * time.Second)).
+		Build()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jwt: %v", err)
@@ -160,5 +121,21 @@ func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 }
 
 func (client KasClient) GetKASPublicKey(kasInfo KASInfo) (string, error) {
-	return "", errors.New("not implemented")
+	req := kas.PublicKeyRequest{}
+	conn, err := grpc.Dial(kasInfo.url)
+	if err != nil {
+		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.url, err)
+	}
+	defer conn.Close()
+
+	ctx := context.Background()
+	serviceClient := kas.NewAccessServiceClient(conn)
+
+	resp, err := serviceClient.PublicKey(ctx, &req)
+
+	if err != nil {
+		return "", fmt.Errorf("error making request to Kas: %v", err)
+	}
+
+	return resp.PublicKey, nil
 }

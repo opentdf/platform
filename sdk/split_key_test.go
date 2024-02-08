@@ -1,17 +1,10 @@
 package sdk
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
-	"errors"
 	"fmt"
-	"strings"
 	"testing"
-
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 func TestNewSplitKeyFromKasInfo(t *testing.T) {
@@ -45,53 +38,6 @@ func TestNewSplitKeyFromKasInfo(t *testing.T) {
 			t.Fatalf("fail: meta data missing from the manifest")
 		}
 	}
-}
-
-type FakeUnwrapper struct {
-	decrypt      crypto.AsymDecryption
-	publicKeyPEM string
-}
-
-func NewFakeUnwrapper(kasPrivateKey string) (FakeUnwrapper, error) {
-	kasPrivateKey = strings.ReplaceAll(kasPrivateKey, "\n\t", "\n")
-	block, _ := pem.Decode([]byte(kasPrivateKey))
-	if block == nil {
-		return FakeUnwrapper{}, errors.New("failed to parse PEM formatted private key")
-	}
-
-	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return FakeUnwrapper{}, fmt.Errorf("could not create fake unwrapper:%v", err)
-	}
-	publicKey := privKey.(*rsa.PrivateKey).PublicKey
-	pkBytes, err := x509.MarshalPKIXPublicKey(&publicKey)
-	if err != nil {
-		return FakeUnwrapper{}, fmt.Errorf("can't marshal public key: %v", err)
-	}
-	privateBlock := pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: pkBytes,
-	}
-	publicKeyPEM := new(strings.Builder)
-	pem.Encode(publicKeyPEM, &privateBlock)
-	asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
-	if err != nil {
-		return FakeUnwrapper{}, err
-	}
-
-	return FakeUnwrapper{decrypt: asymDecrypt, publicKeyPEM: publicKeyPEM.String()}, nil
-}
-
-func (fake FakeUnwrapper) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
-	wrappedKey, err := crypto.Base64Decode([]byte(keyAccess.WrappedKey))
-	if err != nil {
-		return nil, err
-	}
-	return fake.decrypt.Decrypt(wrappedKey)
-}
-
-func (fake FakeUnwrapper) GetKASPublicKey(kasInfo KASInfo) (string, error) {
-	return fake.publicKeyPEM, nil
 }
 
 //nolint:gocognit

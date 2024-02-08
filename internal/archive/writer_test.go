@@ -129,13 +129,13 @@ var writeBuffer = make([]byte, stepSize) //nolint:gochecknoglobals // This is us
 // in other tests
 
 func TestCreateArchiveWriter(t *testing.T) { // use custom implementation of zip
-	customZipThing(t)
+	customZip(t)
 
 	// use native library("archive/zip") to unzip files
 	nativeUnzips(t)
 }
 
-func customZipThing(t *testing.T) {
+func customZip(t *testing.T) {
 
 	for index := 0; index < len(writeBuffer); index++ {
 		writeBuffer[index] = 0xFF

@@ -20,7 +20,7 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 	)
 
 	exec := func(q string) {
-		if err == nil {
+		if err != nil {
 			return
 		}
 		var tag pgconn.CommandTag

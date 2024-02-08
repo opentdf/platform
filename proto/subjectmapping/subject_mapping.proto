@@ -7,6 +7,7 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "authorization/authorization.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/any.proto";
 
 /*
    # Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
@@ -196,6 +197,19 @@ message DeleteSubjectSetResponse {
   SubjectSet subject_set = 1;
 }
 
+// representation of a subject as attribute->value pairs.  This would mirror user attributes retrieved
+// from an Identity Provider or User Store such as ADFS/LDAP, OKTA, etc.
+message Subject{
+  map<string, google.protobuf.Any> attributes= 1;
+}
+
+message MatchSubjectMappingsRequest{
+  Subject subject = 1;
+}
+
+message MatchSubjectMappingsResponse{
+  repeated SubjectMapping subject_mappings = 1;
+}
 
 message SubjectMappingCreateUpdate {
   common.MetadataMutable metadata = 1;
@@ -274,6 +288,13 @@ service SubjectMappingService {
 
   rpc DeleteSubjectSet(DeleteSubjectSetRequest) returns (DeleteSubjectSetResponse) {
     option (google.api.http) = {delete: "/subject-sets/{id}"};
+  }
+
+  rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse){
+    option (google.api.http) = {
+      post: "/subject-mappings-match"
+      body: "subject"
+    };
   }
 
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {

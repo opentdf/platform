@@ -11,6 +11,12 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+    strategy:
+      matrix:
+        directory:
+          - "."
+          - sdk
+          - examples/attributes
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
@@ -22,6 +28,7 @@ jobs:
         with:
           version: v1.55
           only-new-issues: true
+          working-directory: ${{ matrix.directory }}
   unit:
     name: unit tests
     runs-on: ubuntu-22.04

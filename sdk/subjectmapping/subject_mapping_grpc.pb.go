@@ -19,6 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
+	SubjectMappingService_GetSubjectSet_FullMethodName        = "/subjectmapping.SubjectMappingService/GetSubjectSet"
+	SubjectMappingService_CreateSubjectSet_FullMethodName     = "/subjectmapping.SubjectMappingService/CreateSubjectSet"
+	SubjectMappingService_UpdateSubjectSet_FullMethodName     = "/subjectmapping.SubjectMappingService/UpdateSubjectSet"
+	SubjectMappingService_DeleteSubjectSet_FullMethodName     = "/subjectmapping.SubjectMappingService/DeleteSubjectSet"
+	SubjectMappingService_MatchSubjectMappings_FullMethodName = "/subjectmapping.SubjectMappingService/MatchSubjectMappings"
 	SubjectMappingService_ListSubjectMappings_FullMethodName  = "/subjectmapping.SubjectMappingService/ListSubjectMappings"
 	SubjectMappingService_GetSubjectMapping_FullMethodName    = "/subjectmapping.SubjectMappingService/GetSubjectMapping"
 	SubjectMappingService_CreateSubjectMapping_FullMethodName = "/subjectmapping.SubjectMappingService/CreateSubjectMapping"
@@ -30,6 +35,12 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SubjectMappingServiceClient interface {
+	GetSubjectSet(ctx context.Context, in *GetSubjectSetRequest, opts ...grpc.CallOption) (*GetSubjectSetResponse, error)
+	CreateSubjectSet(ctx context.Context, in *CreateSubjectSetRequest, opts ...grpc.CallOption) (*CreateSubjectSetResponse, error)
+	UpdateSubjectSet(ctx context.Context, in *UpdateSubjectSetRequest, opts ...grpc.CallOption) (*UpdateSubjectSetResponse, error)
+	DeleteSubjectSet(ctx context.Context, in *DeleteSubjectSetRequest, opts ...grpc.CallOption) (*DeleteSubjectSetResponse, error)
+	// Find matching Subject Mappings for a given Subject
+	MatchSubjectMappings(ctx context.Context, in *MatchSubjectMappingsRequest, opts ...grpc.CallOption) (*MatchSubjectMappingsResponse, error)
 	ListSubjectMappings(ctx context.Context, in *ListSubjectMappingsRequest, opts ...grpc.CallOption) (*ListSubjectMappingsResponse, error)
 	GetSubjectMapping(ctx context.Context, in *GetSubjectMappingRequest, opts ...grpc.CallOption) (*GetSubjectMappingResponse, error)
 	CreateSubjectMapping(ctx context.Context, in *CreateSubjectMappingRequest, opts ...grpc.CallOption) (*CreateSubjectMappingResponse, error)
@@ -43,6 +54,51 @@ type subjectMappingServiceClient struct {
 
 func NewSubjectMappingServiceClient(cc grpc.ClientConnInterface) SubjectMappingServiceClient {
 	return &subjectMappingServiceClient{cc}
+}
+
+func (c *subjectMappingServiceClient) GetSubjectSet(ctx context.Context, in *GetSubjectSetRequest, opts ...grpc.CallOption) (*GetSubjectSetResponse, error) {
+	out := new(GetSubjectSetResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_GetSubjectSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) CreateSubjectSet(ctx context.Context, in *CreateSubjectSetRequest, opts ...grpc.CallOption) (*CreateSubjectSetResponse, error) {
+	out := new(CreateSubjectSetResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_CreateSubjectSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) UpdateSubjectSet(ctx context.Context, in *UpdateSubjectSetRequest, opts ...grpc.CallOption) (*UpdateSubjectSetResponse, error) {
+	out := new(UpdateSubjectSetResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_UpdateSubjectSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) DeleteSubjectSet(ctx context.Context, in *DeleteSubjectSetRequest, opts ...grpc.CallOption) (*DeleteSubjectSetResponse, error) {
+	out := new(DeleteSubjectSetResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_DeleteSubjectSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) MatchSubjectMappings(ctx context.Context, in *MatchSubjectMappingsRequest, opts ...grpc.CallOption) (*MatchSubjectMappingsResponse, error) {
+	out := new(MatchSubjectMappingsResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_MatchSubjectMappings_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *subjectMappingServiceClient) ListSubjectMappings(ctx context.Context, in *ListSubjectMappingsRequest, opts ...grpc.CallOption) (*ListSubjectMappingsResponse, error) {
@@ -94,6 +150,12 @@ func (c *subjectMappingServiceClient) DeleteSubjectMapping(ctx context.Context, 
 // All implementations must embed UnimplementedSubjectMappingServiceServer
 // for forward compatibility
 type SubjectMappingServiceServer interface {
+	GetSubjectSet(context.Context, *GetSubjectSetRequest) (*GetSubjectSetResponse, error)
+	CreateSubjectSet(context.Context, *CreateSubjectSetRequest) (*CreateSubjectSetResponse, error)
+	UpdateSubjectSet(context.Context, *UpdateSubjectSetRequest) (*UpdateSubjectSetResponse, error)
+	DeleteSubjectSet(context.Context, *DeleteSubjectSetRequest) (*DeleteSubjectSetResponse, error)
+	// Find matching Subject Mappings for a given Subject
+	MatchSubjectMappings(context.Context, *MatchSubjectMappingsRequest) (*MatchSubjectMappingsResponse, error)
 	ListSubjectMappings(context.Context, *ListSubjectMappingsRequest) (*ListSubjectMappingsResponse, error)
 	GetSubjectMapping(context.Context, *GetSubjectMappingRequest) (*GetSubjectMappingResponse, error)
 	CreateSubjectMapping(context.Context, *CreateSubjectMappingRequest) (*CreateSubjectMappingResponse, error)
@@ -106,6 +168,21 @@ type SubjectMappingServiceServer interface {
 type UnimplementedSubjectMappingServiceServer struct {
 }
 
+func (UnimplementedSubjectMappingServiceServer) GetSubjectSet(context.Context, *GetSubjectSetRequest) (*GetSubjectSetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSubjectSet not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) CreateSubjectSet(context.Context, *CreateSubjectSetRequest) (*CreateSubjectSetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateSubjectSet not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) UpdateSubjectSet(context.Context, *UpdateSubjectSetRequest) (*UpdateSubjectSetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSubjectSet not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) DeleteSubjectSet(context.Context, *DeleteSubjectSetRequest) (*DeleteSubjectSetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSubjectSet not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) MatchSubjectMappings(context.Context, *MatchSubjectMappingsRequest) (*MatchSubjectMappingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MatchSubjectMappings not implemented")
+}
 func (UnimplementedSubjectMappingServiceServer) ListSubjectMappings(context.Context, *ListSubjectMappingsRequest) (*ListSubjectMappingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSubjectMappings not implemented")
 }
@@ -132,6 +209,96 @@ type UnsafeSubjectMappingServiceServer interface {
 
 func RegisterSubjectMappingServiceServer(s grpc.ServiceRegistrar, srv SubjectMappingServiceServer) {
 	s.RegisterService(&SubjectMappingService_ServiceDesc, srv)
+}
+
+func _SubjectMappingService_GetSubjectSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSubjectSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).GetSubjectSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_GetSubjectSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).GetSubjectSet(ctx, req.(*GetSubjectSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_CreateSubjectSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateSubjectSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).CreateSubjectSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_CreateSubjectSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).CreateSubjectSet(ctx, req.(*CreateSubjectSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_UpdateSubjectSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSubjectSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).UpdateSubjectSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_UpdateSubjectSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).UpdateSubjectSet(ctx, req.(*UpdateSubjectSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_DeleteSubjectSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSubjectSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).DeleteSubjectSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_DeleteSubjectSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).DeleteSubjectSet(ctx, req.(*DeleteSubjectSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_MatchSubjectMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MatchSubjectMappingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).MatchSubjectMappings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_MatchSubjectMappings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).MatchSubjectMappings(ctx, req.(*MatchSubjectMappingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _SubjectMappingService_ListSubjectMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -231,6 +398,26 @@ var SubjectMappingService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "subjectmapping.SubjectMappingService",
 	HandlerType: (*SubjectMappingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetSubjectSet",
+			Handler:    _SubjectMappingService_GetSubjectSet_Handler,
+		},
+		{
+			MethodName: "CreateSubjectSet",
+			Handler:    _SubjectMappingService_CreateSubjectSet_Handler,
+		},
+		{
+			MethodName: "UpdateSubjectSet",
+			Handler:    _SubjectMappingService_UpdateSubjectSet_Handler,
+		},
+		{
+			MethodName: "DeleteSubjectSet",
+			Handler:    _SubjectMappingService_DeleteSubjectSet_Handler,
+		},
+		{
+			MethodName: "MatchSubjectMappings",
+			Handler:    _SubjectMappingService_MatchSubjectMappings_Handler,
+		},
 		{
 			MethodName: "ListSubjectMappings",
 			Handler:    _SubjectMappingService_ListSubjectMappings_Handler,

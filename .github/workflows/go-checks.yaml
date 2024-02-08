@@ -9,6 +9,7 @@ jobs:
     name: lint
     runs-on: ubuntu-22.04
     permissions:
+      checks: write
       contents: read
       pull-requests: read
     strategy:

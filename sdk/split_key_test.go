@@ -53,6 +53,7 @@ type FakeUnwrapper struct {
 }
 
 func NewFakeUnwrapper(kasPrivateKey string) (FakeUnwrapper, error) {
+	kasPrivateKey = strings.ReplaceAll(kasPrivateKey, "\n\t", "\n")
 	block, _ := pem.Decode([]byte(kasPrivateKey))
 	if block == nil {
 		return FakeUnwrapper{}, errors.New("failed to parse PEM formatted private key")
@@ -60,18 +61,16 @@ func NewFakeUnwrapper(kasPrivateKey string) (FakeUnwrapper, error) {
 
 	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return FakeUnwrapper{}, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
-	}
-	if err != nil {
-		privKey, err = x509.ParsePKCS1PrivateKey([]byte(kasPrivateKey))
-		if err != nil {
-			return FakeUnwrapper{}, fmt.Errorf("could not create fake unwrapper:%v", err)
-		}
+		return FakeUnwrapper{}, fmt.Errorf("could not create fake unwrapper:%v", err)
 	}
 	publicKey := privKey.(*rsa.PrivateKey).PublicKey
+	pkBytes, err := x509.MarshalPKIXPublicKey(&publicKey)
+	if err != nil {
+		return FakeUnwrapper{}, fmt.Errorf("can't marshal public key: %v", err)
+	}
 	privateBlock := pem.Block{
 		Type:  "RSA PUBLIC KEY",
-		Bytes: x509.MarshalPKCS1PublicKey(&publicKey),
+		Bytes: pkBytes,
 	}
 	publicKeyPEM := new(strings.Builder)
 	pem.Encode(publicKeyPEM, &privateBlock)
@@ -91,8 +90,8 @@ func (fake FakeUnwrapper) Unwrap(keyAccess KeyAccess, policy string) ([]byte, er
 	return fake.decrypt.Decrypt(wrappedKey)
 }
 
-func (fake FakeUnwrapper) GetKASInfo(keyAccess KeyAccess) (KASInfo, error) {
-	return KASInfo{url: keyAccess.KasURL, publicKey: fake.publicKeyPEM}, nil
+func (fake FakeUnwrapper) GetKASPublicKey(kasInfo KASInfo) (string, error) {
+	return fake.publicKeyPEM, nil
 }
 
 //nolint:gocognit

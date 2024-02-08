@@ -18,7 +18,7 @@ import (
 
 type Unwrapper interface {
 	Unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
-	GetKASInfo(keyAccess KeyAccess) (KASInfo, error)
+	GetKASPublicKey(kasInfo KASInfo) (string, error)
 }
 
 type KasClient struct {
@@ -157,4 +157,8 @@ func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 		SignedRequestToken: string(signedToken),
 	}
 	return &rewrapRequest, nil
+}
+
+func (client KasClient) GetKASPublicKey(kasInfo KASInfo) (string, error) {
+	return "", errors.New("not implemented")
 }

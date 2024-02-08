@@ -1,13 +1,7 @@
 package sdk
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log/slog"
-	"net/http"
-	"net/url"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
@@ -87,50 +81,15 @@ func (tdfConfig *TDFConfig) AddKasInformation(unwrapper Unwrapper, kasInfoList [
 	for _, kasInfo := range kasInfoList {
 		newEntry := KASInfo{}
 		newEntry.url = kasInfo.url
-		newEntry.publicKey = kasInfo.publicKey
-
-		if newEntry.publicKey != "" {
-			tdfConfig.kasInfoList = append(tdfConfig.kasInfoList, newEntry)
-			continue
-		}
-
-		// get kas public
-		kasPubKeyURL, err := url.JoinPath(kasInfo.url, kasPublicKeyPath)
-		if err != nil {
-			return fmt.Errorf("url.Parse failed: %w", err)
-		}
-
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, kasPubKeyURL, nil)
-		if err != nil {
-			return fmt.Errorf("http.NewRequestWithContext failed: %w", err)
-		}
-
-		// add required headers
-		request.Header = http.Header{
-			kAcceptKey: {kContentTypeJSONValue},
-		}
-
-		client := &http.Client{}
-
-		response, err := client.Do(request)
-		if response.StatusCode != kHTTPOk {
-			return fmt.Errorf("client.Do failed: %w", err)
-		}
-
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
+		if kasInfo.publicKey == "" {
+			pk, err := unwrapper.GetKASPublicKey(kasInfo)
 			if err != nil {
-				slog.Error("Fail to close HTTP response")
+				return err
 			}
-		}(response.Body)
-
-		var jsonResponse interface{}
-		err = json.NewDecoder(response.Body).Decode(&jsonResponse)
-		if err != nil {
-			return fmt.Errorf("json.NewDecoder.Decode failed: %w", err)
+			newEntry.publicKey = pk
+		} else {
+			newEntry.publicKey = kasInfo.publicKey
 		}
-
-		newEntry.publicKey = fmt.Sprintf("%s", jsonResponse)
 
 		tdfConfig.kasInfoList = append(tdfConfig.kasInfoList, newEntry)
 	}

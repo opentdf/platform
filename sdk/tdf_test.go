@@ -2,19 +2,11 @@ package sdk
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
-
-	"github.com/golang-jwt/jwt"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 const (
@@ -87,7 +79,7 @@ var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
 var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 	{
 		fileSize:    5,
-		tdfFileSize: 1580,
+		tdfFileSize: 1585,
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -97,7 +89,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 	},
 	{
 		fileSize:    oneKB,
-		tdfFileSize: 2604,
+		tdfFileSize: 2609,
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -107,7 +99,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals
 	},
 	{
 		fileSize:    hundredMB,
-		tdfFileSize: 104866456,
+		tdfFileSize: 104866466,
 		kasInfoList: []KASInfo{
 			{
 				url:       "http://localhost:65432/api/kas",
@@ -132,9 +124,6 @@ func init() {
 }
 
 func TestSimpleTDF(t *testing.T) {
-	server, signingPubKey, signingPrivateKey := runKas(t)
-	defer server.Close()
-
 	fakeUnwrapper, err := NewFakeUnwrapper(mockKasPrivateKey)
 	if err != nil {
 		t.Fatalf("error creating fake unwrapper: %v", err)
@@ -147,7 +136,7 @@ func TestSimpleTDF(t *testing.T) {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(1989)
+	expectedTdfSize := int64(1990)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -159,7 +148,7 @@ func TestSimpleTDF(t *testing.T) {
 
 		kasURLs := []KASInfo{
 			{
-				url:       server.URL,
+				url:       "https://kas.example.org",
 				publicKey: "",
 			},
 		}
@@ -245,16 +234,6 @@ func TestSimpleTDF(t *testing.T) {
 
 		// writer
 		var buf bytes.Buffer
-		// create auth config
-		authConfig, err := NewAuthConfig()
-		if err != nil {
-			t.Fatalf("Fail to close archive file:%v", err)
-		}
-
-		// override the signing keys to get the mock working.
-		authConfig.signingPublicKey = signingPubKey
-		authConfig.signingPrivateKey = signingPrivateKey
-
 		payloadSize, err := GetPayload(fakeUnwrapper, readSeeker, &buf)
 		if err != nil {
 			t.Fatalf("Fail to decrypt tdf:%v", err)
@@ -269,8 +248,6 @@ func TestSimpleTDF(t *testing.T) {
 }
 
 func TestTDF(t *testing.T) {
-	server, _, _ := runKas(t)
-	defer server.Close()
 	fakeUnwrapper, err := NewFakeUnwrapper(mockKasPrivateKey)
 	if err != nil {
 		t.Fatalf("failed to create fake rewrapper: %v", err)
@@ -283,8 +260,8 @@ func TestTDF(t *testing.T) {
 
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
-			kasInfoList[index].url = server.URL
-			kasInfoList[index].publicKey = mockKasPublicKey
+			kasInfoList[index].url = "https://server" + fmt.Sprint(index) + ".example.org"
+			kasInfoList[index].publicKey = ""
 		}
 
 		tdfConfig, err := NewTDFConfig()
@@ -409,112 +386,4 @@ func createFileName(t *testing.T, buf []byte, filename string, size int64) {
 	if err != nil {
 		t.Fatalf("os.Close failed: %v", err)
 	}
-}
-
-func runKas(t *testing.T) (*httptest.Server, string, string) {
-	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		t.Fatalf("crypto.NewRSAKeyPair: %v", err)
-	}
-
-	signingPubKey, err := signingKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		t.Fatalf("crypto.PublicKeyInPemFormat failed: %v", err)
-	}
-
-	signingPrivateKey, err := signingKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		t.Fatalf("crypto.PrivateKeyInPemFormat failed: %v", err)
-	}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get(kAcceptKey) != kContentTypeJSONValue {
-			t.Fatalf("expected Accept: application/json header, got: %s", r.Header.Get("Accept"))
-		}
-
-		r.Header.Set(kContentTypeKey, kContentTypeJSONValue)
-
-		switch {
-		case r.URL.Path == kasPublicKeyPath:
-			kasPublicKeyResponse, err := json.Marshal(mockKasPublicKey)
-			if err != nil {
-				t.Fatalf("json.Marshal failed: %v", err)
-			}
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(kasPublicKeyResponse)
-			if err != nil {
-				t.Fatalf("http.ResponseWriter.Write failed: %v", err)
-			}
-		case r.URL.Path == kRewrapV2:
-			requestBody, err := io.ReadAll(r.Body)
-			if err != nil {
-				t.Fatalf("io.ReadAll failed: %v", err)
-			}
-			var data map[string]string
-			err = json.Unmarshal(requestBody, &data)
-			if err != nil {
-				t.Fatalf("json.Unmarsha failed: %v", err)
-			}
-			tokenString, ok := data[kSignedRequestToken]
-			if !ok {
-				t.Fatalf("signed token missing in rewrap response")
-			}
-			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(signingPubKey))
-				if err != nil {
-					return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
-				}
-
-				return signingRSAPublicKey, nil
-			})
-			var rewrapRequest = ""
-			if err != nil {
-				t.Fatalf("jwt.ParseWithClaims failed:%v", err)
-			} else if claims, fine := token.Claims.(*rewrapJWTClaims); fine {
-				rewrapRequest = claims.Body
-			} else {
-				t.Fatalf("unknown claims type, cannot proceed")
-			}
-			err = json.Unmarshal([]byte(rewrapRequest), &data)
-			if err != nil {
-				t.Fatalf("json.Unmarshal failed: %v", err)
-			}
-			wrappedKey, err := crypto.Base64Decode([]byte(data["wrappedKey"]))
-			if err != nil {
-				t.Fatalf("crypto.Base64Decode failed: %v", err)
-			}
-			kasPrivateKey := strings.ReplaceAll(mockKasPrivateKey, "\n\t", "\n")
-			asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
-			if err != nil {
-				t.Fatalf("crypto.NewAsymDecryption failed: %v", err)
-			}
-			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-			if err != nil {
-				t.Fatalf("crypto.Decrypt failed: %v", err)
-			}
-			asymEncrypt, err := crypto.NewAsymEncryption(data[kClientPublicKey])
-			if err != nil {
-				t.Fatalf("crypto.NewAsymEncryption failed: %v", err)
-			}
-			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-			if err != nil {
-				t.Fatalf("crypto.encrypt failed: %v", err)
-			}
-			response, err := json.Marshal(map[string]string{
-				kEntityWrappedKey: string(crypto.Base64Encode(entityWrappedKey)),
-			})
-			if err != nil {
-				t.Fatalf("json.Marshal failed: %v", err)
-			}
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(response)
-			if err != nil {
-				t.Fatalf("http.ResponseWriter.Write failed: %v", err)
-			}
-		default:
-			t.Fatalf("expected to request: %s", r.URL.Path)
-		}
-	}))
-
-	return server, signingPubKey, signingPrivateKey
 }

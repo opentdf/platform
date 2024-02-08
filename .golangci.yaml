@@ -15,6 +15,8 @@ linters-settings:
      - Rows
      - Leveler
      - Writer
+     - Logger
+     - Handler
   cyclop:
     # The maximal code complexity to report.
     # Default: 10
@@ -147,7 +149,7 @@ linters-settings:
 
   lll:
     line-length: 120
-  
+
   wrapcheck:
     ignoreSigs:
       - "status.Error("

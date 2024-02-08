@@ -8,6 +8,9 @@ jobs:
   golangci:
     name: lint
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
@@ -18,8 +21,7 @@ jobs:
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
         with:
           version: v1.55
-          # Optional: golangci-lint command line arguments.
-          args: --timeout=10m 
+          only-new-issues: true
   unit:
     name: unit tests
     runs-on: ubuntu-22.04

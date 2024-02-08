@@ -5,6 +5,7 @@ package subjectmapping;
 import "attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
+import "authorization/authorization.proto";
 import "google/api/annotations.proto";
 
 /*
@@ -66,6 +67,83 @@ enum SubjectMappingOperatorEnum {
   SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
 }
 
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum ConditionBooleanTypeEnum {
+  CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED = 0;
+  CONDITION_BOOLEAN_TYPE_ENUM_AND = 1;
+  CONDITION_BOOLEAN_TYPE_ENUM_OR = 2;
+}
+
+/**
+ A Subject matching rule: defines the necessary conditions for a subject
+
+Example:  Match Subjects with an attribute "division" with a value of "Accounting" or "Accounting":
+{
+  "subject_attribute": "division",
+  "operator": "IN",
+  "subject_values" : ["Accounting", "Accounting"]
+}
+
+Example: Match a subject by preferred username:
+{
+  "subject_attribute": "preferredUsername",
+  "operator": "IN",
+  "subject_values" : ["alice@example.org"]
+}
+*/
+message Condition{
+  // Resource Attribute Key; NOT Attribute Definition Attribute name
+  string subject_attribute = 1;
+
+  // the operator
+  SubjectMappingOperatorEnum operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  // The list of comparison values for a resource's <attribute> value
+  repeated string subject_values = 3;
+
+  //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
+  // or treat the subject values as regex patterns applied to subject attribute
+}
+
+// A Group of conditions with either OR or AND evaluation of conditions
+message ConditionGroup{
+  repeated Condition conditions  =  1 [
+    (buf.validate.field).repeated.min_items = 1
+  ];
+  // the boolean evaluation type across the conditions
+  ConditionBooleanTypeEnum boolean_type = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+// A Set of subjects described by matching criteria via a list of condition groups.
+// A Subject Set can be used by multiple Subject Mappings
+message SubjectSet{
+  string id = 1;
+
+  common.Metadata metadata = 2;
+
+  // The conditions groups describing the matching rules for subjects in the set
+  repeated ConditionGroup condition_groups = 3 [
+    (buf.validate.field).repeated.min_items = 1
+  ];
+}
+
+/*
+ Policy assigning Subject Set(s) to a permitted attribute values + actions combination
+
+ Example: Subjects in sets 1 and 2 can TRANSMIT and DECRYPT for a resource with an attribute value http://wwww.example.org/attr/example/value/one
+ {
+  "id": "someid",
+  "attribute_value": {example_one_attribute_value...},
+  "subject_sets": [{subject_set_1},{subject_set_2}]
+  "actions": ["TRANSMIT", "DECRYPT"]
+ }
+ */
 message SubjectMapping {
   string id = 1;
 
@@ -75,20 +153,49 @@ message SubjectMapping {
   // Attribute Value to be mapped to
   attributes.Value attribute_value = 3;
 
-  // Resource Attribute Key; NOT Attribute Definition Attribute name
-  string subject_attribute = 4;
+  // the subjects included in this mapping
+  repeated SubjectSet subject_sets = 4;
 
-  // The list of comparison values for a resource's <attribute> value
-  repeated string subject_values = 5;
-
-  // the operator
-  SubjectMappingOperatorEnum operator = 6 [
-    (buf.validate.field).enum.defined_only = true,
-    (buf.validate.field).required = true
-  ];
-  //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
-  // or treat the subject values as regex patterns applied to subject attribute
+  // The actions permitted by subjects in this mapping
+  repeated authorization.Action actions = 5;
 }
+
+message SubjectSetCreateUpdate{
+  common.MetadataMutable metadata = 1;
+
+  repeated ConditionGroup condition_groups = 2;
+}
+
+message GetSubjectSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message GetSubjectSetResponse{
+  SubjectSet subject_set = 1;
+}
+
+message CreateSubjectSetRequest {
+  SubjectSetCreateUpdate subject_set = 1 [(buf.validate.field).required = true];
+}
+message CreateSubjectSetResponse {
+  SubjectSet subject_set = 1;
+}
+
+message UpdateSubjectSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  SubjectSetCreateUpdate subject_set = 2 [(buf.validate.field).required = true];
+}
+message UpdateSubjectSetResponse {
+  SubjectSet subject_set = 1;
+}
+
+message DeleteSubjectSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeleteSubjectSetResponse {
+  SubjectSet subject_set = 1;
+}
+
 
 message SubjectMappingCreateUpdate {
   common.MetadataMutable metadata = 1;
@@ -146,6 +253,29 @@ message DeleteSubjectMappingResponse {
 }
 
 service SubjectMappingService {
+
+  rpc GetSubjectSet(GetSubjectSetRequest) returns (GetSubjectSetResponse){
+    option (google.api.http) = {get: "/subject-sets/{id}"};
+  }
+
+  rpc CreateSubjectSet(CreateSubjectSetRequest) returns (CreateSubjectSetResponse) {
+    option (google.api.http) = {
+      post: "/subject-sets"
+      body: "subject_set"
+    };
+  }
+
+  rpc UpdateSubjectSet(UpdateSubjectSetRequest) returns (UpdateSubjectSetResponse) {
+    option (google.api.http) = {
+      post: "/subject-sets/{id}"
+      body: "subject_set"
+    };
+  }
+
+  rpc DeleteSubjectSet(DeleteSubjectSetRequest) returns (DeleteSubjectSetResponse) {
+    option (google.api.http) = {delete: "/subject-sets/{id}"};
+  }
+
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
     option (google.api.http) = {get: "/subject-mappings"};
   }

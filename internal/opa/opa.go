@@ -19,6 +19,8 @@ type Engine struct {
 type Config struct {
 	Path     string `yaml:"path" default:"./opentdf-opa.yaml"`
 	Embedded bool   `yaml:"embedded" default:"false"`
+	// Logger to use otherwise slog.Default(), mainly for testability.
+	Logger *slog.Logger
 }
 
 func NewEngine(config Config) (*Engine, error) {
@@ -43,8 +45,13 @@ func NewEngine(config Config) (*Engine, error) {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
-
-	logger := AdapterSlogger{}
+	asl := config.Logger
+	if asl == nil {
+		asl = slog.Default()
+	}
+	logger := AdapterSlogger{
+		logger: asl,
+	}
 
 	opa, err := sdk.New(context.Background(), sdk.Options{
 		Config:        bytes.NewReader(bConfig),
@@ -66,6 +73,7 @@ func NewEngine(config Config) (*Engine, error) {
 
 // AdapterSlogger is the adapter to slog using OPA logger interface.
 type AdapterSlogger struct {
+	logger *slog.Logger
 	fields map[string]interface{}
 }
 
@@ -107,20 +115,20 @@ func (l *AdapterSlogger) getFieldsKV() []interface{} {
 
 // Debug logs at debug level.
 func (l *AdapterSlogger) Debug(msg string, a ...interface{}) {
-	slog.With(l.getFieldsKV()...).Debug(fmt.Sprintf(msg, a...))
+	l.logger.With(l.getFieldsKV()...).Debug(fmt.Sprintf(msg, a...))
 }
 
 // Info logs at info level.
 func (l *AdapterSlogger) Info(msg string, a ...interface{}) {
-	slog.With(l.getFieldsKV()...).Info(fmt.Sprintf(msg, a...))
+	l.logger.With(l.getFieldsKV()...).Info(fmt.Sprintf(msg, a...))
 }
 
 // Error logs at error level.
 func (l *AdapterSlogger) Error(msg string, a ...interface{}) {
-	slog.With(l.getFieldsKV()...).Error(fmt.Sprintf(msg, a...))
+	l.logger.With(l.getFieldsKV()...).Error(fmt.Sprintf(msg, a...))
 }
 
 // Warn logs at warn level.
 func (l *AdapterSlogger) Warn(msg string, a ...interface{}) {
-	slog.With(l.getFieldsKV()...).Warn(fmt.Sprintf(msg, a...))
+	l.logger.With(l.getFieldsKV()...).Warn(fmt.Sprintf(msg, a...))
 }

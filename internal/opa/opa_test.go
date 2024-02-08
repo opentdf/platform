@@ -3,36 +3,30 @@ package opa
 import (
 	"context"
 	"fmt"
-	opalog "github.com/open-policy-agent/opa/logging"
 	"log/slog"
-	"os"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
+
+	opalog "github.com/open-policy-agent/opa/logging"
 )
 
 // compile fail if opa Logger changes interface
 var _ opalog.Logger = &AdapterSlogger{}
 
-var tl = TestLogHandler{}
-
-func TestMain(m *testing.M) {
-	slog.SetDefault(slog.New(&tl))
-	code := m.Run()
-	os.Exit(code)
-}
-
 func TestNewEngine(t *testing.T) {
+	var tl = TestLogHandler{}
 	type args struct {
 		config Config
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    *Engine
-		wantLog string
-		wantErr bool
+		name       string
+		args       args
+		want       *Engine
+		wantLog    string
+		logHandler TestLogHandler
+		wantErr    bool
 	}{
 		{
 			name: "simple",
@@ -40,11 +34,13 @@ func TestNewEngine(t *testing.T) {
 				config: Config{
 					Path:     "",
 					Embedded: true,
+					Logger:   slog.New(&tl),
 				},
 			},
-			want:    &Engine{},
-			wantLog: "Download starting.",
-			wantErr: false,
+			want:       &Engine{},
+			wantLog:    "Download starting.",
+			logHandler: tl,
+			wantErr:    false,
 		},
 	}
 	for _, tt := range tests {
@@ -59,7 +55,7 @@ func TestNewEngine(t *testing.T) {
 			}
 			if tt.wantLog != "" {
 				found := false
-				for _, log := range tl.Logs {
+				for _, log := range tl.Logs() {
 					//t.Log(log)
 					found = strings.Contains(log, tt.wantLog)
 					if found {
@@ -76,7 +72,7 @@ func TestNewEngine(t *testing.T) {
 
 type TestLogHandler struct {
 	mu    sync.Mutex
-	Logs  []string
+	logs  []string
 	attrs []slog.Attr
 }
 
@@ -87,12 +83,14 @@ func (h *TestLogHandler) Enabled(context.Context, slog.Level) bool {
 func (h *TestLogHandler) Handle(_ context.Context, record slog.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.Logs = append(h.Logs, record.Level.String()+": "+record.Message+" -- "+fmt.Sprint(h.attrs))
+	h.logs = append(h.logs, record.Level.String()+": "+record.Message+" -- "+fmt.Sprint(h.attrs))
 	h.attrs = nil
 	return nil
 }
 
 func (h *TestLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.attrs = attrs
 	return h
 }
@@ -100,4 +98,10 @@ func (h *TestLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 func (h *TestLogHandler) WithGroup(string) slog.Handler {
 	// add if needed
 	return h
+}
+
+func (h *TestLogHandler) Logs() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.logs
 }

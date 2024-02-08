@@ -31,23 +31,23 @@ buf-generate:
 
 test:
 	go test ./... -race
-	go test sdk/... -race
-	go test examples/attributes/... -race
+	(cd sdk && go test ./... -race)
+	(cd examples/attributes && go test ./... -race)
 
 clean:
 	go clean
 	rm -f serviceapp
 
-build: go.work serviceapp sdk/sdk example/attributes/attributes
+build: go.work serviceapp sdk/sdk examples/attributes/attributes
 
 serviceapp: go.work go.mod go.sum main.go $(shell find cmd internal services)
 	go build -o serviceapp -v ./main.go
 
-sdk/sdk: go.work sdk/go.mod sdk/go.sum $(shell find sdk)
+sdk/sdk: go.work $(shell find sdk)
 	(cd sdk && go build)
 
-example/attributes/attributes: go.work example/attributes/go.mod example/attributes/go.sum $(shell find example/attributes)
-	(cd example/attributes && go build -o attributes)
+examples/attributes/attributes: go.work $(shell find examples/attributes)
+	(cd examples/attributes && go build -o attributes)
 
 docker-build: build
 	docker build -t opentdf .

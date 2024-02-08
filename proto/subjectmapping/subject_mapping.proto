@@ -290,9 +290,10 @@ service SubjectMappingService {
     option (google.api.http) = {delete: "/subject-sets/{id}"};
   }
 
+  // Find matching Subject Mappings for a given Subject
   rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse){
     option (google.api.http) = {
-      post: "/subject-mappings-match"
+      post: "/subject-mappings/match"
       body: "subject"
     };
   }

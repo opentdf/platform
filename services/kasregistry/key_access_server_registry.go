@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/services"
@@ -39,8 +38,11 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 	slog.Debug("creating key access server")
 
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req.KeyAccessServer)
-
 	if err != nil {
+		if errors.Is(err, db.ErrUniqueConstraintViolation) {
+			slog.Error(services.ErrConflict, slog.String("error", err.Error()))
+			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
+		}
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal,
 			fmt.Sprintf("%v: %v", services.ErrCreatingResource, err))
@@ -69,7 +71,7 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 	req *kasr.GetKeyAccessServerRequest) (*kasr.GetKeyAccessServerResponse, error) {
 	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, req.Id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, db.ErrNotFound) {
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
@@ -86,7 +88,15 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 	req *kasr.UpdateKeyAccessServerRequest) (*kasr.UpdateKeyAccessServerResponse, error) {
 	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.Id, req.KeyAccessServer)
 	if err != nil {
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()), slog.String("id", req.Id))
+		if errors.Is(err, db.ErrUniqueConstraintViolation) {
+			slog.Error(services.ErrConflict, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("keyAccessServer", req.KeyAccessServer.String()))
+			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
+		}
+		if errors.Is(err, db.ErrNotFound) {
+			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
+			return nil, status.Error(codes.NotFound, services.ErrNotFound)
+		}
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("keyAccessServer", req.KeyAccessServer.String()))
 		return nil,
 			status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
@@ -99,7 +109,7 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 	req *kasr.DeleteKeyAccessServerRequest) (*kasr.DeleteKeyAccessServerResponse, error) {
 	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.Id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, db.ErrNotFound) {
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}

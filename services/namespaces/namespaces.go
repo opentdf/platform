@@ -100,13 +100,14 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req.Name)
 	if err != nil {
 		if errors.Is(err, db.ErrUniqueConstraintViolation) {
-			slog.Error(services.ErrConflict, slog.String("error", err.Error()))
+			slog.Error(services.ErrConflict, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
 		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
+			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
+		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("name", req.Name))
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
 	}
 

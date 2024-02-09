@@ -10,6 +10,7 @@ import (
 	kas "github.com/opentdf/backend-go/pkg/access"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -23,13 +24,11 @@ type KasClient struct {
 }
 
 type rewrapRequestBody struct {
-	Policy            string `json:"policy"`
-	KeyType           string `json:"type"`
-	KasUrl            string `json:"url"`
-	Protocol          string `json:"protocol"`
-	WrappedKey        string `json:"wrappedKey"`
-	PolicyBinding     string `json:"policyBinding"`
-	EncryptedMetaData string `json:"encryptedMetadata"`
+	KeyAccess       KeyAccess `json:"keyAccess"`
+	Policy          string    `json:"policy,omitempty"`
+	Algorithm       string    `json:"algorithm,omitempty"`
+	ClientPublicKey string    `json:"clientPublicKey"`
+	SchemaVersion   string    `json:"schemaVersion,omitempty"`
 }
 
 // TODO: use a single connection and pass in a context. It should come from how the client is using the library
@@ -38,8 +37,8 @@ func (client KasClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*
 	if err != nil {
 		return nil, err
 	}
-
-	conn, err := grpc.Dial(keyAccess.KasURL)
+	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
+	conn, err := grpc.Dial("localhost:9000", creds)
 	if err != nil {
 		return nil, fmt.Errorf("Error connecting to kas: %w", err)
 	}
@@ -80,15 +79,13 @@ func (client KasClient) Unwrap(keyAccess KeyAccess, policy string) ([]byte, erro
 }
 
 func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapRequest, error) {
+
 	requestBody := rewrapRequestBody{
-		Policy:            policy,
-		KeyType:           keyAccess.KeyType,
-		KasUrl:            keyAccess.KasURL,
-		Protocol:          keyAccess.Protocol,
-		WrappedKey:        keyAccess.WrappedKey,
-		PolicyBinding:     keyAccess.PolicyBinding,
-		EncryptedMetaData: keyAccess.EncryptedMetadata,
+		Policy:          policy,
+		KeyAccess:       keyAccess,
+		ClientPublicKey: client.creds.GetDPoPPublicKeyPEM(),
 	}
+
 	requestBodyJson, err := json.Marshal(requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)
@@ -96,7 +93,7 @@ func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 
 	tok, err := jwt.NewBuilder().
 		IssuedAt(time.Now()).
-		Claim("requestBody", requestBodyJson).
+		Claim("requestBody", string(requestBodyJson)).
 		Expiration(time.Now().Add(60 * time.Second)).
 		Build()
 
@@ -104,14 +101,17 @@ func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 		return nil, fmt.Errorf("failed to create jwt: %v", err)
 	}
 
-	dpopKey, _ := client.creds.GetDPoPKey()
+	dpopKey := client.creds.GetDPoPKey()
 
 	signedToken, err := jwt.Sign(tok, jwt.WithKey(dpopKey.Algorithm(), dpopKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
 
-	accessToken, _ := client.creds.GetAccessToken()
+	accessToken, err := client.creds.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
 
 	rewrapRequest := kas.RewrapRequest{
 		Bearer:             string(accessToken),
@@ -122,7 +122,8 @@ func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 
 func (client KasClient) GetKASPublicKey(kasInfo KASInfo) (string, error) {
 	req := kas.PublicKeyRequest{}
-	conn, err := grpc.Dial(kasInfo.url)
+	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
+	conn, err := grpc.Dial("localhost:9000", creds)
 	if err != nil {
 		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.url, err)
 	}

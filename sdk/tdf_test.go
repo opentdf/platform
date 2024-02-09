@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/opentdf/opentdf-v2-poc/internal/oauth"
 )
 
 const (
@@ -270,7 +272,22 @@ func init() {
 }
 
 func TestSimpleTDF(t *testing.T) {
-	fakeUnwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
+	oauthCredentials := oauth.ClientCredentials{
+		ClientId:   "xxxxxxxxxx",
+		ClientAuth: "xxxxxxx",
+	}
+	idpCredentials, err := NewAccessTokenSource(
+		oauthCredentials,
+		"http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token",
+		[]string{})
+
+	if err != nil {
+		t.Fatalf("error creating IDP credentials: %v", err)
+	}
+
+	// fakeUnwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
+
+	fakeUnwrapper := KasClient{creds: &idpCredentials}
 
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
 
@@ -279,7 +296,7 @@ func TestSimpleTDF(t *testing.T) {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(2070)
+	expectedTdfSize := int64(2810)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -291,7 +308,11 @@ func TestSimpleTDF(t *testing.T) {
 
 		kasURLs := []KASInfo{
 			{
-				url:       "https://kas.example.org",
+				url:       "http://localhost:65432/api/kas",
+				publicKey: "",
+			},
+			{
+				url:       "http://localhost:65432/api/kas",
 				publicKey: "",
 			},
 		}

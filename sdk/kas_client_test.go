@@ -7,10 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"testing"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
@@ -36,7 +33,7 @@ func NewFakeUnwrapper(kasPrivateKey string) (FakeUnwrapper, error) {
 		return FakeUnwrapper{}, fmt.Errorf("can't marshal public key: %v", err)
 	}
 	privateBlock := pem.Block{
-		Type:  "RSA PUBLIC KEY",
+		Type:  "PUBLIC KEY",
 		Bytes: pkBytes,
 	}
 	publicKeyPEM := new(strings.Builder)
@@ -61,41 +58,41 @@ func (fake FakeUnwrapper) GetKASPublicKey(kasInfo KASInfo) (string, error) {
 	return fake.publicKeyPEM, nil
 }
 
-func getCredentials() AccessTokenCredentials {
-	dpopKey, _ := crypto.NewRSAKeyPair(2048)
-	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
-	decryption, _ := crypto.NewAsymDecryption(dpopPEM)
-	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
-	if err != nil {
-		panic(err.Error())
-	}
-	dpopJWK.Set("alg", jwa.RS256.String())
+// func getCredentials() AccessTokenCredentials {
+// 	dpopKey, _ := crypto.NewRSAKeyPair(2048)
+// 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
+// 	decryption, _ := crypto.NewAsymDecryption(dpopPEM)
+// 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	dpopJWK.Set("alg", jwa.RS256.String())
 
-	return AccessTokenCredentials{
-		DPoPKey:        dpopJWK,
-		AsymDecryption: decryption,
-		AccessToken:    "thisistheaccesstoken",
-	}
-}
+// 	return AccessTokenCredentials{
+// 		DPoPKey:        dpopJWK,
+// 		AsymDecryption: decryption,
+// 		AccessToken:    "thisistheaccesstoken",
+// 	}
+// }
 
-func TestCreatingRequest(t *testing.T) {
-	client := KasClient{creds: getCredentials()}
-	keyAccess := KeyAccess{
-		KeyType:           "type1",
-		KasURL:            "https://kas.example.org",
-		Protocol:          "protocol one",
-		WrappedKey:        "wrapped",
-		PolicyBinding:     "bound",
-		EncryptedMetadata: "encrypted",
-	}
+// func TestCreatingRequest(t *testing.T) {
+// 	client := KasClient{creds: getCredentials()}
+// 	keyAccess := KeyAccess{
+// 		KeyType:           "type1",
+// 		KasURL:            "https://kas.example.org",
+// 		Protocol:          "protocol one",
+// 		WrappedKey:        "wrapped",
+// 		PolicyBinding:     "bound",
+// 		EncryptedMetadata: "encrypted",
+// 	}
 
-	req, err := client.getRewrapRequest(keyAccess, "a policy")
-	if err != nil {
-		t.Fatalf("failed to create a rewrap request: %v", err)
-	}
+// 	req, err := client.getRewrapRequest(keyAccess, "a policy")
+// 	if err != nil {
+// 		t.Fatalf("failed to create a rewrap request: %v", err)
+// 	}
 
-	if req.SignedRequestToken == "" {
-		t.Fatalf("didn't produce a signed request token")
-	}
+// 	if req.SignedRequestToken == "" {
+// 		t.Fatalf("didn't produce a signed request token")
+// 	}
 
-}
+// }

@@ -55,3 +55,14 @@ jobs:
       - run: make go.work
       - name: Integration Tests with the Go CLI
         run: go test ./integration -race
+  image:
+    name: image build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5.1.0
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false

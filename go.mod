@@ -2,9 +2,7 @@ module github.com/opentdf/opentdf-v2-poc
 
 go 1.21.5
 
-replace (
-	github.com/opentdf/opentdf-v2-poc/sdk => ./sdk
-)
+replace github.com/opentdf/opentdf-v2-poc/sdk => ./sdk
 
 require (
 	github.com/Masterminds/squirrel v1.5.4

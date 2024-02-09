@@ -32,7 +32,7 @@ type AccessTokenSource interface {
 Credentials that allow us to connect to an IDP and obtain an access token that is bound
 to a DPOP key
 */
-type IDPCredentials struct {
+type IDPAcessTokenSource struct {
 	credentials      oauth.ClientCredentials
 	idpTokenEndpoint url.URL
 	token            *oauth2.Token
@@ -42,25 +42,25 @@ type IDPCredentials struct {
 	dpopPEM          string
 }
 
-func NewAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPCredentials, error) {
+func NewAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPAcessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
-		return IDPCredentials{}, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
+		return IDPAcessTokenSource{}, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
 	}
 
 	dpopPrivate, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return IDPCredentials{}, fmt.Errorf("error creating DPoP keypair: %w", err)
+		return IDPAcessTokenSource{}, fmt.Errorf("error creating DPoP keypair: %w", err)
 	}
 	dpopKey, err := jwk.FromRaw(dpopPrivate)
 	if err != nil {
-		return IDPCredentials{}, fmt.Errorf("error creating JWK: %w", err)
+		return IDPAcessTokenSource{}, fmt.Errorf("error creating JWK: %w", err)
 	}
 	dpopKey.Set("alg", jwa.RS256)
 
 	dpopKeyDER, err := x509.MarshalPKCS8PrivateKey(dpopPrivate)
 	if err != nil {
-		return IDPCredentials{}, fmt.Errorf("error marshalling private key: %w", err)
+		return IDPAcessTokenSource{}, fmt.Errorf("error marshalling private key: %w", err)
 	}
 
 	var dpopPrivatePEM strings.Builder
@@ -70,13 +70,13 @@ func NewAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoint 
 		Bytes: dpopKeyDER,
 	})
 	if err != nil {
-		return IDPCredentials{}, fmt.Errorf("error encoding private key to PEM")
+		return IDPAcessTokenSource{}, fmt.Errorf("error encoding private key to PEM")
 	}
 
 	dpopPublic := dpopPrivate.Public()
 	dpopPublicDER, err := x509.MarshalPKIXPublicKey(dpopPublic)
 	if err != nil {
-		return IDPCredentials{}, fmt.Errorf("error marshalling public key: %w", err)
+		return IDPAcessTokenSource{}, fmt.Errorf("error marshalling public key: %w", err)
 	}
 
 	var dpopPublicKeyPEM strings.Builder
@@ -85,15 +85,15 @@ func NewAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoint 
 		Bytes: dpopPublicDER,
 	})
 	if err != nil {
-		return IDPCredentials{}, fmt.Errorf("error encoding public key to PEM")
+		return IDPAcessTokenSource{}, fmt.Errorf("error encoding public key to PEM")
 	}
 
 	asymDecryption, err := crypto.NewAsymDecryption(dpopPrivatePEM.String())
 	if err != nil {
-		return IDPCredentials{}, fmt.Errorf("error creating asymmetric decryptor: %w", err)
+		return IDPAcessTokenSource{}, fmt.Errorf("error creating asymmetric decryptor: %w", err)
 	}
 
-	creds := IDPCredentials{
+	creds := IDPAcessTokenSource{
 		credentials:      credentials,
 		idpTokenEndpoint: *endpoint,
 		token:            nil,
@@ -107,7 +107,7 @@ func NewAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoint 
 }
 
 // use a pointer receiver so that the token state is shared
-func (creds *IDPCredentials) GetAccessToken() (AccessToken, error) {
+func (creds *IDPAcessTokenSource) GetAccessToken() (AccessToken, error) {
 	// TODO: make this thread-safe
 	if creds.token == nil {
 		err := creds.RefreshAccessToken()
@@ -119,11 +119,11 @@ func (creds *IDPCredentials) GetAccessToken() (AccessToken, error) {
 	return AccessToken(creds.token.AccessToken), nil
 }
 
-func (creds *IDPCredentials) GetAsymDecryption() crypto.AsymDecryption {
+func (creds *IDPAcessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
 	return creds.asymDecryption
 }
 
-func (creds *IDPCredentials) RefreshAccessToken() error {
+func (creds *IDPAcessTokenSource) RefreshAccessToken() error {
 	tok, err := oauth.GetAccessToken(creds.idpTokenEndpoint.String(), creds.scopes, creds.credentials, creds.dpopKey)
 	if err != nil {
 		return fmt.Errorf("error getting access token: %v", err)
@@ -133,10 +133,10 @@ func (creds *IDPCredentials) RefreshAccessToken() error {
 	return nil
 }
 
-func (creds *IDPCredentials) GetDPoPKey() jwk.Key {
+func (creds *IDPAcessTokenSource) GetDPoPKey() jwk.Key {
 	return creds.dpopKey
 }
 
-func (creds *IDPCredentials) GetDPoPPublicKeyPEM() string {
+func (creds *IDPAcessTokenSource) GetDPoPPublicKeyPEM() string {
 	return creds.dpopPEM
 }

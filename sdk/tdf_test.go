@@ -3,21 +3,13 @@ package sdk
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
-
-	"github.com/golang-jwt/jwt/v4"
-
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 )
 
 const (
@@ -716,116 +708,6 @@ func createFileName(buf []byte, filename string, size int64) {
 	}
 }
 
-func runKas() (*httptest.Server, string, string) {
-	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		panic(fmt.Sprintf("crypto.NewRSAKeyPair: %v", err))
-	}
-
-	signingPubKey, err := signingKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		panic(fmt.Sprintf("crypto.PublicKeyInPemFormat failed: %v", err))
-	}
-
-	signingPrivateKey, err := signingKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		panic(fmt.Sprintf("crypto.PrivateKeyInPemFormat failed: %v", err))
-	}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get(kAcceptKey) != kContentTypeJSONValue {
-			panic(fmt.Sprintf("expected Accept: application/json header, got: %s", r.Header.Get("Accept")))
-		}
-
-		r.Header.Set(kContentTypeKey, kContentTypeJSONValue)
-
-		switch {
-		case r.URL.Path == kasPublicKeyPath:
-			kasPublicKeyResponse, err := json.Marshal(mockKasPublicKey)
-			if err != nil {
-				panic(fmt.Sprintf("json.Marshal failed: %v", err))
-			}
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(kasPublicKeyResponse)
-			if err != nil {
-				panic(fmt.Sprintf("http.ResponseWriter.Write failed: %v", err))
-			}
-		case r.URL.Path == kRewrapV2:
-			requestBody, err := io.ReadAll(r.Body)
-			if err != nil {
-				panic(fmt.Sprintf("io.ReadAll failed: %v", err))
-			}
-			var data map[string]string
-			err = json.Unmarshal(requestBody, &data)
-			if err != nil {
-				panic(fmt.Sprintf("json.Unmarsha failed: %v", err))
-			}
-			tokenString, ok := data[kSignedRequestToken]
-			if !ok {
-				panic("signed token missing in rewrap response")
-			}
-			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(signingPubKey))
-				if err != nil {
-					return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
-				}
-
-				return signingRSAPublicKey, nil
-			})
-			var rewrapRequest = ""
-			if err != nil {
-				panic(fmt.Sprintf("jwt.ParseWithClaims failed:%v", err))
-			} else if claims, fine := token.Claims.(*rewrapJWTClaims); fine {
-				rewrapRequest = claims.Body
-			} else {
-				panic("unknown claims type, cannot proceed")
-			}
-
-			bodyData := RequestBody{}
-			err = json.Unmarshal([]byte(rewrapRequest), &bodyData)
-			if err != nil {
-				panic(fmt.Sprintf("json.Unmarshal failed: %v", err))
-			}
-			wrappedKey, err := crypto.Base64Decode([]byte(bodyData.WrappedKey))
-			if err != nil {
-				panic(fmt.Sprintf("crypto.Base64Decode failed: %v", err))
-			}
-			kasPrivateKey := strings.ReplaceAll(mockKasPrivateKey, "\n\t", "\n")
-			asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
-			if err != nil {
-				panic(fmt.Sprintf("crypto.NewAsymDecryption failed: %v", err))
-			}
-			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-			if err != nil {
-				panic(fmt.Sprintf("crypto.Decrypt failed: %v", err))
-			}
-			asymEncrypt, err := crypto.NewAsymEncryption(bodyData.ClientPublicKey)
-			if err != nil {
-				panic(fmt.Sprintf("crypto.NewAsymEncryption failed: %v", err))
-			}
-			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-			if err != nil {
-				panic(fmt.Sprintf("crypto.encrypt failed: %v", err))
-			}
-			response, err := json.Marshal(map[string]string{
-				kEntityWrappedKey: string(crypto.Base64Encode(entityWrappedKey)),
-			})
-			if err != nil {
-				panic(fmt.Sprintf("json.Marshal failed: %v", err))
-			}
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(response)
-			if err != nil {
-				panic(fmt.Sprintf("http.ResponseWriter.Write failed: %v", err))
-			}
-		default:
-			panic(fmt.Sprintf("expected to request: %s", r.URL.Path))
-		}
-	}))
-
-	return server, signingPubKey, signingPrivateKey
-}
-
 func checkIdentical(t *testing.T, file, checksum string) bool {
 	f, err := os.Open(file)
 	if err != nil {
@@ -834,7 +716,7 @@ func checkIdentical(t *testing.T, file, checksum string) bool {
 	defer func(f *os.File) {
 		err := f.Close()
 		if err != nil {
-
+			t.Fatalf("f.Close failed: %v", err)
 		}
 	}(f)
 

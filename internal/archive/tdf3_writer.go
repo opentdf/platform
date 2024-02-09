@@ -4,7 +4,6 @@ import "io"
 
 type TDFWriter struct {
 	archiveWriter *Writer
-	totalBytes    int64
 }
 
 // NewTDFWriter Create tdf writer instance.

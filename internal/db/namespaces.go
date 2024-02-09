@@ -4,7 +4,7 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/namespaces"
 )
 
 func getNamespaceSql(id string) (string, []interface{}, error) {

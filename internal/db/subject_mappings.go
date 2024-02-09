@@ -6,9 +6,9 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
-	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/attributes"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/common"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/subjectmapping"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

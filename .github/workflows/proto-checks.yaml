@@ -11,10 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: bufbuild/buf-setup-action@382440cdb8ec7bc25a68d7b4711163d95f7cc3aa
-      # Run lint only in the `proto` sub-directory
+      # Run lint only in the `protocol` sub-directory
       - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
         with:
-          input: proto
+          input: protocol
   bufbreaking:
     name: Buf Breaking Change Detection
     runs-on: ubuntu-22.04
@@ -26,5 +26,5 @@ jobs:
       # Run breaking change detection against the `main` branch
       - uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01
         with:
-          input: proto
-          against: 'https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto'
+          input: protocol
+          against: 'https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=protocol'

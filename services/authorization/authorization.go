@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/authorization"
 	"google.golang.org/grpc"
 )
 
@@ -30,7 +30,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 	rsp := &authorization.GetDecisionsResponse{}
 
 	var empty_decisionResponses []*authorization.DecisionResponse
-	
+
 	rsp.DecisionResponses = empty_decisionResponses
 
 	return rsp, nil
@@ -42,7 +42,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	rsp := &authorization.GetEntitlementsResponse{}
 
 	var empty_entityEntitlements []*authorization.EntityEntitlements
-	
+
 	rsp.Entitlements = empty_entityEntitlements
 
 	return rsp, nil

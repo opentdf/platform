@@ -4,6 +4,7 @@ WORKDIR /app
 # dependencies, add local,dependant package here
 COPY go.mod go.sum ./
 COPY sdk/ sdk/
+COPY protocol/go/ protocol/go/
 RUN go mod download \
     && go mod verify
 # copy .go files, add new package here

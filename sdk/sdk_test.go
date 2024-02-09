@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/attributes"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/kasregistry"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/resourcemapping"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/subjectmapping"
 	"github.com/opentdf/opentdf-v2-poc/sdk"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
-	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 )
 
 var (

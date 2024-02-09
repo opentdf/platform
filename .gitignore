@@ -33,3 +33,4 @@ serviceapp
 go.work.sum
 go.work
 examples/attributes/attributes
+*.zip

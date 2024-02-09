@@ -41,9 +41,14 @@ services:
     restart: always
     user: postgres
     environment:
+      SEED: ${SEED:-default}
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: changeme
       POSTGRES_DB: opentdf
+    volumes:
+      - ./migrations:/migrations
+      - ./tests/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./tests:/tests
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 1s

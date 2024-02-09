@@ -82,7 +82,7 @@ type Config struct {
 	Database      string `yaml:"database" default:"opentdf"`
 	User          string `yaml:"user" default:"postgres"`
 	Password      string `yaml:"password" default:"changeme"`
-	RunMigrations bool   `yaml:"runMigrations" default:"true"`
+	RunMigrations bool   `yaml:"runMigrations" default:"false"`
 	SSLMode       string `yaml:"sslmode" default:"prefer"`
 	Schema        string `yaml:"schema" default:"opentdf"`
 }

@@ -29,13 +29,6 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 		applied += int(tag.RowsAffected())
 	}
 
-	// create the schema
-	exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
-	// set the search path
-	exec(fmt.Sprintf("SET search_path TO %s", c.config.Schema))
-	if err != nil {
-		return applied, err
-	}
 	if !c.config.RunMigrations {
 		slog.Info("skipping migrations",
 			slog.String("reason", "runMigrations is false"),

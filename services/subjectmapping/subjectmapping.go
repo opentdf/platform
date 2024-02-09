@@ -47,8 +47,8 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	mappings, err := s.dbClient.CreateSubjectMapping(context.Background(), req.SubjectMapping)
 	if err != nil {
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		if errors.Is(err, db.ErrInvalidEnumValue) {
 			slog.Error(services.ErrInvalidEnumValue, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))
@@ -106,8 +106,8 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	mapping, err := s.dbClient.UpdateSubjectMapping(ctx, req.Id, req.SubjectMapping)
 	if err != nil {
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		if errors.Is(err, db.ErrInvalidEnumValue) {
 			slog.Error(services.ErrInvalidEnumValue, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))

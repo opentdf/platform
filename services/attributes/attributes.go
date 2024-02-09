@@ -45,8 +45,8 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attribute", req.Attribute.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attribute", req.Attribute.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		if errors.Is(err, db.ErrInvalidEnumValue) {
 			slog.Error(services.ErrInvalidEnumValue, slog.String("error", err.Error()), slog.String("rule", req.Attribute.Rule.String()))
@@ -112,8 +112,8 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("attribute", req.Attribute.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("attribute", req.Attribute.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		if errors.Is(err, db.ErrInvalidEnumValue) {
 			slog.Error(services.ErrInvalidEnumValue, slog.String("error", err.Error()), slog.String("rule", req.Attribute.Rule.String()))
@@ -159,8 +159,8 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attribute value", req.Value.String()), slog.String("attribute id", req.AttributeId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attribute value", req.Value.String()), slog.String("attribute id", req.AttributeId))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
@@ -211,8 +211,8 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("value", req.Value.String()), slog.String("attributeId", req.AttributeId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("value", req.Value.String()), slog.String("attributeId", req.AttributeId))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return nil,
@@ -248,8 +248,8 @@ func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeKas", req.AttributeKeyAccessServer.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attributeKas", req.AttributeKeyAccessServer.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
@@ -268,8 +268,8 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeKas", req.AttributeKeyAccessServer.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attributeKas", req.AttributeKeyAccessServer.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
@@ -288,8 +288,8 @@ func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, re
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("valueKas", req.ValueKeyAccessServer.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("valueKas", req.ValueKeyAccessServer.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
@@ -308,8 +308,8 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("valueKas", req.ValueKeyAccessServer.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("valueKas", req.ValueKeyAccessServer.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
 		}
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)

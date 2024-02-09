@@ -8,6 +8,6 @@ const (
 	ErrUpdatingResource  = "failed to update resource"
 	ErrNotFound          = "resource not found"
 	ErrConflict          = "resource unique field violation"
-	ErrRelationInvalid   = "resource relation invalid"
+	ErrInvalidRelation   = "invalid resource relation"
 	ErrInvalidEnumValue  = "invalid enum value"
 )

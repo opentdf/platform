@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -175,10 +174,7 @@ func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 
 func (f *Fixtures) Provision() {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.schema))
-	_, err := f.db.Client.RunMigrations(context.Background())
-	if err != nil {
-		panic(err)
-	}
+	f.db.Client.RunMigrations()
 
 	slog.Info("📦 provisioning namespace data")
 	n := f.provisionNamespace()
@@ -218,7 +214,7 @@ func (f *Fixtures) TearDown() {
 }
 
 func (f *Fixtures) provisionNamespace() int64 {
-	values := make([][]string, 0, len(fixtureData.Namespaces.Data))
+	var values [][]string
 	for _, d := range fixtureData.Namespaces.Data {
 		values = append(values,
 			[]string{
@@ -231,7 +227,7 @@ func (f *Fixtures) provisionNamespace() int64 {
 }
 
 func (f *Fixtures) provisionAttribute() int64 {
-	values := make([][]string, 0, len(fixtureData.Attributes.Data))
+	var values [][]string
 	for _, d := range fixtureData.Attributes.Data {
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
@@ -244,7 +240,7 @@ func (f *Fixtures) provisionAttribute() int64 {
 }
 
 func (f *Fixtures) provisionAttributeValues() int64 {
-	values := make([][]string, 0, len(fixtureData.AttributeValues.Data))
+	var values [][]string
 	for _, d := range fixtureData.AttributeValues.Data {
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
@@ -257,7 +253,7 @@ func (f *Fixtures) provisionAttributeValues() int64 {
 }
 
 func (f *Fixtures) provisionSubjectMappings() int64 {
-	values := make([][]string, 0, len(fixtureData.SubjectMappings.Data))
+	var values [][]string
 	for _, d := range fixtureData.SubjectMappings.Data {
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
@@ -271,7 +267,7 @@ func (f *Fixtures) provisionSubjectMappings() int64 {
 }
 
 func (f *Fixtures) provisionResourceMappings() int64 {
-	values := make([][]string, 0, len(fixtureData.ResourceMappings.Data))
+	var values [][]string
 	for _, d := range fixtureData.ResourceMappings.Data {
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
@@ -283,18 +279,18 @@ func (f *Fixtures) provisionResourceMappings() int64 {
 }
 
 func (f *Fixtures) provisionKasRegistry() int64 {
-	values := make([][]string, 0, len(fixtureData.KasRegistries.Data))
+	var values [][]string
 	for _, d := range fixtureData.KasRegistries.Data {
 		v := []string{
 			f.db.StringWrap(d.Id),
 			f.db.StringWrap(d.Uri),
 		}
 
-		if pubKeyJSON, err := json.Marshal(d.PubKey); err != nil {
+		if pubKeyJson, err := json.Marshal(d.PubKey); err != nil {
 			slog.Error("⛔️ 📦 issue with KAS registry public key JSON - check fixtures.yaml for issues")
 			panic("issue with KAS registry public key JSON")
 		} else {
-			v = append(v, f.db.StringWrap(string(pubKeyJSON)))
+			v = append(v, f.db.StringWrap(string(pubKeyJson)))
 		}
 		values = append(values, v)
 	}
@@ -302,7 +298,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 }
 
 func (f *Fixtures) provisionAttributeKeyAccessServer() int64 {
-	values := make([][]string, 0, len(fixtureData.AttributeKeyAccessServer))
+	var values [][]string
 	for _, d := range fixtureData.AttributeKeyAccessServer {
 		values = append(values, []string{
 			f.db.StringWrap(d.AttributeID),
@@ -313,7 +309,7 @@ func (f *Fixtures) provisionAttributeKeyAccessServer() int64 {
 }
 
 func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
-	values := make([][]string, 0, len(fixtureData.AttributeValueKeyAccessServer))
+	var values [][]string
 	for _, d := range fixtureData.AttributeValueKeyAccessServer {
 		values = append(values, []string{
 			f.db.StringWrap(d.ValueID),
@@ -323,10 +319,11 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
 }
 
-func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
-	rows, err := f.db.ExecInsert(t, c, v...)
+func (f *Fixtures) provision(t string, c []string, v [][]string) (rows int64) {
+	var err error
+	rows, err = f.db.ExecInsert(t, c, v...)
 	if err != nil {
-		slog.Error("⛔️ 📦 issue with insert into table - check fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
+		slog.Error("⛔️ 📦 issue with insert into table - check fixtures.yaml for issues", slog.String("table", t))
 		panic("issue with insert into table")
 	}
 	if rows == 0 {

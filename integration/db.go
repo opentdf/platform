@@ -66,7 +66,6 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]str
 	}
 	pconn, err := d.Client.Exec(context.Background(), sql)
 	if err != nil {
-		slog.Error("insert error", "stmt", sql, "err", err)
 		return 0, err
 	}
 	return pconn.RowsAffected(), err
@@ -76,7 +75,6 @@ func (d *DBInterface) DropSchema() error {
 	sql := "DROP SCHEMA IF EXISTS " + d.schema + " CASCADE"
 	_, err := d.Client.Exec(context.Background(), sql)
 	if err != nil {
-		slog.Error("drop error", "stmt", sql, "err", err)
 		return err
 	}
 	return nil

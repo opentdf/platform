@@ -124,7 +124,7 @@ func (suite *AttributesSuite) Test_CreateAttribute_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreationFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -187,7 +187,7 @@ func (suite *AttributesSuite) Test_CreateAttributeGroup_Returns_InternalError_Wh
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreationFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -240,7 +240,7 @@ func (suite *AttributesSuite) Test_ListAttributes_Returns_InternalError_When_Dat
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -292,7 +292,7 @@ func (suite *AttributesSuite) Test_ListAttributeGroups_Returns_InternalError_Whe
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -341,7 +341,7 @@ func (suite *AttributesSuite) Test_GetAttribute_Returns_InternalError_When_Datab
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGetRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -408,7 +408,7 @@ func (suite *AttributesSuite) Test_GetAttributeGroup_Returns_InternalError_When_
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGetRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -492,7 +492,7 @@ func (suite *AttributesSuite) Test_UpdateAttribute_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdateFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -563,7 +563,7 @@ func (suite *AttributesSuite) Test_UpdateAttributeGroup_Returns_InternalError_Wh
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdateFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -617,7 +617,7 @@ func (suite *AttributesSuite) Test_DeleteAttribute_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletionFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -654,7 +654,7 @@ func (suite *AttributesSuite) Test_DeleteAttributeGroup_Returns_InternalError_Wh
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletionFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {

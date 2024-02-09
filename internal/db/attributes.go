@@ -333,7 +333,7 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 		return nil, err
 	}
 	if a.Namespace.Id != attr.NamespaceId {
-		slog.Error(services.ErrUpdatingResource,
+		slog.Error(services.ErrUpdateFailed,
 			slog.String("scope", "namespaceId"),
 			slog.String("error", errors.Join(ErrRestrictViolation, fmt.Errorf("cannot change namespaceId")).Error()),
 		)

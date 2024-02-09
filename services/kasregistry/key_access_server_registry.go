@@ -34,7 +34,8 @@ func NewKeyAccessServerRegistryServer(dbClient *db.Client, grpcServer *grpc.Serv
 }
 
 func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
-	req *kasr.CreateKeyAccessServerRequest) (*kasr.CreateKeyAccessServerResponse, error) {
+	req *kasr.CreateKeyAccessServerRequest,
+) (*kasr.CreateKeyAccessServerResponse, error) {
 	slog.Debug("creating key access server")
 
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req.KeyAccessServer)
@@ -43,9 +44,9 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 			slog.Error(services.ErrConflict, slog.String("error", err.Error()))
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
-		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
+		slog.Error(services.ErrCreationFailed, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal,
-			fmt.Sprintf("%v: %v", services.ErrCreatingResource, err))
+			fmt.Sprintf("%v: %v", services.ErrCreationFailed, err))
 	}
 
 	return &kasr.CreateKeyAccessServerResponse{
@@ -54,12 +55,12 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
-	req *kasr.ListKeyAccessServersRequest) (*kasr.ListKeyAccessServersResponse, error) {
-
+	req *kasr.ListKeyAccessServersRequest,
+) (*kasr.ListKeyAccessServersResponse, error) {
 	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListingResource)
+		slog.Error(services.ErrListRetrievalFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrListRetrievalFailed)
 	}
 
 	return &kasr.ListKeyAccessServersResponse{
@@ -68,15 +69,16 @@ func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
-	req *kasr.GetKeyAccessServerRequest) (*kasr.GetKeyAccessServerResponse, error) {
+	req *kasr.GetKeyAccessServerRequest,
+) (*kasr.GetKeyAccessServerResponse, error) {
 	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()), slog.String("id", req.Id))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		slog.Error(services.ErrGetRetrievalFailed, slog.String("error", err.Error()), slog.String("id", req.Id))
+		return nil, status.Error(codes.Internal, services.ErrGetRetrievalFailed)
 	}
 
 	return &kasr.GetKeyAccessServerResponse{
@@ -85,7 +87,8 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
-	req *kasr.UpdateKeyAccessServerRequest) (*kasr.UpdateKeyAccessServerResponse, error) {
+	req *kasr.UpdateKeyAccessServerRequest,
+) (*kasr.UpdateKeyAccessServerResponse, error) {
 	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.Id, req.KeyAccessServer)
 	if err != nil {
 		if errors.Is(err, db.ErrUniqueConstraintViolation) {
@@ -96,9 +99,9 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("keyAccessServer", req.KeyAccessServer.String()))
+		slog.Error(services.ErrUpdateFailed, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("keyAccessServer", req.KeyAccessServer.String()))
 		return nil,
-			status.Error(codes.Internal, services.ErrUpdatingResource)
+			status.Error(codes.Internal, services.ErrUpdateFailed)
 	}
 	return &kasr.UpdateKeyAccessServerResponse{
 		KeyAccessServer: k,
@@ -106,16 +109,17 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
-	req *kasr.DeleteKeyAccessServerRequest) (*kasr.DeleteKeyAccessServerResponse, error) {
+	req *kasr.DeleteKeyAccessServerRequest,
+) (*kasr.DeleteKeyAccessServerResponse, error) {
 	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()), slog.String("id", req.Id))
+		slog.Error(services.ErrDeletionFailed, slog.String("error", err.Error()), slog.String("id", req.Id))
 		return nil,
-			status.Error(codes.Internal, services.ErrDeletingResource)
+			status.Error(codes.Internal, services.ErrDeletionFailed)
 	}
 	return &kasr.DeleteKeyAccessServerResponse{
 		KeyAccessServer: keyAccessServer,

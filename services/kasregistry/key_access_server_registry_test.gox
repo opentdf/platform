@@ -156,7 +156,7 @@ func (suite *KeyAccessGrantSuite) Test_ListKeyAccessGrants_Returns_Internal_Erro
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -205,7 +205,7 @@ func (suite *KeyAccessGrantSuite) Test_GetKeyAccessGrant_Returns_Internal_Error_
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGetRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -287,7 +287,7 @@ func (suite *KeyAccessGrantSuite) Test_UpdateKeyAccessGrants_Returns_Internal_Er
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdateFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -341,7 +341,7 @@ func (suite *KeyAccessGrantSuite) Test_DeleteKeyAccessGrants_Returns_Internal_Er
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletionFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {

@@ -47,8 +47,8 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.ResourceMapping.AttributeValueId))
 			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
 		}
-		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+		slog.Error(services.ErrCreationFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrCreationFailed)
 	}
 
 	return &resourcemapping.CreateResourceMappingResponse{
@@ -61,8 +61,8 @@ func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
 ) (*resourcemapping.ListResourceMappingsResponse, error) {
 	resourceMappings, err := s.dbClient.ListResourceMappings(ctx)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListingResource)
+		slog.Error(services.ErrListRetrievalFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrListRetrievalFailed)
 	}
 
 	return &resourcemapping.ListResourceMappingsResponse{
@@ -79,8 +79,8 @@ func (s ResourceMappingService) GetResourceMapping(ctx context.Context,
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		slog.Error(services.ErrGetRetrievalFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrGetRetrievalFailed)
 	}
 
 	return &resourcemapping.GetResourceMappingResponse{
@@ -105,9 +105,9 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
+		slog.Error(services.ErrUpdateFailed, slog.String("error", err.Error()))
 		return nil,
-			status.Error(codes.Internal, services.ErrUpdatingResource)
+			status.Error(codes.Internal, services.ErrUpdateFailed)
 	}
 	return &resourcemapping.UpdateResourceMappingResponse{
 		ResourceMapping: rm,
@@ -123,8 +123,8 @@ func (s ResourceMappingService) DeleteResourceMapping(ctx context.Context,
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
+		slog.Error(services.ErrDeletionFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrDeletionFailed)
 	}
 	return &resourcemapping.DeleteResourceMappingResponse{
 		ResourceMapping: rm,

@@ -38,8 +38,8 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.
 	rsp := &namespaces.ListNamespacesResponse{}
 	list, err := ns.dbClient.ListNamespaces(ctx)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListingResource)
+		slog.Error(services.ErrListRetrievalFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrListRetrievalFailed)
 	}
 
 	slog.Debug("listed namespaces")
@@ -59,8 +59,8 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespaces.Ge
 			slog.Error(services.ErrNotFound, slog.String("namespaceId", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		slog.Error(services.ErrGetRetrievalFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrGetRetrievalFailed)
 	}
 
 	slog.Debug("got namespace", slog.String("id", req.Id))
@@ -79,8 +79,8 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 			slog.Error(services.ErrConflict, slog.String("error", err.Error()))
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
-		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+		slog.Error(services.ErrCreationFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrCreationFailed)
 	}
 
 	slog.Debug("created new namespace", slog.String("name", req.Name))
@@ -107,8 +107,8 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("name", req.Name))
-		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+		slog.Error(services.ErrUpdateFailed, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("name", req.Name))
+		return nil, status.Error(codes.Internal, services.ErrUpdateFailed)
 	}
 
 	slog.Debug("updated namespace", slog.String("name", req.Name))
@@ -126,8 +126,8 @@ func (ns NamespacesService) DeleteNamespace(ctx context.Context, req *namespaces
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
+		slog.Error(services.ErrDeletionFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrDeletionFailed)
 	}
 
 	slog.Debug("deleted namespace", slog.String("id", req.Id))

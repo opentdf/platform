@@ -120,7 +120,7 @@ func (suite *AcreSuite) Test_CreateResourceMapping_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreationFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -176,7 +176,7 @@ func (suite *AcreSuite) Test_ListResourceMappings_Returns_InternalError_When_Dat
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -228,7 +228,7 @@ func (suite *AcreSuite) Test_GetResourceMapping_Returns_InternalError_When_Datab
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGetRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -311,7 +311,7 @@ func (suite *AcreSuite) Test_UpdateResourceMapping_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdateFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -365,7 +365,7 @@ func (suite *AcreSuite) Test_DeleteResourceMapping_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletionFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -415,7 +415,7 @@ func (suite *AcreSuite) Test_CreateResourceSynonym_Returns_InternalError_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreationFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -470,7 +470,7 @@ func (suite *AcreSuite) Test_ListResourceSynonyms_Returns_InternalError_When_Dat
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -521,7 +521,7 @@ func (suite *AcreSuite) Test_GetResourceSynonym_Returns_InternalError_When_Datab
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGetRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -603,7 +603,7 @@ func (suite *AcreSuite) Test_UpdateResourceSynonym_Returns_InternalError_When_Da
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdateFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -656,7 +656,7 @@ func (suite *AcreSuite) Test_DeleteResourceSynonym_Returns_InternalError_When_Da
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletionFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -705,7 +705,7 @@ func (suite *AcreSuite) Test_CreateResourceGroup_Returns_InternalError_When_Data
 		grpcStatus, _ := status.FromError(err)
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrCreationFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -762,7 +762,7 @@ func (suite *AcreSuite) Test_ListResourceGroups_Returns_InternalError_When_Datab
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -815,7 +815,7 @@ func (suite *AcreSuite) Test_GetResourceGroup_Returns_InternalError_When_Databas
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGetRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -898,7 +898,7 @@ func (suite *AcreSuite) Test_UpdateResourceGroup_Returns_InternalError_When_Data
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdateFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -950,7 +950,7 @@ func (suite *AcreSuite) Test_DeleteResourceGroup_Returns_InternalError_When_Data
 	if assert.Error(suite.T(), err) {
 		grpcStatus, _ := status.FromError(err)
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletionFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {

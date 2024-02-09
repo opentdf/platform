@@ -144,7 +144,7 @@ func (suite *AcseSuite) Test_ListSubjectMappings_Returns_Internal_Error_When_Dat
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrListRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -193,7 +193,7 @@ func (suite *AcseSuite) Test_GetSubjectMapping_Returns_Internal_Error_When_Datab
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGettingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrGetRetrievalFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -275,7 +275,7 @@ func (suite *AcseSuite) Test_UpdateSubjectMapping_Returns_Internal_Error_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdatingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrUpdateFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {
@@ -329,7 +329,7 @@ func (suite *AcseSuite) Test_DeleteSubjectMapping_Returns_Internal_Error_When_Da
 
 		assert.Equal(suite.T(), codes.Internal, grpcStatus.Code())
 
-		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletingResource)
+		assert.Contains(suite.T(), grpcStatus.Message(), services.ErrDeletionFailed)
 	}
 
 	if err := suite.mock.ExpectationsWereMet(); err != nil {

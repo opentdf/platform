@@ -54,8 +54,8 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 			slog.Error(services.ErrEnumValueInvalid, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))
 			return nil, status.Error(codes.InvalidArgument, services.ErrEnumValueInvalid)
 		}
-		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+		slog.Error(services.ErrCreationFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrCreationFailed)
 	}
 	rsp.SubjectMapping = mappings
 
@@ -69,8 +69,8 @@ func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
 
 	mappings, err := s.dbClient.ListSubjectMappings(ctx)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListingResource)
+		slog.Error(services.ErrListRetrievalFailed, slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, services.ErrListRetrievalFailed)
 	}
 
 	rsp.SubjectMappings = mappings
@@ -89,8 +89,8 @@ func (s SubjectMappingService) GetSubjectMapping(ctx context.Context,
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()), slog.String("id", req.Id))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		slog.Error(services.ErrGetRetrievalFailed, slog.String("error", err.Error()), slog.String("id", req.Id))
+		return nil, status.Error(codes.Internal, services.ErrGetRetrievalFailed)
 	}
 
 	rsp.SubjectMapping = mapping
@@ -117,8 +117,8 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("subject mapping", req.SubjectMapping.String()))
-		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+		slog.Error(services.ErrUpdateFailed, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("subject mapping", req.SubjectMapping.String()))
+		return nil, status.Error(codes.Internal, services.ErrUpdateFailed)
 	}
 
 	rsp.SubjectMapping = mapping
@@ -137,8 +137,8 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
-		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()), slog.String("id", req.Id))
-		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
+		slog.Error(services.ErrDeletionFailed, slog.String("error", err.Error()), slog.String("id", req.Id))
+		return nil, status.Error(codes.Internal, services.ErrDeletionFailed)
 	}
 
 	rsp.SubjectMapping = mapping

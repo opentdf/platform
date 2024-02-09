@@ -41,8 +41,8 @@ jobs:
           go-version: '1.21'
           cache: false
       - run: make go.work
-      - run: go test ./... -short -race -cover
       - run: cd sdk && go test ./... -short -race -cover
+      - run: go test ./... -short -race -cover
   integration:
     name: integration tests
     runs-on: ubuntu-22.04

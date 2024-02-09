@@ -215,14 +215,12 @@ func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute,
 	sql, args, err := listAllAttributesSql()
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return nil, err
 	}
 	defer rows.Close()
 
 	list, err := attributesHydrateList(rows)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return nil, err
 	}
 	slog.Info("list", slog.Any("list", list))
@@ -241,7 +239,6 @@ func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attrib
 	sql, args, err := getAttributeSql(id)
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("attributeId", id), slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -272,7 +269,6 @@ func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string
 
 	list, err := attributesHydrateList(rows)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("namespaceId", namespaceId), slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -334,7 +330,6 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 	// get attribute before updating
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
-		slog.Error(services.ErrUpdatingResource, slog.String("scope", "getAttribute"), slog.String("error", err.Error()))
 		return nil, err
 	}
 	if a.Namespace.Id != attr.NamespaceId {

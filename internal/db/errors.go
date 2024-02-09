@@ -26,16 +26,6 @@ const (
 	ErrInvalidEnumValue		     DbError = "ErrInvalidEnumValue: not a valid enum value"
 )
 
-// Validate is a PostgreSQL constraint violation for specific table-column value
-func IsConstraintViolationForColumnVal(err error, table string, column string) bool {
-	if e := WrapIfKnownInvalidQueryErr(err); e != nil {
-		if errors.Is(e, ErrUniqueConstraintViolation) && strings.Contains(err.Error(), getConstraintName(table, column)) {
-			return true
-		}
-	}
-	return false
-}
-
 // Get helpful error message for PostgreSQL violation
 func WrapIfKnownInvalidQueryErr(err error) error {
 	if e := isPgError(err); e != nil {
@@ -77,10 +67,6 @@ func isPgError(err error) *pgconn.PgError {
 		}
 	}
 	return nil
-}
-
-func getConstraintName(table string, column string) string {
-	return fmt.Sprintf("%s_%s_key", table, column)
 }
 
 func NewUniqueAlreadyExistsError(value string) error {

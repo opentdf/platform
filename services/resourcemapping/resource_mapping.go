@@ -44,8 +44,8 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 	rm, err := s.dbClient.CreateResourceMapping(ctx, req.ResourceMapping)
 	if err != nil {
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attributeValueId", req.ResourceMapping.AttributeValueId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
+			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.ResourceMapping.AttributeValueId))
+			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
 		}
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
@@ -98,8 +98,8 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	)
 	if err != nil {
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attributeValueId", req.ResourceMapping.AttributeValueId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
+			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.ResourceMapping.AttributeValueId))
+			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
 		}
 		if errors.Is(err, db.ErrNotFound) {
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))

@@ -47,12 +47,12 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	mappings, err := s.dbClient.CreateSubjectMapping(context.Background(), req.SubjectMapping)
 	if err != nil {
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
+			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
+			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
 		}
-		if errors.Is(err, db.ErrInvalidEnumValue) {
-			slog.Error(services.ErrInvalidEnumValue, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidEnumValue)
+		if errors.Is(err, db.ErrEnumValueInvalid) {
+			slog.Error(services.ErrEnumValueInvalid, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrEnumValueInvalid)
 		}
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
@@ -106,12 +106,12 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	mapping, err := s.dbClient.UpdateSubjectMapping(ctx, req.Id, req.SubjectMapping)
 	if err != nil {
 		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrInvalidRelation, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidRelation)
+			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
+			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
 		}
-		if errors.Is(err, db.ErrInvalidEnumValue) {
-			slog.Error(services.ErrInvalidEnumValue, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidEnumValue)
+		if errors.Is(err, db.ErrEnumValueInvalid) {
+			slog.Error(services.ErrEnumValueInvalid, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrEnumValueInvalid)
 		}
 		if errors.Is(err, db.ErrNotFound) {
 			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))

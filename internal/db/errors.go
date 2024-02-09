@@ -23,7 +23,7 @@ const (
 	ErrForeignKeyViolation       DbError = "ErrForeignKeyViolation: value is referenced by another table"
 	ErrRestrictViolation         DbError = "ErrRestrictViolation: value cannot be deleted due to restriction"
 	ErrNotFound                  DbError = "ErrNotFound: value not found"
-	ErrInvalidEnumValue		     DbError = "ErrInvalidEnumValue: not a valid enum value"
+	ErrEnumValueInvalid          DbError = "ErrEnumValueInvalid: not a valid enum value"
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -42,7 +42,7 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 		case pgerrcode.CaseNotFound:
 			return errors.Join(ErrNotFound, e)
 		case pgerrcode.InvalidTextRepresentation:
-			return errors.Join(ErrInvalidEnumValue, e)
+			return errors.Join(ErrEnumValueInvalid, e)
 		default:
 			return e
 		}

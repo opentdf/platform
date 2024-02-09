@@ -156,7 +156,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithInvalidRuleFails() {
 	}
 	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, attr)
 	assert.NotNil(s.T(), err)
-	assert.ErrorIs(s.T(), err, db.ErrInvalidEnumValue)
+	assert.ErrorIs(s.T(), err, db.ErrEnumValueInvalid)
 	assert.Nil(s.T(), createdAttr)
 }
 

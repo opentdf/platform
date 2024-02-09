@@ -685,6 +685,14 @@
                 </li>
               
                 <li>
+                  <a href="#subjectmapping.ListSubjectSetsRequest"><span class="badge">M</span>ListSubjectSetsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#subjectmapping.ListSubjectSetsResponse"><span class="badge">M</span>ListSubjectSetsResponse</a>
+                </li>
+              
+                <li>
                   <a href="#subjectmapping.MatchSubjectMappingsRequest"><span class="badge">M</span>MatchSubjectMappingsRequest</a>
                 </li>
               
@@ -4851,6 +4859,37 @@ Response Example:
 
         
       
+        <h3 id="subjectmapping.ListSubjectSetsRequest">ListSubjectSetsRequest</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="subjectmapping.ListSubjectSetsResponse">ListSubjectSetsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>subject_sets</td>
+                  <td><a href="#subjectmapping.SubjectSet">SubjectSet</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="subjectmapping.MatchSubjectMappingsRequest">MatchSubjectMappingsRequest</h3>
         <p></p>
 
@@ -5300,6 +5339,13 @@ Response Example:
               </tr>
             
               <tr>
+                <td>ListSubjectSets</td>
+                <td><a href="#subjectmapping.ListSubjectSetsRequest">ListSubjectSetsRequest</a></td>
+                <td><a href="#subjectmapping.ListSubjectSetsResponse">ListSubjectSetsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>MatchSubjectMappings</td>
                 <td><a href="#subjectmapping.MatchSubjectMappingsRequest">MatchSubjectMappingsRequest</a></td>
                 <td><a href="#subjectmapping.MatchSubjectMappingsResponse">MatchSubjectMappingsResponse</a></td>
@@ -5395,6 +5441,16 @@ Response Example:
                 <td>DeleteSubjectSet</td>
                 <td>DELETE</td>
                 <td>/subject-sets/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ListSubjectSets</td>
+                <td>GET</td>
+                <td>/subject-sets</td>
                 <td></td>
               </tr>
               

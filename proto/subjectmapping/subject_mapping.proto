@@ -252,6 +252,11 @@ message DeleteSubjectSetResponse {
   SubjectSet subject_set = 1;
 }
 
+message ListSubjectSetsRequest{}
+message ListSubjectSetsResponse{
+  repeated SubjectSet subject_sets = 1;
+}
+
 // A Representation of a subject as attribute->value pairs.  This would mirror user attributes retrieved
 // from an authoritative source such as an IDP (Identity Provider) or User Store.  Examples include such ADFS/LDAP, OKTA, etc.
 message Subject{
@@ -338,6 +343,10 @@ service SubjectMappingService {
     option (google.api.http) = {delete: "/subject-sets/{id}"};
   }
 
+  rpc ListSubjectSets(ListSubjectSetsRequest) returns (ListSubjectSetsResponse) {
+    option (google.api.http) = {get: "/subject-sets"};
+  }
+
   // Find matching Subject Mappings for a given Subject
   rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse){
     option (google.api.http) = {
@@ -345,6 +354,7 @@ service SubjectMappingService {
       body: "subject"
     };
   }
+
 
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
     option (google.api.http) = {get: "/subject-mappings"};

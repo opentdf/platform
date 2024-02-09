@@ -14,7 +14,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
-	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -333,10 +332,6 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 		return nil, err
 	}
 	if a.Namespace.Id != attr.NamespaceId {
-		slog.Error(services.ErrUpdateFailed,
-			slog.String("scope", "namespaceId"),
-			slog.String("error", errors.Join(ErrRestrictViolation, fmt.Errorf("cannot change namespaceId")).Error()),
-		)
 		return nil, errors.Join(ErrRestrictViolation, fmt.Errorf("cannot change namespaceId"))
 	}
 

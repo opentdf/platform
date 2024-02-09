@@ -105,11 +105,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 	)
 	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson, &grants)
 	if err != nil {
-		if e := WrapIfKnownInvalidQueryErr(err); e != nil {
-			slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
-			return nil, e
-		}
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	m := &common.Metadata{}
@@ -163,13 +159,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 		)
 		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson, &grants)
 		if err != nil {
-			if e := WrapIfKnownInvalidQueryErr(err); e != nil {
-				slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
-				return nil, e
-			}
-
-			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-			return nil, err
+			return nil, WrapIfKnownInvalidQueryErr(err)
 		}
 
 		attribute := &attributes.Attribute{
@@ -301,26 +291,15 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(attr.Metadata)
 	if err != nil {
-		slog.Error(services.ErrCreatingResource, slog.Any("attribute", attr), slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	sql, args, err := createAttributeSql(attr.NamespaceId, attr.Name, attributesRuleTypeEnumTransformIn(attr.Rule.String()), metadataJson)
-	// TODO: abstract error checking to be DRY
-	// TODO: check for constraint violation
-	// - duplicate name VERIFY THIS IS DONE
-	// - namespace id exists VERIFY THIS IS DONE
 	var id string
 	if r, err := c.queryRow(ctx, sql, args, err); err != nil {
-		slog.Error(services.ErrCreatingResource, slog.Any("attribute", attr), slog.String("error", err.Error()))
 		return nil, err
 	} else if err := r.Scan(&id); err != nil {
-		if e := WrapIfKnownInvalidQueryErr(err); e != nil {
-			slog.Error(services.ErrCreatingResource, slog.Any("attribute", attr), slog.String("error", e.Error()))
-			return nil, e
-		}
-		slog.Error(services.ErrCreatingResource, slog.Any("attribute", attr), slog.String("error", err.Error()))
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	a := &attributes.Attribute{
@@ -440,7 +419,7 @@ func (c Client) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attri
 	}
 
 	if _, err := c.queryCount(ctx, sql, args); err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return k, nil

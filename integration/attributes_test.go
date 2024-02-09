@@ -319,6 +319,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_Wh
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
@@ -330,6 +331,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_Wh
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
@@ -353,6 +355,7 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
@@ -364,6 +367,7 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {

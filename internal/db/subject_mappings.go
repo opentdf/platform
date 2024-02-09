@@ -142,7 +142,7 @@ func (c *Client) CreateSubjectMapping(ctx context.Context, s *subjectmapping.Sub
 
 	var id string
 	if r, err := c.queryRow(ctx, sql, args, err); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	} else if err := r.Scan(&id); err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
@@ -172,7 +172,7 @@ func (c *Client) GetSubjectMapping(ctx context.Context, id string) (*subjectmapp
 
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	s, err := subjectMappingHydrateItem(row)

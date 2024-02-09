@@ -109,7 +109,7 @@ func (c Client) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAcc
 
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	var (
@@ -166,7 +166,7 @@ func (c Client) CreateKeyAccessServer(ctx context.Context, keyAccessServer *kasr
 
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	// Get ID of new resource

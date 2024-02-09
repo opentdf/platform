@@ -116,7 +116,7 @@ func (c Client) CreateResourceMapping(ctx context.Context, rm *resourcemapping.R
 
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	var id string
@@ -149,7 +149,7 @@ func (c Client) GetResourceMapping(ctx context.Context, id string) (*resourcemap
 
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	rm, err := resourceMappingHydrateItem(row)

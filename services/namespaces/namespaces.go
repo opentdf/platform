@@ -2,7 +2,6 @@ package namespaces
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type NamespacesService struct {
@@ -38,8 +35,7 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.
 	rsp := &namespaces.ListNamespacesResponse{}
 	list, err := ns.dbClient.ListNamespaces(ctx)
 	if err != nil {
-		slog.Error(services.ErrListRetrievalFailed, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListRetrievalFailed)
+		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
 	}
 
 	slog.Debug("listed namespaces")
@@ -55,12 +51,7 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespaces.Ge
 
 	namespace, err := ns.dbClient.GetNamespace(ctx, req.Id)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("namespaceId", req.Id))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrGetRetrievalFailed, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGetRetrievalFailed)
+		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, "id", req.Id)
 	}
 
 	slog.Debug("got namespace", slog.String("id", req.Id))
@@ -75,12 +66,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 
 	id, err := ns.dbClient.CreateNamespace(ctx, req.Name)
 	if err != nil {
-		if errors.Is(err, db.ErrUniqueConstraintViolation) {
-			slog.Error(services.ErrConflict, slog.String("error", err.Error()))
-			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
-		}
-		slog.Error(services.ErrCreationFailed, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrCreationFailed)
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("name", req.Name))
 	}
 
 	slog.Debug("created new namespace", slog.String("name", req.Name))
@@ -99,16 +85,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 
 	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req.Name)
 	if err != nil {
-		if errors.Is(err, db.ErrUniqueConstraintViolation) {
-			slog.Error(services.ErrConflict, slog.String("error", err.Error()), slog.String("id", req.Id))
-			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
-		}
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrUpdateFailed, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("name", req.Name))
-		return nil, status.Error(codes.Internal, services.ErrUpdateFailed)
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("name", req.Name))
 	}
 
 	slog.Debug("updated namespace", slog.String("name", req.Name))
@@ -122,12 +99,7 @@ func (ns NamespacesService) DeleteNamespace(ctx context.Context, req *namespaces
 	rsp := &namespaces.DeleteNamespaceResponse{}
 
 	if _, err := ns.dbClient.DeleteNamespace(ctx, req.Id); err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrDeletionFailed, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrDeletionFailed)
+		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 
 	slog.Debug("deleted namespace", slog.String("id", req.Id))

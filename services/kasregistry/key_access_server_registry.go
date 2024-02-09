@@ -2,7 +2,6 @@ package kasregistry
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -11,8 +10,6 @@ import (
 	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type KeyAccessServerRegistry struct {
@@ -40,13 +37,7 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req.KeyAccessServer)
 	if err != nil {
-		if errors.Is(err, db.ErrUniqueConstraintViolation) {
-			slog.Error(services.ErrConflict, slog.String("error", err.Error()))
-			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
-		}
-		slog.Error(services.ErrCreationFailed, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal,
-			fmt.Sprintf("%v: %v", services.ErrCreationFailed, err))
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("keyAccessServer", req.KeyAccessServer.String()))
 	}
 
 	return &kasr.CreateKeyAccessServerResponse{
@@ -59,8 +50,7 @@ func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
 ) (*kasr.ListKeyAccessServersResponse, error) {
 	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
 	if err != nil {
-		slog.Error(services.ErrListRetrievalFailed, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListRetrievalFailed)
+		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
 	}
 
 	return &kasr.ListKeyAccessServersResponse{
@@ -73,12 +63,7 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 ) (*kasr.GetKeyAccessServerResponse, error) {
 	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, req.Id)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrGetRetrievalFailed, slog.String("error", err.Error()), slog.String("id", req.Id))
-		return nil, status.Error(codes.Internal, services.ErrGetRetrievalFailed)
+		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("id", req.Id))
 	}
 
 	return &kasr.GetKeyAccessServerResponse{
@@ -91,17 +76,7 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 ) (*kasr.UpdateKeyAccessServerResponse, error) {
 	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.Id, req.KeyAccessServer)
 	if err != nil {
-		if errors.Is(err, db.ErrUniqueConstraintViolation) {
-			slog.Error(services.ErrConflict, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("keyAccessServer", req.KeyAccessServer.String()))
-			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
-		}
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrUpdateFailed, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("keyAccessServer", req.KeyAccessServer.String()))
-		return nil,
-			status.Error(codes.Internal, services.ErrUpdateFailed)
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("keyAccessServer", req.KeyAccessServer.String()))
 	}
 	return &kasr.UpdateKeyAccessServerResponse{
 		KeyAccessServer: k,
@@ -113,13 +88,7 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 ) (*kasr.DeleteKeyAccessServerResponse, error) {
 	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.Id)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrDeletionFailed, slog.String("error", err.Error()), slog.String("id", req.Id))
-		return nil,
-			status.Error(codes.Internal, services.ErrDeletionFailed)
+		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 	return &kasr.DeleteKeyAccessServerResponse{
 		KeyAccessServer: keyAccessServer,

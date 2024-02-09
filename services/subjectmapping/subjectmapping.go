@@ -2,7 +2,6 @@ package subjectmapping
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -12,8 +11,6 @@ import (
 
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type SubjectMappingService struct {
@@ -46,16 +43,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 
 	mappings, err := s.dbClient.CreateSubjectMapping(context.Background(), req.SubjectMapping)
 	if err != nil {
-		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
-		}
-		if errors.Is(err, db.ErrEnumValueInvalid) {
-			slog.Error(services.ErrEnumValueInvalid, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrEnumValueInvalid)
-		}
-		slog.Error(services.ErrCreationFailed, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrCreationFailed)
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("subjectMapping", req.SubjectMapping.String()))
 	}
 	rsp.SubjectMapping = mappings
 
@@ -69,8 +57,7 @@ func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
 
 	mappings, err := s.dbClient.ListSubjectMappings(ctx)
 	if err != nil {
-		slog.Error(services.ErrListRetrievalFailed, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListRetrievalFailed)
+		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
 	}
 
 	rsp.SubjectMappings = mappings
@@ -85,12 +72,7 @@ func (s SubjectMappingService) GetSubjectMapping(ctx context.Context,
 
 	mapping, err := s.dbClient.GetSubjectMapping(ctx, req.Id)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrGetRetrievalFailed, slog.String("error", err.Error()), slog.String("id", req.Id))
-		return nil, status.Error(codes.Internal, services.ErrGetRetrievalFailed)
+		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("id", req.Id))
 	}
 
 	rsp.SubjectMapping = mapping
@@ -105,20 +87,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 
 	mapping, err := s.dbClient.UpdateSubjectMapping(ctx, req.Id, req.SubjectMapping)
 	if err != nil {
-		if errors.Is(err, db.ErrForeignKeyViolation) {
-			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attributeValueId", req.SubjectMapping.AttributeValueId))
-			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
-		}
-		if errors.Is(err, db.ErrEnumValueInvalid) {
-			slog.Error(services.ErrEnumValueInvalid, slog.String("error", err.Error()), slog.String("operator", req.SubjectMapping.Operator.String()))
-			return nil, status.Error(codes.InvalidArgument, services.ErrEnumValueInvalid)
-		}
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrUpdateFailed, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("subject mapping", req.SubjectMapping.String()))
-		return nil, status.Error(codes.Internal, services.ErrUpdateFailed)
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("subjectMapping", req.SubjectMapping.String()))
 	}
 
 	rsp.SubjectMapping = mapping
@@ -133,12 +102,7 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 
 	mapping, err := s.dbClient.DeleteSubjectMapping(ctx, req.Id)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", err.Error()), slog.String("id", req.Id))
-			return nil, status.Error(codes.NotFound, services.ErrNotFound)
-		}
-		slog.Error(services.ErrDeletionFailed, slog.String("error", err.Error()), slog.String("id", req.Id))
-		return nil, status.Error(codes.Internal, services.ErrDeletionFailed)
+		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 
 	rsp.SubjectMapping = mapping

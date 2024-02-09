@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	resourcemapping "github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
 	"github.com/stretchr/testify/assert"
@@ -74,6 +75,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeVa
 	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), createdMapping)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds() {
@@ -127,6 +129,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
 	mapping, err := s.db.Client.GetResourceMapping(s.ctx, nonExistentResourceMappingUUID)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), mapping)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
@@ -214,6 +217,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUUID, updatedMapping)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeValueIdFails() {
@@ -234,6 +238,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, createdMapping.Id, updatedMapping)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
@@ -259,6 +264,7 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMappingWithUnknownIdFails() {
 	deleted, err := s.db.Client.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUUID)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), deleted)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func TestResourceMappingsSuite(t *testing.T) {

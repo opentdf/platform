@@ -19,7 +19,7 @@ type Unwrapper interface {
 }
 
 type KasClient struct {
-	creds DPoPBoundCredentials
+	creds AccessTokenSource
 }
 
 type rewrapRequestBody struct {

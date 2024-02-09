@@ -43,7 +43,7 @@ func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, 
 		&attributeValueJSON,
 	)
 	if err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	if metadataJSON != nil {
@@ -121,7 +121,7 @@ func (c Client) CreateResourceMapping(ctx context.Context, rm *resourcemapping.R
 
 	var id string
 	if err := row.Scan(&id); err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	av, err := c.GetAttributeValue(ctx, rm.AttributeValueId)

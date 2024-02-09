@@ -10,8 +10,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type AttributesService struct {
@@ -32,14 +30,14 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 }
 
 func (s AttributesService) CreateAttribute(ctx context.Context,
-	req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error) {
+	req *attributes.CreateAttributeRequest,
+) (*attributes.CreateAttributeResponse, error) {
 	slog.Debug("creating new attribute definition", slog.String("name", req.Attribute.Name))
 	rsp := &attributes.CreateAttributeResponse{}
 
 	item, err := s.dbClient.CreateAttribute(ctx, req.Attribute)
 	if err != nil {
-		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("attribute", req.Attribute.String()))
 	}
 	rsp.Attribute = item
 
@@ -48,13 +46,13 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 }
 
 func (s *AttributesService) ListAttributes(ctx context.Context,
-	req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
+	req *attributes.ListAttributesRequest,
+) (*attributes.ListAttributesResponse, error) {
 	rsp := &attributes.ListAttributesResponse{}
 
 	list, err := s.dbClient.ListAllAttributes(ctx)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListingResource)
+		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
 	}
 	rsp.Attributes = list
 
@@ -63,13 +61,13 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 
 //nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s *AttributesService) GetAttribute(ctx context.Context,
-	req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
+	req *attributes.GetAttributeRequest,
+) (*attributes.GetAttributeResponse, error) {
 	rsp := &attributes.GetAttributeResponse{}
 
 	item, err := s.dbClient.GetAttribute(ctx, req.Id)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("id", req.Id))
 	}
 	rsp.Attribute = item
 
@@ -77,14 +75,13 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 }
 
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
-	req *attributes.UpdateAttributeRequest) (*attributes.UpdateAttributeResponse, error) {
+	req *attributes.UpdateAttributeRequest,
+) (*attributes.UpdateAttributeResponse, error) {
 	rsp := &attributes.UpdateAttributeResponse{}
 
 	a, err := s.dbClient.UpdateAttribute(ctx, req.Id, req.Attribute)
 	if err != nil {
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return &attributes.UpdateAttributeResponse{},
-			status.Error(codes.Internal, services.ErrUpdatingResource)
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("attribute", req.Attribute.String()))
 	}
 	rsp.Attribute = a
 
@@ -92,13 +89,13 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 }
 
 func (s *AttributesService) DeleteAttribute(ctx context.Context,
-	req *attributes.DeleteAttributeRequest) (*attributes.DeleteAttributeResponse, error) {
+	req *attributes.DeleteAttributeRequest,
+) (*attributes.DeleteAttributeResponse, error) {
 	rsp := &attributes.DeleteAttributeResponse{}
 
 	a, err := s.dbClient.DeleteAttribute(ctx, req.Id)
 	if err != nil {
-		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
+		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 	rsp.Attribute = a
 
@@ -112,8 +109,7 @@ func (s *AttributesService) DeleteAttribute(ctx context.Context,
 func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attributes.CreateAttributeValueRequest) (*attributes.CreateAttributeValueResponse, error) {
 	item, err := s.dbClient.CreateAttributeValue(ctx, req.AttributeId, req.Value)
 	if err != nil {
-		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("attributeId", req.AttributeId), slog.String("value", req.Value.String()))
 	}
 
 	return &attributes.CreateAttributeValueResponse{
@@ -124,8 +120,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
 	list, err := s.dbClient.ListAttributeValues(ctx, req.AttributeId)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrListingResource)
+		return nil, services.HandleError(err, services.ErrListRetrievalFailed, slog.String("attributeId", req.AttributeId))
 	}
 
 	return &attributes.ListAttributeValuesResponse{
@@ -136,8 +131,7 @@ func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attrib
 func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attributes.GetAttributeValueRequest) (*attributes.GetAttributeValueResponse, error) {
 	item, err := s.dbClient.GetAttributeValue(ctx, req.Id)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrGettingResource)
+		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("id", req.Id))
 	}
 
 	return &attributes.GetAttributeValueResponse{
@@ -148,9 +142,7 @@ func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attribut
 func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attributes.UpdateAttributeValueRequest) (*attributes.UpdateAttributeValueResponse, error) {
 	a, err := s.dbClient.UpdateAttributeValue(ctx, req.Id, req.Value)
 	if err != nil {
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return nil,
-			status.Error(codes.Internal, services.ErrUpdatingResource)
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("value", req.Value.String()))
 	}
 
 	return &attributes.UpdateAttributeValueResponse{
@@ -161,8 +153,7 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 func (s *AttributesService) DeleteAttributeValue(ctx context.Context, req *attributes.DeleteAttributeValueRequest) (*attributes.DeleteAttributeValueResponse, error) {
 	a, err := s.dbClient.DeleteAttributeValue(ctx, req.Id)
 	if err != nil {
-		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
+		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 
 	return &attributes.DeleteAttributeValueResponse{
@@ -173,8 +164,7 @@ func (s *AttributesService) DeleteAttributeValue(ctx context.Context, req *attri
 func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context, req *attributes.AssignKeyAccessServerToAttributeRequest) (*attributes.AssignKeyAccessServerToAttributeResponse, error) {
 	attributeKas, err := s.dbClient.AssignKeyAccessServerToAttribute(ctx, req.AttributeKeyAccessServer)
 	if err != nil {
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("attributeKas", req.AttributeKeyAccessServer.String()))
 	}
 
 	return &attributes.AssignKeyAccessServerToAttributeResponse{
@@ -185,8 +175,7 @@ func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context
 func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *attributes.RemoveKeyAccessServerFromAttributeRequest) (*attributes.RemoveKeyAccessServerFromAttributeResponse, error) {
 	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.AttributeKeyAccessServer)
 	if err != nil {
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("attributeKas", req.AttributeKeyAccessServer.String()))
 	}
 
 	return &attributes.RemoveKeyAccessServerFromAttributeResponse{
@@ -197,8 +186,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, req *attributes.AssignKeyAccessServerToValueRequest) (*attributes.AssignKeyAccessServerToValueResponse, error) {
 	valueKas, err := s.dbClient.AssignKeyAccessServerToValue(ctx, req.ValueKeyAccessServer)
 	if err != nil {
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("attributeValueKas", req.ValueKeyAccessServer.String()))
 	}
 
 	return &attributes.AssignKeyAccessServerToValueResponse{
@@ -209,8 +197,7 @@ func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, re
 func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *attributes.RemoveKeyAccessServerFromValueRequest) (*attributes.RemoveKeyAccessServerFromValueResponse, error) {
 	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.ValueKeyAccessServer)
 	if err != nil {
-		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("attributeValueKas", req.ValueKeyAccessServer.String()))
 	}
 
 	return &attributes.RemoveKeyAccessServerFromValueResponse{

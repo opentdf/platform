@@ -2,12 +2,9 @@ package db
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
-	"github.com/opentdf/opentdf-v2-poc/services"
 )
 
 func getNamespaceSql(id string) (string, []interface{}, error) {
@@ -22,28 +19,20 @@ func getNamespaceSql(id string) (string, []interface{}, error) {
 func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
 	sql, args, err := getNamespaceSql(id)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	namespace := namespaces.Namespace{Id: "", Name: ""}
+	namespace := &namespaces.Namespace{Id: "", Name: ""}
 	if err := row.Scan(&namespace.Id, &namespace.Name); err != nil {
-		if e := WrapIfKnownInvalidQueryErr(err); e != nil {
-			slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
-			return nil, e
-		}
-
-		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &namespace, nil
+	return namespace, nil
 }
 
 func listNamespacesSql() (string, []interface{}, error) {
@@ -59,21 +48,18 @@ func (c Client) ListNamespaces(ctx context.Context) ([]*namespaces.Namespace, er
 
 	sql, args, err := listNamespacesSql()
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
-		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	for rows.Next() {
 		var namespace namespaces.Namespace
 		if err := rows.Scan(&namespace.Id, &namespace.Name); err != nil {
-			slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
-			return nil, err
+			return nil, WrapIfKnownInvalidQueryErr(err)
 		}
 		namespacesList = append(namespacesList, &namespace)
 	}
@@ -96,17 +82,9 @@ func (c Client) CreateNamespace(ctx context.Context, name string) (string, error
 	var id string
 
 	if r, e := c.queryRow(ctx, sql, args, err); e != nil {
-		slog.Error(services.ErrCreatingResource, slog.String("error", e.Error()))
 		return "", e
 	} else if e := r.Scan(&id); e != nil {
-		if IsConstraintViolationForColumnVal(e, TableNamespaces, "name") {
-			e = errors.Join(NewUniqueAlreadyExistsError(name), e)
-			slog.Error(services.ErrConflict, slog.String("error", e.Error()))
-			return "", e
-		}
-
-		slog.Error(services.ErrCreatingResource, slog.String("error", e.Error()))
-		return "", e
+		return "", WrapIfKnownInvalidQueryErr(e)
 	}
 	return id, nil
 }
@@ -124,20 +102,6 @@ func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*n
 	sql, args, err := updateNamespaceSql(id, name)
 
 	if e := c.exec(ctx, sql, args, err); e != nil {
-		if IsConstraintViolationForColumnVal(e, TableNamespaces, "name") {
-			e = errors.Join(NewUniqueAlreadyExistsError(name), e)
-			slog.Error(services.ErrConflict, slog.String("error", e.Error()))
-			return nil, e
-		}
-
-		if err := WrapIfKnownInvalidQueryErr(e); err != nil {
-			if errors.Is(err, ErrNotFound) {
-				slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
-			}
-			return nil, err
-		}
-
-		slog.Error(services.ErrUpdatingResource, slog.String("error", e.Error()))
 		return nil, e
 	}
 
@@ -154,18 +118,18 @@ func deleteNamespaceSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c Client) DeleteNamespace(ctx context.Context, id string) error {
+func (c Client) DeleteNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
+	// get a namespace before deleting
+	ns, err := c.GetNamespace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	sql, args, err := deleteNamespaceSql(id)
 
-	e := c.exec(ctx, sql, args, err)
-	if e != nil {
-		if errors.Is(e, ErrNotFound) {
-			slog.Error(services.ErrNotFound, slog.String("error", e.Error()))
-		} else if errors.Is(e, ErrForeignKeyViolation) {
-			slog.Error(services.ErrConflict, slog.String("error", e.Error()))
-		} else {
-			slog.Error(services.ErrDeletingResource, slog.String("error", e.Error()))
-		}
+	if e := c.exec(ctx, sql, args, err); e != nil {
+		return nil, WrapIfKnownInvalidQueryErr(e)
 	}
-	return e
+	
+	// return the namespace before it was deleted
+	return ns, nil
 }

@@ -48,6 +48,10 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("attribute", req.Attribute.String()))
 			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
 		}
+		if errors.Is(err, db.ErrInvalidEnumValue) {
+			slog.Error(services.ErrInvalidEnumValue, slog.String("error", err.Error()), slog.String("rule", req.Attribute.Rule.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidEnumValue)
+		}
 		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
@@ -110,6 +114,10 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		if errors.Is(err, db.ErrForeignKeyViolation) {
 			slog.Error(services.ErrRelationInvalid, slog.String("error", err.Error()), slog.String("id", req.Id), slog.String("attribute", req.Attribute.String()))
 			return nil, status.Error(codes.InvalidArgument, services.ErrRelationInvalid)
+		}
+		if errors.Is(err, db.ErrInvalidEnumValue) {
+			slog.Error(services.ErrInvalidEnumValue, slog.String("error", err.Error()), slog.String("rule", req.Attribute.Rule.String()))
+			return nil, status.Error(codes.InvalidArgument, services.ErrInvalidEnumValue)
 		}
 		slog.Error(services.ErrUpdatingResource, slog.String("error", err.Error()))
 		return &attributes.UpdateAttributeResponse{},

@@ -9,4 +9,5 @@ const (
 	ErrNotFound          = "resource not found"
 	ErrConflict          = "resource unique field violation"
 	ErrRelationInvalid   = "resource relation invalid"
+	ErrInvalidEnumValue  = "invalid enum value"
 )

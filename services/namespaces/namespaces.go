@@ -38,6 +38,7 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.
 	rsp := &namespaces.ListNamespacesResponse{}
 	list, err := ns.dbClient.ListNamespaces(ctx)
 	if err != nil {
+		slog.Error(services.ErrListingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrListingResource)
 	}
 
@@ -55,8 +56,10 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespaces.Ge
 	namespace, err := ns.dbClient.GetNamespace(ctx, req.Id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
+			slog.Error(services.ErrNotFound, slog.String("namespaceId", req.Id))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
+		slog.Error(services.ErrGettingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrGettingResource)
 	}
 
@@ -73,8 +76,10 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 	id, err := ns.dbClient.CreateNamespace(ctx, req.Name)
 	if err != nil {
 		if errors.Is(err, db.ErrUniqueConstraintViolation) {
+			slog.Error(services.ErrConflict, slog.String("error", err.Error()))
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
+		slog.Error(services.ErrCreatingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrCreatingResource)
 	}
 
@@ -95,9 +100,11 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req.Name)
 	if err != nil {
 		if errors.Is(err, db.ErrUniqueConstraintViolation) {
+			slog.Error(services.ErrConflict, slog.String("error", err.Error()))
 			return nil, status.Error(codes.AlreadyExists, services.ErrConflict)
 		}
 		if errors.Is(err, db.ErrNotFound) {
+			slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
 		return nil, status.Error(codes.Internal, services.ErrUpdatingResource)
@@ -113,10 +120,12 @@ func (ns NamespacesService) DeleteNamespace(ctx context.Context, req *namespaces
 	slog.Debug("deleting namespace", slog.String("id", req.Id))
 	rsp := &namespaces.DeleteNamespaceResponse{}
 
-	if err := ns.dbClient.DeleteNamespace(ctx, req.Id); err != nil {
+	if _, err := ns.dbClient.DeleteNamespace(ctx, req.Id); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
+			slog.Error(services.ErrNotFound, slog.String("error", err.Error()))
 			return nil, status.Error(codes.NotFound, services.ErrNotFound)
 		}
+		slog.Error(services.ErrDeletingResource, slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, services.ErrDeletingResource)
 	}
 

@@ -118,8 +118,18 @@ func deleteNamespaceSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c Client) DeleteNamespace(ctx context.Context, id string) error {
+func (c Client) DeleteNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
+	// get a namespace before deleting
+	ns, err := c.GetNamespace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	sql, args, err := deleteNamespaceSql(id)
 
-	return c.exec(ctx, sql, args, err)
+	if e := c.exec(ctx, sql, args, err); e != nil {
+		return nil, WrapIfKnownInvalidQueryErr(e)
+	}
+	
+	// return the namespace before it was deleted
+	return ns, nil
 }

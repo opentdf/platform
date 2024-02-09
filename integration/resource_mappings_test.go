@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var nonExistentResourceMappingUuid = "45674556-8888-9999-9999-000001230000"
+var nonExistentResourceMappingUUID = "45674556-8888-9999-9999-000001230000"
 
 type ResourceMappingsSuite struct {
 	suite.Suite
@@ -124,7 +124,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
-	mapping, err := s.db.Client.GetResourceMapping(s.ctx, nonExistentResourceMappingUuid)
+	mapping, err := s.db.Client.GetResourceMapping(s.ctx, nonExistentResourceMappingUUID)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), mapping)
 }
@@ -211,7 +211,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 		AttributeValueId: createdMapping.AttributeValue.Id,
 		Terms:            []string{"asdf updated term1"},
 	}
-	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUuid, updatedMapping)
+	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUUID, updatedMapping)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
 }
@@ -256,7 +256,7 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMappingWithUnknownIdFails() {
-	deleted, err := s.db.Client.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUuid)
+	deleted, err := s.db.Client.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUUID)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), deleted)
 }

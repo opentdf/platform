@@ -6,22 +6,36 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/opentdf/opentdf-v2-poc/migrations"
 	"github.com/pressly/goose/v3"
 )
 
-func (c *Client) RunMigrations() (int, error) {
+func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 	var (
 		applied int
+		err     error
 	)
 
-	// create the schema
-	c.Exec(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
-	// set the search path
-	c.Exec(context.Background(), fmt.Sprintf("SET search_path TO %s", c.config.Schema))
+	exec := func(q string) {
+		if err != nil {
+			return
+		}
+		var tag pgconn.CommandTag
+		tag, err = c.Exec(ctx, q)
+		slog.ErrorContext(ctx, "Error while running command", "query", q, "err", err)
+		applied += int(tag.RowsAffected())
+	}
 
+	// create the schema
+	exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
+	// set the search path
+	exec(fmt.Sprintf("SET search_path TO %s", c.config.Schema))
+	if err != nil {
+		return applied, err
+	}
 	if !c.config.RunMigrations {
 		slog.Info("skipping migrations",
 			slog.String("reason", "runMigrations is false"),
@@ -30,9 +44,9 @@ func (c *Client) RunMigrations() (int, error) {
 	}
 
 	// create the schema
-	c.Exec(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
+	exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
 	// set the search path
-	c.Exec(context.Background(), fmt.Sprintf("SET search_path TO %s", c.config.Schema))
+	exec(fmt.Sprintf("SET search_path TO %s", c.config.Schema))
 
 	pool, ok := c.PgxIface.(*pgxpool.Pool)
 	if !ok || pool == nil {

@@ -7,15 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 const (
@@ -464,19 +465,4 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 	}
 
 	return key, nil
-}
-
-func structToMap(structObj interface{}) (map[string]interface{}, error) {
-	structData, err := json.Marshal(structObj)
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %w", err)
-	}
-
-	mapData := make(map[string]interface{})
-	err = json.Unmarshal(structData, &mapData)
-	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
-	}
-
-	return mapData, nil
 }

@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 type AuthConfig struct {

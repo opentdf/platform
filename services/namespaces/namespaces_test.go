@@ -26,4 +26,3 @@ func (suite *NamespacesSuite) SetupTest() {
 		},
 	}
 }
-

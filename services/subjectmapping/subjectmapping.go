@@ -7,7 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/subjectmapping"
 
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"

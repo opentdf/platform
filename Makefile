@@ -10,8 +10,8 @@ V_DOCKER_BUILD_CMD=docker build
 V_DOCKER_IMAGE_NAME=opentdf
 
 # Buf parameters
-V_BUFLINT=buf lint proto
-V_BUFGENERATE=buf generate proto
+V_BUFLINT=buf lint protocol
+V_BUFGENERATE=buf generate protocol
 
 # GolangCI-Lint
 V_GOLANGCILINT=golangci-lint run
@@ -28,7 +28,7 @@ pre-build:
 	@golangci-lint --version | grep "version 1.55" > /dev/null || (echo "golangci-lint version must be v1.55" && exit 1)
 
 go.work go.work.sum:
-	go work init . examples/attributes sdk
+	go work init . examples/attributes protocol/go sdk
 
 lint: buf-lint golangci-lint
 

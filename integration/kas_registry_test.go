@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
-	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/common"
+	kasr "github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/kasregistry"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

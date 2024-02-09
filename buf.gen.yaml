@@ -2,25 +2,26 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/opentdf/opentdf-v2-poc/sdk
+    default: github.com/opentdf/opentdf-v2-poc/protocol/go
     except:
       - buf.build/bufbuild/protovalidate
       - buf.build/googleapis/googleapis
       - buf.build/grpc-ecosystem/grpc-gateway
+  java_package_prefix:
+    default: io
 plugins:
   - plugin: buf.build/grpc-ecosystem/gateway:v2.18.1
-    out: sdk
+    out: protocol/go
     opt:
       - paths=source_relative
-  # dependencies
   - plugin: buf.build/protocolbuffers/go:v1.31.0
-    out: sdk
+    out: protocol/go
     opt:
       - paths=source_relative
   - plugin: buf.build/protocolbuffers/java
     out: sdkjava
   - plugin: buf.build/grpc/go:v1.3.0
-    out: sdk
+    out: protocol/go
     opt:
       - paths=source_relative
   - plugin: buf.build/grpc-ecosystem/openapiv2:v2.18.1

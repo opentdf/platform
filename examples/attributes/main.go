@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/opentdf/platform/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 )
 
 func main() {

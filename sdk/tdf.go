@@ -9,8 +9,8 @@ import (
 	"math"
 	"strings"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/archive"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 var (

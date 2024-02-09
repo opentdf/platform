@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/internal/archive"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"math"
 	"strings"
+
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 var (

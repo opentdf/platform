@@ -4,13 +4,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 func TestNewSplitKeyFromKasInfo(t *testing.T) {

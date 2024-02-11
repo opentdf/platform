@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -36,19 +37,24 @@ const (
 )
 
 // Load config with viper.
-func LoadConfig() (*Config, error) {
+func LoadConfig(key string) (*Config, error) {
+	if key == "" {
+		slog.Info("config key not provided, using default")
+		key = "opentdf"
+	}
+
 	config := &Config{}
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
-	viper.AddConfigPath(fmt.Sprintf("%s/.opentdf", homedir))
-	viper.AddConfigPath(".opentdf")
+	viper.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
+	viper.AddConfigPath("." + key)
 	viper.AddConfigPath(".")
-	viper.SetConfigName("opentdf")
+	viper.SetConfigName(key)
 	viper.SetConfigType("yaml")
 
-	viper.SetEnvPrefix("opentdf")
+	viper.SetEnvPrefix(key)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 

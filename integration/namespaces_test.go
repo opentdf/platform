@@ -79,6 +79,13 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
+func (s *NamespacesSuite) Test_GetNamespace_DoesNotExist_ShouldFail() {
+	ns, err := s.db.Client.GetNamespace(s.ctx, nonExistentNamespaceId)
+	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+	assert.Nil(s.T(), ns)
+}
+
 func (s *NamespacesSuite) Test_ListNamespaces() {
 	testData := getNamespaceFixtures()
 
@@ -112,14 +119,22 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	assert.ErrorIs(s.T(), e, db.ErrUniqueConstraintViolation)
 }
 
+func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
+	ns, err := s.db.Client.UpdateNamespace(s.ctx, nonExistentNamespaceId, "new-namespace.com")
+	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+	assert.Nil(s.T(), ns)
+}
+
 func (s *NamespacesSuite) Test_DeleteNamespace() {
 	testData := getNamespaceFixtures()
 
 	// Deletion should fail when the namespace is referenced as FK in attribute(s)
 	for _, ns := range testData {
-		err := s.db.Client.DeleteNamespace(s.ctx, ns.Id)
+		deleted, err := s.db.Client.DeleteNamespace(s.ctx, ns.Id)
 		assert.NotNil(s.T(), err)
 		assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
+		assert.Nil(s.T(), deleted)
 	}
 
 	// Deletion should succeed when NOT referenced as FK in attribute(s)
@@ -127,8 +142,9 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "", newNamespaceId)
 
-	err = s.db.Client.DeleteNamespace(s.ctx, newNamespaceId)
+	deleted, err := s.db.Client.DeleteNamespace(s.ctx, newNamespaceId)
 	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), deleted)
 
 	// Deleted namespace should not be found on List
 	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
@@ -141,6 +157,13 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 	// Deleted namespace should not be found on Get
 	_, err = s.db.Client.GetNamespace(s.ctx, newNamespaceId)
 	assert.NotNil(s.T(), err)
+}
+
+func (s *NamespacesSuite) Test_DeleteNamespace_DoesNotExist_ShouldFail() {
+	ns, err := s.db.Client.DeleteNamespace(s.ctx, nonExistentNamespaceId)
+	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+	assert.Nil(s.T(), ns)
 }
 
 func TestNamespacesSuite(t *testing.T) {

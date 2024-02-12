@@ -1,0 +1,331 @@
+syntax = "proto3";
+
+package resourcemapping;
+
+import "attributes/attributes.proto";
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/api/annotations.proto";
+
+/*
+   # Resource Mappings (aka Access Control Resource Encodings aka ACRE):  Structures supporting Resources and Attributes mappings
+
+   ## Examples
+
+   ### Where
+
+   attributeId is an id of the following attribute
+
+     FQN: http://demo.com/attr/Classification/value/Confidential
+     UUID: 12345678-1234-1234-1234-123456789012
+
+   ### Request
+
+     grpcurl -plaintext -d @ localhost:9000 resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM
+       {
+         "mapping": {
+           "name": "Classification",
+           "attribute_value_id": "12345678-1234-1234-1234-123456789012",
+           "terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+         }
+       }
+     EOM
+
+   ### Response
+
+     {
+       "mapping": {
+         "metadata": {
+           "id": "12345678-1234-1234-1234-123456789012",
+           "created_at": "2020-01-01T00:00:00Z",
+           "updated_at": "2020-01-01T00:00:00Z"
+         },
+         "name": "Classification",
+         "attribute_value_id": "12345678-1234-1234-1234-123456789012",
+         "terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+       }
+     }
+
+*/
+message ResourceMapping {
+  string id = 1;
+
+  common.Metadata metadata = 2;
+
+  attributes.Value attribute_value = 3 [(buf.validate.field).required = true];
+
+  repeated string terms = 4;
+}
+
+message ResourceMappingCreateUpdate {
+  common.MetadataMutable metadata = 1;
+
+  string attribute_value_id = 2;
+
+  repeated string terms = 3;
+}
+
+/*
+   Resource Mappings
+*/
+
+message ListResourceMappingsRequest {}
+
+message ListResourceMappingsResponse {
+  repeated ResourceMapping resource_mappings = 1;
+}
+
+message GetResourceMappingRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message GetResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
+
+message CreateResourceMappingRequest {
+  ResourceMappingCreateUpdate resource_mapping = 1 [(buf.validate.field).required = true];
+}
+message CreateResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
+
+message UpdateResourceMappingRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  ResourceMappingCreateUpdate resource_mapping = 2 [(buf.validate.field).required = true];
+}
+message UpdateResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
+
+message DeleteResourceMappingRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeleteResourceMappingResponse {
+  ResourceMapping resource_mapping = 1;
+}
+
+service ResourceMappingService {
+  /*
+     Resource Mappings
+  */
+  /*
+     Request Example:
+     - empty body
+
+     Response Example:
+     {
+       "resource_mappings": [
+           {
+               "terms": [
+                   "TOPSECRET",
+                   "TS",
+               ],
+               "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+               "metadata": {
+                   "labels": [],
+                   "created_at": {
+                       "seconds": "1706103276",
+                       "nanos": 510718000
+                   },
+                   "updated_at": {
+                       "seconds": "1706107873",
+                       "nanos": 399786000
+                   },
+                   "description": ""
+               },
+               "attribute_value": {
+                   "members": [],
+                   "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+                   "metadata": null,
+                   "attribute_id": "",
+                   "value": "value1"
+               }
+           }
+       ]
+     }
+  */
+  rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
+    option (google.api.http) = {get: "/resource-mappings"};
+  }
+
+  /*
+     Request Example:
+     {
+       "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e"
+     }
+
+     Response Example:
+     {
+       "resource_mapping": {
+         "terms": [
+             "TOPSECRET",
+             "TS",
+         ],
+         "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+         "metadata": {
+             "labels": [],
+             "created_at": {
+                 "seconds": "1706103276",
+                 "nanos": 510718000
+             },
+             "updated_at": {
+                 "seconds": "1706107873",
+                 "nanos": 399786000
+             },
+             "description": ""
+         },
+         "attribute_value": {
+             "members": [],
+             "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+             "metadata": null,
+             "attribute_id": "",
+             "value": "value1"
+         }
+       }
+     }
+  */
+  rpc GetResourceMapping(GetResourceMappingRequest) returns (GetResourceMappingResponse) {
+    option (google.api.http) = {get: "/resource-mappings/{id}"};
+  }
+
+  /*
+     Request Example:
+     {
+       "resource_mapping": {
+         "attribute_value_id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+         "terms": [
+             "TOPSECRET",
+             "TS",
+         ]
+       }
+     }
+
+     Response Example:
+     {
+       "resource_mapping": {
+         "terms": [
+             "TOPSECRET",
+             "TS",
+         ],
+         "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+         "metadata": {
+             "labels": [],
+             "created_at": {
+                 "seconds": "1706103276",
+                 "nanos": 510718000
+             },
+             "updated_at": {
+                 "seconds": "1706107873",
+                 "nanos": 399786000
+             },
+             "description": ""
+         },
+         "attribute_value": {
+             "members": [],
+             "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+             "metadata": null,
+             "attribute_id": "",
+             "value": "value1"
+         }
+       }
+     }
+  */
+  rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {
+    option (google.api.http) = {
+      post: "/resource-mappings"
+      body: "resource_mapping"
+    };
+  }
+
+  /*
+     Request Example:
+     {
+       "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+       "resource_mapping": {
+         "attribute_value_id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+         "terms": [
+             "TOPSECRET",
+             "TS",
+             "NEWTERM"
+         ]
+       }
+     }
+
+     Response Example:
+     {
+       "resource_mapping": {
+         "terms": [
+             "TOPSECRET",
+             "TS",
+         ],
+         "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+         "metadata": {
+             "labels": [],
+             "created_at": {
+                 "seconds": "1706103276",
+                 "nanos": 510718000
+             },
+             "updated_at": {
+                 "seconds": "1706107873",
+                 "nanos": 399786000
+             },
+             "description": ""
+         },
+         "attribute_value": {
+             "members": [],
+             "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+             "metadata": null,
+             "attribute_id": "",
+             "value": "value1"
+         }
+       }
+     }
+  */
+  rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
+    option (google.api.http) = {
+      post: "/resource-mappings/{id}"
+      body: "resource_mapping"
+    };
+  }
+
+  /*
+     Request Example:
+     {
+       "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e"
+     }
+
+     Response Example:
+     {
+       "resource_mapping": {
+         "terms": [
+             "TOPSECRET",
+             "TS",
+         ],
+         "id": "3c649464-95b4-4fe0-a09c-ca4b1fecbb0e",
+         "metadata": {
+             "labels": [],
+             "created_at": {
+                 "seconds": "1706103276",
+                 "nanos": 510718000
+             },
+             "updated_at": {
+                 "seconds": "1706107873",
+                 "nanos": 399786000
+             },
+             "description": ""
+         },
+         "attribute_value": {
+             "members": [],
+             "id": "f0d1d4f6-bff9-45fd-8170-607b6b559349",
+             "metadata": null,
+             "attribute_id": "",
+             "value": "value1"
+         }
+       }
+     }
+  */
+  rpc DeleteResourceMapping(DeleteResourceMappingRequest) returns (DeleteResourceMappingResponse) {
+    option (google.api.http) = {delete: "/resource-mappings/{id}"};
+  }
+}

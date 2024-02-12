@@ -3,10 +3,11 @@ package sdk
 import (
 	"errors"
 
-	"github.com/opentdf/opentdf-v2-poc/sdk/acre"
-	"github.com/opentdf/opentdf-v2-poc/sdk/acse"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/keyaccessgrants"
+	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
+	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
+	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -23,11 +24,12 @@ func (c Error) Error() string {
 }
 
 type SDK struct {
-	conn             *grpc.ClientConn
-	Attributes       attributes.AttributesServiceClient
-	ResourceEncoding acre.ResourcEncodingServiceClient
-	SubjectEncoding  acse.SubjectEncodingServiceClient
-	KeyAccessGrants  keyaccessgrants.KeyAccessGrantsServiceClient
+	conn                    *grpc.ClientConn
+	Namespaces              namespaces.NamespaceServiceClient
+	Attributes              attributes.AttributesServiceClient
+	ResourceMapping         resourcemapping.ResourceMappingServiceClient
+	SubjectMapping          subjectmapping.SubjectMappingServiceClient
+	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -46,17 +48,14 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}
 
-	return newSDK(conn), nil
-}
-
-func newSDK(conn *grpc.ClientConn) *SDK {
 	return &SDK{
-		conn:             conn,
-		Attributes:       attributes.NewAttributesServiceClient(conn),
-		ResourceEncoding: acre.NewResourcEncodingServiceClient(conn),
-		SubjectEncoding:  acse.NewSubjectEncodingServiceClient(conn),
-		KeyAccessGrants:  keyaccessgrants.NewKeyAccessGrantsServiceClient(conn),
-	}
+		conn:                    conn,
+		Attributes:              attributes.NewAttributesServiceClient(conn),
+		Namespaces:              namespaces.NewNamespaceServiceClient(conn),
+		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(conn),
+		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(conn),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(conn),
+	}, nil
 }
 
 // Close closes the underlying grpc.ClientConn.

@@ -1,0 +1,4599 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Protocol Documentation</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Ubuntu:400,700,400italic"/>
+    <style>
+      body {
+        width: 60em;
+        margin: 1em auto;
+        color: #222;
+        font-family: "Ubuntu", sans-serif;
+        padding-bottom: 4em;
+      }
+
+      h1 {
+        font-weight: normal;
+        border-bottom: 1px solid #aaa;
+        padding-bottom: 0.5ex;
+      }
+
+      h2 {
+        border-bottom: 1px solid #aaa;
+        padding-bottom: 0.5ex;
+        margin: 1.5em 0;
+      }
+
+      h3 {
+        font-weight: normal;
+        border-bottom: 1px solid #aaa;
+        padding-bottom: 0.5ex;
+      }
+
+      a {
+        text-decoration: none;
+        color: #567e25;
+      }
+
+      table {
+        width: 100%;
+        font-size: 80%;
+        border-collapse: collapse;
+      }
+
+      thead {
+        font-weight: 700;
+        background-color: #dcdcdc;
+      }
+
+      tbody tr:nth-child(even) {
+        background-color: #fbfbfb;
+      }
+
+      td {
+        border: 1px solid #ccc;
+        padding: 0.5ex 2ex;
+      }
+
+      td p {
+        text-indent: 1em;
+        margin: 0;
+      }
+
+      td p:nth-child(1) {
+        text-indent: 0;  
+      }
+
+       
+      .field-table td:nth-child(1) {  
+        width: 10em;
+      }
+      .field-table td:nth-child(2) {  
+        width: 10em;
+      }
+      .field-table td:nth-child(3) {  
+        width: 6em;
+      }
+      .field-table td:nth-child(4) {  
+        width: auto;
+      }
+
+       
+      .extension-table td:nth-child(1) {  
+        width: 10em;
+      }
+      .extension-table td:nth-child(2) {  
+        width: 10em;
+      }
+      .extension-table td:nth-child(3) {  
+        width: 10em;
+      }
+      .extension-table td:nth-child(4) {  
+        width: 5em;
+      }
+      .extension-table td:nth-child(5) {  
+        width: auto;
+      }
+
+       
+      .enum-table td:nth-child(1) {  
+        width: 10em;
+      }
+      .enum-table td:nth-child(2) {  
+        width: 10em;
+      }
+      .enum-table td:nth-child(3) {  
+        width: auto;
+      }
+
+       
+      .scalar-value-types-table tr {
+        height: 3em;
+      }
+
+       
+      #toc-container ul {
+        list-style-type: none;
+        padding-left: 1em;
+        line-height: 180%;
+        margin: 0;
+      }
+      #toc > li > a {
+        font-weight: bold;
+      }
+
+       
+      .file-heading {
+        width: 100%;
+        display: table;
+        border-bottom: 1px solid #aaa;
+        margin: 4em 0 1.5em 0;
+      }
+      .file-heading h2 {
+        border: none;
+        display: table-cell;
+      }
+      .file-heading a {
+        text-align: right;
+        display: table-cell;
+      }
+
+       
+      .badge {
+        width: 1.6em;
+        height: 1.6em;
+        display: inline-block;
+
+        line-height: 1.6em;
+        text-align: center;
+        font-weight: bold;
+        font-size: 60%;
+
+        color: #89ba48;
+        background-color: #dff0c8;
+
+        margin: 0.5ex 1em 0.5ex -1em;
+        border: 1px solid #fbfbfb;
+        border-radius: 1ex;
+      }
+    </style>
+
+    
+    <link rel="stylesheet" type="text/css" href="stylesheet.css"/>
+  </head>
+
+  <body>
+
+    <h1 id="title">Protocol Documentation</h1>
+
+    <h2>Table of Contents</h2>
+
+    <div id="toc-container">
+      <ul id="toc">
+        
+          
+          <li>
+            <a href="#common%2fcommon.proto">common/common.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#common.ResourceDependency"><span class="badge">M</span>ResourceDependency</a>
+                </li>
+              
+                <li>
+                  <a href="#common.ResourceDescriptor"><span class="badge">M</span>ResourceDescriptor</a>
+                </li>
+              
+                <li>
+                  <a href="#common.ResourceDescriptor.LabelsEntry"><span class="badge">M</span>ResourceDescriptor.LabelsEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#common.ResourceSelector"><span class="badge">M</span>ResourceSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#common.ResourceSelector.LabelSelector"><span class="badge">M</span>ResourceSelector.LabelSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#common.ResourceSelector.LabelSelector.LabelsEntry"><span class="badge">M</span>ResourceSelector.LabelSelector.LabelsEntry</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#common.PolicyResourceType"><span class="badge">E</span>PolicyResourceType</a>
+                </li>
+              
+              
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#attributes%2fattributes.proto">attributes/attributes.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#attributes.AttributeDefinition"><span class="badge">M</span>AttributeDefinition</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.AttributeDefinitionReference"><span class="badge">M</span>AttributeDefinitionReference</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.AttributeDefinitionValue"><span class="badge">M</span>AttributeDefinitionValue</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.AttributeGroup"><span class="badge">M</span>AttributeGroup</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.AttributeSet"><span class="badge">M</span>AttributeSet</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.AttributeValueReference"><span class="badge">M</span>AttributeValueReference</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.CreateAttributeGroupRequest"><span class="badge">M</span>CreateAttributeGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.CreateAttributeGroupResponse"><span class="badge">M</span>CreateAttributeGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.CreateAttributeRequest"><span class="badge">M</span>CreateAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.CreateAttributeResponse"><span class="badge">M</span>CreateAttributeResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.DeleteAttributeGroupRequest"><span class="badge">M</span>DeleteAttributeGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.DeleteAttributeGroupResponse"><span class="badge">M</span>DeleteAttributeGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.DeleteAttributeRequest"><span class="badge">M</span>DeleteAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.DeleteAttributeResponse"><span class="badge">M</span>DeleteAttributeResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.GetAttributeGroupRequest"><span class="badge">M</span>GetAttributeGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.GetAttributeGroupResponse"><span class="badge">M</span>GetAttributeGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.GetAttributeRequest"><span class="badge">M</span>GetAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.GetAttributeResponse"><span class="badge">M</span>GetAttributeResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.ListAttributeGroupsRequest"><span class="badge">M</span>ListAttributeGroupsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.ListAttributeGroupsResponse"><span class="badge">M</span>ListAttributeGroupsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.ListAttributesRequest"><span class="badge">M</span>ListAttributesRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.ListAttributesResponse"><span class="badge">M</span>ListAttributesResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.UpdateAttributeGroupRequest"><span class="badge">M</span>UpdateAttributeGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.UpdateAttributeGroupResponse"><span class="badge">M</span>UpdateAttributeGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.UpdateAttributeRequest"><span class="badge">M</span>UpdateAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#attributes.UpdateAttributeResponse"><span class="badge">M</span>UpdateAttributeResponse</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#attributes.AttributeDefinition.AttributeRuleType"><span class="badge">E</span>AttributeDefinition.AttributeRuleType</a>
+                </li>
+              
+              
+              
+                <li>
+                  <a href="#attributes.AttributesService"><span class="badge">S</span>AttributesService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#acre%2facre.proto">acre/acre.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#acre.CreateResourceGroupRequest"><span class="badge">M</span>CreateResourceGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.CreateResourceGroupResponse"><span class="badge">M</span>CreateResourceGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.CreateResourceMappingRequest"><span class="badge">M</span>CreateResourceMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.CreateResourceMappingResponse"><span class="badge">M</span>CreateResourceMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.CreateResourceSynonymRequest"><span class="badge">M</span>CreateResourceSynonymRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.CreateResourceSynonymResponse"><span class="badge">M</span>CreateResourceSynonymResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.DeleteResourceGroupRequest"><span class="badge">M</span>DeleteResourceGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.DeleteResourceGroupResponse"><span class="badge">M</span>DeleteResourceGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.DeleteResourceMappingRequest"><span class="badge">M</span>DeleteResourceMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.DeleteResourceMappingResponse"><span class="badge">M</span>DeleteResourceMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.DeleteResourceSynonymRequest"><span class="badge">M</span>DeleteResourceSynonymRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.DeleteResourceSynonymResponse"><span class="badge">M</span>DeleteResourceSynonymResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.GetResourceGroupRequest"><span class="badge">M</span>GetResourceGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.GetResourceGroupResponse"><span class="badge">M</span>GetResourceGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.GetResourceMappingRequest"><span class="badge">M</span>GetResourceMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.GetResourceMappingResponse"><span class="badge">M</span>GetResourceMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.GetResourceSynonymRequest"><span class="badge">M</span>GetResourceSynonymRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.GetResourceSynonymResponse"><span class="badge">M</span>GetResourceSynonymResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ListResourceGroupsRequest"><span class="badge">M</span>ListResourceGroupsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ListResourceGroupsResponse"><span class="badge">M</span>ListResourceGroupsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ListResourceMappingsRequest"><span class="badge">M</span>ListResourceMappingsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ListResourceMappingsResponse"><span class="badge">M</span>ListResourceMappingsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ListResourceSynonymsRequest"><span class="badge">M</span>ListResourceSynonymsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ListResourceSynonymsResponse"><span class="badge">M</span>ListResourceSynonymsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ResourceEncodingRequestOptions"><span class="badge">M</span>ResourceEncodingRequestOptions</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ResourceGroup"><span class="badge">M</span>ResourceGroup</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ResourceMapping"><span class="badge">M</span>ResourceMapping</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.ResourceMappingRef"><span class="badge">M</span>ResourceMappingRef</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.SynonymRef"><span class="badge">M</span>SynonymRef</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.Synonyms"><span class="badge">M</span>Synonyms</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.UpdateResourceGroupRequest"><span class="badge">M</span>UpdateResourceGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.UpdateResourceGroupResponse"><span class="badge">M</span>UpdateResourceGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.UpdateResourceMappingRequest"><span class="badge">M</span>UpdateResourceMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.UpdateResourceMappingResponse"><span class="badge">M</span>UpdateResourceMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.UpdateResourceSynonymRequest"><span class="badge">M</span>UpdateResourceSynonymRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acre.UpdateResourceSynonymResponse"><span class="badge">M</span>UpdateResourceSynonymResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#acre.ResourceEncodingService"><span class="badge">S</span>ResourceEncodingService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#acse%2facse.proto">acse/acse.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#acse.CreateSubjectMappingRequest"><span class="badge">M</span>CreateSubjectMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.CreateSubjectMappingResponse"><span class="badge">M</span>CreateSubjectMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.DeleteSubjectMappingRequest"><span class="badge">M</span>DeleteSubjectMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.DeleteSubjectMappingResponse"><span class="badge">M</span>DeleteSubjectMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.GetSubjectMappingRequest"><span class="badge">M</span>GetSubjectMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.GetSubjectMappingResponse"><span class="badge">M</span>GetSubjectMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.ListSubjectMappingsRequest"><span class="badge">M</span>ListSubjectMappingsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.ListSubjectMappingsResponse"><span class="badge">M</span>ListSubjectMappingsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.SubjectMapping"><span class="badge">M</span>SubjectMapping</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.UpdateSubjectMappingRequest"><span class="badge">M</span>UpdateSubjectMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#acse.UpdateSubjectMappingResponse"><span class="badge">M</span>UpdateSubjectMappingResponse</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#acse.SubjectMapping.Operator"><span class="badge">E</span>SubjectMapping.Operator</a>
+                </li>
+              
+              
+              
+                <li>
+                  <a href="#acse.SubjectEncodingService"><span class="badge">S</span>SubjectEncodingService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#authorization%2fauthorization.proto">authorization/authorization.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#authorization.Action"><span class="badge">M</span>Action</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.DecisionRequest"><span class="badge">M</span>DecisionRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.DecisionResponse"><span class="badge">M</span>DecisionResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.Entity"><span class="badge">M</span>Entity</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.EntityChain"><span class="badge">M</span>EntityChain</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.EntityCustom"><span class="badge">M</span>EntityCustom</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.EntityEntitlements"><span class="badge">M</span>EntityEntitlements</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.GetDecisionsRequest"><span class="badge">M</span>GetDecisionsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.GetDecisionsResponse"><span class="badge">M</span>GetDecisionsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.GetEntitlementsRequest"><span class="badge">M</span>GetEntitlementsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.GetEntitlementsResponse"><span class="badge">M</span>GetEntitlementsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.ResourceAttributes"><span class="badge">M</span>ResourceAttributes</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#authorization.Action.StandardAction"><span class="badge">E</span>Action.StandardAction</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.DecisionResponse.Decision"><span class="badge">E</span>DecisionResponse.Decision</a>
+                </li>
+              
+              
+              
+                <li>
+                  <a href="#authorization.AuthorizationService"><span class="badge">S</span>AuthorizationService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#keyaccessgrants%2fkey_access_grants.proto">keyaccessgrants/key_access_grants.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#keyaccessgrants.CreateKeyAccessGrantsRequest"><span class="badge">M</span>CreateKeyAccessGrantsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.CreateKeyAccessGrantsResponse"><span class="badge">M</span>CreateKeyAccessGrantsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.DeleteKeyAccessGrantsRequest"><span class="badge">M</span>DeleteKeyAccessGrantsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.DeleteKeyAccessGrantsResponse"><span class="badge">M</span>DeleteKeyAccessGrantsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.GetKeyAccessGrantRequest"><span class="badge">M</span>GetKeyAccessGrantRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.GetKeyAccessGrantResponse"><span class="badge">M</span>GetKeyAccessGrantResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.KeyAccessGrant"><span class="badge">M</span>KeyAccessGrant</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.KeyAccessGrantAttributeValue"><span class="badge">M</span>KeyAccessGrantAttributeValue</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.KeyAccessGrants"><span class="badge">M</span>KeyAccessGrants</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.KeyAccessServer"><span class="badge">M</span>KeyAccessServer</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.ListKeyAccessGrantsRequest"><span class="badge">M</span>ListKeyAccessGrantsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.ListKeyAccessGrantsResponse"><span class="badge">M</span>ListKeyAccessGrantsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.UpdateKeyAccessGrantsRequest"><span class="badge">M</span>UpdateKeyAccessGrantsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#keyaccessgrants.UpdateKeyAccessGrantsResponse"><span class="badge">M</span>UpdateKeyAccessGrantsResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#keyaccessgrants.KeyAccessGrantsService"><span class="badge">S</span>KeyAccessGrantsService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+        <li><a href="#scalar-value-types">Scalar Value Types</a></li>
+      </ul>
+    </div>
+
+    
+      
+      <div class="file-heading">
+        <h2 id="common/common.proto">common/common.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="common.ResourceDependency">ResourceDependency</h3>
+        <p>Define a resource dependency</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>namespace of referenced resource </p></td>
+                </tr>
+              
+                <tr>
+                  <td>version</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>version of reference resource </p></td>
+                </tr>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#common.PolicyResourceType">PolicyResourceType</a></td>
+                  <td></td>
+                  <td><p>type of dependency </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.ResourceDescriptor">ResourceDescriptor</h3>
+        <p>Struct to uniquely identify a resource with optional additional metadata</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#common.PolicyResourceType">PolicyResourceType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>unique resource identifier </p></td>
+                </tr>
+              
+                <tr>
+                  <td>version</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>resource version </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>resource name </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>resource namespace; used to partition resources, support by namespace AuthN and enable federation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>optional fully qualified name of the resource.  FQN is used to support direct references and to eliminate the need
+for clients to compose an FQN at run time.
+
+the fqn may be specific to the resource type. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>labels</td>
+                  <td><a href="#common.ResourceDescriptor.LabelsEntry">ResourceDescriptor.LabelsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>optional short description / label </p></td>
+                </tr>
+              
+                <tr>
+                  <td>description</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>optional long description </p></td>
+                </tr>
+              
+                <tr>
+                  <td>dependencies</td>
+                  <td><a href="#common.ResourceDependency">ResourceDependency</a></td>
+                  <td>repeated</td>
+                  <td><p>optional list of resource dependencies </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.ResourceDescriptor.LabelsEntry">ResourceDescriptor.LabelsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.ResourceSelector">ResourceSelector</h3>
+        <p>Define a resource selector</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>namespace of referenced resource </p></td>
+                </tr>
+              
+                <tr>
+                  <td>version</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>version of reference resource </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>name of referenced resource </p></td>
+                </tr>
+              
+                <tr>
+                  <td>label_selector</td>
+                  <td><a href="#common.ResourceSelector.LabelSelector">ResourceSelector.LabelSelector</a></td>
+                  <td></td>
+                  <td><p>labels to match a against a resource </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.ResourceSelector.LabelSelector">ResourceSelector.LabelSelector</h3>
+        <p>Define a label selector</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>labels</td>
+                  <td><a href="#common.ResourceSelector.LabelSelector.LabelsEntry">ResourceSelector.LabelSelector.LabelsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>labels to match a against a resource </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.ResourceSelector.LabelSelector.LabelsEntry">ResourceSelector.LabelSelector.LabelsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+        <h3 id="common.PolicyResourceType">PolicyResourceType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_RESOURCE_ENCODING</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING</td>
+                <td>5</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_KEY_ACCESS</td>
+                <td>6</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION</td>
+                <td>7</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP</td>
+                <td>8</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS</td>
+                <td>9</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
+    
+      
+      <div class="file-heading">
+        <h2 id="attributes/attributes.proto">attributes/attributes.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="attributes.AttributeDefinition">AttributeDefinition</h3>
+        <p>Attribute Definition</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>attribute name </p></td>
+                </tr>
+              
+                <tr>
+                  <td>rule</td>
+                  <td><a href="#attributes.AttributeDefinition.AttributeRuleType">AttributeDefinition.AttributeRuleType</a></td>
+                  <td></td>
+                  <td><p>attribute rule enum </p></td>
+                </tr>
+              
+                <tr>
+                  <td>values</td>
+                  <td><a href="#attributes.AttributeDefinitionValue">AttributeDefinitionValue</a></td>
+                  <td>repeated</td>
+                  <td><p>possible values </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group_by</td>
+                  <td><a href="#attributes.AttributeDefinitionValue">AttributeDefinitionValue</a></td>
+                  <td>repeated</td>
+                  <td><p>optional attribute group by filtering rules </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.AttributeDefinitionReference">AttributeDefinitionReference</h3>
+        <p>Reference to an attribute value, one of descriptor or embedded value</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>definition</td>
+                  <td><a href="#attributes.AttributeDefinition">AttributeDefinition</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.AttributeDefinitionValue">AttributeDefinitionValue</h3>
+        <p>Definition of a single attribute value</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>TODO - optional lock down pub key format if needed.  Per ATTR KEY? </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.AttributeGroup">AttributeGroup</h3>
+        <p>represent an attribute value as a group with other attribute values as members</p><p>Example for Org1 FVEY:</p><p>id: 1</p><p>version: 1.0</p><p>namespace: demo.com</p><p>groupValue: http://demo.com/attr/relTo/FVEY</p><p>members: [http://demo.com/attr/relTo/USA,http://demo.com/attr/relTo/GBR,...]</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group_value</td>
+                  <td><a href="#attributes.AttributeValueReference">AttributeValueReference</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>member_values</td>
+                  <td><a href="#attributes.AttributeValueReference">AttributeValueReference</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.AttributeSet">AttributeSet</h3>
+        <p>Just a set of attributes</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>definitions</td>
+                  <td><a href="#attributes.AttributeDefinition">AttributeDefinition</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.AttributeValueReference">AttributeValueReference</h3>
+        <p>Reference to an attribute value, one of descriptor or embedded value</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value</td>
+                  <td><a href="#attributes.AttributeDefinitionValue">AttributeDefinitionValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.CreateAttributeGroupRequest">CreateAttributeGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#attributes.AttributeGroup">AttributeGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.CreateAttributeGroupResponse">CreateAttributeGroupResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="attributes.CreateAttributeRequest">CreateAttributeRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>definition</td>
+                  <td><a href="#attributes.AttributeDefinition">AttributeDefinition</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.CreateAttributeResponse">CreateAttributeResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="attributes.DeleteAttributeGroupRequest">DeleteAttributeGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.DeleteAttributeGroupResponse">DeleteAttributeGroupResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="attributes.DeleteAttributeRequest">DeleteAttributeRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.DeleteAttributeResponse">DeleteAttributeResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="attributes.GetAttributeGroupRequest">GetAttributeGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.GetAttributeGroupResponse">GetAttributeGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#attributes.AttributeGroup">AttributeGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.GetAttributeRequest">GetAttributeRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.GetAttributeResponse">GetAttributeResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>definition</td>
+                  <td><a href="#attributes.AttributeDefinition">AttributeDefinition</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.ListAttributeGroupsRequest">ListAttributeGroupsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>selector</td>
+                  <td><a href="#common.ResourceSelector">common.ResourceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.ListAttributeGroupsResponse">ListAttributeGroupsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>groups</td>
+                  <td><a href="#attributes.AttributeGroup">AttributeGroup</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.ListAttributesRequest">ListAttributesRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>selector</td>
+                  <td><a href="#common.ResourceSelector">common.ResourceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.ListAttributesResponse">ListAttributesResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>definitions</td>
+                  <td><a href="#attributes.AttributeDefinition">AttributeDefinition</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.UpdateAttributeGroupRequest">UpdateAttributeGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#attributes.AttributeGroup">AttributeGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.UpdateAttributeGroupResponse">UpdateAttributeGroupResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="attributes.UpdateAttributeRequest">UpdateAttributeRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>definition</td>
+                  <td><a href="#attributes.AttributeDefinition">AttributeDefinition</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="attributes.UpdateAttributeResponse">UpdateAttributeResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+
+      
+        <h3 id="attributes.AttributeDefinition.AttributeRuleType">AttributeDefinition.AttributeRuleType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ATTRIBUTE_RULE_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ATTRIBUTE_RULE_TYPE_ALL_OF</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ATTRIBUTE_RULE_TYPE_ANY_OF</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ATTRIBUTE_RULE_TYPE_HIERARCHICAL</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
+        <h3 id="attributes.AttributesService">AttributesService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>GetAttribute</td>
+                <td><a href="#attributes.GetAttributeRequest">GetAttributeRequest</a></td>
+                <td><a href="#attributes.GetAttributeResponse">GetAttributeResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetAttributeGroup</td>
+                <td><a href="#attributes.GetAttributeGroupRequest">GetAttributeGroupRequest</a></td>
+                <td><a href="#attributes.GetAttributeGroupResponse">GetAttributeGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListAttributes</td>
+                <td><a href="#attributes.ListAttributesRequest">ListAttributesRequest</a></td>
+                <td><a href="#attributes.ListAttributesResponse">ListAttributesResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListAttributeGroups</td>
+                <td><a href="#attributes.ListAttributeGroupsRequest">ListAttributeGroupsRequest</a></td>
+                <td><a href="#attributes.ListAttributeGroupsResponse">ListAttributeGroupsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateAttribute</td>
+                <td><a href="#attributes.CreateAttributeRequest">CreateAttributeRequest</a></td>
+                <td><a href="#attributes.CreateAttributeResponse">CreateAttributeResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateAttributeGroup</td>
+                <td><a href="#attributes.CreateAttributeGroupRequest">CreateAttributeGroupRequest</a></td>
+                <td><a href="#attributes.CreateAttributeGroupResponse">CreateAttributeGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateAttribute</td>
+                <td><a href="#attributes.UpdateAttributeRequest">UpdateAttributeRequest</a></td>
+                <td><a href="#attributes.UpdateAttributeResponse">UpdateAttributeResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateAttributeGroup</td>
+                <td><a href="#attributes.UpdateAttributeGroupRequest">UpdateAttributeGroupRequest</a></td>
+                <td><a href="#attributes.UpdateAttributeGroupResponse">UpdateAttributeGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteAttribute</td>
+                <td><a href="#attributes.DeleteAttributeRequest">DeleteAttributeRequest</a></td>
+                <td><a href="#attributes.DeleteAttributeResponse">DeleteAttributeResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteAttributeGroup</td>
+                <td><a href="#attributes.DeleteAttributeGroupRequest">DeleteAttributeGroupRequest</a></td>
+                <td><a href="#attributes.DeleteAttributeGroupResponse">DeleteAttributeGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>GetAttribute</td>
+                <td>GET</td>
+                <td>/v1/attribute/definitions/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetAttributeGroup</td>
+                <td>GET</td>
+                <td>/v1/attribute/groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ListAttributes</td>
+                <td>GET</td>
+                <td>/v1/attribute/definitions</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ListAttributeGroups</td>
+                <td>GET</td>
+                <td>/v1/attribute/groups</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateAttribute</td>
+                <td>POST</td>
+                <td>/v1/attributes/definitions</td>
+                <td>definition</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateAttributeGroup</td>
+                <td>POST</td>
+                <td>/v1/attributes/groups</td>
+                <td>group</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateAttribute</td>
+                <td>POST</td>
+                <td>/v1/attribute/definitions/{id}</td>
+                <td>definition</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateAttributeGroup</td>
+                <td>POST</td>
+                <td>/v1/attribute/groups/{id}</td>
+                <td>group</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteAttribute</td>
+                <td>DELETE</td>
+                <td>/v1/attribute/definitions/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteAttributeGroup</td>
+                <td>DELETE</td>
+                <td>/v1/attribute/groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="acre/acre.proto">acre/acre.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="acre.CreateResourceGroupRequest">CreateResourceGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#acre.ResourceGroup">ResourceGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.CreateResourceGroupResponse">CreateResourceGroupResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acre.CreateResourceMappingRequest">CreateResourceMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>mapping</td>
+                  <td><a href="#acre.ResourceMapping">ResourceMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.CreateResourceMappingResponse">CreateResourceMappingResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acre.CreateResourceSynonymRequest">CreateResourceSynonymRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>synonym</td>
+                  <td><a href="#acre.Synonyms">Synonyms</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.CreateResourceSynonymResponse">CreateResourceSynonymResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acre.DeleteResourceGroupRequest">DeleteResourceGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.DeleteResourceGroupResponse">DeleteResourceGroupResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acre.DeleteResourceMappingRequest">DeleteResourceMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.DeleteResourceMappingResponse">DeleteResourceMappingResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acre.DeleteResourceSynonymRequest">DeleteResourceSynonymRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.DeleteResourceSynonymResponse">DeleteResourceSynonymResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acre.GetResourceGroupRequest">GetResourceGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.GetResourceGroupResponse">GetResourceGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#acre.ResourceGroup">ResourceGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.GetResourceMappingRequest">GetResourceMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.GetResourceMappingResponse">GetResourceMappingResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>mapping</td>
+                  <td><a href="#acre.ResourceMapping">ResourceMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.GetResourceSynonymRequest">GetResourceSynonymRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.GetResourceSynonymResponse">GetResourceSynonymResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>synonym</td>
+                  <td><a href="#acre.Synonyms">Synonyms</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ListResourceGroupsRequest">ListResourceGroupsRequest</h3>
+        <p>Resource Groups</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>selector</td>
+                  <td><a href="#common.ResourceSelector">common.ResourceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ListResourceGroupsResponse">ListResourceGroupsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>groups</td>
+                  <td><a href="#acre.ResourceGroup">ResourceGroup</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ListResourceMappingsRequest">ListResourceMappingsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>selector</td>
+                  <td><a href="#common.ResourceSelector">common.ResourceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ListResourceMappingsResponse">ListResourceMappingsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>mappings</td>
+                  <td><a href="#acre.ResourceMapping">ResourceMapping</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ListResourceSynonymsRequest">ListResourceSynonymsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>selector</td>
+                  <td><a href="#common.ResourceSelector">common.ResourceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ListResourceSynonymsResponse">ListResourceSynonymsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>synonyms</td>
+                  <td><a href="#acre.Synonyms">Synonyms</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ResourceEncodingRequestOptions">ResourceEncodingRequestOptions</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ResourceGroup">ResourceGroup</h3>
+        <p>represents modeling an resource code/tag as a group . Use if not in the bounds of an attribute</p><p>definition.  Otherwise use attributes.AttributeGroup</p><p>Example:</p><p>value: NATO</p><p>members: [USA, GBR, etc.]</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>group value </p></td>
+                </tr>
+              
+                <tr>
+                  <td>members</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>List of member values </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ResourceMapping">ResourceMapping</h3>
+        <p>Map one or more domain specific terms (synonyms) to an attribute value by reference.</p><p>Example:</p><p>attributeValueRef: ref http://demo.com/attr/Classification/value/Confidential</p><p>synonymRef:</p><p>terms: ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]</p><p>Example 2:</p><p>attributeValueRef: ref to http://demo.com/attr/Classification/Confidential</p><p>synonymRef:</p><p>terms: ["OFFICIAL-SENSITIVE"]</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_ref</td>
+                  <td><a href="#attributes.AttributeValueReference">attributes.AttributeValueReference</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>synonym_ref</td>
+                  <td><a href="#acre.SynonymRef">SynonymRef</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.ResourceMappingRef">ResourceMappingRef</h3>
+        <p>Reference to a ResourceMapping, one of descriptor or embedded value</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resource_mapping</td>
+                  <td><a href="#acre.ResourceMapping">ResourceMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.SynonymRef">SynonymRef</h3>
+        <p>Reference to a Synonyms, one of descriptor or embedded value</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>synonyms</td>
+                  <td><a href="#acre.Synonyms">Synonyms</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.Synonyms">Synonyms</h3>
+        <p>A modular set of terms that are the "same".  Could be used across resource mappings</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>terms</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.UpdateResourceGroupRequest">UpdateResourceGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#acre.ResourceGroup">ResourceGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.UpdateResourceGroupResponse">UpdateResourceGroupResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acre.UpdateResourceMappingRequest">UpdateResourceMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>mapping</td>
+                  <td><a href="#acre.ResourceMapping">ResourceMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.UpdateResourceMappingResponse">UpdateResourceMappingResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acre.UpdateResourceSynonymRequest">UpdateResourceSynonymRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>synonym</td>
+                  <td><a href="#acre.Synonyms">Synonyms</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acre.UpdateResourceSynonymResponse">UpdateResourceSynonymResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="acre.ResourceEncodingService">ResourceEncodingService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ListResourceMappings</td>
+                <td><a href="#acre.ListResourceMappingsRequest">ListResourceMappingsRequest</a></td>
+                <td><a href="#acre.ListResourceMappingsResponse">ListResourceMappingsResponse</a></td>
+                <td><p>Resource Mappings</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetResourceMapping</td>
+                <td><a href="#acre.GetResourceMappingRequest">GetResourceMappingRequest</a></td>
+                <td><a href="#acre.GetResourceMappingResponse">GetResourceMappingResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateResourceMapping</td>
+                <td><a href="#acre.CreateResourceMappingRequest">CreateResourceMappingRequest</a></td>
+                <td><a href="#acre.CreateResourceMappingResponse">CreateResourceMappingResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateResourceMapping</td>
+                <td><a href="#acre.UpdateResourceMappingRequest">UpdateResourceMappingRequest</a></td>
+                <td><a href="#acre.UpdateResourceMappingResponse">UpdateResourceMappingResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteResourceMapping</td>
+                <td><a href="#acre.DeleteResourceMappingRequest">DeleteResourceMappingRequest</a></td>
+                <td><a href="#acre.DeleteResourceMappingResponse">DeleteResourceMappingResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListResourceSynonyms</td>
+                <td><a href="#acre.ListResourceSynonymsRequest">ListResourceSynonymsRequest</a></td>
+                <td><a href="#acre.ListResourceSynonymsResponse">ListResourceSynonymsResponse</a></td>
+                <td><p>Synonyms</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetResourceSynonym</td>
+                <td><a href="#acre.GetResourceSynonymRequest">GetResourceSynonymRequest</a></td>
+                <td><a href="#acre.GetResourceSynonymResponse">GetResourceSynonymResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateResourceSynonym</td>
+                <td><a href="#acre.CreateResourceSynonymRequest">CreateResourceSynonymRequest</a></td>
+                <td><a href="#acre.CreateResourceSynonymResponse">CreateResourceSynonymResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateResourceSynonym</td>
+                <td><a href="#acre.UpdateResourceSynonymRequest">UpdateResourceSynonymRequest</a></td>
+                <td><a href="#acre.UpdateResourceSynonymResponse">UpdateResourceSynonymResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteResourceSynonym</td>
+                <td><a href="#acre.DeleteResourceSynonymRequest">DeleteResourceSynonymRequest</a></td>
+                <td><a href="#acre.DeleteResourceSynonymResponse">DeleteResourceSynonymResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListResourceGroups</td>
+                <td><a href="#acre.ListResourceGroupsRequest">ListResourceGroupsRequest</a></td>
+                <td><a href="#acre.ListResourceGroupsResponse">ListResourceGroupsResponse</a></td>
+                <td><p>Resource Groups</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetResourceGroup</td>
+                <td><a href="#acre.GetResourceGroupRequest">GetResourceGroupRequest</a></td>
+                <td><a href="#acre.GetResourceGroupResponse">GetResourceGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateResourceGroup</td>
+                <td><a href="#acre.CreateResourceGroupRequest">CreateResourceGroupRequest</a></td>
+                <td><a href="#acre.CreateResourceGroupResponse">CreateResourceGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateResourceGroup</td>
+                <td><a href="#acre.UpdateResourceGroupRequest">UpdateResourceGroupRequest</a></td>
+                <td><a href="#acre.UpdateResourceGroupResponse">UpdateResourceGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteResourceGroup</td>
+                <td><a href="#acre.DeleteResourceGroupRequest">DeleteResourceGroupRequest</a></td>
+                <td><a href="#acre.DeleteResourceGroupResponse">DeleteResourceGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>ListResourceMappings</td>
+                <td>GET</td>
+                <td>/v1/encoding/resource/mappings</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetResourceMapping</td>
+                <td>GET</td>
+                <td>/v1/encoding/resource/mappings/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateResourceMapping</td>
+                <td>POST</td>
+                <td>/v1/encoding/resource/mappings</td>
+                <td>mapping</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateResourceMapping</td>
+                <td>POST</td>
+                <td>/v1/encoding/resource/mappings/{id}</td>
+                <td>mapping</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteResourceMapping</td>
+                <td>DELETE</td>
+                <td>/v1/encoding/resource/mappings/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ListResourceSynonyms</td>
+                <td>GET</td>
+                <td>/v1/encoding/resource/synonyms</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetResourceSynonym</td>
+                <td>GET</td>
+                <td>/v1/encoding/resource/synonyms/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateResourceSynonym</td>
+                <td>POST</td>
+                <td>/v1/encoding/resource/synonyms</td>
+                <td>synonym</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateResourceSynonym</td>
+                <td>POST</td>
+                <td>/v1/encoding/resource/synonyms/{id}</td>
+                <td>synonym</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteResourceSynonym</td>
+                <td>DELETE</td>
+                <td>/v1/encoding/resource/synonyms/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ListResourceGroups</td>
+                <td>GET</td>
+                <td>/v1/encoding/resource/groups</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetResourceGroup</td>
+                <td>GET</td>
+                <td>/v1/encoding/resource/groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateResourceGroup</td>
+                <td>POST</td>
+                <td>/v1/encoding/resource/groups</td>
+                <td>group</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateResourceGroup</td>
+                <td>POST</td>
+                <td>/v1/encoding/resource/groups/{id}</td>
+                <td>group</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteResourceGroup</td>
+                <td>DELETE</td>
+                <td>/v1/encoding/resource/groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="acse/acse.proto">acse/acse.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="acse.CreateSubjectMappingRequest">CreateSubjectMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>subject_mapping</td>
+                  <td><a href="#acse.SubjectMapping">SubjectMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acse.CreateSubjectMappingResponse">CreateSubjectMappingResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acse.DeleteSubjectMappingRequest">DeleteSubjectMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acse.DeleteSubjectMappingResponse">DeleteSubjectMappingResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="acse.GetSubjectMappingRequest">GetSubjectMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acse.GetSubjectMappingResponse">GetSubjectMappingResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>subject_mapping</td>
+                  <td><a href="#acse.SubjectMapping">SubjectMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acse.ListSubjectMappingsRequest">ListSubjectMappingsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>selector</td>
+                  <td><a href="#common.ResourceSelector">common.ResourceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acse.ListSubjectMappingsResponse">ListSubjectMappingsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>subject_mappings</td>
+                  <td><a href="#acse.SubjectMapping">SubjectMapping</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acse.SubjectMapping">SubjectMapping</h3>
+        <p>Define a mapping of an subject attribute to subject using a rule:</p><p><subject.subjectAttribute> <operator IN/NOT_IN> [subjectValue]</p><p>Example subject mapping of a subject with nationality = CZE entitled to attribute relto:ZCE</p><p>From Existing Policy: "http://demo.com/attr/relto/value/CZE": {"nationality": ["CZE"]}</p><p>To Subject Mapping Policy:</p><p>{</p><p>attributeValueFQN: "http://demo.com/attr/relto/value/CZE"</p><p>subjectAttribute: "nationality"</p><p>subjectValues: ["CZE"]</p><p>operator: "IN"</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_ref</td>
+                  <td><a href="#attributes.AttributeValueReference">attributes.AttributeValueReference</a></td>
+                  <td></td>
+                  <td><p>TODO should this be a list of values?
+Attribute Value to be mapped to </p></td>
+                </tr>
+              
+                <tr>
+                  <td>subject_attribute</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Resource Attribute Key; NOT Attribute Definition Attribute name </p></td>
+                </tr>
+              
+                <tr>
+                  <td>subject_values</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>The list of comparison values for a resource&#39;s &lt;attribute&gt; value </p></td>
+                </tr>
+              
+                <tr>
+                  <td>operator</td>
+                  <td><a href="#acse.SubjectMapping.Operator">SubjectMapping.Operator</a></td>
+                  <td></td>
+                  <td><p>the operator
+
+TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
+or treat the subject values as regex patterns applied to subject attribute </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acse.UpdateSubjectMappingRequest">UpdateSubjectMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>subject_mapping</td>
+                  <td><a href="#acse.SubjectMapping">SubjectMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="acse.UpdateSubjectMappingResponse">UpdateSubjectMappingResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+
+      
+        <h3 id="acse.SubjectMapping.Operator">SubjectMapping.Operator</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>OPERATOR_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>OPERATOR_IN</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>OPERATOR_NOT_IN</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
+        <h3 id="acse.SubjectEncodingService">SubjectEncodingService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ListSubjectMappings</td>
+                <td><a href="#acse.ListSubjectMappingsRequest">ListSubjectMappingsRequest</a></td>
+                <td><a href="#acse.ListSubjectMappingsResponse">ListSubjectMappingsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetSubjectMapping</td>
+                <td><a href="#acse.GetSubjectMappingRequest">GetSubjectMappingRequest</a></td>
+                <td><a href="#acse.GetSubjectMappingResponse">GetSubjectMappingResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateSubjectMapping</td>
+                <td><a href="#acse.CreateSubjectMappingRequest">CreateSubjectMappingRequest</a></td>
+                <td><a href="#acse.CreateSubjectMappingResponse">CreateSubjectMappingResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateSubjectMapping</td>
+                <td><a href="#acse.UpdateSubjectMappingRequest">UpdateSubjectMappingRequest</a></td>
+                <td><a href="#acse.UpdateSubjectMappingResponse">UpdateSubjectMappingResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteSubjectMapping</td>
+                <td><a href="#acse.DeleteSubjectMappingRequest">DeleteSubjectMappingRequest</a></td>
+                <td><a href="#acse.DeleteSubjectMappingResponse">DeleteSubjectMappingResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>ListSubjectMappings</td>
+                <td>GET</td>
+                <td>/v1/encoding/subject/mappings</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetSubjectMapping</td>
+                <td>GET</td>
+                <td>/v1/encoding/subject/mappings/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateSubjectMapping</td>
+                <td>POST</td>
+                <td>/v1/encoding/subject/mappings</td>
+                <td>subject_mapping</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateSubjectMapping</td>
+                <td>POST</td>
+                <td>/v1/encoding/subject/mappings/{id}</td>
+                <td>subject_mapping</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteSubjectMapping</td>
+                <td>DELETE</td>
+                <td>/v1/encoding/subjects/mappings/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="authorization/authorization.proto">authorization/authorization.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="authorization.Action">Action</h3>
+        <p>An action an entity can take</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>standard</td>
+                  <td><a href="#authorization.Action.StandardAction">Action.StandardAction</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>custom</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.DecisionRequest">DecisionRequest</h3>
+        <p>Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)</p><p>and Alice (represented by entity chain ec2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>{</p><p>"actions": [</p><p>{</p><p>"standard": "STANDARD_ACTION_TRANSMIT"</p><p>}</p><p>],</p><p>"entityChains": [</p><p>{</p><p>"id": "ec1",</p><p>"entities": [</p><p>{</p><p>"emailAddress": "bob@example.org"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "ec2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice@example.org"</p><p>}</p><p>]</p><p>}</p><p>],</p><p>"resourceAttributes": [</p><p>{</p><p>"id": "attr-set-1",</p><p>"attributeValueReferences": [</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/foo/value/bar"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "request-set-2",</p><p>"attributeValueReferences": [</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/foo/value/bar"</p><p>},</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/color/value/red"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#authorization.Action">Action</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entity_chains</td>
+                  <td><a href="#authorization.EntityChain">EntityChain</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resource_attributes</td>
+                  <td><a href="#authorization.ResourceAttributes">ResourceAttributes</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.DecisionResponse">DecisionResponse</h3>
+        <p>Example response for a Decision Request -  Do Bob (represented by entity chain ec1)</p><p>and Alice (represented by entity chain ec2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>Results:</p><p>- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation</p><p>- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes</p><p>- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes</p><p>- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes</p><p>{</p><p>"entityChainId":  "ec1",</p><p>"resourceAttributesId":  "attr-set-1",</p><p>"decision":  "DECISION_PERMIT",</p><p>"obligations":  [</p><p>"http://www.example.org/obligation/watermark"</p><p>]</p><p>},</p><p>{</p><p>"entityChainId":  "ec1",</p><p>"resourceAttributesId":  "attr-set-2",</p><p>"decision":  "DECISION_PERMIT"</p><p>},</p><p>{</p><p>"entityChainId":  "ec2",</p><p>"resourceAttributesId":  "attr-set-1",</p><p>"decision":  "DECISION_PERMIT"</p><p>},</p><p>{</p><p>"entityChainId":  "ec2",</p><p>"resourceAttributesId":  "attr-set-2",</p><p>"decision":  "DECISION_DENY"</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_chain_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral entity chain id from the request </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resource_attributes_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral resource attributes id from the request </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#authorization.Action">Action</a></td>
+                  <td></td>
+                  <td><p>Action of the decision response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>decision</td>
+                  <td><a href="#authorization.DecisionResponse.Decision">DecisionResponse.Decision</a></td>
+                  <td></td>
+                  <td><p>The decision response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligations</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>optional list of obligations represented in URI format </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.Entity">Entity</h3>
+        <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>email_address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>user_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>remote_claims_url</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>jwt</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>claims</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>custom</td>
+                  <td><a href="#authorization.EntityCustom">EntityCustom</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.EntityChain">EntityChain</h3>
+        <p>A set of related PE and NPE</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#authorization.Entity">Entity</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.EntityCustom">EntityCustom</h3>
+        <p>Entity type for custom entities beyond the standard types</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>extension</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.EntityEntitlements">EntityEntitlements</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_references</td>
+                  <td><a href="#attributes.AttributeValueReference">attributes.AttributeValueReference</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.GetDecisionsRequest">GetDecisionsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_requests</td>
+                  <td><a href="#authorization.DecisionRequest">DecisionRequest</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.GetDecisionsResponse">GetDecisionsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_responses</td>
+                  <td><a href="#authorization.DecisionResponse">DecisionResponse</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.GetEntitlementsRequest">GetEntitlementsRequest</h3>
+        <p>Request to get entitlements for one or more entities for an optional attribute scope</p><p>Example: Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#authorization.Entity">Entity</a></td>
+                  <td>repeated</td>
+                  <td><p>list of requested entities </p></td>
+                </tr>
+              
+                <tr>
+                  <td>scope</td>
+                  <td><a href="#authorization.ResourceAttributes">ResourceAttributes</a></td>
+                  <td>optional</td>
+                  <td><p>optional attribute fqn as a scope </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.GetEntitlementsResponse">GetEntitlementsResponse</h3>
+        <p>Example Response for a request of : Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entitlements":  [</p><p>{</p><p>"entityId":  "e1",</p><p>"attributeValueReferences":  [</p><p>{</p><p>"attributeFqn":  "http://www.example.org/attr/foo/value/bar"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"entityId":  "e2",</p><p>"attributeValueReferences":  [</p><p>{</p><p>"attributeFqn":  "http://www.example.org/attr/color/value/red"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entitlements</td>
+                  <td><a href="#authorization.EntityEntitlements">EntityEntitlements</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.ResourceAttributes">ResourceAttributes</h3>
+        <p>A logical bucket of attributes belonging to a "Resource"</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_references</td>
+                  <td><a href="#attributes.AttributeValueReference">attributes.AttributeValueReference</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+        <h3 id="authorization.Action.StandardAction">Action.StandardAction</h3>
+        <p>Standard actions supported by the platform</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>STANDARD_ACTION_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>STANDARD_ACTION_DECRYPT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>STANDARD_ACTION_TRANSMIT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="authorization.DecisionResponse.Decision">DecisionResponse.Decision</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>DECISION_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DECISION_DENY</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DECISION_PERMIT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
+        <h3 id="authorization.AuthorizationService">AuthorizationService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>GetDecisions</td>
+                <td><a href="#authorization.GetDecisionsRequest">GetDecisionsRequest</a></td>
+                <td><a href="#authorization.GetDecisionsResponse">GetDecisionsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetEntitlements</td>
+                <td><a href="#authorization.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
+                <td><a href="#authorization.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>GetDecisions</td>
+                <td>POST</td>
+                <td>/v1/authorization</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetEntitlements</td>
+                <td>POST</td>
+                <td>/v1/entitlements</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="keyaccessgrants/key_access_grants.proto">keyaccessgrants/key_access_grants.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="keyaccessgrants.CreateKeyAccessGrantsRequest">CreateKeyAccessGrantsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>grants</td>
+                  <td><a href="#keyaccessgrants.KeyAccessGrants">KeyAccessGrants</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.CreateKeyAccessGrantsResponse">CreateKeyAccessGrantsResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="keyaccessgrants.DeleteKeyAccessGrantsRequest">DeleteKeyAccessGrantsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.DeleteKeyAccessGrantsResponse">DeleteKeyAccessGrantsResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="keyaccessgrants.GetKeyAccessGrantRequest">GetKeyAccessGrantRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.GetKeyAccessGrantResponse">GetKeyAccessGrantResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>grants</td>
+                  <td><a href="#keyaccessgrants.KeyAccessGrants">KeyAccessGrants</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.KeyAccessGrant">KeyAccessGrant</h3>
+        <p>Defines encryption settings for an attribute and it's values</p><p>Example: All attribute values for attribute "Classification":</p><p>attributeDefinition:</p><p>descriptor:</p><p>fqn: http://demo.com/attr/Classification</p><p>type: ALL_OF</p><p>attributeValueGrants:</p><p>- kasIds: [KAS-USA-1, KAS-GBR-1]</p><p>Example: Per attribute values for attribute "Classification":</p><p>attributeDefinition:</p><p>descriptor:</p><p>fqn: http://demo.com/attr/Classification</p><p>type: ALL_OF</p><p>attributeValueGrants:</p><p>- kasIds: [KAS-USA-1, KAS-GBR-1]</p><p>value:</p><p>descriptor:</p><p>value: TopSecret</p><p>- kasIds: [KAS-USA-3, KAS-GBR-2]</p><p>value:</p><p>descriptor:</p><p>value: Secret</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute_definition</td>
+                  <td><a href="#attributes.AttributeDefinition">attributes.AttributeDefinition</a></td>
+                  <td></td>
+                  <td><p>the attribute associated with this </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_grants</td>
+                  <td><a href="#keyaccessgrants.KeyAccessGrantAttributeValue">KeyAccessGrantAttributeValue</a></td>
+                  <td>repeated</td>
+                  <td><p>attribute value settings; if empty then applies to all values </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.KeyAccessGrantAttributeValue">KeyAccessGrantAttributeValue</h3>
+        <p>Define the attribute value -> prioritized key access servers</p><p>Example: Apply to all attribute value for enclosed attribute definition:</p><p>kasIds: [KAS-USA-1, KAS-GBR-1]</p><p>Example: Applies to only single attribute value</p><p>kasIds: [KAS-USA-1, KAS-GBR-1]</p><p>value:</p><p>descriptor:</p><p>value: FVEY</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#attributes.AttributeValueReference">attributes.AttributeValueReference</a></td>
+                  <td></td>
+                  <td><p>optional - if this is empty - then applies to all attribute values of the enclosed attribute definition </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_ids</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>list of key access server ordered by priority. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.KeyAccessGrants">KeyAccessGrants</h3>
+        <p>Shareable set of key access grants to help with encryption workflows</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_access_servers</td>
+                  <td><a href="#keyaccessgrants.KeyAccessServer">KeyAccessServer</a></td>
+                  <td>repeated</td>
+                  <td><p>List of available key access servers
+Example:
+- id: KAS-USA-1
+url: http://....
+pubKey=xxx
+- .... </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_access_grants</td>
+                  <td><a href="#keyaccessgrants.KeyAccessGrant">KeyAccessGrant</a></td>
+                  <td>repeated</td>
+                  <td><p>list of key access grants </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.KeyAccessServer">KeyAccessServer</h3>
+        <p>Descriptor for a KAS</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>descriptor</td>
+                  <td><a href="#common.ResourceDescriptor">common.ResourceDescriptor</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>url</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Kas Url </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>public key - optional since can also be retrieved via url </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.ListKeyAccessGrantsRequest">ListKeyAccessGrantsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>selector</td>
+                  <td><a href="#common.ResourceSelector">common.ResourceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.ListKeyAccessGrantsResponse">ListKeyAccessGrantsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>grants</td>
+                  <td><a href="#keyaccessgrants.KeyAccessGrants">KeyAccessGrants</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.UpdateKeyAccessGrantsRequest">UpdateKeyAccessGrantsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>grants</td>
+                  <td><a href="#keyaccessgrants.KeyAccessGrants">KeyAccessGrants</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="keyaccessgrants.UpdateKeyAccessGrantsResponse">UpdateKeyAccessGrantsResponse</h3>
+        <p></p>
+
+        
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="keyaccessgrants.KeyAccessGrantsService">KeyAccessGrantsService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ListKeyAccessGrants</td>
+                <td><a href="#keyaccessgrants.ListKeyAccessGrantsRequest">ListKeyAccessGrantsRequest</a></td>
+                <td><a href="#keyaccessgrants.ListKeyAccessGrantsResponse">ListKeyAccessGrantsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetKeyAccessGrant</td>
+                <td><a href="#keyaccessgrants.GetKeyAccessGrantRequest">GetKeyAccessGrantRequest</a></td>
+                <td><a href="#keyaccessgrants.GetKeyAccessGrantResponse">GetKeyAccessGrantResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateKeyAccessGrants</td>
+                <td><a href="#keyaccessgrants.CreateKeyAccessGrantsRequest">CreateKeyAccessGrantsRequest</a></td>
+                <td><a href="#keyaccessgrants.CreateKeyAccessGrantsResponse">CreateKeyAccessGrantsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateKeyAccessGrants</td>
+                <td><a href="#keyaccessgrants.UpdateKeyAccessGrantsRequest">UpdateKeyAccessGrantsRequest</a></td>
+                <td><a href="#keyaccessgrants.UpdateKeyAccessGrantsResponse">UpdateKeyAccessGrantsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteKeyAccessGrants</td>
+                <td><a href="#keyaccessgrants.DeleteKeyAccessGrantsRequest">DeleteKeyAccessGrantsRequest</a></td>
+                <td><a href="#keyaccessgrants.DeleteKeyAccessGrantsResponse">DeleteKeyAccessGrantsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>ListKeyAccessGrants</td>
+                <td>GET</td>
+                <td>/v1/grants</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetKeyAccessGrant</td>
+                <td>GET</td>
+                <td>/v1/grants/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateKeyAccessGrants</td>
+                <td>POST</td>
+                <td>/v1/grants</td>
+                <td>grants</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateKeyAccessGrants</td>
+                <td>PUT</td>
+                <td>/v1/grants/{id}</td>
+                <td>grants</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteKeyAccessGrants</td>
+                <td>DELETE</td>
+                <td>/v1/grants/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+
+    <h2 id="scalar-value-types">Scalar Value Types</h2>
+    <table class="scalar-value-types-table">
+      <thead>
+        <tr><td>.proto Type</td><td>Notes</td><td>C++</td><td>Java</td><td>Python</td><td>Go</td><td>C#</td><td>PHP</td><td>Ruby</td></tr>
+      </thead>
+      <tbody>
+        
+          <tr id="double">
+            <td>double</td>
+            <td></td>
+            <td>double</td>
+            <td>double</td>
+            <td>float</td>
+            <td>float64</td>
+            <td>double</td>
+            <td>float</td>
+            <td>Float</td>
+          </tr>
+        
+          <tr id="float">
+            <td>float</td>
+            <td></td>
+            <td>float</td>
+            <td>float</td>
+            <td>float</td>
+            <td>float32</td>
+            <td>float</td>
+            <td>float</td>
+            <td>Float</td>
+          </tr>
+        
+          <tr id="int32">
+            <td>int32</td>
+            <td>Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead.</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>int</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="int64">
+            <td>int64</td>
+            <td>Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead.</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>integer/string</td>
+            <td>Bignum</td>
+          </tr>
+        
+          <tr id="uint32">
+            <td>uint32</td>
+            <td>Uses variable-length encoding.</td>
+            <td>uint32</td>
+            <td>int</td>
+            <td>int/long</td>
+            <td>uint32</td>
+            <td>uint</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="uint64">
+            <td>uint64</td>
+            <td>Uses variable-length encoding.</td>
+            <td>uint64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>uint64</td>
+            <td>ulong</td>
+            <td>integer/string</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="sint32">
+            <td>sint32</td>
+            <td>Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s.</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>int</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="sint64">
+            <td>sint64</td>
+            <td>Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s.</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>integer/string</td>
+            <td>Bignum</td>
+          </tr>
+        
+          <tr id="fixed32">
+            <td>fixed32</td>
+            <td>Always four bytes. More efficient than uint32 if values are often greater than 2^28.</td>
+            <td>uint32</td>
+            <td>int</td>
+            <td>int</td>
+            <td>uint32</td>
+            <td>uint</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="fixed64">
+            <td>fixed64</td>
+            <td>Always eight bytes. More efficient than uint64 if values are often greater than 2^56.</td>
+            <td>uint64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>uint64</td>
+            <td>ulong</td>
+            <td>integer/string</td>
+            <td>Bignum</td>
+          </tr>
+        
+          <tr id="sfixed32">
+            <td>sfixed32</td>
+            <td>Always four bytes.</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>int</td>
+            <td>int32</td>
+            <td>int</td>
+            <td>integer</td>
+            <td>Bignum or Fixnum (as required)</td>
+          </tr>
+        
+          <tr id="sfixed64">
+            <td>sfixed64</td>
+            <td>Always eight bytes.</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>int/long</td>
+            <td>int64</td>
+            <td>long</td>
+            <td>integer/string</td>
+            <td>Bignum</td>
+          </tr>
+        
+          <tr id="bool">
+            <td>bool</td>
+            <td></td>
+            <td>bool</td>
+            <td>boolean</td>
+            <td>boolean</td>
+            <td>bool</td>
+            <td>bool</td>
+            <td>boolean</td>
+            <td>TrueClass/FalseClass</td>
+          </tr>
+        
+          <tr id="string">
+            <td>string</td>
+            <td>A string must always contain UTF-8 encoded or 7-bit ASCII text.</td>
+            <td>string</td>
+            <td>String</td>
+            <td>str/unicode</td>
+            <td>string</td>
+            <td>string</td>
+            <td>string</td>
+            <td>String (UTF-8)</td>
+          </tr>
+        
+          <tr id="bytes">
+            <td>bytes</td>
+            <td>May contain any arbitrary sequence of bytes.</td>
+            <td>string</td>
+            <td>ByteString</td>
+            <td>str</td>
+            <td>[]byte</td>
+            <td>ByteString</td>
+            <td>string</td>
+            <td>String (ASCII-8BIT)</td>
+          </tr>
+        
+      </tbody>
+    </table>
+  </body>
+</html>
+

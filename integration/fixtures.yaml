@@ -7,16 +7,28 @@ attribute_namespaces:
     columns:
       - id
       - name
+      - state
   data:
     example.com:
       id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
       name: example.com
+      state: ACTIVE
     example.net:
       id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: example.net
+      state: ACTIVE
     example.org:
       id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: example.org
+      state: ACTIVE
+    unspecified_state:
+      id: 3b509401-4f4f-4d3a-a907-55bed403b04b
+      name: error.gov
+      state: UNSPECIFIED
+    inactive_state:
+      id: 40790395-88b1-4adc-8bf5-1900491a79ba
+      name: mistake.io
+      state: INACTIVE
 
 ##
 # Attributes

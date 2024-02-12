@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"github.com/stretchr/testify/assert"
@@ -14,9 +15,7 @@ import (
 
 // TODO: test failure of create/update with invalid member id's [https://github.com/opentdf/opentdf-v2-poc/issues/105]
 
-var (
-	nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
-)
+var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {
 	suite.Suite
@@ -85,6 +84,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
 	attr, err := s.db.Client.GetAttributeValue(s.ctx, nonExistentAttributeValueUuid)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), attr)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
@@ -152,6 +152,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, nonExistentAttrId, value)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), createdValue)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
@@ -204,6 +205,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
 	updated, err := s.db.Client.UpdateAttributeValue(s.ctx, nonExistentAttributeValueUuid, updatedValue)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_DeleteAttribute() {
@@ -230,6 +232,7 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute_NotFound() {
 	resp, err := s.db.Client.DeleteAttributeValue(s.ctx, nonExistentAttributeValueUuid)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_Value_Not_Found() {
@@ -242,18 +245,20 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_W
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_KeyAccessServer_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
 		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-		KeyAccessServerId: "non-existent-kas-id",
+		KeyAccessServerId: nonExistentKasRegistryId,
 	}
 
 	resp, err := s.db.Client.AssignKeyAccessServerToValue(s.ctx, v)
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
@@ -279,6 +284,7 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_KeyAccessServer_Not_Found() {
@@ -291,6 +297,7 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {

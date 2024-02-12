@@ -21,7 +21,7 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 		attributeId  string
 	)
 	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId); err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	m := &common.Metadata{}
@@ -87,7 +87,7 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 	if r, err := c.queryRow(ctx, sql, args, err); err != nil {
 		return nil, err
 	} else if err := r.Scan(&id); err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	rV := &attributes.Value{
@@ -267,7 +267,7 @@ func (c Client) RemoveKeyAccessServerFromValue(ctx context.Context, k *attribute
 	}
 
 	if _, err := c.queryCount(ctx, sql, args); err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return k, nil

@@ -2,8 +2,6 @@ module github.com/opentdf/opentdf-v2-poc/sdk
 
 go 1.21.7
 
-replace github.com/opentdf/opentdf-v2-poc/protocol/go => ../protocol/go
-
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.4.0

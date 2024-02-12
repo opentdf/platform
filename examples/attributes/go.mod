@@ -2,10 +2,6 @@ module github.com/opentdf/opentdf-v2-poc/examples/attributes
 
 go 1.21.7
 
-replace github.com/opentdf/opentdf-v2-poc/protocol/go => ../../protocol/go
-
-replace github.com/opentdf/opentdf-v2-poc/sdk => ../../sdk
-
 require github.com/opentdf/opentdf-v2-poc/protocol/go v0.0.0-00010101000000-000000000000
 
 require github.com/opentdf/opentdf-v2-poc/sdk v0.0.0-00010101000000-000000000000

@@ -2,10 +2,6 @@ module github.com/opentdf/opentdf-v2-poc
 
 go 1.21.7
 
-replace github.com/opentdf/opentdf-v2-poc/protocol/go => ./protocol/go
-
-replace github.com/opentdf/opentdf-v2-poc/sdk => ./sdk
-
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/bufbuild/protovalidate-go v0.4.3

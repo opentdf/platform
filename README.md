@@ -17,7 +17,7 @@ With go 1.18 or higher:
 
 [Buf](https://buf.build/docs/ecosystem/cli-overview)
 
-`brew install buf`
+`brew install buf grpcurl goose`
 
 [grpcurl](https://github.com/fullstorydev/grpcurl)
 
@@ -27,9 +27,11 @@ With go 1.18 or higher:
 
 1. `docker-compose -f opentdf-compose.yaml up`
 
-2. `cp example-opentdf.yaml opentdf.yaml` and update the values
+2. `goose -dir=./migrations postgres "postgres://postgres:changeme@localhost:5432/opentdf" up`
 
-3. `air`
+3. `cp example-opentdf.yaml opentdf.yaml` and update the values
+
+4. `air`
 
 This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
 

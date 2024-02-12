@@ -23,6 +23,7 @@ type KasClient struct {
 	creds AccessTokenSource
 }
 
+// TODO: use the same type that the golang backend uses here
 type rewrapRequestBody struct {
 	KeyAccess       KeyAccess `json:"keyAccess"`
 	Policy          string    `json:"policy,omitempty"`
@@ -37,6 +38,7 @@ func (client KasClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*
 	if err != nil {
 		return nil, err
 	}
+	// TODO: figure out how to use the right kind credentials for testing or get KAS running over SSL in test
 	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
 	conn, err := grpc.Dial("localhost:9000", creds)
 	if err != nil {
@@ -92,8 +94,8 @@ func (client KasClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 	}
 
 	tok, err := jwt.NewBuilder().
-		IssuedAt(time.Now()).
 		Claim("requestBody", string(requestBodyJson)).
+		IssuedAt(time.Now()).
 		Expiration(time.Now().Add(60 * time.Second)).
 		Build()
 

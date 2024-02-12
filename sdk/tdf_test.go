@@ -276,7 +276,7 @@ func TestSimpleTDF(t *testing.T) {
 		ClientId:   "xxxxxxxxxx",
 		ClientAuth: "xxxxxxx",
 	}
-	idpCredentials, err := NewAccessTokenSource(
+	idpCredentials, err := NewIDPAccessTokenSource(
 		oauthCredentials,
 		"http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token",
 		[]string{})

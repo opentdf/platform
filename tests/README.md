@@ -8,7 +8,13 @@
 
 ### Running with seed data
 
+Update your `opentdf.yaml` to run with `public` schema
 
+```yaml
+db:
+  runMigrations: false
+  schema: public
+```
 
 ### New seed data
 
@@ -16,19 +22,7 @@ Create a terminal into docker compose container opentdfdb.
 Dump database
 
 ```shell
-pg_dump -a opentdf
+pg_dump --data-only --inserts --exclude-table-data=goose_db_version opentdf
 ```
 
 Create new folder to hold seed data in form of <category>-<size>
-
-### Schema change
-
-Dump schema.
-
-```shell
-pg_dump --schema-only --no-owner --no-acl -d opentdf
-```
-
-Remove "goose_db_version" section.
-
-Update `tests/docker-entrypoint-initdb.d/opentdf-schema.sql`

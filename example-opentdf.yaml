@@ -2,12 +2,16 @@ logger:
   level: debug
   type: text
   output: stdout
-# DB and Server confgurations are defaulted for local development
-# db:
-#   host: localhost
-#   port: 5432
-#   user: postgres
-#   password: changeme
+# DB and Server configurations are defaulted for local development
+#db:
+#  host: localhost
+#  port: 5432
+#  user: postgres
+#  password: changeme
+#  runMigrations: true
+#  database: opentdf
+#  # it appears that running goose from command line doesn't use schema from connection string, uses public, this is a workaround
+#  schema: public
 services:
   entitlements:
     providers:
@@ -19,10 +23,10 @@ services:
       #     clientId: "test"
       #     clientSecret:
       #       fromEnv: "KEYCLOAK_CLIENT_SECRET"
-          
+
       - type: ldap
         name: ad-1
-        ldap:  
+        ldap:
           baseDN: "dc=dev,dc=example,dc=com"
           host: ""
           port: 389

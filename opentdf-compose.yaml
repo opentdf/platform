@@ -41,14 +41,9 @@ services:
     restart: always
     user: postgres
     environment:
-      SEED: ${SEED:-default}
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: changeme
       POSTGRES_DB: opentdf
-    volumes:
-      - ./migrations:/migrations
-      - ./tests/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-      - ./tests:/tests
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 1s
@@ -56,3 +51,28 @@ services:
       retries: 10
     ports:
       - "5432:5432"
+  opentdfdb-loader:
+    depends_on:
+      opentdfdb:
+        condition: service_healthy
+    build:
+      context: ./tests
+      dockerfile_inline: |
+        FROM golang
+        RUN go install github.com/pressly/goose/v3/cmd/goose@v3.16.0
+        RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/* postgresql
+    command: ["/tests/initdb.d/import-dump.sh"]
+    environment:
+      SEED: ${SEED:-default}
+      PGUSER: postgres
+      PGPASSWORD: changeme
+      PGDATABASE: opentdf
+      PGHOST: opentdfdb
+      PGSCHEMA: public
+      GOOSE_DBSTRING: postgres://postgres:changeme@opentdfdb:5432/opentdf
+      GOOSE_DRIVER: postgres
+      GOOSE_MIGRATION_DIR: /migrations
+    volumes:
+      - ./migrations:/migrations
+      - ./tests/initdb.d:/initdb.d
+      - ./tests:/tests

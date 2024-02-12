@@ -25,7 +25,9 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 		}
 		var tag pgconn.CommandTag
 		tag, err = c.Exec(ctx, q)
-		slog.ErrorContext(ctx, "Error while running command", "query", q, "err", err)
+		if err != nil {
+			slog.ErrorContext(ctx, "Error while running command", "query", q, "err", err)
+		}
 		applied += int(tag.RowsAffected())
 	}
 

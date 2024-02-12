@@ -43,7 +43,7 @@ func (s *AttributeValuesSuite) TearDownSuite() {
 func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 	attrId := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionId
 
-	list, err := s.db.Client.ListAttributeValues(s.ctx, attrId)
+	list, err := s.db.Client.ListAttributeValues(s.ctx, attrId, db.StateActive)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), list)
 

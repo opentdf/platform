@@ -185,7 +185,7 @@ func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 func (s *AttributesSuite) Test_ListAttribute() {
 	fixtures := getAttributeFixtures()
 
-	list, err := s.db.Client.ListAllAttributes(s.ctx)
+	list, err := s.db.Client.ListAllAttributes(s.ctx, db.StateActive)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), list)
 

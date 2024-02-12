@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -36,7 +37,7 @@ func (s *NamespacesSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func getNamespaceFixtures() []FixtureDataNamespace {
+func getActiveNamespaceFixtures() []FixtureDataNamespace {
 	return []FixtureDataNamespace{
 		fixtures.GetNamespaceKey("example.com"),
 		fixtures.GetNamespaceKey("example.net"),
@@ -45,7 +46,7 @@ func getNamespaceFixtures() []FixtureDataNamespace {
 }
 
 func (s *NamespacesSuite) Test_CreateNamespace() {
-	testData := getNamespaceFixtures()
+	testData := getActiveNamespaceFixtures()
 
 	for _, ns := range testData {
 		ns.Name = strings.Replace(ns.Name, "example", "test", 1)
@@ -63,7 +64,7 @@ func (s *NamespacesSuite) Test_CreateNamespace() {
 }
 
 func (s *NamespacesSuite) Test_GetNamespace() {
-	testData := getNamespaceFixtures()
+	testData := getActiveNamespaceFixtures()
 
 	for _, test := range testData {
 		gotNamespace, err := s.db.Client.GetNamespace(s.ctx, test.Id)
@@ -79,6 +80,28 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
+func (s *NamespacesSuite) Test_GetNamespace_UnspecifiedState_Succeeds() {
+	unspecified := fixtures.GetNamespaceKey("unspecified_state")
+	// Ensure our fixtures matches expected string enum
+	assert.Equal(s.T(), unspecified.State, db.StateUnspecified)
+
+	got, err := s.db.Client.GetNamespace(s.ctx, unspecified.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), unspecified.Name, got.Name)
+}
+
+func (s *NamespacesSuite) Test_GetNamespace_InactiveState_Succeeds() {
+	inactive := fixtures.GetNamespaceKey("inactive_state")
+	// Ensure our fixtures matches expected string enum
+	assert.Equal(s.T(), inactive.State, db.StateInactive)
+
+	got, err := s.db.Client.GetNamespace(s.ctx, inactive.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), inactive.Name, got.Name)
+}
+
 func (s *NamespacesSuite) Test_GetNamespace_DoesNotExist_ShouldFail() {
 	ns, err := s.db.Client.GetNamespace(s.ctx, nonExistentNamespaceId)
 	assert.NotNil(s.T(), err)
@@ -87,7 +110,7 @@ func (s *NamespacesSuite) Test_GetNamespace_DoesNotExist_ShouldFail() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces() {
-	testData := getNamespaceFixtures()
+	testData := getActiveNamespaceFixtures()
 
 	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
 	assert.Nil(s.T(), err)
@@ -96,7 +119,7 @@ func (s *NamespacesSuite) Test_ListNamespaces() {
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace() {
-	testData := getNamespaceFixtures()
+	testData := getActiveNamespaceFixtures()
 
 	for i, ns := range testData {
 		updatedName := fmt.Sprintf("%s-updated", ns.Name)
@@ -126,12 +149,13 @@ func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
 	assert.Nil(s.T(), ns)
 }
 
-func (s *NamespacesSuite) Test_DeleteNamespace() {
-	testData := getNamespaceFixtures()
+func (s *NamespacesSuite) Test_DeleteNamespace_HardDelete() {
+	testData := getActiveNamespaceFixtures()
+	isSoftDelete := false
 
 	// Deletion should fail when the namespace is referenced as FK in attribute(s)
 	for _, ns := range testData {
-		deleted, err := s.db.Client.DeleteNamespace(s.ctx, ns.Id)
+		deleted, err := s.db.Client.DeleteNamespace(s.ctx, ns.Id, isSoftDelete)
 		assert.NotNil(s.T(), err)
 		assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 		assert.Nil(s.T(), deleted)
@@ -142,7 +166,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "", newNamespaceId)
 
-	deleted, err := s.db.Client.DeleteNamespace(s.ctx, newNamespaceId)
+	deleted, err := s.db.Client.DeleteNamespace(s.ctx, newNamespaceId, isSoftDelete)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), deleted)
 
@@ -156,11 +180,100 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 
 	// Deleted namespace should not be found on Get
 	_, err = s.db.Client.GetNamespace(s.ctx, newNamespaceId)
+	fmt.Println(err)
 	assert.NotNil(s.T(), err)
 }
 
+func (s *NamespacesSuite) Test_DeleteNamespace_SoftDelete() {
+	isSoftDelete := true
+
+	id, err := s.db.Client.CreateNamespace(s.ctx, "testing-soft-delete-namespace.com")
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", id)
+
+	deleted, err := s.db.Client.DeleteNamespace(s.ctx, id, isSoftDelete)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), deleted)
+
+	// Deleted namespace should not be found on List
+	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotNamespaces)
+	for _, ns := range gotNamespaces {
+		assert.NotEqual(s.T(), id, ns.Id)
+	}
+
+	// Deleted namespace should still be found on Get
+	gotNamespace, err := s.db.Client.GetNamespace(s.ctx, id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotNamespace)
+	assert.Equal(s.T(), id, gotNamespace.Id)
+}
+
+// TODO: update these tests to use GETs (not LISTs) and assert on the state once provided in protos/struct types
+func (s *NamespacesSuite) Test_SoftDeleteNamespace_Cascades_ToAttributesAndValues() {
+	// create a namespace
+	nsId, err := s.db.Client.CreateNamespace(s.ctx, "cascading-soft-delete-namespace.com")
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", nsId)
+
+	// add an attribute under that namespaces
+	attr := &attributes.AttributeCreateUpdate{
+		Name:        "test__cascading-soft-delete-attribute",
+		NamespaceId: nsId,
+		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, attr)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdAttr)
+
+	// add a value under that attribute
+	val := &attributes.ValueCreateUpdate{
+		Value: "test__cascading-soft-delete-value",
+	}
+	createdVal, err := s.db.Client.CreateAttributeValue(s.ctx, createdAttr.Id, val)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdVal)
+
+	// soft delete the namespace
+	deletedNs, err := s.db.Client.DeleteNamespace(s.ctx, nsId, true)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), deletedNs)
+
+	// ensure the namespace is not found in LIST
+	listedNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), listedNamespaces)
+	for _, ns := range listedNamespaces {
+		assert.NotEqual(s.T(), nsId, ns.Id)
+	}
+
+	// ensure the attribute is not found in LIST
+	listedAttrs, err := s.db.Client.ListAllAttributes(s.ctx, db.StateActive)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), listedAttrs)
+	for _, a := range listedAttrs {
+		assert.NotEqual(s.T(), createdAttr.Id, a.Id)
+		assert.NotEqual(s.T(), nsId, a.Namespace.Id)
+	}
+
+	// ensure the value is not found in LIST
+	listedVals, err := s.db.Client.ListAttributeValues(s.ctx, createdAttr.Id, db.StateActive)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), listedVals)
+	fmt.Println("listedVals:", listedVals)
+
+	// TODO: figure out why this isn't working
+	assert.Equal(s.T(), 0, len(listedVals))
+}
+
 func (s *NamespacesSuite) Test_DeleteNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.Client.DeleteNamespace(s.ctx, nonExistentNamespaceId)
+	ns, err := s.db.Client.DeleteNamespace(s.ctx, nonExistentNamespaceId, true)
+	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+	assert.Nil(s.T(), ns)
+
+	ns, err = s.db.Client.DeleteNamespace(s.ctx, nonExistentNamespaceId, false)
 	assert.NotNil(s.T(), err)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 	assert.Nil(s.T(), ns)

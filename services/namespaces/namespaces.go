@@ -95,13 +95,14 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 }
 
 func (ns NamespacesService) DeleteNamespace(ctx context.Context, req *namespaces.DeleteNamespaceRequest) (*namespaces.DeleteNamespaceResponse, error) {
-	slog.Debug("deleting namespace", slog.String("id", req.Id))
+	slog.Debug("soft-deleting namespace", slog.String("id", req.Id))
 	rsp := &namespaces.DeleteNamespaceResponse{}
+	isSoftDelete := true
 
-	if _, err := ns.dbClient.DeleteNamespace(ctx, req.Id); err != nil {
+	if _, err := ns.dbClient.DeleteNamespace(ctx, req.Id, isSoftDelete); err != nil {
 		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 
-	slog.Debug("deleted namespace", slog.String("id", req.Id))
+	slog.Debug("soft-deleted namespace", slog.String("id", req.Id))
 	return rsp, nil
 }

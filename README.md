@@ -1,5 +1,7 @@
 # OpenTDF Enhancements POC
 
+## Documentation
+- [Home](https://verbose-adventure-93w921n.pages.github.io)<!-- change this once repo is renamed  -->
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
 - [Policy Config Schema](./migrations/20240131000000_diagram.md)

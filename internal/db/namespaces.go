@@ -10,7 +10,7 @@ import (
 func getNamespaceSql(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return newStatementBuilder().
-		Select("*").
+		Select(t.Field("id"), t.Field("name")).
 		From(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
@@ -38,7 +38,7 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 func listNamespacesSql() (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return newStatementBuilder().
-		Select("*").
+		Select(t.Field("id"), t.Field("name")).
 		From(t.Name()).
 		ToSql()
 }
@@ -129,7 +129,7 @@ func (c Client) DeleteNamespace(ctx context.Context, id string) (*namespaces.Nam
 	if e := c.exec(ctx, sql, args, err); e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)
 	}
-	
+
 	// return the namespace before it was deleted
 	return ns, nil
 }

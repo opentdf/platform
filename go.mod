@@ -10,7 +10,7 @@ require (
 	github.com/creasty/defaults v1.7.0
 	github.com/docker/go-connections v0.4.0
 	github.com/go-chi/cors v1.2.1
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
@@ -18,7 +18,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.19
 	github.com/open-policy-agent/opa v0.59.0
 	github.com/opentdf/opentdf-v2-poc/sdk v0.0.0-00010101000000-000000000000
-	github.com/pressly/goose/v3 v3.16.0
+	github.com/pressly/goose/v3 v3.18.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
@@ -76,6 +76,7 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
@@ -142,7 +143,7 @@ require (
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/oauth2 v0.16.0
-	golang.org/x/sync v0.5.0 // indirect
+	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17 // indirect

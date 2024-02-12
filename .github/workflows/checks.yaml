@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - main
+
 jobs:
   pr:
     name: Validate PR title
@@ -23,6 +24,7 @@ jobs:
       - uses: amannn/action-semantic-pull-request@e9fabac35e210fea40ca5b14c0da95a099eff26f
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   go:
     runs-on: ubuntu-22.04
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
@@ -54,6 +56,7 @@ jobs:
           working-directory: ${{ matrix.directory }}
       - run: go test ./... -short -race -cover
         working-directory: ${{ matrix.directory }}
+
   integration:
     name: integration tests
     runs-on: ubuntu-22.04
@@ -71,6 +74,7 @@ jobs:
             examples/attributes/go.sum
       - run: make go.work
       - run: go test ./integration -race
+
   image:
     name: image build
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)

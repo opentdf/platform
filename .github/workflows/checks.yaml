@@ -103,6 +103,10 @@ jobs:
         with:
           input: proto
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
+      - run: git diff
+      - run: git diff-files --ignore-submodules
+      - name: Check that buf generate has been run on latest protos
+        run: git diff-files --quiet --ignore-submodules
 
   ci:
     if: always()

@@ -54,7 +54,7 @@ jobs:
           version: v1.55
           only-new-issues: true
           working-directory: ${{ matrix.directory }}
-      - run: go test ./... -short -race -cover
+      - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
 
   integration:

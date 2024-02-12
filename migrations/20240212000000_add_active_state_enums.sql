@@ -3,9 +3,13 @@
 
 CREATE TYPE active_state AS ENUM ('ACTIVE', 'INACTIVE', 'UNSPECIFIED');
 
-ALTER TABLE attribute_namespaces ADD COLUMN state active_state NOT NULL DEFAULT 'ACTIVE';
-ALTER TABLE attribute_definitions ADD COLUMN state active_state NOT NULL DEFAULT 'ACTIVE';
-ALTER TABLE attribute_values ADD COLUMN state active_state NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE attribute_namespaces ADD COLUMN IF NOT EXISTS state active_state NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE attribute_definitions ADD COLUMN IF NOT EXISTS state active_state NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE attribute_values ADD COLUMN IF NOT EXISTS state active_state NOT NULL DEFAULT 'ACTIVE';
+
+CREATE INDEX IF NOT EXISTS idx_attribute_namespaces_state ON attribute_namespaces(state);
+CREATE INDEX IF NOT EXISTS idx_attribute_definitions_state ON attribute_definitions(state);
+CREATE INDEX IF NOT EXISTS idx_attribute_values_state ON attribute_values(state);
 
 -- +goose StatementEnd
 
@@ -21,6 +25,10 @@ DELETE FROM attribute_values WHERE state = 'INACTIVE';
 DELETE FROM attribute_namespaces WHERE state = 'UNSPECIFIED';
 DELETE FROM attribute_definitions WHERE state = 'UNSPECIFIED';
 DELETE FROM attribute_values WHERE state = 'UNSPECIFIED';
+
+DROP INDEX IF EXISTS idx_attribute_namespaces_state;
+DROP INDEX IF EXISTS idx_attribute_definitions_state;
+DROP INDEX IF EXISTS idx_attribute_values_state;
 
 ALTER TABLE attribute_namespaces DROP COLUMN state;
 ALTER TABLE attribute_definitions DROP COLUMN state;

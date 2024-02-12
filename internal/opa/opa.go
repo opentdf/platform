@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/open-policy-agent/opa/hooks"
@@ -16,14 +17,10 @@ type Engine struct {
 }
 
 type Config struct {
-	Path     string        `yaml:"path" default:"./opentdf-opa.yaml"`
-	Embedded bool          `yaml:"embedded" default:"false"`
-	Logging  LoggingConfig `yaml:"logging"`
-}
-
-type LoggingConfig struct {
-	Level  string `yaml:"level" default:"info"`
-	Output string `yaml:"output" default:"stdout"`
+	Path     string `yaml:"path" default:"./opentdf-opa.yaml"`
+	Embedded bool   `yaml:"embedded" default:"false"`
+	// Logger to use otherwise slog.Default(), mainly for testability.
+	Logger *slog.Logger
 }
 
 func NewEngine(config Config) (*Engine, error) {
@@ -48,13 +45,18 @@ func NewEngine(config Config) (*Engine, error) {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
-
-	logger := newStandardLogger(config.Logging)
+	asl := config.Logger
+	if asl == nil {
+		asl = slog.Default()
+	}
+	logger := AdapterSlogger{
+		logger: asl,
+	}
 
 	opa, err := sdk.New(context.Background(), sdk.Options{
 		Config:        bytes.NewReader(bConfig),
-		Logger:        logger,
-		ConsoleLogger: logger,
+		Logger:        &logger,
+		ConsoleLogger: &logger,
 		ID:            "opentdf",
 		Ready:         nil,
 		Store:         nil,
@@ -69,25 +71,64 @@ func NewEngine(config Config) (*Engine, error) {
 	}, nil
 }
 
-func newStandardLogger(c LoggingConfig) *opalog.StandardLogger {
-	opalogger := opalog.New()
+// AdapterSlogger is the adapter to slog using OPA logger interface.
+type AdapterSlogger struct {
+	logger *slog.Logger
+	fields map[string]interface{}
+}
 
-	switch c.Level {
-	case "debug":
-		opalogger.SetLevel(opalog.Debug)
-	case "info":
-		opalogger.SetLevel(opalog.Info)
-	case "error":
-		opalogger.SetLevel(opalog.Error)
-	default:
-		opalogger.SetLevel(opalog.Info)
+// WithFields provides additional fields to include in log output.
+func (l *AdapterSlogger) WithFields(fields map[string]interface{}) opalog.Logger {
+	cp := *l
+	cp.fields = make(map[string]interface{})
+	for k, v := range l.fields {
+		cp.fields[k] = v
 	}
+	for k, v := range fields {
+		cp.fields[k] = v
+	}
+	return &cp
+}
 
-	switch c.Output {
-	case "stdout":
-		opalogger.SetOutput(os.Stdout)
-	default:
-		opalogger.SetOutput(os.Stdout)
+// SetLevel noop, uses slog.
+func (l *AdapterSlogger) SetLevel(opalog.Level) {
+	// noop, uses slog
+}
+
+// GetLevel noop, uses slog so no current log level.
+func (l *AdapterSlogger) GetLevel() opalog.Level {
+	return opalog.Error
+}
+
+// getFields returns additional fields of this logger.
+func (l *AdapterSlogger) getFieldsKV() []interface{} {
+	kv := make([]interface{}, len(l.fields)*2) //nolint:gomnd key and value is added so double the length
+	i := 0
+	for k, v := range l.fields {
+		kv[i] = k
+		i++
+		kv[i] = v
+		i++
 	}
-	return opalogger
+	return kv
+}
+
+// Debug logs at debug level.
+func (l *AdapterSlogger) Debug(msg string, a ...interface{}) {
+	l.logger.With(l.getFieldsKV()...).Debug(fmt.Sprintf(msg, a...))
+}
+
+// Info logs at info level.
+func (l *AdapterSlogger) Info(msg string, a ...interface{}) {
+	l.logger.With(l.getFieldsKV()...).Info(fmt.Sprintf(msg, a...))
+}
+
+// Error logs at error level.
+func (l *AdapterSlogger) Error(msg string, a ...interface{}) {
+	l.logger.With(l.getFieldsKV()...).Error(fmt.Sprintf(msg, a...))
+}
+
+// Warn logs at warn level.
+func (l *AdapterSlogger) Warn(msg string, a ...interface{}) {
+	l.logger.With(l.getFieldsKV()...).Warn(fmt.Sprintf(msg, a...))
 }

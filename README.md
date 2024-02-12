@@ -2,6 +2,8 @@
 
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
+- [Policy Config Schema](./migrations/20240131000000_diagram.md)
+- [Policy Config Testing Diagram](./integration/testing_diagram.png)
 
 ## Development
 
@@ -15,22 +17,25 @@ With go 1.18 or higher:
 
 [Buf](https://buf.build/docs/ecosystem/cli-overview)
 
-`brew install buf`
+`brew install buf grpcurl goose`
+
+[grpcurl](https://github.com/fullstorydev/grpcurl)
+
+`brew install grpcurl`
 
 ### Run
 
 1. `docker-compose -f opentdf-compose.yaml up`
 
-2. `cp example-opentdf.yaml opentdf.yaml` and update the values
+2. `goose -dir=./migrations postgres "postgres://postgres:changeme@localhost:5432/opentdf" up`
 
-3. `air`
+3. `cp example-opentdf.yaml opentdf.yaml` and update the values
+
+4. `air`
 
 This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
 
 ### Test
-
-> [!WARNING]
-> GRPC and reflection is disabled by default. Please see the `opentdf.yaml` for more details (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43))
 
 ```bash
   grpcurl -plaintext localhost:9000 list

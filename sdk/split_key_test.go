@@ -4,13 +4,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 func TestNewSplitKeyFromKasInfo(t *testing.T) {
@@ -185,13 +186,13 @@ func TestNewSplitKeyFromManifest(t *testing.T) {
 		} else {
 			t.Fatalf("unknown claims type, cannot proceed")
 		}
-
-		err = json.Unmarshal([]byte(rewrapRequest), &data)
+		reqBody := RequestBody{}
+		err = json.Unmarshal([]byte(rewrapRequest), &reqBody)
 		if err != nil {
 			t.Fatalf("json.Unmarshal failed: %v", err)
 		}
 
-		wrappedKey, err := crypto.Base64Decode([]byte(data["wrappedKey"]))
+		wrappedKey, err := crypto.Base64Decode([]byte(reqBody.WrappedKey))
 		if err != nil {
 			t.Fatalf("crypto.Base64Decode failed: %v", err)
 		}
@@ -207,7 +208,7 @@ func TestNewSplitKeyFromManifest(t *testing.T) {
 			t.Fatalf("crypto.Decrypt failed: %v", err)
 		}
 
-		asymEncrypt, err := crypto.NewAsymEncryption(data[kClientPublicKey])
+		asymEncrypt, err := crypto.NewAsymEncryption(reqBody.ClientPublicKey)
 		if err != nil {
 			t.Fatalf("crypto.NewAsymEncryption failed: %v", err)
 		}

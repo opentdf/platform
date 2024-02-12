@@ -61,7 +61,7 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 		&attributeValueJson,
 	)
 	if err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	m := &common.Metadata{}
@@ -144,7 +144,7 @@ func (c *Client) CreateSubjectMapping(ctx context.Context, s *subjectmapping.Sub
 	if r, err := c.queryRow(ctx, sql, args, err); err != nil {
 		return nil, err
 	} else if err := r.Scan(&id); err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	// a, err := c.GetAttributeValue(ctx, s.AttributeValueId)

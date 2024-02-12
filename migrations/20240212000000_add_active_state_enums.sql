@@ -11,6 +11,32 @@ CREATE INDEX IF NOT EXISTS idx_attribute_namespaces_state ON attribute_namespace
 CREATE INDEX IF NOT EXISTS idx_attribute_definitions_state ON attribute_definitions(state);
 CREATE INDEX IF NOT EXISTS idx_attribute_values_state ON attribute_values(state);
 
+--- Triggers soft-delete cascade namespaces -> attr definitions -> attr values
+--- Expected trigger args cannot be explicitly defined, but are: [tableName text, foreignKeyColumnName text]
+CREATE FUNCTION cascade_inactive_state()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'UPDATE' AND NEW.state = 'INACTIVE') THEN
+        EXECUTE format('UPDATE %I.%I SET state = $1 WHERE %s = $2', TG_TABLE_SCHEMA, TG_ARGV[0], TG_ARGV[1]) USING NEW.state, OLD.id;
+    END IF;
+    RETURN NULL;
+END
+$$ language 'plpgsql';
+
+CREATE TRIGGER namespaces_state_updated
+    AFTER
+        UPDATE OF state
+    ON attribute_namespaces
+    FOR EACH ROW
+    EXECUTE PROCEDURE cascade_inactive_state('attribute_definitions', 'namespace_id');
+    
+CREATE TRIGGER attribute_definitions_state_updated
+    AFTER
+        UPDATE OF state
+    ON attribute_definitions
+    FOR EACH ROW
+    EXECUTE PROCEDURE cascade_inactive_state('attribute_values', 'attribute_definition_id');
+
 -- +goose StatementEnd
 
 -- +goose Down
@@ -25,6 +51,10 @@ DELETE FROM attribute_values WHERE state = 'INACTIVE';
 DELETE FROM attribute_namespaces WHERE state = 'UNSPECIFIED';
 DELETE FROM attribute_definitions WHERE state = 'UNSPECIFIED';
 DELETE FROM attribute_values WHERE state = 'UNSPECIFIED';
+
+DROP TRIGGER IF EXISTS namespaces_state_updated ON attribute_namespaces;
+DROP TRIGGER IF EXISTS attribute_definitions_state_updated ON attribute_definitions;
+DROP FUNCTION cascade_inactive_state;
 
 DROP INDEX IF EXISTS idx_attribute_namespaces_state;
 DROP INDEX IF EXISTS idx_attribute_definitions_state;

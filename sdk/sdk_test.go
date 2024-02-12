@@ -7,6 +7,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
+	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
 	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 )
 
@@ -79,6 +80,11 @@ func Test_ShouldHaveSameMethods(t *testing.T) {
 			name:     "Attributes",
 			expected: GetMethods(reflect.TypeOf(attributes.NewAttributesServiceClient(sdk.Conn()))),
 			actual:   GetMethods(reflect.TypeOf(sdk.Attributes)),
+		},
+		{
+			name:     "ResourceEncoding",
+			expected: GetMethods(reflect.TypeOf(resourcemapping.NewResourceMappingServiceClient(sdk.Conn()))),
+			actual:   GetMethods(reflect.TypeOf(sdk.ResourceMapping)),
 		},
 		{
 			name:     "SubjectEncoding",

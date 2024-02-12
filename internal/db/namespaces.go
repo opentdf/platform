@@ -44,10 +44,10 @@ func listNamespacesSql(state string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c Client) ListNamespaces(ctx context.Context) ([]*namespaces.Namespace, error) {
+func (c Client) ListNamespaces(ctx context.Context, state string) ([]*namespaces.Namespace, error) {
 	namespacesList := []*namespaces.Namespace{}
 
-	sql, args, err := listNamespacesSql(StateActive)
+	sql, args, err := listNamespacesSql(state)
 	if err != nil {
 		return nil, err
 	}

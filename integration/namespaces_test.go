@@ -112,7 +112,7 @@ func (s *NamespacesSuite) Test_GetNamespace_DoesNotExist_ShouldFail() {
 func (s *NamespacesSuite) Test_ListNamespaces() {
 	testData := getActiveNamespaceFixtures()
 
-	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
+	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx, db.StateActive)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNamespaces)
 	assert.GreaterOrEqual(s.T(), len(gotNamespaces), len(testData))
@@ -171,7 +171,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace_HardDelete() {
 	assert.NotNil(s.T(), deleted)
 
 	// Deleted namespace should not be found on List
-	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
+	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx, db.StateActive)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNamespaces)
 	for _, ns := range gotNamespaces {
@@ -196,7 +196,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace_SoftDelete() {
 	assert.NotNil(s.T(), deleted)
 
 	// Deleted namespace should not be found on List
-	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
+	gotNamespaces, err := s.db.Client.ListNamespaces(s.ctx, db.StateActive)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNamespaces)
 	for _, ns := range gotNamespaces {
@@ -241,7 +241,7 @@ func (s *NamespacesSuite) Test_SoftDeleteNamespace_Cascades_ToAttributesAndValue
 	assert.NotNil(s.T(), deletedNs)
 
 	// ensure the namespace is not found in LIST
-	listedNamespaces, err := s.db.Client.ListNamespaces(s.ctx)
+	listedNamespaces, err := s.db.Client.ListNamespaces(s.ctx, db.StateActive)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), listedNamespaces)
 	for _, ns := range listedNamespaces {
@@ -261,10 +261,20 @@ func (s *NamespacesSuite) Test_SoftDeleteNamespace_Cascades_ToAttributesAndValue
 	listedVals, err := s.db.Client.ListAttributeValues(s.ctx, createdAttr.Id, db.StateActive)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), listedVals)
-	fmt.Println("listedVals:", listedVals)
-
-	// TODO: figure out why this isn't working
 	assert.Equal(s.T(), 0, len(listedVals))
+
+	// ensure the namespaces is still found when filtering for inactive state
+	listedNamespaces, err = s.db.Client.ListNamespaces(s.ctx, db.StateInactive)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), listedNamespaces)
+	found := false
+	for _, ns := range listedNamespaces {
+		if nsId == ns.Id {
+			found = true
+			break
+		}
+	}
+	assert.True(s.T(), found)
 }
 
 func (s *NamespacesSuite) Test_DeleteNamespace_DoesNotExist_ShouldFail() {

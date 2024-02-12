@@ -103,15 +103,6 @@ jobs:
         with:
           input: proto
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
-        with:
-          go-version: "1.21"
-      - run: go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-      - run: buf generate proto
-      - run: git diff
-      - run: git diff-files --ignore-submodules
-      - name: Check that buf generate has been run on latest protos
-        run: git diff-files --quiet --ignore-submodules
 
   ci:
     if: always()

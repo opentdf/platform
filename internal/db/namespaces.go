@@ -35,18 +35,19 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 	return namespace, nil
 }
 
-func listNamespacesSql() (string, []interface{}, error) {
+func listNamespacesSql(state string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return newStatementBuilder().
 		Select(t.Field("id"), t.Field("name")).
 		From(t.Name()).
+		Where(sq.Eq{t.Field("state"): state}).
 		ToSql()
 }
 
 func (c Client) ListNamespaces(ctx context.Context) ([]*namespaces.Namespace, error) {
 	namespacesList := []*namespaces.Namespace{}
 
-	sql, args, err := listNamespacesSql()
+	sql, args, err := listNamespacesSql(StateActive)
 	if err != nil {
 		return nil, err
 	}
@@ -108,23 +109,35 @@ func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*n
 	return c.GetNamespace(ctx, id)
 }
 
-func deleteNamespaceSql(id string) (string, []interface{}, error) {
+func deleteNamespaceSql(id string, isSoftDelete bool) (string, []interface{}, error) {
 	t := Tables.Namespaces
+	sb := newStatementBuilder()
+
+	// TODO: soft-delete should cascade down
+	if isSoftDelete {
+		return sb.
+			Update(t.Name()).
+			Set("state", StateInactive).
+			Where(sq.Eq{t.Field("id"): id}).
+			Suffix("RETURNING \"id\"").
+			ToSql()
+	}
+
 	// TODO: handle delete cascade, dangerous deletion via special rpc, or "soft-delete" status change
-	return newStatementBuilder().
+	return sb.
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
-func (c Client) DeleteNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
+func (c Client) DeleteNamespace(ctx context.Context, id string, isSoftDelete bool) (*namespaces.Namespace, error) {
 	// get a namespace before deleting
 	ns, err := c.GetNamespace(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	sql, args, err := deleteNamespaceSql(id)
+	sql, args, err := deleteNamespaceSql(id, isSoftDelete)
 
 	if e := c.exec(ctx, sql, args, err); e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)

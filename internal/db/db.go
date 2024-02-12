@@ -65,6 +65,12 @@ func (t Table) Field(field string) string {
 	return t.Name() + "." + field
 }
 
+var (
+	StateInactive    = "INACTIVE"
+	StateActive      = "ACTIVE"
+	StateUnspecified = "UNSPECIFIED"
+)
+
 // We can rename this but wanted to get mocks working.
 type PgxIface interface {
 	Acquire(ctx context.Context) (*pgxpool.Conn, error)

@@ -23,6 +23,7 @@ type FixtureMetadata struct {
 type FixtureDataNamespace struct {
 	Id   string `yaml:"id"`
 	Name string `yaml:"name"`
+	State string `yaml:"state"`
 }
 
 type FixtureDataAttribute struct {
@@ -224,6 +225,7 @@ func (f *Fixtures) provisionNamespace() int64 {
 			[]string{
 				f.db.StringWrap(d.Id),
 				f.db.StringWrap(d.Name),
+				f.db.StringWrap(d.State),
 			},
 		)
 	}

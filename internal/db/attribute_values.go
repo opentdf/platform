@@ -128,7 +128,7 @@ func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.V
 	return v, nil
 }
 
-func listAttributeValuesSql(attribute_id string) (string, []interface{}, error) {
+func listAttributeValuesSql(attribute_id string, state string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Select(
 			tableField(AttributeValueTable, "id"),
@@ -138,11 +138,11 @@ func listAttributeValuesSql(attribute_id string) (string, []interface{}, error) 
 			tableField(AttributeValueTable, "attribute_definition_id"),
 		).
 		From(AttributeValueTable).
-		Where(sq.Eq{tableField(AttributeValueTable, "attribute_definition_id"): attribute_id}).
+		Where(sq.Eq{tableField(AttributeValueTable, "attribute_definition_id"): attribute_id, tableField(AttributeValueTable, "state"): state}).
 		ToSql()
 }
-func (c Client) ListAttributeValues(ctx context.Context, attribute_id string) ([]*attributes.Value, error) {
-	sql, args, err := listAttributeValuesSql(attribute_id)
+func (c Client) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*attributes.Value, error) {
+	sql, args, err := listAttributeValuesSql(attribute_id, state)
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err

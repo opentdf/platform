@@ -204,14 +204,15 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 // CRUD operations
 ///
 
-func listAllAttributesSql() (string, []interface{}, error) {
+func listAllAttributesSql(state string) (string, []interface{}, error) {
 	return attributesSelect().
+		Where(sq.Eq{tableField(AttributeTable, "state"): state}).
 		From(AttributeTable).
 		ToSql()
 }
 
-func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute, error) {
-	sql, args, err := listAllAttributesSql()
+func (c Client) ListAllAttributes(ctx context.Context, state string) ([]*attributes.Attribute, error) {
+	sql, args, err := listAllAttributesSql(state)
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err

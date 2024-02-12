@@ -67,19 +67,21 @@ func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, 
 }
 
 func resourceMappingSelect() sq.SelectBuilder {
+	t := Tables.ResourceMappings
+	aT := Tables.AttributeValues
 	return newStatementBuilder().Select(
-		tableField(ResourceMappingTable, "id"),
-		tableField(ResourceMappingTable, "metadata"),
-		tableField(ResourceMappingTable, "terms"),
+		t.Field("id"),
+		t.Field("metadata"),
+		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
-			"'id', "+tableField(AttributeValueTable, "id")+", "+
-			"'value', "+tableField(AttributeValueTable, "value")+","+
-			"'members', "+tableField(AttributeValueTable, "members")+
+			"'id', "+aT.Field("id")+", "+
+			"'value', "+aT.Field("value")+","+
+			"'members', "+aT.Field("members")+
 			")"+
 			" AS attribute_value",
 	).
-		LeftJoin(AttributeValueTable+" ON "+tableField(AttributeValueTable, "id")+" = "+tableField(ResourceMappingTable, "attribute_value_id")).
-		GroupBy(tableField(ResourceMappingTable, "id"), tableField(AttributeValueTable, "id"))
+		LeftJoin(AttributeValueTable+" ON "+aT.Field("id")+" = "+t.Field("attribute_value_id")).
+		GroupBy(t.Field("id"), aT.Field("id"))
 }
 
 /*
@@ -138,8 +140,9 @@ func (c Client) CreateResourceMapping(ctx context.Context, rm *resourcemapping.R
 }
 
 func getResourceMappingSQL(id string) (string, []interface{}, error) {
+	t := Tables.ResourceMappings
 	return resourceMappingSelect().
-		Where(sq.Eq{tableField(ResourceMappingTable, "id"): id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		From(ResourceMappingTable).
 		ToSql()
 }
@@ -160,8 +163,9 @@ func (c Client) GetResourceMapping(ctx context.Context, id string) (*resourcemap
 }
 
 func listResourceMappingsSQL() (string, []interface{}, error) {
+	t := Tables.ResourceMappings
 	return resourceMappingSelect().
-		From(ResourceMappingTable).
+		From(t.Name()).
 		ToSql()
 }
 
@@ -186,8 +190,9 @@ func (c Client) ListResourceMappings(ctx context.Context) ([]*resourcemapping.Re
 }
 
 func updateResourceMappingSQL(id string, attribute_value_id string, metadata []byte, terms []string) (string, []interface{}, error) {
+	t := Tables.ResourceMappings
 	sb := newStatementBuilder().
-		Update(ResourceMappingTable)
+		Update(t.Name())
 
 	if attribute_value_id != "" {
 		sb = sb.Set("attribute_value_id", attribute_value_id)
@@ -235,9 +240,10 @@ func (c Client) UpdateResourceMapping(ctx context.Context, id string, rm *resour
 }
 
 func deleteResourceMappingSQL(id string) (string, []interface{}, error) {
+	t := Tables.ResourceMappings
 	return newStatementBuilder().
-		Delete(ResourceMappingTable).
-		Where(sq.Eq{"id": id}).
+		Delete(t.Name()).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 

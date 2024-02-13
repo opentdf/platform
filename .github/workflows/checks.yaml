@@ -105,7 +105,7 @@ jobs:
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
 
   ci:
-    if: always()
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     needs:
       - pr
       - go
@@ -114,5 +114,5 @@ jobs:
       - buflint
     runs-on: ubuntu-latest
     steps:
-      - if: ${{ failure() }}
+      - if: contains(needs.*.result, 'failure')
         run: exit 1

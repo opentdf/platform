@@ -113,5 +113,5 @@ jobs:
       - buflint
     runs-on: ubuntu-latest
     steps:
-      - if: ${{ failure() }}
+      - if: contains(needs.*.result, 'failure')
         run: exit 1

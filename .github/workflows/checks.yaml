@@ -1,0 +1,118 @@
+name: "Checks"
+
+on:
+  pull_request:
+    branches:
+      - main
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+  push:
+    branches:
+      - main
+
+jobs:
+  pr:
+    name: Validate PR title
+    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@e9fabac35e210fea40ca5b14c0da95a099eff26f
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  go:
+    runs-on: ubuntu-22.04
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: read
+    strategy:
+      matrix:
+        directory:
+          - "."
+          - sdk
+          - examples/attributes
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            sdk/go.sum
+            examples/attributes/go.sum
+      - run: make go.work
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        with:
+          version: v1.55
+          only-new-issues: true
+          working-directory: ${{ matrix.directory }}
+      - run: go test ./... -short
+        working-directory: ${{ matrix.directory }}
+
+  integration:
+    name: integration tests
+    runs-on: ubuntu-22.04
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    needs:
+      - go
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            sdk/go.sum
+            examples/attributes/go.sum
+      - run: make go.work
+      - run: go test ./integration -race
+
+  image:
+    name: image build
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    runs-on: ubuntu-22.04
+    needs: integration
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5.1.0
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+
+  buflint:
+    name: Buf Lint
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: bufbuild/buf-setup-action@382440cdb8ec7bc25a68d7b4711163d95f7cc3aa
+      - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
+        with:
+          input: proto
+      - uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01
+        with:
+          input: proto
+          against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
+
+  ci:
+    if: always()
+    needs:
+      - pr
+      - go
+      - integration
+      - image
+      - buflint
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ failure() }}
+        run: exit 1

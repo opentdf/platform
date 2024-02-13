@@ -20,42 +20,41 @@ func NewPdp() *Pdp {
 // result for each entity, as well as a detailed breakdown of every data attributeInstance comparison.
 func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attributeInstance, entityAttributeSets map[string][]attributeInstance, attributeDefinitions []attrs.Attribute) (map[string]*Decision, error) {
 	slog.DebugContext(ctx, "DetermineAccess")
-
-	//Cluster (e.g. group) all the Data AttributeInstances by CanonicalName (that is, "<namespace>/attr/<attrname>")
-	//AttributeInstances in the same cluster/group (keyed by CanonicalName) will be different "instances" of the same attribute,
-	//potentially with different values.
+	// Cluster (e.g. group) all the Data AttributeInstances by CanonicalName (that is, "<namespace>/attr/<attrname>")
+	// AttributeInstances in the same cluster/group (keyed by CanonicalName) will be different "instances" of the same attribute,
+	// potentially with different values.
 	//
-	//(e.g. we may have one cluster keyed by "https://authority.org/attr/MyAttr"
-	//with two attributes having different values inside that cluster:
+	// (e.g. we may have one cluster keyed by "https://authority.org/attr/MyAttr"
+	// with two attributes having different values inside that cluster:
 	// - "https://authority.org/attr/MyAttr/value/Value1")
 	// - "https://authority.org/attr/MyAttr/value/Value2")
 	clusteredDataAttrs := ClusterByCanonicalNameAI(dataAttributes)
-	//Similarly, cluster (e.g. group) all the previously-fetched AttributeDefinitions (one definition per Data attributeInstance)
-	//by CanonicalName (that is, "<namespace>/attr/<attrname>")
+	// Similarly, cluster (e.g. group) all the previously-fetched AttributeDefinitions (one definition per Data attributeInstance)
+	// by CanonicalName (that is, "<namespace>/attr/<attrname>")
 	//
-	//Unlike with AttributeInstances, there should only be *one* AttributeDefinition per CanonicalName (e.g "https://authority.org/attr/MyAttr")
+	// Unlike with AttributeInstances, there should only be *one* AttributeDefinition per CanonicalName (e.g "https://authority.org/attr/MyAttr")
 	clusteredDefinitions := ClusterByCanonicalNameAD(attributeDefinitions)
 
 	decisions := make(map[string]*Decision)
-	//Go through all the clustered data attrs by canonical name
+	// Go through all the clustered data attrs by canonical name
 	for canonicalName, distinctValues := range clusteredDataAttrs {
 		slog.DebugContext(ctx, "Evaluating data attribute", "name", canonicalName)
-		//Correctness check - we should only have been given 1 AttributeDefinition for per attribute CanonicalName
-		//If not, then calling code is broken, so complain.
+		// Correctness check - we should only have been given 1 AttributeDefinition for per attribute CanonicalName
+		// If not, then calling code is broken, so complain.
 		if len(clusteredDefinitions[canonicalName]) != 1 {
-			return nil, fmt.Errorf("internal error! Expected 1 AttributeDefinition per attribute CanonicalName %s", canonicalName)
+			return nil, fmt.Errorf("expected 1 AttributeDefinition per attribute CanonicalName %s", canonicalName)
 		}
-		//For every canonical name we have a cluster for in the data attr set,
-		//look up its AttributeDefinition (again, should be exactly 1)
+		// For every canonical name we have a cluster for in the data attr set,
+		// look up its AttributeDefinition (again, should be exactly 1)
 		attrDefinition := clusteredDefinitions[canonicalName][0]
 
-		//If GroupBy is set, determine which entities (out of the set of entities and their respective AttributeInstances)
-		//will be considered for evaluation under this rule definition.
+		// If GroupBy is set, determine which entities (out of the set of entities and their respective AttributeInstances)
+		// will be considered for evaluation under this rule definition.
 		//
-		//If GroupBy is not set, then we always consider all entities for evaluation under a rule definition
+		// If GroupBy is not set, then we always consider all entities for evaluation under a rule definition
 		//
-		//If this rule simply does not apply to a given entity ID as defined by the AttributeDefinition we have,
-		//and the entity AttributeInstances that entity ID has, then that entity ID passed (or skipped) this rule.
+		// If this rule simply does not apply to a given entity ID as defined by the AttributeDefinition we have,
+		// and the entity AttributeInstances that entity ID has, then that entity ID passed (or skipped) this rule.
 		filteredEntities := entityAttributeSets
 		if attrDefinition.GroupBy != nil {
 			slog.DebugContext(ctx, "Attribute Definition", "groupBy", attrDefinition, "name", canonicalName)
@@ -74,32 +73,34 @@ func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attributeI
 		case attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
 			slog.DebugContext(ctx, "Evaluating under hierarchy", "name", canonicalName, "values", distinctValues)
 			entityRuleDecision = pdp.hierarchyRule(ctx, distinctValues, filteredEntities, attrDefinition.GroupBy, attrDefinition.Values)
+		case attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
+			return nil, fmt.Errorf("unset AttributeDefinition rule: %s", attrDefinition.Rule)
 		default:
 			return nil, fmt.Errorf("unrecognized AttributeDefinition rule: %s", attrDefinition.Rule)
 		}
 
-		//Roll up the per-data-rule decisions for each entity considered for this rule into the overall decision
+		// Roll up the per-data-rule decisions for each entity considered for this rule into the overall decision
 		for entityId, ruleResult := range entityRuleDecision {
 			entityDecision := decisions[entityId]
 
 			ruleResult.RuleDefinition = &attrDefinition
-			//If we do not yet have an overall decision for this entity, initialize the map
-			//with entityId as key and a Decision object as value
+			// If we do not yet have an overall decision for this entity, initialize the map
+			// with entityId as key and a Decision object as value
 			if entityDecision == nil {
 				decisions[entityId] = &Decision{
 					Access:  ruleResult.Passed,
 					Results: []DataRuleResult{ruleResult},
 				}
 			} else {
-				//An overall Decision already exists for this entity, so update it with the new information
-				//from the last rule evaluation -
-				//boolean AND the new rule result for this entity and this rule with the existing access
-				//result for this entity and the previous rules
-				//to make sure we flip the overall access correctly, e.g if existing overall result is
-				//TRUE and this new rule result is FALSE, then overall result flips to FALSE.
-				//If it was previously FALSE it stays FALSE, etc
+				// An overall Decision already exists for this entity, so update it with the new information
+				// from the last rule evaluation -
+				// boolean AND the new rule result for this entity and this rule with the existing access
+				// result for this entity and the previous rules
+				// to make sure we flip the overall access correctly, e.g if existing overall result is
+				// TRUE and this new rule result is FALSE, then overall result flips to FALSE.
+				// If it was previously FALSE it stays FALSE, etc
 				entityDecision.Access = entityDecision.Access && ruleResult.Passed
-				//Append the current rule result to the list of rule results.
+				// Append the current rule result to the list of rule results.
 				entityDecision.Results = append(entityDecision.Results, ruleResult)
 			}
 		}
@@ -174,10 +175,10 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	dvCanonicalName := dataAttrsBySingleCanonicalName[0].GetCanonicalName()
-	//All of the data AttributeInstances in the arg have the same canonical name.
+	// All the data AttributeInstances in the arg have the same canonical name.
 	slog.DebugContext(ctx, "Evaluating anyOf decision", "attr", dvCanonicalName)
 
-	//Go through every entity's attributeInstance set...
+	// Go through every entity's attributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
 		var valueFailures []ValueFailure
 		//Default to DENY
@@ -358,7 +359,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 // look through that set of instances for an instance whose value and canonical name matches the single instance
 func findInstanceValueInCluster(instance *attrs.Attribute, cluster []attributeInstance) bool {
 	for i := range cluster {
-		if cluster[i].Value == instance.String() && cluster[i].GetCanonicalName() == GetCanonicalNameADV(instance) {
+		if cluster[i].Value == instance.String() && cluster[i].GetCanonicalName() == GetCanonicalNameADV(*instance) {
 			return true
 		}
 	}
@@ -366,7 +367,11 @@ func findInstanceValueInCluster(instance *attrs.Attribute, cluster []attributeIn
 }
 
 func findInstanceValueInClusterAI(a *attributeInstance, instances []attributeInstance) bool {
-	// FIXME implement
+	for _, ai := range instances {
+		if ai.Value == a.Value && ai.GetCanonicalName() == GetCanonicalName(*a) {
+			return true
+		}
+	}
 	return false
 }
 
@@ -534,31 +539,34 @@ func ClusterByCanonicalName(attrs []Clusterable) map[string][]Clusterable {
 func ClusterByCanonicalNameAD(ads []attrs.Attribute) map[string][]attrs.Attribute {
 	clusters := make(map[string][]attrs.Attribute)
 	// FIXME
-	//for _, instance := range attrs {
-	//	clusters[instance.GetCanonicalName()] = append(clusters[instance.GetCanonicalName()], instance)
-	//}
+	for _, instance := range ads {
+		clusters[GetCanonicalNameADV(instance)] = append(clusters[GetCanonicalNameADV(instance)], instance)
+	}
 
 	return clusters
 }
 
 func ClusterByCanonicalNameAI(attributes []attributeInstance) map[string][]attributeInstance {
 	clusters := make(map[string][]attributeInstance)
+	for _, a := range attributes {
+		clusters[a.GetCanonicalName()] = append(clusters[a.GetCanonicalName()], a)
+	}
 	return clusters
 }
 
 // GetCanonicalName Returns the canonical URI representation of this AttributeDefinition:
 //
 //	<scheme>://<hostname>/attr/<name>
-func GetCanonicalName(attrdef attributeInstance) string {
+func GetCanonicalName(ai attributeInstance) string {
 	return fmt.Sprintf("%s/attr/%s",
-		attrdef.Authority,
-		attrdef.Name,
+		ai.Authority,
+		ai.Name,
 	)
 }
 
-func GetCanonicalNameADV(instance *attrs.Attribute) string {
+func GetCanonicalNameADV(instance attrs.Attribute) string {
 	return fmt.Sprintf("%s/attr/%s",
-		instance.Namespace,
+		instance.Namespace.Name,
 		instance.Name,
 	)
 }

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 
@@ -86,6 +87,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServerWithNonExistentIdFails() {
 	resp, err := s.db.Client.GetKeyAccessServer(s.ctx, nonExistentKasRegistryId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
@@ -203,6 +205,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
 	resp, err := s.db.Client.UpdateKeyAccessServer(s.ctx, nonExistentKasRegistryId, updatedKas)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
@@ -235,6 +238,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServerWithNonExistentIdFails() {
 	resp, err := s.db.Client.DeleteKeyAccessServer(s.ctx, nonExistentKasRegistryId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func TestKasRegistrySuite(t *testing.T) {

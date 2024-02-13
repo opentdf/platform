@@ -87,11 +87,12 @@ func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
 func (s *AttributesSuite) Test_CreateAttribute_WithInvalidNamespaceFails() {
 	attr := &attributes.AttributeCreateUpdate{
 		Name:        "test__create_attribute_invalid_namespace",
-		NamespaceId: "namespace_does_not_exist",
+		NamespaceId: nonExistentNamespaceId,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, attr)
 	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 	assert.Nil(s.T(), createdAttr)
 }
 
@@ -103,6 +104,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithNonUniqueNameConflictFails() 
 	}
 	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, attr)
 	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrUniqueConstraintViolation)
 	assert.Nil(s.T(), createdAttr)
 }
 
@@ -154,6 +156,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithInvalidRuleFails() {
 	}
 	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, attr)
 	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrEnumValueInvalid)
 	assert.Nil(s.T(), createdAttr)
 }
 
@@ -176,8 +179,7 @@ func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 	gotAttr, err := s.db.Client.GetAttribute(s.ctx, nonExistentAttrId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), gotAttr)
-	// TODO: should be a not found error here
-	// assert.ErrorIs(s.T(), err, db.ErrNotFound)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_ListAttribute() {
@@ -235,6 +237,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 	resp, err := s.db.Client.UpdateAttribute(s.ctx, nonExistentAttrId, update)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
@@ -256,6 +259,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 	resp, err := s.db.Client.UpdateAttribute(s.ctx, createdAttr.Id, update)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrRestrictViolation)
 
 	// validate namespace should not have been changed
 	updated, err := s.db.Client.GetAttribute(s.ctx, createdAttr.Id)
@@ -283,6 +287,7 @@ func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFa
 	resp, err := s.db.Client.UpdateAttribute(s.ctx, fixtureData.Id, conflict)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrUniqueConstraintViolation)
 }
 
 func (s *AttributesSuite) Test_DeleteAttribute() {
@@ -314,6 +319,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_Wh
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
@@ -325,6 +331,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_Wh
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
@@ -348,6 +355,7 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
@@ -359,6 +367,7 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {

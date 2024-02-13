@@ -1,4 +1,4 @@
-name: "Golang Checks"
+name: "Checks"
 
 on:
   pull_request:

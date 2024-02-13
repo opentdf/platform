@@ -105,9 +105,8 @@ jobs:
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=protocol"
 
   ci:
-    if: always()
+    if: always() && contains(fromJSON('["push", "pull_request"]'), github.event_name)
     needs:
-      - pr
       - go
       - integration
       - image

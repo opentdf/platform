@@ -32,5 +32,6 @@ opentdf.yaml
 serviceapp
 go.work.sum
 go.work
-examples/attributes/attributes
+timtemp/attributes/attributes
 *.zip
+examples/examples

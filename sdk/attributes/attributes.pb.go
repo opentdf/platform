@@ -91,10 +91,9 @@ type Attribute struct {
 	// attribute name
 	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// attribute rule enum
-	Rule    AttributeRuleTypeEnum          `protobuf:"varint,5,opt,name=rule,proto3,enum=attributes.AttributeRuleTypeEnum" json:"rule,omitempty"`
-	Values  []*Value                       `protobuf:"bytes,7,rep,name=values,proto3" json:"values,omitempty"`
-	Grants  []*kasregistry.KeyAccessServer `protobuf:"bytes,8,rep,name=grants,proto3" json:"grants,omitempty"`
-	GroupBy *Attribute
+	Rule   AttributeRuleTypeEnum          `protobuf:"varint,5,opt,name=rule,proto3,enum=attributes.AttributeRuleTypeEnum" json:"rule,omitempty"`
+	Values []*Value                       `protobuf:"bytes,7,rep,name=values,proto3" json:"values,omitempty"`
+	Grants []*kasregistry.KeyAccessServer `protobuf:"bytes,8,rep,name=grants,proto3" json:"grants,omitempty"`
 }
 
 func (x *Attribute) Reset() {

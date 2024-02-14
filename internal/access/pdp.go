@@ -56,23 +56,17 @@ func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attributeI
 		// If this rule simply does not apply to a given entity ID as defined by the AttributeDefinition we have,
 		// and the entity AttributeInstances that entity ID has, then that entity ID passed (or skipped) this rule.
 		filteredEntities := entityAttributeSets
-		if attrDefinition.GroupBy != nil {
-			slog.DebugContext(ctx, "Attribute Definition", "groupBy", attrDefinition, "name", canonicalName)
-			filteredEntities = pdp.groupByFilterEntityAttributeInstances(ctx, entityAttributeSets, attrDefinition.GroupBy)
-			slog.DebugContext(ctx, "For this definition, according to GroupBy", "found", len(filteredEntities), "of", len(entityAttributeSets))
-		}
-
 		var entityRuleDecision map[string]DataRuleResult
 		switch attrDefinition.Rule {
 		case attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
 			slog.DebugContext(ctx, "Evaluating under allOf", "name", canonicalName, "values", distinctValues)
-			entityRuleDecision = pdp.allOfRule(ctx, distinctValues, filteredEntities, attrDefinition.GroupBy)
+			entityRuleDecision = pdp.allOfRule(ctx, distinctValues, filteredEntities)
 		case attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
 			slog.DebugContext(ctx, "Evaluating under anyOf", "name", canonicalName, "values", distinctValues)
-			entityRuleDecision = pdp.anyOfRule(ctx, distinctValues, filteredEntities, attrDefinition.GroupBy)
+			entityRuleDecision = pdp.anyOfRule(ctx, distinctValues, filteredEntities)
 		case attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
 			slog.DebugContext(ctx, "Evaluating under hierarchy", "name", canonicalName, "values", distinctValues)
-			entityRuleDecision = pdp.hierarchyRule(ctx, distinctValues, filteredEntities, attrDefinition.GroupBy, attrDefinition.Values)
+			entityRuleDecision = pdp.hierarchyRule(ctx, distinctValues, filteredEntities, attrDefinition.Values)
 		case attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
 			return nil, fmt.Errorf("unset AttributeDefinition rule: %s", attrDefinition.Rule)
 		default:
@@ -114,7 +108,7 @@ func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attributeI
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy *attrs.Attribute) map[string]DataRuleResult {
+func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	//All of the data AttributeInstances in the arg have the same canonical name.
@@ -171,7 +165,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy *attrs.Attribute) map[string]DataRuleResult {
+func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	dvCanonicalName := dataAttrsBySingleCanonicalName[0].GetCanonicalName()
@@ -234,7 +228,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 //
 // If multiple entity AttributeInstances (that is, values) for a hierarchy AttributeDefinition are present for the same canonical name, the lowest will be chosen,
 // and the others ignored.
-func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, groupBy *attrs.Attribute, order []*attrs.Value) map[string]DataRuleResult {
+func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, order []*attrs.Value) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	highestDataInstance := pdp.getHighestRankedInstanceFromDataAttributes(ctx, order, dataAttrsBySingleCanonicalName)

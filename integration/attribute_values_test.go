@@ -15,7 +15,10 @@ import (
 
 // TODO: test failure of create/update with invalid member id's [https://github.com/opentdf/opentdf-v2-poc/issues/105]
 
-var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
+var (
+	nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
+	stillActiveAttributeId        string
+)
 
 type AttributeValuesSuite struct {
 	suite.Suite
@@ -33,6 +36,7 @@ func (s *AttributeValuesSuite) SetupSuite() {
 	s.db = NewDBInterface(s.schema)
 	s.f = NewFixture(s.db)
 	s.f.Provision()
+	stillActiveNsId, stillActiveAttributeId, deactivatedAttrValueId = setupDeactivateAttributeValue(s)
 }
 
 func (s *AttributeValuesSuite) TearDownSuite() {
@@ -233,6 +237,176 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute_NotFound() {
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+}
+
+func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_WithInvalidIdFails() {
+	deactivated, err := s.db.Client.DeactivateAttributeValue(s.ctx, nonExistentAttributeValueUuid)
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), deactivated)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+}
+
+// reusable setup for creating a namespace -> attr -> value and then deactivating the attribute (cascades to value)
+func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, string) {
+	// create a namespace
+	nsId, err := s.db.Client.CreateNamespace(s.ctx, "cascading-deactivate-attribute-value.com")
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", nsId)
+
+	// add an attribute under that namespaces
+	attr := &attributes.AttributeCreateUpdate{
+		Name:        "test__cascading-deactivate-attr-value",
+		NamespaceId: nsId,
+		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, attr)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdAttr)
+
+	// add a value under that attribute
+	val := &attributes.ValueCreateUpdate{
+		Value: "test__cascading-deactivate-attr-value-value",
+	}
+	createdVal, err := s.db.Client.CreateAttributeValue(s.ctx, createdAttr.Id, val)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdVal)
+
+	// deactivate the attribute
+	deactivatedAttr, err := s.db.Client.DeactivateAttributeValue(s.ctx, createdVal.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), deactivatedAttr)
+
+	return nsId, createdAttr.Id, createdVal.Id
+}
+
+// Verify behavior that DB does not bubble up deactivation of value to attributes and namespaces
+func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
+	type test struct {
+		name     string
+		testFunc func(state string) bool
+		state    string
+		isFound  bool
+	}
+
+	getNamespacesList := func(state string) bool {
+		listedNamespaces, err := s.db.Client.ListNamespaces(s.ctx, state)
+		assert.Nil(s.T(), err)
+		assert.NotNil(s.T(), listedNamespaces)
+		for _, ns := range listedNamespaces {
+			if stillActiveNsId == ns.Id {
+				return true
+			}
+		}
+		return false
+	}
+
+	getAttributesList := func(state string) bool {
+		listedAttrs, err := s.db.Client.ListAllAttributes(s.ctx, state)
+		assert.Nil(s.T(), err)
+		assert.NotNil(s.T(), listedAttrs)
+		for _, a := range listedAttrs {
+			if stillActiveAttributeId == a.Id {
+				return true
+			}
+		}
+		return false
+	}
+
+	getValuesList := func(state string) bool {
+		listedVals, err := s.db.Client.ListAttributeValues(s.ctx, stillActiveAttributeId, state)
+		assert.Nil(s.T(), err)
+		assert.NotNil(s.T(), listedVals)
+		for _, v := range listedVals {
+			if deactivatedAttrValueId == v.Id {
+				return true
+			}
+		}
+		return false
+	}
+
+	tests := []test{
+		{
+			name:     "namespace is NOT found in LIST of INACTIVE",
+			testFunc: getNamespacesList,
+			state:    db.StateInactive,
+			isFound:  false,
+		},
+		{
+			name:     "namespace is found when filtering for ACTIVE state",
+			testFunc: getNamespacesList,
+			state:    db.StateActive,
+			isFound:  true,
+		},
+		{
+			name:     "namespace is found when filtering for ANY state",
+			testFunc: getNamespacesList,
+			state:    db.StateAny,
+			isFound:  true,
+		},
+		{
+			name:     "attribute is NOT found when filtering for INACTIVE state",
+			testFunc: getAttributesList,
+			state:    db.StateInactive,
+			isFound:  false,
+		},
+		{
+			name:     "attribute is found when filtering for ANY state",
+			testFunc: getAttributesList,
+			state:    db.StateAny,
+			isFound:  true,
+		},
+		{
+			name:     "attribute is found when filtering for ACTIVE state",
+			testFunc: getAttributesList,
+			state:    db.StateActive,
+			isFound:  true,
+		},
+		{
+			name:     "value is NOT found in LIST of ACTIVE",
+			testFunc: getValuesList,
+			state:    db.StateActive,
+			isFound:  false,
+		},
+		{
+			name:     "value is found when filtering for INACTIVE state",
+			testFunc: getValuesList,
+			state:    db.StateInactive,
+			isFound:  true,
+		},
+		{
+			name:     "value is found when filtering for ANY state",
+			testFunc: getValuesList,
+			state:    db.StateAny,
+			isFound:  true,
+		},
+	}
+
+	for _, tableTest := range tests {
+		s.T().Run(tableTest.name, func(t *testing.T) {
+			found := tableTest.testFunc(tableTest.state)
+			assert.Equal(t, tableTest.isFound, found)
+		})
+	}
+}
+
+func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
+	// ensure the namespace has state active still (not bubbled up)
+	gotNs, err := s.db.Client.GetNamespace(s.ctx, stillActiveNsId)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotNs)
+	assert.Equal(s.T(), common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE, gotNs.State)
+
+	// ensure the attribute still has state actiave (not bubbled up)
+	gotAttr, err := s.db.Client.GetAttribute(s.ctx, stillActiveAttributeId)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotAttr)
+	assert.Equal(s.T(), common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE, gotAttr.State)
+
+	// ensure the value has state inactive
+	gotVal, err := s.db.Client.GetAttributeValue(s.ctx, deactivatedAttrValueId)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotVal)
+	assert.Equal(s.T(), common.StateTypeEnum_STATE_TYPE_ENUM_INACTIVE, gotVal.State)
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_Value_Not_Found() {

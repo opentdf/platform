@@ -30,10 +30,11 @@ func NewNamespacesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
-	slog.Debug("listing namespaces")
+	state := services.GetDbStateEnum(req.State)
+	slog.Debug("listing namespaces", slog.String("state", state))
 
 	rsp := &namespaces.ListNamespacesResponse{}
-	list, err := ns.dbClient.ListNamespaces(ctx)
+	list, err := ns.dbClient.ListNamespaces(ctx, state)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
 	}
@@ -94,12 +95,11 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 	return rsp, nil
 }
 
-func (ns NamespacesService) DeleteNamespace(ctx context.Context, req *namespaces.DeleteNamespaceRequest) (*namespaces.DeleteNamespaceResponse, error) {
-	slog.Debug("soft-deleting namespace", slog.String("id", req.Id))
-	rsp := &namespaces.DeleteNamespaceResponse{}
-	isSoftDelete := true
+func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namespaces.DeactivateNamespaceRequest) (*namespaces.DeactivateNamespaceResponse, error) {
+	slog.Debug("deactivating namespace", slog.String("id", req.Id))
+	rsp := &namespaces.DeactivateNamespaceResponse{}
 
-	if _, err := ns.dbClient.DeleteNamespace(ctx, req.Id, isSoftDelete); err != nil {
+	if _, err := ns.dbClient.DeactivateNamespace(ctx, req.Id); err != nil {
 		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 

@@ -11,7 +11,7 @@ CREATE INDEX IF NOT EXISTS idx_attribute_namespaces_state ON attribute_namespace
 CREATE INDEX IF NOT EXISTS idx_attribute_definitions_state ON attribute_definitions(state);
 CREATE INDEX IF NOT EXISTS idx_attribute_values_state ON attribute_values(state);
 
---- Triggers soft-delete cascade namespaces -> attr definitions -> attr values
+--- Triggers deactivation cascade namespaces -> attr definitions -> attr values
 --- Expected trigger args cannot be explicitly defined, but are: [tableName text, foreignKeyColumnName text]
 CREATE FUNCTION cascade_inactive_state()
 RETURNS TRIGGER AS $$

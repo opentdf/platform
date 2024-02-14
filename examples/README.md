@@ -12,3 +12,7 @@ go build
 ```shell
 ./examples attributes
 ```
+
+Examples:
+- [Attribute Service](./cmd/attributes.go)
+- [Authorization Service](./cmd/authorization.go)

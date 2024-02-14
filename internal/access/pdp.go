@@ -243,41 +243,41 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalNam
 	} else {
 		slog.DebugContext(ctx, "Highest ranked hierarchy value on data attributes found", "value", highestDataInstance)
 	}
-	//All of the data AttributeInstances in the arg have the same canonical name.
+	// All the data AttributeInstances in the arg have the same canonical name.
 
-	//Go through every entity's attributeInstance set...
+	// Go through every entity's attributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
-		//Default to DENY
+		// Default to DENY
 		entityPassed := false
 		valueFailures := []ValueFailure{}
-		//Cluster entity AttributeInstances by canonical name...
+		// Cluster entity AttributeInstances by canonical name...
 		entityAttrCluster := ClusterByCanonicalNameAI(entityAttrs)
 
 		if highestDataInstance != nil {
 			dvCanonicalName := highestDataInstance.GetCanonicalName()
-			//For every unique data attributeInstance (that is, value) in this set of data AttributeInstances sharing the same canonical name...
+			// For every unique data attributeInstance (that is, value) in this set of data AttributeInstances sharing the same canonical name...
 			slog.DebugContext(ctx, "Evaluating hierarchy decision", "name", dvCanonicalName, "value", highestDataInstance.Value)
 
-			//Compare the (one or more) AttributeInstances (that is, values) for this canonical name to the (one) data attributeInstance, and see which is "higher".
+			// Compare the (one or more) AttributeInstances (that is, values) for this canonical name to the (one) data attributeInstance, and see which is "higher".
 			entityPassed = entityRankGreaterThanOrEqualToDataRank(order, highestDataInstance, entityAttrCluster[dvCanonicalName])
 
-			//If the rank of the data attributeInstance (that is, value) is higher than the highest entity attributeInstance, then FAIL.
+			// If the rank of the data attributeInstance (that is, value) is higher than the highest entity attributeInstance, then FAIL.
 			if !entityPassed {
 				denialMsg := fmt.Sprintf("Hierarchy - Entity: %s hierarchy values rank below data hierarchy value of %s", entityId, highestDataInstance.Value)
 				slog.WarnContext(ctx, denialMsg)
 
-				//Since there is only one data value we (ultimately) consider in a HierarchyRule, we will only ever
-				//have one ValueFailure per entity at most
+				// Since there is only one data value we (ultimately) consider in a HierarchyRule, we will only ever
+				// have one ValueFailure per entity at most
 				valueFailures = append(valueFailures, ValueFailure{
 					DataAttribute: highestDataInstance,
 					Message:       denialMsg,
 				})
 			}
-			//It's possible we couldn't FIND a highest data value - because none of the data values are in the set of valid attribute definition values!
-			//If this happens, we can't do a comparison, and access will be denied for every entity for this data attribute instance
+			// It's possible we couldn't FIND a highest data value - because none of the data values are in the set of valid attribute definition values!
+			// If this happens, we can't do a comparison, and access will be denied for every entity for this data attribute instance
 		} else {
-			//If every data attribute value we're comparing against is invalid (that is, none of them exist in the attribute definition)
-			//then we must fail and return a nil instance.
+			// If every data attribute value we're comparing against is invalid (that is, none of them exist in the attribute definition)
+			// then we must fail and return a nil instance.
 			denialMsg := fmt.Sprintf("Hierarchy - No data values found exist in attribute definition, no hierarchy comparison possible, entity %s is denied", entityId)
 			slog.WarnContext(ctx, denialMsg)
 			valueFailures = append(valueFailures, ValueFailure{
@@ -328,10 +328,10 @@ func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entit
 // If we find a data value that does not exist in the attribute definition's list of valid values, we will skip it
 // If NONE of the data values exist in the attribute definitions list of valid values, return a nil instance
 func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, order []*attrs.Value, dataAttributeCluster []attributeInstance) *attributeInstance {
-	//For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
-	//So initialize with the LEAST privileged rank in the defined order
-	var highestDVIndex int = (len(order) - 1)
-	var highestRankedInstance *attributeInstance = nil
+	// For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
+	// So initialize with the LEAST privileged rank in the defined order
+	highestDVIndex := len(order) - 1
+	var highestRankedInstance *attributeInstance
 	for _, dataAttr := range dataAttributeCluster {
 		foundRank := getOrderOfValue(order, dataAttr.Value)
 		if foundRank == -1 {
@@ -423,7 +423,7 @@ func getOrderOfValue(order []*attrs.Value, value string) int {
 	//For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
 	dvIndex := -1 // -1 == Not Found in the set - this should always be a failure.
 	for index := range order {
-		if order[index].String() == value {
+		if order[index].Value == value {
 			dvIndex = index
 		}
 	}

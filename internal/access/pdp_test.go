@@ -704,595 +704,645 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
-//// Hierarchy tests
-//func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[1],
-//		},
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[0],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.True(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.True(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[1],
-//		},
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[0],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "LessPrivileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.False(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.False(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[2],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "NotPrivilegedAtAll",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.True(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.True(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[1],
-//		},
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[0],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "LessPrivileged",
-//			},
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.False(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.False(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[0],
-//		},
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[1],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "LessPrivileged",
-//			},
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.False(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.False(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[1],
-//		},
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[0],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "UberPrivileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.False(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.False(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     "UberPrivileged",
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.False(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.False(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//	assert.Nil(t, decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-//}
-//
-//func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     "UberPrivileged",
-//		},
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[0],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.True(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.True(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[1],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.net",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.False(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.False(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing.T) {
-//	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	attrAuthorities := []string{"https://example.org"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			// GroupBy *AttributeInstance `json:"group_by,omitempty"`
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[1],
-//		},
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[0],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "UberPrivileged",
-//			},
-//			{
-//				Authority: "https://meep.org",
-//				Name:      "meep",
-//				Value:     "beepbeep",
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	assert.False(t, decisions[entityID].Access)
-//	assert.Equal(t, 1, len(decisions[entityID].Results))
-//	assert.False(t, decisions[entityID].Results[0].Passed)
-//	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-//	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-//}
-//
-//func Test_AccessPDP_Hierarchy_GroupBy(t *testing.T) {
-//	entityID1 := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-//	entityID2 := "bubble@squeak.biz"
-//	attrAuthorities := []string{"https://example.org", "https://loop.doop"}
-//	mockAttrDefinitions := []attrs.AttributeDefinition{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      "MyAttr",
-//			Rule:      "hierarchy",
-//			Order:     []string{"Privileged", "LessPrivileged", "NotPrivilegedAtAll"},
-//			GroupBy: &attributeInstance{
-//				Authority: attrAuthorities[0],
-//				Name:      "AttrToGroupBy",
-//				Value:     "GroupByWithThisValue",
-//			},
-//		},
-//		{
-//			Authority: attrAuthorities[1],
-//			Name:      "MySecondAttr",
-//			Rule:      "allOf",
-//			Order:     []string{"Value1", "Value2"},
-//		},
-//	}
-//	mockDataAttrs := []attributeInstance{
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[1],
-//		},
-//		{
-//			Authority: attrAuthorities[0],
-//			Name:      mockAttrDefinitions[0].Name,
-//			Value:     mockAttrDefinitions[0].Order[0],
-//		},
-//		{
-//			Authority: attrAuthorities[1],
-//			Name:      mockAttrDefinitions[1].Name,
-//			Value:     mockAttrDefinitions[1].Order[0],
-//		},
-//	}
-//	mockEntityAttrs := map[string][]attributeInstance{
-//		entityID1: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: attrAuthorities[1],
-//				Name:      mockAttrDefinitions[1].Name,
-//				Value:     mockAttrDefinitions[1].Order[0],
-//			},
-//			//For one of these entities, give them a third
-//			//entity attribute, which is the same (canonical name + value)
-//			//as the groupby attribute instance on the definition
-//			*mockAttrDefinitions[0].GroupBy,
-//		},
-//		entityID2: {
-//			{
-//				Authority: "https://example.org",
-//				Name:      "MyAttr",
-//				Value:     "Privileged",
-//			},
-//			{
-//				Authority: attrAuthorities[1],
-//				Name:      mockAttrDefinitions[1].Name,
-//				Value:     mockAttrDefinitions[1].Order[0],
-//			},
-//		},
-//	}
-//	accessPDP := NewPdp()
-//	context := ctx.Background()
-//	decisions, err := accessPDP.DetermineAccess(mockDataAttrs, mockEntityAttrs, mockAttrDefinitions, &context)
-//
-//	assert.Nil(t, err)
-//	//Overall for entity 1 should be YES
-//	assert.True(t, decisions[entityID1].Access)
-//	//Entity 1 has the GroupBy attribute, so it should
-//	//have been evaluated against both data attributes
-//	//we had definitions for.
-//	assert.Equal(t, 2, len(decisions[entityID1].Results))
-//
-//	//Overall for entity 1 should be YES
-//	assert.True(t, decisions[entityID2].Access)
-//	//Entity 2 lacks the GroupBy attribute, so it should
-//	//have been evaluated against only one of data attributes
-//	//we had definitions for.
-//	assert.Equal(t, 1, len(decisions[entityID2].Results))
-//}
+// Hierarchy tests
+func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[1].Value,
+		},
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[0].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "Privileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.True(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.True(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}
+
+func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[1].Value,
+		},
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[0].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "Privileged",
+			},
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "LessPrivileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.False(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.False(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}
+
+func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[2].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "NotPrivilegedAtAll",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.True(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.True(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}
+
+func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[1].Value,
+		},
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[0].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "LessPrivileged",
+			},
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "Privileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.False(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.False(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}
+
+func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[0].Value,
+		},
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[1].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "LessPrivileged",
+			},
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "Privileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.False(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.False(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}
+
+func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[1].Value,
+		},
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[0].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "UberPrivileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.False(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.False(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}
+
+func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     "UberPrivileged",
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "Privileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.False(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.False(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Nil(t, decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
+}
+
+func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     "UberPrivileged",
+		},
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[0].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "Privileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.True(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.True(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}
+
+func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[1].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.net",
+				Name:      "MyAttr",
+				Value:     "Privileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.False(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.False(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}
+
+func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing.T) {
+	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	attrAuthorities := []string{"https://example.org"}
+	mockAttrDefinitions := []attrs.Attribute{
+		{
+			Name: "MyAttr",
+			Namespace: &namespaces.Namespace{
+				Name: "https://example.org",
+			},
+			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*attrs.Value{
+				{
+					Value: "Privileged",
+				},
+				{
+					Value: "LessPrivileged",
+				},
+				{
+					Value: "NotPrivilegedAtAll",
+				},
+			},
+		},
+	}
+	mockDataAttrs := []attributeInstance{
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[1].Value,
+		},
+		{
+			Authority: attrAuthorities[0],
+			Name:      mockAttrDefinitions[0].Name,
+			Value:     mockAttrDefinitions[0].Values[0].Value,
+		},
+	}
+	mockEntityAttrs := map[string][]attributeInstance{
+		entityID: {
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "Privileged",
+			},
+			{
+				Authority: "https://example.org",
+				Name:      "MyAttr",
+				Value:     "UberPrivileged",
+			},
+			{
+				Authority: "https://meep.org",
+				Name:      "meep",
+				Value:     "beepbeep",
+			},
+		},
+	}
+	accessPDP := NewPdp()
+	decisions, err := accessPDP.DetermineAccess(
+		ctx.Background(),
+		mockDataAttrs,
+		mockEntityAttrs,
+		mockAttrDefinitions)
+
+	assert.Nil(t, err)
+	assert.False(t, decisions[entityID].Access)
+	assert.Equal(t, 1, len(decisions[entityID].Results))
+	assert.False(t, decisions[entityID].Results[0].Passed)
+	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
+	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+}

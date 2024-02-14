@@ -19,6 +19,7 @@ private static final long serialVersionUID = 0L;
   private Namespace() {
     id_ = "";
     name_ = "";
+    state_ = 0;
   }
 
   @java.lang.Override
@@ -88,7 +89,7 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int NAME_FIELD_NUMBER = 5;
+  public static final int NAME_FIELD_NUMBER = 2;
   @SuppressWarnings("serial")
   private volatile java.lang.Object name_ = "";
   /**
@@ -96,7 +97,7 @@ private static final long serialVersionUID = 0L;
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    * </pre>
    *
-   * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
    * @return The name.
    */
   @java.lang.Override
@@ -117,7 +118,7 @@ private static final long serialVersionUID = 0L;
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    * </pre>
    *
-   * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
    * @return The bytes for name.
    */
   @java.lang.Override
@@ -133,6 +134,32 @@ private static final long serialVersionUID = 0L;
     } else {
       return (com.google.protobuf.ByteString) ref;
     }
+  }
+
+  public static final int STATE_FIELD_NUMBER = 3;
+  private int state_ = 0;
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+   * @return The enum numeric value on the wire for state.
+   */
+  @java.lang.Override public int getStateValue() {
+    return state_;
+  }
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+   * @return The state.
+   */
+  @java.lang.Override public com.common.StateTypeEnum getState() {
+    com.common.StateTypeEnum result = com.common.StateTypeEnum.forNumber(state_);
+    return result == null ? com.common.StateTypeEnum.UNRECOGNIZED : result;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -153,7 +180,10 @@ private static final long serialVersionUID = 0L;
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(name_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 5, name_);
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, name_);
+    }
+    if (state_ != com.common.StateTypeEnum.STATE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+      output.writeEnum(3, state_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -168,7 +198,11 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(name_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(5, name_);
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, name_);
+    }
+    if (state_ != com.common.StateTypeEnum.STATE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeEnumSize(3, state_);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -189,6 +223,7 @@ private static final long serialVersionUID = 0L;
         .equals(other.getId())) return false;
     if (!getName()
         .equals(other.getName())) return false;
+    if (state_ != other.state_) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -204,6 +239,8 @@ private static final long serialVersionUID = 0L;
     hash = (53 * hash) + getId().hashCode();
     hash = (37 * hash) + NAME_FIELD_NUMBER;
     hash = (53 * hash) + getName().hashCode();
+    hash = (37 * hash) + STATE_FIELD_NUMBER;
+    hash = (53 * hash) + state_;
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -337,6 +374,7 @@ private static final long serialVersionUID = 0L;
       bitField0_ = 0;
       id_ = "";
       name_ = "";
+      state_ = 0;
       return this;
     }
 
@@ -375,6 +413,9 @@ private static final long serialVersionUID = 0L;
       }
       if (((from_bitField0_ & 0x00000002) != 0)) {
         result.name_ = name_;
+      }
+      if (((from_bitField0_ & 0x00000004) != 0)) {
+        result.state_ = state_;
       }
     }
 
@@ -432,6 +473,9 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00000002;
         onChanged();
       }
+      if (other.state_ != 0) {
+        setStateValue(other.getStateValue());
+      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -463,11 +507,16 @@ private static final long serialVersionUID = 0L;
               bitField0_ |= 0x00000001;
               break;
             } // case 10
-            case 42: {
+            case 18: {
               name_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000002;
               break;
-            } // case 42
+            } // case 18
+            case 24: {
+              state_ = input.readEnum();
+              bitField0_ |= 0x00000004;
+              break;
+            } // case 24
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -583,7 +632,7 @@ private static final long serialVersionUID = 0L;
      * used to partition Attribute Definitions, support by namespace AuthN and enable federation
      * </pre>
      *
-     * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
      * @return The name.
      */
     public java.lang.String getName() {
@@ -603,7 +652,7 @@ private static final long serialVersionUID = 0L;
      * used to partition Attribute Definitions, support by namespace AuthN and enable federation
      * </pre>
      *
-     * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
      * @return The bytes for name.
      */
     public com.google.protobuf.ByteString
@@ -624,7 +673,7 @@ private static final long serialVersionUID = 0L;
      * used to partition Attribute Definitions, support by namespace AuthN and enable federation
      * </pre>
      *
-     * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
      * @param value The name to set.
      * @return This builder for chaining.
      */
@@ -641,7 +690,7 @@ private static final long serialVersionUID = 0L;
      * used to partition Attribute Definitions, support by namespace AuthN and enable federation
      * </pre>
      *
-     * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
     public Builder clearName() {
@@ -655,7 +704,7 @@ private static final long serialVersionUID = 0L;
      * used to partition Attribute Definitions, support by namespace AuthN and enable federation
      * </pre>
      *
-     * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
      * @param value The bytes for name to set.
      * @return This builder for chaining.
      */
@@ -665,6 +714,79 @@ private static final long serialVersionUID = 0L;
       checkByteStringIsUtf8(value);
       name_ = value;
       bitField0_ |= 0x00000002;
+      onChanged();
+      return this;
+    }
+
+    private int state_ = 0;
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+     * @return The enum numeric value on the wire for state.
+     */
+    @java.lang.Override public int getStateValue() {
+      return state_;
+    }
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+     * @param value The enum numeric value on the wire for state to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStateValue(int value) {
+      state_ = value;
+      bitField0_ |= 0x00000004;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+     * @return The state.
+     */
+    @java.lang.Override
+    public com.common.StateTypeEnum getState() {
+      com.common.StateTypeEnum result = com.common.StateTypeEnum.forNumber(state_);
+      return result == null ? com.common.StateTypeEnum.UNRECOGNIZED : result;
+    }
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+     * @param value The state to set.
+     * @return This builder for chaining.
+     */
+    public Builder setState(com.common.StateTypeEnum value) {
+      if (value == null) {
+        throw new NullPointerException();
+      }
+      bitField0_ |= 0x00000004;
+      state_ = value.getNumber();
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearState() {
+      bitField0_ = (bitField0_ & ~0x00000004);
+      state_ = 0;
       onChanged();
       return this;
     }

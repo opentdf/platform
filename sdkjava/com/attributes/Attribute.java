@@ -22,6 +22,7 @@ private static final long serialVersionUID = 0L;
     rule_ = 0;
     values_ = java.util.Collections.emptyList();
     grants_ = java.util.Collections.emptyList();
+    state_ = 0;
   }
 
   @java.lang.Override
@@ -315,6 +316,32 @@ private static final long serialVersionUID = 0L;
     return grants_.get(index);
   }
 
+  public static final int STATE_FIELD_NUMBER = 9;
+  private int state_ = 0;
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+   * @return The enum numeric value on the wire for state.
+   */
+  @java.lang.Override public int getStateValue() {
+    return state_;
+  }
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+   * @return The state.
+   */
+  @java.lang.Override public com.common.StateTypeEnum getState() {
+    com.common.StateTypeEnum result = com.common.StateTypeEnum.forNumber(state_);
+    return result == null ? com.common.StateTypeEnum.UNRECOGNIZED : result;
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -349,6 +376,9 @@ private static final long serialVersionUID = 0L;
     }
     for (int i = 0; i < grants_.size(); i++) {
       output.writeMessage(8, grants_.get(i));
+    }
+    if (state_ != com.common.StateTypeEnum.STATE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+      output.writeEnum(9, state_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -385,6 +415,10 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(8, grants_.get(i));
     }
+    if (state_ != com.common.StateTypeEnum.STATE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeEnumSize(9, state_);
+    }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
     return size;
@@ -419,6 +453,7 @@ private static final long serialVersionUID = 0L;
         .equals(other.getValuesList())) return false;
     if (!getGrantsList()
         .equals(other.getGrantsList())) return false;
+    if (state_ != other.state_) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -452,6 +487,8 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + GRANTS_FIELD_NUMBER;
       hash = (53 * hash) + getGrantsList().hashCode();
     }
+    hash = (37 * hash) + STATE_FIELD_NUMBER;
+    hash = (53 * hash) + state_;
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -619,6 +656,7 @@ private static final long serialVersionUID = 0L;
         grantsBuilder_.clear();
       }
       bitField0_ = (bitField0_ & ~0x00000040);
+      state_ = 0;
       return this;
     }
 
@@ -695,6 +733,9 @@ private static final long serialVersionUID = 0L;
       }
       if (((from_bitField0_ & 0x00000010) != 0)) {
         result.rule_ = rule_;
+      }
+      if (((from_bitField0_ & 0x00000080) != 0)) {
+        result.state_ = state_;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -814,6 +855,9 @@ private static final long serialVersionUID = 0L;
           }
         }
       }
+      if (other.state_ != 0) {
+        setStateValue(other.getStateValue());
+      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -895,6 +939,11 @@ private static final long serialVersionUID = 0L;
               }
               break;
             } // case 66
+            case 72: {
+              state_ = input.readEnum();
+              bitField0_ |= 0x00000080;
+              break;
+            } // case 72
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -1941,6 +1990,79 @@ private static final long serialVersionUID = 0L;
         grants_ = null;
       }
       return grantsBuilder_;
+    }
+
+    private int state_ = 0;
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * @return The enum numeric value on the wire for state.
+     */
+    @java.lang.Override public int getStateValue() {
+      return state_;
+    }
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * @param value The enum numeric value on the wire for state to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStateValue(int value) {
+      state_ = value;
+      bitField0_ |= 0x00000080;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * @return The state.
+     */
+    @java.lang.Override
+    public com.common.StateTypeEnum getState() {
+      com.common.StateTypeEnum result = com.common.StateTypeEnum.forNumber(state_);
+      return result == null ? com.common.StateTypeEnum.UNRECOGNIZED : result;
+    }
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * @param value The state to set.
+     * @return This builder for chaining.
+     */
+    public Builder setState(com.common.StateTypeEnum value) {
+      if (value == null) {
+        throw new NullPointerException();
+      }
+      bitField0_ |= 0x00000080;
+      state_ = value.getNumber();
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * active by default until explicitly deactivated
+     * </pre>
+     *
+     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearState() {
+      bitField0_ = (bitField0_ & ~0x00000080);
+      state_ = 0;
+      onChanged();
+      return this;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

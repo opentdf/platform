@@ -61,15 +61,15 @@ public final class NamespacesProto {
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_namespaces_UpdateNamespaceResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_namespaces_DeleteNamespaceRequest_descriptor;
+    internal_static_namespaces_DeactivateNamespaceRequest_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_namespaces_DeleteNamespaceRequest_fieldAccessorTable;
+      internal_static_namespaces_DeactivateNamespaceRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_namespaces_DeleteNamespaceResponse_descriptor;
+    internal_static_namespaces_DeactivateNamespaceResponse_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_namespaces_DeleteNamespaceResponse_fieldAccessorTable;
+      internal_static_namespaces_DeactivateNamespaceResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -81,69 +81,73 @@ public final class NamespacesProto {
     java.lang.String[] descriptorData = {
       "\n\033namespaces/namespaces.proto\022\nnamespace" +
       "s\032\033buf/validate/validate.proto\032\034google/a" +
-      "pi/annotations.proto\"\225\004\n\tNamespace\022\016\n\002id" +
-      "\030\001 \001(\tR\002id\022\367\003\n\004name\030\005 \001(\tB\342\003\272H\336\003r\003\030\375\001\272\001\322" +
-      "\003\n\020namespace_format\022\352\002Namespace must be " +
-      "a valid hostname. It should include at l" +
-      "east one dot, with each segment (label) " +
-      "starting and ending with an alphanumeric" +
-      " character. Each label must be 1 to 63 c" +
-      "haracters long, allowing hyphens but not" +
-      " as the first or last character. The top" +
-      "-level domain (the last segment after th" +
-      "e final dot) must consist of at least tw" +
-      "o alphabetic characters.\032Qthis.matches(\'" +
-      "^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-" +
-      "Z0-9])?\\\\.)+[a-zA-Z]{2,}$\')\310\001\001R\004name\"-\n\023" +
-      "GetNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R" +
-      "\002id\"K\n\024GetNamespaceResponse\0223\n\tnamespace" +
-      "\030\001 \001(\0132\025.namespaces.NamespaceR\tnamespace" +
-      "\"\027\n\025ListNamespacesRequest\"O\n\026ListNamespa" +
-      "cesResponse\0225\n\nnamespaces\030\001 \003(\0132\025.namesp" +
-      "aces.NamespaceR\nnamespaces\"4\n\026CreateName" +
-      "spaceRequest\022\032\n\004name\030\001 \001(\tB\006\272H\003\310\001\001R\004name" +
-      "\"N\n\027CreateNamespaceResponse\0223\n\tnamespace" +
-      "\030\001 \001(\0132\025.namespaces.NamespaceR\tnamespace" +
-      "\"L\n\026UpdateNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006" +
-      "\272H\003\310\001\001R\002id\022\032\n\004name\030\002 \001(\tB\006\272H\003\310\001\001R\004name\"N" +
-      "\n\027UpdateNamespaceResponse\0223\n\tnamespace\030\001" +
-      " \001(\0132\025.namespaces.NamespaceR\tnamespace\"0" +
-      "\n\026DeleteNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H" +
-      "\003\310\001\001R\002id\"\031\n\027DeleteNamespaceResponse2\201\005\n\020" +
-      "NamespaceService\022v\n\014GetNamespace\022\037.names" +
-      "paces.GetNamespaceRequest\032 .namespaces.G" +
-      "etNamespaceResponse\"#\202\323\344\223\002\035\022\033/attributes" +
-      "/namespaces/{id}\022w\n\016ListNamespaces\022!.nam" +
-      "espaces.ListNamespacesRequest\032\".namespac" +
-      "es.ListNamespacesResponse\"\036\202\323\344\223\002\030\022\026/attr" +
-      "ibutes/namespaces\022z\n\017CreateNamespace\022\".n" +
-      "amespaces.CreateNamespaceRequest\032#.names" +
-      "paces.CreateNamespaceResponse\"\036\202\323\344\223\002\030\"\026/" +
-      "attributes/namespaces\022\177\n\017UpdateNamespace" +
-      "\022\".namespaces.UpdateNamespaceRequest\032#.n" +
-      "amespaces.UpdateNamespaceResponse\"#\202\323\344\223\002" +
-      "\035\032\033/attributes/namespaces/{id}\022\177\n\017Delete" +
-      "Namespace\022\".namespaces.DeleteNamespaceRe" +
-      "quest\032#.namespaces.DeleteNamespaceRespon" +
-      "se\"#\202\323\344\223\002\035*\033/attributes/namespaces/{id}B" +
-      "\233\001\n\016com.namespacesB\017NamespacesProtoP\001Z0g" +
-      "ithub.com/opentdf/opentdf-v2-poc/sdk/nam" +
-      "espaces\242\002\003NXX\252\002\nNamespaces\312\002\nNamespaces\342" +
-      "\002\026Namespaces\\GPBMetadata\352\002\nNamespacesb\006p" +
-      "roto3"
+      "pi/annotations.proto\032\023common/common.prot" +
+      "o\"\302\004\n\tNamespace\022\016\n\002id\030\001 \001(\tR\002id\022\367\003\n\004name" +
+      "\030\002 \001(\tB\342\003\272H\336\003r\003\030\375\001\272\001\322\003\n\020namespace_format" +
+      "\022\352\002Namespace must be a valid hostname. I" +
+      "t should include at least one dot, with " +
+      "each segment (label) starting and ending" +
+      " with an alphanumeric character. Each la" +
+      "bel must be 1 to 63 characters long, all" +
+      "owing hyphens but not as the first or la" +
+      "st character. The top-level domain (the " +
+      "last segment after the final dot) must c" +
+      "onsist of at least two alphabetic charac" +
+      "ters.\032Qthis.matches(\'^([a-zA-Z0-9]([a-zA" +
+      "-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z" +
+      "]{2,}$\')\310\001\001R\004name\022+\n\005state\030\003 \001(\0162\025.commo" +
+      "n.StateTypeEnumR\005state\"-\n\023GetNamespaceRe" +
+      "quest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"K\n\024GetName" +
+      "spaceResponse\0223\n\tnamespace\030\001 \001(\0132\025.names" +
+      "paces.NamespaceR\tnamespace\"D\n\025ListNamesp" +
+      "acesRequest\022+\n\005state\030\001 \001(\0162\025.common.Stat" +
+      "eTypeEnumR\005state\"O\n\026ListNamespacesRespon" +
+      "se\0225\n\nnamespaces\030\001 \003(\0132\025.namespaces.Name" +
+      "spaceR\nnamespaces\"4\n\026CreateNamespaceRequ" +
+      "est\022\032\n\004name\030\001 \001(\tB\006\272H\003\310\001\001R\004name\"N\n\027Creat" +
+      "eNamespaceResponse\0223\n\tnamespace\030\001 \001(\0132\025." +
+      "namespaces.NamespaceR\tnamespace\"L\n\026Updat" +
+      "eNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002i" +
+      "d\022\032\n\004name\030\002 \001(\tB\006\272H\003\310\001\001R\004name\"N\n\027UpdateN" +
+      "amespaceResponse\0223\n\tnamespace\030\001 \001(\0132\025.na" +
+      "mespaces.NamespaceR\tnamespace\"4\n\032Deactiv" +
+      "ateNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R" +
+      "\002id\"\035\n\033DeactivateNamespaceResponse2\216\005\n\020N" +
+      "amespaceService\022v\n\014GetNamespace\022\037.namesp" +
+      "aces.GetNamespaceRequest\032 .namespaces.Ge" +
+      "tNamespaceResponse\"#\202\323\344\223\002\035\022\033/attributes/" +
+      "namespaces/{id}\022w\n\016ListNamespaces\022!.name" +
+      "spaces.ListNamespacesRequest\032\".namespace" +
+      "s.ListNamespacesResponse\"\036\202\323\344\223\002\030\022\026/attri" +
+      "butes/namespaces\022z\n\017CreateNamespace\022\".na" +
+      "mespaces.CreateNamespaceRequest\032#.namesp" +
+      "aces.CreateNamespaceResponse\"\036\202\323\344\223\002\030\"\026/a" +
+      "ttributes/namespaces\022\177\n\017UpdateNamespace\022" +
+      "\".namespaces.UpdateNamespaceRequest\032#.na" +
+      "mespaces.UpdateNamespaceResponse\"#\202\323\344\223\002\035" +
+      "\032\033/attributes/namespaces/{id}\022\213\001\n\023Deacti" +
+      "vateNamespace\022&.namespaces.DeactivateNam" +
+      "espaceRequest\032\'.namespaces.DeactivateNam" +
+      "espaceResponse\"#\202\323\344\223\002\035*\033/attributes/name" +
+      "spaces/{id}B\233\001\n\016com.namespacesB\017Namespac" +
+      "esProtoP\001Z0github.com/opentdf/opentdf-v2" +
+      "-poc/sdk/namespaces\242\002\003NXX\252\002\nNamespaces\312\002" +
+      "\nNamespaces\342\002\026Namespaces\\GPBMetadata\352\002\nN" +
+      "amespacesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
           com.buf.validate.ValidateProto.getDescriptor(),
           com.google.api.AnnotationsProto.getDescriptor(),
+          com.common.CommonProto.getDescriptor(),
         });
     internal_static_namespaces_Namespace_descriptor =
       getDescriptor().getMessageTypes().get(0);
     internal_static_namespaces_Namespace_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_namespaces_Namespace_descriptor,
-        new java.lang.String[] { "Id", "Name", });
+        new java.lang.String[] { "Id", "Name", "State", });
     internal_static_namespaces_GetNamespaceRequest_descriptor =
       getDescriptor().getMessageTypes().get(1);
     internal_static_namespaces_GetNamespaceRequest_fieldAccessorTable = new
@@ -161,7 +165,7 @@ public final class NamespacesProto {
     internal_static_namespaces_ListNamespacesRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_namespaces_ListNamespacesRequest_descriptor,
-        new java.lang.String[] { });
+        new java.lang.String[] { "State", });
     internal_static_namespaces_ListNamespacesResponse_descriptor =
       getDescriptor().getMessageTypes().get(4);
     internal_static_namespaces_ListNamespacesResponse_fieldAccessorTable = new
@@ -192,17 +196,17 @@ public final class NamespacesProto {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_namespaces_UpdateNamespaceResponse_descriptor,
         new java.lang.String[] { "Namespace", });
-    internal_static_namespaces_DeleteNamespaceRequest_descriptor =
+    internal_static_namespaces_DeactivateNamespaceRequest_descriptor =
       getDescriptor().getMessageTypes().get(9);
-    internal_static_namespaces_DeleteNamespaceRequest_fieldAccessorTable = new
+    internal_static_namespaces_DeactivateNamespaceRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_namespaces_DeleteNamespaceRequest_descriptor,
+        internal_static_namespaces_DeactivateNamespaceRequest_descriptor,
         new java.lang.String[] { "Id", });
-    internal_static_namespaces_DeleteNamespaceResponse_descriptor =
+    internal_static_namespaces_DeactivateNamespaceResponse_descriptor =
       getDescriptor().getMessageTypes().get(10);
-    internal_static_namespaces_DeleteNamespaceResponse_fieldAccessorTable = new
+    internal_static_namespaces_DeactivateNamespaceResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_namespaces_DeleteNamespaceResponse_descriptor,
+        internal_static_namespaces_DeactivateNamespaceResponse_descriptor,
         new java.lang.String[] { });
     com.google.protobuf.ExtensionRegistry registry =
         com.google.protobuf.ExtensionRegistry.newInstance();
@@ -212,6 +216,7 @@ public final class NamespacesProto {
         .internalUpdateFileDescriptor(descriptor, registry);
     com.buf.validate.ValidateProto.getDescriptor();
     com.google.api.AnnotationsProto.getDescriptor();
+    com.common.CommonProto.getDescriptor();
   }
 
   // @@protoc_insertion_point(outer_class_scope)

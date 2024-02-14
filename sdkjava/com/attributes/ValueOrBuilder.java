@@ -151,4 +151,23 @@ public interface ValueOrBuilder extends
    */
   com.kasregistry.KeyAccessServerOrBuilder getGrantsOrBuilder(
       int index);
+
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.common.StateTypeEnum state = 7 [json_name = "state"];</code>
+   * @return The enum numeric value on the wire for state.
+   */
+  int getStateValue();
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.common.StateTypeEnum state = 7 [json_name = "state"];</code>
+   * @return The state.
+   */
+  com.common.StateTypeEnum getState();
 }

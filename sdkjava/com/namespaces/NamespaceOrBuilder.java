@@ -33,7 +33,7 @@ public interface NamespaceOrBuilder extends
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    * </pre>
    *
-   * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
    * @return The name.
    */
   java.lang.String getName();
@@ -42,9 +42,28 @@ public interface NamespaceOrBuilder extends
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    * </pre>
    *
-   * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
    * @return The bytes for name.
    */
   com.google.protobuf.ByteString
       getNameBytes();
+
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+   * @return The enum numeric value on the wire for state.
+   */
+  int getStateValue();
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.common.StateTypeEnum state = 3 [json_name = "state"];</code>
+   * @return The state.
+   */
+  com.common.StateTypeEnum getState();
 }

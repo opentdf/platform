@@ -5,105 +5,78 @@
 package com.attributes;
 
 /**
- * Protobuf type {@code attributes.ListAttributeValuesRequest}
+ * Protobuf type {@code attributes.DeactivateAttributeValueRequest}
  */
-public final class ListAttributeValuesRequest extends
+public final class DeactivateAttributeValueRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:attributes.ListAttributeValuesRequest)
-    ListAttributeValuesRequestOrBuilder {
+    // @@protoc_insertion_point(message_implements:attributes.DeactivateAttributeValueRequest)
+    DeactivateAttributeValueRequestOrBuilder {
 private static final long serialVersionUID = 0L;
-  // Use ListAttributeValuesRequest.newBuilder() to construct.
-  private ListAttributeValuesRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+  // Use DeactivateAttributeValueRequest.newBuilder() to construct.
+  private DeactivateAttributeValueRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-  private ListAttributeValuesRequest() {
-    attributeId_ = "";
-    state_ = 0;
+  private DeactivateAttributeValueRequest() {
+    id_ = "";
   }
 
   @java.lang.Override
   @SuppressWarnings({"unused"})
   protected java.lang.Object newInstance(
       UnusedPrivateParameter unused) {
-    return new ListAttributeValuesRequest();
+    return new DeactivateAttributeValueRequest();
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return com.attributes.AttributesProto.internal_static_attributes_ListAttributeValuesRequest_descriptor;
+    return com.attributes.AttributesProto.internal_static_attributes_DeactivateAttributeValueRequest_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return com.attributes.AttributesProto.internal_static_attributes_ListAttributeValuesRequest_fieldAccessorTable
+    return com.attributes.AttributesProto.internal_static_attributes_DeactivateAttributeValueRequest_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            com.attributes.ListAttributeValuesRequest.class, com.attributes.ListAttributeValuesRequest.Builder.class);
+            com.attributes.DeactivateAttributeValueRequest.class, com.attributes.DeactivateAttributeValueRequest.Builder.class);
   }
 
-  public static final int ATTRIBUTE_ID_FIELD_NUMBER = 1;
+  public static final int ID_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private volatile java.lang.Object attributeId_ = "";
+  private volatile java.lang.Object id_ = "";
   /**
-   * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-   * @return The attributeId.
+   * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+   * @return The id.
    */
   @java.lang.Override
-  public java.lang.String getAttributeId() {
-    java.lang.Object ref = attributeId_;
+  public java.lang.String getId() {
+    java.lang.Object ref = id_;
     if (ref instanceof java.lang.String) {
       return (java.lang.String) ref;
     } else {
       com.google.protobuf.ByteString bs = 
           (com.google.protobuf.ByteString) ref;
       java.lang.String s = bs.toStringUtf8();
-      attributeId_ = s;
+      id_ = s;
       return s;
     }
   }
   /**
-   * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-   * @return The bytes for attributeId.
+   * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+   * @return The bytes for id.
    */
   @java.lang.Override
   public com.google.protobuf.ByteString
-      getAttributeIdBytes() {
-    java.lang.Object ref = attributeId_;
+      getIdBytes() {
+    java.lang.Object ref = id_;
     if (ref instanceof java.lang.String) {
       com.google.protobuf.ByteString b = 
           com.google.protobuf.ByteString.copyFromUtf8(
               (java.lang.String) ref);
-      attributeId_ = b;
+      id_ = b;
       return b;
     } else {
       return (com.google.protobuf.ByteString) ref;
     }
-  }
-
-  public static final int STATE_FIELD_NUMBER = 2;
-  private int state_ = 0;
-  /**
-   * <pre>
-   * ACTIVE by default when not specified
-   * </pre>
-   *
-   * <code>.common.StateTypeEnum state = 2 [json_name = "state"];</code>
-   * @return The enum numeric value on the wire for state.
-   */
-  @java.lang.Override public int getStateValue() {
-    return state_;
-  }
-  /**
-   * <pre>
-   * ACTIVE by default when not specified
-   * </pre>
-   *
-   * <code>.common.StateTypeEnum state = 2 [json_name = "state"];</code>
-   * @return The state.
-   */
-  @java.lang.Override public com.common.StateTypeEnum getState() {
-    com.common.StateTypeEnum result = com.common.StateTypeEnum.forNumber(state_);
-    return result == null ? com.common.StateTypeEnum.UNRECOGNIZED : result;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -120,11 +93,8 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeId_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, attributeId_);
-    }
-    if (state_ != com.common.StateTypeEnum.STATE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
-      output.writeEnum(2, state_);
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -135,12 +105,8 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeId_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, attributeId_);
-    }
-    if (state_ != com.common.StateTypeEnum.STATE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeEnumSize(2, state_);
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -152,14 +118,13 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof com.attributes.ListAttributeValuesRequest)) {
+    if (!(obj instanceof com.attributes.DeactivateAttributeValueRequest)) {
       return super.equals(obj);
     }
-    com.attributes.ListAttributeValuesRequest other = (com.attributes.ListAttributeValuesRequest) obj;
+    com.attributes.DeactivateAttributeValueRequest other = (com.attributes.DeactivateAttributeValueRequest) obj;
 
-    if (!getAttributeId()
-        .equals(other.getAttributeId())) return false;
-    if (state_ != other.state_) return false;
+    if (!getId()
+        .equals(other.getId())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -171,53 +136,51 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    hash = (37 * hash) + ATTRIBUTE_ID_FIELD_NUMBER;
-    hash = (53 * hash) + getAttributeId().hashCode();
-    hash = (37 * hash) + STATE_FIELD_NUMBER;
-    hash = (53 * hash) + state_;
+    hash = (37 * hash) + ID_FIELD_NUMBER;
+    hash = (53 * hash) + getId().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
   }
 
-  public static com.attributes.ListAttributeValuesRequest parseFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(byte[] data)
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(java.io.InputStream input)
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -225,26 +188,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static com.attributes.ListAttributeValuesRequest parseDelimitedFrom(java.io.InputStream input)
+  public static com.attributes.DeactivateAttributeValueRequest parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static com.attributes.ListAttributeValuesRequest parseDelimitedFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static com.attributes.ListAttributeValuesRequest parseFrom(
+  public static com.attributes.DeactivateAttributeValueRequest parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -257,7 +220,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(com.attributes.ListAttributeValuesRequest prototype) {
+  public static Builder newBuilder(com.attributes.DeactivateAttributeValueRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -273,26 +236,26 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * Protobuf type {@code attributes.ListAttributeValuesRequest}
+   * Protobuf type {@code attributes.DeactivateAttributeValueRequest}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:attributes.ListAttributeValuesRequest)
-      com.attributes.ListAttributeValuesRequestOrBuilder {
+      // @@protoc_insertion_point(builder_implements:attributes.DeactivateAttributeValueRequest)
+      com.attributes.DeactivateAttributeValueRequestOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return com.attributes.AttributesProto.internal_static_attributes_ListAttributeValuesRequest_descriptor;
+      return com.attributes.AttributesProto.internal_static_attributes_DeactivateAttributeValueRequest_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.attributes.AttributesProto.internal_static_attributes_ListAttributeValuesRequest_fieldAccessorTable
+      return com.attributes.AttributesProto.internal_static_attributes_DeactivateAttributeValueRequest_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              com.attributes.ListAttributeValuesRequest.class, com.attributes.ListAttributeValuesRequest.Builder.class);
+              com.attributes.DeactivateAttributeValueRequest.class, com.attributes.DeactivateAttributeValueRequest.Builder.class);
     }
 
-    // Construct using com.attributes.ListAttributeValuesRequest.newBuilder()
+    // Construct using com.attributes.DeactivateAttributeValueRequest.newBuilder()
     private Builder() {
 
     }
@@ -306,25 +269,24 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      attributeId_ = "";
-      state_ = 0;
+      id_ = "";
       return this;
     }
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return com.attributes.AttributesProto.internal_static_attributes_ListAttributeValuesRequest_descriptor;
+      return com.attributes.AttributesProto.internal_static_attributes_DeactivateAttributeValueRequest_descriptor;
     }
 
     @java.lang.Override
-    public com.attributes.ListAttributeValuesRequest getDefaultInstanceForType() {
-      return com.attributes.ListAttributeValuesRequest.getDefaultInstance();
+    public com.attributes.DeactivateAttributeValueRequest getDefaultInstanceForType() {
+      return com.attributes.DeactivateAttributeValueRequest.getDefaultInstance();
     }
 
     @java.lang.Override
-    public com.attributes.ListAttributeValuesRequest build() {
-      com.attributes.ListAttributeValuesRequest result = buildPartial();
+    public com.attributes.DeactivateAttributeValueRequest build() {
+      com.attributes.DeactivateAttributeValueRequest result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -332,20 +294,17 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public com.attributes.ListAttributeValuesRequest buildPartial() {
-      com.attributes.ListAttributeValuesRequest result = new com.attributes.ListAttributeValuesRequest(this);
+    public com.attributes.DeactivateAttributeValueRequest buildPartial() {
+      com.attributes.DeactivateAttributeValueRequest result = new com.attributes.DeactivateAttributeValueRequest(this);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartial0(com.attributes.ListAttributeValuesRequest result) {
+    private void buildPartial0(com.attributes.DeactivateAttributeValueRequest result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.attributeId_ = attributeId_;
-      }
-      if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.state_ = state_;
+        result.id_ = id_;
       }
     }
 
@@ -383,23 +342,20 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof com.attributes.ListAttributeValuesRequest) {
-        return mergeFrom((com.attributes.ListAttributeValuesRequest)other);
+      if (other instanceof com.attributes.DeactivateAttributeValueRequest) {
+        return mergeFrom((com.attributes.DeactivateAttributeValueRequest)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(com.attributes.ListAttributeValuesRequest other) {
-      if (other == com.attributes.ListAttributeValuesRequest.getDefaultInstance()) return this;
-      if (!other.getAttributeId().isEmpty()) {
-        attributeId_ = other.attributeId_;
+    public Builder mergeFrom(com.attributes.DeactivateAttributeValueRequest other) {
+      if (other == com.attributes.DeactivateAttributeValueRequest.getDefaultInstance()) return this;
+      if (!other.getId().isEmpty()) {
+        id_ = other.id_;
         bitField0_ |= 0x00000001;
         onChanged();
-      }
-      if (other.state_ != 0) {
-        setStateValue(other.getStateValue());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -428,15 +384,10 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              attributeId_ = input.readStringRequireUtf8();
+              id_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000001;
               break;
             } // case 10
-            case 16: {
-              state_ = input.readEnum();
-              bitField0_ |= 0x00000002;
-              break;
-            } // case 16
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -454,147 +405,74 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.lang.Object attributeId_ = "";
+    private java.lang.Object id_ = "";
     /**
-     * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @return The attributeId.
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+     * @return The id.
      */
-    public java.lang.String getAttributeId() {
-      java.lang.Object ref = attributeId_;
+    public java.lang.String getId() {
+      java.lang.Object ref = id_;
       if (!(ref instanceof java.lang.String)) {
         com.google.protobuf.ByteString bs =
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
-        attributeId_ = s;
+        id_ = s;
         return s;
       } else {
         return (java.lang.String) ref;
       }
     }
     /**
-     * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @return The bytes for attributeId.
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+     * @return The bytes for id.
      */
     public com.google.protobuf.ByteString
-        getAttributeIdBytes() {
-      java.lang.Object ref = attributeId_;
+        getIdBytes() {
+      java.lang.Object ref = id_;
       if (ref instanceof String) {
         com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
-        attributeId_ = b;
+        id_ = b;
         return b;
       } else {
         return (com.google.protobuf.ByteString) ref;
       }
     }
     /**
-     * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @param value The attributeId to set.
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+     * @param value The id to set.
      * @return This builder for chaining.
      */
-    public Builder setAttributeId(
+    public Builder setId(
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
-      attributeId_ = value;
+      id_ = value;
       bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
-     * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
-    public Builder clearAttributeId() {
-      attributeId_ = getDefaultInstance().getAttributeId();
+    public Builder clearId() {
+      id_ = getDefaultInstance().getId();
       bitField0_ = (bitField0_ & ~0x00000001);
       onChanged();
       return this;
     }
     /**
-     * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @param value The bytes for attributeId to set.
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+     * @param value The bytes for id to set.
      * @return This builder for chaining.
      */
-    public Builder setAttributeIdBytes(
+    public Builder setIdBytes(
         com.google.protobuf.ByteString value) {
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
-      attributeId_ = value;
+      id_ = value;
       bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-
-    private int state_ = 0;
-    /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.StateTypeEnum state = 2 [json_name = "state"];</code>
-     * @return The enum numeric value on the wire for state.
-     */
-    @java.lang.Override public int getStateValue() {
-      return state_;
-    }
-    /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.StateTypeEnum state = 2 [json_name = "state"];</code>
-     * @param value The enum numeric value on the wire for state to set.
-     * @return This builder for chaining.
-     */
-    public Builder setStateValue(int value) {
-      state_ = value;
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.StateTypeEnum state = 2 [json_name = "state"];</code>
-     * @return The state.
-     */
-    @java.lang.Override
-    public com.common.StateTypeEnum getState() {
-      com.common.StateTypeEnum result = com.common.StateTypeEnum.forNumber(state_);
-      return result == null ? com.common.StateTypeEnum.UNRECOGNIZED : result;
-    }
-    /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.StateTypeEnum state = 2 [json_name = "state"];</code>
-     * @param value The state to set.
-     * @return This builder for chaining.
-     */
-    public Builder setState(com.common.StateTypeEnum value) {
-      if (value == null) {
-        throw new NullPointerException();
-      }
-      bitField0_ |= 0x00000002;
-      state_ = value.getNumber();
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.StateTypeEnum state = 2 [json_name = "state"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearState() {
-      bitField0_ = (bitField0_ & ~0x00000002);
-      state_ = 0;
       onChanged();
       return this;
     }
@@ -611,23 +489,23 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:attributes.ListAttributeValuesRequest)
+    // @@protoc_insertion_point(builder_scope:attributes.DeactivateAttributeValueRequest)
   }
 
-  // @@protoc_insertion_point(class_scope:attributes.ListAttributeValuesRequest)
-  private static final com.attributes.ListAttributeValuesRequest DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:attributes.DeactivateAttributeValueRequest)
+  private static final com.attributes.DeactivateAttributeValueRequest DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new com.attributes.ListAttributeValuesRequest();
+    DEFAULT_INSTANCE = new com.attributes.DeactivateAttributeValueRequest();
   }
 
-  public static com.attributes.ListAttributeValuesRequest getDefaultInstance() {
+  public static com.attributes.DeactivateAttributeValueRequest getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static final com.google.protobuf.Parser<ListAttributeValuesRequest>
-      PARSER = new com.google.protobuf.AbstractParser<ListAttributeValuesRequest>() {
+  private static final com.google.protobuf.Parser<DeactivateAttributeValueRequest>
+      PARSER = new com.google.protobuf.AbstractParser<DeactivateAttributeValueRequest>() {
     @java.lang.Override
-    public ListAttributeValuesRequest parsePartialFrom(
+    public DeactivateAttributeValueRequest parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
@@ -646,17 +524,17 @@ private static final long serialVersionUID = 0L;
     }
   };
 
-  public static com.google.protobuf.Parser<ListAttributeValuesRequest> parser() {
+  public static com.google.protobuf.Parser<DeactivateAttributeValueRequest> parser() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.google.protobuf.Parser<ListAttributeValuesRequest> getParserForType() {
+  public com.google.protobuf.Parser<DeactivateAttributeValueRequest> getParserForType() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.attributes.ListAttributeValuesRequest getDefaultInstanceForType() {
+  public com.attributes.DeactivateAttributeValueRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

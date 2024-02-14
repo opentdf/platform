@@ -6,7 +6,7 @@ replace github.com/opentdf/opentdf-v2-poc/sdk => ./sdk
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/bufbuild/protovalidate-go v0.4.3
+	github.com/bufbuild/protovalidate-go v0.5.2
 	github.com/creasty/defaults v1.7.0
 	github.com/docker/go-connections v0.4.0
 	github.com/go-chi/cors v1.2.1
@@ -25,13 +25,13 @@ require (
 	github.com/testcontainers/testcontainers-go v0.27.0
 	github.com/valyala/fasthttp v1.51.0
 	google.golang.org/grpc v1.60.1
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.5.0
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.31.0-20231115204500-e097f827e652.2 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20240212200630-3014d81c3a48.1 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
@@ -61,7 +61,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/cel-go v0.18.2 // indirect
+	github.com/google/cel-go v0.19.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

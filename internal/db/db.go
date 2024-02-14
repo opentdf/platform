@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 )
 
 var (
@@ -65,9 +66,10 @@ func (t Table) Field(field string) string {
 	return t.Name() + "." + field
 }
 
-var (
+const (
 	StateInactive    = "INACTIVE"
 	StateActive      = "ACTIVE"
+	StateAny         = "ANY"
 	StateUnspecified = "UNSPECIFIED"
 )
 
@@ -204,4 +206,15 @@ func tableName(table string) string {
 
 func tableField(table string, field string) string {
 	return table + "." + field
+}
+
+func getProtoStateEnum(state string) common.StateTypeEnum {
+	switch state {
+	case StateInactive:
+		return common.StateTypeEnum_STATE_TYPE_ENUM_INACTIVE
+	case StateActive:
+		return common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE
+	default:
+		return common.StateTypeEnum_STATE_TYPE_ENUM_UNSPECIFIED
+	}
 }

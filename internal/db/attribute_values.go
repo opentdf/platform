@@ -19,8 +19,10 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 		members      []string
 		metadataJson []byte
 		attributeId  string
+		state		 string
 	)
-	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId); err != nil {
+	
+	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId, &state); err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -37,6 +39,7 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 		Members:     members,
 		Metadata:    m,
 		AttributeId: attributeId,
+		State: getProtoStateEnum(state),
 	}
 	return v, nil
 }
@@ -49,7 +52,8 @@ func createAttributeValueSql(
 	attribute_id string,
 	value string,
 	members []string,
-	metadata []byte) (string, []interface{}, error) {
+	metadata []byte,
+) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Insert(AttributeValueTable).
 		Columns(
@@ -67,6 +71,7 @@ func createAttributeValueSql(
 		Suffix("RETURNING id").
 		ToSql()
 }
+
 func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(v.Metadata)
 	if err != nil {
@@ -108,11 +113,13 @@ func getAttributeValueSql(id string) (string, []interface{}, error) {
 			tableField(AttributeValueTable, "members"),
 			tableField(AttributeValueTable, "metadata"),
 			tableField(AttributeValueTable, "attribute_definition_id"),
+			tableField(AttributeValueTable, "state"),
 		).
 		From(AttributeValueTable).
 		Where(sq.Eq{tableField(AttributeValueTable, "id"): id}).
 		ToSql()
 }
+
 func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	sql, args, err := getAttributeValueSql(id)
 	row, err := c.queryRow(ctx, sql, args, err)
@@ -129,18 +136,25 @@ func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.V
 }
 
 func listAttributeValuesSql(attribute_id string, state string) (string, []interface{}, error) {
-	return newStatementBuilder().
+	sb := newStatementBuilder().
 		Select(
 			tableField(AttributeValueTable, "id"),
 			tableField(AttributeValueTable, "value"),
 			tableField(AttributeValueTable, "members"),
 			tableField(AttributeValueTable, "metadata"),
 			tableField(AttributeValueTable, "attribute_definition_id"),
+			tableField(AttributeValueTable, "state"),
 		).
-		From(AttributeValueTable).
-		Where(sq.Eq{tableField(AttributeValueTable, "attribute_definition_id"): attribute_id, tableField(AttributeValueTable, "state"): state}).
-		ToSql()
+		From(AttributeValueTable)
+
+	where := sq.Eq{}
+	if state != StateAny {
+		where[tableField(AttributeValueTable, "state")] = state
+	}
+	where[tableField(AttributeValueTable, "attribute_definition_id")] = attribute_id
+	return sb.Where(where).ToSql()
 }
+
 func (c Client) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*attributes.Value, error) {
 	sql, args, err := listAttributeValuesSql(attribute_id, state)
 	rows, err := c.query(ctx, sql, args, err)
@@ -165,7 +179,8 @@ func updateAttributeValueSql(
 	id string,
 	value string,
 	members []string,
-	metadata []byte) (string, []interface{}, error) {
+	metadata []byte,
+) (string, []interface{}, error) {
 	sb := newStatementBuilder().
 		Update(AttributeValueTable).
 		Set("metadata", metadata)
@@ -181,6 +196,7 @@ func updateAttributeValueSql(
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
+
 func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {
@@ -209,12 +225,29 @@ func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attribut
 	return prev, nil
 }
 
+func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
+	return newStatementBuilder().
+		Update(AttributeValueTable).
+		Set("state", StateInactive).
+		Where(sq.Eq{tableField(AttributeValueTable, "id"): id}).
+		ToSql()
+}
+
+func (c Client) DeactivateAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
+	sql, args, err := deactivateAttributeValueSql(id)
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+	return c.GetAttributeValue(ctx, id)
+}
+
 func deleteAttributeValueSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Delete(AttributeValueTable).
 		Where(sq.Eq{tableField(AttributeValueTable, "id"): id}).
 		ToSql()
 }
+
 func (c Client) DeleteAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {

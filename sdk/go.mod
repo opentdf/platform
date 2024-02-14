@@ -1,6 +1,8 @@
 module github.com/opentdf/opentdf-v2-poc/sdk
 
-go 1.21.5
+go 1.21.7
+
+replace github.com/opentdf/opentdf-v2-poc/protocol/go => ../protocol/go
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.31.0-20231115204500-e097f827e652.2

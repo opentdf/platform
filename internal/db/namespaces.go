@@ -4,7 +4,7 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/namespaces"
 )
 
 func getNamespaceSql(id string) (string, []interface{}, error) {
@@ -129,7 +129,7 @@ func (c Client) DeleteNamespace(ctx context.Context, id string) (*namespaces.Nam
 	if e := c.exec(ctx, sql, args, err); e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)
 	}
-	
+
 	// return the namespace before it was deleted
 	return ns, nil
 }

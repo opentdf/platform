@@ -16,14 +16,13 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/logger"
 	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/services/resourcemapping"
+	"github.com/opentdf/opentdf-v2-poc/services/policy/resourcemapping"
 
-	// "github.com/opentdf/opentdf-v2-poc/services/acre"
-	"github.com/opentdf/opentdf-v2-poc/services/attributes"
+	"github.com/opentdf/opentdf-v2-poc/services/policy/attributes"
 	"github.com/opentdf/opentdf-v2-poc/services/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/services/subjectmapping"
+	"github.com/opentdf/opentdf-v2-poc/services/policy/subjectmapping"
 
-	"github.com/opentdf/opentdf-v2-poc/services/namespaces"
+	"github.com/opentdf/opentdf-v2-poc/services/policy/namespaces"
 	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )

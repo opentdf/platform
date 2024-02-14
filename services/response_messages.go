@@ -23,7 +23,7 @@ const (
 	ErrRestrictViolation   = "intended action would violate a restriction"
 )
 
-func HandleError(err error, fallbackErr string, log ...any) (error) {
+func HandleError(err error, fallbackErr string, log ...any) error {
 	l := append([]any{"error", err.Error()}, log...)
 	if errors.Is(err, db.ErrUniqueConstraintViolation) {
 		slog.Error(ErrConflict, l...)

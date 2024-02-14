@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
-	resourcemapping "github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
+	resourcemapping "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/resourcemapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

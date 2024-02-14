@@ -74,9 +74,7 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 }
 
 func (c *Client) MigrationDown() (int, error) {
-	var (
-		applied int
-	)
+	var applied int
 
 	if !c.config.RunMigrations {
 		slog.Info("skipping migrations",

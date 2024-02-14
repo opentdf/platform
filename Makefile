@@ -10,8 +10,8 @@ V_DOCKER_BUILD_CMD=docker build
 V_DOCKER_IMAGE_NAME=opentdf
 
 # Buf parameters
-V_BUFLINT=buf lint proto
-V_BUFGENERATE=buf generate proto
+V_BUFLINT=buf lint services
+V_BUFGENERATE=buf generate services
 
 # GolangCI-Lint
 V_GOLANGCILINT=golangci-lint run

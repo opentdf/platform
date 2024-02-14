@@ -6,43 +6,43 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
+	auth "github.com/opentdf/opentdf-v2-poc/protocol/go/authorization"
 	"google.golang.org/grpc"
 )
 
 type AuthorizationService struct {
-	authorization.UnimplementedAuthorizationServiceServer
+	auth.UnimplementedAuthorizationServiceServer
 }
 
 func NewAuthorizationServer(g *grpc.Server, s *runtime.ServeMux) error {
 	as := &AuthorizationService{}
-	authorization.RegisterAuthorizationServiceServer(g, as)
-	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)
+	auth.RegisterAuthorizationServiceServer(g, as)
+	err := auth.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)
 	if err != nil {
 		return fmt.Errorf("failed to register authorization service handler: %w", err)
 	}
 	return nil
 }
 
-func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
+func (as AuthorizationService) GetDecisions(ctx context.Context, req *auth.GetDecisionsRequest) (*auth.GetDecisionsResponse, error) {
 	slog.Debug("getting decisions")
 
-	rsp := &authorization.GetDecisionsResponse{}
+	rsp := &auth.GetDecisionsResponse{}
 
-	var empty_decisionResponses []*authorization.DecisionResponse
-	
+	var empty_decisionResponses []*auth.DecisionResponse
+
 	rsp.DecisionResponses = empty_decisionResponses
 
 	return rsp, nil
 }
 
-func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+func (as AuthorizationService) GetEntitlements(ctx context.Context, req *auth.GetEntitlementsRequest) (*auth.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
 
-	rsp := &authorization.GetEntitlementsResponse{}
+	rsp := &auth.GetEntitlementsResponse{}
 
-	var empty_entityEntitlements []*authorization.EntityEntitlements
-	
+	var empty_entityEntitlements []*auth.EntityEntitlements
+
 	rsp.Entitlements = empty_entityEntitlements
 
 	return rsp, nil

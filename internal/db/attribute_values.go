@@ -5,8 +5,8 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -49,7 +49,8 @@ func createAttributeValueSql(
 	attribute_id string,
 	value string,
 	members []string,
-	metadata []byte) (string, []interface{}, error) {
+	metadata []byte,
+) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Insert(AttributeValueTable).
 		Columns(
@@ -67,6 +68,7 @@ func createAttributeValueSql(
 		Suffix("RETURNING id").
 		ToSql()
 }
+
 func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(v.Metadata)
 	if err != nil {
@@ -113,6 +115,7 @@ func getAttributeValueSql(id string) (string, []interface{}, error) {
 		Where(sq.Eq{tableField(AttributeValueTable, "id"): id}).
 		ToSql()
 }
+
 func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	sql, args, err := getAttributeValueSql(id)
 	row, err := c.queryRow(ctx, sql, args, err)
@@ -141,6 +144,7 @@ func listAttributeValuesSql(attribute_id string) (string, []interface{}, error) 
 		Where(sq.Eq{tableField(AttributeValueTable, "attribute_definition_id"): attribute_id}).
 		ToSql()
 }
+
 func (c Client) ListAttributeValues(ctx context.Context, attribute_id string) ([]*attributes.Value, error) {
 	sql, args, err := listAttributeValuesSql(attribute_id)
 	rows, err := c.query(ctx, sql, args, err)
@@ -165,7 +169,8 @@ func updateAttributeValueSql(
 	id string,
 	value string,
 	members []string,
-	metadata []byte) (string, []interface{}, error) {
+	metadata []byte,
+) (string, []interface{}, error) {
 	sb := newStatementBuilder().
 		Update(AttributeValueTable).
 		Set("metadata", metadata)
@@ -181,6 +186,7 @@ func updateAttributeValueSql(
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
+
 func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {
@@ -215,6 +221,7 @@ func deleteAttributeValueSql(id string) (string, []interface{}, error) {
 		Where(sq.Eq{tableField(AttributeValueTable, "id"): id}).
 		ToSql()
 }
+
 func (c Client) DeleteAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {

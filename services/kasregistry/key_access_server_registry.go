@@ -7,7 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
+	kasr "github.com/opentdf/opentdf-v2-poc/protocol/go/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
 )

@@ -6,9 +6,9 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
-	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/subjectmapping"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -126,6 +126,7 @@ func createSubjectMappingSql(attribute_value_id string, operator string, subject
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
+
 func (c *Client) CreateSubjectMapping(ctx context.Context, s *subjectmapping.SubjectMappingCreateUpdate) (*subjectmapping.SubjectMapping, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(s.Metadata)
 	if err != nil {
@@ -167,6 +168,7 @@ func getSubjectMappingSql(id string) (string, []interface{}, error) {
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
+
 func (c *Client) GetSubjectMapping(ctx context.Context, id string) (*subjectmapping.SubjectMapping, error) {
 	sql, args, err := getSubjectMappingSql(id)
 
@@ -189,6 +191,7 @@ func listSubjectMappingsSql() (string, []interface{}, error) {
 		From(t.Name()).
 		ToSql()
 }
+
 func (c *Client) ListSubjectMappings(ctx context.Context) ([]*subjectmapping.SubjectMapping, error) {
 	sql, args, err := listSubjectMappingsSql()
 	if err != nil {
@@ -234,6 +237,7 @@ func updateSubjectMappingSql(id string, attribute_value_id string, operator stri
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
+
 func (c *Client) UpdateSubjectMapping(ctx context.Context, id string, s *subjectmapping.SubjectMappingCreateUpdate) (*subjectmapping.SubjectMapping, error) {
 	prev, err := c.GetSubjectMapping(ctx, id)
 	if err != nil {
@@ -271,6 +275,7 @@ func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
+
 func (c *Client) DeleteSubjectMapping(ctx context.Context, id string) (*subjectmapping.SubjectMapping, error) {
 	prev, err := c.GetSubjectMapping(ctx, id)
 	if err != nil {

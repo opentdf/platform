@@ -2,22 +2,78 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 )
 
-func getNamespaceSql(id string) (string, []interface{}, error) {
+type namespaceSelectOptions struct {
+	withFqn bool
+}
+
+func hydrateNamespaceItem(row pgx.Row, opts namespaceSelectOptions) (*namespaces.Namespace, error) {
+	var (
+		id   string
+		name string
+		fqn  sql.NullString
+	)
+
+	fields := []interface{}{&id, &name}
+	if opts.withFqn {
+		fields = append(fields, &fqn)
+	}
+
+	if err := row.Scan(fields...); err != nil {
+		return nil, WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &namespaces.Namespace{Id: id, Name: name, Fqn: fqn.String}, nil
+}
+
+func hydrateNamespaceItems(rows pgx.Rows, opts namespaceSelectOptions) ([]*namespaces.Namespace, error) {
+	var list []*namespaces.Namespace
+
+	for rows.Next() {
+		n, err := hydrateNamespaceItem(rows, opts)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, n)
+	}
+
+	return list, nil
+}
+
+func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	return newStatementBuilder().
-		Select("*").
-		From(t.Name()).
+	fields := []string{
+		t.Field("id"),
+		t.Field("name"),
+	}
+
+	if opts.withFqn {
+		fields = append(fields, Tables.AttrFqn.Field("fqn"))
+	}
+
+	sb := newStatementBuilder().
+		Select(fields...).
+		From(t.Name())
+
+	if opts.withFqn {
+		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("namespace_id") + " = " + t.Field("id"))
+	}
+
+	return sb.
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
 func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
-	sql, args, err := getNamespaceSql(id)
+	opts := namespaceSelectOptions{withFqn: true}
+	sql, args, err := getNamespaceSql(id, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -27,44 +83,58 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 		return nil, err
 	}
 
-	namespace := &namespaces.Namespace{Id: "", Name: ""}
-	if err := row.Scan(&namespace.Id, &namespace.Name); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+	n, err := hydrateNamespaceItem(row, opts)
+	if err != nil {
+		return nil, err
 	}
 
-	return namespace, nil
+	return n, nil
 }
 
-func listNamespacesSql() (string, []interface{}, error) {
+func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	return newStatementBuilder().
-		Select("*").
-		From(t.Name()).
-		ToSql()
+
+	fields := []string{
+		t.Field("id"),
+		t.Field("name"),
+	}
+
+	if opts.withFqn {
+		fields = append(fields, Tables.AttrFqn.Field("fqn"))
+	}
+
+	sb := newStatementBuilder().
+		Select(fields...).
+		From(t.Name())
+
+	if opts.withFqn {
+		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("namespace_id") + " = " + t.Field("id"))
+	}
+
+	return sb.ToSql()
 }
 
 func (c Client) ListNamespaces(ctx context.Context) ([]*namespaces.Namespace, error) {
-	namespacesList := []*namespaces.Namespace{}
-
-	sql, args, err := listNamespacesSql()
+	opts := namespaceSelectOptions{withFqn: true}
+	sql, args, err := listNamespacesSql(opts)
 	if err != nil {
+		slog.Error("error listing namespaces", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
+		slog.Error("error listing namespaces", slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	for rows.Next() {
-		var namespace namespaces.Namespace
-		if err := rows.Scan(&namespace.Id, &namespace.Name); err != nil {
-			return nil, WrapIfKnownInvalidQueryErr(err)
-		}
-		namespacesList = append(namespacesList, &namespace)
+	list, err := hydrateNamespaceItems(rows, opts)
+	if err != nil {
+		slog.Error("error hydrating namespace items", slog.String("sql", sql), slog.String("error", err.Error()))
+		return nil, err
 	}
 
-	return namespacesList, nil
+	return list, nil
 }
 
 func createNamespaceSql(name string) (string, []interface{}, error) {

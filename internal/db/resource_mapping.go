@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -128,6 +129,7 @@ func (c Client) CreateResourceMapping(ctx context.Context, rm *resourcemapping.R
 
 	av, err := c.GetAttributeValue(ctx, rm.AttributeValueId)
 	if err != nil {
+		slog.Error("failed to get attribute value", "id", rm.AttributeValueId, "err", err)
 		return nil, err
 	}
 

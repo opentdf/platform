@@ -2,11 +2,13 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
+	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -21,7 +23,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		members      []string
 		metadataJson []byte
 		attributeId  string
-		fqn          string
+		fqn          sql.NullString
 	)
 
 	fields := []interface{}{
@@ -52,7 +54,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		Members:     members,
 		Metadata:    m,
 		AttributeId: attributeId,
-		Fqn:         fqn,
+		Fqn:         fqn.String,
 	}
 	return v, nil
 }
@@ -150,7 +152,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		From(t.Name())
 
 	if opts.withFqn {
-		sb = sb.Join(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
 	}
 
 	return sb.Where(sq.Eq{t.Field("id"): id}).
@@ -161,9 +163,16 @@ func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.V
 	sql, args, err := getAttributeValueSql(id, opts)
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
+		slog.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
-	return attributeValueHydrateItem(row, opts)
+
+	a, err := attributeValueHydrateItem(row, opts)
+	if err != nil {
+		slog.Error("error hydrating attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
+		return nil, err
+	}
+	return a, nil
 }
 
 func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
@@ -183,7 +192,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		Select(fields...)
 
 	if opts.withFqn {
-		sb = sb.Join(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
 	}
 
 	return sb.
@@ -218,7 +227,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		Select(fields...)
 
 	if opts.withFqn {
-		sb = sb.Join(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
 	}
 
 	return sb.

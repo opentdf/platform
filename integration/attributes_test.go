@@ -25,7 +25,6 @@ var (
 	fixtureNamespaceId       string
 	nonExistentAttrId        = "00000000-6789-4321-9876-123456765436"
 	fixtureKeyAccessServerId string
-	stillActiveNsId          string
 )
 
 func (s *AttributesSuite) SetupSuite() {

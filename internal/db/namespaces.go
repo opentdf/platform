@@ -137,7 +137,7 @@ func (c Client) DeactivateNamespace(ctx context.Context, id string) (*namespaces
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	// TODO: handle delete cascade, dangerous deletion via special rpc
+	// TODO: handle delete cascade, dangerous deletion via special rpc [https://github.com/opentdf/opentdf-v2-poc/issues/115]
 	return newStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).

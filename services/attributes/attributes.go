@@ -32,11 +32,6 @@ func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 func (s AttributesService) CreateAttribute(ctx context.Context,
 	req *attributes.CreateAttributeRequest,
 ) (*attributes.CreateAttributeResponse, error) {
-	//
-	// TODO: make sure you can't create in a deactivated namespace!!
-	//
-	//
-	//
 	slog.Debug("creating new attribute definition", slog.String("name", req.Attribute.Name))
 	rsp := &attributes.CreateAttributeResponse{}
 

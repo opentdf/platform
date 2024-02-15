@@ -28,6 +28,8 @@ var (
 	deactivatedNsId        = ""
 	deactivatedAttrId      = ""
 	deactivatedAttrValueId = ""
+	stillActiveNsId        string
+	stillActiveAttributeId string
 )
 
 func (s *NamespacesSuite) SetupSuite() {

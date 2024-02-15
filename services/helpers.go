@@ -5,7 +5,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 )
 
-// If not provided (rpc found state 'unspecified'), queries default to ACTIVE
 func GetDbStateEnum(state common.StateTypeEnum) string {
 	switch state.String() {
 	case common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE.String():

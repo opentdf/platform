@@ -15,10 +15,7 @@ import (
 
 // TODO: test failure of create/update with invalid member id's [https://github.com/opentdf/opentdf-v2-poc/issues/105]
 
-var (
-	nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
-	stillActiveAttributeId        string
-)
+var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {
 	suite.Suite
@@ -390,19 +387,19 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 }
 
 func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
-	// ensure the namespace has state active still (not bubbled up)
+	// namespace is still active (not bubbled up)
 	gotNs, err := s.db.Client.GetNamespace(s.ctx, stillActiveNsId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNs)
 	assert.Equal(s.T(), common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE, gotNs.State)
 
-	// ensure the attribute still has state actiave (not bubbled up)
+	// attribute is still active (not bubbled up)
 	gotAttr, err := s.db.Client.GetAttribute(s.ctx, stillActiveAttributeId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
 	assert.Equal(s.T(), common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE, gotAttr.State)
 
-	// ensure the value has state inactive
+	// value was deactivated
 	gotVal, err := s.db.Client.GetAttributeValue(s.ctx, deactivatedAttrValueId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotVal)

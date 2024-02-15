@@ -103,7 +103,6 @@ jobs:
         with:
           input: proto
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
-      - run: make go.work
       - run: make buf-generate
       - run: git diff
       - run: git diff-files --ignore-submodules

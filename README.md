@@ -116,3 +116,26 @@ The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` 
 generated code.
 
 For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.
+
+## Services
+
+### Policy
+
+The policy service is responsible for managing policy configurations. It provides a gRPC API for
+creating, updating, and deleting policy configurations.
+
+#### Attributes
+
+##### Namespaces
+
+##### Definitions
+
+##### Values
+
+#### Attribute FQNs
+
+Attribute FQNs are a unique string identifer for an attribute (and its respective parts) that is 
+used to reference the attribute in policy configurations. Sspecific places where this will be used:
+
+- TDF attributes
+- Key Access Server (KAS) to determine key release

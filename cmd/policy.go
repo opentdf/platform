@@ -9,6 +9,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var policyFqnReindexCmdLong = `
+Reindex FQN across namespaces, attributes, and attribute values
+
+This command will reindex all FQNs across namespaces, attributes, and attribute values. This is
+useful when the FQN generation logic changes and the FQNs need to be updated across the platform.
+`
+
 var (
 	policyCmd = &cobra.Command{
 		Use:   "policy",
@@ -17,7 +24,9 @@ var (
 
 	policyFqnReindexCmd = &cobra.Command{
 		Use:   "fqn-reindex",
-		Short: "Run policy fqn reindex",
+		Short: "Reindex FQNs across the platform",
+		Long:  policyFqnReindexCmdLong,
+
 		Run: func(cmd *cobra.Command, args []string) {
 			dbClient, err := policyDBClient()
 			if err != nil {

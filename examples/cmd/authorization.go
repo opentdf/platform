@@ -45,21 +45,27 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 
 	// model two groups of entities; user bob and user alice
 	entityChains := []*authorization.EntityChain{{
-		Id:       "ec1",
+		Id:       "ec1", //ec1 is an arbitrary tracking id to match results to request
 		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"}}},
 	}, {
-		Id:       "ec2",
+		Id:       "ec2", //ec2 is an arbitrary tracking id to match results to request
 		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"}}},
 	}}
 
-	// Get attribute ids
+	// TODO Get attribute value ids
+	tradeSecretAttributeValueId := "replaceme"
+	openAttributeValueId := "Open"
 
+	slog.Info("Getting decision for bob and alice for transmit action on resource set with trade secret and resource" +
+		" set with trade secret + open attribute values")
+	//
 	drs := make([]*authorization.DecisionRequest, 0)
 	drs = append(drs, &authorization.DecisionRequest{
 		Actions:      actions,
 		EntityChains: entityChains,
-		ResourceAttributes: []*authorization.ResourceAttributes{{Id: "request-set-1", AttributeId: []string{"http://www.example.org/attr/foo/value/bar"}},
-			{Id: "request-set-2", AttributeId: []string{"http://www.example.org/attr/foo/value/bar", "http://www.example.org/attr/color/value/red"}}},
+		ResourceAttributes: []*authorization.ResourceAttributes{
+			{Id: "request-set-1", AttributeId: []string{tradeSecretAttributeValueId}},                        // request-set-1 is arbitrary tracking id
+			{Id: "request-set-2", AttributeId: []string{tradeSecretAttributeValueId, openAttributeValueId}}}, // request-set-2 is arbitrary tracking id
 	})
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
@@ -69,6 +75,15 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 		return err
 	}
 	slog.Info(fmt.Sprintf("Received decision response: %s", protojson.Format(decisionResponse)))
+
+	// map response back to entity chain id
+	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
+	for _, dr := range decisionResponse.DecisionResponses {
+		decisionsByEntityChain[dr.EntityChainId] = dr
+	}
+
+	slog.Info(fmt.Sprintf("decision for bob: %s", protojson.Format(decisionsByEntityChain["ec1"])))
+	slog.Info(fmt.Sprintf("decision for alice: %s", protojson.Format(decisionsByEntityChain["ec2"])))
 	return nil
 }
 

@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/claims"
+  },
+
+  "response": {
+    "status": 200,
+    "body": "[]",
+    "headers": {
+        "Content-Type": "application/json"
+    }
+  }
+}

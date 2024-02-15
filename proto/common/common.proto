@@ -2,84 +2,23 @@ syntax = "proto3";
 
 package common;
 
-import "buf/validate/validate.proto";
-
-enum PolicyResourceType {
-  POLICY_RESOURCE_TYPE_UNSPECIFIED = 0;
-  POLICY_RESOURCE_TYPE_RESOURCE_ENCODING = 1;
-  POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM = 2;
-  POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING = 3;
-  POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP = 4;
-  POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING = 5;
-  POLICY_RESOURCE_TYPE_KEY_ACCESS = 6;
-  POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION = 7;
-  POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP = 8;
-  POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS = 9;
-}
+import "google/protobuf/timestamp.proto";
 
 // Struct to uniquely identify a resource with optional additional metadata
-message ResourceDescriptor {
-  PolicyResourceType type = 1 [
-    (buf.validate.field).enum.defined_only = true,
-    (buf.validate.field).required = true
-  ];
-  // unique resource identifier
-  int32 id = 2;
-  // resource version
-  int32 version = 3;
-  // resource name
-  string name = 4 [(buf.validate.field).required = true];
-  // resource namespace; used to partition resources, support by namespace AuthN and enable federation
-  string namespace = 5 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.max_len = 253,
-    (buf.validate.field).cel = {
-      id: "namespace_format",
-      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters.",
-      expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
-    }
-  ];
-  /*
-     optional fully qualified name of the resource.  FQN is used to support direct references and to eliminate the need
-     for clients to compose an FQN at run time.
-
-     the fqn may be specific to the resource type.
-  */
-  string fqn = 6;
-  // optional short description / label
-  map<string, string> labels = 7;
+message Metadata {
+  // created_at set by server (entity who created will recorded in an audit event)
+  google.protobuf.Timestamp created_at = 1;
+  // updated_at set by server (entity who updated will recorded in an audit event)
+  google.protobuf.Timestamp updated_at = 2;
+  // optional short description
+  map<string, string> labels = 3;
   // optional long description
-  string description = 8;
-  // optional list of resource dependencies
-  repeated ResourceDependency dependencies = 9;
+  string description = 4;
 }
 
-// Define a resource dependency
-message ResourceDependency {
-  // namespace of referenced resource
-  string namespace = 1;
-  // version of reference resource
-  string version = 2;
-  //type of dependency
-  PolicyResourceType type = 3;
-}
-
-// Define a resource selector
-message ResourceSelector {
-  // namespace of referenced resource
-  string namespace = 1;
-  // version of reference resource
-  int32 version = 2;
-  // Define a label selector
-  message LabelSelector {
-    // labels to match a against a resource
-    map<string, string> labels = 1;
-  }
-  // You can select a resource by name or by labels
-  oneof selector {
-    // name of referenced resource
-    string name = 3;
-    // labels to match a against a resource
-    LabelSelector label_selector = 4;
-  }
+message MetadataMutable {
+  // optional short description
+  map<string, string> labels = 3;
+  // optional long description
+  string description = 4;
 }

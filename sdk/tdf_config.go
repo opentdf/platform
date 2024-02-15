@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/internal/crypto"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 type TDFFormat = int
@@ -52,7 +53,7 @@ const (
 	kasPublicKeyPath   = "/kas_public_key"
 )
 
-// NewTDFConfig Create a new instance of tdf config.
+// NewTDFConfig CreateTDF a new instance of tdf config.
 func NewTDFConfig() (*TDFConfig, error) {
 	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
@@ -78,6 +79,10 @@ func NewTDFConfig() (*TDFConfig, error) {
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
 	}, nil
+}
+
+func NewKasInfo(url string) KASInfo {
+	return KASInfo{url: url}
 }
 
 // AddKasInformation Add all the kas urls and their corresponding public keys

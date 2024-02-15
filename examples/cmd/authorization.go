@@ -6,8 +6,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk"
 	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 	"log/slog"
 )
@@ -30,13 +28,6 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 		return err
 	}
 	defer s.Close()
-
-	//TODO - no SDK method for authorization service yet...so directly conn and create a new auth service client.
-	conn, err := grpc.Dial(examplesConfig.PlatformEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return err
-	}
-	authServiceClient := authorization.NewAuthorizationServiceClient(conn)
 
 	// request decision on "TRANSMIT" Action
 	actions := []*authorization.Action{{
@@ -70,7 +61,7 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
 	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionRequest)))
-	decisionResponse, err := authServiceClient.GetDecisions(context.Background(), decisionRequest)
+	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
 	if err != nil {
 		return err
 	}

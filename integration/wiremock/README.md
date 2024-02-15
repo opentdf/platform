@@ -5,12 +5,12 @@ A Docker container with [wiremock](https://wiremock.org/) + [wiremock grpc exten
 WireMock requires service decriptions for the proto spec.  To generate service descriptions:
 
 ```shell
-buf build ../proto \
+buf build ../../proto \
 -o grpc/services.dsc
 ```
 
-Service Mappings are located in [mapping](./mappings)
-Response Body Messages are located in [messages](./messages)
+Service Mappings are located in [mapping](mappings)
+Response Body Messages are located in [messages](messages)
 
 Run mock server:
 ```shell

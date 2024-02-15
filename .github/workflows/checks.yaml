@@ -90,7 +90,7 @@ jobs:
           push: false
 
   buflint:
-    name: Buf Lint
+    name: Protocol Buffer Lint and Gencode Up-to-date check
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     runs-on: ubuntu-22.04
     steps:
@@ -103,6 +103,22 @@ jobs:
         with:
           input: proto
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            sdk/go.sum
+            examples/attributes/go.sum
+      - run: go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: make buf-generate
+      - name: Restore go.mod after installing protoc-gen-doc
+        run: git restore go.mod go.sum
+      - run: git diff
+      - run: git diff-files --ignore-submodules
+      - name: Check that files have been formatted before PR submission
+        run: git diff-files --quiet --ignore-submodules
 
   ci:
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)

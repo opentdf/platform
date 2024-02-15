@@ -27,6 +27,7 @@ jobs:
 
   go:
     runs-on: ubuntu-22.04
+    needs: buflint
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     permissions:
       checks: write

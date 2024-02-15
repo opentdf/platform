@@ -104,6 +104,13 @@ jobs:
         with:
           input: proto
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            sdk/go.sum
+            examples/attributes/go.sum
       - run: go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: make buf-generate
       - run: git diff

@@ -10,8 +10,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var AttributeValueTable = tableName(TableAttributeValues)
-
 func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 	var (
 		id           string
@@ -50,8 +48,9 @@ func createAttributeValueSql(
 	value string,
 	members []string,
 	metadata []byte) (string, []interface{}, error) {
+	t := Tables.AttributeValues
 	return newStatementBuilder().
-		Insert(AttributeValueTable).
+		Insert(t.Name()).
 		Columns(
 			"attribute_definition_id",
 			"value",
@@ -104,16 +103,17 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 }
 
 func getAttributeValueSql(id string) (string, []interface{}, error) {
+	t := Tables.AttributeValues
 	return newStatementBuilder().
 		Select(
-			tableField(AttributeValueTable, "id"),
-			tableField(AttributeValueTable, "value"),
-			tableField(AttributeValueTable, "members"),
-			tableField(AttributeValueTable, "metadata"),
-			tableField(AttributeValueTable, "attribute_definition_id"),
+			t.Field("id"),
+			t.Field("value"),
+			t.Field("members"),
+			t.Field("metadata"),
+			t.Field("attribute_definition_id"),
 		).
-		From(AttributeValueTable).
-		Where(sq.Eq{tableField(AttributeValueTable, "id"): id}).
+		From(t.Name()).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
@@ -132,16 +132,17 @@ func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.V
 }
 
 func listAttributeValuesSql(attribute_id string) (string, []interface{}, error) {
+	t := Tables.AttributeValues
 	return newStatementBuilder().
 		Select(
-			tableField(AttributeValueTable, "id"),
-			tableField(AttributeValueTable, "value"),
-			tableField(AttributeValueTable, "members"),
-			tableField(AttributeValueTable, "metadata"),
-			tableField(AttributeValueTable, "attribute_definition_id"),
+			t.Field("id"),
+			t.Field("value"),
+			t.Field("members"),
+			t.Field("metadata"),
+			t.Field("attribute_definition_id"),
 		).
-		From(AttributeValueTable).
-		Where(sq.Eq{tableField(AttributeValueTable, "attribute_definition_id"): attribute_id}).
+		From(t.Name()).
+		Where(sq.Eq{t.Field("attribute_definition_id"): attribute_id}).
 		ToSql()
 }
 func (c Client) ListAttributeValues(ctx context.Context, attribute_id string) ([]*attributes.Value, error) {
@@ -165,15 +166,16 @@ func (c Client) ListAttributeValues(ctx context.Context, attribute_id string) ([
 }
 
 func listAllAttributeValuesSql() (string, []interface{}, error) {
+	t := Tables.AttributeValues
 	return newStatementBuilder().
 		Select(
-			tableField(AttributeValueTable, "id"),
-			tableField(AttributeValueTable, "value"),
-			tableField(AttributeValueTable, "members"),
-			tableField(AttributeValueTable, "metadata"),
-			tableField(AttributeValueTable, "attribute_definition_id"),
+			t.Field("id"),
+			t.Field("value"),
+			t.Field("members"),
+			t.Field("metadata"),
+			t.Field("attribute_definition_id"),
 		).
-		From(AttributeValueTable).
+		From(t.Name()).
 		ToSql()
 }
 func (c Client) ListAllAttributeValues(ctx context.Context) ([]*attributes.Value, error) {
@@ -201,8 +203,9 @@ func updateAttributeValueSql(
 	value string,
 	members []string,
 	metadata []byte) (string, []interface{}, error) {
+	t := Tables.AttributeValues
 	sb := newStatementBuilder().
-		Update(AttributeValueTable).
+		Update(t.Name()).
 		Set("metadata", metadata)
 
 	if value != "" {
@@ -213,7 +216,7 @@ func updateAttributeValueSql(
 	}
 
 	return sb.
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
@@ -248,9 +251,10 @@ func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attribut
 }
 
 func deleteAttributeValueSql(id string) (string, []interface{}, error) {
+	t := Tables.AttributeValues
 	return newStatementBuilder().
-		Delete(AttributeValueTable).
-		Where(sq.Eq{tableField(AttributeValueTable, "id"): id}).
+		Delete(t.Name()).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 func (c Client) DeleteAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
@@ -293,7 +297,7 @@ func removeKeyAccessServerFromValueSql(valueID, keyAccessServerID string) (strin
 	t := Tables.AttributeValueKeyAccessGrants
 	return newStatementBuilder().
 		Delete(t.Name()).
-		Where(sq.Eq{"attribute_value_id": valueID, "key_access_server_id": keyAccessServerID}).
+		Where(sq.Eq{t.Field("attribute_value_id"): valueID, t.Field("key_access_server_id"): keyAccessServerID}).
 		Suffix("IS TRUE RETURNING *").
 		ToSql()
 }

@@ -37,7 +37,7 @@ func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (s
 		subQ = sb.Select("n.id", "ad.id", "av.id", "CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn").
 			From(nT.Name()+" n").
 			Join(adT.Name()+" ad ON ad.namespace_id = n.id").
-			Join(avT.Name()+" av ON av.attribute_id = ad.id").
+			Join(avT.Name()+" av ON av.attribute_definition_id = ad.id").
 			Where("av.id = ?", valueId)
 	} else if attributeId != "" {
 		subQ = sb.Select("n.id", "ad.id", "NULL", "CONCAT('https://', n.name, '/attr/', ad.name) AS fqn").
@@ -110,7 +110,7 @@ func (c *Client) AttrFqnReindex() (res AttrFqnReindexResult) {
 	}
 
 	// Get all attributes
-	attrs, err := c.ListAllAttributes(context.Background())
+	attrs, err := c.ListAllAttributesWithout(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("could not get attributes: %w", err))
 	}

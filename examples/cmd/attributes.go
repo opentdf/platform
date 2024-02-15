@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"context"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
-	"github.com/spf13/cobra"
-	"log/slog"
-	"strconv"
-
+	"fmt"
 	"github.com/opentdf/opentdf-v2-poc/sdk"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"log/slog"
 )
 
 var AttributesExampleCmd = &cobra.Command{
@@ -32,46 +34,61 @@ func attributesExample(examplesConfig *ExampleConfig) error {
 	}
 	defer s.Close()
 
-	resp, err := s.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
-		Name: "example",
-	})
-
+	var exampleNamespace *namespaces.Namespace
+	slog.Info("listing namespaces")
+	listResp, err := s.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
 	if err != nil {
 		return err
 	}
+	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Namespaces)))
+	for _, ns := range listResp.GetNamespaces() {
+		slog.Info(fmt.Sprintf("existing namespace; name: %s, id: %s", ns.Name, ns.Id))
+		if ns.Name == "example" {
+			exampleNamespace = ns
+		}
+	}
 
-	namespaceId := resp.GetNamespace().Id
+	if exampleNamespace == nil {
+		slog.Info("creating new namespace")
+		resp, err := s.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
+			Name: "example",
+		})
+		if err != nil {
+			return err
+		}
+		exampleNamespace = resp.Namespace
+	}
 
+	slog.Info("creating new attribute with hierarchy rule")
 	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Attribute: &attributes.AttributeCreateUpdate{
-			Name:        "relto",
-			NamespaceId: namespaceId,
-			Rule:        *attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF.Enum(),
+			Name:        "IntellectualProperty",
+			NamespaceId: exampleNamespace.Id,
+			Rule:        *attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
+			Values: []*attributes.ValueCreateUpdate{
+				{Value: "TradeSecret"},
+				{Value: "Proprietary"},
+				{Value: "BusinessSensitive"},
+				{Value: "Open"},
+			},
 		},
 	})
 	if err != nil {
-		slog.Error("could not create attribute", slog.String("error", err.Error()))
-		return err
+		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
+			slog.Info("attribute already exists")
+		} else {
+			slog.Error("could not create attribute", slog.String("error", err.Error()))
+			return err
+		}
+	} else {
+		slog.Info("attribute created")
 	}
-
-	slog.Info("attribute created")
 
 	allAttr, err := s.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
 	if err != nil {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
 	}
-	for _, attr := range allAttr.Attributes {
-		slog.Info("attribute", slog.String("id", attr.Id))
-		slog.Info("attribute", slog.String("name", attr.Name))
-		slog.Info("attribute", slog.String("rule", attr.Rule.String()))
-		slog.Info("attribute", slog.Any("metadata", attr.Metadata))
-		for i, val := range attr.Values {
-			slog.Info("attribute: "+strconv.Itoa(i), slog.String("id", val.Id))
-			slog.Info("attribute: "+strconv.Itoa(i), slog.String("value", val.Value))
-			slog.Info("attribute: "+strconv.Itoa(i), slog.Any("members", val.Members))
-			slog.Info("attribute: "+strconv.Itoa(i), slog.Any("metadata", val.Metadata))
-		}
-	}
+	slog.Info(fmt.Sprintf("list attributes response: %s", protojson.Format(allAttr)))
 	return nil
 }

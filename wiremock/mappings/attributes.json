@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/attributes.AttributesService/ListAttributes"
+  },
+
+  "response": {
+    "status": 200,
+    "body": "{\"attributes\": []}",
+    "transformers": ["response-template"]
+  }
+}

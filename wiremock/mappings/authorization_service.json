@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/authorization.AuthorizationService/GetDecisions"
+  },
+
+  "response": {
+    "status": 200,
+    "body": "{\"decision_responses\": [{\n       \"entityChainId\":  \"ec1\",\n       \"resourceAttributesId\":  \"attr-set-2\",\n       \"decision\":  \"DECISION_PERMIT\"\n     }]}",
+    "transformers": ["response-template"]
+  }
+}

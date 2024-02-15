@@ -1,0 +1,12 @@
+services:
+  wiremock:
+    build:
+      context: ./
+    container_name: platform_wiremock
+    ports:
+      - "9000:8080"
+    command:
+      - "--verbose"
+    volumes:
+      - "./mappings:/home/wiremock/mappings"
+      - "./grpc:/home/wiremock/grpc"

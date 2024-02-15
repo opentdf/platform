@@ -79,7 +79,7 @@ func RegisterEntityResolutionServiceHandlerServer(ctx context.Context, mux *runt
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/entityresolution.EntityResolutionService/DoEntityResolution", runtime.WithHTTPPathPattern("/v1/entity-resolution/resolve"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/entityresolution.EntityResolutionService/DoEntityResolution", runtime.WithHTTPPathPattern("/v1/entityresolution/resolve"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -143,7 +143,7 @@ func RegisterEntityResolutionServiceHandlerClient(ctx context.Context, mux *runt
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/entityresolution.EntityResolutionService/DoEntityResolution", runtime.WithHTTPPathPattern("/v1/entity-resolution/resolve"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/entityresolution.EntityResolutionService/DoEntityResolution", runtime.WithHTTPPathPattern("/v1/entityresolution/resolve"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -163,7 +163,7 @@ func RegisterEntityResolutionServiceHandlerClient(ctx context.Context, mux *runt
 }
 
 var (
-	pattern_EntityResolutionService_DoEntityResolution_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "entity-resolution", "resolve"}, ""))
+	pattern_EntityResolutionService_DoEntityResolution_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "entityresolution", "resolve"}, ""))
 )
 
 var (

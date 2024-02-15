@@ -16,14 +16,15 @@
     "application/json"
   ],
   "paths": {
-    "/v1/attribute/definitions": {
-      "get": {
-        "operationId": "AttributesService_ListAttributes",
+    "/attributes": {
+      "post": {
+        "summary": "Create Attribute\nExample:\n grpcurl -plaintext -d '{\"attribute\": {\"namespace_id\": \"namespace_id\", \"name\": \"attribute_name\", \"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\"}}' localhost:8080 attributes.AttributesService/CreateAttribute",
+        "operationId": "AttributesService_CreateAttribute",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesListAttributesResponse"
+              "$ref": "#/definitions/attributesCreateAttributeResponse"
             }
           },
           "default": {
@@ -35,32 +36,70 @@
         },
         "parameters": [
           {
-            "name": "selector.namespace",
-            "description": "namespace of referenced resource",
-            "in": "query",
-            "required": false,
+            "name": "attribute",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/attributesAttributeCreateUpdate"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/_/values/{id}": {
+      "get": {
+        "summary": "* Attribute Value *",
+        "operationId": "AttributesService_GetAttributeValue",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesGetAttributeValueResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
+      "delete": {
+        "operationId": "AttributesService_DeleteAttributeValue",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesDeleteAttributeValueResponse"
+            }
           },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
           {
-            "name": "selector.version",
-            "description": "version of reference resource",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "selector.name",
-            "description": "name of referenced resource",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "selector.labelSelector.labels",
-            "description": "labels to match a against a resource\n\nThis is a request variable of the map type. The query format is \"map_name[key]=value\", e.g. If the map name is Age, the key type is string, and the value type is integer, the query parameter is expressed as Age[\"bob\"]=18",
-            "in": "query",
-            "required": false,
+            "name": "id",
+            "in": "path",
+            "required": true,
             "type": "string"
           }
         ],
@@ -69,7 +108,226 @@
         ]
       }
     },
-    "/v1/attribute/definitions/{id}": {
+    "/attributes/keyaccessserver/assign": {
+      "post": {
+        "summary": "Assign Key Access Server to Attribute",
+        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
+        "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesAssignKeyAccessServerToAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeKeyAccessServer",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/attributesAttributeKeyAccessServer"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/keyaccessserver/remove": {
+      "post": {
+        "summary": "Remove Key Access Server to Attribute",
+        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 attributes.AttributesService/RemeoveKeyAccessServerFromAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
+        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeKeyAccessServer",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/attributesAttributeKeyAccessServer"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/values/keyaccessserver/assign": {
+      "post": {
+        "summary": "Assign Key Access Server to Value",
+        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToValue\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
+        "operationId": "AttributesService_AssignKeyAccessServerToValue",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesAssignKeyAccessServerToValueResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "valueKeyAccessServer",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/attributesValueKeyAccessServer"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/values/keyaccessserver/remove": {
+      "post": {
+        "summary": "Remove Key Access Server to Value\ngrpcurl -plaintext -d '{\"value_key_access_server\": {\"value_id\": \"value_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 attributes.AttributesService/RemoveKeyAccessServerFromValue",
+        "description": "Example Request:\n{\n\"value_key_access_server\": {\n\"value_id\": \"value_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"value_key_access_server\": {\n\"value_id\": \"value_id\",\n\"key_access_server_id",
+        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "valueKeyAccessServer",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/attributesValueKeyAccessServer"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/{attributeId}/values": {
+      "post": {
+        "summary": "Create Attribute Value\nExample:\n grpcurl -plaintext -d '{\"attribute_id\": \"attribute_id\", \"value\": {\"value\": \"value\"}}' localhost:8080 attributes.AttributesService/CreateValue",
+        "operationId": "AttributesService_CreateAttributeValue",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesCreateAttributeValueResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "value",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/attributesValueCreateUpdate"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/{attributeId}/values/{id}": {
+      "post": {
+        "operationId": "AttributesService_UpdateAttributeValue",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesUpdateAttributeValueResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "value",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/attributesValueCreateUpdate"
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/{id}": {
       "get": {
         "operationId": "AttributesService_GetAttribute",
         "responses": {
@@ -91,8 +349,7 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "integer",
-            "format": "int32"
+            "type": "string"
           }
         ],
         "tags": [
@@ -120,8 +377,7 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "integer",
-            "format": "int32"
+            "type": "string"
           }
         ],
         "tags": [
@@ -149,229 +405,14 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "definition",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeDefinition"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/v1/attribute/groups": {
-      "get": {
-        "operationId": "AttributesService_ListAttributeGroups",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesListAttributeGroupsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "selector.namespace",
-            "description": "namespace of referenced resource",
-            "in": "query",
-            "required": false,
             "type": "string"
           },
           {
-            "name": "selector.version",
-            "description": "version of reference resource",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "selector.name",
-            "description": "name of referenced resource",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "selector.labelSelector.labels",
-            "description": "labels to match a against a resource\n\nThis is a request variable of the map type. The query format is \"map_name[key]=value\", e.g. If the map name is Age, the key type is string, and the value type is integer, the query parameter is expressed as Age[\"bob\"]=18",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/v1/attribute/groups/{id}": {
-      "get": {
-        "operationId": "AttributesService_GetAttributeGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesGetAttributeGroupResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "delete": {
-        "operationId": "AttributesService_DeleteAttributeGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesDeleteAttributeGroupResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "post": {
-        "operationId": "AttributesService_UpdateAttributeGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesUpdateAttributeGroupResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "group",
+            "name": "attribute",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/attributesAttributeGroup"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/v1/attributes/definitions": {
-      "post": {
-        "operationId": "AttributesService_CreateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesCreateAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "definition",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeDefinition"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/v1/attributes/groups": {
-      "post": {
-        "operationId": "AttributesService_CreateAttributeGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesCreateAttributeGroupResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "group",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeGroup"
+              "$ref": "#/definitions/attributesAttributeCreateUpdate"
             }
           }
         ],
@@ -382,146 +423,167 @@
     }
   },
   "definitions": {
-    "AttributeDefinitionAttributeRuleType": {
-      "type": "string",
-      "enum": [
-        "ATTRIBUTE_RULE_TYPE_UNSPECIFIED",
-        "ATTRIBUTE_RULE_TYPE_ALL_OF",
-        "ATTRIBUTE_RULE_TYPE_ANY_OF",
-        "ATTRIBUTE_RULE_TYPE_HIERARCHICAL"
-      ],
-      "default": "ATTRIBUTE_RULE_TYPE_UNSPECIFIED"
-    },
-    "ResourceSelectorLabelSelector": {
+    "attributesAssignKeyAccessServerToAttributeResponse": {
       "type": "object",
       "properties": {
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "title": "labels to match a against a resource"
+        "attributeKeyAccessServer": {
+          "$ref": "#/definitions/attributesAttributeKeyAccessServer"
         }
-      },
-      "title": "Define a label selector"
+      }
     },
-    "attributesAttributeDefinition": {
+    "attributesAssignKeyAccessServerToValueResponse": {
       "type": "object",
       "properties": {
-        "descriptor": {
-          "$ref": "#/definitions/commonResourceDescriptor"
+        "valueKeyAccessServer": {
+          "$ref": "#/definitions/attributesValueKeyAccessServer"
+        }
+      }
+    },
+    "attributesAttribute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Optional metadata for the attribute definition"
+        },
+        "namespace": {
+          "$ref": "#/definitions/namespacesNamespace",
+          "title": "namespace of the attribute"
         },
         "name": {
           "type": "string",
           "title": "attribute name"
         },
         "rule": {
-          "$ref": "#/definitions/AttributeDefinitionAttributeRuleType",
+          "$ref": "#/definitions/attributesAttributeRuleTypeEnum",
           "title": "attribute rule enum"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/attributesAttributeDefinitionValue"
-          },
-          "title": "possible values"
+            "$ref": "#/definitions/attributesValue"
+          }
         },
-        "groupBy": {
+        "grants": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/attributesAttributeDefinitionValue"
-          },
-          "title": "optional attribute group by filtering rules"
-        }
-      },
-      "title": "Attribute Definition"
-    },
-    "attributesAttributeDefinitionValue": {
-      "type": "object",
-      "properties": {
-        "descriptor": {
-          "$ref": "#/definitions/commonResourceDescriptor"
-        },
-        "value": {
-          "type": "string"
-        },
-        "attributePublicKey": {
-          "type": "string",
-          "title": "TODO - optional lock down pub key format if needed.  Per ATTR KEY?"
-        }
-      },
-      "title": "Definition of a single attribute value"
-    },
-    "attributesAttributeGroup": {
-      "type": "object",
-      "properties": {
-        "descriptor": {
-          "$ref": "#/definitions/commonResourceDescriptor"
-        },
-        "groupValue": {
-          "$ref": "#/definitions/attributesAttributeValueReference"
-        },
-        "memberValues": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/attributesAttributeValueReference"
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
           }
         }
-      },
-      "description": "Example for Org1 FVEY:\nid: 1\nversion: 1.0\nnamespace: demo.com\ngroupValue: http://demo.com/attr/relTo/FVEY\nmembers: [http://demo.com/attr/relTo/USA,http://demo.com/attr/relTo/GBR,...]",
-      "title": "represent an attribute value as a group with other attribute values as members"
+      }
     },
-    "attributesAttributeValueReference": {
+    "attributesAttributeCreateUpdate": {
       "type": "object",
       "properties": {
-        "descriptor": {
-          "$ref": "#/definitions/commonResourceDescriptor"
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional metadata for the attribute definition"
         },
-        "attributeValue": {
-          "$ref": "#/definitions/attributesAttributeDefinitionValue"
+        "namespaceId": {
+          "type": "string",
+          "title": "namespace of the attribute"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/attributesAttributeRuleTypeEnum",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/attributesValueCreateUpdate"
+          },
+          "title": "optional"
         }
-      },
-      "title": "Reference to an attribute value, one of descriptor or embedded value"
+      }
     },
-    "attributesCreateAttributeGroupResponse": {
-      "type": "object"
+    "attributesAttributeKeyAccessServer": {
+      "type": "object",
+      "properties": {
+        "attributeId": {
+          "type": "string"
+        },
+        "keyAccessServerId": {
+          "type": "string"
+        }
+      }
+    },
+    "attributesAttributeRuleTypeEnum": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
     "attributesCreateAttributeResponse": {
-      "type": "object"
-    },
-    "attributesDeleteAttributeGroupResponse": {
-      "type": "object"
-    },
-    "attributesDeleteAttributeResponse": {
-      "type": "object"
-    },
-    "attributesGetAttributeGroupResponse": {
       "type": "object",
       "properties": {
-        "group": {
-          "$ref": "#/definitions/attributesAttributeGroup"
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
+        }
+      }
+    },
+    "attributesCreateAttributeValueResponse": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/attributesValue"
+        }
+      }
+    },
+    "attributesDeleteAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
+        }
+      }
+    },
+    "attributesDeleteAttributeValueResponse": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/attributesValue"
         }
       }
     },
     "attributesGetAttributeResponse": {
       "type": "object",
       "properties": {
-        "definition": {
-          "$ref": "#/definitions/attributesAttributeDefinition"
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
         }
       }
     },
-    "attributesListAttributeGroupsResponse": {
+    "attributesGetAttributeValueResponse": {
       "type": "object",
       "properties": {
-        "groups": {
+        "value": {
+          "$ref": "#/definitions/attributesValue"
+        }
+      }
+    },
+    "attributesListAttributeValuesResponse": {
+      "type": "object",
+      "properties": {
+        "values": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/attributesAttributeGroup"
+            "$ref": "#/definitions/attributesValue"
           }
         }
       }
@@ -529,127 +591,196 @@
     "attributesListAttributesResponse": {
       "type": "object",
       "properties": {
-        "definitions": {
+        "attributes": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/attributesAttributeDefinition"
+            "$ref": "#/definitions/attributesAttribute"
           }
         }
       }
     },
-    "attributesUpdateAttributeGroupResponse": {
-      "type": "object"
+    "attributesRemoveKeyAccessServerFromAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "attributeKeyAccessServer": {
+          "$ref": "#/definitions/attributesAttributeKeyAccessServer"
+        }
+      }
+    },
+    "attributesRemoveKeyAccessServerFromValueResponse": {
+      "type": "object",
+      "properties": {
+        "valueKeyAccessServer": {
+          "$ref": "#/definitions/attributesValueKeyAccessServer"
+        }
+      }
     },
     "attributesUpdateAttributeResponse": {
-      "type": "object"
-    },
-    "commonPolicyResourceType": {
-      "type": "string",
-      "enum": [
-        "POLICY_RESOURCE_TYPE_UNSPECIFIED",
-        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING",
-        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_SYNONYM",
-        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_MAPPING",
-        "POLICY_RESOURCE_TYPE_RESOURCE_ENCODING_GROUP",
-        "POLICY_RESOURCE_TYPE_SUBJECT_ENCODING_MAPPING",
-        "POLICY_RESOURCE_TYPE_KEY_ACCESS",
-        "POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION",
-        "POLICY_RESOURCE_TYPE_ATTRIBUTE_GROUP",
-        "POLICY_RESOURCE_TYPE_KEY_ACCESS_GRANTS"
-      ],
-      "default": "POLICY_RESOURCE_TYPE_UNSPECIFIED"
-    },
-    "commonResourceDependency": {
       "type": "object",
       "properties": {
-        "namespace": {
-          "type": "string",
-          "title": "namespace of referenced resource"
-        },
-        "version": {
-          "type": "string",
-          "title": "version of reference resource"
-        },
-        "type": {
-          "$ref": "#/definitions/commonPolicyResourceType",
-          "title": "type of dependency"
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
         }
-      },
-      "title": "Define a resource dependency"
+      }
     },
-    "commonResourceDescriptor": {
+    "attributesUpdateAttributeValueResponse": {
       "type": "object",
       "properties": {
-        "type": {
-          "$ref": "#/definitions/commonPolicyResourceType"
-        },
+        "value": {
+          "$ref": "#/definitions/attributesValue"
+        }
+      }
+    },
+    "attributesValue": {
+      "type": "object",
+      "properties": {
         "id": {
-          "type": "integer",
-          "format": "int32",
-          "title": "unique resource identifier"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int32",
-          "title": "resource version"
-        },
-        "name": {
           "type": "string",
-          "title": "resource name"
+          "title": "generated uuid in database"
         },
-        "namespace": {
-          "type": "string",
-          "title": "resource namespace; used to partition resources, support by namespace AuthN and enable federation"
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
         },
-        "fqn": {
+        "attributeId": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of attribute values that this value is related to (attribute group)"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          },
+          "title": "list of key access servers"
+        }
+      }
+    },
+    "attributesValueCreateUpdate": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable"
+        },
+        "value": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of attribute values that this value is related to (attribute group)"
+        }
+      }
+    },
+    "attributesValueKeyAccessServer": {
+      "type": "object",
+      "properties": {
+        "valueId": {
+          "type": "string"
+        },
+        "keyAccessServerId": {
+          "type": "string"
+        }
+      }
+    },
+    "commonMetadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
           "type": "string",
-          "description": "optional fully qualified name of the resource.  FQN is used to support direct references and to eliminate the need\nfor clients to compose an FQN at run time.\n\nthe fqn may be specific to the resource type."
+          "format": "date-time",
+          "title": "created_at set by server (entity who created will recorded in an audit event)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "updated_at set by server (entity who updated will recorded in an audit event)"
         },
         "labels": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "title": "optional short description / label"
+          "title": "optional short description"
         },
         "description": {
           "type": "string",
           "title": "optional long description"
-        },
-        "dependencies": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/commonResourceDependency"
-          },
-          "title": "optional list of resource dependencies"
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
     },
-    "commonResourceSelector": {
+    "commonMetadataMutable": {
       "type": "object",
       "properties": {
-        "namespace": {
-          "type": "string",
-          "title": "namespace of referenced resource"
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "optional short description"
         },
-        "version": {
-          "type": "integer",
-          "format": "int32",
-          "title": "version of reference resource"
+        "description": {
+          "type": "string",
+          "title": "optional long description"
+        }
+      }
+    },
+    "kasregistryKeyAccessServer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        },
+        "uri": {
+          "type": "string",
+          "title": "Address of a KAS instance"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/kasregistryPublicKey"
+        }
+      },
+      "title": "Descriptor for a KAS"
+    },
+    "kasregistryPublicKey": {
+      "type": "object",
+      "properties": {
+        "remote": {
+          "type": "string",
+          "title": "kas public key url - optional since can also be retrieved via public key"
+        },
+        "local": {
+          "type": "string",
+          "title": "public key - optional since can also be retrieved via url"
+        }
+      }
+    },
+    "namespacesNamespace": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
         },
         "name": {
           "type": "string",
-          "title": "name of referenced resource"
-        },
-        "labelSelector": {
-          "$ref": "#/definitions/ResourceSelectorLabelSelector",
-          "title": "labels to match a against a resource"
+          "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
         }
-      },
-      "title": "Define a resource selector"
+      }
     },
     "protobufAny": {
       "type": "object",

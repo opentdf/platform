@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v1/entity-resolution/resolve": {
+    "/v1/entityresolution/resolve": {
       "post": {
         "operationId": "EntityResolutionService_DoEntityResolution",
         "responses": {

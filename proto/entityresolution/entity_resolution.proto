@@ -41,7 +41,7 @@ message EntityResolutionServiceDoEntityResolutionResponse {
 service EntityResolutionService {
   rpc DoEntityResolution(EntityResolutionServiceDoEntityResolutionRequest) returns (EntityResolutionServiceDoEntityResolutionResponse) {
     option (google.api.http) = {
-      post: "/v1/entity-resolution/resolve"
+      post: "/v1/entityresolution/resolve"
       body: "entity_identifiers"
     };
   }

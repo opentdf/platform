@@ -1,4 +1,4 @@
-package entity_resolution
+package entityresolution
 
 import (
 	"context"
@@ -47,7 +47,7 @@ func (s EntityService) EntityResolution(ctx context.Context,
 	kcConnector, err := getKCClient(kcConfig)
 	if err != nil {
 		return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
-			status.Error(codes.Internal, services.ErrCreatingResource)
+			status.Error(codes.Internal, services.ErrCreationFailed)
 	}
 
 	for i, ident := range payload {
@@ -72,9 +72,8 @@ func (s EntityService) EntityResolution(ctx context.Context,
 
 		users, userErr := kcConnector.client.GetUsers(ctx, kcConnector.token.AccessToken, kcConfig.Realm, getUserParams)
 		if userErr != nil {
-			slog.Error("Error getting user", getUserParams.String())
 			return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
-				status.Error(codes.Internal, services.ErrGettingResource)
+				status.Error(codes.Internal, services.ErrGetRetrievalFailed)
 		} else if len(users) == 1 {
 			user := users[0]
 			slog.Debug("User found", "user", *user.ID, "identifier", ident.Identifier)
@@ -92,14 +91,14 @@ func (s EntityService) EntityResolution(ctx context.Context,
 				if groupErr != nil {
 					slog.Error("Error getting group", "group", groupErr)
 					return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
-						status.Error(codes.Internal, services.ErrGettingResource)
+						status.Error(codes.Internal, services.ErrGetRetrievalFailed)
 				} else if len(groups) == 1 {
 					slog.Error("Group found for", "identifier", ident.Identifier)
 					group := groups[0]
 					expandedRepresentations, exErr := expandGroup(*group.ID, kcConnector, &kcConfig, ctx)
 					if exErr != nil {
 						return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
-							status.Error(codes.Internal, services.ErrGettingResource)
+							status.Error(codes.Internal, services.ErrGetRetrievalFailed)
 					} else {
 						keycloakEntities = expandedRepresentations
 					}
@@ -113,7 +112,7 @@ func (s EntityService) EntityResolution(ctx context.Context,
 			if err != nil {
 				slog.Error("Error serializing entity representation!", "error", err)
 				return &entity_resolution.EntityResolutionServiceDoEntityResolutionResponse{},
-					status.Error(codes.Internal, services.ErrCreatingResource)
+					status.Error(codes.Internal, services.ErrCreationFailed)
 			}
 			jsonEntities = append(jsonEntities, json)
 		}
@@ -152,8 +151,6 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable) (*entity_res
 
 func getKCClient(kcConfig KeyCloakConfg) (*KeyCloakConnector, error) {
 	var client *gocloak.GoCloak
-	slog.Info("getKCClient invoked: ", kcConfig)
-
 	if kcConfig.LegacyKeycloak {
 		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
 		client = gocloak.NewClient(kcConfig.Url)
@@ -173,9 +170,8 @@ func getKCClient(kcConfig KeyCloakConfg) (*KeyCloakConnector, error) {
 }
 
 func expandGroup(groupID string, kcConnector *KeyCloakConnector, kcConfig *KeyCloakConfg, ctx context.Context) ([]*gocloak.User, error) {
-	slog.Info("expandGroup invoked: ", groupID, kcConnector, kcConfig, ctx)
+	slog.Info("expandGroup invoked: ", groupID, kcConnector, kcConfig.Url, ctx)
 	var entityRepresentations []*gocloak.User
-	slog.Debug("Add members of group", groupID)
 
 	grp, err := kcConnector.client.GetGroup(ctx, kcConnector.token.AccessToken, kcConfig.Realm, groupID)
 	if err == nil {

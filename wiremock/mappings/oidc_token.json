@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/auth/token"
+  },
+
+  "response": {
+    "status": 200,
+    "body": "{{jwt maxAge='12 days'}}",
+    "transformers": ["response-template"]
+  }
+}

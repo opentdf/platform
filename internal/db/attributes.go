@@ -297,6 +297,9 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// Update the FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeId: id})
+
 	a := &attributes.Attribute{
 		Id:       id,
 		Name:     attr.Name,
@@ -344,6 +347,9 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 	if err := c.exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
+
+	// Update the FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeId: id})
 
 	// TODO: see if returning the old is the behavior we should consistently implement throughout services
 	// return the attribute before updating

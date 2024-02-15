@@ -90,6 +90,9 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
+
 	rV := &attributes.Value{
 		Id:          id,
 		AttributeId: attributeId,
@@ -161,6 +164,38 @@ func (c Client) ListAttributeValues(ctx context.Context, attribute_id string) ([
 	return list, nil
 }
 
+func listAllAttributeValuesSql() (string, []interface{}, error) {
+	return newStatementBuilder().
+		Select(
+			tableField(AttributeValueTable, "id"),
+			tableField(AttributeValueTable, "value"),
+			tableField(AttributeValueTable, "members"),
+			tableField(AttributeValueTable, "metadata"),
+			tableField(AttributeValueTable, "attribute_definition_id"),
+		).
+		From(AttributeValueTable).
+		ToSql()
+}
+func (c Client) ListAllAttributeValues(ctx context.Context) ([]*attributes.Value, error) {
+	sql, args, err := listAllAttributeValuesSql()
+	rows, err := c.query(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := make([]*attributes.Value, 0)
+	for rows.Next() {
+		v, err := attributeValueHydrateItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, v)
+	}
+
+	return list, nil
+}
+
 func updateAttributeValueSql(
 	id string,
 	value string,
@@ -205,6 +240,9 @@ func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attribut
 	if err := c.exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
+
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
 
 	return prev, nil
 }

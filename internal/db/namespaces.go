@@ -86,6 +86,10 @@ func (c Client) CreateNamespace(ctx context.Context, name string) (string, error
 	} else if e := r.Scan(&id); e != nil {
 		return "", WrapIfKnownInvalidQueryErr(e)
 	}
+
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
+
 	return id, nil
 }
 
@@ -104,6 +108,9 @@ func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*n
 	if e := c.exec(ctx, sql, args, err); e != nil {
 		return nil, e
 	}
+
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
 
 	return c.GetNamespace(ctx, id)
 }
@@ -129,7 +136,7 @@ func (c Client) DeleteNamespace(ctx context.Context, id string) (*namespaces.Nam
 	if e := c.exec(ctx, sql, args, err); e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)
 	}
-	
+
 	// return the namespace before it was deleted
 	return ns, nil
 }

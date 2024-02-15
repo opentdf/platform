@@ -103,6 +103,12 @@ jobs:
         with:
           input: proto
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
+      - run: make go.work
+      - run: make buf-generate
+      - run: git diff
+      - run: git diff-files --ignore-submodules
+      - name: Check that files have been formatted before PR submission
+        run: git diff-files --quiet --ignore-submodules
 
   ci:
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)

@@ -21,7 +21,4 @@ message MetadataMutable {
   map<string, string> labels = 3;
   // optional long description
   string description = 4;
-
-  // do not submit
-  string an_extra_field = 5;
 }

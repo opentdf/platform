@@ -16,7 +16,6 @@ on:
 jobs:
   pr:
     name: Validate PR title
-    needs: buflint
     if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
     runs-on: ubuntu-22.04
     permissions:
@@ -28,7 +27,6 @@ jobs:
 
   go:
     runs-on: ubuntu-22.04
-    needs: buflint
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     permissions:
       checks: write
@@ -92,7 +90,7 @@ jobs:
           push: false
 
   buflint:
-    name: Buf Lint
+    name: Protocol Buffer Lint and Gencode Up-to-date check
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     runs-on: ubuntu-22.04
     steps:

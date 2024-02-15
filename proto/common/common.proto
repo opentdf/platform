@@ -20,5 +20,8 @@ message MetadataMutable {
   // optional short description
   map<string, string> labels = 3;
   // optional long description
-  string woodley_doodley = 4;
+  string description = 4;
+
+  // do not submit
+  string an_extra_field = 5;
 }

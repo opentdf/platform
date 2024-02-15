@@ -115,6 +115,8 @@ jobs:
       - run: go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: make buf-generate
+      - name: Restore go.mod after installing protoc-gen-doc
+        run: git restore go.mod go.sum
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that files have been formatted before PR submission

@@ -30,7 +30,7 @@ func NewNamespacesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
-	state := services.GetDbStateEnum(req.State)
+	state := services.GetDbStateTypeTransformedEnum(req.State)
 	slog.Debug("listing namespaces", slog.String("state", state))
 
 	rsp := &namespaces.ListNamespacesResponse{}

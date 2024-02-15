@@ -48,7 +48,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *attributes.ListAttributesRequest,
 ) (*attributes.ListAttributesResponse, error) {
-	state := services.GetDbStateEnum(req.State)
+	state := services.GetDbStateTypeTransformedEnum(req.State)
 	slog.Debug("listing attribute definitions", slog.String("state", state))
 	rsp := &attributes.ListAttributesResponse{}
 
@@ -120,7 +120,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 }
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
-	state := services.GetDbStateEnum(req.State)
+	state := services.GetDbStateTypeTransformedEnum(req.State)
 	slog.Debug("listing attribute values", slog.String("attributeId", req.AttributeId), slog.String("state", state))
 	list, err := s.dbClient.ListAttributeValues(ctx, req.AttributeId, state)
 	if err != nil {

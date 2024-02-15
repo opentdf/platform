@@ -103,6 +103,7 @@ jobs:
         with:
           input: proto
           against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
+      - run: go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: make buf-generate
       - run: git diff
       - run: git diff-files --ignore-submodules

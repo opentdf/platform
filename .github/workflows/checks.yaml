@@ -16,6 +16,7 @@ on:
 jobs:
   pr:
     name: Validate PR title
+    needs: buflint
     if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
     runs-on: ubuntu-22.04
     permissions:

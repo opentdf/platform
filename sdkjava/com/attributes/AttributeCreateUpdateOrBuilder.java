@@ -137,4 +137,16 @@ public interface AttributeCreateUpdateOrBuilder extends
    */
   com.attributes.ValueCreateUpdateOrBuilder getValuesOrBuilder(
       int index);
+
+  /**
+   * <code>string fqn = 6 [json_name = "fqn"];</code>
+   * @return The fqn.
+   */
+  java.lang.String getFqn();
+  /**
+   * <code>string fqn = 6 [json_name = "fqn"];</code>
+   * @return The bytes for fqn.
+   */
+  com.google.protobuf.ByteString
+      getFqnBytes();
 }

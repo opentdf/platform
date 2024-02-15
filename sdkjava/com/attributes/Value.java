@@ -23,6 +23,7 @@ private static final long serialVersionUID = 0L;
     members_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
     grants_ = java.util.Collections.emptyList();
+    fqn_ = "";
   }
 
   @java.lang.Override
@@ -311,6 +312,45 @@ private static final long serialVersionUID = 0L;
     return grants_.get(index);
   }
 
+  public static final int FQN_FIELD_NUMBER = 7;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object fqn_ = "";
+  /**
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * @return The fqn.
+   */
+  @java.lang.Override
+  public java.lang.String getFqn() {
+    java.lang.Object ref = fqn_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      fqn_ = s;
+      return s;
+    }
+  }
+  /**
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * @return The bytes for fqn.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFqnBytes() {
+    java.lang.Object ref = fqn_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      fqn_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -342,6 +382,9 @@ private static final long serialVersionUID = 0L;
     }
     for (int i = 0; i < grants_.size(); i++) {
       output.writeMessage(6, grants_.get(i));
+    }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(fqn_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 7, fqn_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -377,6 +420,9 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(6, grants_.get(i));
     }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(fqn_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(7, fqn_);
+    }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
     return size;
@@ -407,6 +453,8 @@ private static final long serialVersionUID = 0L;
         .equals(other.getMembersList())) return false;
     if (!getGrantsList()
         .equals(other.getGrantsList())) return false;
+    if (!getFqn()
+        .equals(other.getFqn())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -436,6 +484,8 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + GRANTS_FIELD_NUMBER;
       hash = (53 * hash) + getGrantsList().hashCode();
     }
+    hash = (37 * hash) + FQN_FIELD_NUMBER;
+    hash = (53 * hash) + getFqn().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -591,6 +641,7 @@ private static final long serialVersionUID = 0L;
         grantsBuilder_.clear();
       }
       bitField0_ = (bitField0_ & ~0x00000020);
+      fqn_ = "";
       return this;
     }
 
@@ -656,6 +707,9 @@ private static final long serialVersionUID = 0L;
       if (((from_bitField0_ & 0x00000010) != 0)) {
         members_.makeImmutable();
         result.members_ = members_;
+      }
+      if (((from_bitField0_ & 0x00000040) != 0)) {
+        result.fqn_ = fqn_;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -758,6 +812,11 @@ private static final long serialVersionUID = 0L;
           }
         }
       }
+      if (!other.getFqn().isEmpty()) {
+        fqn_ = other.fqn_;
+        bitField0_ |= 0x00000040;
+        onChanged();
+      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -825,6 +884,11 @@ private static final long serialVersionUID = 0L;
               }
               break;
             } // case 50
+            case 58: {
+              fqn_ = input.readStringRequireUtf8();
+              bitField0_ |= 0x00000040;
+              break;
+            } // case 58
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -1656,6 +1720,78 @@ private static final long serialVersionUID = 0L;
         grants_ = null;
       }
       return grantsBuilder_;
+    }
+
+    private java.lang.Object fqn_ = "";
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @return The fqn.
+     */
+    public java.lang.String getFqn() {
+      java.lang.Object ref = fqn_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        fqn_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @return The bytes for fqn.
+     */
+    public com.google.protobuf.ByteString
+        getFqnBytes() {
+      java.lang.Object ref = fqn_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        fqn_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @param value The fqn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFqn(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      fqn_ = value;
+      bitField0_ |= 0x00000040;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFqn() {
+      fqn_ = getDefaultInstance().getFqn();
+      bitField0_ = (bitField0_ & ~0x00000040);
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @param value The bytes for fqn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFqnBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      fqn_ = value;
+      bitField0_ |= 0x00000040;
+      onChanged();
+      return this;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

@@ -18,11 +18,13 @@ message Namespace {
       expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
     }
   ];
+
+  string fqn = 6;
 }
 
 /*
 
-    Namespace Service Definitions
+   Namespace Service Definitions
 
 */
 
@@ -60,93 +62,83 @@ message DeleteNamespaceResponse {}
 
 service NamespaceService {
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
-    option (google.api.http) = {
-      get: "/attributes/namespaces/{id}"
-    };
+    option (google.api.http) = {get: "/attributes/namespaces/{id}"};
   }
   rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse) {
-      option (google.api.http) = {
-      get: "/attributes/namespaces"
-      };
+    option (google.api.http) = {get: "/attributes/namespaces"};
   }
   rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse) {
-      option (google.api.http) = {
-      post: "/attributes/namespaces"
-      };
+    option (google.api.http) = {post: "/attributes/namespaces"};
   }
   rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse) {
-      option (google.api.http) = {
-      put: "/attributes/namespaces/{id}"
-      };
+    option (google.api.http) = {put: "/attributes/namespaces/{id}"};
   }
   rpc DeleteNamespace(DeleteNamespaceRequest) returns (DeleteNamespaceResponse) {
-      option (google.api.http) = {
-      delete: "/attributes/namespaces/{id}"
-      };
+    option (google.api.http) = {delete: "/attributes/namespaces/{id}"};
   }
 }
 
 /*
 
-    Namespace Service Examples
+   Namespace Service Examples
 
-    Create a Namespace:
-        Request:
-            grpcurl -d '{"name":"example.com"}' -plaintext localhost:9000 namespaces.NamespaceService/CreateNamespace
-        Response: 
-            {
-                "namespace": {
-                    "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
-                    "name": "example.com"
-                }
-            }
+   Create a Namespace:
+       Request:
+           grpcurl -d '{"name":"example.com"}' -plaintext localhost:9000 namespaces.NamespaceService/CreateNamespace
+       Response:
+           {
+               "namespace": {
+                   "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
+                   "name": "example.com"
+               }
+           }
 
-    List Namespaces (assuming 3 have been created)
-        Request:
-            grpcurl -plaintext -d '{}' localhost:9000 namespaces.NamespaceService/ListNamespaces
-        Response:
-            {
-                "namespaces": [
-                    {
-                        "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
-                        "name": "example.com"
-                    },
-                    {
-                        "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0b",
-                        "name": "loremipsum.com"
-                    },
-                    {
-                        "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0c",
-                        "name": "helloworld.com"
-                    }
-                ]
-            }
+   List Namespaces (assuming 3 have been created)
+       Request:
+           grpcurl -plaintext -d '{}' localhost:9000 namespaces.NamespaceService/ListNamespaces
+       Response:
+           {
+               "namespaces": [
+                   {
+                       "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
+                       "name": "example.com"
+                   },
+                   {
+                       "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0b",
+                       "name": "loremipsum.com"
+                   },
+                   {
+                       "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0c",
+                       "name": "helloworld.com"
+                   }
+               ]
+           }
 
-    Get a Namespace:
-        Request:
-            grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896"}' localhost:9000 namespaces.NamespaceService/GetNamespace
-        Response:
-            {
-                "namespace": {
-                    "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
-                    "name": "example.com"
-                }
-            }
-    
-    Update a Namespace:
-        Request:
-            grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896","name":"example-test.com"}' localhost:9000 namespaces.NamespaceService/UpdateNamespace
-        Response:
-            {
-                "namespace": {
-                    "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
-                    "name": "example.com"
-                }
-            }
+   Get a Namespace:
+       Request:
+           grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896"}' localhost:9000 namespaces.NamespaceService/GetNamespace
+       Response:
+           {
+               "namespace": {
+                   "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
+                   "name": "example.com"
+               }
+           }
 
-    Delete a Namespace:
-        Request:
-            grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896"}' localhost:9000 namespaces.NamespaceService/DeleteNamespace
-        Response:
-            {}
+   Update a Namespace:
+       Request:
+           grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896","name":"example-test.com"}' localhost:9000 namespaces.NamespaceService/UpdateNamespace
+       Response:
+           {
+               "namespace": {
+                   "id": "b3d9e3e0-0b0a-4e1a-8b0a-0b0a0b0a0b0a",
+                   "name": "example.com"
+               }
+           }
+
+   Delete a Namespace:
+       Request:
+           grpcurl -plaintext -d '{"id":"453b4bb8-1098-480f-ad13-38b5ef903896"}' localhost:9000 namespaces.NamespaceService/DeleteNamespace
+       Response:
+           {}
 */

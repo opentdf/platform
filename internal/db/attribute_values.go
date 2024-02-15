@@ -10,15 +10,32 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
+type attributeValueSelectOptions struct {
+	withFqn bool
+}
+
+func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
 	var (
 		id           string
 		value        string
 		members      []string
 		metadataJson []byte
 		attributeId  string
+		fqn          string
 	)
-	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId); err != nil {
+
+	fields := []interface{}{
+		&id,
+		&value,
+		&members,
+		&metadataJson,
+		&attributeId,
+	}
+	if opts.withFqn {
+		fields = append(fields, &fqn)
+	}
+
+	if err := row.Scan(fields...); err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -35,8 +52,21 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 		Members:     members,
 		Metadata:    m,
 		AttributeId: attributeId,
+		Fqn:         fqn,
 	}
 	return v, nil
+}
+
+func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions) ([]*attributes.Value, error) {
+	list := make([]*attributes.Value, 0)
+	for rows.Next() {
+		v, err := attributeValueHydrateItem(rows, opts)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, v)
+	}
+	return list, nil
 }
 
 ///
@@ -102,100 +132,108 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 	return rV, nil
 }
 
-func getAttributeValueSql(id string) (string, []interface{}, error) {
+func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
-	return newStatementBuilder().
-		Select(
-			t.Field("id"),
-			t.Field("value"),
-			t.Field("members"),
-			t.Field("metadata"),
-			t.Field("attribute_definition_id"),
-		).
-		From(t.Name()).
-		Where(sq.Eq{t.Field("id"): id}).
+	fields := []string{
+		t.Field("id"),
+		t.Field("value"),
+		t.Field("members"),
+		t.Field("metadata"),
+		t.Field("attribute_definition_id"),
+	}
+	if opts.withFqn {
+		fields = append(fields, "fqn")
+	}
+
+	sb := newStatementBuilder().
+		Select(fields...).
+		From(t.Name())
+
+	if opts.withFqn {
+		sb = sb.Join(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
+	}
+
+	return sb.Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
-	sql, args, err := getAttributeValueSql(id)
+	opts := attributeValueSelectOptions{withFqn: true}
+	sql, args, err := getAttributeValueSql(id, opts)
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
-
-	v, err := attributeValueHydrateItem(row)
-	if err != nil {
-		return nil, err
-	}
-
-	return v, nil
+	return attributeValueHydrateItem(row, opts)
 }
 
-func listAttributeValuesSql(attribute_id string) (string, []interface{}, error) {
+func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
-	return newStatementBuilder().
-		Select(
-			t.Field("id"),
-			t.Field("value"),
-			t.Field("members"),
-			t.Field("metadata"),
-			t.Field("attribute_definition_id"),
-		).
+	fields := []string{
+		t.Field("id"),
+		t.Field("value"),
+		t.Field("members"),
+		t.Field("metadata"),
+		t.Field("attribute_definition_id"),
+	}
+	if opts.withFqn {
+		fields = append(fields, "fqn")
+	}
+
+	sb := newStatementBuilder().
+		Select(fields...)
+
+	if opts.withFqn {
+		sb = sb.Join(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
+	}
+
+	return sb.
 		From(t.Name()).
 		Where(sq.Eq{t.Field("attribute_definition_id"): attribute_id}).
 		ToSql()
 }
 func (c Client) ListAttributeValues(ctx context.Context, attribute_id string) ([]*attributes.Value, error) {
-	sql, args, err := listAttributeValuesSql(attribute_id)
+	opts := attributeValueSelectOptions{withFqn: true}
+	sql, args, err := listAttributeValuesSql(attribute_id, opts)
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
-	list := make([]*attributes.Value, 0)
-	for rows.Next() {
-		v, err := attributeValueHydrateItem(rows)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, v)
-	}
-
-	return list, nil
+	return attributeValueHydrateItems(rows, opts)
 }
 
-func listAllAttributeValuesSql() (string, []interface{}, error) {
+func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
-	return newStatementBuilder().
-		Select(
-			t.Field("id"),
-			t.Field("value"),
-			t.Field("members"),
-			t.Field("metadata"),
-			t.Field("attribute_definition_id"),
-		).
+	fields := []string{
+		t.Field("id"),
+		t.Field("value"),
+		t.Field("members"),
+		t.Field("metadata"),
+		t.Field("attribute_definition_id"),
+	}
+	if opts.withFqn {
+		fields = append(fields, "fqn")
+	}
+	sb := newStatementBuilder().
+		Select(fields...)
+
+	if opts.withFqn {
+		sb = sb.Join(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
+	}
+
+	return sb.
 		From(t.Name()).
 		ToSql()
 }
 func (c Client) ListAllAttributeValues(ctx context.Context) ([]*attributes.Value, error) {
-	sql, args, err := listAllAttributeValuesSql()
+	opts := attributeValueSelectOptions{withFqn: true}
+	sql, args, err := listAllAttributeValuesSql(opts)
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
-	list := make([]*attributes.Value, 0)
-	for rows.Next() {
-		v, err := attributeValueHydrateItem(rows)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, v)
-	}
-
-	return list, nil
+	return attributeValueHydrateItems(rows, opts)
 }
 
 func updateAttributeValueSql(

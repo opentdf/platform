@@ -75,4 +75,16 @@ public interface ValueCreateUpdateOrBuilder extends
    */
   com.google.protobuf.ByteString
       getMembersBytes(int index);
+
+  /**
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * @return The fqn.
+   */
+  java.lang.String getFqn();
+  /**
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * @return The bytes for fqn.
+   */
+  com.google.protobuf.ByteString
+      getFqnBytes();
 }

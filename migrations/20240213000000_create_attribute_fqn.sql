@@ -3,9 +3,9 @@
 
 CREATE TABLE IF NOT EXISTS attribute_fqns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  namespace_id UUID REFERENCES attribute_namespaces(id),
-  attribute_id UUID REFERENCES attribute_definitions(id),
-  value_id UUID REFERENCES attribute_values(id),
+  namespace_id UUID REFERENCES attribute_namespaces(id) ON DELETE CASCADE,
+  attribute_id UUID REFERENCES attribute_definitions(id) ON DELETE CASCADE,
+  value_id UUID REFERENCES attribute_values(id) ON DELETE CASCADE,
   fqn TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

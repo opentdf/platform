@@ -37,6 +37,8 @@ message Attribute {
   repeated Value values = 7;
 
   repeated kasregistry.KeyAccessServer grants = 8;
+
+  string fqn = 9;
 }
 
 message AttributeCreateUpdate {
@@ -57,6 +59,8 @@ message AttributeCreateUpdate {
 
   // optional
   repeated ValueCreateUpdate values = 5;
+
+  string fqn = 6;
 }
 
 message Value {
@@ -74,6 +78,8 @@ message Value {
 
   // list of key access servers
   repeated kasregistry.KeyAccessServer grants = 6;
+
+  string fqn = 7;
 }
 
 message ValueCreateUpdate {
@@ -83,6 +89,8 @@ message ValueCreateUpdate {
 
   // list of attribute values that this value is related to (attribute group)
   repeated string members = 3;
+
+  string fqn = 7;
 }
 
 /*

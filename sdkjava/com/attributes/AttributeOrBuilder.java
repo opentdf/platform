@@ -160,4 +160,16 @@ public interface AttributeOrBuilder extends
    */
   com.kasregistry.KeyAccessServerOrBuilder getGrantsOrBuilder(
       int index);
+
+  /**
+   * <code>string fqn = 9 [json_name = "fqn"];</code>
+   * @return The fqn.
+   */
+  java.lang.String getFqn();
+  /**
+   * <code>string fqn = 9 [json_name = "fqn"];</code>
+   * @return The bytes for fqn.
+   */
+  com.google.protobuf.ByteString
+      getFqnBytes();
 }

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,9 +52,14 @@ func attributesValuesProtojson(valuesJson []byte) ([]*attributes.Value, error) {
 type attributesSelectOptions struct {
 	withAttributeValues bool
 	withKeyAccessGrants bool
+	withFqn             bool
 }
 
 func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
+	if opts.withKeyAccessGrants {
+		opts.withAttributeValues = true
+	}
+
 	t := Tables.Attributes
 	nt := Tables.Namespaces
 	avt := Tables.AttributeValues
@@ -94,7 +100,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
 			"WHERE avkag.attribute_value_id = "+avt.Field("id")+
 			")"+
-			")) AS values")
+			")) AS grants")
+	}
+	if opts.withFqn {
+		selectFields = append(selectFields, "fqn")
 	}
 
 	b := newStatementBuilder().Select(selectFields...).
@@ -107,10 +116,25 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		b = b.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
 			LeftJoin(KeyAccessServerTable + " ON " + KeyAccessServerTable + ".id = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
 	}
-	return b.GroupBy(t.Field("id"), nt.Field("name"))
+	if opts.withFqn {
+		b = b.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("attribute_id") + " = " + t.Field("id") +
+			" AND " + Tables.AttrFqn.Field("value_id") + " = NULL")
+	}
+
+	g := []string{t.Field("id"), nt.Field("name")}
+
+	if opts.withFqn {
+		g = append(g, Tables.AttrFqn.Field("fqn"))
+	}
+
+	return b.GroupBy(g...)
 }
 
 func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attributes.Attribute, error) {
+	if opts.withKeyAccessGrants {
+		opts.withAttributeValues = true
+	}
+
 	var (
 		id            string
 		name          string
@@ -120,6 +144,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 		namespaceName string
 		valuesJson    []byte
 		grants        []byte
+		fqn           sql.NullString
 	)
 
 	fields := []interface{}{&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName}
@@ -128,6 +153,9 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 	}
 	if opts.withKeyAccessGrants {
 		fields = append(fields, &grants)
+	}
+	if opts.withFqn {
+		fields = append(fields, &fqn)
 	}
 
 	err := row.Scan(fields...)
@@ -138,6 +166,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 	m := &common.Metadata{}
 	if metadataJson != nil {
 		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -146,13 +175,16 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 	if valuesJson != nil {
 		v, err = attributesValuesProtojson(valuesJson)
 		if err != nil {
+			slog.Error("could not unmarshal values", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
 	var k []*kasregistry.KeyAccessServer
 	if grants != nil {
+		fmt.Printf("grants: %s\n", grants)
 		k, err = keyAccessServerProtojson(grants)
 		if err != nil {
+			slog.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -165,6 +197,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 		Values:    v,
 		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
 		Grants:    k,
+		Fqn:       fqn.String,
 	}
 
 	return attr, nil
@@ -196,7 +229,31 @@ func listAllAttributesSql(opts attributesSelectOptions) (string, []interface{}, 
 func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
-		withKeyAccessGrants: true,
+		withKeyAccessGrants: false,
+		withFqn:             true,
+	}
+	sql, args, err := listAllAttributesSql(opts)
+	slog.Info("list all attributes", slog.String("sql", sql), slog.Any("args", args))
+	rows, err := c.query(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list, err := attributesHydrateList(rows, opts)
+	if err != nil {
+		slog.Error("could not hydrate list", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	return list, nil
+}
+
+func (c Client) ListAllAttributesWithout(ctx context.Context) ([]*attributes.Attribute, error) {
+	opts := attributesSelectOptions{
+		withAttributeValues: false,
+		withKeyAccessGrants: false,
+		withFqn:             true,
 	}
 	sql, args, err := listAllAttributesSql(opts)
 	rows, err := c.query(ctx, sql, args, err)
@@ -214,26 +271,6 @@ func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute,
 	return list, nil
 }
 
-func (c Client) ListAllAttributesWithout(ctx context.Context) ([]*attributes.Attribute, error) {
-	sql, args, err := listAllAttributesSql(attributesSelectOptions{
-		withAttributeValues: false,
-		withKeyAccessGrants: false,
-	})
-	rows, err := c.query(ctx, sql, args, err)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	list, err := attributesHydrateList(rows, attributesSelectOptions{})
-	if err != nil {
-		return nil, err
-	}
-	slog.Info("list", slog.Any("list", list))
-
-	return list, nil
-}
-
 func getAttributeSql(id string, opts attributesSelectOptions) (string, []interface{}, error) {
 	t := Tables.Attributes
 	return attributesSelect(opts).
@@ -243,7 +280,9 @@ func getAttributeSql(id string, opts attributesSelectOptions) (string, []interfa
 }
 
 func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
-	opts := attributesSelectOptions{}
+	opts := attributesSelectOptions{
+		withFqn: true,
+	}
 	sql, args, err := getAttributeSql(id, opts)
 	row, err := c.queryRow(ctx, sql, args, err)
 	if err != nil {
@@ -256,6 +295,33 @@ func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attrib
 		return nil, err
 	}
 
+	return attribute, nil
+}
+
+// / Get attribute by fqn
+func getAttributeByFqnSql(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
+	return attributesSelect(opts).
+		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn}).
+		From(Tables.Attributes.Name()).
+		ToSql()
+}
+func (c Client) GetAttributeByFqn(ctx context.Context, fqn string) (*attributes.Attribute, error) {
+	opts := attributesSelectOptions{
+		withAttributeValues: true,
+		withKeyAccessGrants: false,
+		withFqn:             true,
+	}
+	sql, args, err := getAttributeByFqnSql(fqn, opts)
+	row, err := c.queryRow(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+
+	attribute, err := attributesHydrateItem(row, opts)
+	if err != nil {
+		slog.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
+		return nil, err
+	}
 	return attribute, nil
 }
 

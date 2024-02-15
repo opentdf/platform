@@ -85,7 +85,8 @@ func (c *Client) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) s
 	return fqn
 }
 
-type AttrFqnReindexResult struct {
+// AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
+func (c *Client) AttrFqnReindex() (res struct {
 	Namespaces []struct {
 		Id  string
 		Fqn string
@@ -98,10 +99,7 @@ type AttrFqnReindexResult struct {
 		Id  string
 		Fqn string
 	}
-}
-
-// AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
-func (c *Client) AttrFqnReindex() (res AttrFqnReindexResult) {
+}) {
 
 	// Get all namespaces
 	ns, err := c.ListNamespaces(context.Background())

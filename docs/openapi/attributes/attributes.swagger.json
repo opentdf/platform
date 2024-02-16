@@ -18,7 +18,7 @@
   "paths": {
     "/attributes": {
       "post": {
-        "summary": "Create Attribute\nRequest:\ngrpcurl -plaintext -d '{\"attribute\": {\"namespace_id\": \"namespace_id\", \"name\": \"attribute_name\", \"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\"}}' localhost:9000 attributes.AttributesService/CreateAttribute\nResponse\n{\n\"attribute\": {\n\"id\": \"e06f067b-d158-44bc-a814-1aa3f968dcf0\",\n\"metadata\": {\n\"createdAt\": \"2024-02-14T20:24:23.057404Z\",\n\"updatedAt\": \"2024-02-14T20:24:23.057404Z\"\n},\n\"namespace\": {\n\"id\": \"namespace_id\"\n},\n\"name\": \"attribute_name\",\n\"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\"\n}\n}",
+        "summary": "Create Attribute\nRequest:\ngrpcurl -plaintext -d '{\"attribute\": {\"namespace_id\": \"namespace_id\", \"name\": \"attribute_name\", \"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\"}}' localhost:9000 attributes.AttributesService/CreateAttribute\nResponse\n{\n\"attribute\": {\n\"id\": \"e06f067b-d158-44bc-a814-1aa3f968dcf0\",\n\"metadata\": {\n\"createdAt\": \"2024-02-14T20:24:23.057404Z\",\n\"updatedAt\": \"2024-02-14T20:24:23.057404Z\"\n},\n\"namespace\": {\n\"id\": \"namespace_id\"\n},\n\"name\": \"attribute_name\",\n\"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\",\n\"active\": true\n}\n}",
         "operationId": "AttributesService_CreateAttribute",
         "responses": {
           "200": {

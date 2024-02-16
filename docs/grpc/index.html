@@ -1811,7 +1811,7 @@ Response:
 &#34;namespace&#34;: {
 &#34;id&#34;: &#34;namespace-id&#34;,
 &#34;name&#34;: &#34;namespace-name&#34;,
-&#34;state&#34;: &#34;STATE_TYPE_ENUM_ACTIVE&#34;
+&#34;active&#34;: true
 }
 }</p></td>
               </tr>
@@ -1829,7 +1829,7 @@ Response:
 {
 &#34;id&#34;: &#34;namespace-id&#34;,
 &#34;name&#34;: &#34;namespace-name&#34;,
-&#34;state&#34;: &#34;STATE_TYPE_ENUM_ACTIVE&#34;
+&#34;active&#34;: true
 }
 ]
 }</p></td>
@@ -1842,7 +1842,7 @@ Response:
                 <td><p>Request: 
 grpcurl -plaintext -d &#39;{&#34;name&#34;: &#34;namespace-name&#34;}&#39; localhost:9000 namespaces.NamespaceService/CreateNamespace
 Response:
-{ &#34;namespace&#34;: { &#34;id&#34;: &#34;namespace-id&#34; } }</p></td>
+{ &#34;namespace&#34;: { &#34;id&#34;: &#34;namespace-id&#34;, &#34;active&#34;: true } }</p></td>
               </tr>
             
               <tr>
@@ -3029,10 +3029,8 @@ Response:
 },
 &#34;name&#34;: &#34;key_access_server_name&#34;,
 &#34;description&#34;: &#34;key_access_server_description&#34;,
-&#34;state&#34;: &#34;STATE_TYPE_ENUM_ACTIVE&#34;
 }
 ],
-&#34;state&#34;: &#34;STATE_TYPE_ENUM_ACTIVE&#34;
 }
 ],
 &#34;grants&#34;: [
@@ -3044,10 +3042,9 @@ Response:
 },
 &#34;name&#34;: &#34;key_access_server_name&#34;,
 &#34;description&#34;: &#34;key_access_server_description&#34;,
-&#34;state&#34;: &#34;STATE_TYPE_ENUM_ACTIVE&#34;
 }
 ],
-&#34;state&#34;: &#34;STATE_TYPE_ENUM_ACTIVE&#34;
+&#34;active&#34;: true
 }
 ]
 }</p></td>
@@ -3087,7 +3084,7 @@ Response:
 ... GRANTS ...
 }
 ],
-&#34;state&#34;: &#34;STATE_TYPE_ENUM_INACTIVE&#34;
+&#34;active&#34;: true
 }
 ]
 }</p></td>
@@ -3119,7 +3116,8 @@ Response
 &#34;id&#34;: &#34;namespace_id&#34;
 },
 &#34;name&#34;: &#34;attribute_name&#34;,
-&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;
+&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;,
+&#34;active&#34;: true
 }
 }</p></td>
               </tr>

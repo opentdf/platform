@@ -75,7 +75,7 @@ service NamespaceService {
         "namespace": {
           "id": "namespace-id",
           "name": "namespace-name",
-          "state": "STATE_TYPE_ENUM_ACTIVE"
+          "active": true
         }
       }
   */
@@ -95,7 +95,7 @@ service NamespaceService {
           {
             "id": "namespace-id",
             "name": "namespace-name",
-            "state": "STATE_TYPE_ENUM_ACTIVE"
+            "active": true
           }
         ]
       }
@@ -110,7 +110,7 @@ service NamespaceService {
     Request: 
       grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 namespaces.NamespaceService/CreateNamespace
     Response:
-      { "namespace": { "id": "namespace-id" } }
+      { "namespace": { "id": "namespace-id", "active": true } }
   */
   rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse) {
       option (google.api.http) = {

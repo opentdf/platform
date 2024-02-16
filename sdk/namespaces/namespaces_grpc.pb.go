@@ -37,7 +37,7 @@ type NamespaceServiceClient interface {
 	// "namespace": {
 	// "id": "namespace-id",
 	// "name": "namespace-name",
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
+	// "active": true
 	// }
 	// }
 	GetNamespace(ctx context.Context, in *GetNamespaceRequest, opts ...grpc.CallOption) (*GetNamespaceResponse, error)
@@ -50,7 +50,7 @@ type NamespaceServiceClient interface {
 	// {
 	// "id": "namespace-id",
 	// "name": "namespace-name",
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
+	// "active": true
 	// }
 	// ]
 	// }
@@ -58,7 +58,7 @@ type NamespaceServiceClient interface {
 	// Request:
 	// grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 namespaces.NamespaceService/CreateNamespace
 	// Response:
-	// { "namespace": { "id": "namespace-id" } }
+	// { "namespace": { "id": "namespace-id", "active": true } }
 	CreateNamespace(ctx context.Context, in *CreateNamespaceRequest, opts ...grpc.CallOption) (*CreateNamespaceResponse, error)
 	UpdateNamespace(ctx context.Context, in *UpdateNamespaceRequest, opts ...grpc.CallOption) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(ctx context.Context, in *DeactivateNamespaceRequest, opts ...grpc.CallOption) (*DeactivateNamespaceResponse, error)
@@ -128,7 +128,7 @@ type NamespaceServiceServer interface {
 	// "namespace": {
 	// "id": "namespace-id",
 	// "name": "namespace-name",
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
+	// "active": true
 	// }
 	// }
 	GetNamespace(context.Context, *GetNamespaceRequest) (*GetNamespaceResponse, error)
@@ -141,7 +141,7 @@ type NamespaceServiceServer interface {
 	// {
 	// "id": "namespace-id",
 	// "name": "namespace-name",
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
+	// "active": true
 	// }
 	// ]
 	// }
@@ -149,7 +149,7 @@ type NamespaceServiceServer interface {
 	// Request:
 	// grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 namespaces.NamespaceService/CreateNamespace
 	// Response:
-	// { "namespace": { "id": "namespace-id" } }
+	// { "namespace": { "id": "namespace-id", "active": true } }
 	CreateNamespace(context.Context, *CreateNamespaceRequest) (*CreateNamespaceResponse, error)
 	UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(context.Context, *DeactivateNamespaceRequest) (*DeactivateNamespaceResponse, error)

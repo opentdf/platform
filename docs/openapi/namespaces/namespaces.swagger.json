@@ -18,7 +18,7 @@
   "paths": {
     "/attributes/namespaces": {
       "get": {
-        "summary": "NOTE: ACTIVE state by default, INACTIVE or ANY when specified\nRequest: \ngrpcurl -plaintext localhost:9000 namespaces.NamespaceService/ListNamespaces\nResponse:\n{\n\"namespaces\": [\n{\n\"id\": \"namespace-id\",\n\"name\": \"namespace-name\",\n\"state\": \"STATE_TYPE_ENUM_ACTIVE\"\n}\n]\n}",
+        "summary": "NOTE: ACTIVE state by default, INACTIVE or ANY when specified\nRequest: \ngrpcurl -plaintext localhost:9000 namespaces.NamespaceService/ListNamespaces\nResponse:\n{\n\"namespaces\": [\n{\n\"id\": \"namespace-id\",\n\"name\": \"namespace-name\",\n\"active\": true\n}\n]\n}",
         "operationId": "NamespaceService_ListNamespaces",
         "responses": {
           "200": {
@@ -55,7 +55,7 @@
         ]
       },
       "post": {
-        "summary": "Request: \ngrpcurl -plaintext -d '{\"name\": \"namespace-name\"}' localhost:9000 namespaces.NamespaceService/CreateNamespace\nResponse:\n{ \"namespace\": { \"id\": \"namespace-id\" } }",
+        "summary": "Request: \ngrpcurl -plaintext -d '{\"name\": \"namespace-name\"}' localhost:9000 namespaces.NamespaceService/CreateNamespace\nResponse:\n{ \"namespace\": { \"id\": \"namespace-id\", \"active\": true } }",
         "operationId": "NamespaceService_CreateNamespace",
         "responses": {
           "200": {
@@ -86,7 +86,7 @@
     },
     "/attributes/namespaces/{id}": {
       "get": {
-        "summary": "Request: \ngrpcurl -plaintext -d '{\"id\": \"namespace-id\"}' localhost:9000 namespaces.NamespaceService/GetNamespace\nResponse:\n{\n\"namespace\": {\n\"id\": \"namespace-id\",\n\"name\": \"namespace-name\",\n\"state\": \"STATE_TYPE_ENUM_ACTIVE\"\n}\n}",
+        "summary": "Request: \ngrpcurl -plaintext -d '{\"id\": \"namespace-id\"}' localhost:9000 namespaces.NamespaceService/GetNamespace\nResponse:\n{\n\"namespace\": {\n\"id\": \"namespace-id\",\n\"name\": \"namespace-name\",\n\"active\": true\n}\n}",
         "operationId": "NamespaceService_GetNamespace",
         "responses": {
           "200": {

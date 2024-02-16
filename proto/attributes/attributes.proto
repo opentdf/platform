@@ -269,10 +269,8 @@ service AttributesService {
                       },
                       "name": "key_access_server_name",
                       "description": "key_access_server_description",
-                      "state": "STATE_TYPE_ENUM_ACTIVE"
                     }
                   ],
-                  "state": "STATE_TYPE_ENUM_ACTIVE"
                 }
               ],
               "grants": [
@@ -284,10 +282,9 @@ service AttributesService {
                   },
                   "name": "key_access_server_name",
                   "description": "key_access_server_description",
-                  "state": "STATE_TYPE_ENUM_ACTIVE"
                 }
               ],
-              "state": "STATE_TYPE_ENUM_ACTIVE"
+              "active": true
             }
           ]
         }
@@ -325,7 +322,7 @@ service AttributesService {
                   ... GRANTS ...
                 }
               ],
-              "state": "STATE_TYPE_ENUM_INACTIVE"
+              "active": true
             }
           ]
         }
@@ -352,7 +349,8 @@ service AttributesService {
             "id": "namespace_id"
           },
           "name": "attribute_name",
-          "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
+          "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+          "active": true
         }
       }
  */

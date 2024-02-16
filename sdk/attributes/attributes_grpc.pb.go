@@ -78,10 +78,8 @@ type AttributesServiceClient interface {
 	// },
 	// "name": "key_access_server_name",
 	// "description": "key_access_server_description",
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
 	// }
 	// ],
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
 	// }
 	// ],
 	// "grants": [
@@ -93,10 +91,9 @@ type AttributesServiceClient interface {
 	// },
 	// "name": "key_access_server_name",
 	// "description": "key_access_server_description",
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
 	// }
 	// ],
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
+	// "active": true
 	// }
 	// ]
 	// }
@@ -131,7 +128,7 @@ type AttributesServiceClient interface {
 	// ... GRANTS ...
 	// }
 	// ],
-	// "state": "STATE_TYPE_ENUM_INACTIVE"
+	// "active": true
 	// }
 	// ]
 	// }
@@ -152,7 +149,8 @@ type AttributesServiceClient interface {
 	// "id": "namespace_id"
 	// },
 	// "name": "attribute_name",
-	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+	// "active": true
 	// }
 	// }
 	CreateAttribute(ctx context.Context, in *CreateAttributeRequest, opts ...grpc.CallOption) (*CreateAttributeResponse, error)
@@ -416,10 +414,8 @@ type AttributesServiceServer interface {
 	// },
 	// "name": "key_access_server_name",
 	// "description": "key_access_server_description",
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
 	// }
 	// ],
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
 	// }
 	// ],
 	// "grants": [
@@ -431,10 +427,9 @@ type AttributesServiceServer interface {
 	// },
 	// "name": "key_access_server_name",
 	// "description": "key_access_server_description",
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
 	// }
 	// ],
-	// "state": "STATE_TYPE_ENUM_ACTIVE"
+	// "active": true
 	// }
 	// ]
 	// }
@@ -469,7 +464,7 @@ type AttributesServiceServer interface {
 	// ... GRANTS ...
 	// }
 	// ],
-	// "state": "STATE_TYPE_ENUM_INACTIVE"
+	// "active": true
 	// }
 	// ]
 	// }
@@ -490,7 +485,8 @@ type AttributesServiceServer interface {
 	// "id": "namespace_id"
 	// },
 	// "name": "attribute_name",
-	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+	// "active": true
 	// }
 	// }
 	CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error)

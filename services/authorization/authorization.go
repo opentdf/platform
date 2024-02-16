@@ -35,9 +35,12 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 		for _, ra := range dr.ResourceAttributes {
 			for _, ec := range dr.EntityChains {
 				decision := &authorization.DecisionResponse{
-					Decision:             authorization.DecisionResponse_DECISION_PERMIT,
-					EntityChainId:        ec.Id,
-					Action:               &authorization.Action{},
+					Decision:      authorization.DecisionResponse_DECISION_PERMIT,
+					EntityChainId: ec.Id,
+					Action: &authorization.Action{
+						Value: &authorization.Action_Standard{
+							Standard: authorization.Action_STANDARD_ACTION_TRANSMIT},
+					},
 					ResourceAttributesId: ra.Id,
 				}
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decision)

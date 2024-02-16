@@ -64,7 +64,7 @@ const (
 )
 
 type Reader struct {
-	Manifest
+	manifest            Manifest
 	unencryptedMetadata string
 	tdfReader           archive.TDFReader
 	authConfig          AuthConfig
@@ -75,8 +75,8 @@ type Reader struct {
 }
 
 type TDFObject struct {
-	Manifest
-	TdfSize    int64
+	manifest   Manifest
+	size       int64
 	aesGcm     crypto.AesGcm
 	payloadKey [kKeySize]byte
 }
@@ -179,8 +179,8 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 			EncryptedSize: int64(len(cipherData)),
 		}
 
-		tdfObject.Manifest.EncryptionInformation.IntegrityInformation.Segments =
-			append(tdfObject.Manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
+		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments =
+			append(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
 
 		totalSegments--
 		readPos += readSize
@@ -192,33 +192,33 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 	}
 
 	sig := string(crypto.Base64Encode([]byte(rootSignature)))
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
 
 	integrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.integrityAlgorithm == HS256 {
 		integrityAlgStr = hmacIntegrityAlgorithm
 	}
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm = integrityAlgStr
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm = integrityAlgStr
 
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize = segmentSize
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize = encryptedSegmentSize
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize = segmentSize
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize = encryptedSegmentSize
 
 	segIntegrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
 		segIntegrityAlgStr = hmacIntegrityAlgorithm
 	}
 
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm = segIntegrityAlgStr
-	tdfObject.Manifest.EncryptionInformation.Method.IsStreamable = true
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm = segIntegrityAlgStr
+	tdfObject.manifest.EncryptionInformation.Method.IsStreamable = true
 
 	// add payload info
-	tdfObject.Manifest.Payload.MimeType = defaultMimeType
-	tdfObject.Manifest.Payload.Protocol = tdfAsZip
-	tdfObject.Manifest.Payload.Type = tdfZipReference
-	tdfObject.Manifest.Payload.URL = archive.TDFPayloadFileName
-	tdfObject.Manifest.Payload.IsEncrypted = true
+	tdfObject.manifest.Payload.MimeType = defaultMimeType
+	tdfObject.manifest.Payload.Protocol = tdfAsZip
+	tdfObject.manifest.Payload.Type = tdfZipReference
+	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
+	tdfObject.manifest.Payload.IsEncrypted = true
 
-	manifestAsStr, err := json.Marshal(tdfObject.Manifest)
+	manifestAsStr, err := json.Marshal(tdfObject.manifest)
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal failed:%w", err)
 	}
@@ -228,12 +228,19 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 		return nil, fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
 	}
 
-	tdfObject.TdfSize, err = tdfWriter.Finish()
+	tdfObject.size, err = tdfWriter.Finish()
 	if err != nil {
 		return nil, fmt.Errorf("TDFWriter.Finish failed:%w", err)
 	}
 
 	return tdfObject, nil
+}
+
+func (this *TDFObject) Manifest() Manifest {
+	return this.manifest
+}
+func (this *Reader) Manifest() Manifest {
+	return this.manifest
 }
 
 // prepare the manifest for TDF
@@ -333,7 +340,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 		return fmt.Errorf(" crypto.NewAESGcm failed:%w", err)
 	}
 
-	tdfObject.Manifest = manifest
+	tdfObject.manifest = manifest
 	tdfObject.aesGcm = gcm
 	return nil
 }
@@ -379,7 +386,7 @@ func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
 
 	return &Reader{
 		tdfReader:  tdfReader,
-		Manifest:   *manifestObj,
+		manifest:   *manifestObj,
 		authConfig: authConfig,
 	}, nil
 }
@@ -412,7 +419,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 
 	var totalBytes int64
 	var payloadReadOffset int64
-	for _, seg := range reader.Manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range reader.manifest.EncryptionInformation.IntegrityInformation.Segments {
 		readBuf, err := reader.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
 		if err != nil {
 			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
@@ -422,7 +429,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, errTDFReaderFailed
 		}
 
-		segHashAlg := reader.Manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := reader.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
@@ -475,7 +482,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 		return 0, errTDFPayloadInvalidOffset
 	}
 
-	defaultSegmentSize := reader.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	defaultSegmentSize := reader.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
 	var start = math.Floor(float64(offset) / float64(defaultSegmentSize))
 	var end = math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
 
@@ -493,7 +500,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
-	for index, seg := range reader.Manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for index, seg := range reader.manifest.EncryptionInformation.IntegrityInformation.Segments {
 		if firstSegment > int64(index) {
 			payloadReadOffset += seg.EncryptedSize
 			continue
@@ -508,7 +515,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 			return 0, errTDFReaderFailed
 		}
 
-		segHashAlg := reader.Manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := reader.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
@@ -557,13 +564,8 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 	return int(bufLen), err
 }
 
-// GetManifest return the manifest in TDF.
-func (reader *Reader) GetManifest() Manifest {
-	return reader.Manifest
-}
-
-// GetUnencryptedMetadata return decrypted metadata in manifest.
-func (reader *Reader) GetUnencryptedMetadata() (string, error) {
+// UnencryptedMetadata return decrypted metadata in manifest.
+func (reader *Reader) UnencryptedMetadata() (string, error) {
 	if reader.payloadKey == nil {
 		err := reader.getPayloadKey()
 		if err != nil {
@@ -574,10 +576,11 @@ func (reader *Reader) GetUnencryptedMetadata() (string, error) {
 	return reader.unencryptedMetadata, nil
 }
 
-// GetPolicy return policy object in manifest.
-func (reader *Reader) GetPolicy() (PolicyObject, error) {
+// Policy returns a copy of the policy object in manifest, if it is valid.
+// Otherwise, returns an error.
+func (reader *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
-	policy, err := crypto.Base64Decode([]byte(reader.Manifest.Policy))
+	policy, err := crypto.Base64Decode([]byte(reader.manifest.Policy))
 	if err != nil {
 		return policyObj, fmt.Errorf("crypto.Base64Decode failed:%w", err)
 	}
@@ -592,7 +595,7 @@ func (reader *Reader) GetPolicy() (PolicyObject, error) {
 
 // DataAttributes return the data attributes present in tdf.
 func (reader *Reader) DataAttributes() ([]string, error) {
-	policy, err := crypto.Base64Decode([]byte(reader.Manifest.Policy))
+	policy, err := crypto.Base64Decode([]byte(reader.manifest.Policy))
 	if err != nil {
 		return nil, fmt.Errorf("crypto.Base64Decode failed:%w", err)
 	}
@@ -612,12 +615,12 @@ func (reader *Reader) DataAttributes() ([]string, error) {
 	return attributes, nil
 }
 
-// Get the payload key th
+// Unwraps the payload key, if possible, using the access service
 func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
-	for _, keyAccessObj := range reader.Manifest.EncryptionInformation.KeyAccessObjs {
-		requestBody := RequestBody{keyAccessObj, "", reader.Manifest.EncryptionInformation.Policy}
+	for _, keyAccessObj := range reader.manifest.EncryptionInformation.KeyAccessObjs {
+		requestBody := RequestBody{keyAccessObj, "", reader.manifest.EncryptionInformation.Policy}
 		wrappedKey, err := rewrap(reader.authConfig, &requestBody)
 		if err != nil {
 			return fmt.Errorf(" splitKey.rewrap failed:%w", err)
@@ -655,7 +658,7 @@ func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 		}
 	}
 
-	res, err := validateRootSignature(reader.Manifest, payloadKey[:])
+	res, err := validateRootSignature(reader.manifest, payloadKey[:])
 	if err != nil {
 		return fmt.Errorf("splitKey.validateRootSignature failed: %w", err)
 	}
@@ -664,15 +667,15 @@ func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 		return errRootSigValidation
 	}
 
-	segSize := reader.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	encryptedSegSize := reader.Manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
+	segSize := reader.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	encryptedSegSize := reader.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
 
 	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
 		return errSegSizeMismatch
 	}
 
 	var payloadSize int64
-	for _, seg := range reader.Manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range reader.manifest.EncryptionInformation.IntegrityInformation.Segments {
 		payloadSize += seg.Size
 	}
 

@@ -97,7 +97,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDe
 	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, attrDef.Id, value)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdValue)
-	assert.Equal(s.T(), true, createdValue.Active)
+	assert.Equal(s.T(), true, createdValue.Active.Value)
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
@@ -109,7 +109,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
 	assert.Equal(s.T(), inactive.Id, got.Id)
 	assert.Equal(s.T(), inactive.Value, got.Value)
 	assert.Equal(s.T(), len(inactive.Members), len(got.Members))
-	assert.Equal(s.T(), false, got.Active)
+	assert.Equal(s.T(), false, got.Active.Value)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
@@ -415,19 +415,19 @@ func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
 	gotNs, err := s.db.Client.GetNamespace(s.ctx, stillActiveNsId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNs)
-	assert.Equal(s.T(), true, gotNs.Active)
+	assert.Equal(s.T(), true, gotNs.Active.Value)
 
 	// attribute is still active (not bubbled up)
 	gotAttr, err := s.db.Client.GetAttribute(s.ctx, stillActiveAttributeId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
-	assert.Equal(s.T(), true, gotAttr.Active)
+	assert.Equal(s.T(), true, gotAttr.Active.Value)
 
 	// value was deactivated
 	gotVal, err := s.db.Client.GetAttributeValue(s.ctx, deactivatedAttrValueId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotVal)
-	assert.Equal(s.T(), false, gotVal.Active)
+	assert.Equal(s.T(), false, gotVal.Active.Value)
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_Value_Not_Found() {

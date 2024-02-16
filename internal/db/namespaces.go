@@ -65,9 +65,11 @@ func (c Client) ListNamespaces(ctx context.Context, state string) ([]*namespaces
 
 	for rows.Next() {
 		var namespace namespaces.Namespace
-		if err := rows.Scan(&namespace.Id, &namespace.Name, &namespace.Active); err != nil {
+		var isActive bool
+		if err := rows.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
 			return nil, WrapIfKnownInvalidQueryErr(err)
 		}
+		namespace.Active = &wrapperspb.BoolValue{Value: isActive}
 		namespacesList = append(namespacesList, &namespace)
 	}
 

@@ -94,7 +94,7 @@ func (s *AttributesSuite) Test_CreateAttribute_SetsActiveStateTrueByDefault() {
 	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdAttr)
-	assert.Equal(s.T(), true, createdAttr.Active)
+	assert.Equal(s.T(), true, createdAttr.Active.Value)
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithInvalidNamespaceFails() {
@@ -202,7 +202,7 @@ func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 	assert.NotNil(s.T(), gotAttr)
 	assert.Equal(s.T(), deactivated.Id, gotAttr.Id)
 	assert.Equal(s.T(), deactivated.Name, gotAttr.Name)
-	assert.Equal(s.T(), false, gotAttr.Active)
+	assert.Equal(s.T(), false, gotAttr.Active.Value)
 }
 
 func (s *AttributesSuite) Test_ListAttribute() {
@@ -494,19 +494,19 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_ToValues_Get() {
 	gotNs, err := s.db.Client.GetNamespace(s.ctx, stillActiveNsId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNs)
-	assert.Equal(s.T(), true, gotNs.Active)
+	assert.Equal(s.T(), true, gotNs.Active.Value)
 
 	// ensure the attribute has state inactive
 	gotAttr, err := s.db.Client.GetAttribute(s.ctx, deactivatedAttrId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
-	assert.Equal(s.T(), false, gotAttr.Active)
+	assert.Equal(s.T(), false, gotAttr.Active.Value)
 
 	// ensure the value has state inactive
 	gotVal, err := s.db.Client.GetAttributeValue(s.ctx, deactivatedAttrValueId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotVal)
-	assert.Equal(s.T(), false, gotVal.Active)
+	assert.Equal(s.T(), false, gotVal.Active.Value)
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_Attribute_Not_Found() {

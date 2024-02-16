@@ -203,7 +203,7 @@ func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNamespace)
 	assert.Equal(s.T(), id, gotNamespace.Id)
-	assert.Equal(s.T(), false, gotNamespace.Active)
+	assert.Equal(s.T(), false, gotNamespace.Active.Value)
 }
 
 // reusable setup for creating a namespace -> attr -> value and then deactivating the namespace (cascades down)
@@ -353,19 +353,19 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_ToAttributesAndValue
 	gotNs, err := s.db.Client.GetNamespace(s.ctx, deactivatedNsId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNs)
-	assert.Equal(s.T(), false, gotNs.Active)
+	assert.Equal(s.T(), false, gotNs.Active.Value)
 
 	// ensure the attribute has state inactive
 	gotAttr, err := s.db.Client.GetAttribute(s.ctx, deactivatedAttrId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
-	assert.Equal(s.T(), false, gotAttr.Active)
+	assert.Equal(s.T(), false, gotAttr.Active.Value)
 
 	// ensure the value has state inactive
 	gotVal, err := s.db.Client.GetAttributeValue(s.ctx, deactivatedAttrValueId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotVal)
-	assert.Equal(s.T(), false, gotVal.Active)
+	assert.Equal(s.T(), false, gotVal.Active.Value)
 }
 
 func (s *NamespacesSuite) Test_DeleteNamespace_DoesNotExist_ShouldFail() {

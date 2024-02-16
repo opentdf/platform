@@ -167,7 +167,7 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	}
 
 	slog.Info("registering authorization server")
-	err = authorization.NewAuthorizationServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = authorization.NewAuthorizationServer(otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register authorization service: %w", err)
 	}

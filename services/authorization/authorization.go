@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
 	"google.golang.org/grpc"
 	"log/slog"
@@ -14,7 +13,7 @@ type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
 }
 
-func NewAuthorizationServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
+func NewAuthorizationServer(g *grpc.Server, s *runtime.ServeMux) error {
 	as := &AuthorizationService{}
 	authorization.RegisterAuthorizationServiceServer(g, as)
 	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)

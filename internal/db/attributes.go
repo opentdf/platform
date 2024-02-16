@@ -52,18 +52,18 @@ func attributesValuesProtojson(valuesJson []byte) ([]*attributes.Value, error) {
 
 func attributesSelect() sq.SelectBuilder {
 	return newStatementBuilder().Select(
-		tableField(AttributeTable, "id"),
-		tableField(AttributeTable, "name"),
-		tableField(AttributeTable, "rule"),
-		tableField(AttributeTable, "metadata"),
-		tableField(AttributeTable, "namespace_id"),
-		tableField(AttributeTable, "state"),
-		tableField(NamespacesTable, "name"),
+		Tables.Attributes.Field("id"),
+		Tables.Attributes.Field("name"),
+		Tables.Attributes.Field("rule"),
+		Tables.Attributes.Field("metadata"),
+		Tables.Attributes.Field("namespace_id"),
+		Tables.Attributes.Field("state"),
+		Tables.Namespaces.Field("name"),
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
-			"'id', "+tableField(AttributeValueTable, "id")+", "+
-			"'value', "+tableField(AttributeValueTable, "value")+","+
-			"'members', "+tableField(AttributeValueTable, "members")+","+
+			"'id', "+Tables.AttributeValues.Field("id")+", "+
+			"'value', "+Tables.AttributeValues.Field("value")+","+
+			"'members', "+Tables.AttributeValues.Field("members")+","+
 			"'grants', ("+
 			"SELECT JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
@@ -79,9 +79,9 @@ func attributesSelect() sq.SelectBuilder {
 			")) AS values",
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
-			"'id', "+tableField(KeyAccessServerTable, "id")+", "+
-			"'uri', "+tableField(KeyAccessServerTable, "uri")+", "+
-			"'public_key', "+tableField(KeyAccessServerTable, "public_key")+
+			"'id', "+Tables.KeyAccessServerRegistry.Field("id")+", "+
+			"'uri', "+Tables.KeyAccessServerRegistry.Field("uri")+", "+
+			"'public_key', "+Tables.KeyAccessServerRegistry.Field("public_key")+
 			")"+
 			") AS grants",
 	).
@@ -89,7 +89,7 @@ func attributesSelect() sq.SelectBuilder {
 		LeftJoin(NamespacesTable+" ON "+NamespacesTable+".id = "+AttributeTable+".namespace_id").
 		LeftJoin(Tables.AttributeKeyAccessGrants.Name()+" ON "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".attribute_definition_id = "+AttributeTable+".id").
 		LeftJoin(KeyAccessServerTable+" ON "+KeyAccessServerTable+".id = "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".key_access_server_id").
-		GroupBy(tableField(AttributeTable, "id"), tableField(NamespacesTable, "name"))
+		GroupBy(Tables.Attributes.Field("id"), Tables.Namespaces.Field("name"))
 }
 
 func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
@@ -212,9 +212,9 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 func listAllAttributesSql(state string) (string, []interface{}, error) {
 	q := attributesSelect()
 	if state != StateAny {
-		q = q.Where(sq.Eq{tableField(AttributeTable, "state"): state})
+		q = q.Where(sq.Eq{Tables.Attributes.Field("state"): state})
 	}
-	return q.From(AttributeTable).
+	return q.From(Tables.Attributes.Name()).
 		ToSql()
 }
 
@@ -237,7 +237,7 @@ func (c Client) ListAllAttributes(ctx context.Context, state string) ([]*attribu
 
 func getAttributeSql(id string) (string, []interface{}, error) {
 	return attributesSelect().
-		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
+		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
 		From(AttributeTable).
 		ToSql()
 }
@@ -260,7 +260,7 @@ func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attrib
 
 func getAttributesByNamespaceSql(namespaceId string) (string, []interface{}, error) {
 	return attributesSelect().
-		Where(sq.Eq{tableField(AttributeTable, "namespace_id"): namespaceId}).
+		Where(sq.Eq{Tables.Attributes.Field("namespace_id"): namespaceId}).
 		From(AttributeTable).
 		ToSql()
 }
@@ -329,7 +329,7 @@ func updateAttributeSql(id string, name string, rule string, metadata []byte) (s
 	}
 
 	return sb.Set("metadata", metadata).
-		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
+		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
 		ToSql()
 }
 
@@ -360,9 +360,9 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 
 func deactivateAttributeSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
-		Update(AttributeTable).
+		Update(Tables.Attributes.Name()).
 		Set("state", StateInactive).
-		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
+		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
@@ -379,7 +379,7 @@ func (c Client) DeactivateAttribute(ctx context.Context, id string) (*attributes
 func deleteAttributeSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Delete(AttributeTable).
-		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
+		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
 		ToSql()
 }
 

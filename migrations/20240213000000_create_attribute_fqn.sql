@@ -7,8 +7,6 @@ CREATE TABLE IF NOT EXISTS attribute_fqns (
   attribute_id UUID REFERENCES attribute_definitions(id) ON DELETE CASCADE,
   value_id UUID REFERENCES attribute_values(id) ON DELETE CASCADE,
   fqn TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE NULLS NOT DISTINCT (namespace_id, attribute_id, value_id),
   UNIQUE (fqn)
 );
@@ -18,6 +16,7 @@ CREATE TABLE IF NOT EXISTS attribute_fqns (
 -- +goose Down
 
 DROP TABLE attribute_fqn;
+REMOVE TRIGGER fqn_updated ON attribute_fqns;
 
 -- +goose StatementBegin
 -- +goose StatementEnd

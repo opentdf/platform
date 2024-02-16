@@ -144,7 +144,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		t.Field("attribute_definition_id"),
 	}
 	if opts.withFqn {
-		fields = append(fields, "fqn")
+		fields = append(fields, Tables.AttrFqn.Field("fqn"))
 	}
 
 	sb := newStatementBuilder().

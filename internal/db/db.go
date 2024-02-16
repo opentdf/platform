@@ -204,10 +204,6 @@ func tableName(table string) string {
 	return table
 }
 
-func tableField(table string, field string) string {
-	return table + "." + field
-}
-
 func getProtoStateEnum(state string) common.ActiveStateEnum {
 	switch state {
 	case StateInactive:

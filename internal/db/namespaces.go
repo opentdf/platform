@@ -5,6 +5,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func getNamespaceSql(id string) (string, []interface{}, error) {
@@ -28,9 +29,11 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 	}
 
 	var namespace namespaces.Namespace
-	if err := row.Scan(&namespace.Id, &namespace.Name, &namespace.Active); err != nil {
+	var isActive bool
+	if err := row.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
+	namespace.Active = &wrapperspb.BoolValue{Value: isActive}
 
 	return &namespace, nil
 }

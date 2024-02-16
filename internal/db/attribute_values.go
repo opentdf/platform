@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var AttributeValueTable = tableName(TableAttributeValues)
@@ -39,7 +40,7 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 		Members:     members,
 		Metadata:    m,
 		AttributeId: attributeId,
-		Active:      isActive,
+		Active:      &wrapperspb.BoolValue{Value: isActive},
 	}
 	return v, nil
 }
@@ -101,7 +102,7 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 		Value:       v.Value,
 		Members:     v.Members,
 		Metadata:    metadata,
-		Active:      true,
+		Active:      &wrapperspb.BoolValue{Value: true},
 	}
 	return rV, nil
 }

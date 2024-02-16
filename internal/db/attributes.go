@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -135,7 +136,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		Id:        id,
 		Name:      name,
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
-		Active:    isActive,
+		Active:    &wrapperspb.BoolValue{Value: isActive},
 		Metadata:  m,
 		Values:    v,
 		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
@@ -173,7 +174,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 				Id:   namespaceId,
 				Name: namespaceName,
 			},
-			Active: isActive,
+			Active: &wrapperspb.BoolValue{Value: isActive},
 		}
 
 		if metadataJson != nil {
@@ -313,7 +314,7 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 		Namespace: &namespaces.Namespace{
 			Id: attr.NamespaceId,
 		},
-		Active: true,
+		Active: &wrapperspb.BoolValue{Value: true},
 	}
 	return a, nil
 }

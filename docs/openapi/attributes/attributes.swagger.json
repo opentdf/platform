@@ -506,9 +506,6 @@
             "$ref": "#/definitions/attributesValueCreateUpdate"
           },
           "title": "optional"
-        },
-        "fqn": {
-          "type": "string"
         }
       }
     },
@@ -689,9 +686,6 @@
             "type": "string"
           },
           "title": "list of attribute values that this value is related to (attribute group)"
-        },
-        "fqn": {
-          "type": "string"
         }
       }
     },

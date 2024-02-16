@@ -207,159 +207,158 @@ public final class AttributesProto {
       "\001\002\020\001\310\001\001R\004rule\022)\n\006values\030\007 \003(\0132\021.attribut" +
       "es.ValueR\006values\0224\n\006grants\030\010 \003(\0132\034.kasre" +
       "gistry.KeyAccessServerR\006grants\022\020\n\003fqn\030\t " +
-      "\001(\tR\003fqn\"\240\002\n\025AttributeCreateUpdate\0223\n\010me" +
+      "\001(\tR\003fqn\"\216\002\n\025AttributeCreateUpdate\0223\n\010me" +
       "tadata\030\001 \001(\0132\027.common.MetadataMutableR\010m" +
       "etadata\022)\n\014namespace_id\030\002 \001(\tB\006\272H\003\310\001\001R\013n" +
       "amespaceId\022\032\n\004name\030\003 \001(\tB\006\272H\003\310\001\001R\004name\022B" +
       "\n\004rule\030\004 \001(\0162!.attributes.AttributeRuleT" +
       "ypeEnumB\013\272H\010\202\001\002\020\001\310\001\001R\004rule\0225\n\006values\030\005 \003" +
       "(\0132\035.attributes.ValueCreateUpdateR\006value" +
-      "s\022\020\n\003fqn\030\006 \001(\tR\003fqn\"\350\001\n\005Value\022\016\n\002id\030\001 \001(" +
-      "\tR\002id\022,\n\010metadata\030\002 \001(\0132\020.common.Metadat" +
-      "aR\010metadata\022)\n\014attribute_id\030\003 \001(\tB\006\272H\003\310\001" +
-      "\001R\013attributeId\022\024\n\005value\030\004 \001(\tR\005value\022\030\n\007" +
-      "members\030\005 \003(\tR\007members\0224\n\006grants\030\006 \003(\0132\034" +
-      ".kasregistry.KeyAccessServerR\006grants\022\020\n\003" +
-      "fqn\030\007 \001(\tR\003fqn\"\212\001\n\021ValueCreateUpdate\0223\n\010" +
-      "metadata\030\001 \001(\0132\027.common.MetadataMutableR" +
-      "\010metadata\022\024\n\005value\030\002 \001(\tR\005value\022\030\n\007membe" +
-      "rs\030\003 \003(\tR\007members\022\020\n\003fqn\030\007 \001(\tR\003fqn\"n\n\030A" +
-      "ttributeKeyAccessServer\022!\n\014attribute_id\030" +
-      "\001 \001(\tR\013attributeId\022/\n\024key_access_server_" +
-      "id\030\002 \001(\tR\021keyAccessServerId\"b\n\024ValueKeyA" +
-      "ccessServer\022\031\n\010value_id\030\001 \001(\tR\007valueId\022/" +
-      "\n\024key_access_server_id\030\002 \001(\tR\021keyAccessS" +
-      "erverId\"\027\n\025ListAttributesRequest\"O\n\026List" +
-      "AttributesResponse\0225\n\nattributes\030\001 \003(\0132\025" +
-      ".attributes.AttributeR\nattributes\"-\n\023Get" +
-      "AttributeRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id" +
-      "\"K\n\024GetAttributeResponse\0223\n\tattribute\030\001 " +
-      "\001(\0132\025.attributes.AttributeR\tattribute\"a\n" +
-      "\026CreateAttributeRequest\022G\n\tattribute\030\001 \001" +
-      "(\0132!.attributes.AttributeCreateUpdateB\006\272" +
-      "H\003\310\001\001R\tattribute\"N\n\027CreateAttributeRespo" +
-      "nse\0223\n\tattribute\030\001 \001(\0132\025.attributes.Attr" +
-      "ibuteR\tattribute\"y\n\026UpdateAttributeReque" +
-      "st\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022G\n\tattribute\030" +
-      "\002 \001(\0132!.attributes.AttributeCreateUpdate" +
-      "B\006\272H\003\310\001\001R\tattribute\"N\n\027UpdateAttributeRe" +
+      "s\"\350\001\n\005Value\022\016\n\002id\030\001 \001(\tR\002id\022,\n\010metadata\030" +
+      "\002 \001(\0132\020.common.MetadataR\010metadata\022)\n\014att" +
+      "ribute_id\030\003 \001(\tB\006\272H\003\310\001\001R\013attributeId\022\024\n\005" +
+      "value\030\004 \001(\tR\005value\022\030\n\007members\030\005 \003(\tR\007mem" +
+      "bers\0224\n\006grants\030\006 \003(\0132\034.kasregistry.KeyAc" +
+      "cessServerR\006grants\022\020\n\003fqn\030\007 \001(\tR\003fqn\"x\n\021" +
+      "ValueCreateUpdate\0223\n\010metadata\030\001 \001(\0132\027.co" +
+      "mmon.MetadataMutableR\010metadata\022\024\n\005value\030" +
+      "\002 \001(\tR\005value\022\030\n\007members\030\003 \003(\tR\007members\"n" +
+      "\n\030AttributeKeyAccessServer\022!\n\014attribute_" +
+      "id\030\001 \001(\tR\013attributeId\022/\n\024key_access_serv" +
+      "er_id\030\002 \001(\tR\021keyAccessServerId\"b\n\024ValueK" +
+      "eyAccessServer\022\031\n\010value_id\030\001 \001(\tR\007valueI" +
+      "d\022/\n\024key_access_server_id\030\002 \001(\tR\021keyAcce" +
+      "ssServerId\"\027\n\025ListAttributesRequest\"O\n\026L" +
+      "istAttributesResponse\0225\n\nattributes\030\001 \003(" +
+      "\0132\025.attributes.AttributeR\nattributes\"-\n\023" +
+      "GetAttributeRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R" +
+      "\002id\"K\n\024GetAttributeResponse\0223\n\tattribute" +
+      "\030\001 \001(\0132\025.attributes.AttributeR\tattribute" +
+      "\"a\n\026CreateAttributeRequest\022G\n\tattribute\030" +
+      "\001 \001(\0132!.attributes.AttributeCreateUpdate" +
+      "B\006\272H\003\310\001\001R\tattribute\"N\n\027CreateAttributeRe" +
       "sponse\0223\n\tattribute\030\001 \001(\0132\025.attributes.A" +
-      "ttributeR\tattribute\"0\n\026DeleteAttributeRe" +
-      "quest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"N\n\027DeleteA" +
-      "ttributeResponse\0223\n\tattribute\030\001 \001(\0132\025.at" +
-      "tributes.AttributeR\tattribute\"2\n\030GetAttr" +
-      "ibuteValueRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002i" +
-      "d\"D\n\031GetAttributeValueResponse\022\'\n\005value\030" +
-      "\001 \001(\0132\021.attributes.ValueR\005value\"G\n\032ListA" +
-      "ttributeValuesRequest\022)\n\014attribute_id\030\001 " +
-      "\001(\tB\006\272H\003\310\001\001R\013attributeId\"H\n\033ListAttribut" +
-      "eValuesResponse\022)\n\006values\030\001 \003(\0132\021.attrib" +
-      "utes.ValueR\006values\"\205\001\n\033CreateAttributeVa" +
-      "lueRequest\022)\n\014attribute_id\030\001 \001(\tB\006\272H\003\310\001\001" +
-      "R\013attributeId\022;\n\005value\030\002 \001(\0132\035.attribute" +
-      "s.ValueCreateUpdateB\006\272H\003\310\001\001R\005value\"G\n\034Cr" +
-      "eateAttributeValueResponse\022\'\n\005value\030\001 \001(" +
-      "\0132\021.attributes.ValueR\005value\"\235\001\n\033UpdateAt" +
-      "tributeValueRequest\022)\n\014attribute_id\030\001 \001(" +
-      "\tB\006\272H\003\310\001\001R\013attributeId\022\026\n\002id\030\002 \001(\tB\006\272H\003\310" +
-      "\001\001R\002id\022;\n\005value\030\003 \001(\0132\035.attributes.Value" +
-      "CreateUpdateB\006\272H\003\310\001\001R\005value\"G\n\034UpdateAtt" +
-      "ributeValueResponse\022\'\n\005value\030\001 \001(\0132\021.att" +
-      "ributes.ValueR\005value\"5\n\033DeleteAttributeV" +
-      "alueRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"G\n\034D" +
-      "eleteAttributeValueResponse\022\'\n\005value\030\001 \001" +
-      "(\0132\021.attributes.ValueR\005value\"\216\001\n\'AssignK" +
-      "eyAccessServerToAttributeRequest\022c\n\033attr" +
-      "ibute_key_access_server\030\001 \001(\0132$.attribut" +
-      "es.AttributeKeyAccessServerR\030attributeKe" +
-      "yAccessServer\"\217\001\n(AssignKeyAccessServerT" +
-      "oAttributeResponse\022c\n\033attribute_key_acce" +
-      "ss_server\030\001 \001(\0132$.attributes.AttributeKe" +
-      "yAccessServerR\030attributeKeyAccessServer\"" +
-      "\220\001\n)RemoveKeyAccessServerFromAttributeRe" +
-      "quest\022c\n\033attribute_key_access_server\030\001 \001" +
-      "(\0132$.attributes.AttributeKeyAccessServer" +
-      "R\030attributeKeyAccessServer\"\221\001\n*RemoveKey" +
-      "AccessServerFromAttributeResponse\022c\n\033att" +
-      "ribute_key_access_server\030\001 \001(\0132$.attribu" +
-      "tes.AttributeKeyAccessServerR\030attributeK" +
-      "eyAccessServer\"~\n#AssignKeyAccessServerT" +
-      "oValueRequest\022W\n\027value_key_access_server" +
-      "\030\001 \001(\0132 .attributes.ValueKeyAccessServer" +
-      "R\024valueKeyAccessServer\"\177\n$AssignKeyAcces" +
-      "sServerToValueResponse\022W\n\027value_key_acce" +
-      "ss_server\030\001 \001(\0132 .attributes.ValueKeyAcc" +
-      "essServerR\024valueKeyAccessServer\"\200\001\n%Remo" +
-      "veKeyAccessServerFromValueRequest\022W\n\027val" +
-      "ue_key_access_server\030\001 \001(\0132 .attributes." +
-      "ValueKeyAccessServerR\024valueKeyAccessServ" +
-      "er\"\201\001\n&RemoveKeyAccessServerFromValueRes" +
-      "ponse\022W\n\027value_key_access_server\030\001 \001(\0132 " +
-      ".attributes.ValueKeyAccessServerR\024valueK" +
-      "eyAccessServer*\263\001\n\025AttributeRuleTypeEnum" +
-      "\022(\n$ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED" +
-      "\020\000\022#\n\037ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\020\001\022" +
-      "#\n\037ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF\020\002\022&\n\"" +
-      "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY\020\0032\354\020\n" +
-      "\021AttributesService\022Y\n\016ListAttributes\022!.a" +
-      "ttributes.ListAttributesRequest\032\".attrib" +
-      "utes.ListAttributesResponse\"\000\022h\n\023ListAtt" +
-      "ributeValues\022&.attributes.ListAttributeV" +
-      "aluesRequest\032\'.attributes.ListAttributeV" +
-      "aluesResponse\"\000\022k\n\014GetAttribute\022\037.attrib" +
-      "utes.GetAttributeRequest\032 .attributes.Ge" +
-      "tAttributeResponse\"\030\202\323\344\223\002\022\022\020/attributes/" +
-      "{id}\022z\n\017CreateAttribute\022\".attributes.Cre" +
-      "ateAttributeRequest\032#.attributes.CreateA" +
-      "ttributeResponse\"\036\202\323\344\223\002\030\"\013/attributes:\ta" +
-      "ttribute\022\177\n\017UpdateAttribute\022\".attributes" +
-      ".UpdateAttributeRequest\032#.attributes.Upd" +
-      "ateAttributeResponse\"#\202\323\344\223\002\035\"\020/attribute" +
-      "s/{id}:\tattribute\022t\n\017DeleteAttribute\022\".a" +
-      "ttributes.DeleteAttributeRequest\032#.attri" +
-      "butes.DeleteAttributeResponse\"\030\202\323\344\223\002\022*\020/" +
-      "attributes/{id}\022\203\001\n\021GetAttributeValue\022$." +
-      "attributes.GetAttributeValueRequest\032%.at" +
-      "tributes.GetAttributeValueResponse\"!\202\323\344\223" +
-      "\002\033\022\031/attributes/_/values/{id}\022\233\001\n\024Create" +
-      "AttributeValue\022\'.attributes.CreateAttrib" +
-      "uteValueRequest\032(.attributes.CreateAttri" +
-      "buteValueResponse\"0\202\323\344\223\002*\"!/attributes/{" +
-      "attribute_id}/values:\005value\022\240\001\n\024UpdateAt" +
-      "tributeValue\022\'.attributes.UpdateAttribut" +
-      "eValueRequest\032(.attributes.UpdateAttribu" +
-      "teValueResponse\"5\202\323\344\223\002/\"&/attributes/{at" +
-      "tribute_id}/values/{id}:\005value\022\214\001\n\024Delet" +
-      "eAttributeValue\022\'.attributes.DeleteAttri" +
-      "buteValueRequest\032(.attributes.DeleteAttr" +
-      "ibuteValueResponse\"!\202\323\344\223\002\033*\031/attributes/" +
-      "_/values/{id}\022\326\001\n AssignKeyAccessServerT" +
-      "oAttribute\0223.attributes.AssignKeyAccessS" +
-      "erverToAttributeRequest\0324.attributes.Ass" +
-      "ignKeyAccessServerToAttributeResponse\"G\202" +
-      "\323\344\223\002A\"\"/attributes/keyaccessserver/assig" +
-      "n:\033attribute_key_access_server\022\334\001\n\"Remov" +
-      "eKeyAccessServerFromAttribute\0225.attribut" +
-      "es.RemoveKeyAccessServerFromAttributeReq" +
-      "uest\0326.attributes.RemoveKeyAccessServerF" +
-      "romAttributeResponse\"G\202\323\344\223\002A\"\"/attribute" +
-      "s/keyaccessserver/remove:\033attribute_key_" +
-      "access_server\022\315\001\n\034AssignKeyAccessServerT" +
-      "oValue\022/.attributes.AssignKeyAccessServe" +
-      "rToValueRequest\0320.attributes.AssignKeyAc" +
-      "cessServerToValueResponse\"J\202\323\344\223\002D\")/attr" +
-      "ibutes/values/keyaccessserver/assign:\027va" +
-      "lue_key_access_server\022\323\001\n\036RemoveKeyAcces" +
-      "sServerFromValue\0221.attributes.RemoveKeyA" +
-      "ccessServerFromValueRequest\0322.attributes" +
-      ".RemoveKeyAccessServerFromValueResponse\"" +
-      "J\202\323\344\223\002D\")/attributes/values/keyaccessser" +
-      "ver/remove:\027value_key_access_serverB\233\001\n\016" +
-      "com.attributesB\017AttributesProtoP\001Z0githu" +
-      "b.com/opentdf/opentdf-v2-poc/sdk/attribu" +
-      "tes\242\002\003AXX\252\002\nAttributes\312\002\nAttributes\342\002\026At" +
-      "tributes\\GPBMetadata\352\002\nAttributesb\006proto" +
-      "3"
+      "ttributeR\tattribute\"y\n\026UpdateAttributeRe" +
+      "quest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022G\n\tattribu" +
+      "te\030\002 \001(\0132!.attributes.AttributeCreateUpd" +
+      "ateB\006\272H\003\310\001\001R\tattribute\"N\n\027UpdateAttribut" +
+      "eResponse\0223\n\tattribute\030\001 \001(\0132\025.attribute" +
+      "s.AttributeR\tattribute\"0\n\026DeleteAttribut" +
+      "eRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"N\n\027Dele" +
+      "teAttributeResponse\0223\n\tattribute\030\001 \001(\0132\025" +
+      ".attributes.AttributeR\tattribute\"2\n\030GetA" +
+      "ttributeValueRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001" +
+      "R\002id\"D\n\031GetAttributeValueResponse\022\'\n\005val" +
+      "ue\030\001 \001(\0132\021.attributes.ValueR\005value\"G\n\032Li" +
+      "stAttributeValuesRequest\022)\n\014attribute_id" +
+      "\030\001 \001(\tB\006\272H\003\310\001\001R\013attributeId\"H\n\033ListAttri" +
+      "buteValuesResponse\022)\n\006values\030\001 \003(\0132\021.att" +
+      "ributes.ValueR\006values\"\205\001\n\033CreateAttribut" +
+      "eValueRequest\022)\n\014attribute_id\030\001 \001(\tB\006\272H\003" +
+      "\310\001\001R\013attributeId\022;\n\005value\030\002 \001(\0132\035.attrib" +
+      "utes.ValueCreateUpdateB\006\272H\003\310\001\001R\005value\"G\n" +
+      "\034CreateAttributeValueResponse\022\'\n\005value\030\001" +
+      " \001(\0132\021.attributes.ValueR\005value\"\235\001\n\033Updat" +
+      "eAttributeValueRequest\022)\n\014attribute_id\030\001" +
+      " \001(\tB\006\272H\003\310\001\001R\013attributeId\022\026\n\002id\030\002 \001(\tB\006\272" +
+      "H\003\310\001\001R\002id\022;\n\005value\030\003 \001(\0132\035.attributes.Va" +
+      "lueCreateUpdateB\006\272H\003\310\001\001R\005value\"G\n\034Update" +
+      "AttributeValueResponse\022\'\n\005value\030\001 \001(\0132\021." +
+      "attributes.ValueR\005value\"5\n\033DeleteAttribu" +
+      "teValueRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"G" +
+      "\n\034DeleteAttributeValueResponse\022\'\n\005value\030" +
+      "\001 \001(\0132\021.attributes.ValueR\005value\"\216\001\n\'Assi" +
+      "gnKeyAccessServerToAttributeRequest\022c\n\033a" +
+      "ttribute_key_access_server\030\001 \001(\0132$.attri" +
+      "butes.AttributeKeyAccessServerR\030attribut" +
+      "eKeyAccessServer\"\217\001\n(AssignKeyAccessServ" +
+      "erToAttributeResponse\022c\n\033attribute_key_a" +
+      "ccess_server\030\001 \001(\0132$.attributes.Attribut" +
+      "eKeyAccessServerR\030attributeKeyAccessServ" +
+      "er\"\220\001\n)RemoveKeyAccessServerFromAttribut" +
+      "eRequest\022c\n\033attribute_key_access_server\030" +
+      "\001 \001(\0132$.attributes.AttributeKeyAccessSer" +
+      "verR\030attributeKeyAccessServer\"\221\001\n*Remove" +
+      "KeyAccessServerFromAttributeResponse\022c\n\033" +
+      "attribute_key_access_server\030\001 \001(\0132$.attr" +
+      "ibutes.AttributeKeyAccessServerR\030attribu" +
+      "teKeyAccessServer\"~\n#AssignKeyAccessServ" +
+      "erToValueRequest\022W\n\027value_key_access_ser" +
+      "ver\030\001 \001(\0132 .attributes.ValueKeyAccessSer" +
+      "verR\024valueKeyAccessServer\"\177\n$AssignKeyAc" +
+      "cessServerToValueResponse\022W\n\027value_key_a" +
+      "ccess_server\030\001 \001(\0132 .attributes.ValueKey" +
+      "AccessServerR\024valueKeyAccessServer\"\200\001\n%R" +
+      "emoveKeyAccessServerFromValueRequest\022W\n\027" +
+      "value_key_access_server\030\001 \001(\0132 .attribut" +
+      "es.ValueKeyAccessServerR\024valueKeyAccessS" +
+      "erver\"\201\001\n&RemoveKeyAccessServerFromValue" +
+      "Response\022W\n\027value_key_access_server\030\001 \001(" +
+      "\0132 .attributes.ValueKeyAccessServerR\024val" +
+      "ueKeyAccessServer*\263\001\n\025AttributeRuleTypeE" +
+      "num\022(\n$ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIF" +
+      "IED\020\000\022#\n\037ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF" +
+      "\020\001\022#\n\037ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF\020\002\022" +
+      "&\n\"ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY\020\0032" +
+      "\354\020\n\021AttributesService\022Y\n\016ListAttributes\022" +
+      "!.attributes.ListAttributesRequest\032\".att" +
+      "ributes.ListAttributesResponse\"\000\022h\n\023List" +
+      "AttributeValues\022&.attributes.ListAttribu" +
+      "teValuesRequest\032\'.attributes.ListAttribu" +
+      "teValuesResponse\"\000\022k\n\014GetAttribute\022\037.att" +
+      "ributes.GetAttributeRequest\032 .attributes" +
+      ".GetAttributeResponse\"\030\202\323\344\223\002\022\022\020/attribut" +
+      "es/{id}\022z\n\017CreateAttribute\022\".attributes." +
+      "CreateAttributeRequest\032#.attributes.Crea" +
+      "teAttributeResponse\"\036\202\323\344\223\002\030\"\013/attributes" +
+      ":\tattribute\022\177\n\017UpdateAttribute\022\".attribu" +
+      "tes.UpdateAttributeRequest\032#.attributes." +
+      "UpdateAttributeResponse\"#\202\323\344\223\002\035\"\020/attrib" +
+      "utes/{id}:\tattribute\022t\n\017DeleteAttribute\022" +
+      "\".attributes.DeleteAttributeRequest\032#.at" +
+      "tributes.DeleteAttributeResponse\"\030\202\323\344\223\002\022" +
+      "*\020/attributes/{id}\022\203\001\n\021GetAttributeValue" +
+      "\022$.attributes.GetAttributeValueRequest\032%" +
+      ".attributes.GetAttributeValueResponse\"!\202" +
+      "\323\344\223\002\033\022\031/attributes/_/values/{id}\022\233\001\n\024Cre" +
+      "ateAttributeValue\022\'.attributes.CreateAtt" +
+      "ributeValueRequest\032(.attributes.CreateAt" +
+      "tributeValueResponse\"0\202\323\344\223\002*\"!/attribute" +
+      "s/{attribute_id}/values:\005value\022\240\001\n\024Updat" +
+      "eAttributeValue\022\'.attributes.UpdateAttri" +
+      "buteValueRequest\032(.attributes.UpdateAttr" +
+      "ibuteValueResponse\"5\202\323\344\223\002/\"&/attributes/" +
+      "{attribute_id}/values/{id}:\005value\022\214\001\n\024De" +
+      "leteAttributeValue\022\'.attributes.DeleteAt" +
+      "tributeValueRequest\032(.attributes.DeleteA" +
+      "ttributeValueResponse\"!\202\323\344\223\002\033*\031/attribut" +
+      "es/_/values/{id}\022\326\001\n AssignKeyAccessServ" +
+      "erToAttribute\0223.attributes.AssignKeyAcce" +
+      "ssServerToAttributeRequest\0324.attributes." +
+      "AssignKeyAccessServerToAttributeResponse" +
+      "\"G\202\323\344\223\002A\"\"/attributes/keyaccessserver/as" +
+      "sign:\033attribute_key_access_server\022\334\001\n\"Re" +
+      "moveKeyAccessServerFromAttribute\0225.attri" +
+      "butes.RemoveKeyAccessServerFromAttribute" +
+      "Request\0326.attributes.RemoveKeyAccessServ" +
+      "erFromAttributeResponse\"G\202\323\344\223\002A\"\"/attrib" +
+      "utes/keyaccessserver/remove:\033attribute_k" +
+      "ey_access_server\022\315\001\n\034AssignKeyAccessServ" +
+      "erToValue\022/.attributes.AssignKeyAccessSe" +
+      "rverToValueRequest\0320.attributes.AssignKe" +
+      "yAccessServerToValueResponse\"J\202\323\344\223\002D\")/a" +
+      "ttributes/values/keyaccessserver/assign:" +
+      "\027value_key_access_server\022\323\001\n\036RemoveKeyAc" +
+      "cessServerFromValue\0221.attributes.RemoveK" +
+      "eyAccessServerFromValueRequest\0322.attribu" +
+      "tes.RemoveKeyAccessServerFromValueRespon" +
+      "se\"J\202\323\344\223\002D\")/attributes/values/keyaccess" +
+      "server/remove:\027value_key_access_serverB\233" +
+      "\001\n\016com.attributesB\017AttributesProtoP\001Z0gi" +
+      "thub.com/opentdf/opentdf-v2-poc/sdk/attr" +
+      "ibutes\242\002\003AXX\252\002\nAttributes\312\002\nAttributes\342\002" +
+      "\026Attributes\\GPBMetadata\352\002\nAttributesb\006pr" +
+      "oto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -381,7 +380,7 @@ public final class AttributesProto {
     internal_static_attributes_AttributeCreateUpdate_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_attributes_AttributeCreateUpdate_descriptor,
-        new java.lang.String[] { "Metadata", "NamespaceId", "Name", "Rule", "Values", "Fqn", });
+        new java.lang.String[] { "Metadata", "NamespaceId", "Name", "Rule", "Values", });
     internal_static_attributes_Value_descriptor =
       getDescriptor().getMessageTypes().get(2);
     internal_static_attributes_Value_fieldAccessorTable = new
@@ -393,7 +392,7 @@ public final class AttributesProto {
     internal_static_attributes_ValueCreateUpdate_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_attributes_ValueCreateUpdate_descriptor,
-        new java.lang.String[] { "Metadata", "Value", "Members", "Fqn", });
+        new java.lang.String[] { "Metadata", "Value", "Members", });
     internal_static_attributes_AttributeKeyAccessServer_descriptor =
       getDescriptor().getMessageTypes().get(4);
     internal_static_attributes_AttributeKeyAccessServer_fieldAccessorTable = new

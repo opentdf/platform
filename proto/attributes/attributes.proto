@@ -59,8 +59,6 @@ message AttributeCreateUpdate {
 
   // optional
   repeated ValueCreateUpdate values = 5;
-
-  string fqn = 6;
 }
 
 message Value {
@@ -89,8 +87,6 @@ message ValueCreateUpdate {
 
   // list of attribute values that this value is related to (attribute group)
   repeated string members = 3;
-
-  string fqn = 7;
 }
 
 /*

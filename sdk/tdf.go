@@ -93,7 +93,7 @@ type RequestBody struct {
 }
 
 // CreateTDF tdf
-func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TDFObject, error) {
+func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TDFObject, error) { //nolint:funlen
 
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {

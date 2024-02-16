@@ -182,7 +182,7 @@
           "format": "date-time",
           "title": "created_at set by server (entity who created will recorded in an audit event)"
         },
-        "updatedAt": {
+        "upasdfdatedAt": {
           "type": "string",
           "format": "date-time",
           "title": "updated_at set by server (entity who updated will recorded in an audit event)"

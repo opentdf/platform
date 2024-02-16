@@ -476,7 +476,7 @@
           }
         },
         "state": {
-          "$ref": "#/definitions/commonStateTypeEnum",
+          "$ref": "#/definitions/commonActiveStateEnum",
           "title": "active by default until explicitly deactivated"
         }
       }
@@ -668,7 +668,7 @@
           "title": "list of key access servers"
         },
         "state": {
-          "$ref": "#/definitions/commonStateTypeEnum",
+          "$ref": "#/definitions/commonActiveStateEnum",
           "title": "active by default until explicitly deactivated"
         }
       }
@@ -701,6 +701,17 @@
           "type": "string"
         }
       }
+    },
+    "commonActiveStateEnum": {
+      "type": "string",
+      "enum": [
+        "ACTIVE_STATE_ENUM_UNSPECIFIED",
+        "ACTIVE_STATE_ENUM_ACTIVE",
+        "ACTIVE_STATE_ENUM_INACTIVE",
+        "ACTIVE_STATE_ENUM_ANY"
+      ],
+      "default": "ACTIVE_STATE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
     "commonMetadata": {
       "type": "object",
@@ -744,17 +755,6 @@
           "title": "optional long description"
         }
       }
-    },
-    "commonStateTypeEnum": {
-      "type": "string",
-      "enum": [
-        "STATE_TYPE_ENUM_UNSPECIFIED",
-        "STATE_TYPE_ENUM_ACTIVE",
-        "STATE_TYPE_ENUM_INACTIVE",
-        "STATE_TYPE_ENUM_ANY"
-      ],
-      "default": "STATE_TYPE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
     "kasregistryKeyAccessServer": {
       "type": "object",
@@ -800,7 +800,7 @@
           "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
         },
         "state": {
-          "$ref": "#/definitions/commonStateTypeEnum",
+          "$ref": "#/definitions/commonActiveStateEnum",
           "title": "active by default until explicitly deactivated"
         }
       }

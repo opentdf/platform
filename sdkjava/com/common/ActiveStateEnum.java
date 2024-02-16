@@ -14,40 +14,40 @@ package com.common;
 public enum ActiveStateEnum
     implements com.google.protobuf.ProtocolMessageEnum {
   /**
-   * <code>STATE_TYPE_ENUM_UNSPECIFIED = 0;</code>
+   * <code>ACTIVE_STATE_ENUM_UNSPECIFIED = 0;</code>
    */
-  STATE_TYPE_ENUM_UNSPECIFIED(0),
+  ACTIVE_STATE_ENUM_UNSPECIFIED(0),
   /**
-   * <code>STATE_TYPE_ENUM_ACTIVE = 1;</code>
+   * <code>ACTIVE_STATE_ENUM_ACTIVE = 1;</code>
    */
-  STATE_TYPE_ENUM_ACTIVE(1),
+  ACTIVE_STATE_ENUM_ACTIVE(1),
   /**
-   * <code>STATE_TYPE_ENUM_INACTIVE = 2;</code>
+   * <code>ACTIVE_STATE_ENUM_INACTIVE = 2;</code>
    */
-  STATE_TYPE_ENUM_INACTIVE(2),
+  ACTIVE_STATE_ENUM_INACTIVE(2),
   /**
-   * <code>STATE_TYPE_ENUM_ANY = 3;</code>
+   * <code>ACTIVE_STATE_ENUM_ANY = 3;</code>
    */
-  STATE_TYPE_ENUM_ANY(3),
+  ACTIVE_STATE_ENUM_ANY(3),
   UNRECOGNIZED(-1),
   ;
 
   /**
-   * <code>STATE_TYPE_ENUM_UNSPECIFIED = 0;</code>
+   * <code>ACTIVE_STATE_ENUM_UNSPECIFIED = 0;</code>
    */
-  public static final int STATE_TYPE_ENUM_UNSPECIFIED_VALUE = 0;
+  public static final int ACTIVE_STATE_ENUM_UNSPECIFIED_VALUE = 0;
   /**
-   * <code>STATE_TYPE_ENUM_ACTIVE = 1;</code>
+   * <code>ACTIVE_STATE_ENUM_ACTIVE = 1;</code>
    */
-  public static final int STATE_TYPE_ENUM_ACTIVE_VALUE = 1;
+  public static final int ACTIVE_STATE_ENUM_ACTIVE_VALUE = 1;
   /**
-   * <code>STATE_TYPE_ENUM_INACTIVE = 2;</code>
+   * <code>ACTIVE_STATE_ENUM_INACTIVE = 2;</code>
    */
-  public static final int STATE_TYPE_ENUM_INACTIVE_VALUE = 2;
+  public static final int ACTIVE_STATE_ENUM_INACTIVE_VALUE = 2;
   /**
-   * <code>STATE_TYPE_ENUM_ANY = 3;</code>
+   * <code>ACTIVE_STATE_ENUM_ANY = 3;</code>
    */
-  public static final int STATE_TYPE_ENUM_ANY_VALUE = 3;
+  public static final int ACTIVE_STATE_ENUM_ANY_VALUE = 3;
 
 
   public final int getNumber() {
@@ -74,10 +74,10 @@ public enum ActiveStateEnum
    */
   public static ActiveStateEnum forNumber(int value) {
     switch (value) {
-      case 0: return STATE_TYPE_ENUM_UNSPECIFIED;
-      case 1: return STATE_TYPE_ENUM_ACTIVE;
-      case 2: return STATE_TYPE_ENUM_INACTIVE;
-      case 3: return STATE_TYPE_ENUM_ANY;
+      case 0: return ACTIVE_STATE_ENUM_UNSPECIFIED;
+      case 1: return ACTIVE_STATE_ENUM_ACTIVE;
+      case 2: return ACTIVE_STATE_ENUM_INACTIVE;
+      case 3: return ACTIVE_STATE_ENUM_ANY;
       default: return null;
     }
   }

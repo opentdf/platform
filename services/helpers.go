@@ -5,15 +5,15 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 )
 
-func GetDbStateTypeTransformedEnum(state common.StateTypeEnum) string {
+func GetDbStateTypeTransformedEnum(state common.ActiveStateEnum) string {
 	switch state.String() {
-	case common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE.String():
+	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE.String():
 		return db.StateActive
-	case common.StateTypeEnum_STATE_TYPE_ENUM_INACTIVE.String():
+	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE.String():
 		return db.StateInactive
-	case common.StateTypeEnum_STATE_TYPE_ENUM_ANY.String():
+	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY.String():
 		return db.StateAny
-	case common.StateTypeEnum_STATE_TYPE_ENUM_UNSPECIFIED.String():
+	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED.String():
 		return db.StateActive
 	default:
 		return db.StateActive

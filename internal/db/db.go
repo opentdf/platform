@@ -208,13 +208,13 @@ func tableField(table string, field string) string {
 	return table + "." + field
 }
 
-func getProtoStateEnum(state string) common.StateTypeEnum {
+func getProtoStateEnum(state string) common.ActiveStateEnum {
 	switch state {
 	case StateInactive:
-		return common.StateTypeEnum_STATE_TYPE_ENUM_INACTIVE
+		return common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE
 	case StateActive:
-		return common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE
+		return common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE
 	default:
-		return common.StateTypeEnum_STATE_TYPE_ENUM_UNSPECIFIED
+		return common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED
 	}
 }

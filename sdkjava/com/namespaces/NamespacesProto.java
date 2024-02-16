@@ -82,7 +82,7 @@ public final class NamespacesProto {
       "\n\033namespaces/namespaces.proto\022\nnamespace" +
       "s\032\033buf/validate/validate.proto\032\034google/a" +
       "pi/annotations.proto\032\023common/common.prot" +
-      "o\"\302\004\n\tNamespace\022\016\n\002id\030\001 \001(\tR\002id\022\367\003\n\004name" +
+      "o\"\304\004\n\tNamespace\022\016\n\002id\030\001 \001(\tR\002id\022\367\003\n\004name" +
       "\030\002 \001(\tB\342\003\272H\336\003r\003\030\375\001\272\001\322\003\n\020namespace_format" +
       "\022\352\002Namespace must be a valid hostname. I" +
       "t should include at least one dot, with " +
@@ -95,45 +95,45 @@ public final class NamespacesProto {
       "onsist of at least two alphabetic charac" +
       "ters.\032Qthis.matches(\'^([a-zA-Z0-9]([a-zA" +
       "-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z" +
-      "]{2,}$\')\310\001\001R\004name\022+\n\005state\030\003 \001(\0162\025.commo" +
-      "n.StateTypeEnumR\005state\"-\n\023GetNamespaceRe" +
-      "quest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"K\n\024GetName" +
-      "spaceResponse\0223\n\tnamespace\030\001 \001(\0132\025.names" +
-      "paces.NamespaceR\tnamespace\"D\n\025ListNamesp" +
-      "acesRequest\022+\n\005state\030\001 \001(\0162\025.common.Stat" +
-      "eTypeEnumR\005state\"O\n\026ListNamespacesRespon" +
-      "se\0225\n\nnamespaces\030\001 \003(\0132\025.namespaces.Name" +
-      "spaceR\nnamespaces\"4\n\026CreateNamespaceRequ" +
-      "est\022\032\n\004name\030\001 \001(\tB\006\272H\003\310\001\001R\004name\"N\n\027Creat" +
-      "eNamespaceResponse\0223\n\tnamespace\030\001 \001(\0132\025." +
-      "namespaces.NamespaceR\tnamespace\"L\n\026Updat" +
-      "eNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002i" +
-      "d\022\032\n\004name\030\002 \001(\tB\006\272H\003\310\001\001R\004name\"N\n\027UpdateN" +
-      "amespaceResponse\0223\n\tnamespace\030\001 \001(\0132\025.na" +
-      "mespaces.NamespaceR\tnamespace\"4\n\032Deactiv" +
-      "ateNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R" +
-      "\002id\"\035\n\033DeactivateNamespaceResponse2\216\005\n\020N" +
-      "amespaceService\022v\n\014GetNamespace\022\037.namesp" +
-      "aces.GetNamespaceRequest\032 .namespaces.Ge" +
-      "tNamespaceResponse\"#\202\323\344\223\002\035\022\033/attributes/" +
-      "namespaces/{id}\022w\n\016ListNamespaces\022!.name" +
-      "spaces.ListNamespacesRequest\032\".namespace" +
-      "s.ListNamespacesResponse\"\036\202\323\344\223\002\030\022\026/attri" +
-      "butes/namespaces\022z\n\017CreateNamespace\022\".na" +
-      "mespaces.CreateNamespaceRequest\032#.namesp" +
-      "aces.CreateNamespaceResponse\"\036\202\323\344\223\002\030\"\026/a" +
-      "ttributes/namespaces\022\177\n\017UpdateNamespace\022" +
-      "\".namespaces.UpdateNamespaceRequest\032#.na" +
-      "mespaces.UpdateNamespaceResponse\"#\202\323\344\223\002\035" +
-      "\032\033/attributes/namespaces/{id}\022\213\001\n\023Deacti" +
-      "vateNamespace\022&.namespaces.DeactivateNam" +
-      "espaceRequest\032\'.namespaces.DeactivateNam" +
-      "espaceResponse\"#\202\323\344\223\002\035*\033/attributes/name" +
-      "spaces/{id}B\233\001\n\016com.namespacesB\017Namespac" +
-      "esProtoP\001Z0github.com/opentdf/opentdf-v2" +
-      "-poc/sdk/namespaces\242\002\003NXX\252\002\nNamespaces\312\002" +
-      "\nNamespaces\342\002\026Namespaces\\GPBMetadata\352\002\nN" +
-      "amespacesb\006proto3"
+      "]{2,}$\')\310\001\001R\004name\022-\n\005state\030\003 \001(\0162\027.commo" +
+      "n.ActiveStateEnumR\005state\"-\n\023GetNamespace" +
+      "Request\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"K\n\024GetNa" +
+      "mespaceResponse\0223\n\tnamespace\030\001 \001(\0132\025.nam" +
+      "espaces.NamespaceR\tnamespace\"F\n\025ListName" +
+      "spacesRequest\022-\n\005state\030\001 \001(\0162\027.common.Ac" +
+      "tiveStateEnumR\005state\"O\n\026ListNamespacesRe" +
+      "sponse\0225\n\nnamespaces\030\001 \003(\0132\025.namespaces." +
+      "NamespaceR\nnamespaces\"4\n\026CreateNamespace" +
+      "Request\022\032\n\004name\030\001 \001(\tB\006\272H\003\310\001\001R\004name\"N\n\027C" +
+      "reateNamespaceResponse\0223\n\tnamespace\030\001 \001(" +
+      "\0132\025.namespaces.NamespaceR\tnamespace\"L\n\026U" +
+      "pdateNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001" +
+      "\001R\002id\022\032\n\004name\030\002 \001(\tB\006\272H\003\310\001\001R\004name\"N\n\027Upd" +
+      "ateNamespaceResponse\0223\n\tnamespace\030\001 \001(\0132" +
+      "\025.namespaces.NamespaceR\tnamespace\"4\n\032Dea" +
+      "ctivateNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003" +
+      "\310\001\001R\002id\"\035\n\033DeactivateNamespaceResponse2\216" +
+      "\005\n\020NamespaceService\022v\n\014GetNamespace\022\037.na" +
+      "mespaces.GetNamespaceRequest\032 .namespace" +
+      "s.GetNamespaceResponse\"#\202\323\344\223\002\035\022\033/attribu" +
+      "tes/namespaces/{id}\022w\n\016ListNamespaces\022!." +
+      "namespaces.ListNamespacesRequest\032\".names" +
+      "paces.ListNamespacesResponse\"\036\202\323\344\223\002\030\022\026/a" +
+      "ttributes/namespaces\022z\n\017CreateNamespace\022" +
+      "\".namespaces.CreateNamespaceRequest\032#.na" +
+      "mespaces.CreateNamespaceResponse\"\036\202\323\344\223\002\030" +
+      "\"\026/attributes/namespaces\022\177\n\017UpdateNamesp" +
+      "ace\022\".namespaces.UpdateNamespaceRequest\032" +
+      "#.namespaces.UpdateNamespaceResponse\"#\202\323" +
+      "\344\223\002\035\032\033/attributes/namespaces/{id}\022\213\001\n\023De" +
+      "activateNamespace\022&.namespaces.Deactivat" +
+      "eNamespaceRequest\032\'.namespaces.Deactivat" +
+      "eNamespaceResponse\"#\202\323\344\223\002\035*\033/attributes/" +
+      "namespaces/{id}B\233\001\n\016com.namespacesB\017Name" +
+      "spacesProtoP\001Z0github.com/opentdf/opentd" +
+      "f-v2-poc/sdk/namespaces\242\002\003NXX\252\002\nNamespac" +
+      "es\312\002\nNamespaces\342\002\026Namespaces\\GPBMetadata" +
+      "\352\002\nNamespacesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

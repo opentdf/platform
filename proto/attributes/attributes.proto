@@ -39,7 +39,7 @@ message Attribute {
   repeated kasregistry.KeyAccessServer grants = 8;
 
   // active by default until explicitly deactivated
-  common.StateTypeEnum state = 9;
+  common.ActiveStateEnum state = 9;
 }
 
 message AttributeCreateUpdate {
@@ -79,7 +79,7 @@ message Value {
   repeated kasregistry.KeyAccessServer grants = 6;
 
   // active by default until explicitly deactivated
-  common.StateTypeEnum state = 7;
+  common.ActiveStateEnum state = 7;
 }
 
 message ValueCreateUpdate {
@@ -111,7 +111,7 @@ message ValueKeyAccessServer {
 
 message ListAttributesRequest {
   // ACTIVE by default when not specified
-  common.StateTypeEnum state = 1;
+  common.ActiveStateEnum state = 1;
 }
 message ListAttributesResponse {
   repeated Attribute attributes = 1;
@@ -159,7 +159,7 @@ message GetAttributeValueResponse {
 message ListAttributeValuesRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
   // ACTIVE by default when not specified
-  common.StateTypeEnum state = 2;
+  common.ActiveStateEnum state = 2;
 }
 message ListAttributeValuesResponse {
   repeated Value values = 1;

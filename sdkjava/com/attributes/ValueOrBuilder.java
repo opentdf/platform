@@ -157,7 +157,7 @@ public interface ValueOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.common.StateTypeEnum state = 7 [json_name = "state"];</code>
+   * <code>.common.ActiveStateEnum state = 7 [json_name = "state"];</code>
    * @return The enum numeric value on the wire for state.
    */
   int getStateValue();
@@ -166,8 +166,8 @@ public interface ValueOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.common.StateTypeEnum state = 7 [json_name = "state"];</code>
+   * <code>.common.ActiveStateEnum state = 7 [json_name = "state"];</code>
    * @return The state.
    */
-  com.common.StateTypeEnum getState();
+  com.common.ActiveStateEnum getState();
 }

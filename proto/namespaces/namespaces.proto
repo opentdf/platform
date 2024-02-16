@@ -21,7 +21,7 @@ message Namespace {
   ];
 
   // active by default until explicitly deactivated
-  common.StateTypeEnum state = 3;
+  common.ActiveStateEnum state = 3;
 }
 
 /*
@@ -39,7 +39,7 @@ message GetNamespaceResponse {
 
 message ListNamespacesRequest {
   // ACTIVE by default when not specified
-  common.StateTypeEnum state = 1;
+  common.ActiveStateEnum state = 1;
 }
 message ListNamespacesResponse {
   repeated Namespace namespaces = 1;

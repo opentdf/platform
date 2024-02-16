@@ -391,19 +391,19 @@ func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
 	gotNs, err := s.db.Client.GetNamespace(s.ctx, stillActiveNsId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotNs)
-	assert.Equal(s.T(), common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE, gotNs.State)
+	assert.Equal(s.T(), common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE, gotNs.State)
 
 	// attribute is still active (not bubbled up)
 	gotAttr, err := s.db.Client.GetAttribute(s.ctx, stillActiveAttributeId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
-	assert.Equal(s.T(), common.StateTypeEnum_STATE_TYPE_ENUM_ACTIVE, gotAttr.State)
+	assert.Equal(s.T(), common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE, gotAttr.State)
 
 	// value was deactivated
 	gotVal, err := s.db.Client.GetAttributeValue(s.ctx, deactivatedAttrValueId)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotVal)
-	assert.Equal(s.T(), common.StateTypeEnum_STATE_TYPE_ENUM_INACTIVE, gotVal.State)
+	assert.Equal(s.T(), common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE, gotVal.State)
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_Value_Not_Found() {

@@ -323,7 +323,7 @@ private static final long serialVersionUID = 0L;
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+   * <code>.common.ActiveStateEnum state = 9 [json_name = "state"];</code>
    * @return The enum numeric value on the wire for state.
    */
   @java.lang.Override public int getStateValue() {
@@ -334,12 +334,12 @@ private static final long serialVersionUID = 0L;
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+   * <code>.common.ActiveStateEnum state = 9 [json_name = "state"];</code>
    * @return The state.
    */
-  @java.lang.Override public com.common.StateTypeEnum getState() {
-    com.common.StateTypeEnum result = com.common.StateTypeEnum.forNumber(state_);
-    return result == null ? com.common.StateTypeEnum.UNRECOGNIZED : result;
+  @java.lang.Override public com.common.ActiveStateEnum getState() {
+    com.common.ActiveStateEnum result = com.common.ActiveStateEnum.forNumber(state_);
+    return result == null ? com.common.ActiveStateEnum.UNRECOGNIZED : result;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -377,7 +377,7 @@ private static final long serialVersionUID = 0L;
     for (int i = 0; i < grants_.size(); i++) {
       output.writeMessage(8, grants_.get(i));
     }
-    if (state_ != com.common.StateTypeEnum.STATE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+    if (state_ != com.common.ActiveStateEnum.ACTIVE_STATE_ENUM_UNSPECIFIED.getNumber()) {
       output.writeEnum(9, state_);
     }
     getUnknownFields().writeTo(output);
@@ -415,7 +415,7 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(8, grants_.get(i));
     }
-    if (state_ != com.common.StateTypeEnum.STATE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+    if (state_ != com.common.ActiveStateEnum.ACTIVE_STATE_ENUM_UNSPECIFIED.getNumber()) {
       size += com.google.protobuf.CodedOutputStream
         .computeEnumSize(9, state_);
     }
@@ -1998,7 +1998,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * <code>.common.ActiveStateEnum state = 9 [json_name = "state"];</code>
      * @return The enum numeric value on the wire for state.
      */
     @java.lang.Override public int getStateValue() {
@@ -2009,7 +2009,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * <code>.common.ActiveStateEnum state = 9 [json_name = "state"];</code>
      * @param value The enum numeric value on the wire for state to set.
      * @return This builder for chaining.
      */
@@ -2024,24 +2024,24 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * <code>.common.ActiveStateEnum state = 9 [json_name = "state"];</code>
      * @return The state.
      */
     @java.lang.Override
-    public com.common.StateTypeEnum getState() {
-      com.common.StateTypeEnum result = com.common.StateTypeEnum.forNumber(state_);
-      return result == null ? com.common.StateTypeEnum.UNRECOGNIZED : result;
+    public com.common.ActiveStateEnum getState() {
+      com.common.ActiveStateEnum result = com.common.ActiveStateEnum.forNumber(state_);
+      return result == null ? com.common.ActiveStateEnum.UNRECOGNIZED : result;
     }
     /**
      * <pre>
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * <code>.common.ActiveStateEnum state = 9 [json_name = "state"];</code>
      * @param value The state to set.
      * @return This builder for chaining.
      */
-    public Builder setState(com.common.StateTypeEnum value) {
+    public Builder setState(com.common.ActiveStateEnum value) {
       if (value == null) {
         throw new NullPointerException();
       }
@@ -2055,7 +2055,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.common.StateTypeEnum state = 9 [json_name = "state"];</code>
+     * <code>.common.ActiveStateEnum state = 9 [json_name = "state"];</code>
      * @return This builder for chaining.
      */
     public Builder clearState() {

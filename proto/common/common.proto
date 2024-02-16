@@ -24,11 +24,11 @@ message MetadataMutable {
 }
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
-enum StateTypeEnum {
-  STATE_TYPE_ENUM_UNSPECIFIED = 0;
-  STATE_TYPE_ENUM_ACTIVE = 1;
-  STATE_TYPE_ENUM_INACTIVE = 2;
-  STATE_TYPE_ENUM_ANY = 3;
+enum ActiveStateEnum {
+  ACTIVE_STATE_ENUM_UNSPECIFIED = 0;
+  ACTIVE_STATE_ENUM_ACTIVE = 1;
+  ACTIVE_STATE_ENUM_INACTIVE = 2;
+  ACTIVE_STATE_ENUM_ANY = 3;
 }
 
 // message ListOptions {

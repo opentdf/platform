@@ -39,7 +39,7 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 		Members:     members,
 		Metadata:    m,
 		AttributeId: attributeId,
-		State:       getProtoStateEnum(isActive),
+		Active:      isActive,
 	}
 	return v, nil
 }
@@ -101,7 +101,7 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 		Value:       v.Value,
 		Members:     v.Members,
 		Metadata:    metadata,
-		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		Active:      true,
 	}
 	return rV, nil
 }
@@ -150,7 +150,7 @@ func listAttributeValuesSql(attribute_id string, state string) (string, []interf
 
 	where := sq.Eq{}
 	if state != StateAny {
-		where[Tables.AttributeValues.Field("active")] = state == StateActive;
+		where[Tables.AttributeValues.Field("active")] = state == StateActive
 	}
 	where[Tables.AttributeValues.Field("attribute_definition_id")] = attribute_id
 	return sb.Where(where).ToSql()

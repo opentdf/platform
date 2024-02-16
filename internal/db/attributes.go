@@ -135,7 +135,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		Id:        id,
 		Name:      name,
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
-		State:     getProtoStateEnum(isActive),
+		Active:    isActive,
 		Metadata:  m,
 		Values:    v,
 		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
@@ -173,7 +173,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 				Id:   namespaceId,
 				Name: namespaceName,
 			},
-			State: getProtoStateEnum(isActive),
+			Active: isActive,
 		}
 
 		if metadataJson != nil {
@@ -313,7 +313,7 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 		Namespace: &namespaces.Namespace{
 			Id: attr.NamespaceId,
 		},
-		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		Active: true,
 	}
 	return a, nil
 }

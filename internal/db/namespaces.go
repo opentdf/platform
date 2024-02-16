@@ -28,12 +28,10 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 	}
 
 	var namespace namespaces.Namespace
-	isActive := true
-	if err := row.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
+	if err := row.Scan(&namespace.Id, &namespace.Name, &namespace.Active); err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
-	namespace.State = getProtoStateEnum(isActive)
 	return &namespace, nil
 }
 
@@ -64,11 +62,9 @@ func (c Client) ListNamespaces(ctx context.Context, state string) ([]*namespaces
 
 	for rows.Next() {
 		var namespace namespaces.Namespace
-		isActive := true
-		if err := rows.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
+		if err := rows.Scan(&namespace.Id, &namespace.Name, &namespace.Active); err != nil {
 			return nil, WrapIfKnownInvalidQueryErr(err)
 		}
-		namespace.State = getProtoStateEnum(isActive)
 		namespacesList = append(namespacesList, &namespace)
 	}
 

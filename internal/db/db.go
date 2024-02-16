@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
 )
 
 var (
@@ -202,11 +201,4 @@ func newStatementBuilder() sq.StatementBuilderType {
 
 func tableName(table string) string {
 	return table
-}
-
-func getProtoStateEnum(active bool) common.ActiveStateEnum {
-	if active {
-		return common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE
-	}
-	return common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE
 }

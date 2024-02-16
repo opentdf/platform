@@ -810,6 +810,14 @@ func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
 	}
 
 	response, err := handleKasRequest(kRewrapV2, requestBody, authConfig)
+
+	defer func() {
+		err := response.Body.Close()
+		if err != nil {
+			slog.Error("Fail to close HTTP response")
+		}
+	}()
+
 	if err != nil {
 		slog.Error("failed http request")
 		return nil, fmt.Errorf("http request error: %w", err)
@@ -817,13 +825,6 @@ func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
 	if response.StatusCode != kHTTPOk {
 		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)
 	}
-
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			slog.Error("Fail to close HTTP response")
-		}
-	}(response.Body)
 
 	rewrapResponseBody, err := io.ReadAll(response.Body)
 	if err != nil {

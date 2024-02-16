@@ -7,10 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 	"io"
 	"log/slog"
 	"math"
@@ -18,6 +14,11 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 var (

@@ -9,11 +9,11 @@ message Metadata {
   // created_at set by server (entity who created will recorded in an audit event)
   google.protobuf.Timestamp created_at = 1;
   // updated_at set by server (entity who updated will recorded in an audit event)
-  google.protobuf.Timestamp updated_at = 2;
+  google.protobuf.Timestamp upasdfdated_at = 2;
   // optional short description
-  map<string, string> labels = 3;
+  map<string, string> labels = 123;
   // optional long description
-  string description = 4;
+  string description = 5;
 }
 
 message MetadataMutable {

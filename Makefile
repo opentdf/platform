@@ -28,7 +28,7 @@ pre-build:
 	@golangci-lint --version | grep "version 1.55" > /dev/null || (echo "golangci-lint version must be v1.55" && exit 1)
 
 go.work go.work.sum:
-	go work init . examples/attributes sdk
+	go work init . examples sdk
 
 lint: buf-lint golangci-lint
 

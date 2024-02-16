@@ -53,8 +53,25 @@ public interface NamespaceOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>bool active = 3 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 3 [json_name = "active"];</code>
+   * @return Whether the active field is set.
+   */
+  boolean hasActive();
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.google.protobuf.BoolValue active = 3 [json_name = "active"];</code>
    * @return The active.
    */
-  boolean getActive();
+  com.google.protobuf.BoolValue getActive();
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.google.protobuf.BoolValue active = 3 [json_name = "active"];</code>
+   */
+  com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder();
 }

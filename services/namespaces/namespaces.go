@@ -55,7 +55,6 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespaces.Ge
 		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, "id", req.Id)
 	}
 
-	slog.Debug("got namespace", slog.String("id", req.Id))
 	rsp.Namespace = namespace
 
 	return rsp, nil

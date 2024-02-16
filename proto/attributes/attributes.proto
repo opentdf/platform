@@ -5,6 +5,7 @@ package attributes;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
 import "kasregistry/key_access_server_registry.proto";
 import "namespaces/namespaces.proto";
 
@@ -39,7 +40,7 @@ message Attribute {
   repeated kasregistry.KeyAccessServer grants = 8;
 
   // active by default until explicitly deactivated
-  bool active = 9;
+  google.protobuf.BoolValue active = 9;
 }
 
 message AttributeCreateUpdate {
@@ -79,7 +80,7 @@ message Value {
   repeated kasregistry.KeyAccessServer grants = 6;
 
   // active by default until explicitly deactivated
-  bool active = 7;
+  google.protobuf.BoolValue active = 7;
 }
 
 message ValueCreateUpdate {

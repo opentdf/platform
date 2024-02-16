@@ -4,6 +4,7 @@ package namespaces;
 
 import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
 import "common/common.proto";
 
 message Namespace {
@@ -21,7 +22,7 @@ message Namespace {
   ];
 
   // active by default until explicitly deactivated
-  bool active = 3;
+  google.protobuf.BoolValue active = 3;
 }
 
 /*

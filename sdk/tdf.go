@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 	"io"
 	"log/slog"
 	"math"
@@ -16,9 +18,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 var (
@@ -233,8 +232,7 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 }
 
 // prepare the manifest for TDF
-func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error {
-
+func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
 	manifest := Manifest{}
 	if len(tdfConfig.kasInfoList) == 0 {
 		return errInvalidKasInfo
@@ -458,7 +456,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
-func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) {
+func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
 	if reader.payloadKey == nil {
 		err := reader.getPayloadKey()
 		if err != nil {
@@ -608,8 +606,7 @@ func (reader *Reader) DataAttributes() ([]string, error) {
 }
 
 // Get the payload key th
-func (reader *Reader) getPayloadKey() error {
-
+func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range reader.Manifest.EncryptionInformation.KeyAccessObjs {

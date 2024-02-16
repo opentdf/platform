@@ -134,7 +134,7 @@ creating, updating, and deleting policy configurations.
 
 #### Attribute FQNs
 
-Attribute FQNs are a unique string identifer for an attribute (and its respective parts) that is 
+Attribute FQNs are a unique string identifier for an attribute (and its respective parts) that is 
 used to reference the attribute in policy configurations. Sspecific places where this will be used:
 
 - TDF attributes

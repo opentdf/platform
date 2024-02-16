@@ -35,32 +35,32 @@ var (
 )
 
 const (
-	maxFileSizeSupported    = 68719476736 // 64gb
-	defaultMimeType         = "application/octet-stream"
-	tdfAsZip                = "zip"
-	gcmIvSize               = 12
-	aesBlockSize            = 16
-	hmacIntegrityAlgorithm  = "HS256"
-	gmacIntegrityAlgorithm  = "GMAC"
-	tdfZipReference         = "reference"
-	kKeySize                = 32
-	kWrapped                = "wrapped"
-	kKasProtocol            = "kas"
-	kSplitKeyType           = "split"
-	kGCMCipherAlgorithm     = "AES-256-GCM"
-	kGMACPayloadLength      = 16
-	kClientPublicKey        = "clientPublicKey"
-	kSignedRequestToken     = "signedRequestToken"
-	kKasURL                 = "url"
-	kRewrapV2               = "/v2/rewrap"
-	kAuthorizationKey       = "Authorization"
-	kContentTypeKey         = "Content-Type"
-	kAcceptKey              = "Accept"
-	kContentTypeJSONValue   = "application/json"
-	kEntityWrappedKey       = "entityWrappedKey"
-	kPolicy                 = "policy"
-	kHmacIntegrityAlgorithm = "HS256"
-	kGmacIntegrityAlgorithm = "GMAC"
+	maxFileSizeSupported   = 68719476736 // 64gb
+	defaultMimeType        = "application/octet-stream"
+	tdfAsZip               = "zip"
+	gcmIvSize              = 12
+	aesBlockSize           = 16
+	hmacIntegrityAlgorithm = "HS256"
+	gmacIntegrityAlgorithm = "GMAC"
+	tdfZipReference        = "reference"
+	kKeySize               = 32
+	kWrapped               = "wrapped"
+	kKasProtocol           = "kas"
+	kSplitKeyType          = "split"
+	kGCMCipherAlgorithm    = "AES-256-GCM"
+	kGMACPayloadLength     = 16
+	// kClientPublicKey        = "clientPublicKey"
+	kSignedRequestToken = "signedRequestToken"
+	// kKasURL                 = "url"
+	kRewrapV2             = "/v2/rewrap"
+	kAuthorizationKey     = "Authorization"
+	kContentTypeKey       = "Content-Type"
+	kAcceptKey            = "Accept"
+	kContentTypeJSONValue = "application/json"
+	kEntityWrappedKey     = "entityWrappedKey"
+	// kPolicy                 = "policy"
+	// kHmacIntegrityAlgorithm = "HS256"
+	// kGmacIntegrityAlgorithm = "GMAC"
 )
 
 type Reader struct {
@@ -98,6 +98,10 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+
+	if inputSize > maxFileSizeSupported {
+		return nil, errFileTooLarge
 	}
 
 	_, err = reader.Seek(0, io.SeekStart)
@@ -249,7 +253,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error {
 	}
 
 	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
-	var symKeys [][]byte
+	symKeys := [][]byte{}
 	for _, kasInfo := range tdfConfig.kasInfoList {
 		if len(kasInfo.publicKey) == 0 {
 			return errKasPubKeyMissing
@@ -294,14 +298,15 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error {
 			}
 
 			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
-			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)), Iv: string(crypto.Base64Encode(iv))}
+			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)),
+				Iv: string(crypto.Base64Encode(iv))}
 
-			metadataJson, err := json.Marshal(metadata)
+			metadataJSON, err := json.Marshal(metadata)
 			if err != nil {
 				return fmt.Errorf(" json.Marshal failed:%w", err)
 			}
 
-			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(metadataJson))
+			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(metadataJSON))
 		}
 
 		symKeys = append(symKeys, symKey)
@@ -392,7 +397,7 @@ func (reader *Reader) Read(p []byte) (int, error) {
 
 // WriteTo writes data to writer until there's no more data to write or
 // when an error occurs.
-func (reader *Reader) WriteTo(writer io.Writer) (n int64, err error) {
+func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 	if reader.payloadKey == nil {
 		err := reader.getPayloadKey()
 		if err != nil {
@@ -418,7 +423,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (n int64, err error) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey[:], sigAlg)
+		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -504,7 +509,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey[:], sigAlg)
+		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -535,7 +540,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) {
 		}
 	}
 
-	var err error = nil
+	var err error
 	bufLen := int64(len(buf))
 	if (offset + int64(len(buf))) > reader.payloadSize {
 		bufLen = reader.payloadSize - offset
@@ -735,7 +740,7 @@ func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) 
 
 	claims := rewrapJWTClaims{
 		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(60 * time.Second)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)), // Set expiration to be one minute from now
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 		string(requestBodyData),
@@ -781,14 +786,13 @@ func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) 
 	response, err := client.Do(request)
 	if err != nil {
 		slog.Error("failed http request")
-		return nil, err
+		return nil, fmt.Errorf("http request failed: %w", err)
 	}
 
 	return response, nil
 }
 
 func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
-
 	clientKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
@@ -808,7 +812,7 @@ func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
 	response, err := handleKasRequest(kRewrapV2, requestBody, authConfig)
 	if err != nil {
 		slog.Error("failed http request")
-		return nil, err
+		return nil, fmt.Errorf("http request error: %w", err)
 	}
 	if response.StatusCode != kHTTPOk {
 		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)

@@ -195,22 +195,11 @@
           },
           "title": "list of key access servers"
         },
-        "state": {
-          "$ref": "#/definitions/commonActiveStateEnum",
+        "active": {
+          "type": "boolean",
           "title": "active by default until explicitly deactivated"
         }
       }
-    },
-    "commonActiveStateEnum": {
-      "type": "string",
-      "enum": [
-        "ACTIVE_STATE_ENUM_UNSPECIFIED",
-        "ACTIVE_STATE_ENUM_ACTIVE",
-        "ACTIVE_STATE_ENUM_INACTIVE",
-        "ACTIVE_STATE_ENUM_ANY"
-      ],
-      "default": "ACTIVE_STATE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
     "commonMetadata": {
       "type": "object",

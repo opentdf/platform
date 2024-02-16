@@ -39,7 +39,7 @@ message Attribute {
   repeated kasregistry.KeyAccessServer grants = 8;
 
   // active by default until explicitly deactivated
-  common.ActiveStateEnum state = 9;
+  bool active = 9;
 }
 
 message AttributeCreateUpdate {
@@ -79,7 +79,7 @@ message Value {
   repeated kasregistry.KeyAccessServer grants = 6;
 
   // active by default until explicitly deactivated
-  common.ActiveStateEnum state = 7;
+  bool active = 7;
 }
 
 message ValueCreateUpdate {

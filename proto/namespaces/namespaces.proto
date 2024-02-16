@@ -21,7 +21,7 @@ message Namespace {
   ];
 
   // active by default until explicitly deactivated
-  common.ActiveStateEnum state = 3;
+  bool active = 3;
 }
 
 /*

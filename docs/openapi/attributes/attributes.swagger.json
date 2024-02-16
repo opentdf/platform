@@ -475,8 +475,8 @@
             "$ref": "#/definitions/kasregistryKeyAccessServer"
           }
         },
-        "state": {
-          "$ref": "#/definitions/commonActiveStateEnum",
+        "active": {
+          "type": "boolean",
           "title": "active by default until explicitly deactivated"
         }
       }
@@ -667,8 +667,8 @@
           },
           "title": "list of key access servers"
         },
-        "state": {
-          "$ref": "#/definitions/commonActiveStateEnum",
+        "active": {
+          "type": "boolean",
           "title": "active by default until explicitly deactivated"
         }
       }
@@ -799,8 +799,8 @@
           "type": "string",
           "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
         },
-        "state": {
-          "$ref": "#/definitions/commonActiveStateEnum",
+        "active": {
+          "type": "boolean",
           "title": "active by default until explicitly deactivated"
         }
       }

@@ -7,28 +7,25 @@ attribute_namespaces:
     columns:
       - id
       - name
-      - state
+      - active
   data:
     example.com:
       id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
       name: example.com
-      state: ACTIVE
+      active: true
     example.net:
       id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: example.net
-      state: ACTIVE
+      active: true
     example.org:
       id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: example.org
-      state: ACTIVE
-    unspecified_state:
-      id: 3b509401-4f4f-4d3a-a907-55bed403b04b
-      name: error.gov
-      state: UNSPECIFIED
-    inactive_state:
+      active: true
+    # deactivated state
+    deactivated_ns:
       id: 40790395-88b1-4adc-8bf5-1900491a79ba
-      name: mistake.io
-      state: INACTIVE
+      name: deactivated.io
+      active: false
 
 ##
 # Attributes
@@ -43,49 +40,66 @@ attributes:
       - namespace_id
       - name
       - rule
+      - active
   data:
     example.com/attr/attr1:
       id: 6a261d68-0899-4e17-bb2f-124abba7c09c
       namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
       name: attr1
       rule: ANY_OF
+      active: true
     example.com/attr/attr2:
       id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
       namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
       name: attr2
       rule: ALL_OF
+      active: true
 
     example.net/attr/attr1:
       id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
       namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: attr1
       rule: ANY_OF
+      active: true
     example.net/attr/attr2:
       id: 8e778b7f-3a0e-4ed7-b007-5e4d8dfc03df
       namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: attr2
       rule: ALL_OF
+      active: true
     example.net/attr/attr3:
       id: 438a0dfb-cd1a-4f73-af73-2325a6e9db1b
       namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: attr3
       rule: HIERARCHY
+      active: true
 
     example.org/attr/attr1:
       id: 07d04942-c5b4-42d1-964e-f5b2d6365d80
       namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: attr1
       rule: ANY_OF
+      active: true
     example.org/attr/attr2:
       id: 65a0e745-7a22-4e16-8004-09ebc932f621
       namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: attr2
       rule: ALL_OF
+      active: true
     example.org/attr/attr3:
       id: 6dc88b9e-319b-4c6e-85c7-6f7e43a5d8d4
       namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: attr3
       rule: HIERARCHY
+      active: true
+
+    # deactivated state
+    deactivated.io/attr/attr1:
+      id: 3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e
+      namespace_id: 40790395-88b1-4adc-8bf5-1900491a79ba
+      name: deactivated_attr
+      rule: ANY_OF
+      active: false
 
 attribute_key_access_servers:
   - attribute_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
@@ -104,11 +118,13 @@ attribute_values:
       - attribute_definition_id
       - value
       - members
+      - active
   data:
     example.com/attr/attr1/value/value1:
       id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       attribute_definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
       value: value1
+      active: true
     example.com/attr/attr1/value/value2:
       id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
       attribute_definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
@@ -118,24 +134,36 @@ attribute_values:
         - 0fd363db-27b1-4210-b77b-8c82fe044d41
         # example.net/attr/attr1/value/value1
         - 532e5957-28f7-466d-91e2-493e9431cd83
+      active: true
 
     example.com/attr/attr2/value/value1:
       id: 0fd363db-27b1-4210-b77b-8c82fe044d41
       attribute_definition_id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
       value: value1
+      active: true
     example.com/attr/attr2/value/value2:
       id: 81f643f8-e050-4b97-a005-b61294d4c8bb
       attribute_definition_id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
       value: value2
+      active: true
 
     example.net/attr/attr1/value/value1:
       id: 532e5957-28f7-466d-91e2-493e9431cd83
       attribute_definition_id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
       value: value1
+      active: true
     example.net/attr/attr1/value/value2:
       id: 04bd2657-de10-46bc-a88f-5d687de4816b
       attribute_definition_id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
       value: value2
+      active: true
+
+    # deactivated state
+    deactivated.io/attr/attr1/value/deactivated_value:
+      id: 06fa035b-8205-4000-86ad-2439cc1325ec
+      attribute_definition_id: 3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e
+      value: deactivated_value
+      active: false
 
 attribute_value_key_access_servers:
   - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8

@@ -25,9 +25,9 @@ type NamespacesSuite struct {
 const nonExistentNamespaceId = "88888888-2222-3333-4444-999999999999"
 
 var (
-	deactivatedNsId        = ""
-	deactivatedAttrId      = ""
-	deactivatedAttrValueId = ""
+	deactivatedNsId        string
+	deactivatedAttrId      string
+	deactivatedAttrValueId string
 	stillActiveNsId        string
 	stillActiveAttributeId string
 )
@@ -90,21 +90,10 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
-func (s *NamespacesSuite) Test_GetNamespace_UnspecifiedState_Succeeds() {
-	unspecified := fixtures.GetNamespaceKey("unspecified_state")
-	// Ensure our fixtures matches expected string enum
-	assert.Equal(s.T(), unspecified.State, db.StateUnspecified)
-
-	got, err := s.db.Client.GetNamespace(s.ctx, unspecified.Id)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), got)
-	assert.Equal(s.T(), unspecified.Name, got.Name)
-}
-
 func (s *NamespacesSuite) Test_GetNamespace_InactiveState_Succeeds() {
-	inactive := fixtures.GetNamespaceKey("inactive_state")
+	inactive := fixtures.GetNamespaceKey("deactivated_ns")
 	// Ensure our fixtures matches expected string enum
-	assert.Equal(s.T(), inactive.State, db.StateInactive)
+	assert.Equal(s.T(), inactive.Active, false)
 
 	got, err := s.db.Client.GetNamespace(s.ctx, inactive.Id)
 	assert.Nil(s.T(), err)

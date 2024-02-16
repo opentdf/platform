@@ -88,6 +88,30 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDefault() {
+	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
+
+	value := &attributes.ValueCreateUpdate{
+		Value: "testing create gives active true by default",
+	}
+	createdValue, err := s.db.Client.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdValue)
+	assert.Equal(s.T(), common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE, createdValue.State)
+}
+
+func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
+	inactive := fixtures.GetAttributeValueKey("deactivated.io/attr/attr1/value/deactivated_value")
+
+	got, err := s.db.Client.GetAttributeValue(s.ctx, inactive.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), inactive.Id, got.Id)
+	assert.Equal(s.T(), inactive.Value, got.Value)
+	assert.Equal(s.T(), len(inactive.Members), len(got.Members))
+	assert.Equal(s.T(), common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE, got.State)
+}
+
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{

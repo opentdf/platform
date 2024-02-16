@@ -21,9 +21,9 @@ type FixtureMetadata struct {
 }
 
 type FixtureDataNamespace struct {
-	Id   string `yaml:"id"`
-	Name string `yaml:"name"`
-	State string `yaml:"state"`
+	Id     string `yaml:"id"`
+	Name   string `yaml:"name"`
+	Active bool   `yaml:"active"`
 }
 
 type FixtureDataAttribute struct {
@@ -31,6 +31,7 @@ type FixtureDataAttribute struct {
 	NamespaceId string `yaml:"namespace_id"`
 	Name        string `yaml:"name"`
 	Rule        string `yaml:"rule"`
+	Active      bool   `yaml:"active"`
 }
 
 type FixtureDataAttributeKeyAccessServer struct {
@@ -43,6 +44,7 @@ type FixtureDataAttributeValue struct {
 	AttributeDefinitionId string   `yaml:"attribute_definition_id"`
 	Value                 string   `yaml:"value"`
 	Members               []string `yaml:"members"`
+	Active                bool     `yaml:"active"`
 }
 
 type FixtureDataAttributeValueKeyAccessServer struct {
@@ -225,7 +227,7 @@ func (f *Fixtures) provisionNamespace() int64 {
 			[]string{
 				f.db.StringWrap(d.Id),
 				f.db.StringWrap(d.Name),
-				f.db.StringWrap(d.State),
+				f.db.BoolWrap(d.Active),
 			},
 		)
 	}
@@ -240,6 +242,7 @@ func (f *Fixtures) provisionAttribute() int64 {
 			f.db.StringWrap(d.NamespaceId),
 			f.db.StringWrap(d.Name),
 			f.db.StringWrap(d.Rule),
+			f.db.BoolWrap(d.Active),
 		})
 	}
 	return f.provision(fixtureData.Attributes.Metadata.TableName, fixtureData.Attributes.Metadata.Columns, values)
@@ -253,6 +256,7 @@ func (f *Fixtures) provisionAttributeValues() int64 {
 			f.db.StringWrap(d.AttributeDefinitionId),
 			f.db.StringWrap(d.Value),
 			f.db.UUIDArrayWrap(d.Members),
+			f.db.BoolWrap(d.Active),
 		})
 	}
 	return f.provision(fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)

@@ -85,6 +85,18 @@ func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
 	assert.NotNil(s.T(), createdAttr)
 }
 
+func (s *AttributesSuite) Test_CreateAttribute_SetsActiveStateTrueByDefault() {
+	attr := &attributes.AttributeCreateUpdate{
+		Name:        "test__create_attribute_active_state_default",
+		NamespaceId: fixtureNamespaceId,
+		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.Client.CreateAttribute(s.ctx, attr)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdAttr)
+	assert.Equal(s.T(), common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE, createdAttr.State)
+}
+
 func (s *AttributesSuite) Test_CreateAttribute_WithInvalidNamespaceFails() {
 	attr := &attributes.AttributeCreateUpdate{
 		Name:        "test__create_attribute_invalid_namespace",
@@ -181,6 +193,16 @@ func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), gotAttr)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+}
+
+func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
+	deactivated := fixtures.GetAttributeKey("deactivated.io/attr/attr1")
+	gotAttr, err := s.db.Client.GetAttribute(s.ctx, deactivated.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotAttr)
+	assert.Equal(s.T(), deactivated.Id, gotAttr.Id)
+	assert.Equal(s.T(), deactivated.Name, gotAttr.Name)
+	assert.Equal(s.T(), common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE, gotAttr.State)
 }
 
 func (s *AttributesSuite) Test_ListAttribute() {

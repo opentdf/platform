@@ -19,10 +19,10 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 		members      []string
 		metadataJson []byte
 		attributeId  string
-		state        string
+		isActive     bool
 	)
 
-	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId, &state); err != nil {
+	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId, &isActive); err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -39,7 +39,7 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 		Members:     members,
 		Metadata:    m,
 		AttributeId: attributeId,
-		State:       getProtoStateEnum(state),
+		State:       getProtoStateEnum(isActive),
 	}
 	return v, nil
 }
@@ -101,6 +101,7 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 		Value:       v.Value,
 		Members:     v.Members,
 		Metadata:    metadata,
+		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 	}
 	return rV, nil
 }
@@ -113,7 +114,7 @@ func getAttributeValueSql(id string) (string, []interface{}, error) {
 			Tables.AttributeValues.Field("members"),
 			Tables.AttributeValues.Field("metadata"),
 			Tables.AttributeValues.Field("attribute_definition_id"),
-			Tables.AttributeValues.Field("state"),
+			Tables.AttributeValues.Field("active"),
 		).
 		From(AttributeValueTable).
 		Where(sq.Eq{Tables.AttributeValues.Field("id"): id}).
@@ -143,13 +144,13 @@ func listAttributeValuesSql(attribute_id string, state string) (string, []interf
 			Tables.AttributeValues.Field("members"),
 			Tables.AttributeValues.Field("metadata"),
 			Tables.AttributeValues.Field("attribute_definition_id"),
-			Tables.AttributeValues.Field("state"),
+			Tables.AttributeValues.Field("active"),
 		).
 		From(AttributeValueTable)
 
 	where := sq.Eq{}
 	if state != StateAny {
-		where[Tables.AttributeValues.Field("state")] = state
+		where[Tables.AttributeValues.Field("active")] = state == StateActive;
 	}
 	where[Tables.AttributeValues.Field("attribute_definition_id")] = attribute_id
 	return sb.Where(where).ToSql()
@@ -228,7 +229,7 @@ func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attribut
 func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Update(AttributeValueTable).
-		Set("state", StateInactive).
+		Set("active", false).
 		Where(sq.Eq{Tables.AttributeValues.Field("id"): id}).
 		ToSql()
 }

@@ -10,7 +10,7 @@ import (
 func getNamespaceSql(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return newStatementBuilder().
-		Select(t.Field("id"), t.Field("name"), t.Field("state")).
+		Select(t.Field("id"), t.Field("name"), t.Field("active")).
 		From(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
@@ -28,23 +28,23 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 	}
 
 	var namespace namespaces.Namespace
-	state := ""
-	if err := row.Scan(&namespace.Id, &namespace.Name, &state); err != nil {
+	isActive := true
+	if err := row.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
-	namespace.State = getProtoStateEnum(state)
+	namespace.State = getProtoStateEnum(isActive)
 	return &namespace, nil
 }
 
 func listNamespacesSql(state string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	sb := newStatementBuilder().
-		Select(t.Field("id"), t.Field("name"), t.Field("state")).
+		Select(t.Field("id"), t.Field("name"), t.Field("active")).
 		From(t.Name())
 
 	if state != StateAny {
-		sb = sb.Where(sq.Eq{t.Field("state"): state})
+		sb = sb.Where(sq.Eq{t.Field("active"): state == StateActive})
 	}
 	return sb.ToSql()
 }
@@ -64,11 +64,11 @@ func (c Client) ListNamespaces(ctx context.Context, state string) ([]*namespaces
 
 	for rows.Next() {
 		var namespace namespaces.Namespace
-		state := ""
-		if err := rows.Scan(&namespace.Id, &namespace.Name, &state); err != nil {
+		isActive := true
+		if err := rows.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
 			return nil, WrapIfKnownInvalidQueryErr(err)
 		}
-		namespace.State = getProtoStateEnum(state)
+		namespace.State = getProtoStateEnum(isActive)
 		namespacesList = append(namespacesList, &namespace)
 	}
 
@@ -120,7 +120,7 @@ func deactivateNamespaceSql(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return newStatementBuilder().
 		Update(t.Name()).
-		Set("state", StateInactive).
+		Set("active", false).
 		Where(sq.Eq{t.Field("id"): id}).
 		Suffix("RETURNING \"id\"").
 		ToSql()

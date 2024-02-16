@@ -204,13 +204,9 @@ func tableName(table string) string {
 	return table
 }
 
-func getProtoStateEnum(state string) common.ActiveStateEnum {
-	switch state {
-	case StateInactive:
-		return common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE
-	case StateActive:
+func getProtoStateEnum(active bool) common.ActiveStateEnum {
+	if active {
 		return common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE
-	default:
-		return common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED
 	}
+	return common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE
 }

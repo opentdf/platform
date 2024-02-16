@@ -57,7 +57,7 @@ func attributesSelect() sq.SelectBuilder {
 		Tables.Attributes.Field("rule"),
 		Tables.Attributes.Field("metadata"),
 		Tables.Attributes.Field("namespace_id"),
-		Tables.Attributes.Field("state"),
+		Tables.Attributes.Field("active"),
 		Tables.Namespaces.Field("name"),
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
@@ -99,12 +99,12 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		rule          string
 		metadataJson  []byte
 		namespaceId   string
-		state         string
+		isActive      bool
 		namespaceName string
 		valuesJson    []byte
 		grants        []byte
 	)
-	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &state, &namespaceName, &valuesJson, &grants)
+	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &isActive, &namespaceName, &valuesJson, &grants)
 	if err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
@@ -135,7 +135,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		Id:        id,
 		Name:      name,
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
-		State:     getProtoStateEnum(state),
+		State:     getProtoStateEnum(isActive),
 		Metadata:  m,
 		Values:    v,
 		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
@@ -155,12 +155,12 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 			rule          string
 			metadataJson  []byte
 			namespaceId   string
-			state         string
+			isActive      bool
 			namespaceName string
 			valuesJson    []byte
 			grants        []byte
 		)
-		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &state, &namespaceName, &valuesJson, &grants)
+		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &isActive, &namespaceName, &valuesJson, &grants)
 		if err != nil {
 			return nil, WrapIfKnownInvalidQueryErr(err)
 		}
@@ -173,7 +173,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 				Id:   namespaceId,
 				Name: namespaceName,
 			},
-			State: getProtoStateEnum(state),
+			State: getProtoStateEnum(isActive),
 		}
 
 		if metadataJson != nil {
@@ -212,7 +212,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 func listAllAttributesSql(state string) (string, []interface{}, error) {
 	q := attributesSelect()
 	if state != StateAny {
-		q = q.Where(sq.Eq{Tables.Attributes.Field("state"): state})
+		q = q.Where(sq.Eq{Tables.Attributes.Field("active"): state == StateActive})
 	}
 	return q.From(Tables.Attributes.Name()).
 		ToSql()
@@ -313,6 +313,7 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 		Namespace: &namespaces.Namespace{
 			Id: attr.NamespaceId,
 		},
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 	}
 	return a, nil
 }
@@ -361,7 +362,7 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 func deactivateAttributeSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Update(Tables.Attributes.Name()).
-		Set("state", StateInactive).
+		Set("active", false).
 		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
 		Suffix("RETURNING \"id\"").
 		ToSql()

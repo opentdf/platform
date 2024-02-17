@@ -21,6 +21,59 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+type ActiveStateEnum int32
+
+const (
+	ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED ActiveStateEnum = 0
+	ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE      ActiveStateEnum = 1
+	ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE    ActiveStateEnum = 2
+	ActiveStateEnum_ACTIVE_STATE_ENUM_ANY         ActiveStateEnum = 3
+)
+
+// Enum value maps for ActiveStateEnum.
+var (
+	ActiveStateEnum_name = map[int32]string{
+		0: "ACTIVE_STATE_ENUM_UNSPECIFIED",
+		1: "ACTIVE_STATE_ENUM_ACTIVE",
+		2: "ACTIVE_STATE_ENUM_INACTIVE",
+		3: "ACTIVE_STATE_ENUM_ANY",
+	}
+	ActiveStateEnum_value = map[string]int32{
+		"ACTIVE_STATE_ENUM_UNSPECIFIED": 0,
+		"ACTIVE_STATE_ENUM_ACTIVE":      1,
+		"ACTIVE_STATE_ENUM_INACTIVE":    2,
+		"ACTIVE_STATE_ENUM_ANY":         3,
+	}
+)
+
+func (x ActiveStateEnum) Enum() *ActiveStateEnum {
+	p := new(ActiveStateEnum)
+	*p = x
+	return p
+}
+
+func (x ActiveStateEnum) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ActiveStateEnum) Descriptor() protoreflect.EnumDescriptor {
+	return file_common_common_proto_enumTypes[0].Descriptor()
+}
+
+func (ActiveStateEnum) Type() protoreflect.EnumType {
+	return &file_common_common_proto_enumTypes[0]
+}
+
+func (x ActiveStateEnum) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ActiveStateEnum.Descriptor instead.
+func (ActiveStateEnum) EnumDescriptor() ([]byte, []int) {
+	return file_common_common_proto_rawDescGZIP(), []int{0}
+}
+
 // Struct to uniquely identify a resource with optional additional metadata
 type Metadata struct {
 	state         protoimpl.MessageState
@@ -189,7 +242,16 @@ var file_common_common_proto_rawDesc = []byte{
 	0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75,
 	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02,
-	0x38, 0x01, 0x42, 0x7f, 0x0a, 0x0a, 0x63, 0x6f, 0x6d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e,
+	0x38, 0x01, 0x2a, 0x8d, 0x01, 0x0a, 0x0f, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x53, 0x74, 0x61,
+	0x74, 0x65, 0x45, 0x6e, 0x75, 0x6d, 0x12, 0x21, 0x0a, 0x1d, 0x41, 0x43, 0x54, 0x49, 0x56, 0x45,
+	0x5f, 0x53, 0x54, 0x41, 0x54, 0x45, 0x5f, 0x45, 0x4e, 0x55, 0x4d, 0x5f, 0x55, 0x4e, 0x53, 0x50,
+	0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x1c, 0x0a, 0x18, 0x41, 0x43, 0x54,
+	0x49, 0x56, 0x45, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x45, 0x5f, 0x45, 0x4e, 0x55, 0x4d, 0x5f, 0x41,
+	0x43, 0x54, 0x49, 0x56, 0x45, 0x10, 0x01, 0x12, 0x1e, 0x0a, 0x1a, 0x41, 0x43, 0x54, 0x49, 0x56,
+	0x45, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x45, 0x5f, 0x45, 0x4e, 0x55, 0x4d, 0x5f, 0x49, 0x4e, 0x41,
+	0x43, 0x54, 0x49, 0x56, 0x45, 0x10, 0x02, 0x12, 0x19, 0x0a, 0x15, 0x41, 0x43, 0x54, 0x49, 0x56,
+	0x45, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x45, 0x5f, 0x45, 0x4e, 0x55, 0x4d, 0x5f, 0x41, 0x4e, 0x59,
+	0x10, 0x03, 0x42, 0x7f, 0x0a, 0x0a, 0x63, 0x6f, 0x6d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e,
 	0x42, 0x0b, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a,
 	0x2c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e,
 	0x74, 0x64, 0x66, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2d, 0x76, 0x32, 0x2d, 0x70,
@@ -212,19 +274,21 @@ func file_common_common_proto_rawDescGZIP() []byte {
 	return file_common_common_proto_rawDescData
 }
 
+var file_common_common_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_common_common_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_common_common_proto_goTypes = []interface{}{
-	(*Metadata)(nil),              // 0: common.Metadata
-	(*MetadataMutable)(nil),       // 1: common.MetadataMutable
-	nil,                           // 2: common.Metadata.LabelsEntry
-	nil,                           // 3: common.MetadataMutable.LabelsEntry
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
+	(ActiveStateEnum)(0),          // 0: common.ActiveStateEnum
+	(*Metadata)(nil),              // 1: common.Metadata
+	(*MetadataMutable)(nil),       // 2: common.MetadataMutable
+	nil,                           // 3: common.Metadata.LabelsEntry
+	nil,                           // 4: common.MetadataMutable.LabelsEntry
+	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
 }
 var file_common_common_proto_depIdxs = []int32{
-	4, // 0: common.Metadata.created_at:type_name -> google.protobuf.Timestamp
-	4, // 1: common.Metadata.updated_at:type_name -> google.protobuf.Timestamp
-	2, // 2: common.Metadata.labels:type_name -> common.Metadata.LabelsEntry
-	3, // 3: common.MetadataMutable.labels:type_name -> common.MetadataMutable.LabelsEntry
+	5, // 0: common.Metadata.created_at:type_name -> google.protobuf.Timestamp
+	5, // 1: common.Metadata.updated_at:type_name -> google.protobuf.Timestamp
+	3, // 2: common.Metadata.labels:type_name -> common.Metadata.LabelsEntry
+	4, // 3: common.MetadataMutable.labels:type_name -> common.MetadataMutable.LabelsEntry
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
@@ -268,13 +332,14 @@ func file_common_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_common_common_proto_rawDesc,
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_common_common_proto_goTypes,
 		DependencyIndexes: file_common_common_proto_depIdxs,
+		EnumInfos:         file_common_common_proto_enumTypes,
 		MessageInfos:      file_common_common_proto_msgTypes,
 	}.Build()
 	File_common_common_proto = out.File

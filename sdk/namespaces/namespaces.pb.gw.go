@@ -83,9 +83,20 @@ func local_request_NamespaceService_GetNamespace_0(ctx context.Context, marshale
 
 }
 
+var (
+	filter_NamespaceService_ListNamespaces_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_NamespaceService_ListNamespaces_0(ctx context.Context, marshaler runtime.Marshaler, client NamespaceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListNamespacesRequest
 	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NamespaceService_ListNamespaces_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	msg, err := client.ListNamespaces(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -95,6 +106,13 @@ func request_NamespaceService_ListNamespaces_0(ctx context.Context, marshaler ru
 func local_request_NamespaceService_ListNamespaces_0(ctx context.Context, marshaler runtime.Marshaler, server NamespaceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListNamespacesRequest
 	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NamespaceService_ListNamespaces_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	msg, err := server.ListNamespaces(ctx, &protoReq)
 	return msg, metadata, err
@@ -207,8 +225,8 @@ func local_request_NamespaceService_UpdateNamespace_0(ctx context.Context, marsh
 
 }
 
-func request_NamespaceService_DeleteNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client NamespaceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteNamespaceRequest
+func request_NamespaceService_DeactivateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client NamespaceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeactivateNamespaceRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -228,13 +246,13 @@ func request_NamespaceService_DeleteNamespace_0(ctx context.Context, marshaler r
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.DeleteNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.DeactivateNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_NamespaceService_DeleteNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server NamespaceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteNamespaceRequest
+func local_request_NamespaceService_DeactivateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server NamespaceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeactivateNamespaceRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -254,7 +272,7 @@ func local_request_NamespaceService_DeleteNamespace_0(ctx context.Context, marsh
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.DeleteNamespace(ctx, &protoReq)
+	msg, err := server.DeactivateNamespace(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -365,7 +383,7 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 
 	})
 
-	mux.Handle("DELETE", pattern_NamespaceService_DeleteNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_NamespaceService_DeactivateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -373,12 +391,12 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/namespaces.NamespaceService/DeleteNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/namespaces.NamespaceService/DeactivateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_NamespaceService_DeleteNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_NamespaceService_DeactivateNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -386,7 +404,7 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 			return
 		}
 
-		forward_NamespaceService_DeleteNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_NamespaceService_DeactivateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -519,25 +537,25 @@ func RegisterNamespaceServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 
 	})
 
-	mux.Handle("DELETE", pattern_NamespaceService_DeleteNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_NamespaceService_DeactivateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/namespaces.NamespaceService/DeleteNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/namespaces.NamespaceService/DeactivateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_NamespaceService_DeleteNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_NamespaceService_DeactivateNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_NamespaceService_DeleteNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_NamespaceService_DeactivateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -553,7 +571,7 @@ var (
 
 	pattern_NamespaceService_UpdateNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"attributes", "namespaces", "id"}, ""))
 
-	pattern_NamespaceService_DeleteNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"attributes", "namespaces", "id"}, ""))
+	pattern_NamespaceService_DeactivateNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"attributes", "namespaces", "id"}, ""))
 )
 
 var (
@@ -565,5 +583,5 @@ var (
 
 	forward_NamespaceService_UpdateNamespace_0 = runtime.ForwardResponseMessage
 
-	forward_NamespaceService_DeleteNamespace_0 = runtime.ForwardResponseMessage
+	forward_NamespaceService_DeactivateNamespace_0 = runtime.ForwardResponseMessage
 )

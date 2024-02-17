@@ -5,12 +5,13 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func getNamespaceSql(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return newStatementBuilder().
-		Select("*").
+		Select(t.Field("id"), t.Field("name"), t.Field("active")).
 		From(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
@@ -27,26 +28,32 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 		return nil, err
 	}
 
-	namespace := &namespaces.Namespace{Id: "", Name: ""}
-	if err := row.Scan(&namespace.Id, &namespace.Name); err != nil {
+	var namespace namespaces.Namespace
+	var isActive bool
+	if err := row.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
+	namespace.Active = &wrapperspb.BoolValue{Value: isActive}
 
-	return namespace, nil
+	return &namespace, nil
 }
 
-func listNamespacesSql() (string, []interface{}, error) {
+func listNamespacesSql(state string) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	return newStatementBuilder().
-		Select("*").
-		From(t.Name()).
-		ToSql()
+	sb := newStatementBuilder().
+		Select(t.Field("id"), t.Field("name"), t.Field("active")).
+		From(t.Name())
+
+	if state != StateAny {
+		sb = sb.Where(sq.Eq{t.Field("active"): state == StateActive})
+	}
+	return sb.ToSql()
 }
 
-func (c Client) ListNamespaces(ctx context.Context) ([]*namespaces.Namespace, error) {
+func (c Client) ListNamespaces(ctx context.Context, state string) ([]*namespaces.Namespace, error) {
 	namespacesList := []*namespaces.Namespace{}
 
-	sql, args, err := listNamespacesSql()
+	sql, args, err := listNamespacesSql(state)
 	if err != nil {
 		return nil, err
 	}
@@ -58,9 +65,11 @@ func (c Client) ListNamespaces(ctx context.Context) ([]*namespaces.Namespace, er
 
 	for rows.Next() {
 		var namespace namespaces.Namespace
-		if err := rows.Scan(&namespace.Id, &namespace.Name); err != nil {
+		var isActive bool
+		if err := rows.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
 			return nil, WrapIfKnownInvalidQueryErr(err)
 		}
+		namespace.Active = &wrapperspb.BoolValue{Value: isActive}
 		namespacesList = append(namespacesList, &namespace)
 	}
 
@@ -108,9 +117,28 @@ func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*n
 	return c.GetNamespace(ctx, id)
 }
 
+func deactivateNamespaceSql(id string) (string, []interface{}, error) {
+	t := Tables.Namespaces
+	return newStatementBuilder().
+		Update(t.Name()).
+		Set("active", false).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
+		ToSql()
+}
+
+func (c Client) DeactivateNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
+	sql, args, err := deactivateNamespaceSql(id)
+
+	if e := c.exec(ctx, sql, args, err); e != nil {
+		return nil, e
+	}
+	return c.GetNamespace(ctx, id)
+}
+
 func deleteNamespaceSql(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	// TODO: handle delete cascade, dangerous deletion via special rpc, or "soft-delete" status change
+	// TODO: handle delete cascade, dangerous deletion via special rpc [https://github.com/opentdf/opentdf-v2-poc/issues/115]
 	return newStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
@@ -129,7 +157,7 @@ func (c Client) DeleteNamespace(ctx context.Context, id string) (*namespaces.Nam
 	if e := c.exec(ctx, sql, args, err); e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)
 	}
-	
+
 	// return the namespace before it was deleted
 	return ns, nil
 }

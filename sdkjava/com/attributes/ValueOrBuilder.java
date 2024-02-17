@@ -151,4 +151,31 @@ public interface ValueOrBuilder extends
    */
   com.kasregistry.KeyAccessServerOrBuilder getGrantsOrBuilder(
       int index);
+
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   * @return Whether the active field is set.
+   */
+  boolean hasActive();
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   * @return The active.
+   */
+  com.google.protobuf.BoolValue getActive();
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   */
+  com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder();
 }

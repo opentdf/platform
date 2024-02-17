@@ -33,7 +33,7 @@ public interface NamespaceOrBuilder extends
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    * </pre>
    *
-   * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
    * @return The name.
    */
   java.lang.String getName();
@@ -42,9 +42,36 @@ public interface NamespaceOrBuilder extends
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    * </pre>
    *
-   * <code>string name = 5 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
    * @return The bytes for name.
    */
   com.google.protobuf.ByteString
       getNameBytes();
+
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.google.protobuf.BoolValue active = 3 [json_name = "active"];</code>
+   * @return Whether the active field is set.
+   */
+  boolean hasActive();
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.google.protobuf.BoolValue active = 3 [json_name = "active"];</code>
+   * @return The active.
+   */
+  com.google.protobuf.BoolValue getActive();
+  /**
+   * <pre>
+   * active by default until explicitly deactivated
+   * </pre>
+   *
+   * <code>.google.protobuf.BoolValue active = 3 [json_name = "active"];</code>
+   */
+  com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder();
 }

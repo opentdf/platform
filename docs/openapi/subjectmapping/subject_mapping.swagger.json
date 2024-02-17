@@ -194,6 +194,10 @@
             "$ref": "#/definitions/kasregistryKeyAccessServer"
           },
           "title": "list of key access servers"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
         }
       }
     },

@@ -56,11 +56,14 @@ public final class CommonProto {
       "\022;\n\006labels\030\003 \003(\0132#.common.MetadataMutabl" +
       "e.LabelsEntryR\006labels\022 \n\013description\030\004 \001" +
       "(\tR\013description\0329\n\013LabelsEntry\022\020\n\003key\030\001 " +
-      "\001(\tR\003key\022\024\n\005value\030\002 \001(\tR\005value:\0028\001B\177\n\nco" +
-      "m.commonB\013CommonProtoP\001Z,github.com/open" +
-      "tdf/opentdf-v2-poc/sdk/common\242\002\003CXX\252\002\006Co" +
-      "mmon\312\002\006Common\342\002\022Common\\GPBMetadata\352\002\006Com" +
-      "monb\006proto3"
+      "\001(\tR\003key\022\024\n\005value\030\002 \001(\tR\005value:\0028\001*\215\001\n\017A" +
+      "ctiveStateEnum\022!\n\035ACTIVE_STATE_ENUM_UNSP" +
+      "ECIFIED\020\000\022\034\n\030ACTIVE_STATE_ENUM_ACTIVE\020\001\022" +
+      "\036\n\032ACTIVE_STATE_ENUM_INACTIVE\020\002\022\031\n\025ACTIV" +
+      "E_STATE_ENUM_ANY\020\003B\177\n\ncom.commonB\013Common" +
+      "ProtoP\001Z,github.com/opentdf/opentdf-v2-p" +
+      "oc/sdk/common\242\002\003CXX\252\002\006Common\312\002\006Common\342\002\022" +
+      "Common\\GPBMetadata\352\002\006Commonb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

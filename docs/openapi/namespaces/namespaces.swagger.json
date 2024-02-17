@@ -18,6 +18,7 @@
   "paths": {
     "/attributes/namespaces": {
       "get": {
+        "summary": "NOTE: ACTIVE state by default, INACTIVE or ANY when specified\nRequest: \ngrpcurl -plaintext localhost:9000 namespaces.NamespaceService/ListNamespaces\nResponse:\n{\n\"namespaces\": [\n{\n\"id\": \"namespace-id\",\n\"name\": \"namespace-name\",\n\"active\": true\n}\n]\n}",
         "operationId": "NamespaceService_ListNamespaces",
         "responses": {
           "200": {
@@ -33,11 +34,28 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "state",
+            "description": "ACTIVE by default when not specified",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ACTIVE_STATE_ENUM_UNSPECIFIED",
+              "ACTIVE_STATE_ENUM_ACTIVE",
+              "ACTIVE_STATE_ENUM_INACTIVE",
+              "ACTIVE_STATE_ENUM_ANY"
+            ],
+            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
+          }
+        ],
         "tags": [
           "NamespaceService"
         ]
       },
       "post": {
+        "summary": "Request: \ngrpcurl -plaintext -d '{\"name\": \"namespace-name\"}' localhost:9000 namespaces.NamespaceService/CreateNamespace\nResponse:\n{ \"namespace\": { \"id\": \"namespace-id\", \"active\": true } }",
         "operationId": "NamespaceService_CreateNamespace",
         "responses": {
           "200": {
@@ -68,6 +86,7 @@
     },
     "/attributes/namespaces/{id}": {
       "get": {
+        "summary": "Request: \ngrpcurl -plaintext -d '{\"id\": \"namespace-id\"}' localhost:9000 namespaces.NamespaceService/GetNamespace\nResponse:\n{\n\"namespace\": {\n\"id\": \"namespace-id\",\n\"name\": \"namespace-name\",\n\"active\": true\n}\n}",
         "operationId": "NamespaceService_GetNamespace",
         "responses": {
           "200": {
@@ -96,12 +115,12 @@
         ]
       },
       "delete": {
-        "operationId": "NamespaceService_DeleteNamespace",
+        "operationId": "NamespaceService_DeactivateNamespace",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/namespacesDeleteNamespaceResponse"
+              "$ref": "#/definitions/namespacesDeactivateNamespaceResponse"
             }
           },
           "default": {
@@ -160,6 +179,17 @@
     }
   },
   "definitions": {
+    "commonActiveStateEnum": {
+      "type": "string",
+      "enum": [
+        "ACTIVE_STATE_ENUM_UNSPECIFIED",
+        "ACTIVE_STATE_ENUM_ACTIVE",
+        "ACTIVE_STATE_ENUM_INACTIVE",
+        "ACTIVE_STATE_ENUM_ANY"
+      ],
+      "default": "ACTIVE_STATE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
     "namespacesCreateNamespaceResponse": {
       "type": "object",
       "properties": {
@@ -168,7 +198,7 @@
         }
       }
     },
-    "namespacesDeleteNamespaceResponse": {
+    "namespacesDeactivateNamespaceResponse": {
       "type": "object"
     },
     "namespacesGetNamespaceResponse": {
@@ -201,6 +231,10 @@
         "name": {
           "type": "string",
           "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
         }
       }
     },

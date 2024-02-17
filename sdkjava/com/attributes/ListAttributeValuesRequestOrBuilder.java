@@ -19,4 +19,23 @@ public interface ListAttributeValuesRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getAttributeIdBytes();
+
+  /**
+   * <pre>
+   * ACTIVE by default when not specified
+   * </pre>
+   *
+   * <code>.common.ActiveStateEnum state = 2 [json_name = "state"];</code>
+   * @return The enum numeric value on the wire for state.
+   */
+  int getStateValue();
+  /**
+   * <pre>
+   * ACTIVE by default when not specified
+   * </pre>
+   *
+   * <code>.common.ActiveStateEnum state = 2 [json_name = "state"];</code>
+   * @return The state.
+   */
+  com.common.ActiveStateEnum getState();
 }

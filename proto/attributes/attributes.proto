@@ -5,6 +5,7 @@ package attributes;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
 import "kasregistry/key_access_server_registry.proto";
 import "namespaces/namespaces.proto";
 
@@ -37,6 +38,9 @@ message Attribute {
   repeated Value values = 7;
 
   repeated kasregistry.KeyAccessServer grants = 8;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 9;
 }
 
 message AttributeCreateUpdate {
@@ -74,6 +78,9 @@ message Value {
 
   // list of key access servers
   repeated kasregistry.KeyAccessServer grants = 6;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 7;
 }
 
 message ValueCreateUpdate {
@@ -103,7 +110,10 @@ message ValueKeyAccessServer {
    Attribute Service Definitions
 */
 
-message ListAttributesRequest {}
+message ListAttributesRequest {
+  // ACTIVE by default when not specified
+  common.ActiveStateEnum state = 1;
+}
 message ListAttributesResponse {
   repeated Attribute attributes = 1;
 }
@@ -130,10 +140,10 @@ message UpdateAttributeResponse {
   Attribute attribute = 1;
 }
 
-message DeleteAttributeRequest {
+message DeactivateAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteAttributeResponse {
+message DeactivateAttributeResponse {
   Attribute attribute = 1;
 }
 
@@ -149,6 +159,8 @@ message GetAttributeValueResponse {
 
 message ListAttributeValuesRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
+  // ACTIVE by default when not specified
+  common.ActiveStateEnum state = 2;
 }
 message ListAttributeValuesResponse {
   repeated Value values = 1;
@@ -171,10 +183,10 @@ message UpdateAttributeValueResponse {
   Value value = 1;
 }
 
-message DeleteAttributeValueRequest {
+message DeactivateAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
-message DeleteAttributeValueResponse {
+message DeactivateAttributeValueResponse {
   Value value = 1;
 }
 
@@ -219,72 +231,103 @@ message RemoveKeyAccessServerFromValueResponse {
 ///
 service AttributesService {
   /*
-      List Attributes
-      Example:
-       grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
-
-       Response:
-       {
-         "attributes": [
-             {
-                 "values": [
-                     {
-                         "members": [],
-                         "grants": [
-                             {
-                                 "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-                                 "metadata": null,
-                                 "uri": "kas10",
-                                 "public_key": {
-                                     "remote": "https://example.com/kas"
-                                 }
-                             }
-                         ],
-                         "id": "e2140c39-f478-43cf-9559-0067d596654f",
-                         "metadata": null,
-                         "attribute_id": "",
-                         "value": "value1"
-                     }
-                 ],
-                 "grants": [
-                     {
-                         "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-                         "metadata": null,
-                         "uri": "kas10",
-                         "public_key": {
-                             "remote": "https://example.com/kas"
-                         }
-                     }
-                 ],
-                 "id": "2dc75d97-f6a4-4036-9a6a-acc99171fff1",
-                 "metadata": {
-                     "labels": [],
-                     "created_at": {
-                         "seconds": "1706878441",
-                         "nanos": 147178000
-                     },
-                     "updated_at": {
-                         "seconds": "1706878441",
-                         "nanos": 147178000
-                     },
-                     "description": ""
-                 },
-                 "namespace": {
-                     "id": "c85d126a-c2f2-4bb6-bc6d-a513015363cb",
-                     "name": "demo.com"
-                 },
-                 "name": "test",
-                 "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
-             }
-         ]
-     }
+      NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+      Request:
+        grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
+          OR (for inactive)
+        grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+      Response:
+        {
+          "attributes": [
+            {
+              "id": "attribute_id",
+              "metadata": {
+                "created_at": "2021-01-01T00:00:00Z",
+                "updated_at": "2021-01-01T00:00:00Z"
+              },
+              "namespace": {
+                "id": "namespace_id",
+                "name": "namespace_name"
+              },
+              "name": "attribute_name",
+              "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+              "values": [
+                {
+                  "id": "value_id",
+                  "metadata": {
+                    "created_at": "2021-01-01T00:00:00Z",
+                    "updated_at": "2021-01-01T00:00:00Z"
+                  },
+                  "attribute_id": "attribute_id",
+                  "value": "value",
+                  "members": ["value_id"],
+                  "grants": [
+                    {
+                      "id": "key_access_server_id",
+                      "metadata": {
+                        "created_at": "2021-01-01T00:00:00Z",
+                        "updated_at": "2021-01-01T00:00:00Z"
+                      },
+                      "name": "key_access_server_name",
+                      "description": "key_access_server_description",
+                    }
+                  ],
+                }
+              ],
+              "grants": [
+                {
+                  "id": "key_access_server_id",
+                  "metadata": {
+                    "created_at": "2021-01-01T00:00:00Z",
+                    "updated_at": "2021-01-01T00:00:00Z"
+                  },
+                  "name": "key_access_server_name",
+                  "description": "key_access_server_description",
+                }
+              ],
+              "active": true
+            }
+          ]
+        }
   */
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
 
   /*
      List Values
-     Example:
-      grpcurl -plaintext -d '{"attribute_id": "attribute_id"}' localhost:8080 attributes.AttributesService/ListValues
+     
+     Request:
+        NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+        grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+     Response:
+        {
+          "attributes": [
+            {
+              "id": "attribute_id",
+              "metadata": {
+                "createdAt": "2024-02-14T20:24:23.057404Z",
+                "updatedAt": "2024-02-14T20:24:23.057404Z"
+              },
+              "namespace": {
+                "id": "namespace_id",
+                "name": "namespace_name"
+              },
+              "name": "attribute_name",
+              "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+              "values": [
+                {
+                  ... VALUES ...
+                }
+              ],
+              "grants": [
+                {
+                  ... GRANTS ...
+                }
+              ],
+              "active": true
+            }
+          ]
+        }
+
   */
   rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {}
 
@@ -292,9 +335,26 @@ service AttributesService {
     option (google.api.http) = {get: "/attributes/{id}"};
   }
 
-  // Create Attribute
-  // Example:
-  //  grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:8080 attributes.AttributesService/CreateAttribute
+  /* Create Attribute
+    Request:
+      grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+    Response
+      {
+        "attribute": {
+          "id": "e06f067b-d158-44bc-a814-1aa3f968dcf0",
+          "metadata": {
+            "createdAt": "2024-02-14T20:24:23.057404Z",
+            "updatedAt": "2024-02-14T20:24:23.057404Z"
+          },
+          "namespace": {
+            "id": "namespace_id"
+          },
+          "name": "attribute_name",
+          "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+          "active": true
+        }
+      }
+ */
   rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
     option (google.api.http) = {
       post: "/attributes"
@@ -309,7 +369,7 @@ service AttributesService {
     };
   }
 
-  rpc DeleteAttribute(DeleteAttributeRequest) returns (DeleteAttributeResponse) {
+  rpc DeactivateAttribute(DeactivateAttributeRequest) returns (DeactivateAttributeResponse) {
     option (google.api.http) = {delete: "/attributes/{id}"};
   }
 
@@ -320,7 +380,7 @@ service AttributesService {
 
   // Create Attribute Value
   // Example:
-  //  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateValue
+  //  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue
   rpc CreateAttributeValue(CreateAttributeValueRequest) returns (CreateAttributeValueResponse) {
     option (google.api.http) = {
       post: "/attributes/{attribute_id}/values"
@@ -335,7 +395,7 @@ service AttributesService {
     };
   }
 
-  rpc DeleteAttributeValue(DeleteAttributeValueRequest) returns (DeleteAttributeValueResponse) {
+  rpc DeactivateAttributeValue(DeactivateAttributeValueRequest) returns (DeactivateAttributeValueResponse) {
     option (google.api.http) = {delete: "/attributes/_/values/{id}"};
   }
 

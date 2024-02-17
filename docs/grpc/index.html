@@ -195,6 +195,10 @@
                 </li>
               
               
+                <li>
+                  <a href="#common.ActiveStateEnum"><span class="badge">E</span>ActiveStateEnum</a>
+                </li>
+              
               
               
             </ul>
@@ -281,11 +285,11 @@
                 </li>
               
                 <li>
-                  <a href="#namespaces.DeleteNamespaceRequest"><span class="badge">M</span>DeleteNamespaceRequest</a>
+                  <a href="#namespaces.DeactivateNamespaceRequest"><span class="badge">M</span>DeactivateNamespaceRequest</a>
                 </li>
               
                 <li>
-                  <a href="#namespaces.DeleteNamespaceResponse"><span class="badge">M</span>DeleteNamespaceResponse</a>
+                  <a href="#namespaces.DeactivateNamespaceResponse"><span class="badge">M</span>DeactivateNamespaceResponse</a>
                 </li>
               
                 <li>
@@ -376,19 +380,19 @@
                 </li>
               
                 <li>
-                  <a href="#attributes.DeleteAttributeRequest"><span class="badge">M</span>DeleteAttributeRequest</a>
+                  <a href="#attributes.DeactivateAttributeRequest"><span class="badge">M</span>DeactivateAttributeRequest</a>
                 </li>
               
                 <li>
-                  <a href="#attributes.DeleteAttributeResponse"><span class="badge">M</span>DeleteAttributeResponse</a>
+                  <a href="#attributes.DeactivateAttributeResponse"><span class="badge">M</span>DeactivateAttributeResponse</a>
                 </li>
               
                 <li>
-                  <a href="#attributes.DeleteAttributeValueRequest"><span class="badge">M</span>DeleteAttributeValueRequest</a>
+                  <a href="#attributes.DeactivateAttributeValueRequest"><span class="badge">M</span>DeactivateAttributeValueRequest</a>
                 </li>
               
                 <li>
-                  <a href="#attributes.DeleteAttributeValueResponse"><span class="badge">M</span>DeleteAttributeValueResponse</a>
+                  <a href="#attributes.DeactivateAttributeValueResponse"><span class="badge">M</span>DeactivateAttributeValueResponse</a>
                 </li>
               
                 <li>
@@ -833,6 +837,41 @@
         
       
 
+      
+        <h3 id="common.ActiveStateEnum">ActiveStateEnum</h3>
+        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ACTIVE_STATE_ENUM_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ACTIVE_STATE_ENUM_ACTIVE</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ACTIVE_STATE_ENUM_INACTIVE</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ACTIVE_STATE_ENUM_ANY</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       
@@ -1527,7 +1566,7 @@ Response Examples:
 
         
       
-        <h3 id="namespaces.DeleteNamespaceRequest">DeleteNamespaceRequest</h3>
+        <h3 id="namespaces.DeactivateNamespaceRequest">DeactivateNamespaceRequest</h3>
         <p></p>
 
         
@@ -1551,7 +1590,7 @@ Response Examples:
 
         
       
-        <h3 id="namespaces.DeleteNamespaceResponse">DeleteNamespaceResponse</h3>
+        <h3 id="namespaces.DeactivateNamespaceResponse">DeactivateNamespaceResponse</h3>
         <p></p>
 
         
@@ -1610,6 +1649,23 @@ Response Examples:
         <p></p>
 
         
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>state</td>
+                  <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
+                  <td></td>
+                  <td><p>ACTIVE by default when not specified </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
 
         
       
@@ -1659,6 +1715,13 @@ Response Examples:
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>used to partition Attribute Definitions, support by namespace AuthN and enable federation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>active</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>active by default until explicitly deactivated </p></td>
                 </tr>
               
             </tbody>
@@ -1741,21 +1804,45 @@ Response Examples:
                 <td>GetNamespace</td>
                 <td><a href="#namespaces.GetNamespaceRequest">GetNamespaceRequest</a></td>
                 <td><a href="#namespaces.GetNamespaceResponse">GetNamespaceResponse</a></td>
-                <td><p></p></td>
+                <td><p>Request: 
+grpcurl -plaintext -d &#39;{&#34;id&#34;: &#34;namespace-id&#34;}&#39; localhost:9000 namespaces.NamespaceService/GetNamespace
+Response:
+{
+&#34;namespace&#34;: {
+&#34;id&#34;: &#34;namespace-id&#34;,
+&#34;name&#34;: &#34;namespace-name&#34;,
+&#34;active&#34;: true
+}
+}</p></td>
               </tr>
             
               <tr>
                 <td>ListNamespaces</td>
                 <td><a href="#namespaces.ListNamespacesRequest">ListNamespacesRequest</a></td>
                 <td><a href="#namespaces.ListNamespacesResponse">ListNamespacesResponse</a></td>
-                <td><p></p></td>
+                <td><p>NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+Request: 
+grpcurl -plaintext localhost:9000 namespaces.NamespaceService/ListNamespaces
+Response:
+{
+&#34;namespaces&#34;: [
+{
+&#34;id&#34;: &#34;namespace-id&#34;,
+&#34;name&#34;: &#34;namespace-name&#34;,
+&#34;active&#34;: true
+}
+]
+}</p></td>
               </tr>
             
               <tr>
                 <td>CreateNamespace</td>
                 <td><a href="#namespaces.CreateNamespaceRequest">CreateNamespaceRequest</a></td>
                 <td><a href="#namespaces.CreateNamespaceResponse">CreateNamespaceResponse</a></td>
-                <td><p></p></td>
+                <td><p>Request: 
+grpcurl -plaintext -d &#39;{&#34;name&#34;: &#34;namespace-name&#34;}&#39; localhost:9000 namespaces.NamespaceService/CreateNamespace
+Response:
+{ &#34;namespace&#34;: { &#34;id&#34;: &#34;namespace-id&#34;, &#34;active&#34;: true } }</p></td>
               </tr>
             
               <tr>
@@ -1766,9 +1853,9 @@ Response Examples:
               </tr>
             
               <tr>
-                <td>DeleteNamespace</td>
-                <td><a href="#namespaces.DeleteNamespaceRequest">DeleteNamespaceRequest</a></td>
-                <td><a href="#namespaces.DeleteNamespaceResponse">DeleteNamespaceResponse</a></td>
+                <td>DeactivateNamespace</td>
+                <td><a href="#namespaces.DeactivateNamespaceRequest">DeactivateNamespaceRequest</a></td>
+                <td><a href="#namespaces.DeactivateNamespaceResponse">DeactivateNamespaceResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -1833,7 +1920,7 @@ Response Examples:
               
               
               <tr>
-                <td>DeleteNamespace</td>
+                <td>DeactivateNamespace</td>
                 <td>DELETE</td>
                 <td>/attributes/namespaces/{id}</td>
                 <td></td>
@@ -2005,6 +2092,13 @@ Response Examples:
                   <td><a href="#kasregistry.KeyAccessServer">kasregistry.KeyAccessServer</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>active</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>active by default until explicitly deactivated </p></td>
                 </tr>
               
             </tbody>
@@ -2200,7 +2294,7 @@ Response Examples:
 
         
       
-        <h3 id="attributes.DeleteAttributeRequest">DeleteAttributeRequest</h3>
+        <h3 id="attributes.DeactivateAttributeRequest">DeactivateAttributeRequest</h3>
         <p></p>
 
         
@@ -2224,7 +2318,7 @@ Response Examples:
 
         
       
-        <h3 id="attributes.DeleteAttributeResponse">DeleteAttributeResponse</h3>
+        <h3 id="attributes.DeactivateAttributeResponse">DeactivateAttributeResponse</h3>
         <p></p>
 
         
@@ -2248,7 +2342,7 @@ Response Examples:
 
         
       
-        <h3 id="attributes.DeleteAttributeValueRequest">DeleteAttributeValueRequest</h3>
+        <h3 id="attributes.DeactivateAttributeValueRequest">DeactivateAttributeValueRequest</h3>
         <p></p>
 
         
@@ -2272,7 +2366,7 @@ Response Examples:
 
         
       
-        <h3 id="attributes.DeleteAttributeValueResponse">DeleteAttributeValueResponse</h3>
+        <h3 id="attributes.DeactivateAttributeValueResponse">DeactivateAttributeValueResponse</h3>
         <p></p>
 
         
@@ -2409,6 +2503,13 @@ Response Examples:
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>state</td>
+                  <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
+                  <td></td>
+                  <td><p>ACTIVE by default when not specified </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -2444,6 +2545,23 @@ Response Examples:
         <p></p>
 
         
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>state</td>
+                  <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
+                  <td></td>
+                  <td><p>ACTIVE by default when not specified </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
 
         
       
@@ -2736,6 +2854,13 @@ Response Examples:
                   <td><p>list of key access servers </p></td>
                 </tr>
               
+                <tr>
+                  <td>active</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>active by default until explicitly deactivated </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -2865,62 +2990,61 @@ Response Examples:
                 <td>ListAttributes</td>
                 <td><a href="#attributes.ListAttributesRequest">ListAttributesRequest</a></td>
                 <td><a href="#attributes.ListAttributesResponse">ListAttributesResponse</a></td>
-                <td><p>List Attributes
-Example:
+                <td><p>NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+Request:
 grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
-
+OR (for inactive)
+grpcurl -plaintext -d &#39;{&#34;state&#34;: &#34;STATE_TYPE_ENUM_INACTIVE&#34;}&#39; localhost:9000 attributes.AttributesService/ListAttributes
 Response:
 {
 &#34;attributes&#34;: [
 {
-&#34;values&#34;: [
-{
-&#34;members&#34;: [],
-&#34;grants&#34;: [
-{
-&#34;id&#34;: &#34;bb50eaac-0d95-4f28-9a36-9bbf412a7b95&#34;,
-&#34;metadata&#34;: null,
-&#34;uri&#34;: &#34;kas10&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://example.com/kas&#34;
-}
-}
-],
-&#34;id&#34;: &#34;e2140c39-f478-43cf-9559-0067d596654f&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-],
-&#34;grants&#34;: [
-{
-&#34;id&#34;: &#34;bb50eaac-0d95-4f28-9a36-9bbf412a7b95&#34;,
-&#34;metadata&#34;: null,
-&#34;uri&#34;: &#34;kas10&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://example.com/kas&#34;
-}
-}
-],
-&#34;id&#34;: &#34;2dc75d97-f6a4-4036-9a6a-acc99171fff1&#34;,
+&#34;id&#34;: &#34;attribute_id&#34;,
 &#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706878441&#34;,
-&#34;nanos&#34;: 147178000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706878441&#34;,
-&#34;nanos&#34;: 147178000
-},
-&#34;description&#34;: &#34;&#34;
+&#34;created_at&#34;: &#34;2021-01-01T00:00:00Z&#34;,
+&#34;updated_at&#34;: &#34;2021-01-01T00:00:00Z&#34;
 },
 &#34;namespace&#34;: {
-&#34;id&#34;: &#34;c85d126a-c2f2-4bb6-bc6d-a513015363cb&#34;,
-&#34;name&#34;: &#34;demo.com&#34;
+&#34;id&#34;: &#34;namespace_id&#34;,
+&#34;name&#34;: &#34;namespace_name&#34;
 },
-&#34;name&#34;: &#34;test&#34;,
-&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;
+&#34;name&#34;: &#34;attribute_name&#34;,
+&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;,
+&#34;values&#34;: [
+{
+&#34;id&#34;: &#34;value_id&#34;,
+&#34;metadata&#34;: {
+&#34;created_at&#34;: &#34;2021-01-01T00:00:00Z&#34;,
+&#34;updated_at&#34;: &#34;2021-01-01T00:00:00Z&#34;
+},
+&#34;attribute_id&#34;: &#34;attribute_id&#34;,
+&#34;value&#34;: &#34;value&#34;,
+&#34;members&#34;: [&#34;value_id&#34;],
+&#34;grants&#34;: [
+{
+&#34;id&#34;: &#34;key_access_server_id&#34;,
+&#34;metadata&#34;: {
+&#34;created_at&#34;: &#34;2021-01-01T00:00:00Z&#34;,
+&#34;updated_at&#34;: &#34;2021-01-01T00:00:00Z&#34;
+},
+&#34;name&#34;: &#34;key_access_server_name&#34;,
+&#34;description&#34;: &#34;key_access_server_description&#34;,
+}
+],
+}
+],
+&#34;grants&#34;: [
+{
+&#34;id&#34;: &#34;key_access_server_id&#34;,
+&#34;metadata&#34;: {
+&#34;created_at&#34;: &#34;2021-01-01T00:00:00Z&#34;,
+&#34;updated_at&#34;: &#34;2021-01-01T00:00:00Z&#34;
+},
+&#34;name&#34;: &#34;key_access_server_name&#34;,
+&#34;description&#34;: &#34;key_access_server_description&#34;,
+}
+],
+&#34;active&#34;: true
 }
 ]
 }</p></td>
@@ -2931,8 +3055,39 @@ Response:
                 <td><a href="#attributes.ListAttributeValuesRequest">ListAttributeValuesRequest</a></td>
                 <td><a href="#attributes.ListAttributeValuesResponse">ListAttributeValuesResponse</a></td>
                 <td><p>List Values
-Example:
-grpcurl -plaintext -d &#39;{&#34;attribute_id&#34;: &#34;attribute_id&#34;}&#39; localhost:8080 attributes.AttributesService/ListValues</p></td>
+
+Request:
+NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+grpcurl -plaintext -d &#39;{&#34;state&#34;: &#34;STATE_TYPE_ENUM_INACTIVE&#34;}&#39; localhost:9000 attributes.AttributesService/ListAttributes
+Response:
+{
+&#34;attributes&#34;: [
+{
+&#34;id&#34;: &#34;attribute_id&#34;,
+&#34;metadata&#34;: {
+&#34;createdAt&#34;: &#34;2024-02-14T20:24:23.057404Z&#34;,
+&#34;updatedAt&#34;: &#34;2024-02-14T20:24:23.057404Z&#34;
+},
+&#34;namespace&#34;: {
+&#34;id&#34;: &#34;namespace_id&#34;,
+&#34;name&#34;: &#34;namespace_name&#34;
+},
+&#34;name&#34;: &#34;attribute_name&#34;,
+&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;,
+&#34;values&#34;: [
+{
+... VALUES ...
+}
+],
+&#34;grants&#34;: [
+{
+... GRANTS ...
+}
+],
+&#34;active&#34;: true
+}
+]
+}</p></td>
               </tr>
             
               <tr>
@@ -2947,8 +3102,24 @@ grpcurl -plaintext -d &#39;{&#34;attribute_id&#34;: &#34;attribute_id&#34;}&#39;
                 <td><a href="#attributes.CreateAttributeRequest">CreateAttributeRequest</a></td>
                 <td><a href="#attributes.CreateAttributeResponse">CreateAttributeResponse</a></td>
                 <td><p>Create Attribute
-Example:
- grpcurl -plaintext -d &#39;{&#34;attribute&#34;: {&#34;namespace_id&#34;: &#34;namespace_id&#34;, &#34;name&#34;: &#34;attribute_name&#34;, &#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;}}&#39; localhost:8080 attributes.AttributesService/CreateAttribute</p></td>
+Request:
+grpcurl -plaintext -d &#39;{&#34;attribute&#34;: {&#34;namespace_id&#34;: &#34;namespace_id&#34;, &#34;name&#34;: &#34;attribute_name&#34;, &#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;}}&#39; localhost:9000 attributes.AttributesService/CreateAttribute
+Response
+{
+&#34;attribute&#34;: {
+&#34;id&#34;: &#34;e06f067b-d158-44bc-a814-1aa3f968dcf0&#34;,
+&#34;metadata&#34;: {
+&#34;createdAt&#34;: &#34;2024-02-14T20:24:23.057404Z&#34;,
+&#34;updatedAt&#34;: &#34;2024-02-14T20:24:23.057404Z&#34;
+},
+&#34;namespace&#34;: {
+&#34;id&#34;: &#34;namespace_id&#34;
+},
+&#34;name&#34;: &#34;attribute_name&#34;,
+&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;,
+&#34;active&#34;: true
+}
+}</p></td>
               </tr>
             
               <tr>
@@ -2959,9 +3130,9 @@ Example:
               </tr>
             
               <tr>
-                <td>DeleteAttribute</td>
-                <td><a href="#attributes.DeleteAttributeRequest">DeleteAttributeRequest</a></td>
-                <td><a href="#attributes.DeleteAttributeResponse">DeleteAttributeResponse</a></td>
+                <td>DeactivateAttribute</td>
+                <td><a href="#attributes.DeactivateAttributeRequest">DeactivateAttributeRequest</a></td>
+                <td><a href="#attributes.DeactivateAttributeResponse">DeactivateAttributeResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -2978,7 +3149,7 @@ Example:
                 <td><a href="#attributes.CreateAttributeValueResponse">CreateAttributeValueResponse</a></td>
                 <td><p>Create Attribute Value
 Example:
- grpcurl -plaintext -d &#39;{&#34;attribute_id&#34;: &#34;attribute_id&#34;, &#34;value&#34;: {&#34;value&#34;: &#34;value&#34;}}&#39; localhost:8080 attributes.AttributesService/CreateValue</p></td>
+ grpcurl -plaintext -d &#39;{&#34;attribute_id&#34;: &#34;attribute_id&#34;, &#34;value&#34;: {&#34;value&#34;: &#34;value&#34;}}&#39; localhost:8080 attributes.AttributesService/CreateAttributeValue</p></td>
               </tr>
             
               <tr>
@@ -2989,9 +3160,9 @@ Example:
               </tr>
             
               <tr>
-                <td>DeleteAttributeValue</td>
-                <td><a href="#attributes.DeleteAttributeValueRequest">DeleteAttributeValueRequest</a></td>
-                <td><a href="#attributes.DeleteAttributeValueResponse">DeleteAttributeValueResponse</a></td>
+                <td>DeactivateAttributeValue</td>
+                <td><a href="#attributes.DeactivateAttributeValueRequest">DeactivateAttributeValueRequest</a></td>
+                <td><a href="#attributes.DeactivateAttributeValueResponse">DeactivateAttributeValueResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -3136,7 +3307,7 @@ Example Response:
               
               
               <tr>
-                <td>DeleteAttribute</td>
+                <td>DeactivateAttribute</td>
                 <td>DELETE</td>
                 <td>/attributes/{id}</td>
                 <td></td>
@@ -3176,7 +3347,7 @@ Example Response:
               
               
               <tr>
-                <td>DeleteAttributeValue</td>
+                <td>DeactivateAttributeValue</td>
                 <td>DELETE</td>
                 <td>/attributes/_/values/{id}</td>
                 <td></td>

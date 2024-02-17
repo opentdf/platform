@@ -24,11 +24,11 @@ const (
 	AttributesService_GetAttribute_FullMethodName                       = "/attributes.AttributesService/GetAttribute"
 	AttributesService_CreateAttribute_FullMethodName                    = "/attributes.AttributesService/CreateAttribute"
 	AttributesService_UpdateAttribute_FullMethodName                    = "/attributes.AttributesService/UpdateAttribute"
-	AttributesService_DeleteAttribute_FullMethodName                    = "/attributes.AttributesService/DeleteAttribute"
+	AttributesService_DeactivateAttribute_FullMethodName                = "/attributes.AttributesService/DeactivateAttribute"
 	AttributesService_GetAttributeValue_FullMethodName                  = "/attributes.AttributesService/GetAttributeValue"
 	AttributesService_CreateAttributeValue_FullMethodName               = "/attributes.AttributesService/CreateAttributeValue"
 	AttributesService_UpdateAttributeValue_FullMethodName               = "/attributes.AttributesService/UpdateAttributeValue"
-	AttributesService_DeleteAttributeValue_FullMethodName               = "/attributes.AttributesService/DeleteAttributeValue"
+	AttributesService_DeactivateAttributeValue_FullMethodName           = "/attributes.AttributesService/DeactivateAttributeValue"
 	AttributesService_AssignKeyAccessServerToAttribute_FullMethodName   = "/attributes.AttributesService/AssignKeyAccessServerToAttribute"
 	AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName = "/attributes.AttributesService/RemoveKeyAccessServerFromAttribute"
 	AttributesService_AssignKeyAccessServerToValue_FullMethodName       = "/attributes.AttributesService/AssignKeyAccessServerToValue"
@@ -39,87 +39,132 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AttributesServiceClient interface {
-	// List Attributes
-	// Example:
+	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+	// Request:
 	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
-	//
+	// OR (for inactive)
+	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
 	// Response:
 	// {
 	// "attributes": [
 	// {
-	// "values": [
-	// {
-	// "members": [],
-	// "grants": [
-	// {
-	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-	// "metadata": null,
-	// "uri": "kas10",
-	// "public_key": {
-	// "remote": "https://example.com/kas"
-	// }
-	// }
-	// ],
-	// "id": "e2140c39-f478-43cf-9559-0067d596654f",
-	// "metadata": null,
-	// "attribute_id": "",
-	// "value": "value1"
-	// }
-	// ],
-	// "grants": [
-	// {
-	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-	// "metadata": null,
-	// "uri": "kas10",
-	// "public_key": {
-	// "remote": "https://example.com/kas"
-	// }
-	// }
-	// ],
-	// "id": "2dc75d97-f6a4-4036-9a6a-acc99171fff1",
+	// "id": "attribute_id",
 	// "metadata": {
-	// "labels": [],
-	// "created_at": {
-	// "seconds": "1706878441",
-	// "nanos": 147178000
-	// },
-	// "updated_at": {
-	// "seconds": "1706878441",
-	// "nanos": 147178000
-	// },
-	// "description": ""
+	// "created_at": "2021-01-01T00:00:00Z",
+	// "updated_at": "2021-01-01T00:00:00Z"
 	// },
 	// "namespace": {
-	// "id": "c85d126a-c2f2-4bb6-bc6d-a513015363cb",
-	// "name": "demo.com"
+	// "id": "namespace_id",
+	// "name": "namespace_name"
 	// },
-	// "name": "test",
-	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
+	// "name": "attribute_name",
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+	// "values": [
+	// {
+	// "id": "value_id",
+	// "metadata": {
+	// "created_at": "2021-01-01T00:00:00Z",
+	// "updated_at": "2021-01-01T00:00:00Z"
+	// },
+	// "attribute_id": "attribute_id",
+	// "value": "value",
+	// "members": ["value_id"],
+	// "grants": [
+	// {
+	// "id": "key_access_server_id",
+	// "metadata": {
+	// "created_at": "2021-01-01T00:00:00Z",
+	// "updated_at": "2021-01-01T00:00:00Z"
+	// },
+	// "name": "key_access_server_name",
+	// "description": "key_access_server_description",
+	// }
+	// ],
+	// }
+	// ],
+	// "grants": [
+	// {
+	// "id": "key_access_server_id",
+	// "metadata": {
+	// "created_at": "2021-01-01T00:00:00Z",
+	// "updated_at": "2021-01-01T00:00:00Z"
+	// },
+	// "name": "key_access_server_name",
+	// "description": "key_access_server_description",
+	// }
+	// ],
+	// "active": true
 	// }
 	// ]
 	// }
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
 	// List Values
-	// Example:
-	// grpcurl -plaintext -d '{"attribute_id": "attribute_id"}' localhost:8080 attributes.AttributesService/ListValues
+	//
+	// Request:
+	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+	// Response:
+	// {
+	// "attributes": [
+	// {
+	// "id": "attribute_id",
+	// "metadata": {
+	// "createdAt": "2024-02-14T20:24:23.057404Z",
+	// "updatedAt": "2024-02-14T20:24:23.057404Z"
+	// },
+	// "namespace": {
+	// "id": "namespace_id",
+	// "name": "namespace_name"
+	// },
+	// "name": "attribute_name",
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+	// "values": [
+	// {
+	// ... VALUES ...
+	// }
+	// ],
+	// "grants": [
+	// {
+	// ... GRANTS ...
+	// }
+	// ],
+	// "active": true
+	// }
+	// ]
+	// }
 	ListAttributeValues(ctx context.Context, in *ListAttributeValuesRequest, opts ...grpc.CallOption) (*ListAttributeValuesResponse, error)
 	GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error)
 	// Create Attribute
-	// Example:
-	//
-	//	grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:8080 attributes.AttributesService/CreateAttribute
+	// Request:
+	// grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+	// Response
+	// {
+	// "attribute": {
+	// "id": "e06f067b-d158-44bc-a814-1aa3f968dcf0",
+	// "metadata": {
+	// "createdAt": "2024-02-14T20:24:23.057404Z",
+	// "updatedAt": "2024-02-14T20:24:23.057404Z"
+	// },
+	// "namespace": {
+	// "id": "namespace_id"
+	// },
+	// "name": "attribute_name",
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+	// "active": true
+	// }
+	// }
 	CreateAttribute(ctx context.Context, in *CreateAttributeRequest, opts ...grpc.CallOption) (*CreateAttributeResponse, error)
 	UpdateAttribute(ctx context.Context, in *UpdateAttributeRequest, opts ...grpc.CallOption) (*UpdateAttributeResponse, error)
-	DeleteAttribute(ctx context.Context, in *DeleteAttributeRequest, opts ...grpc.CallOption) (*DeleteAttributeResponse, error)
+	DeactivateAttribute(ctx context.Context, in *DeactivateAttributeRequest, opts ...grpc.CallOption) (*DeactivateAttributeResponse, error)
 	// * Attribute Value *
 	GetAttributeValue(ctx context.Context, in *GetAttributeValueRequest, opts ...grpc.CallOption) (*GetAttributeValueResponse, error)
 	// Create Attribute Value
 	// Example:
 	//
-	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateValue
+	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue
 	CreateAttributeValue(ctx context.Context, in *CreateAttributeValueRequest, opts ...grpc.CallOption) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error)
-	DeleteAttributeValue(ctx context.Context, in *DeleteAttributeValueRequest, opts ...grpc.CallOption) (*DeleteAttributeValueResponse, error)
+	DeactivateAttributeValue(ctx context.Context, in *DeactivateAttributeValueRequest, opts ...grpc.CallOption) (*DeactivateAttributeValueResponse, error)
 	// Assign Key Access Server to Attribute
 	//
 	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
@@ -245,9 +290,9 @@ func (c *attributesServiceClient) UpdateAttribute(ctx context.Context, in *Updat
 	return out, nil
 }
 
-func (c *attributesServiceClient) DeleteAttribute(ctx context.Context, in *DeleteAttributeRequest, opts ...grpc.CallOption) (*DeleteAttributeResponse, error) {
-	out := new(DeleteAttributeResponse)
-	err := c.cc.Invoke(ctx, AttributesService_DeleteAttribute_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) DeactivateAttribute(ctx context.Context, in *DeactivateAttributeRequest, opts ...grpc.CallOption) (*DeactivateAttributeResponse, error) {
+	out := new(DeactivateAttributeResponse)
+	err := c.cc.Invoke(ctx, AttributesService_DeactivateAttribute_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -281,9 +326,9 @@ func (c *attributesServiceClient) UpdateAttributeValue(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *attributesServiceClient) DeleteAttributeValue(ctx context.Context, in *DeleteAttributeValueRequest, opts ...grpc.CallOption) (*DeleteAttributeValueResponse, error) {
-	out := new(DeleteAttributeValueResponse)
-	err := c.cc.Invoke(ctx, AttributesService_DeleteAttributeValue_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) DeactivateAttributeValue(ctx context.Context, in *DeactivateAttributeValueRequest, opts ...grpc.CallOption) (*DeactivateAttributeValueResponse, error) {
+	out := new(DeactivateAttributeValueResponse)
+	err := c.cc.Invoke(ctx, AttributesService_DeactivateAttributeValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -330,87 +375,132 @@ func (c *attributesServiceClient) RemoveKeyAccessServerFromValue(ctx context.Con
 // All implementations must embed UnimplementedAttributesServiceServer
 // for forward compatibility
 type AttributesServiceServer interface {
-	// List Attributes
-	// Example:
+	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+	// Request:
 	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
-	//
+	// OR (for inactive)
+	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
 	// Response:
 	// {
 	// "attributes": [
 	// {
-	// "values": [
-	// {
-	// "members": [],
-	// "grants": [
-	// {
-	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-	// "metadata": null,
-	// "uri": "kas10",
-	// "public_key": {
-	// "remote": "https://example.com/kas"
-	// }
-	// }
-	// ],
-	// "id": "e2140c39-f478-43cf-9559-0067d596654f",
-	// "metadata": null,
-	// "attribute_id": "",
-	// "value": "value1"
-	// }
-	// ],
-	// "grants": [
-	// {
-	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-	// "metadata": null,
-	// "uri": "kas10",
-	// "public_key": {
-	// "remote": "https://example.com/kas"
-	// }
-	// }
-	// ],
-	// "id": "2dc75d97-f6a4-4036-9a6a-acc99171fff1",
+	// "id": "attribute_id",
 	// "metadata": {
-	// "labels": [],
-	// "created_at": {
-	// "seconds": "1706878441",
-	// "nanos": 147178000
-	// },
-	// "updated_at": {
-	// "seconds": "1706878441",
-	// "nanos": 147178000
-	// },
-	// "description": ""
+	// "created_at": "2021-01-01T00:00:00Z",
+	// "updated_at": "2021-01-01T00:00:00Z"
 	// },
 	// "namespace": {
-	// "id": "c85d126a-c2f2-4bb6-bc6d-a513015363cb",
-	// "name": "demo.com"
+	// "id": "namespace_id",
+	// "name": "namespace_name"
 	// },
-	// "name": "test",
-	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
+	// "name": "attribute_name",
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+	// "values": [
+	// {
+	// "id": "value_id",
+	// "metadata": {
+	// "created_at": "2021-01-01T00:00:00Z",
+	// "updated_at": "2021-01-01T00:00:00Z"
+	// },
+	// "attribute_id": "attribute_id",
+	// "value": "value",
+	// "members": ["value_id"],
+	// "grants": [
+	// {
+	// "id": "key_access_server_id",
+	// "metadata": {
+	// "created_at": "2021-01-01T00:00:00Z",
+	// "updated_at": "2021-01-01T00:00:00Z"
+	// },
+	// "name": "key_access_server_name",
+	// "description": "key_access_server_description",
+	// }
+	// ],
+	// }
+	// ],
+	// "grants": [
+	// {
+	// "id": "key_access_server_id",
+	// "metadata": {
+	// "created_at": "2021-01-01T00:00:00Z",
+	// "updated_at": "2021-01-01T00:00:00Z"
+	// },
+	// "name": "key_access_server_name",
+	// "description": "key_access_server_description",
+	// }
+	// ],
+	// "active": true
 	// }
 	// ]
 	// }
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
 	// List Values
-	// Example:
-	// grpcurl -plaintext -d '{"attribute_id": "attribute_id"}' localhost:8080 attributes.AttributesService/ListValues
+	//
+	// Request:
+	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+	// Response:
+	// {
+	// "attributes": [
+	// {
+	// "id": "attribute_id",
+	// "metadata": {
+	// "createdAt": "2024-02-14T20:24:23.057404Z",
+	// "updatedAt": "2024-02-14T20:24:23.057404Z"
+	// },
+	// "namespace": {
+	// "id": "namespace_id",
+	// "name": "namespace_name"
+	// },
+	// "name": "attribute_name",
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+	// "values": [
+	// {
+	// ... VALUES ...
+	// }
+	// ],
+	// "grants": [
+	// {
+	// ... GRANTS ...
+	// }
+	// ],
+	// "active": true
+	// }
+	// ]
+	// }
 	ListAttributeValues(context.Context, *ListAttributeValuesRequest) (*ListAttributeValuesResponse, error)
 	GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error)
 	// Create Attribute
-	// Example:
-	//
-	//	grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:8080 attributes.AttributesService/CreateAttribute
+	// Request:
+	// grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+	// Response
+	// {
+	// "attribute": {
+	// "id": "e06f067b-d158-44bc-a814-1aa3f968dcf0",
+	// "metadata": {
+	// "createdAt": "2024-02-14T20:24:23.057404Z",
+	// "updatedAt": "2024-02-14T20:24:23.057404Z"
+	// },
+	// "namespace": {
+	// "id": "namespace_id"
+	// },
+	// "name": "attribute_name",
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+	// "active": true
+	// }
+	// }
 	CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error)
 	UpdateAttribute(context.Context, *UpdateAttributeRequest) (*UpdateAttributeResponse, error)
-	DeleteAttribute(context.Context, *DeleteAttributeRequest) (*DeleteAttributeResponse, error)
+	DeactivateAttribute(context.Context, *DeactivateAttributeRequest) (*DeactivateAttributeResponse, error)
 	// * Attribute Value *
 	GetAttributeValue(context.Context, *GetAttributeValueRequest) (*GetAttributeValueResponse, error)
 	// Create Attribute Value
 	// Example:
 	//
-	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateValue
+	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue
 	CreateAttributeValue(context.Context, *CreateAttributeValueRequest) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error)
-	DeleteAttributeValue(context.Context, *DeleteAttributeValueRequest) (*DeleteAttributeValueResponse, error)
+	DeactivateAttributeValue(context.Context, *DeactivateAttributeValueRequest) (*DeactivateAttributeValueResponse, error)
 	// Assign Key Access Server to Attribute
 	//
 	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
@@ -503,8 +593,8 @@ func (UnimplementedAttributesServiceServer) CreateAttribute(context.Context, *Cr
 func (UnimplementedAttributesServiceServer) UpdateAttribute(context.Context, *UpdateAttributeRequest) (*UpdateAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAttribute not implemented")
 }
-func (UnimplementedAttributesServiceServer) DeleteAttribute(context.Context, *DeleteAttributeRequest) (*DeleteAttributeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteAttribute not implemented")
+func (UnimplementedAttributesServiceServer) DeactivateAttribute(context.Context, *DeactivateAttributeRequest) (*DeactivateAttributeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeactivateAttribute not implemented")
 }
 func (UnimplementedAttributesServiceServer) GetAttributeValue(context.Context, *GetAttributeValueRequest) (*GetAttributeValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAttributeValue not implemented")
@@ -515,8 +605,8 @@ func (UnimplementedAttributesServiceServer) CreateAttributeValue(context.Context
 func (UnimplementedAttributesServiceServer) UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAttributeValue not implemented")
 }
-func (UnimplementedAttributesServiceServer) DeleteAttributeValue(context.Context, *DeleteAttributeValueRequest) (*DeleteAttributeValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteAttributeValue not implemented")
+func (UnimplementedAttributesServiceServer) DeactivateAttributeValue(context.Context, *DeactivateAttributeValueRequest) (*DeactivateAttributeValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeactivateAttributeValue not implemented")
 }
 func (UnimplementedAttributesServiceServer) AssignKeyAccessServerToAttribute(context.Context, *AssignKeyAccessServerToAttributeRequest) (*AssignKeyAccessServerToAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AssignKeyAccessServerToAttribute not implemented")
@@ -633,20 +723,20 @@ func _AttributesService_UpdateAttribute_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_DeleteAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteAttributeRequest)
+func _AttributesService_DeactivateAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivateAttributeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).DeleteAttribute(ctx, in)
+		return srv.(AttributesServiceServer).DeactivateAttribute(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_DeleteAttribute_FullMethodName,
+		FullMethod: AttributesService_DeactivateAttribute_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).DeleteAttribute(ctx, req.(*DeleteAttributeRequest))
+		return srv.(AttributesServiceServer).DeactivateAttribute(ctx, req.(*DeactivateAttributeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -705,20 +795,20 @@ func _AttributesService_UpdateAttributeValue_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_DeleteAttributeValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteAttributeValueRequest)
+func _AttributesService_DeactivateAttributeValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivateAttributeValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttributesServiceServer).DeleteAttributeValue(ctx, in)
+		return srv.(AttributesServiceServer).DeactivateAttributeValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttributesService_DeleteAttributeValue_FullMethodName,
+		FullMethod: AttributesService_DeactivateAttributeValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).DeleteAttributeValue(ctx, req.(*DeleteAttributeValueRequest))
+		return srv.(AttributesServiceServer).DeactivateAttributeValue(ctx, req.(*DeactivateAttributeValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -823,8 +913,8 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AttributesService_UpdateAttribute_Handler,
 		},
 		{
-			MethodName: "DeleteAttribute",
-			Handler:    _AttributesService_DeleteAttribute_Handler,
+			MethodName: "DeactivateAttribute",
+			Handler:    _AttributesService_DeactivateAttribute_Handler,
 		},
 		{
 			MethodName: "GetAttributeValue",
@@ -839,8 +929,8 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AttributesService_UpdateAttributeValue_Handler,
 		},
 		{
-			MethodName: "DeleteAttributeValue",
-			Handler:    _AttributesService_DeleteAttributeValue_Handler,
+			MethodName: "DeactivateAttributeValue",
+			Handler:    _AttributesService_DeactivateAttributeValue_Handler,
 		},
 		{
 			MethodName: "AssignKeyAccessServerToAttribute",

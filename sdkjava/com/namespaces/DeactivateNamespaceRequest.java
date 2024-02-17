@@ -5,65 +5,78 @@
 package com.namespaces;
 
 /**
- * Protobuf type {@code namespaces.ListNamespacesRequest}
+ * Protobuf type {@code namespaces.DeactivateNamespaceRequest}
  */
-public final class ListNamespacesRequest extends
+public final class DeactivateNamespaceRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:namespaces.ListNamespacesRequest)
-    ListNamespacesRequestOrBuilder {
+    // @@protoc_insertion_point(message_implements:namespaces.DeactivateNamespaceRequest)
+    DeactivateNamespaceRequestOrBuilder {
 private static final long serialVersionUID = 0L;
-  // Use ListNamespacesRequest.newBuilder() to construct.
-  private ListNamespacesRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+  // Use DeactivateNamespaceRequest.newBuilder() to construct.
+  private DeactivateNamespaceRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-  private ListNamespacesRequest() {
-    state_ = 0;
+  private DeactivateNamespaceRequest() {
+    id_ = "";
   }
 
   @java.lang.Override
   @SuppressWarnings({"unused"})
   protected java.lang.Object newInstance(
       UnusedPrivateParameter unused) {
-    return new ListNamespacesRequest();
+    return new DeactivateNamespaceRequest();
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return com.namespaces.NamespacesProto.internal_static_namespaces_ListNamespacesRequest_descriptor;
+    return com.namespaces.NamespacesProto.internal_static_namespaces_DeactivateNamespaceRequest_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return com.namespaces.NamespacesProto.internal_static_namespaces_ListNamespacesRequest_fieldAccessorTable
+    return com.namespaces.NamespacesProto.internal_static_namespaces_DeactivateNamespaceRequest_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            com.namespaces.ListNamespacesRequest.class, com.namespaces.ListNamespacesRequest.Builder.class);
+            com.namespaces.DeactivateNamespaceRequest.class, com.namespaces.DeactivateNamespaceRequest.Builder.class);
   }
 
-  public static final int STATE_FIELD_NUMBER = 1;
-  private int state_ = 0;
+  public static final int ID_FIELD_NUMBER = 1;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object id_ = "";
   /**
-   * <pre>
-   * ACTIVE by default when not specified
-   * </pre>
-   *
-   * <code>.common.ActiveStateEnum state = 1 [json_name = "state"];</code>
-   * @return The enum numeric value on the wire for state.
+   * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+   * @return The id.
    */
-  @java.lang.Override public int getStateValue() {
-    return state_;
+  @java.lang.Override
+  public java.lang.String getId() {
+    java.lang.Object ref = id_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      id_ = s;
+      return s;
+    }
   }
   /**
-   * <pre>
-   * ACTIVE by default when not specified
-   * </pre>
-   *
-   * <code>.common.ActiveStateEnum state = 1 [json_name = "state"];</code>
-   * @return The state.
+   * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+   * @return The bytes for id.
    */
-  @java.lang.Override public com.common.ActiveStateEnum getState() {
-    com.common.ActiveStateEnum result = com.common.ActiveStateEnum.forNumber(state_);
-    return result == null ? com.common.ActiveStateEnum.UNRECOGNIZED : result;
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getIdBytes() {
+    java.lang.Object ref = id_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      id_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
   }
 
   private byte memoizedIsInitialized = -1;
@@ -80,8 +93,8 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (state_ != com.common.ActiveStateEnum.ACTIVE_STATE_ENUM_UNSPECIFIED.getNumber()) {
-      output.writeEnum(1, state_);
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -92,9 +105,8 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (state_ != com.common.ActiveStateEnum.ACTIVE_STATE_ENUM_UNSPECIFIED.getNumber()) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeEnumSize(1, state_);
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -106,12 +118,13 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof com.namespaces.ListNamespacesRequest)) {
+    if (!(obj instanceof com.namespaces.DeactivateNamespaceRequest)) {
       return super.equals(obj);
     }
-    com.namespaces.ListNamespacesRequest other = (com.namespaces.ListNamespacesRequest) obj;
+    com.namespaces.DeactivateNamespaceRequest other = (com.namespaces.DeactivateNamespaceRequest) obj;
 
-    if (state_ != other.state_) return false;
+    if (!getId()
+        .equals(other.getId())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -123,51 +136,51 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    hash = (37 * hash) + STATE_FIELD_NUMBER;
-    hash = (53 * hash) + state_;
+    hash = (37 * hash) + ID_FIELD_NUMBER;
+    hash = (53 * hash) + getId().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
   }
 
-  public static com.namespaces.ListNamespacesRequest parseFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(byte[] data)
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(java.io.InputStream input)
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -175,26 +188,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static com.namespaces.ListNamespacesRequest parseDelimitedFrom(java.io.InputStream input)
+  public static com.namespaces.DeactivateNamespaceRequest parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static com.namespaces.ListNamespacesRequest parseDelimitedFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static com.namespaces.ListNamespacesRequest parseFrom(
+  public static com.namespaces.DeactivateNamespaceRequest parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -207,7 +220,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(com.namespaces.ListNamespacesRequest prototype) {
+  public static Builder newBuilder(com.namespaces.DeactivateNamespaceRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -223,26 +236,26 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * Protobuf type {@code namespaces.ListNamespacesRequest}
+   * Protobuf type {@code namespaces.DeactivateNamespaceRequest}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:namespaces.ListNamespacesRequest)
-      com.namespaces.ListNamespacesRequestOrBuilder {
+      // @@protoc_insertion_point(builder_implements:namespaces.DeactivateNamespaceRequest)
+      com.namespaces.DeactivateNamespaceRequestOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return com.namespaces.NamespacesProto.internal_static_namespaces_ListNamespacesRequest_descriptor;
+      return com.namespaces.NamespacesProto.internal_static_namespaces_DeactivateNamespaceRequest_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.namespaces.NamespacesProto.internal_static_namespaces_ListNamespacesRequest_fieldAccessorTable
+      return com.namespaces.NamespacesProto.internal_static_namespaces_DeactivateNamespaceRequest_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              com.namespaces.ListNamespacesRequest.class, com.namespaces.ListNamespacesRequest.Builder.class);
+              com.namespaces.DeactivateNamespaceRequest.class, com.namespaces.DeactivateNamespaceRequest.Builder.class);
     }
 
-    // Construct using com.namespaces.ListNamespacesRequest.newBuilder()
+    // Construct using com.namespaces.DeactivateNamespaceRequest.newBuilder()
     private Builder() {
 
     }
@@ -256,24 +269,24 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      state_ = 0;
+      id_ = "";
       return this;
     }
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return com.namespaces.NamespacesProto.internal_static_namespaces_ListNamespacesRequest_descriptor;
+      return com.namespaces.NamespacesProto.internal_static_namespaces_DeactivateNamespaceRequest_descriptor;
     }
 
     @java.lang.Override
-    public com.namespaces.ListNamespacesRequest getDefaultInstanceForType() {
-      return com.namespaces.ListNamespacesRequest.getDefaultInstance();
+    public com.namespaces.DeactivateNamespaceRequest getDefaultInstanceForType() {
+      return com.namespaces.DeactivateNamespaceRequest.getDefaultInstance();
     }
 
     @java.lang.Override
-    public com.namespaces.ListNamespacesRequest build() {
-      com.namespaces.ListNamespacesRequest result = buildPartial();
+    public com.namespaces.DeactivateNamespaceRequest build() {
+      com.namespaces.DeactivateNamespaceRequest result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -281,17 +294,17 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public com.namespaces.ListNamespacesRequest buildPartial() {
-      com.namespaces.ListNamespacesRequest result = new com.namespaces.ListNamespacesRequest(this);
+    public com.namespaces.DeactivateNamespaceRequest buildPartial() {
+      com.namespaces.DeactivateNamespaceRequest result = new com.namespaces.DeactivateNamespaceRequest(this);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartial0(com.namespaces.ListNamespacesRequest result) {
+    private void buildPartial0(com.namespaces.DeactivateNamespaceRequest result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.state_ = state_;
+        result.id_ = id_;
       }
     }
 
@@ -329,18 +342,20 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof com.namespaces.ListNamespacesRequest) {
-        return mergeFrom((com.namespaces.ListNamespacesRequest)other);
+      if (other instanceof com.namespaces.DeactivateNamespaceRequest) {
+        return mergeFrom((com.namespaces.DeactivateNamespaceRequest)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(com.namespaces.ListNamespacesRequest other) {
-      if (other == com.namespaces.ListNamespacesRequest.getDefaultInstance()) return this;
-      if (other.state_ != 0) {
-        setStateValue(other.getStateValue());
+    public Builder mergeFrom(com.namespaces.DeactivateNamespaceRequest other) {
+      if (other == com.namespaces.DeactivateNamespaceRequest.getDefaultInstance()) return this;
+      if (!other.getId().isEmpty()) {
+        id_ = other.id_;
+        bitField0_ |= 0x00000001;
+        onChanged();
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -368,11 +383,11 @@ private static final long serialVersionUID = 0L;
             case 0:
               done = true;
               break;
-            case 8: {
-              state_ = input.readEnum();
+            case 10: {
+              id_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000001;
               break;
-            } // case 8
+            } // case 10
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -390,75 +405,74 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private int state_ = 0;
+    private java.lang.Object id_ = "";
     /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.ActiveStateEnum state = 1 [json_name = "state"];</code>
-     * @return The enum numeric value on the wire for state.
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+     * @return The id.
      */
-    @java.lang.Override public int getStateValue() {
-      return state_;
-    }
-    /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.ActiveStateEnum state = 1 [json_name = "state"];</code>
-     * @param value The enum numeric value on the wire for state to set.
-     * @return This builder for chaining.
-     */
-    public Builder setStateValue(int value) {
-      state_ = value;
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.ActiveStateEnum state = 1 [json_name = "state"];</code>
-     * @return The state.
-     */
-    @java.lang.Override
-    public com.common.ActiveStateEnum getState() {
-      com.common.ActiveStateEnum result = com.common.ActiveStateEnum.forNumber(state_);
-      return result == null ? com.common.ActiveStateEnum.UNRECOGNIZED : result;
-    }
-    /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.ActiveStateEnum state = 1 [json_name = "state"];</code>
-     * @param value The state to set.
-     * @return This builder for chaining.
-     */
-    public Builder setState(com.common.ActiveStateEnum value) {
-      if (value == null) {
-        throw new NullPointerException();
+    public java.lang.String getId() {
+      java.lang.Object ref = id_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        id_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
       }
+    }
+    /**
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+     * @return The bytes for id.
+     */
+    public com.google.protobuf.ByteString
+        getIdBytes() {
+      java.lang.Object ref = id_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        id_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+     * @param value The id to set.
+     * @return This builder for chaining.
+     */
+    public Builder setId(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      id_ = value;
       bitField0_ |= 0x00000001;
-      state_ = value.getNumber();
       onChanged();
       return this;
     }
     /**
-     * <pre>
-     * ACTIVE by default when not specified
-     * </pre>
-     *
-     * <code>.common.ActiveStateEnum state = 1 [json_name = "state"];</code>
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
-    public Builder clearState() {
+    public Builder clearId() {
+      id_ = getDefaultInstance().getId();
       bitField0_ = (bitField0_ & ~0x00000001);
-      state_ = 0;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
+     * @param value The bytes for id to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIdBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      id_ = value;
+      bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
@@ -475,23 +489,23 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:namespaces.ListNamespacesRequest)
+    // @@protoc_insertion_point(builder_scope:namespaces.DeactivateNamespaceRequest)
   }
 
-  // @@protoc_insertion_point(class_scope:namespaces.ListNamespacesRequest)
-  private static final com.namespaces.ListNamespacesRequest DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:namespaces.DeactivateNamespaceRequest)
+  private static final com.namespaces.DeactivateNamespaceRequest DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new com.namespaces.ListNamespacesRequest();
+    DEFAULT_INSTANCE = new com.namespaces.DeactivateNamespaceRequest();
   }
 
-  public static com.namespaces.ListNamespacesRequest getDefaultInstance() {
+  public static com.namespaces.DeactivateNamespaceRequest getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static final com.google.protobuf.Parser<ListNamespacesRequest>
-      PARSER = new com.google.protobuf.AbstractParser<ListNamespacesRequest>() {
+  private static final com.google.protobuf.Parser<DeactivateNamespaceRequest>
+      PARSER = new com.google.protobuf.AbstractParser<DeactivateNamespaceRequest>() {
     @java.lang.Override
-    public ListNamespacesRequest parsePartialFrom(
+    public DeactivateNamespaceRequest parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
@@ -510,17 +524,17 @@ private static final long serialVersionUID = 0L;
     }
   };
 
-  public static com.google.protobuf.Parser<ListNamespacesRequest> parser() {
+  public static com.google.protobuf.Parser<DeactivateNamespaceRequest> parser() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.google.protobuf.Parser<ListNamespacesRequest> getParserForType() {
+  public com.google.protobuf.Parser<DeactivateNamespaceRequest> getParserForType() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.namespaces.ListNamespacesRequest getDefaultInstanceForType() {
+  public com.namespaces.DeactivateNamespaceRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/opentdf/opentdf-v2-poc/services/authorization"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -66,19 +67,22 @@ func start(_ *cobra.Command, _ []string) error {
 	}
 	slog.SetDefault(logger.Logger)
 
+	ctx := context.Background()
+
 	slog.Info("starting opa engine")
 	// Start the opa engine
 	eng, err := opa.NewEngine(conf.OPA)
 	if err != nil {
 		return fmt.Errorf("could not start opa engine: %w", err)
 	}
-	defer eng.Stop(context.Background())
+	defer eng.Stop(ctx)
 
 	// Lets make sure we can establish a new db client
-	dbClient, err := createDatabaseClient(conf.DB)
+	dbClient, err := createDatabaseClient(ctx, conf.DB)
 	if err != nil {
 		return fmt.Errorf("issue creating database client: %w", err)
 	}
+	defer dbClient.Close()
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	otdf, err := server.NewOpenTDFServer(conf.Server)
@@ -111,7 +115,7 @@ func waitForShutdownSignal() {
 	<-sigs
 }
 
-func createDatabaseClient(conf db.Config) (*db.Client, error) {
+func createDatabaseClient(ctx context.Context, conf db.Config) (*db.Client, error) {
 	slog.Info("creating database client")
 	dbClient, err := db.NewClient(conf)
 	if err != nil {
@@ -120,7 +124,7 @@ func createDatabaseClient(conf db.Config) (*db.Client, error) {
 	}
 
 	slog.Info("running database migrations")
-	appliedMigrations, err := dbClient.RunMigrations()
+	appliedMigrations, err := dbClient.RunMigrations(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("issue running database migrations: %w", err)
 	}
@@ -160,6 +164,12 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	err = namespaces.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register namespaces service: %w", err)
+	}
+
+	slog.Info("registering authorization server")
+	err = authorization.NewAuthorizationServer(otdf.GrpcServer, otdf.Mux)
+	if err != nil {
+		return fmt.Errorf("could not register authorization service: %w", err)
 	}
 
 	return nil

@@ -29,3 +29,8 @@ __pycache__
 
 opentdf.yaml
 .vscode/settings.json
+serviceapp
+go.work.sum
+go.work
+*.zip
+examples/examples

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -22,17 +23,9 @@ const (
 	ErrForeignKeyViolation       DbError = "ErrForeignKeyViolation: value is referenced by another table"
 	ErrRestrictViolation         DbError = "ErrRestrictViolation: value cannot be deleted due to restriction"
 	ErrNotFound                  DbError = "ErrNotFound: value not found"
+	ErrEnumValueInvalid          DbError = "ErrEnumValueInvalid: not a valid enum value"
+	ErrUuidInvalid               DbError = "ErrUuidInvalid: value not a valid UUID"
 )
-
-// Validate is a PostgreSQL constraint violation for specific table-column value
-func IsConstraintViolationForColumnVal(err error, table string, column string) bool {
-	if e := WrapIfKnownInvalidQueryErr(err); e != nil {
-		if errors.Is(e, ErrUniqueConstraintViolation) && strings.Contains(err.Error(), getConstraintName(table, column)) {
-			return true
-		}
-	}
-	return false
-}
 
 // Get helpful error message for PostgreSQL violation
 func WrapIfKnownInvalidQueryErr(err error) error {
@@ -49,6 +42,11 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 			return errors.Join(ErrRestrictViolation, e)
 		case pgerrcode.CaseNotFound:
 			return errors.Join(ErrNotFound, e)
+		case pgerrcode.InvalidTextRepresentation:
+			if strings.Contains(e.Message, "invalid input syntax for type uuid") {
+				return errors.Join(ErrUuidInvalid, e)
+			}
+			return errors.Join(ErrEnumValueInvalid, e)
 		default:
 			return e
 		}
@@ -65,18 +63,15 @@ func isPgError(err error) *pgconn.PgError {
 	if errors.As(err, &e) {
 		return e
 	}
+	errMsg := err.Error()
 	// The error is not of type PgError if a SELECT query resulted in no rows
-	if strings.Contains(err.Error(), "no rows in result set") {
+	if strings.Contains(errMsg, "no rows in result set") || err == pgx.ErrNoRows {
 		return &pgconn.PgError{
 			Code:    pgerrcode.CaseNotFound,
 			Message: "err: no rows in result set",
 		}
 	}
 	return nil
-}
-
-func getConstraintName(table string, column string) string {
-	return fmt.Sprintf("%s_%s_key", table, column)
 }
 
 func NewUniqueAlreadyExistsError(value string) error {

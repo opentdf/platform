@@ -121,10 +121,7 @@ func (c Client) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAcc
 	)
 	err = row.Scan(&id, &uri, &publicKeyJSON, &metadataJSON)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, err
-		}
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	if err := protojson.Unmarshal(publicKeyJSON, publicKey); err != nil {
@@ -175,7 +172,7 @@ func (c Client) CreateKeyAccessServer(ctx context.Context, keyAccessServer *kasr
 	// Get ID of new resource
 	var id string
 	if err = row.Scan(&id); err != nil {
-		return nil, err
+		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &kasr.KeyAccessServer{

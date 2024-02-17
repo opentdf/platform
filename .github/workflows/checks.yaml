@@ -1,0 +1,160 @@
+name: "Checks"
+
+on:
+  pull_request:
+    branches:
+      - main
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+  push:
+    branches:
+      - main
+
+jobs:
+  pr:
+    name: Validate PR title
+    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@e9fabac35e210fea40ca5b14c0da95a099eff26f
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  go:
+    runs-on: ubuntu-22.04
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: read
+    strategy:
+      matrix:
+        directory:
+          - "."
+          - sdk
+          - examples
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            sdk/go.sum
+            examples/go.sum
+      - run: make go.work
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        with:
+          version: v1.55
+          only-new-issues: true
+          working-directory: ${{ matrix.directory }}
+      - run: go test ./... -short
+        working-directory: ${{ matrix.directory }}
+
+  integration:
+    name: integration tests
+    runs-on: ubuntu-22.04
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    needs:
+      - go
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            sdk/go.sum
+            examples/go.sum
+      - run: make go.work
+      - run: go test ./integration -race
+      - run: docker-compose up -d
+      - run: cp example-opentdf.yaml opentdf.yaml
+      - run: go run . start &
+      - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
+      - run: sleep 15
+        name: wake me up when github action runner supports docker-compose --wait
+      - run: grpcurl -plaintext localhost:9000 list
+      - run: grpcurl -plaintext localhost:9000 list attributes.AttributesService
+
+  image:
+    name: image build
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    runs-on: ubuntu-22.04
+    needs: integration
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5.1.0
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+
+  buflint:
+    name: Protocol Buffer Lint and Gencode Up-to-date check
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: bufbuild/buf-setup-action@382440cdb8ec7bc25a68d7b4711163d95f7cc3aa
+      - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
+        with:
+          input: proto
+      - uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01
+        # TODO(#212) Block on breaking changes after protos are frozen
+        continue-on-error: true
+        with:
+          input: proto
+          against: "https://github.com/opentdf/opentdf-v2-poc.git#branch=main,subdir=proto"
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            sdk/go.sum
+            examples/attributes/go.sum
+      - run: go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: make buf-generate
+      - name: Restore go.mod after installing protoc-gen-doc
+        run: git restore go.mod go.sum
+      - run: git diff
+      - run: git diff-files --ignore-submodules
+      - name: Check that files have been formatted before PR submission
+        run: git diff-files --quiet --ignore-submodules
+
+  ci:
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    needs:
+      - pr
+      - go
+      - integration
+      - image
+      - buflint
+    runs-on: ubuntu-latest
+    steps:
+      - if: contains(needs.*.result, 'failure')
+        run: exit 1
+
+  license:
+    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    name: license check
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.21'
+          cache: false
+      - name: install go-licenses
+        run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
+      - name: check licenses
+        run: go-licenses check --disallowed_types=forbidden --include_tests ./...
+      

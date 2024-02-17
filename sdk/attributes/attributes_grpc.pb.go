@@ -30,8 +30,8 @@ const (
 	AttributesService_UpdateAttributeValue_FullMethodName               = "/attributes.AttributesService/UpdateAttributeValue"
 	AttributesService_DeleteAttributeValue_FullMethodName               = "/attributes.AttributesService/DeleteAttributeValue"
 	AttributesService_AssignKeyAccessServerToAttribute_FullMethodName   = "/attributes.AttributesService/AssignKeyAccessServerToAttribute"
-	AttributesService_AssignKeyAccessServerToValue_FullMethodName       = "/attributes.AttributesService/AssignKeyAccessServerToValue"
 	AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName = "/attributes.AttributesService/RemoveKeyAccessServerFromAttribute"
+	AttributesService_AssignKeyAccessServerToValue_FullMethodName       = "/attributes.AttributesService/AssignKeyAccessServerToValue"
 	AttributesService_RemoveKeyAccessServerFromValue_FullMethodName     = "/attributes.AttributesService/RemoveKeyAccessServerFromValue"
 )
 
@@ -42,6 +42,62 @@ type AttributesServiceClient interface {
 	// List Attributes
 	// Example:
 	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
+	//
+	// Response:
+	// {
+	// "attributes": [
+	// {
+	// "values": [
+	// {
+	// "members": [],
+	// "grants": [
+	// {
+	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
+	// "metadata": null,
+	// "uri": "kas10",
+	// "public_key": {
+	// "remote": "https://example.com/kas"
+	// }
+	// }
+	// ],
+	// "id": "e2140c39-f478-43cf-9559-0067d596654f",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// ],
+	// "grants": [
+	// {
+	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
+	// "metadata": null,
+	// "uri": "kas10",
+	// "public_key": {
+	// "remote": "https://example.com/kas"
+	// }
+	// }
+	// ],
+	// "id": "2dc75d97-f6a4-4036-9a6a-acc99171fff1",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706878441",
+	// "nanos": 147178000
+	// },
+	// "updated_at": {
+	// "seconds": "1706878441",
+	// "nanos": 147178000
+	// },
+	// "description": ""
+	// },
+	// "namespace": {
+	// "id": "c85d126a-c2f2-4bb6-bc6d-a513015363cb",
+	// "name": "demo.com"
+	// },
+	// "name": "test",
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
+	// }
+	// ]
+	// }
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
 	// List Values
 	// Example:
@@ -64,9 +120,75 @@ type AttributesServiceClient interface {
 	CreateAttributeValue(ctx context.Context, in *CreateAttributeValueRequest, opts ...grpc.CallOption) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error)
 	DeleteAttributeValue(ctx context.Context, in *DeleteAttributeValueRequest, opts ...grpc.CallOption) (*DeleteAttributeValueResponse, error)
+	// Assign Key Access Server to Attribute
+	//
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
+	//
+	// Example Request:
+	// {
+	// "attribute_key_access_server": {
+	// "attribute_id": "attribute_id",
+	// "key_access_server_id
+	// }
+	//
+	// Example Response:
+	// {
+	// "attribute_key_access_server": {
+	// "attribute_id": "attribute_id",
+	// "key_access_server_id: "key_access_server_id"
+	// }
 	AssignKeyAccessServerToAttribute(ctx context.Context, in *AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToAttributeResponse, error)
-	AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error)
+	// Remove Key Access Server to Attribute
+	//
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
+	//
+	// Example Request:
+	// {
+	// "attribute_key_access_server": {
+	// "attribute_id": "attribute_id",
+	// "key_access_server_id
+	// }
+	//
+	// Example Response:
+	// {
+	// "attribute_key_access_server": {
+	// "attribute_id": "attribute_id",
+	// "key_access_server_id: "key_access_server_id"
+	// }
 	RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error)
+	// Assign Key Access Server to Value
+	//
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToValue
+	//
+	// Example Request:
+	// {
+	// "attribute_key_access_server": {
+	// "value_id": "attribute_id",
+	// "key_access_server_id
+	// }
+	//
+	// Example Response:
+	// {
+	// "attribute_key_access_server": {
+	// "value_id": "attribute_id",
+	// "key_access_server_id: "key_access_server_id"
+	// }
+	AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error)
+	// Remove Key Access Server to Value
+	// grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemoveKeyAccessServerFromValue
+	//
+	// Example Request:
+	// {
+	// "value_key_access_server": {
+	// "value_id": "value_id",
+	// "key_access_server_id
+	// }
+	//
+	// Example Response:
+	// {
+	// "value_key_access_server": {
+	// "value_id": "value_id",
+	// "key_access_server_id
 	RemoveKeyAccessServerFromValue(ctx context.Context, in *RemoveKeyAccessServerFromValueRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromValueResponse, error)
 }
 
@@ -177,18 +299,18 @@ func (c *attributesServiceClient) AssignKeyAccessServerToAttribute(ctx context.C
 	return out, nil
 }
 
-func (c *attributesServiceClient) AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error) {
-	out := new(AssignKeyAccessServerToValueResponse)
-	err := c.cc.Invoke(ctx, AttributesService_AssignKeyAccessServerToValue_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error) {
+	out := new(RemoveKeyAccessServerFromAttributeResponse)
+	err := c.cc.Invoke(ctx, AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *attributesServiceClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error) {
-	out := new(RemoveKeyAccessServerFromAttributeResponse)
-	err := c.cc.Invoke(ctx, AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName, in, out, opts...)
+func (c *attributesServiceClient) AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error) {
+	out := new(AssignKeyAccessServerToValueResponse)
+	err := c.cc.Invoke(ctx, AttributesService_AssignKeyAccessServerToValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -211,6 +333,62 @@ type AttributesServiceServer interface {
 	// List Attributes
 	// Example:
 	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
+	//
+	// Response:
+	// {
+	// "attributes": [
+	// {
+	// "values": [
+	// {
+	// "members": [],
+	// "grants": [
+	// {
+	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
+	// "metadata": null,
+	// "uri": "kas10",
+	// "public_key": {
+	// "remote": "https://example.com/kas"
+	// }
+	// }
+	// ],
+	// "id": "e2140c39-f478-43cf-9559-0067d596654f",
+	// "metadata": null,
+	// "attribute_id": "",
+	// "value": "value1"
+	// }
+	// ],
+	// "grants": [
+	// {
+	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
+	// "metadata": null,
+	// "uri": "kas10",
+	// "public_key": {
+	// "remote": "https://example.com/kas"
+	// }
+	// }
+	// ],
+	// "id": "2dc75d97-f6a4-4036-9a6a-acc99171fff1",
+	// "metadata": {
+	// "labels": [],
+	// "created_at": {
+	// "seconds": "1706878441",
+	// "nanos": 147178000
+	// },
+	// "updated_at": {
+	// "seconds": "1706878441",
+	// "nanos": 147178000
+	// },
+	// "description": ""
+	// },
+	// "namespace": {
+	// "id": "c85d126a-c2f2-4bb6-bc6d-a513015363cb",
+	// "name": "demo.com"
+	// },
+	// "name": "test",
+	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
+	// }
+	// ]
+	// }
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
 	// List Values
 	// Example:
@@ -233,9 +411,75 @@ type AttributesServiceServer interface {
 	CreateAttributeValue(context.Context, *CreateAttributeValueRequest) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error)
 	DeleteAttributeValue(context.Context, *DeleteAttributeValueRequest) (*DeleteAttributeValueResponse, error)
+	// Assign Key Access Server to Attribute
+	//
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
+	//
+	// Example Request:
+	// {
+	// "attribute_key_access_server": {
+	// "attribute_id": "attribute_id",
+	// "key_access_server_id
+	// }
+	//
+	// Example Response:
+	// {
+	// "attribute_key_access_server": {
+	// "attribute_id": "attribute_id",
+	// "key_access_server_id: "key_access_server_id"
+	// }
 	AssignKeyAccessServerToAttribute(context.Context, *AssignKeyAccessServerToAttributeRequest) (*AssignKeyAccessServerToAttributeResponse, error)
-	AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error)
+	// Remove Key Access Server to Attribute
+	//
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
+	//
+	// Example Request:
+	// {
+	// "attribute_key_access_server": {
+	// "attribute_id": "attribute_id",
+	// "key_access_server_id
+	// }
+	//
+	// Example Response:
+	// {
+	// "attribute_key_access_server": {
+	// "attribute_id": "attribute_id",
+	// "key_access_server_id: "key_access_server_id"
+	// }
 	RemoveKeyAccessServerFromAttribute(context.Context, *RemoveKeyAccessServerFromAttributeRequest) (*RemoveKeyAccessServerFromAttributeResponse, error)
+	// Assign Key Access Server to Value
+	//
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToValue
+	//
+	// Example Request:
+	// {
+	// "attribute_key_access_server": {
+	// "value_id": "attribute_id",
+	// "key_access_server_id
+	// }
+	//
+	// Example Response:
+	// {
+	// "attribute_key_access_server": {
+	// "value_id": "attribute_id",
+	// "key_access_server_id: "key_access_server_id"
+	// }
+	AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error)
+	// Remove Key Access Server to Value
+	// grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemoveKeyAccessServerFromValue
+	//
+	// Example Request:
+	// {
+	// "value_key_access_server": {
+	// "value_id": "value_id",
+	// "key_access_server_id
+	// }
+	//
+	// Example Response:
+	// {
+	// "value_key_access_server": {
+	// "value_id": "value_id",
+	// "key_access_server_id
 	RemoveKeyAccessServerFromValue(context.Context, *RemoveKeyAccessServerFromValueRequest) (*RemoveKeyAccessServerFromValueResponse, error)
 	mustEmbedUnimplementedAttributesServiceServer()
 }
@@ -277,11 +521,11 @@ func (UnimplementedAttributesServiceServer) DeleteAttributeValue(context.Context
 func (UnimplementedAttributesServiceServer) AssignKeyAccessServerToAttribute(context.Context, *AssignKeyAccessServerToAttributeRequest) (*AssignKeyAccessServerToAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AssignKeyAccessServerToAttribute not implemented")
 }
-func (UnimplementedAttributesServiceServer) AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AssignKeyAccessServerToValue not implemented")
-}
 func (UnimplementedAttributesServiceServer) RemoveKeyAccessServerFromAttribute(context.Context, *RemoveKeyAccessServerFromAttributeRequest) (*RemoveKeyAccessServerFromAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveKeyAccessServerFromAttribute not implemented")
+}
+func (UnimplementedAttributesServiceServer) AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AssignKeyAccessServerToValue not implemented")
 }
 func (UnimplementedAttributesServiceServer) RemoveKeyAccessServerFromValue(context.Context, *RemoveKeyAccessServerFromValueRequest) (*RemoveKeyAccessServerFromValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveKeyAccessServerFromValue not implemented")
@@ -497,24 +741,6 @@ func _AttributesService_AssignKeyAccessServerToAttribute_Handler(srv interface{}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttributesService_AssignKeyAccessServerToValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AssignKeyAccessServerToValueRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AttributesServiceServer).AssignKeyAccessServerToValue(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AttributesService_AssignKeyAccessServerToValue_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttributesServiceServer).AssignKeyAccessServerToValue(ctx, req.(*AssignKeyAccessServerToValueRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _AttributesService_RemoveKeyAccessServerFromAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveKeyAccessServerFromAttributeRequest)
 	if err := dec(in); err != nil {
@@ -529,6 +755,24 @@ func _AttributesService_RemoveKeyAccessServerFromAttribute_Handler(srv interface
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AttributesServiceServer).RemoveKeyAccessServerFromAttribute(ctx, req.(*RemoveKeyAccessServerFromAttributeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_AssignKeyAccessServerToValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AssignKeyAccessServerToValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).AssignKeyAccessServerToValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_AssignKeyAccessServerToValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).AssignKeyAccessServerToValue(ctx, req.(*AssignKeyAccessServerToValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -603,12 +847,12 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AttributesService_AssignKeyAccessServerToAttribute_Handler,
 		},
 		{
-			MethodName: "AssignKeyAccessServerToValue",
-			Handler:    _AttributesService_AssignKeyAccessServerToValue_Handler,
-		},
-		{
 			MethodName: "RemoveKeyAccessServerFromAttribute",
 			Handler:    _AttributesService_RemoveKeyAccessServerFromAttribute_Handler,
+		},
+		{
+			MethodName: "AssignKeyAccessServerToValue",
+			Handler:    _AttributesService_AssignKeyAccessServerToValue_Handler,
 		},
 		{
 			MethodName: "RemoveKeyAccessServerFromValue",

@@ -74,6 +74,14 @@ jobs:
             examples/go.sum
       - run: make go.work
       - run: go test ./integration -race
+      - run: docker-compose up -d
+      - run: cp example-opentdf.yaml opentdf.yaml
+      - run: go run . start &
+      - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
+      - run: sleep 15
+        name: wake me up when github action runner supports docker-compose --wait
+      - run: grpcurl -plaintext localhost:9000 list
+      - run: grpcurl -plaintext localhost:9000 list attributes.AttributesService
 
   image:
     name: image build

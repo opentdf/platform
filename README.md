@@ -27,7 +27,7 @@ With go 1.18 or higher:
 
 ### Run
 
-1. `docker-compose -f opentdf-compose.yaml up`
+1. `docker-compose up`
 
 2. `goose -dir=./migrations postgres "postgres://postgres:changeme@localhost:5432/opentdf" up`
 

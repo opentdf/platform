@@ -6,24 +6,22 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/services/authorization"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/opentdf/opentdf-v2-poc/services/authorization"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/config"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/internal/logger"
 	"github.com/opentdf/opentdf-v2-poc/internal/opa"
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/services/policy/resourcemapping"
 
-	"github.com/opentdf/opentdf-v2-poc/services/policy/attributes"
 	"github.com/opentdf/opentdf-v2-poc/services/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/services/policy/subjectmapping"
+	"github.com/opentdf/opentdf-v2-poc/services/policy"
 
-	"github.com/opentdf/opentdf-v2-poc/services/policy/namespaces"
 	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
@@ -136,19 +134,19 @@ func createDatabaseClient(ctx context.Context, conf db.Config) (*db.Client, erro
 func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
 	var err error
 	slog.Info("registering resource mappings server")
-	err = resourcemapping.NewResourceMappingServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = policy.NewResourceMappingServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register resource mappings service: %w", err)
 	}
 
 	slog.Info("registering attributes server")
-	err = attributes.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = policy.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register attributes service: %w", err)
 	}
 
 	slog.Info("registering subject mappings service")
-	err = subjectmapping.NewSubjectMappingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
+	err = policy.NewSubjectMappingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register subject mappings service: %w", err)
 	}
@@ -160,7 +158,7 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	}
 
 	slog.Info("registering namespaces server")
-	err = namespaces.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = policy.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register namespaces service: %w", err)
 	}

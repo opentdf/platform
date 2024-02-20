@@ -5,13 +5,12 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
+	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-var AttributeValueTable = tableName(TableAttributeValues)
 
 func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 	var (
@@ -24,7 +23,7 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 	)
 
 	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId, &isActive); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	m := &common.Metadata{}
@@ -55,7 +54,7 @@ func createAttributeValueSql(
 	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
-	return newStatementBuilder().
+	return db.NewStatementBuilder().
 		Insert(AttributeValueTable).
 		Columns(
 			"attribute_definition_id",
@@ -73,8 +72,8 @@ func createAttributeValueSql(
 		ToSql()
 }
 
-func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
-	metadataJson, metadata, err := marshalCreateMetadata(v.Metadata)
+func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
+	metadataJson, metadata, err := db.MarshalCreateMetadata(v.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -90,10 +89,10 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 	}
 
 	var id string
-	if r, err := c.queryRow(ctx, sql, args, err); err != nil {
+	if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
 		return nil, err
 	} else if err := r.Scan(&id); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	rV := &attributes.Value{
@@ -108,23 +107,23 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 }
 
 func getAttributeValueSql(id string) (string, []interface{}, error) {
-	return newStatementBuilder().
+	return db.NewStatementBuilder().
 		Select(
-			Tables.AttributeValues.Field("id"),
-			Tables.AttributeValues.Field("value"),
-			Tables.AttributeValues.Field("members"),
-			Tables.AttributeValues.Field("metadata"),
-			Tables.AttributeValues.Field("attribute_definition_id"),
-			Tables.AttributeValues.Field("active"),
+			db.Tables.AttributeValues.Field("id"),
+			db.Tables.AttributeValues.Field("value"),
+			db.Tables.AttributeValues.Field("members"),
+			db.Tables.AttributeValues.Field("metadata"),
+			db.Tables.AttributeValues.Field("attribute_definition_id"),
+			db.Tables.AttributeValues.Field("active"),
 		).
 		From(AttributeValueTable).
-		Where(sq.Eq{Tables.AttributeValues.Field("id"): id}).
+		Where(sq.Eq{db.Tables.AttributeValues.Field("id"): id}).
 		ToSql()
 }
 
-func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
+func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	sql, args, err := getAttributeValueSql(id)
-	row, err := c.queryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
@@ -138,28 +137,28 @@ func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.V
 }
 
 func listAttributeValuesSql(attribute_id string, state string) (string, []interface{}, error) {
-	sb := newStatementBuilder().
+	sb := db.NewStatementBuilder().
 		Select(
-			Tables.AttributeValues.Field("id"),
-			Tables.AttributeValues.Field("value"),
-			Tables.AttributeValues.Field("members"),
-			Tables.AttributeValues.Field("metadata"),
-			Tables.AttributeValues.Field("attribute_definition_id"),
-			Tables.AttributeValues.Field("active"),
+			db.Tables.AttributeValues.Field("id"),
+			db.Tables.AttributeValues.Field("value"),
+			db.Tables.AttributeValues.Field("members"),
+			db.Tables.AttributeValues.Field("metadata"),
+			db.Tables.AttributeValues.Field("attribute_definition_id"),
+			db.Tables.AttributeValues.Field("active"),
 		).
 		From(AttributeValueTable)
 
 	where := sq.Eq{}
 	if state != StateAny {
-		where[Tables.AttributeValues.Field("active")] = state == StateActive
+		where[db.Tables.AttributeValues.Field("active")] = state == StateActive
 	}
-	where[Tables.AttributeValues.Field("attribute_definition_id")] = attribute_id
+	where[db.Tables.AttributeValues.Field("attribute_definition_id")] = attribute_id
 	return sb.Where(where).ToSql()
 }
 
-func (c Client) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*attributes.Value, error) {
+func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*attributes.Value, error) {
 	sql, args, err := listAttributeValuesSql(attribute_id, state)
-	rows, err := c.query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +182,7 @@ func updateAttributeValueSql(
 	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
-	sb := newStatementBuilder().
+	sb := db.NewStatementBuilder().
 		Update(AttributeValueTable).
 		Set("metadata", metadata)
 
@@ -199,13 +198,13 @@ func updateAttributeValueSql(
 		ToSql()
 }
 
-func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
+func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	metadataJson, _, err := marshalUpdateMetadata(prev.Metadata, v.Metadata)
+	metadataJson, _, err := db.MarshalUpdateMetadata(prev.Metadata, v.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +219,7 @@ func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attribut
 		return nil, err
 	}
 
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 
@@ -228,36 +227,36 @@ func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attribut
 }
 
 func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
-	return newStatementBuilder().
+	return db.NewStatementBuilder().
 		Update(AttributeValueTable).
 		Set("active", false).
-		Where(sq.Eq{Tables.AttributeValues.Field("id"): id}).
+		Where(sq.Eq{db.Tables.AttributeValues.Field("id"): id}).
 		ToSql()
 }
 
-func (c Client) DeactivateAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
+func (c PolicyDbClient) DeactivateAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	sql, args, err := deactivateAttributeValueSql(id)
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 	return c.GetAttributeValue(ctx, id)
 }
 
 func deleteAttributeValueSql(id string) (string, []interface{}, error) {
-	return newStatementBuilder().
+	return db.NewStatementBuilder().
 		Delete(AttributeValueTable).
-		Where(sq.Eq{Tables.AttributeValues.Field("id"): id}).
+		Where(sq.Eq{db.Tables.AttributeValues.Field("id"): id}).
 		ToSql()
 }
 
-func (c Client) DeleteAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
+func (c PolicyDbClient) DeleteAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	sql, args, err := deleteAttributeValueSql(id)
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 
@@ -265,21 +264,21 @@ func (c Client) DeleteAttributeValue(ctx context.Context, id string) (*attribute
 }
 
 func assignKeyAccessServerToValueSql(valueID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeValueKeyAccessGrants
-	return newStatementBuilder().
+	t := db.Tables.AttributeValueKeyAccessGrants
+	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("attribute_value_id", "key_access_server_id").
 		Values(valueID, keyAccessServerID).
 		ToSql()
 }
 
-func (c Client) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
+func (c PolicyDbClient) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
 	sql, args, err := assignKeyAccessServerToValueSql(k.ValueId, k.KeyAccessServerId)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 
@@ -287,22 +286,22 @@ func (c Client) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.
 }
 
 func removeKeyAccessServerFromValueSql(valueID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeValueKeyAccessGrants
-	return newStatementBuilder().
+	t := db.Tables.AttributeValueKeyAccessGrants
+	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{"attribute_value_id": valueID, "key_access_server_id": keyAccessServerID}).
 		Suffix("IS TRUE RETURNING *").
 		ToSql()
 }
 
-func (c Client) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
+func (c PolicyDbClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
 	sql, args, err := removeKeyAccessServerFromValueSql(k.ValueId, k.KeyAccessServerId)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := c.queryCount(ctx, sql, args); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+	if _, err := c.QueryCount(ctx, sql, args); err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return k, nil

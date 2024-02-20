@@ -1,4 +1,4 @@
-package subjectmapping
+package policy
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	sm "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/subjectmapping"
 
 	"github.com/opentdf/opentdf-v2-poc/services"
@@ -15,14 +16,14 @@ import (
 
 type SubjectMappingService struct {
 	sm.UnimplementedSubjectMappingServiceServer
-	dbClient *db.Client
+	dbClient *policydb.PolicyDbClient
 }
 
 func NewSubjectMappingServer(dbClient *db.Client, grpcServer *grpc.Server,
 	grpcInprocess *grpc.Server, mux *runtime.ServeMux,
 ) error {
 	s := &SubjectMappingService{
-		dbClient: dbClient,
+		dbClient: policydb.WithPolicyDbClient(*dbClient),
 	}
 	sm.RegisterSubjectMappingServiceServer(grpcServer, s)
 	if grpcInprocess != nil {

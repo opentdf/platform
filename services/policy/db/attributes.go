@@ -10,19 +10,16 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
+	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
 	"github.com/opentdf/opentdf-v2-poc/protocol/go/kasregistry"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
 	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/namespaces"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var (
-	AttributeTable              = tableName(TableAttributes)
-	NamespacesTable             = tableName(TableNamespaces)
-	AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
-)
+var AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
 
 func attributesRuleTypeEnumTransformIn(value string) string {
 	return strings.TrimPrefix(value, AttributeRuleTypeEnumPrefix)
@@ -52,19 +49,23 @@ func attributesValuesProtojson(valuesJson []byte) ([]*attributes.Value, error) {
 }
 
 func attributesSelect() sq.SelectBuilder {
-	return newStatementBuilder().Select(
-		Tables.Attributes.Field("id"),
-		Tables.Attributes.Field("name"),
-		Tables.Attributes.Field("rule"),
-		Tables.Attributes.Field("metadata"),
-		Tables.Attributes.Field("namespace_id"),
-		Tables.Attributes.Field("active"),
-		Tables.Namespaces.Field("name"),
+	AttributeValueTable := AttributeValueTable
+	AttributeTable := AttributeTable
+	NamespacesTable := db.Tables.Namespaces.Name()
+	KeyAccessServerTable := db.Tables.KeyAccessServerRegistry.Name()
+	return db.NewStatementBuilder().Select(
+		db.Tables.Attributes.Field("id"),
+		db.Tables.Attributes.Field("name"),
+		db.Tables.Attributes.Field("rule"),
+		db.Tables.Attributes.Field("metadata"),
+		db.Tables.Attributes.Field("namespace_id"),
+		db.Tables.Attributes.Field("active"),
+		db.Tables.Namespaces.Field("name"),
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
-			"'id', "+Tables.AttributeValues.Field("id")+", "+
-			"'value', "+Tables.AttributeValues.Field("value")+","+
-			"'members', "+Tables.AttributeValues.Field("members")+","+
+			"'id', "+db.Tables.AttributeValues.Field("id")+", "+
+			"'value', "+db.Tables.AttributeValues.Field("value")+","+
+			"'members', "+db.Tables.AttributeValues.Field("members")+","+
 			"'grants', ("+
 			"SELECT JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
@@ -73,24 +74,24 @@ func attributesSelect() sq.SelectBuilder {
 			"'public_key', kas.public_key"+
 			")"+
 			") "+
-			"FROM "+KeyAccessServerTable+" kas "+
-			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
+			"FROM "+db.Tables.KeyAccessServerRegistry.Name()+" kas "+
+			"JOIN "+db.Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
 			"WHERE avkag.attribute_value_id = "+AttributeValueTable+".id"+
 			")"+
 			")) AS values",
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
-			"'id', "+Tables.KeyAccessServerRegistry.Field("id")+", "+
-			"'uri', "+Tables.KeyAccessServerRegistry.Field("uri")+", "+
-			"'public_key', "+Tables.KeyAccessServerRegistry.Field("public_key")+
+			"'id', "+db.Tables.KeyAccessServerRegistry.Field("id")+", "+
+			"'uri', "+db.Tables.KeyAccessServerRegistry.Field("uri")+", "+
+			"'public_key', "+db.Tables.KeyAccessServerRegistry.Field("public_key")+
 			")"+
 			") AS grants",
 	).
 		LeftJoin(AttributeValueTable+" ON "+AttributeValueTable+".attribute_definition_id = "+AttributeTable+".id").
 		LeftJoin(NamespacesTable+" ON "+NamespacesTable+".id = "+AttributeTable+".namespace_id").
-		LeftJoin(Tables.AttributeKeyAccessGrants.Name()+" ON "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".attribute_definition_id = "+AttributeTable+".id").
-		LeftJoin(KeyAccessServerTable+" ON "+KeyAccessServerTable+".id = "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".key_access_server_id").
-		GroupBy(Tables.Attributes.Field("id"), Tables.Namespaces.Field("name"))
+		LeftJoin(db.Tables.AttributeKeyAccessGrants.Name()+" ON "+db.Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".attribute_definition_id = "+AttributeTable+".id").
+		LeftJoin(KeyAccessServerTable+" ON "+KeyAccessServerTable+".id = "+db.Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".key_access_server_id").
+		GroupBy(db.Tables.Attributes.Field("id"), db.Tables.Namespaces.Field("name"))
 }
 
 func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
@@ -107,7 +108,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 	)
 	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &isActive, &namespaceName, &valuesJson, &grants)
 	if err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	m := &common.Metadata{}
@@ -126,7 +127,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 	}
 	var k []*kasregistry.KeyAccessServer
 	if grants != nil {
-		k, err = keyAccessServerProtojson(grants)
+		k, err = db.KeyAccessServerProtojson(grants)
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +164,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 		)
 		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &isActive, &namespaceName, &valuesJson, &grants)
 		if err != nil {
-			return nil, WrapIfKnownInvalidQueryErr(err)
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
 
 		attribute := &attributes.Attribute{
@@ -194,7 +195,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 		}
 
 		if grants != nil {
-			k, err := keyAccessServerProtojson(grants)
+			k, err := db.KeyAccessServerProtojson(grants)
 			if err != nil {
 				return nil, err
 			}
@@ -213,15 +214,15 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 func listAllAttributesSql(state string) (string, []interface{}, error) {
 	q := attributesSelect()
 	if state != StateAny {
-		q = q.Where(sq.Eq{Tables.Attributes.Field("active"): state == StateActive})
+		q = q.Where(sq.Eq{db.Tables.Attributes.Field("active"): state == StateActive})
 	}
-	return q.From(Tables.Attributes.Name()).
+	return q.From(AttributeTable).
 		ToSql()
 }
 
-func (c Client) ListAllAttributes(ctx context.Context, state string) ([]*attributes.Attribute, error) {
+func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]*attributes.Attribute, error) {
 	sql, args, err := listAllAttributesSql(state)
-	rows, err := c.query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
@@ -238,14 +239,14 @@ func (c Client) ListAllAttributes(ctx context.Context, state string) ([]*attribu
 
 func getAttributeSql(id string) (string, []interface{}, error) {
 	return attributesSelect().
-		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
+		Where(sq.Eq{db.Tables.Attributes.Field("id"): id}).
 		From(AttributeTable).
 		ToSql()
 }
 
-func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
 	sql, args, err := getAttributeSql(id)
-	row, err := c.queryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
@@ -261,15 +262,15 @@ func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attrib
 
 func getAttributesByNamespaceSql(namespaceId string) (string, []interface{}, error) {
 	return attributesSelect().
-		Where(sq.Eq{Tables.Attributes.Field("namespace_id"): namespaceId}).
+		Where(sq.Eq{db.Tables.Attributes.Field("namespace_id"): namespaceId}).
 		From(AttributeTable).
 		ToSql()
 }
 
-func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string) ([]*attributes.Attribute, error) {
+func (c PolicyDbClient) GetAttributesByNamespace(ctx context.Context, namespaceId string) ([]*attributes.Attribute, error) {
 	sql, args, err := getAttributesByNamespaceSql(namespaceId)
 
-	rows, err := c.query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +285,7 @@ func (c Client) GetAttributesByNamespace(ctx context.Context, namespaceId string
 }
 
 func createAttributeSql(namespaceId string, name string, rule string, metadata []byte) (string, []interface{}, error) {
-	return newStatementBuilder().
+	return db.NewStatementBuilder().
 		Insert(AttributeTable).
 		Columns("namespace_id", "name", "rule", "metadata").
 		Values(namespaceId, name, rule, metadata).
@@ -292,18 +293,18 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		ToSql()
 }
 
-func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
-	metadataJson, metadata, err := marshalCreateMetadata(attr.Metadata)
+func (c PolicyDbClient) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
+	metadataJson, metadata, err := db.MarshalCreateMetadata(attr.Metadata)
 	if err != nil {
 		return nil, err
 	}
 
 	sql, args, err := createAttributeSql(attr.NamespaceId, attr.Name, attributesRuleTypeEnumTransformIn(attr.Rule.String()), metadataJson)
 	var id string
-	if r, err := c.queryRow(ctx, sql, args, err); err != nil {
+	if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
 		return nil, err
 	} else if err := r.Scan(&id); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	a := &attributes.Attribute{
@@ -320,7 +321,7 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 }
 
 func updateAttributeSql(id string, name string, rule string, metadata []byte) (string, []interface{}, error) {
-	sb := newStatementBuilder().
+	sb := db.NewStatementBuilder().
 		Update(AttributeTable)
 
 	if name != "" {
@@ -331,27 +332,27 @@ func updateAttributeSql(id string, name string, rule string, metadata []byte) (s
 	}
 
 	return sb.Set("metadata", metadata).
-		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
+		Where(sq.Eq{db.Tables.Attributes.Field("id"): id}).
 		ToSql()
 }
 
-func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
+func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
 	// get attribute before updating
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if a.Namespace.Id != attr.NamespaceId {
-		return nil, errors.Join(ErrRestrictViolation, fmt.Errorf("cannot change namespaceId"))
+		return nil, errors.Join(db.ErrRestrictViolation, fmt.Errorf("cannot change namespaceId"))
 	}
 
-	metadataJson, _, err := marshalUpdateMetadata(a.Metadata, attr.Metadata)
+	metadataJson, _, err := db.MarshalUpdateMetadata(a.Metadata, attr.Metadata)
 	if err != nil {
 		return nil, err
 	}
 
 	sql, args, err := updateAttributeSql(id, attr.Name, attributesRuleTypeEnumTransformIn(attr.Rule.String()), metadataJson)
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 
@@ -361,31 +362,31 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 }
 
 func deactivateAttributeSql(id string) (string, []interface{}, error) {
-	return newStatementBuilder().
-		Update(Tables.Attributes.Name()).
+	return db.NewStatementBuilder().
+		Update(AttributeTable).
 		Set("active", false).
-		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
+		Where(sq.Eq{db.Tables.Attributes.Field("id"): id}).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
-func (c Client) DeactivateAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+func (c PolicyDbClient) DeactivateAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
 	sql, args, err := deactivateAttributeSql(id)
 
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 	return c.GetAttribute(ctx, id)
 }
 
 func deleteAttributeSql(id string) (string, []interface{}, error) {
-	return newStatementBuilder().
+	return db.NewStatementBuilder().
 		Delete(AttributeTable).
-		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
+		Where(sq.Eq{db.Tables.Attributes.Field("id"): id}).
 		ToSql()
 }
 
-func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+func (c PolicyDbClient) DeleteAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
 	// get attribute before deleting
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
@@ -394,7 +395,7 @@ func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Att
 
 	sql, args, err := deleteAttributeSql(id)
 
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 
@@ -403,18 +404,18 @@ func (c Client) DeleteAttribute(ctx context.Context, id string) (*attributes.Att
 }
 
 func assignKeyAccessServerToAttributeSql(attributeID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeKeyAccessGrants
-	return newStatementBuilder().
+	t := db.Tables.AttributeKeyAccessGrants
+	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("attribute_definition_id", "key_access_server_id").
 		Values(attributeID, keyAccessServerID).
 		ToSql()
 }
 
-func (c Client) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
+func (c PolicyDbClient) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
 	sql, args, err := assignKeyAccessServerToAttributeSql(k.AttributeId, k.KeyAccessServerId)
 
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 
@@ -422,22 +423,22 @@ func (c Client) AssignKeyAccessServerToAttribute(ctx context.Context, k *attribu
 }
 
 func removeKeyAccessServerFromAttributeSql(attributeID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeKeyAccessGrants
-	return newStatementBuilder().
+	t := db.Tables.AttributeKeyAccessGrants
+	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{"attribute_definition_id": attributeID, "key_access_server_id": keyAccessServerID}).
 		Suffix("IS TRUE RETURNING *").
 		ToSql()
 }
 
-func (c Client) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
+func (c PolicyDbClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
 	sql, args, err := removeKeyAccessServerFromAttributeSql(k.AttributeId, k.KeyAccessServerId)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := c.queryCount(ctx, sql, args); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+	if _, err := c.QueryCount(ctx, sql, args); err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return k, nil

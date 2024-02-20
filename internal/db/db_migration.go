@@ -24,7 +24,7 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 			return
 		}
 		var tag pgconn.CommandTag
-		tag, err = c.Exec(ctx, q)
+		tag, err = c.Pgx.Exec(ctx, q)
 		if err != nil {
 			slog.ErrorContext(ctx, "Error while running command", "query", q, "err", err)
 		}
@@ -43,7 +43,7 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 	// set the search path
 	exec(fmt.Sprintf("SET search_path TO %s", c.config.Schema))
 
-	pool, ok := c.PgxIface.(*pgxpool.Pool)
+	pool, ok := c.Pgx.(*pgxpool.Pool)
 	if !ok || pool == nil {
 		return applied, fmt.Errorf("failed to cast pgxpool.Pool")
 	}
@@ -83,7 +83,7 @@ func (c *Client) MigrationDown() (int, error) {
 		return applied, nil
 	}
 
-	pool, ok := c.PgxIface.(*pgxpool.Pool)
+	pool, ok := c.Pgx.(*pgxpool.Pool)
 	if !ok || pool == nil {
 		return applied, fmt.Errorf("failed to cast pgxpool.Pool")
 	}

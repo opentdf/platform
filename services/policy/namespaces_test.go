@@ -1,9 +1,10 @@
-package namespaces
+package policy
 
 import (
 	"log/slog"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/suite"
 )
@@ -20,9 +21,10 @@ func (suite *NamespacesSuite) SetupTest() {
 		slog.Error("failed to create mock database connection", slog.String("error", err.Error()))
 	}
 	suite.mock = mock
+	dbClient := &db.Client{
+		Pgx: mock,
+	}
 	suite.namespaceServer = &NamespacesService{
-		dbClient: &db.Client{
-			PgxIface: mock,
-		},
+		dbClient: policydb.WithPolicyDbClient(*dbClient),
 	}
 }

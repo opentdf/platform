@@ -8,18 +8,19 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	kasr "github.com/opentdf/opentdf-v2-poc/protocol/go/kasregistry"
+	kasDb "github.com/opentdf/opentdf-v2-poc/services/kasregistry/db"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
 )
 
 type KeyAccessServerRegistry struct {
 	kasr.UnimplementedKeyAccessServerRegistryServiceServer
-	dbClient *db.Client
+	dbClient *kasDb.KasRegistryDbClient
 }
 
 func NewKeyAccessServerRegistryServer(dbClient *db.Client, grpcServer *grpc.Server, mux *runtime.ServeMux) error {
 	kagSvc := &KeyAccessServerRegistry{
-		dbClient: dbClient,
+		dbClient: kasDb.WithKasrDbClient(*dbClient),
 	}
 	kasr.RegisterKeyAccessServerRegistryServiceServer(grpcServer, kagSvc)
 

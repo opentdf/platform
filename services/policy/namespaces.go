@@ -1,4 +1,4 @@
-package namespaces
+package policy
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	namespaces "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
@@ -14,12 +15,12 @@ import (
 
 type NamespacesService struct {
 	namespaces.UnimplementedNamespaceServiceServer
-	dbClient *db.Client
+	dbClient *policydb.PolicyDbClient
 }
 
 func NewNamespacesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
 	ns := &NamespacesService{
-		dbClient: dbClient,
+		dbClient: policydb.WithPolicyDbClient(*dbClient),
 	}
 	namespaces.RegisterNamespaceServiceServer(g, ns)
 	err := namespaces.RegisterNamespaceServiceHandlerServer(context.Background(), s, ns)

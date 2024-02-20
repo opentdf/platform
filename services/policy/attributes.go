@@ -1,4 +1,4 @@
-package attributes
+package policy
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	attr "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
@@ -14,12 +15,12 @@ import (
 
 type AttributesService struct {
 	attr.UnimplementedAttributesServiceServer
-	dbClient *db.Client
+	dbClient *policydb.PolicyDbClient
 }
 
 func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
 	as := &AttributesService{
-		dbClient: dbClient,
+		dbClient: policydb.WithPolicyDbClient(*dbClient),
 	}
 	attr.RegisterAttributesServiceServer(g, as)
 	err := attr.RegisterAttributesServiceHandlerServer(context.Background(), s, as)

@@ -5,13 +5,12 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
+	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
 	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/resourcemapping"
 	"google.golang.org/protobuf/encoding/protojson"
 )
-
-var ResourceMappingTable = tableName(TableResourceMappings)
 
 func resourceMappingHydrateList(rows pgx.Rows) ([]*resourcemapping.ResourceMapping, error) {
 	var list []*resourcemapping.ResourceMapping
@@ -43,7 +42,7 @@ func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, 
 		&attributeValueJSON,
 	)
 	if err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	if metadataJSON != nil {
@@ -67,9 +66,9 @@ func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, 
 }
 
 func resourceMappingSelect() sq.SelectBuilder {
-	t := Tables.ResourceMappings
-	aT := Tables.AttributeValues
-	return newStatementBuilder().Select(
+	t := db.Tables.ResourceMappings
+	aT := db.Tables.AttributeValues
+	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("metadata"),
 		t.Field("terms"),
@@ -89,7 +88,7 @@ func resourceMappingSelect() sq.SelectBuilder {
 */
 
 func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []string) (string, []interface{}, error) {
-	return newStatementBuilder().
+	return db.NewStatementBuilder().
 		Insert(ResourceMappingTable).
 		Columns(
 			"attribute_value_id",
@@ -105,8 +104,8 @@ func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []
 		ToSql()
 }
 
-func (c Client) CreateResourceMapping(ctx context.Context, rm *resourcemapping.ResourceMappingCreateUpdate) (*resourcemapping.ResourceMapping, error) {
-	metadataJSON, metadata, err := marshalCreateMetadata(rm.Metadata)
+func (c PolicyDbClient) CreateResourceMapping(ctx context.Context, rm *resourcemapping.ResourceMappingCreateUpdate) (*resourcemapping.ResourceMapping, error) {
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(rm.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -116,14 +115,14 @@ func (c Client) CreateResourceMapping(ctx context.Context, rm *resourcemapping.R
 		return nil, err
 	}
 
-	row, err := c.queryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
 
 	var id string
 	if err := row.Scan(&id); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	av, err := c.GetAttributeValue(ctx, rm.AttributeValueId)
@@ -140,17 +139,17 @@ func (c Client) CreateResourceMapping(ctx context.Context, rm *resourcemapping.R
 }
 
 func getResourceMappingSQL(id string) (string, []interface{}, error) {
-	t := Tables.ResourceMappings
+	t := db.Tables.ResourceMappings
 	return resourceMappingSelect().
 		Where(sq.Eq{t.Field("id"): id}).
 		From(ResourceMappingTable).
 		ToSql()
 }
 
-func (c Client) GetResourceMapping(ctx context.Context, id string) (*resourcemapping.ResourceMapping, error) {
+func (c PolicyDbClient) GetResourceMapping(ctx context.Context, id string) (*resourcemapping.ResourceMapping, error) {
 	sql, args, err := getResourceMappingSQL(id)
 
-	row, err := c.queryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
@@ -163,19 +162,19 @@ func (c Client) GetResourceMapping(ctx context.Context, id string) (*resourcemap
 }
 
 func listResourceMappingsSQL() (string, []interface{}, error) {
-	t := Tables.ResourceMappings
+	t := db.Tables.ResourceMappings
 	return resourceMappingSelect().
 		From(t.Name()).
 		ToSql()
 }
 
-func (c Client) ListResourceMappings(ctx context.Context) ([]*resourcemapping.ResourceMapping, error) {
+func (c PolicyDbClient) ListResourceMappings(ctx context.Context) ([]*resourcemapping.ResourceMapping, error) {
 	sql, args, err := listResourceMappingsSQL()
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := c.query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
@@ -190,8 +189,8 @@ func (c Client) ListResourceMappings(ctx context.Context) ([]*resourcemapping.Re
 }
 
 func updateResourceMappingSQL(id string, attribute_value_id string, metadata []byte, terms []string) (string, []interface{}, error) {
-	t := Tables.ResourceMappings
-	sb := newStatementBuilder().
+	t := db.Tables.ResourceMappings
+	sb := db.NewStatementBuilder().
 		Update(t.Name())
 
 	if attribute_value_id != "" {
@@ -211,13 +210,13 @@ func updateResourceMappingSQL(id string, attribute_value_id string, metadata []b
 		ToSql()
 }
 
-func (c Client) UpdateResourceMapping(ctx context.Context, id string, rm *resourcemapping.ResourceMappingCreateUpdate) (*resourcemapping.ResourceMapping, error) {
+func (c PolicyDbClient) UpdateResourceMapping(ctx context.Context, id string, rm *resourcemapping.ResourceMappingCreateUpdate) (*resourcemapping.ResourceMapping, error) {
 	prev, err := c.GetResourceMapping(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	metadataJSON, _, err := marshalUpdateMetadata(prev.Metadata, rm.Metadata)
+	metadataJSON, _, err := db.MarshalUpdateMetadata(prev.Metadata, rm.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +231,7 @@ func (c Client) UpdateResourceMapping(ctx context.Context, id string, rm *resour
 		return nil, err
 	}
 
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 
@@ -240,21 +239,21 @@ func (c Client) UpdateResourceMapping(ctx context.Context, id string, rm *resour
 }
 
 func deleteResourceMappingSQL(id string) (string, []interface{}, error) {
-	t := Tables.ResourceMappings
-	return newStatementBuilder().
+	t := db.Tables.ResourceMappings
+	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
-func (c Client) DeleteResourceMapping(ctx context.Context, id string) (*resourcemapping.ResourceMapping, error) {
+func (c PolicyDbClient) DeleteResourceMapping(ctx context.Context, id string) (*resourcemapping.ResourceMapping, error) {
 	prev, err := c.GetResourceMapping(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	sql, args, err := deleteResourceMappingSQL(id)
-	if err := c.exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
 

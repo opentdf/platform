@@ -1,4 +1,4 @@
-package resourcemapping
+package policy
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	rsMp "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/opentdf-v2-poc/services"
 
@@ -15,12 +16,12 @@ import (
 
 type ResourceMappingService struct {
 	rsMp.UnimplementedResourceMappingServiceServer
-	dbClient *db.Client
+	dbClient *policydb.PolicyDbClient
 }
 
 func NewResourceMappingServer(dbClient *db.Client, grpcServer *grpc.Server, mux *runtime.ServeMux) error {
 	as := &ResourceMappingService{
-		dbClient: dbClient,
+		dbClient: policydb.WithPolicyDbClient(*dbClient),
 	}
 	rsMp.RegisterResourceMappingServiceServer(grpcServer, as)
 	err := rsMp.RegisterResourceMappingServiceHandlerServer(context.Background(), mux, as)

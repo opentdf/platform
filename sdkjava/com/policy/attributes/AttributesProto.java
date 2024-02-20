@@ -370,12 +370,12 @@ public final class AttributesProto {
       "ttributes.RemoveKeyAccessServerFromValue" +
       "Response\"J\202\323\344\223\002D\")/attributes/values/key" +
       "accessserver/remove:\027value_key_access_se" +
-      "rverB\316\001\n\025com.policy.attributesB\017Attribut" +
-      "esProtoP\001Z?github.com/opentdf/opentdf-v2" +
-      "-poc/protocol/go/policy/attributes\242\002\003PAX" +
-      "\252\002\021Policy.Attributes\312\002\021Policy\\Attributes" +
-      "\342\002\035Policy\\Attributes\\GPBMetadata\352\002\022Polic" +
-      "y::Attributesb\006proto3"
+      "rverB\310\001\n\025com.policy.attributesB\017Attribut" +
+      "esProtoP\001Z9github.com/opentdf/platform/p" +
+      "rotocol/go/policy/attributes\242\002\003PAX\252\002\021Pol" +
+      "icy.Attributes\312\002\021Policy\\Attributes\342\002\035Pol" +
+      "icy\\Attributes\\GPBMetadata\352\002\022Policy::Att" +
+      "ributesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

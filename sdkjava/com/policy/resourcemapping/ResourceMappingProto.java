@@ -144,13 +144,13 @@ public final class ResourceMappingProto {
       "4.policy.resourcemapping.DeleteResourceM" +
       "appingRequest\0325.policy.resourcemapping.D" +
       "eleteResourceMappingResponse\"\037\202\323\344\223\002\031*\027/r" +
-      "esource-mappings/{id}B\361\001\n\032com.policy.res" +
-      "ourcemappingB\024ResourceMappingProtoP\001ZDgi" +
-      "thub.com/opentdf/opentdf-v2-poc/protocol" +
-      "/go/policy/resourcemapping\242\002\003PRX\252\002\026Polic" +
-      "y.Resourcemapping\312\002\026Policy\\Resourcemappi" +
-      "ng\342\002\"Policy\\Resourcemapping\\GPBMetadata\352" +
-      "\002\027Policy::Resourcemappingb\006proto3"
+      "esource-mappings/{id}B\353\001\n\032com.policy.res" +
+      "ourcemappingB\024ResourceMappingProtoP\001Z>gi" +
+      "thub.com/opentdf/platform/protocol/go/po" +
+      "licy/resourcemapping\242\002\003PRX\252\002\026Policy.Reso" +
+      "urcemapping\312\002\026Policy\\Resourcemapping\342\002\"P" +
+      "olicy\\Resourcemapping\\GPBMetadata\352\002\027Poli" +
+      "cy::Resourcemappingb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

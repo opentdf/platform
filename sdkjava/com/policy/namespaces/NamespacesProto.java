@@ -133,12 +133,12 @@ public final class NamespacesProto {
       "olicy.namespaces.DeactivateNamespaceRequ" +
       "est\032..policy.namespaces.DeactivateNamesp" +
       "aceResponse\"#\202\323\344\223\002\035*\033/attributes/namespa" +
-      "ces/{id}B\316\001\n\025com.policy.namespacesB\017Name" +
-      "spacesProtoP\001Z?github.com/opentdf/opentd" +
-      "f-v2-poc/protocol/go/policy/namespaces\242\002" +
-      "\003PNX\252\002\021Policy.Namespaces\312\002\021Policy\\Namesp" +
-      "aces\342\002\035Policy\\Namespaces\\GPBMetadata\352\002\022P" +
-      "olicy::Namespacesb\006proto3"
+      "ces/{id}B\310\001\n\025com.policy.namespacesB\017Name" +
+      "spacesProtoP\001Z9github.com/opentdf/platfo" +
+      "rm/protocol/go/policy/namespaces\242\002\003PNX\252\002" +
+      "\021Policy.Namespaces\312\002\021Policy\\Namespaces\342\002" +
+      "\035Policy\\Namespaces\\GPBMetadata\352\002\022Policy:" +
+      ":Namespacesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

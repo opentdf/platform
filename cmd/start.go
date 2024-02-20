@@ -25,7 +25,7 @@ import (
 	"github.com/opentdf/platform/services/policy/resourcemapping"
 	"github.com/opentdf/platform/services/policy/subjectmapping"
 
-	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
+	// "github.com/opentdf/platform/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
 

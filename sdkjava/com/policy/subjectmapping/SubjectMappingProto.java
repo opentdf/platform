@@ -154,13 +154,13 @@ public final class SubjectMappingProto {
       "ectmapping.DeleteSubjectMappingRequest\0323" +
       ".policy.subjectmapping.DeleteSubjectMapp" +
       "ingResponse\"\036\202\323\344\223\002\030*\026/subject-mappings/{" +
-      "id}B\352\001\n\031com.policy.subjectmappingB\023Subje" +
-      "ctMappingProtoP\001ZCgithub.com/opentdf/ope" +
-      "ntdf-v2-poc/protocol/go/policy/subjectma" +
-      "pping\242\002\003PSX\252\002\025Policy.Subjectmapping\312\002\025Po" +
-      "licy\\Subjectmapping\342\002!Policy\\Subjectmapp" +
-      "ing\\GPBMetadata\352\002\026Policy::Subjectmapping" +
-      "b\006proto3"
+      "id}B\344\001\n\031com.policy.subjectmappingB\023Subje" +
+      "ctMappingProtoP\001Z=github.com/opentdf/pla" +
+      "tform/protocol/go/policy/subjectmapping\242" +
+      "\002\003PSX\252\002\025Policy.Subjectmapping\312\002\025Policy\\S" +
+      "ubjectmapping\342\002!Policy\\Subjectmapping\\GP" +
+      "BMetadata\352\002\026Policy::Subjectmappingb\006prot" +
+      "o3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

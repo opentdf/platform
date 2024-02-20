@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/platform/internal/db"
 )
 
 var (

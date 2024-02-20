@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SubjectMappingService_ListSubjectMappings_FullMethodName  = "/subjectmapping.SubjectMappingService/ListSubjectMappings"
-	SubjectMappingService_GetSubjectMapping_FullMethodName    = "/subjectmapping.SubjectMappingService/GetSubjectMapping"
-	SubjectMappingService_CreateSubjectMapping_FullMethodName = "/subjectmapping.SubjectMappingService/CreateSubjectMapping"
-	SubjectMappingService_UpdateSubjectMapping_FullMethodName = "/subjectmapping.SubjectMappingService/UpdateSubjectMapping"
-	SubjectMappingService_DeleteSubjectMapping_FullMethodName = "/subjectmapping.SubjectMappingService/DeleteSubjectMapping"
+	SubjectMappingService_ListSubjectMappings_FullMethodName  = "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings"
+	SubjectMappingService_GetSubjectMapping_FullMethodName    = "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping"
+	SubjectMappingService_CreateSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping"
+	SubjectMappingService_UpdateSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping"
+	SubjectMappingService_DeleteSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping"
 )
 
 // SubjectMappingServiceClient is the client API for SubjectMappingService service.
@@ -228,7 +228,7 @@ func _SubjectMappingService_DeleteSubjectMapping_Handler(srv interface{}, ctx co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SubjectMappingService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "subjectmapping.SubjectMappingService",
+	ServiceName: "policy.subjectmapping.SubjectMappingService",
 	HandlerType: (*SubjectMappingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

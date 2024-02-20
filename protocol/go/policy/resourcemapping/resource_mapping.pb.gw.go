@@ -269,7 +269,7 @@ func RegisterResourceMappingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/ListResourceMappings", runtime.WithHTTPPathPattern("/resource-mappings"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/ListResourceMappings", runtime.WithHTTPPathPattern("/resource-mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -294,7 +294,7 @@ func RegisterResourceMappingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/GetResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/GetResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -319,7 +319,7 @@ func RegisterResourceMappingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/CreateResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/CreateResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -344,7 +344,7 @@ func RegisterResourceMappingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/UpdateResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/UpdateResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -369,7 +369,7 @@ func RegisterResourceMappingServiceHandlerServer(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/DeleteResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/DeleteResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -433,7 +433,7 @@ func RegisterResourceMappingServiceHandlerClient(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/ListResourceMappings", runtime.WithHTTPPathPattern("/resource-mappings"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/ListResourceMappings", runtime.WithHTTPPathPattern("/resource-mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -455,7 +455,7 @@ func RegisterResourceMappingServiceHandlerClient(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/GetResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/GetResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -477,7 +477,7 @@ func RegisterResourceMappingServiceHandlerClient(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/CreateResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/CreateResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -499,7 +499,7 @@ func RegisterResourceMappingServiceHandlerClient(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/UpdateResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/UpdateResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -521,7 +521,7 @@ func RegisterResourceMappingServiceHandlerClient(ctx context.Context, mux *runti
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/resourcemapping.ResourceMappingService/DeleteResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.resourcemapping.ResourceMappingService/DeleteResourceMapping", runtime.WithHTTPPathPattern("/resource-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

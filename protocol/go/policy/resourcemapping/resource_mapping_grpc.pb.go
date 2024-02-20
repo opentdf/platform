@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ResourceMappingService_ListResourceMappings_FullMethodName  = "/resourcemapping.ResourceMappingService/ListResourceMappings"
-	ResourceMappingService_GetResourceMapping_FullMethodName    = "/resourcemapping.ResourceMappingService/GetResourceMapping"
-	ResourceMappingService_CreateResourceMapping_FullMethodName = "/resourcemapping.ResourceMappingService/CreateResourceMapping"
-	ResourceMappingService_UpdateResourceMapping_FullMethodName = "/resourcemapping.ResourceMappingService/UpdateResourceMapping"
-	ResourceMappingService_DeleteResourceMapping_FullMethodName = "/resourcemapping.ResourceMappingService/DeleteResourceMapping"
+	ResourceMappingService_ListResourceMappings_FullMethodName  = "/policy.resourcemapping.ResourceMappingService/ListResourceMappings"
+	ResourceMappingService_GetResourceMapping_FullMethodName    = "/policy.resourcemapping.ResourceMappingService/GetResourceMapping"
+	ResourceMappingService_CreateResourceMapping_FullMethodName = "/policy.resourcemapping.ResourceMappingService/CreateResourceMapping"
+	ResourceMappingService_UpdateResourceMapping_FullMethodName = "/policy.resourcemapping.ResourceMappingService/UpdateResourceMapping"
+	ResourceMappingService_DeleteResourceMapping_FullMethodName = "/policy.resourcemapping.ResourceMappingService/DeleteResourceMapping"
 )
 
 // ResourceMappingServiceClient is the client API for ResourceMappingService service.
@@ -597,7 +597,7 @@ func _ResourceMappingService_DeleteResourceMapping_Handler(srv interface{}, ctx 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ResourceMappingService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "resourcemapping.ResourceMappingService",
+	ServiceName: "policy.resourcemapping.ResourceMappingService",
 	HandlerType: (*ResourceMappingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

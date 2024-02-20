@@ -647,7 +647,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/GetAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/GetAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -672,7 +672,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/CreateAttribute", runtime.WithHTTPPathPattern("/attributes"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/CreateAttribute", runtime.WithHTTPPathPattern("/attributes"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -697,7 +697,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/UpdateAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/UpdateAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -722,7 +722,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/DeactivateAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/DeactivateAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -747,7 +747,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/GetAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/GetAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -772,7 +772,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/CreateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/CreateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -797,7 +797,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -822,7 +822,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/DeactivateAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/DeactivateAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -847,7 +847,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/AssignKeyAccessServerToAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/assign"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/assign"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -872,7 +872,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/RemoveKeyAccessServerFromAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/remove"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/remove"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -897,7 +897,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/AssignKeyAccessServerToValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/assign"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/assign"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -922,7 +922,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/attributes.AttributesService/RemoveKeyAccessServerFromValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/remove"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/remove"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -986,7 +986,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/GetAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/GetAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1008,7 +1008,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/CreateAttribute", runtime.WithHTTPPathPattern("/attributes"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/CreateAttribute", runtime.WithHTTPPathPattern("/attributes"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1030,7 +1030,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/UpdateAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/UpdateAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1052,7 +1052,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/DeactivateAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/DeactivateAttribute", runtime.WithHTTPPathPattern("/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1074,7 +1074,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/GetAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/GetAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1096,7 +1096,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/CreateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/CreateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1118,7 +1118,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/attributes/{attribute_id}/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1140,7 +1140,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/DeactivateAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/DeactivateAttributeValue", runtime.WithHTTPPathPattern("/attributes/_/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1162,7 +1162,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/AssignKeyAccessServerToAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/assign"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/assign"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1184,7 +1184,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/RemoveKeyAccessServerFromAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/remove"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/remove"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1206,7 +1206,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/AssignKeyAccessServerToValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/assign"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/assign"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1228,7 +1228,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/attributes.AttributesService/RemoveKeyAccessServerFromValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/remove"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/remove"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

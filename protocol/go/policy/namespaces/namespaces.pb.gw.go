@@ -291,7 +291,7 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/namespaces.NamespaceService/GetNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.namespaces.NamespaceService/GetNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -316,7 +316,7 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/namespaces.NamespaceService/ListNamespaces", runtime.WithHTTPPathPattern("/attributes/namespaces"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.namespaces.NamespaceService/ListNamespaces", runtime.WithHTTPPathPattern("/attributes/namespaces"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -341,7 +341,7 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/namespaces.NamespaceService/CreateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.namespaces.NamespaceService/CreateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -366,7 +366,7 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/namespaces.NamespaceService/UpdateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.namespaces.NamespaceService/UpdateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -391,7 +391,7 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/namespaces.NamespaceService/DeactivateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.namespaces.NamespaceService/DeactivateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -455,7 +455,7 @@ func RegisterNamespaceServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/namespaces.NamespaceService/GetNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.namespaces.NamespaceService/GetNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -477,7 +477,7 @@ func RegisterNamespaceServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/namespaces.NamespaceService/ListNamespaces", runtime.WithHTTPPathPattern("/attributes/namespaces"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.namespaces.NamespaceService/ListNamespaces", runtime.WithHTTPPathPattern("/attributes/namespaces"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -499,7 +499,7 @@ func RegisterNamespaceServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/namespaces.NamespaceService/CreateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.namespaces.NamespaceService/CreateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -521,7 +521,7 @@ func RegisterNamespaceServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/namespaces.NamespaceService/UpdateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.namespaces.NamespaceService/UpdateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -543,7 +543,7 @@ func RegisterNamespaceServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/namespaces.NamespaceService/DeactivateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.namespaces.NamespaceService/DeactivateNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

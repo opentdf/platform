@@ -269,7 +269,7 @@ func RegisterSubjectMappingServiceHandlerServer(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/ListSubjectMappings", runtime.WithHTTPPathPattern("/subject-mappings"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings", runtime.WithHTTPPathPattern("/subject-mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -294,7 +294,7 @@ func RegisterSubjectMappingServiceHandlerServer(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/GetSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -319,7 +319,7 @@ func RegisterSubjectMappingServiceHandlerServer(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/CreateSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -344,7 +344,7 @@ func RegisterSubjectMappingServiceHandlerServer(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/UpdateSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -369,7 +369,7 @@ func RegisterSubjectMappingServiceHandlerServer(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/DeleteSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -433,7 +433,7 @@ func RegisterSubjectMappingServiceHandlerClient(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/ListSubjectMappings", runtime.WithHTTPPathPattern("/subject-mappings"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings", runtime.WithHTTPPathPattern("/subject-mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -455,7 +455,7 @@ func RegisterSubjectMappingServiceHandlerClient(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/GetSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -477,7 +477,7 @@ func RegisterSubjectMappingServiceHandlerClient(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/CreateSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -499,7 +499,7 @@ func RegisterSubjectMappingServiceHandlerClient(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/UpdateSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -521,7 +521,7 @@ func RegisterSubjectMappingServiceHandlerClient(ctx context.Context, mux *runtim
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/subjectmapping.SubjectMappingService/DeleteSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping", runtime.WithHTTPPathPattern("/subject-mappings/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

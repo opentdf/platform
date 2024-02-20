@@ -19,20 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AttributesService_ListAttributes_FullMethodName                     = "/attributes.AttributesService/ListAttributes"
-	AttributesService_ListAttributeValues_FullMethodName                = "/attributes.AttributesService/ListAttributeValues"
-	AttributesService_GetAttribute_FullMethodName                       = "/attributes.AttributesService/GetAttribute"
-	AttributesService_CreateAttribute_FullMethodName                    = "/attributes.AttributesService/CreateAttribute"
-	AttributesService_UpdateAttribute_FullMethodName                    = "/attributes.AttributesService/UpdateAttribute"
-	AttributesService_DeactivateAttribute_FullMethodName                = "/attributes.AttributesService/DeactivateAttribute"
-	AttributesService_GetAttributeValue_FullMethodName                  = "/attributes.AttributesService/GetAttributeValue"
-	AttributesService_CreateAttributeValue_FullMethodName               = "/attributes.AttributesService/CreateAttributeValue"
-	AttributesService_UpdateAttributeValue_FullMethodName               = "/attributes.AttributesService/UpdateAttributeValue"
-	AttributesService_DeactivateAttributeValue_FullMethodName           = "/attributes.AttributesService/DeactivateAttributeValue"
-	AttributesService_AssignKeyAccessServerToAttribute_FullMethodName   = "/attributes.AttributesService/AssignKeyAccessServerToAttribute"
-	AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName = "/attributes.AttributesService/RemoveKeyAccessServerFromAttribute"
-	AttributesService_AssignKeyAccessServerToValue_FullMethodName       = "/attributes.AttributesService/AssignKeyAccessServerToValue"
-	AttributesService_RemoveKeyAccessServerFromValue_FullMethodName     = "/attributes.AttributesService/RemoveKeyAccessServerFromValue"
+	AttributesService_ListAttributes_FullMethodName                     = "/policy.attributes.AttributesService/ListAttributes"
+	AttributesService_ListAttributeValues_FullMethodName                = "/policy.attributes.AttributesService/ListAttributeValues"
+	AttributesService_GetAttribute_FullMethodName                       = "/policy.attributes.AttributesService/GetAttribute"
+	AttributesService_CreateAttribute_FullMethodName                    = "/policy.attributes.AttributesService/CreateAttribute"
+	AttributesService_UpdateAttribute_FullMethodName                    = "/policy.attributes.AttributesService/UpdateAttribute"
+	AttributesService_DeactivateAttribute_FullMethodName                = "/policy.attributes.AttributesService/DeactivateAttribute"
+	AttributesService_GetAttributeValue_FullMethodName                  = "/policy.attributes.AttributesService/GetAttributeValue"
+	AttributesService_CreateAttributeValue_FullMethodName               = "/policy.attributes.AttributesService/CreateAttributeValue"
+	AttributesService_UpdateAttributeValue_FullMethodName               = "/policy.attributes.AttributesService/UpdateAttributeValue"
+	AttributesService_DeactivateAttributeValue_FullMethodName           = "/policy.attributes.AttributesService/DeactivateAttributeValue"
+	AttributesService_AssignKeyAccessServerToAttribute_FullMethodName   = "/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute"
+	AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName = "/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute"
+	AttributesService_AssignKeyAccessServerToValue_FullMethodName       = "/policy.attributes.AttributesService/AssignKeyAccessServerToValue"
+	AttributesService_RemoveKeyAccessServerFromValue_FullMethodName     = "/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue"
 )
 
 // AttributesServiceClient is the client API for AttributesService service.
@@ -41,9 +41,9 @@ const (
 type AttributesServiceClient interface {
 	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
 	// Request:
-	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
 	// OR (for inactive)
-	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
 	// Response:
 	// {
 	// "attributes": [
@@ -102,7 +102,7 @@ type AttributesServiceClient interface {
 	//
 	// Request:
 	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
 	// Response:
 	// {
 	// "attributes": [
@@ -136,7 +136,7 @@ type AttributesServiceClient interface {
 	GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error)
 	// Create Attribute
 	// Request:
-	// grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+	// grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
 	// Response
 	// {
 	// "attribute": {
@@ -161,13 +161,13 @@ type AttributesServiceClient interface {
 	// Create Attribute Value
 	// Example:
 	//
-	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue
+	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue
 	CreateAttributeValue(ctx context.Context, in *CreateAttributeValueRequest, opts ...grpc.CallOption) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error)
 	DeactivateAttributeValue(ctx context.Context, in *DeactivateAttributeValueRequest, opts ...grpc.CallOption) (*DeactivateAttributeValueResponse, error)
 	// Assign Key Access Server to Attribute
 	//
-	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
 	//
 	// Example Request:
 	// {
@@ -185,7 +185,7 @@ type AttributesServiceClient interface {
 	AssignKeyAccessServerToAttribute(ctx context.Context, in *AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToAttributeResponse, error)
 	// Remove Key Access Server to Attribute
 	//
-	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
 	//
 	// Example Request:
 	// {
@@ -203,7 +203,7 @@ type AttributesServiceClient interface {
 	RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error)
 	// Assign Key Access Server to Value
 	//
-	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToValue
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
 	//
 	// Example Request:
 	// {
@@ -220,7 +220,7 @@ type AttributesServiceClient interface {
 	// }
 	AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error)
 	// Remove Key Access Server to Value
-	// grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemoveKeyAccessServerFromValue
+	// grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
 	//
 	// Example Request:
 	// {
@@ -377,9 +377,9 @@ func (c *attributesServiceClient) RemoveKeyAccessServerFromValue(ctx context.Con
 type AttributesServiceServer interface {
 	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
 	// Request:
-	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
 	// OR (for inactive)
-	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
 	// Response:
 	// {
 	// "attributes": [
@@ -438,7 +438,7 @@ type AttributesServiceServer interface {
 	//
 	// Request:
 	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
 	// Response:
 	// {
 	// "attributes": [
@@ -472,7 +472,7 @@ type AttributesServiceServer interface {
 	GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error)
 	// Create Attribute
 	// Request:
-	// grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+	// grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
 	// Response
 	// {
 	// "attribute": {
@@ -497,13 +497,13 @@ type AttributesServiceServer interface {
 	// Create Attribute Value
 	// Example:
 	//
-	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue
+	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue
 	CreateAttributeValue(context.Context, *CreateAttributeValueRequest) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error)
 	DeactivateAttributeValue(context.Context, *DeactivateAttributeValueRequest) (*DeactivateAttributeValueResponse, error)
 	// Assign Key Access Server to Attribute
 	//
-	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
 	//
 	// Example Request:
 	// {
@@ -521,7 +521,7 @@ type AttributesServiceServer interface {
 	AssignKeyAccessServerToAttribute(context.Context, *AssignKeyAccessServerToAttributeRequest) (*AssignKeyAccessServerToAttributeResponse, error)
 	// Remove Key Access Server to Attribute
 	//
-	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
 	//
 	// Example Request:
 	// {
@@ -539,7 +539,7 @@ type AttributesServiceServer interface {
 	RemoveKeyAccessServerFromAttribute(context.Context, *RemoveKeyAccessServerFromAttributeRequest) (*RemoveKeyAccessServerFromAttributeResponse, error)
 	// Assign Key Access Server to Value
 	//
-	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToValue
+	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
 	//
 	// Example Request:
 	// {
@@ -556,7 +556,7 @@ type AttributesServiceServer interface {
 	// }
 	AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error)
 	// Remove Key Access Server to Value
-	// grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemoveKeyAccessServerFromValue
+	// grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
 	//
 	// Example Request:
 	// {
@@ -889,7 +889,7 @@ func _AttributesService_RemoveKeyAccessServerFromValue_Handler(srv interface{}, 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AttributesService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "attributes.AttributesService",
+	ServiceName: "policy.attributes.AttributesService",
 	HandlerType: (*AttributesServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

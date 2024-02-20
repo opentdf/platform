@@ -18,7 +18,7 @@
   "paths": {
     "/attributes": {
       "post": {
-        "summary": "Create Attribute\nRequest:\ngrpcurl -plaintext -d '{\"attribute\": {\"namespace_id\": \"namespace_id\", \"name\": \"attribute_name\", \"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\"}}' localhost:9000 attributes.AttributesService/CreateAttribute\nResponse\n{\n\"attribute\": {\n\"id\": \"e06f067b-d158-44bc-a814-1aa3f968dcf0\",\n\"metadata\": {\n\"createdAt\": \"2024-02-14T20:24:23.057404Z\",\n\"updatedAt\": \"2024-02-14T20:24:23.057404Z\"\n},\n\"namespace\": {\n\"id\": \"namespace_id\"\n},\n\"name\": \"attribute_name\",\n\"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\",\n\"active\": true\n}\n}",
+        "summary": "Create Attribute\nRequest:\ngrpcurl -plaintext -d '{\"attribute\": {\"namespace_id\": \"namespace_id\", \"name\": \"attribute_name\", \"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute\nResponse\n{\n\"attribute\": {\n\"id\": \"e06f067b-d158-44bc-a814-1aa3f968dcf0\",\n\"metadata\": {\n\"createdAt\": \"2024-02-14T20:24:23.057404Z\",\n\"updatedAt\": \"2024-02-14T20:24:23.057404Z\"\n},\n\"namespace\": {\n\"id\": \"namespace_id\"\n},\n\"name\": \"attribute_name\",\n\"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\",\n\"active\": true\n}\n}",
         "operationId": "AttributesService_CreateAttribute",
         "responses": {
           "200": {
@@ -111,7 +111,7 @@
     "/attributes/keyaccessserver/assign": {
       "post": {
         "summary": "Assign Key Access Server to Attribute",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
+        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
         "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
         "responses": {
           "200": {
@@ -145,7 +145,7 @@
     "/attributes/keyaccessserver/remove": {
       "post": {
         "summary": "Remove Key Access Server to Attribute",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 attributes.AttributesService/RemeoveKeyAccessServerFromAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
+        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
         "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
         "responses": {
           "200": {
@@ -179,7 +179,7 @@
     "/attributes/values/keyaccessserver/assign": {
       "post": {
         "summary": "Assign Key Access Server to Value",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToValue\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
+        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
         "operationId": "AttributesService_AssignKeyAccessServerToValue",
         "responses": {
           "200": {
@@ -212,7 +212,7 @@
     },
     "/attributes/values/keyaccessserver/remove": {
       "post": {
-        "summary": "Remove Key Access Server to Value\ngrpcurl -plaintext -d '{\"value_key_access_server\": {\"value_id\": \"value_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 attributes.AttributesService/RemoveKeyAccessServerFromValue",
+        "summary": "Remove Key Access Server to Value\ngrpcurl -plaintext -d '{\"value_key_access_server\": {\"value_id\": \"value_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue",
         "description": "Example Request:\n{\n\"value_key_access_server\": {\n\"value_id\": \"value_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"value_key_access_server\": {\n\"value_id\": \"value_id\",\n\"key_access_server_id",
         "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
         "responses": {
@@ -246,7 +246,7 @@
     },
     "/attributes/{attributeId}/values": {
       "post": {
-        "summary": "Create Attribute Value\nExample:\n grpcurl -plaintext -d '{\"attribute_id\": \"attribute_id\", \"value\": {\"value\": \"value\"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue",
+        "summary": "Create Attribute Value\nExample:\n grpcurl -plaintext -d '{\"attribute_id\": \"attribute_id\", \"value\": {\"value\": \"value\"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue",
         "operationId": "AttributesService_CreateAttributeValue",
         "responses": {
           "200": {

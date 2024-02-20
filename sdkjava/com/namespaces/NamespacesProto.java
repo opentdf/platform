@@ -130,11 +130,11 @@ public final class NamespacesProto {
       "ivateNamespace\022&.namespaces.DeactivateNa" +
       "mespaceRequest\032\'.namespaces.DeactivateNa" +
       "mespaceResponse\"#\202\323\344\223\002\035*\033/attributes/nam" +
-      "espaces/{id}B\233\001\n\016com.namespacesB\017Namespa" +
-      "cesProtoP\001Z0github.com/opentdf/opentdf-v" +
-      "2-poc/sdk/namespaces\242\002\003NXX\252\002\nNamespaces\312" +
-      "\002\nNamespaces\342\002\026Namespaces\\GPBMetadata\352\002\n" +
-      "Namespacesb\006proto3"
+      "espaces/{id}B\225\001\n\016com.namespacesB\017Namespa" +
+      "cesProtoP\001Z*github.com/opentdf/platform/" +
+      "sdk/namespaces\242\002\003NXX\252\002\nNamespaces\312\002\nName" +
+      "spaces\342\002\026Namespaces\\GPBMetadata\352\002\nNamesp" +
+      "acesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

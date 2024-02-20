@@ -140,12 +140,12 @@ public final class ResourceMappingProto {
       "\227\001\n\025DeleteResourceMapping\022-.resourcemapp" +
       "ing.DeleteResourceMappingRequest\032..resou" +
       "rcemapping.DeleteResourceMappingResponse" +
-      "\"\037\202\323\344\223\002\031*\027/resource-mappings/{id}B\276\001\n\023co" +
+      "\"\037\202\323\344\223\002\031*\027/resource-mappings/{id}B\270\001\n\023co" +
       "m.resourcemappingB\024ResourceMappingProtoP" +
-      "\001Z5github.com/opentdf/opentdf-v2-poc/sdk" +
-      "/resourcemapping\242\002\003RXX\252\002\017Resourcemapping" +
-      "\312\002\017Resourcemapping\342\002\033Resourcemapping\\GPB" +
-      "Metadata\352\002\017Resourcemappingb\006proto3"
+      "\001Z/github.com/opentdf/platform/sdk/resou" +
+      "rcemapping\242\002\003RXX\252\002\017Resourcemapping\312\002\017Res" +
+      "ourcemapping\342\002\033Resourcemapping\\GPBMetada" +
+      "ta\352\002\017Resourcemappingb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

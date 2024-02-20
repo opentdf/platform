@@ -4,8 +4,8 @@ import (
 	ctx "context"
 	"testing"
 
-	attrs "github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	attrs "github.com/opentdf/platform/sdk/attributes"
+	"github.com/opentdf/platform/sdk/namespaces"
 	"github.com/stretchr/testify/assert"
 )
 

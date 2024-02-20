@@ -139,11 +139,11 @@ public final class AuthorizationProto {
       "GetEntitlements\022%.authorization.GetEntit" +
       "lementsRequest\032&.authorization.GetEntitl" +
       "ementsResponse\"\030\202\323\344\223\002\022\"\020/v1/entitlements" +
-      "B\260\001\n\021com.authorizationB\022AuthorizationPro" +
-      "toP\001Z3github.com/opentdf/opentdf-v2-poc/" +
-      "sdk/authorization\242\002\003AXX\252\002\rAuthorization\312" +
-      "\002\rAuthorization\342\002\031Authorization\\GPBMetad" +
-      "ata\352\002\rAuthorizationb\006proto3"
+      "B\252\001\n\021com.authorizationB\022AuthorizationPro" +
+      "toP\001Z-github.com/opentdf/platform/sdk/au" +
+      "thorization\242\002\003AXX\252\002\rAuthorization\312\002\rAuth" +
+      "orization\342\002\031Authorization\\GPBMetadata\352\002\r" +
+      "Authorizationb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

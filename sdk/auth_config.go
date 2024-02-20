@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 type AuthConfig struct {

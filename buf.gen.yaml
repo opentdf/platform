@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/opentdf/opentdf-v2-poc/sdk
+    default: github.com/opentdf/platform/sdk
     except:
       - buf.build/bufbuild/protovalidate
       - buf.build/googleapis/googleapis

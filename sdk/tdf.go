@@ -17,8 +17,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
+	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 var (

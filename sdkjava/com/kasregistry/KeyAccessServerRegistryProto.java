@@ -155,11 +155,11 @@ public final class KeyAccessServerRegistryProto {
       "eyAccessServer\022).kasregistry.DeleteKeyAc" +
       "cessServerRequest\032*.kasregistry.DeleteKe" +
       "yAccessServerResponse\" \202\323\344\223\002\032*\030/key-acce" +
-      "ss-servers/{id}B\256\001\n\017com.kasregistryB\034Key" +
-      "AccessServerRegistryProtoP\001Z1github.com/" +
-      "opentdf/opentdf-v2-poc/sdk/kasregistry\242\002" +
-      "\003KXX\252\002\013Kasregistry\312\002\013Kasregistry\342\002\027Kasre" +
-      "gistry\\GPBMetadata\352\002\013Kasregistryb\006proto3"
+      "ss-servers/{id}B\250\001\n\017com.kasregistryB\034Key" +
+      "AccessServerRegistryProtoP\001Z+github.com/" +
+      "opentdf/platform/sdk/kasregistry\242\002\003KXX\252\002" +
+      "\013Kasregistry\312\002\013Kasregistry\342\002\027Kasregistry" +
+      "\\GPBMetadata\352\002\013Kasregistryb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

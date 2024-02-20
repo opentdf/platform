@@ -1,7 +1,7 @@
 # OpenTDF Enhancements POC
 
 ## Documentation
-- [Home](https://opentdf.github.io/opentdf-v2-poc)<!-- change this once repo is renamed  -->
+- [Home](https://opentdf.github.io/platform)
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
 - [Policy Config Schema](./migrations/20240131000000_diagram.md)
@@ -35,7 +35,7 @@ With go 1.18 or higher:
 
 4. `air`
 
-This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
+This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/platform/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
 
 ### Test
 

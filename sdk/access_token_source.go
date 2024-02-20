@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -27,33 +26,6 @@ type AccessTokenSource interface {
 	GetDPoPKey() jwk.Key
 	GetDPoPPublicKeyPEM() string
 	RefreshAccessToken() error
-}
-
-type FixedAccessTokenSource struct {
-	token          AccessToken
-	dpopKey        jwk.Key
-	dpopPEM        string
-	asymDecryption crypto.AsymDecryption
-}
-
-func (ts FixedAccessTokenSource) GetAccessToken() (AccessToken, error) {
-	return ts.token, nil
-}
-
-func (ts FixedAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
-	return ts.asymDecryption
-}
-
-func (ts FixedAccessTokenSource) GetDPoPKey() jwk.Key {
-	return ts.dpopKey
-}
-
-func (ts FixedAccessTokenSource) GetDPoPPublicKeyPEM() string {
-	return ts.dpopPEM
-}
-
-func (ts FixedAccessTokenSource) RefreshAccessToken() error {
-	return errors.New("can't refresh a fixed access token")
 }
 
 func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) {
@@ -103,22 +75,6 @@ func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) {
 	}
 
 	return dpopPublicKeyPEM.String(), dpopKey, &asymDecryption, nil
-}
-
-func NewFixedAccessTokenSource(accessToken string) (FixedAccessTokenSource, error) {
-	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey()
-	if err != nil {
-		return FixedAccessTokenSource{}, err
-	}
-
-	ts := FixedAccessTokenSource{
-		token:          AccessToken(accessToken),
-		dpopKey:        dpopKey,
-		asymDecryption: *asymDecryption,
-		dpopPEM:        dpopPublicKeyPEM,
-	}
-
-	return ts, nil
 }
 
 /*

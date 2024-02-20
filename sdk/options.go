@@ -5,48 +5,31 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type Option func(*config)
+// Functional option for SDK constructor
+type Option func(*options)
 
-// Internal config struct for building SDK options.
-type config struct {
-	token             grpc.DialOption
-	clientCredentials grpc.DialOption
-	tls               grpc.DialOption
-}
-
-func (c *config) build() []grpc.DialOption {
-	var opts []grpc.DialOption
-
-	if c.clientCredentials != nil {
-		opts = append(opts, c.clientCredentials)
-	}
-
-	if c.token != nil {
-		opts = append(opts, c.token)
-	}
-
-	opts = append(opts, c.tls)
-
-	return opts
+// Internal configuration for SDK, Option functions update these
+type options struct {
+	dialOptions []grpc.DialOption
 }
 
 // WithInsecureConn returns an Option that sets up an http connection.
 func WithInsecureConn() Option {
-	return func(c *config) {
-		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
+	return func(c *options) {
+		c.dialOptions = append(c.dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 }
 
-// WithToken returns an Option that sets up authentication with a access token.
+// WithToken returns an Option that sets up authentication with an OAuth2 access token.
 func WithToken(token string) Option {
-	return func(c *config) {
-		c.token = grpc.WithPerRPCCredentials(nil)
+	return func(c *options) {
+		c.dialOptions = append(c.dialOptions, grpc.WithPerRPCCredentials(nil))
 	}
 }
 
 // WithClientCredentials returns an Option that sets up authentication with client credentials.
 func WithClientCredentials(clientID, clientSecret string) Option {
-	return func(c *config) {
-		c.clientCredentials = grpc.WithPerRPCCredentials(nil)
+	return func(c *options) {
+		c.dialOptions = append(c.dialOptions, grpc.WithPerRPCCredentials(nil))
 	}
 }

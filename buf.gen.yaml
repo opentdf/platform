@@ -17,7 +17,7 @@ plugins:
     out: sdk
     opt:
       - paths=source_relative
-  - plugin: buf.build/protocolbuffers/java
+  - plugin: buf.build/protocolbuffers/java:v25.3
     out: sdkjava
   - plugin: buf.build/grpc/go:v1.3.0
     out: sdk

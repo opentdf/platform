@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/opentdf/opentdf-v2-poc/services/authorization"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -163,6 +164,12 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	err = namespaces.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register namespaces service: %w", err)
+	}
+
+	slog.Info("registering authorization server")
+	err = authorization.NewAuthorizationServer(otdf.GrpcServer, otdf.Mux)
+	if err != nil {
+		return fmt.Errorf("could not register authorization service: %w", err)
 	}
 
 	return nil

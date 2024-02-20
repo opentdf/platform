@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
@@ -44,6 +45,10 @@ func (d *DBInterface) UUIDArrayWrap(v []string) string {
 
 func (d *DBInterface) StringWrap(v string) string {
 	return "'" + v + "'"
+}
+
+func (d *DBInterface) BoolWrap(b bool) string {
+	return strconv.FormatBool(b)
 }
 
 func (d *DBInterface) UUIDWrap(v string) string {

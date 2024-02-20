@@ -15,6 +15,7 @@ import (
 
 const (
 	ErrGrpcDialFailed = Error("failed to dial grpc endpoint")
+	ErrNotImplemented = Error("function not implemented")
 	ErrShutdownFailed = Error("failed to shutdown sdk")
 )
 
@@ -34,18 +35,17 @@ type SDK struct {
 	Authorization           authorization.AuthorizationServiceClient
 }
 
+// New returns a new SDK to connect to the platform Endpoint as configured
+// by the opts Options
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
-	// Set default options
-	cfg := &config{
-		tls: grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
+	cfg := &options{
+		dialOptions: []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, ""))},
 	}
-
-	// Apply options
 	for _, opt := range opts {
 		opt(cfg)
 	}
 
-	conn, err := grpc.Dial(platformEndpoint, cfg.build()...)
+	conn, err := grpc.Dial(platformEndpoint, cfg.dialOptions...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}
@@ -62,7 +62,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 }
 
 // Close closes the underlying grpc.ClientConn.
-func (s SDK) Close() error {
+func (s *SDK) Close() error {
 	if err := s.conn.Close(); err != nil {
 		return errors.Join(ErrShutdownFailed, err)
 	}
@@ -75,6 +75,9 @@ func (s SDK) Conn() *grpc.ClientConn {
 }
 
 // ExchangeToken exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
+//
+// WARNING: Not yet implemented
 func (s SDK) TokenExchange(token string) (string, error) {
-	return "", nil
+	// TODO Store the token type of dialOptions during initialization
+	return "", ErrNotImplemented
 }

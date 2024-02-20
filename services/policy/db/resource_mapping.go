@@ -5,10 +5,10 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

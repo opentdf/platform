@@ -5,9 +5,9 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
-	kasr "github.com/opentdf/opentdf-v2-poc/protocol/go/kasregistry"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
+	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

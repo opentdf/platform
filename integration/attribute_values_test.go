@@ -6,15 +6,15 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
-	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	policydb "github.com/opentdf/platform/services/policy/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
-// TODO: test failure of create/update with invalid member id's [https://github.com/opentdf/opentdf-v2-poc/issues/105]
+// TODO: test failure of create/update with invalid member id's [https://github.com/opentdf/platform/issues/105]
 
 var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
 

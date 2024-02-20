@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

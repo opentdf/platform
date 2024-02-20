@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	authorization "github.com/opentdf/opentdf-v2-poc/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"google.golang.org/grpc"
 )
 

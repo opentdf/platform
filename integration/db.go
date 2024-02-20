@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	kasdb "github.com/opentdf/opentdf-v2-poc/services/kasregistry/db"
-	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
+	"github.com/opentdf/platform/internal/db"
+	kasdb "github.com/opentdf/platform/services/kasregistry/db"
+	policydb "github.com/opentdf/platform/services/policy/db"
 )
 
 type DBInterface struct {

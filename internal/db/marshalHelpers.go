@@ -3,8 +3,8 @@ package db
 import (
 	"encoding/json"
 
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
-	kasr "github.com/opentdf/opentdf-v2-poc/protocol/go/kasregistry"
+	"github.com/opentdf/platform/protocol/go/common"
+	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

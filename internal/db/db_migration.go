@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/opentdf/opentdf-v2-poc/migrations"
+	"github.com/opentdf/platform/migrations"
 	"github.com/pressly/goose/v3"
 )
 

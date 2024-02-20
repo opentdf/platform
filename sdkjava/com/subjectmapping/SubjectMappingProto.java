@@ -116,6 +116,7 @@ public final class SubjectMappingProto {
       "pingCreateUpdateB\006\272H\003\310\001\001R\016subjectMapping" +
       "\"g\n\034CreateSubjectMappingResponse\022G\n\017subj" +
       "ect_mapping\030\001 \001(\0132\036.subjectmapping.Subje" +
+<<<<<<< HEAD
       "ctMappingR\016subjectMapping\"\222\001\n\033UpdateSubj" +
       "ectMappingRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002i" +
       "d\022[\n\017subject_mapping\030\002 \001(\0132*.subjectmapp" +
@@ -152,10 +153,45 @@ public final class SubjectMappingProto {
       "eSubjectMappingResponse\"\036\202\323\344\223\002\030*\026/subjec" +
       "t-mappings/{id}B\306\001\n\022com.subjectmappingB\023" +
       "SubjectMappingProtoP\001ZCgithub.com/opentd" +
-      "f/opentdf-v2-poc/protocol/go/policy/subj" +
+      "f/platform/protocol/go/policy/subj" +
       "ectmapping\242\002\003SXX\252\002\016Subjectmapping\312\002\016Subj" +
       "ectmapping\342\002\032Subjectmapping\\GPBMetadata\352" +
       "\002\016Subjectmappingb\006proto3"
+=======
+      "ctMappingR\016subjectMapping\"5\n\033DeleteSubje" +
+      "ctMappingRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id" +
+      "\"g\n\034DeleteSubjectMappingResponse\022G\n\017subj" +
+      "ect_mapping\030\001 \001(\0132\036.subjectmapping.Subje" +
+      "ctMappingR\016subjectMapping*\233\001\n\032SubjectMap" +
+      "pingOperatorEnum\022-\n)SUBJECT_MAPPING_OPER" +
+      "ATOR_ENUM_UNSPECIFIED\020\000\022$\n SUBJECT_MAPPI" +
+      "NG_OPERATOR_ENUM_IN\020\001\022(\n$SUBJECT_MAPPING" +
+      "_OPERATOR_ENUM_NOT_IN\020\0022\207\006\n\025SubjectMappi" +
+      "ngService\022\211\001\n\023ListSubjectMappings\022*.subj" +
+      "ectmapping.ListSubjectMappingsRequest\032+." +
+      "subjectmapping.ListSubjectMappingsRespon" +
+      "se\"\031\202\323\344\223\002\023\022\021/subject-mappings\022\210\001\n\021GetSub" +
+      "jectMapping\022(.subjectmapping.GetSubjectM" +
+      "appingRequest\032).subjectmapping.GetSubjec" +
+      "tMappingResponse\"\036\202\323\344\223\002\030\022\026/subject-mappi" +
+      "ngs/{id}\022\235\001\n\024CreateSubjectMapping\022+.subj" +
+      "ectmapping.CreateSubjectMappingRequest\032," +
+      ".subjectmapping.CreateSubjectMappingResp" +
+      "onse\"*\202\323\344\223\002$\"\021/subject-mappings:\017subject" +
+      "_mapping\022\242\001\n\024UpdateSubjectMapping\022+.subj" +
+      "ectmapping.UpdateSubjectMappingRequest\032," +
+      ".subjectmapping.UpdateSubjectMappingResp" +
+      "onse\"/\202\323\344\223\002)\"\026/subject-mappings/{id}:\017su" +
+      "bject_mapping\022\221\001\n\024DeleteSubjectMapping\022+" +
+      ".subjectmapping.DeleteSubjectMappingRequ" +
+      "est\032,.subjectmapping.DeleteSubjectMappin" +
+      "gResponse\"\036\202\323\344\223\002\030*\026/subject-mappings/{id" +
+      "}B\261\001\n\022com.subjectmappingB\023SubjectMapping" +
+      "ProtoP\001Z.github.com/opentdf/platform/sdk" +
+      "/subjectmapping\242\002\003SXX\252\002\016Subjectmapping\312\002" +
+      "\016Subjectmapping\342\002\032Subjectmapping\\GPBMeta" +
+      "data\352\002\016Subjectmappingb\006proto3"
+>>>>>>> main
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

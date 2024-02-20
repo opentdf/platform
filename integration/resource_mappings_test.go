@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
-	resourcemapping "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
+	resourcemapping "github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

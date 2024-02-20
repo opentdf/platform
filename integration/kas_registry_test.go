@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
-	kasr "github.com/opentdf/opentdf-v2-poc/protocol/go/kasregistry"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
+	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

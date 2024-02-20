@@ -4,8 +4,8 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -139,7 +139,7 @@ func (c PolicyDbClient) DeactivateNamespace(ctx context.Context, id string) (*na
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {
 	t := db.Tables.Namespaces
-	// TODO: handle delete cascade, dangerous deletion via special rpc [https://github.com/opentdf/opentdf-v2-poc/issues/115]
+	// TODO: handle delete cascade, dangerous deletion via special rpc [https://github.com/opentdf/platform/issues/115]
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).

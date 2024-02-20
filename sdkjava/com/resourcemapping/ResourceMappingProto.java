@@ -118,6 +118,7 @@ public final class ResourceMappingProto {
       "ource_mapping\030\001 \001(\0132 .resourcemapping.Re" +
       "sourceMappingR\017resourceMapping\"6\n\034Delete" +
       "ResourceMappingRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310" +
+<<<<<<< HEAD
       "\001\001R\002id\"l\n\035DeleteResourceMappingResponse\022" +
       "K\n\020resource_mapping\030\001 \001(\0132 .resourcemapp" +
       "ing.ResourceMappingR\017resourceMapping2\250\006\n" +
@@ -147,6 +148,53 @@ public final class ResourceMappingProto {
       "pping\242\002\003RXX\252\002\017Resourcemapping\312\002\017Resource" +
       "mapping\342\002\033Resourcemapping\\GPBMetadata\352\002\017" +
       "Resourcemappingb\006proto3"
+=======
+      "\001\001R\002id\"i\n\032GetResourceMappingResponse\022K\n\020" +
+      "resource_mapping\030\001 \001(\0132 .resourcemapping" +
+      ".ResourceMappingR\017resourceMapping\"\177\n\034Cre" +
+      "ateResourceMappingRequest\022_\n\020resource_ma" +
+      "pping\030\001 \001(\0132,.resourcemapping.ResourceMa" +
+      "ppingCreateUpdateB\006\272H\003\310\001\001R\017resourceMappi" +
+      "ng\"l\n\035CreateResourceMappingResponse\022K\n\020r" +
+      "esource_mapping\030\001 \001(\0132 .resourcemapping." +
+      "ResourceMappingR\017resourceMapping\"\227\001\n\034Upd" +
+      "ateResourceMappingRequest\022\026\n\002id\030\001 \001(\tB\006\272" +
+      "H\003\310\001\001R\002id\022_\n\020resource_mapping\030\002 \001(\0132,.re" +
+      "sourcemapping.ResourceMappingCreateUpdat" +
+      "eB\006\272H\003\310\001\001R\017resourceMapping\"l\n\035UpdateReso" +
+      "urceMappingResponse\022K\n\020resource_mapping\030" +
+      "\001 \001(\0132 .resourcemapping.ResourceMappingR" +
+      "\017resourceMapping\"6\n\034DeleteResourceMappin" +
+      "gRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"l\n\035Dele" +
+      "teResourceMappingResponse\022K\n\020resource_ma" +
+      "pping\030\001 \001(\0132 .resourcemapping.ResourceMa" +
+      "ppingR\017resourceMapping2\250\006\n\026ResourceMappi" +
+      "ngService\022\217\001\n\024ListResourceMappings\022,.res" +
+      "ourcemapping.ListResourceMappingsRequest" +
+      "\032-.resourcemapping.ListResourceMappingsR" +
+      "esponse\"\032\202\323\344\223\002\024\022\022/resource-mappings\022\216\001\n\022" +
+      "GetResourceMapping\022*.resourcemapping.Get" +
+      "ResourceMappingRequest\032+.resourcemapping" +
+      ".GetResourceMappingResponse\"\037\202\323\344\223\002\031\022\027/re" +
+      "source-mappings/{id}\022\244\001\n\025CreateResourceM" +
+      "apping\022-.resourcemapping.CreateResourceM" +
+      "appingRequest\032..resourcemapping.CreateRe" +
+      "sourceMappingResponse\",\202\323\344\223\002&\"\022/resource" +
+      "-mappings:\020resource_mapping\022\251\001\n\025UpdateRe" +
+      "sourceMapping\022-.resourcemapping.UpdateRe" +
+      "sourceMappingRequest\032..resourcemapping.U" +
+      "pdateResourceMappingResponse\"1\202\323\344\223\002+\"\027/r" +
+      "esource-mappings/{id}:\020resource_mapping\022" +
+      "\227\001\n\025DeleteResourceMapping\022-.resourcemapp" +
+      "ing.DeleteResourceMappingRequest\032..resou" +
+      "rcemapping.DeleteResourceMappingResponse" +
+      "\"\037\202\323\344\223\002\031*\027/resource-mappings/{id}B\270\001\n\023co" +
+      "m.resourcemappingB\024ResourceMappingProtoP" +
+      "\001Z/github.com/opentdf/platform/sdk/resou" +
+      "rcemapping\242\002\003RXX\252\002\017Resourcemapping\312\002\017Res" +
+      "ourcemapping\342\002\033Resourcemapping\\GPBMetada" +
+      "ta\352\002\017Resourcemappingb\006proto3"
+>>>>>>> main
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

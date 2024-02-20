@@ -6,10 +6,10 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	kasr "github.com/opentdf/opentdf-v2-poc/protocol/go/kasregistry"
-	kasDb "github.com/opentdf/opentdf-v2-poc/services/kasregistry/db"
-	"github.com/opentdf/opentdf-v2-poc/services"
+	"github.com/opentdf/platform/internal/db"
+	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
+	"github.com/opentdf/platform/services"
+	kasDb "github.com/opentdf/platform/services/kasregistry/db"
 	"google.golang.org/grpc"
 )
 

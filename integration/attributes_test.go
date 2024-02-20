@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/common"
-	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
-	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	policydb "github.com/opentdf/platform/services/policy/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

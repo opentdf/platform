@@ -23,7 +23,7 @@ func NewSubjectMappingServer(dbClient *db.Client, grpcServer *grpc.Server,
 	grpcInprocess *grpc.Server, mux *runtime.ServeMux,
 ) error {
 	s := &SubjectMappingService{
-		dbClient: policydb.WithPolicyDbClient(*dbClient),
+		dbClient: policydb.NewClient(*dbClient),
 	}
 	sm.RegisterSubjectMappingServiceServer(grpcServer, s)
 	if grpcInprocess != nil {

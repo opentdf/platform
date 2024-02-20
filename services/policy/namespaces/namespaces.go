@@ -20,7 +20,7 @@ type NamespacesService struct {
 
 func NewNamespacesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
 	ns := &NamespacesService{
-		dbClient: policydb.WithPolicyDbClient(*dbClient),
+		dbClient: policydb.NewClient(*dbClient),
 	}
 	namespaces.RegisterNamespaceServiceServer(g, ns)
 	err := namespaces.RegisterNamespaceServiceHandlerServer(context.Background(), s, ns)

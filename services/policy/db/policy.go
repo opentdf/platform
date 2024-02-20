@@ -22,7 +22,7 @@ type PolicyDbClient struct {
 	db.Client
 }
 
-func WithPolicyDbClient(c db.Client) *PolicyDbClient {
+func NewClient(c db.Client) *PolicyDbClient {
 	ResourceMappingTable = db.Tables.ResourceMappings.Name()
 	NamespacesTable = db.Tables.Namespaces.Name()
 	AttributeValueTable = db.Tables.AttributeValues.Name()

@@ -21,7 +21,7 @@ type ResourceMappingService struct {
 
 func NewResourceMappingServer(dbClient *db.Client, grpcServer *grpc.Server, mux *runtime.ServeMux) error {
 	as := &ResourceMappingService{
-		dbClient: policydb.WithPolicyDbClient(*dbClient),
+		dbClient: policydb.NewClient(*dbClient),
 	}
 	rsMp.RegisterResourceMappingServiceServer(grpcServer, as)
 	err := rsMp.RegisterResourceMappingServiceHandlerServer(context.Background(), mux, as)

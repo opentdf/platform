@@ -25,6 +25,6 @@ func (suite *NamespacesSuite) SetupTest() {
 		Pgx: mock,
 	}
 	suite.namespaceServer = &NamespacesService{
-		dbClient: policydb.WithPolicyDbClient(*dbClient),
+		dbClient: policydb.NewClient(*dbClient),
 	}
 }

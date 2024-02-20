@@ -20,7 +20,7 @@ type AttributesService struct {
 
 func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
 	as := &AttributesService{
-		dbClient: policydb.WithPolicyDbClient(*dbClient),
+		dbClient: policydb.NewClient(*dbClient),
 	}
 	attr.RegisterAttributesServiceServer(g, as)
 	err := attr.RegisterAttributesServiceHandlerServer(context.Background(), s, as)

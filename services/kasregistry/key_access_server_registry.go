@@ -20,7 +20,7 @@ type KeyAccessServerRegistry struct {
 
 func NewKeyAccessServerRegistryServer(dbClient *db.Client, grpcServer *grpc.Server, mux *runtime.ServeMux) error {
 	kagSvc := &KeyAccessServerRegistry{
-		dbClient: kasDb.WithKasrDbClient(*dbClient),
+		dbClient: kasDb.NewClient(*dbClient),
 	}
 	kasr.RegisterKeyAccessServerRegistryServiceServer(grpcServer, kagSvc)
 

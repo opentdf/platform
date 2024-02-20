@@ -17,7 +17,7 @@ type KasRegistryDbClient struct {
 	db.Client
 }
 
-func WithKasrDbClient(c db.Client) *KasRegistryDbClient {
+func NewClient(c db.Client) *KasRegistryDbClient {
 	KeyAccessServerTable = db.Tables.KeyAccessServerRegistry.Name()
 
 	return &KasRegistryDbClient{c}

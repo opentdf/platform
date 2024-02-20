@@ -29,8 +29,8 @@ func NewDBInterface(schema string) DBInterface {
 	return DBInterface{
 		Client:       c,
 		schema:       schema,
-		PolicyClient: policydb.WithPolicyDbClient(*c),
-		KASRClient:   kasdb.WithKasrDbClient(*c),
+		PolicyClient: policydb.NewClient(*c),
+		KASRClient:   kasdb.NewClient(*c),
 	}
 }
 

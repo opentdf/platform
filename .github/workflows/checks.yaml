@@ -117,7 +117,7 @@ jobs:
           cache-dependency-path: |
             ./go.sum
             sdk/go.sum
-            examples/attributes/go.sum
+            examples/go.sum
       - run: go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: make buf-generate

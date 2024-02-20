@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/namespaces.NamespaceService/CreateNamespace"
+  },
+
+  "response": {
+    "status": 200,
+    "body": "{\"namespace\":{\"id\": \"ns-2\", \"name\":\"{{jsonPath request.body '$.name'}}\"}}",
+    "transformers": ["response-template"]
+  }
+}

@@ -65,6 +65,13 @@ func (t Table) Field(field string) string {
 	return t.Name() + "." + field
 }
 
+const (
+	StateInactive    = "INACTIVE"
+	StateActive      = "ACTIVE"
+	StateAny         = "ANY"
+	StateUnspecified = "UNSPECIFIED"
+)
+
 // We can rename this but wanted to get mocks working.
 type PgxIface interface {
 	Acquire(ctx context.Context) (*pgxpool.Conn, error)
@@ -194,8 +201,4 @@ func newStatementBuilder() sq.StatementBuilderType {
 
 func tableName(table string) string {
 	return table
-}
-
-func tableField(table string, field string) string {
-	return table + "." + field
 }

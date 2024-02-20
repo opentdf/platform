@@ -7,13 +7,13 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	namespace "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/namespaces"
+	namespaces "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/services"
 	"google.golang.org/grpc"
 )
 
 type NamespacesService struct {
-	namespace.UnimplementedNamespaceServiceServer
+	namespaces.UnimplementedNamespaceServiceServer
 	dbClient *db.Client
 }
 
@@ -21,19 +21,20 @@ func NewNamespacesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMu
 	ns := &NamespacesService{
 		dbClient: dbClient,
 	}
-	namespace.RegisterNamespaceServiceServer(g, ns)
-	err := namespace.RegisterNamespaceServiceHandlerServer(context.Background(), s, ns)
+	namespaces.RegisterNamespaceServiceServer(g, ns)
+	err := namespaces.RegisterNamespaceServiceHandlerServer(context.Background(), s, ns)
 	if err != nil {
 		return fmt.Errorf("failed to register namespace service handler: %w", err)
 	}
 	return nil
 }
 
-func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespace.ListNamespacesRequest) (*namespace.ListNamespacesResponse, error) {
-	slog.Debug("listing namespaces")
+func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
+	state := services.GetDbStateTypeTransformedEnum(req.State)
+	slog.Debug("listing namespaces", slog.String("state", state))
 
-	rsp := &namespace.ListNamespacesResponse{}
-	list, err := ns.dbClient.ListNamespaces(ctx)
+	rsp := &namespaces.ListNamespacesResponse{}
+	list, err := ns.dbClient.ListNamespaces(ctx, state)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
 	}
@@ -44,25 +45,24 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespace.L
 	return rsp, nil
 }
 
-func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespace.GetNamespaceRequest) (*namespace.GetNamespaceResponse, error) {
+func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespaces.GetNamespaceRequest) (*namespaces.GetNamespaceResponse, error) {
 	slog.Debug("getting namespace", slog.String("id", req.Id))
 
-	rsp := &namespace.GetNamespaceResponse{}
+	rsp := &namespaces.GetNamespaceResponse{}
 
 	namespace, err := ns.dbClient.GetNamespace(ctx, req.Id)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, "id", req.Id)
 	}
 
-	slog.Debug("got namespace", slog.String("id", req.Id))
 	rsp.Namespace = namespace
 
 	return rsp, nil
 }
 
-func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespace.CreateNamespaceRequest) (*namespace.CreateNamespaceResponse, error) {
+func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces.CreateNamespaceRequest) (*namespaces.CreateNamespaceResponse, error) {
 	slog.Debug("creating new namespace", slog.String("name", req.Name))
-	rsp := &namespace.CreateNamespaceResponse{}
+	rsp := &namespaces.CreateNamespaceResponse{}
 
 	id, err := ns.dbClient.CreateNamespace(ctx, req.Name)
 	if err != nil {
@@ -70,7 +70,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespace.
 	}
 
 	slog.Debug("created new namespace", slog.String("name", req.Name))
-	rsp.Namespace = &namespace.Namespace{
+	rsp.Namespace = &namespaces.Namespace{
 		Id: id,
 		// TODO: are we responding with id only or the entire new namespace?
 		// Name: req.Namespace.Name,
@@ -79,9 +79,9 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespace.
 	return rsp, nil
 }
 
-func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespace.UpdateNamespaceRequest) (*namespace.UpdateNamespaceResponse, error) {
+func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces.UpdateNamespaceRequest) (*namespaces.UpdateNamespaceResponse, error) {
 	slog.Debug("updating namespace", slog.String("name", req.Name))
-	rsp := &namespace.UpdateNamespaceResponse{}
+	rsp := &namespaces.UpdateNamespaceResponse{}
 
 	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req.Name)
 	if err != nil {
@@ -94,14 +94,14 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespace.
 	return rsp, nil
 }
 
-func (ns NamespacesService) DeleteNamespace(ctx context.Context, req *namespace.DeleteNamespaceRequest) (*namespace.DeleteNamespaceResponse, error) {
-	slog.Debug("deleting namespace", slog.String("id", req.Id))
-	rsp := &namespace.DeleteNamespaceResponse{}
+func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namespaces.DeactivateNamespaceRequest) (*namespaces.DeactivateNamespaceResponse, error) {
+	slog.Debug("deactivating namespace", slog.String("id", req.Id))
+	rsp := &namespaces.DeactivateNamespaceResponse{}
 
-	if _, err := ns.dbClient.DeleteNamespace(ctx, req.Id); err != nil {
+	if _, err := ns.dbClient.DeactivateNamespace(ctx, req.Id); err != nil {
 		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 
-	slog.Debug("deleted namespace", slog.String("id", req.Id))
+	slog.Debug("soft-deleted namespace", slog.String("id", req.Id))
 	return rsp, nil
 }

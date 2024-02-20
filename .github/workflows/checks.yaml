@@ -61,8 +61,6 @@ jobs:
     name: integration tests
     runs-on: ubuntu-22.04
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
-    needs:
-      - go
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
@@ -87,7 +85,6 @@ jobs:
     name: image build
     if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     runs-on: ubuntu-22.04
-    needs: integration
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: docker/setup-buildx-action@v3
@@ -157,4 +154,3 @@ jobs:
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
       - name: check licenses
         run: go-licenses check --disallowed_types=forbidden --include_tests ./...
-      

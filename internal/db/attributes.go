@@ -10,10 +10,10 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
-	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"github.com/opentdf/platform/sdk/attributes"
+	"github.com/opentdf/platform/sdk/common"
+	"github.com/opentdf/platform/sdk/kasregistry"
+	"github.com/opentdf/platform/sdk/namespaces"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )

@@ -1,8 +1,8 @@
-module github.com/opentdf/opentdf-v2-poc
+module github.com/opentdf/platform
 
 go 1.21.5
 
-replace github.com/opentdf/opentdf-v2-poc/sdk => ./sdk
+replace github.com/opentdf/platform/sdk => ./sdk
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -17,7 +17,7 @@ require (
 	github.com/jackc/pgx/v5 v5.5.3
 	github.com/lestrrat-go/jwx/v2 v2.0.19
 	github.com/open-policy-agent/opa v0.61.0
-	github.com/opentdf/opentdf-v2-poc/sdk v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2

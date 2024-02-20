@@ -3,8 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/sdk"
-	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
+	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/sdk/authorization"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
 	"log/slog"

@@ -140,7 +140,7 @@ public final class AuthorizationProto {
       "lementsRequest\032&.authorization.GetEntitl" +
       "ementsResponse\"\030\202\323\344\223\002\022\"\020/v1/entitlements" +
       "B\260\001\n\021com.authorizationB\022AuthorizationPro" +
-      "toP\001Z3github.com/opentdf/opentdf-v2-poc/" +
+      "toP\001Z3github.com/opentdf/platform/" +
       "sdk/authorization\242\002\003AXX\252\002\rAuthorization\312" +
       "\002\rAuthorization\342\002\031Authorization\\GPBMetad" +
       "ata\352\002\rAuthorizationb\006proto3"

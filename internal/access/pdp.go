@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	attrs "github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	attrs "github.com/opentdf/platform/sdk/attributes"
 )
 
 type Pdp struct {

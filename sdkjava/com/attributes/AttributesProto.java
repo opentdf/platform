@@ -361,7 +361,7 @@ public final class AttributesProto {
       "\323\344\223\002D\")/attributes/values/keyaccessserve" +
       "r/remove:\027value_key_access_serverB\233\001\n\016co" +
       "m.attributesB\017AttributesProtoP\001Z0github." +
-      "com/opentdf/opentdf-v2-poc/sdk/attribute" +
+      "com/opentdf/platform/sdk/attribute" +
       "s\242\002\003AXX\252\002\nAttributes\312\002\nAttributes\342\002\026Attr" +
       "ibutes\\GPBMetadata\352\002\nAttributesb\006proto3"
     };

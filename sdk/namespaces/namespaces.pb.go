@@ -8,7 +8,7 @@ package namespaces
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	common "github.com/opentdf/opentdf-v2-poc/sdk/common"
+	common "github.com/opentdf/platform/sdk/common"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

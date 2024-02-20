@@ -3,9 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/sdk"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/sdk/attributes"
+	"github.com/opentdf/platform/sdk/namespaces"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

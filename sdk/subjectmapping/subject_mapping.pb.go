@@ -8,8 +8,8 @@ package subjectmapping
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	attributes "github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	common "github.com/opentdf/opentdf-v2-poc/sdk/common"
+	attributes "github.com/opentdf/platform/sdk/attributes"
+	common "github.com/opentdf/platform/sdk/common"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

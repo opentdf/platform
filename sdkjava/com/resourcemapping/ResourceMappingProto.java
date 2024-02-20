@@ -142,7 +142,7 @@ public final class ResourceMappingProto {
       "rcemapping.DeleteResourceMappingResponse" +
       "\"\037\202\323\344\223\002\031*\027/resource-mappings/{id}B\276\001\n\023co" +
       "m.resourcemappingB\024ResourceMappingProtoP" +
-      "\001Z5github.com/opentdf/opentdf-v2-poc/sdk" +
+      "\001Z5github.com/opentdf/platform/sdk" +
       "/resourcemapping\242\002\003RXX\252\002\017Resourcemapping" +
       "\312\002\017Resourcemapping\342\002\033Resourcemapping\\GPB" +
       "Metadata\352\002\017Resourcemappingb\006proto3"

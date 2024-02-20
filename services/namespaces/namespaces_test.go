@@ -3,7 +3,7 @@ package namespaces
 import (
 	"log/slog"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/platform/internal/db"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/suite"
 )

@@ -150,11 +150,11 @@ public final class SubjectMappingProto {
       ".subjectmapping.DeleteSubjectMappingRequ" +
       "est\032,.subjectmapping.DeleteSubjectMappin" +
       "gResponse\"\036\202\323\344\223\002\030*\026/subject-mappings/{id" +
-      "}B\267\001\n\022com.subjectmappingB\023SubjectMapping" +
-      "ProtoP\001Z4github.com/opentdf/opentdf-v2-p" +
-      "oc/sdk/subjectmapping\242\002\003SXX\252\002\016Subjectmap" +
-      "ping\312\002\016Subjectmapping\342\002\032Subjectmapping\\G" +
-      "PBMetadata\352\002\016Subjectmappingb\006proto3"
+      "}B\261\001\n\022com.subjectmappingB\023SubjectMapping" +
+      "ProtoP\001Z.github.com/opentdf/platform/sdk" +
+      "/subjectmapping\242\002\003SXX\252\002\016Subjectmapping\312\002" +
+      "\016Subjectmapping\342\002\032Subjectmapping\\GPBMeta" +
+      "data\352\002\016Subjectmappingb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

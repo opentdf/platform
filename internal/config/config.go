@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/creasty/defaults"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/internal/logger"
-	"github.com/opentdf/opentdf-v2-poc/internal/opa"
-	"github.com/opentdf/opentdf-v2-poc/internal/server"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/logger"
+	"github.com/opentdf/platform/internal/opa"
+	"github.com/opentdf/platform/internal/server"
 	"github.com/spf13/viper"
 )
 

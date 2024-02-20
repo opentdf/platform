@@ -7,16 +7,25 @@ attribute_namespaces:
     columns:
       - id
       - name
+      - active
   data:
     example.com:
-      id: 00000000-0000-0000-0000-000000000000
+      id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
       name: example.com
+      active: true
     example.net:
-      id: 00000000-0000-0000-0000-000000000001
+      id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: example.net
+      active: true
     example.org:
-      id: 00000000-0000-0000-0000-000000000002
+      id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: example.org
+      active: true
+    # deactivated state
+    deactivated_ns:
+      id: 40790395-88b1-4adc-8bf5-1900491a79ba
+      name: deactivated.io
+      active: false
 
 ##
 # Attributes
@@ -31,55 +40,72 @@ attributes:
       - namespace_id
       - name
       - rule
+      - active
   data:
     example.com/attr/attr1:
-      id: 00000000-0000-0000-0000-000000000000
-      namespace_id: 00000000-0000-0000-0000-000000000000
+      id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
       name: attr1
       rule: ANY_OF
+      active: true
     example.com/attr/attr2:
-      id: 00000000-0000-0000-0000-000000000001
-      namespace_id: 00000000-0000-0000-0000-000000000000
+      id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
       name: attr2
       rule: ALL_OF
+      active: true
 
     example.net/attr/attr1:
-      id: 00000000-0000-0000-0000-000000000002
-      namespace_id: 00000000-0000-0000-0000-000000000001
+      id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
+      namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: attr1
       rule: ANY_OF
+      active: true
     example.net/attr/attr2:
-      id: 00000000-0000-0000-0000-000000000003
-      namespace_id: 00000000-0000-0000-0000-000000000001
+      id: 8e778b7f-3a0e-4ed7-b007-5e4d8dfc03df
+      namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: attr2
       rule: ALL_OF
+      active: true
     example.net/attr/attr3:
-      id: 00000000-0000-0000-0000-000000000004
-      namespace_id: 00000000-0000-0000-0000-000000000001
+      id: 438a0dfb-cd1a-4f73-af73-2325a6e9db1b
+      namespace_id: d69cf14d-744b-48cf-aab4-43756e97a8e5
       name: attr3
       rule: HIERARCHY
+      active: true
 
     example.org/attr/attr1:
-      id: 00000000-0000-0000-0000-000000000005
-      namespace_id: 00000000-0000-0000-0000-000000000002
+      id: 07d04942-c5b4-42d1-964e-f5b2d6365d80
+      namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: attr1
       rule: ANY_OF
+      active: true
     example.org/attr/attr2:
-      id: 00000000-0000-0000-0000-000000000006
-      namespace_id: 00000000-0000-0000-0000-000000000002
+      id: 65a0e745-7a22-4e16-8004-09ebc932f621
+      namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: attr2
       rule: ALL_OF
+      active: true
     example.org/attr/attr3:
-      id: 00000000-0000-0000-0000-000000000007
-      namespace_id: 00000000-0000-0000-0000-000000000002
+      id: 6dc88b9e-319b-4c6e-85c7-6f7e43a5d8d4
+      namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: attr3
       rule: HIERARCHY
+      active: true
+
+    # deactivated state
+    deactivated.io/attr/attr1:
+      id: 3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e
+      namespace_id: 40790395-88b1-4adc-8bf5-1900491a79ba
+      name: deactivated_attr
+      rule: ANY_OF
+      active: false
 
 attribute_key_access_servers:
-  - attribute_id: 00000000-0000-0000-0000-000000000000
-    key_access_server_id: 00000000-0000-0000-0000-000000000000
-  - attribute_id: 00000000-0000-0000-0000-000000000000
-    key_access_server_id: 00000000-0000-0000-0000-000000000001
+  - attribute_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+    key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
+  - attribute_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+    key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
 
 ##
 # Attribute Values
@@ -92,44 +118,58 @@ attribute_values:
       - attribute_definition_id
       - value
       - members
+      - active
   data:
     example.com/attr/attr1/value/value1:
-      id: 00000000-0000-0000-0000-000000000000
-      attribute_definition_id: 00000000-0000-0000-0000-000000000000
+      id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      attribute_definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
       value: value1
+      active: true
     example.com/attr/attr1/value/value2:
-      id: 00000000-0000-0000-0000-000000000001
-      attribute_definition_id: 00000000-0000-0000-0000-000000000000
+      id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      attribute_definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
       value: value2
       members:
         # example.com/attr/attr2/value/value1
-        - 00000000-0000-0000-0000-000000000002
+        - 0fd363db-27b1-4210-b77b-8c82fe044d41
         # example.net/attr/attr1/value/value1
-        - 00000000-0000-0000-0000-000000000004
+        - 532e5957-28f7-466d-91e2-493e9431cd83
+      active: true
 
     example.com/attr/attr2/value/value1:
-      id: 00000000-0000-0000-0000-000000000002
-      attribute_definition_id: 00000000-0000-0000-0000-000000000001
+      id: 0fd363db-27b1-4210-b77b-8c82fe044d41
+      attribute_definition_id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
       value: value1
+      active: true
     example.com/attr/attr2/value/value2:
-      id: 00000000-0000-0000-0000-000000000003
-      attribute_definition_id: 00000000-0000-0000-0000-000000000001
+      id: 81f643f8-e050-4b97-a005-b61294d4c8bb
+      attribute_definition_id: e1536f25-d287-43ed-9ad9-2cf4a7698e5f
       value: value2
+      active: true
 
     example.net/attr/attr1/value/value1:
-      id: 00000000-0000-0000-0000-000000000004
-      attribute_definition_id: 00000000-0000-0000-0000-000000000002
+      id: 532e5957-28f7-466d-91e2-493e9431cd83
+      attribute_definition_id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
       value: value1
+      active: true
     example.net/attr/attr1/value/value2:
-      id: 00000000-0000-0000-0000-000000000005
-      attribute_definition_id: 00000000-0000-0000-0000-000000000002
+      id: 04bd2657-de10-46bc-a88f-5d687de4816b
+      attribute_definition_id: d2396dd6-0e4e-4b6d-9ab1-74b69c4b9b99
       value: value2
+      active: true
+
+    # deactivated state
+    deactivated.io/attr/attr1/value/deactivated_value:
+      id: 06fa035b-8205-4000-86ad-2439cc1325ec
+      attribute_definition_id: 3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e
+      value: deactivated_value
+      active: false
 
 attribute_value_key_access_servers:
-  - value_id: 00000000-0000-0000-0000-000000000000
-    key_access_server_id: 00000000-0000-0000-0000-000000000000
-  - value_id: 00000000-0000-0000-0000-000000000000
-    key_access_server_id: 00000000-0000-0000-0000-000000000001
+  - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+    key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
+  - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+    key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
 
 ##
 # Subject Mappings
@@ -147,8 +187,8 @@ subject_mappings:
       - subject_attribute_values
   data:
     subject_mapping_subject_attribute1:
-      id: 00000000-0000-0000-0000-000000000000
-      attribute_value_id: 00000000-0000-0000-0000-000000000000
+      id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       operator: IN
       subject_attribute: subject_attribute1
       subject_attribute_values:
@@ -156,8 +196,8 @@ subject_mappings:
         - value2
 
     subject_mapping_subject_attribute2:
-      id: 00000000-0000-0000-0000-000000000001
-      attribute_value_id: 00000000-0000-0000-0000-000000000001
+      id: e6a3f940-e24f-4383-8763-718a1a304948
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
       operator: NOT_IN
       subject_attribute: subject_attribute2
       subject_attribute_values:
@@ -178,19 +218,19 @@ resource_mappings:
       - terms
   data:
     resource_mapping_to_attribute_value1:
-      id: 00000000-0000-0000-0000-000000000000
-      attribute_value_id: 00000000-0000-0000-0000-000000000000
+      id: 02092d67-fffa-4030-9775-b5cd5d581e1f
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       terms:
         - TS
         - TOPSECRET
     resource_mapping_to_attribute_value2:
-      id: 00000000-0000-0000-0000-000000000001
-      attribute_value_id: 00000000-0000-0000-0000-000000000001
+      id: b05d8d25-42ad-445d-b973-12b7561a7738
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
       terms:
         - test0
     resource_mapping_to_attribute_value3:
-      id: 00000000-0000-0000-0000-000000000002
-      attribute_value_id: 00000000-0000-0000-0000-000000000005
+      id: f4d76bfb-e1a1-4f7a-83f2-8e8433cf229f
+      attribute_value_id: 04bd2657-de10-46bc-a88f-5d687de4816b
       terms:
         - helloworld
 
@@ -207,12 +247,12 @@ kas_registry:
       - public_key
   data:
     key_access_server_1:
-      id: 00000000-0000-0000-0000-000000000000
+      id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
       uri: kas.example.com
       public_key:
         remote: https://kas.example.com/public_key
     key_access_server_2:
-      id: 00000000-0000-0000-0000-000000000001
+      id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
       uri: https://local.kas.com:3000
       public_key:
         local: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==

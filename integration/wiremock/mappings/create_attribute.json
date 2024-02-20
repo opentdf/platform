@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/attributes.AttributesService/CreateAttribute"
+  },
+
+  "response": {
+    "status": 200,
+    "bodyFileName": "messages/create_attribute.json",
+    "transformers": ["response-template"]
+  }
+}

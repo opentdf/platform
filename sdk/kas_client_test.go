@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opentdf/opentdf-v2-poc/sdk/crypto"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 type FakeUnwrapper struct {

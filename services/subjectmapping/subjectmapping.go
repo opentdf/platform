@@ -6,10 +6,10 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/sdk/subjectmapping"
 
-	"github.com/opentdf/opentdf-v2-poc/services"
+	"github.com/opentdf/platform/services"
 	"google.golang.org/grpc"
 )
 

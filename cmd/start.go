@@ -6,25 +6,26 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/opentdf/platform/services/authorization"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/config"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/internal/logger"
-	"github.com/opentdf/opentdf-v2-poc/internal/opa"
-	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/services/resourcemapping"
+	"github.com/opentdf/platform/internal/config"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/logger"
+	"github.com/opentdf/platform/internal/opa"
+	"github.com/opentdf/platform/internal/server"
+	"github.com/opentdf/platform/services/resourcemapping"
 
-	// "github.com/opentdf/opentdf-v2-poc/services/acre"
-	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/services/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/services/subjectmapping"
+	// "github.com/opentdf/platform/services/acre"
+	"github.com/opentdf/platform/services/attributes"
+	"github.com/opentdf/platform/services/kasregistry"
+	"github.com/opentdf/platform/services/subjectmapping"
 
-	"github.com/opentdf/opentdf-v2-poc/services/namespaces"
-	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
+	"github.com/opentdf/platform/services/namespaces"
+	// "github.com/opentdf/platform/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
 
@@ -163,6 +164,12 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	err = namespaces.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register namespaces service: %w", err)
+	}
+
+	slog.Info("registering authorization server")
+	err = authorization.NewAuthorizationServer(otdf.GrpcServer, otdf.Mux)
+	if err != nil {
+		return fmt.Errorf("could not register authorization service: %w", err)
 	}
 
 	return nil

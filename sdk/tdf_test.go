@@ -10,8 +10,6 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
-
-	"github.com/opentdf/opentdf-v2-poc/internal/oauth"
 )
 
 const (
@@ -272,22 +270,21 @@ func init() {
 }
 
 func TestSimpleTDF(t *testing.T) {
-	oauthCredentials := oauth.ClientCredentials{
-		ClientId:   "xxxxxxxxxx",
-		ClientAuth: "xxxxxxx",
-	}
-	idpCredentials, err := NewIDPAccessTokenSource(
-		oauthCredentials,
-		"http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token",
-		[]string{})
+	// oauthCredentials := oauth.ClientCredentials{
+	// 	ClientId:   "xxxxxxxxxx",
+	// 	ClientAuth: "xxxxxxx",
+	// }
+	// idpCredentials, err := NewIDPAccessTokenSource(
+	// 	oauthCredentials,
+	// 	"http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token",
+	// 	[]string{})
 
-	if err != nil {
-		t.Fatalf("error creating IDP credentials: %v", err)
-	}
+	// if err != nil {
+	// 	t.Fatalf("error creating IDP credentials: %v", err)
+	// }
 
-	// fakeUnwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
-
-	fakeUnwrapper := KasClient{creds: &idpCredentials}
+	// create auth config
+	unwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
 
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
 
@@ -317,7 +314,7 @@ func TestSimpleTDF(t *testing.T) {
 			},
 		}
 
-		err = tdfConfig.AddKasInformation(fakeUnwrapper, kasURLs)
+		err = tdfConfig.AddKasInformation(unwrapper, kasURLs)
 		if err != nil {
 			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
 		}
@@ -339,13 +336,13 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(fileWriter)
 
-		tdfSize, err := CreateTDF(*tdfConfig, bufReader, fileWriter)
+		tdfObj, err := CreateTDF(*tdfConfig, bufReader, fileWriter)
 		if err != nil {
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}
 
-		if tdfSize != expectedTdfSize {
-			t.Errorf("tdf size test failed expected %v, got %v", expectedTdfSize, tdfSize)
+		if tdfObj.TdfSize != expectedTdfSize {
+			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.TdfSize, expectedTdfSize)
 		}
 	}
 
@@ -363,12 +360,20 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(readSeeker)
 
-		r, err := NewReader(fakeUnwrapper, readSeeker)
+		if err != nil {
+			t.Fatalf("Fail to close archive file:%v", err)
+		}
+
+		r, err := LoadTDF(unwrapper, readSeeker)
+		if err != nil {
+			t.Fatalf("Fail to load the tdf:%v", err)
+		}
+
+		unencryptedMetaData, err := r.GetUnencryptedMetadata()
 		if err != nil {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
 
-		unencryptedMetaData := r.UnencryptedMetadata()
 		if metaDataStr != unencryptedMetaData {
 			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, unencryptedMetaData)
 		}
@@ -400,7 +405,7 @@ func TestSimpleTDF(t *testing.T) {
 		buf := make([]byte, 8)
 		// create auth config
 
-		r, err := NewReader(fakeUnwrapper, readSeeker)
+		r, err := LoadTDF(unwrapper, readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to create reader:%v", err)
 		}
@@ -421,7 +426,7 @@ func TestSimpleTDF(t *testing.T) {
 }
 
 func TestTDFReader(t *testing.T) {
-	fakeUnwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
+	unwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
 
 	for _, test := range partialTDFTestHarnesses { // create .txt file
 		kasInfoList := test.kasInfoList
@@ -435,7 +440,7 @@ func TestTDFReader(t *testing.T) {
 			t.Fatalf("Fail to create tdf config: %v", err)
 		}
 
-		err = tdfConfig.AddKasInformation(fakeUnwrapper, kasInfoList)
+		err = tdfConfig.AddKasInformation(unwrapper, kasInfoList)
 		if err != nil {
 			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
 		}
@@ -452,7 +457,7 @@ func TestTDFReader(t *testing.T) {
 
 			// test reader
 			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
-			r, err := NewReader(fakeUnwrapper, tdfReadSeeker)
+			r, err := LoadTDF(unwrapper, tdfReadSeeker)
 			if err != nil {
 				t.Fatalf("failed to read tdf: %v", err)
 			}
@@ -553,7 +558,7 @@ func BenchmarkReader(b *testing.B) {
 		},
 	}
 
-	fakeUnwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
+	unwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
 
 	kasInfoList := test.kasInfoList
 	for index := range kasInfoList {
@@ -566,7 +571,7 @@ func BenchmarkReader(b *testing.B) {
 		b.Fatalf("Fail to create tdf config: %v", err)
 	}
 
-	err = tdfConfig.AddKasInformation(fakeUnwrapper, kasInfoList)
+	err = tdfConfig.AddKasInformation(unwrapper, kasInfoList)
 	if err != nil {
 		b.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
 	}
@@ -586,7 +591,7 @@ func BenchmarkReader(b *testing.B) {
 	}
 
 	readSeeker = bytes.NewReader(tdfBuf.Bytes())
-	r, err := NewReader(fakeUnwrapper, readSeeker)
+	r, err := LoadTDF(unwrapper, readSeeker)
 	if err != nil {
 		b.Fatalf("failed to read tdf: %v", err)
 	}
@@ -633,13 +638,13 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
 	}(fileWriter) // CreateTDF TDFConfig
-	tdfSize, err := CreateTDF(tdfConfig, readSeeker, fileWriter)
+	tdfObj, err := CreateTDF(tdfConfig, readSeeker, fileWriter)
 	if err != nil {
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
 
-	if tdfSize != test.tdfFileSize {
-		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfSize)
+	if tdfObj.TdfSize != test.tdfFileSize {
+		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfObj.TdfSize)
 	}
 }
 
@@ -656,7 +661,7 @@ func testDecryptWithReader(t *testing.T, unwrapper Unwrapper, tdfFile, decrypted
 		}
 	}(readSeeker)
 
-	r, err := NewReader(unwrapper, readSeeker)
+	r, err := LoadTDF(unwrapper, readSeeker)
 	if err != nil {
 		t.Fatalf("failed to read tdf: %v", err)
 	}

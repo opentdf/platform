@@ -64,7 +64,7 @@ type attributeObject struct {
 	KasURL      string `json:"kasURL"`
 }
 
-type policyObject struct {
+type PolicyObject struct {
 	UUID string `json:"uuid"`
 	Body struct {
 		DataAttributes []attributeObject `json:"dataAttributes"`

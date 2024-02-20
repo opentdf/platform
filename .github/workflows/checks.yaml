@@ -54,6 +54,7 @@ jobs:
           version: v1.55
           only-new-issues: true
           working-directory: ${{ matrix.directory }}
+          args: --out-format=colored-line-number
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
 

@@ -326,13 +326,13 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(fileWriter)
 
-		tdfSize, err := CreateTDF(*tdfConfig, bufReader, fileWriter)
+		tdfObj, err := CreateTDF(*tdfConfig, bufReader, fileWriter)
 		if err != nil {
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}
 
-		if tdfSize != expectedTdfSize {
-			t.Errorf("tdf size test failed expected %v, got %v", tdfSize, expectedTdfSize)
+		if tdfObj.TdfSize != expectedTdfSize {
+			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.TdfSize, expectedTdfSize)
 		}
 	}
 
@@ -360,12 +360,16 @@ func TestSimpleTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		r, err := NewReader(*authConfig, readSeeker)
+		r, err := LoadTDF(*authConfig, readSeeker)
+		if err != nil {
+			t.Fatalf("Fail to load the tdf:%v", err)
+		}
+
+		unencryptedMetaData, err := r.GetUnencryptedMetadata()
 		if err != nil {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
 
-		unencryptedMetaData := r.UnencryptedMetadata()
 		if metaDataStr != unencryptedMetaData {
 			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, unencryptedMetaData)
 		}
@@ -405,7 +409,7 @@ func TestSimpleTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		r, err := NewReader(*authConfig, readSeeker)
+		r, err := LoadTDF(*authConfig, readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to create reader:%v", err)
 		}
@@ -468,7 +472,7 @@ func TestTDFReader(t *testing.T) {
 
 			// test reader
 			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
-			r, err := NewReader(*authConfig, tdfReadSeeker)
+			r, err := LoadTDF(*authConfig, tdfReadSeeker)
 			if err != nil {
 				t.Fatalf("failed to read tdf: %v", err)
 			}
@@ -624,7 +628,7 @@ func BenchmarkReader(b *testing.B) {
 	authConfig.signingPrivateKey = signingPrivateKey
 
 	readSeeker = bytes.NewReader(tdfBuf.Bytes())
-	r, err := NewReader(*authConfig, readSeeker)
+	r, err := LoadTDF(*authConfig, readSeeker)
 	if err != nil {
 		b.Fatalf("failed to read tdf: %v", err)
 	}
@@ -671,13 +675,13 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
 	}(fileWriter) // CreateTDF TDFConfig
-	tdfSize, err := CreateTDF(tdfConfig, readSeeker, fileWriter)
+	tdfObj, err := CreateTDF(tdfConfig, readSeeker, fileWriter)
 	if err != nil {
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
 
-	if tdfSize != test.tdfFileSize {
-		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfSize)
+	if tdfObj.TdfSize != test.tdfFileSize {
+		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfObj.TdfSize)
 	}
 }
 
@@ -694,7 +698,7 @@ func testDecryptWithReader(t *testing.T, authConfig AuthConfig, tdfFile, decrypt
 		}
 	}(readSeeker)
 
-	r, err := NewReader(authConfig, readSeeker)
+	r, err := LoadTDF(authConfig, readSeeker)
 	if err != nil {
 		t.Fatalf("failed to read tdf: %v", err)
 	}

@@ -14,7 +14,7 @@ import (
 type DBInterface struct {
 	Client       *db.Client
 	PolicyClient *policydb.PolicyDbClient
-	KasrClient   *kasdb.KasRegistryDbClient
+	KASRClient   *kasdb.KasRegistryDbClient
 	schema       string
 }
 
@@ -30,7 +30,7 @@ func NewDBInterface(schema string) DBInterface {
 		Client:       c,
 		schema:       schema,
 		PolicyClient: policydb.WithPolicyDbClient(*c),
-		KasrClient:   kasdb.WithKasrDbClient(*c),
+		KASRClient:   kasdb.WithKasrDbClient(*c),
 	}
 }
 

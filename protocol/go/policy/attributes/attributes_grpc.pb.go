@@ -42,66 +42,12 @@ type AttributesServiceClient interface {
 	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
 	// Request:
 	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
-<<<<<<< HEAD:protocol/go/policy/attributes/attributes_grpc.pb.go
-	//
-=======
 	// OR (for inactive)
 	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
->>>>>>> main:sdk/attributes/attributes_grpc.pb.go
 	// Response:
 	// {
 	// "attributes": [
 	// {
-<<<<<<< HEAD:protocol/go/policy/attributes/attributes_grpc.pb.go
-	// "values": [
-	// {
-	// "members": [],
-	// "grants": [
-	// {
-	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-	// "metadata": null,
-	// "uri": "kas10",
-	// "public_key": {
-	// "remote": "https://example.com/kas"
-	// }
-	// }
-	// ],
-	// "id": "e2140c39-f478-43cf-9559-0067d596654f",
-	// "metadata": null,
-	// "attribute_id": "",
-	// "value": "value1"
-	// }
-	// ],
-	// "grants": [
-	// {
-	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-	// "metadata": null,
-	// "uri": "kas10",
-	// "public_key": {
-	// "remote": "https://example.com/kas"
-	// }
-	// }
-	// ],
-	// "id": "2dc75d97-f6a4-4036-9a6a-acc99171fff1",
-	// "metadata": {
-	// "labels": [],
-	// "created_at": {
-	// "seconds": "1706878441",
-	// "nanos": 147178000
-	// },
-	// "updated_at": {
-	// "seconds": "1706878441",
-	// "nanos": 147178000
-	// },
-	// "description": ""
-	// },
-	// "namespace": {
-	// "id": "c85d126a-c2f2-4bb6-bc6d-a513015363cb",
-	// "name": "demo.com"
-	// },
-	// "name": "test",
-	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
-=======
 	// "id": "attribute_id",
 	// "metadata": {
 	// "created_at": "2021-01-01T00:00:00Z",
@@ -148,7 +94,6 @@ type AttributesServiceClient interface {
 	// }
 	// ],
 	// "active": true
->>>>>>> main:sdk/attributes/attributes_grpc.pb.go
 	// }
 	// ]
 	// }
@@ -219,11 +164,7 @@ type AttributesServiceClient interface {
 	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue
 	CreateAttributeValue(ctx context.Context, in *CreateAttributeValueRequest, opts ...grpc.CallOption) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error)
-<<<<<<< HEAD:protocol/go/policy/attributes/attributes_grpc.pb.go
-	DeleteAttributeValue(ctx context.Context, in *DeleteAttributeValueRequest, opts ...grpc.CallOption) (*DeleteAttributeValueResponse, error)
-=======
 	DeactivateAttributeValue(ctx context.Context, in *DeactivateAttributeValueRequest, opts ...grpc.CallOption) (*DeactivateAttributeValueResponse, error)
->>>>>>> main:sdk/attributes/attributes_grpc.pb.go
 	// Assign Key Access Server to Attribute
 	//
 	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
@@ -437,66 +378,12 @@ type AttributesServiceServer interface {
 	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
 	// Request:
 	// grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
-<<<<<<< HEAD:protocol/go/policy/attributes/attributes_grpc.pb.go
-	//
-=======
 	// OR (for inactive)
 	// grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
->>>>>>> main:sdk/attributes/attributes_grpc.pb.go
 	// Response:
 	// {
 	// "attributes": [
 	// {
-<<<<<<< HEAD:protocol/go/policy/attributes/attributes_grpc.pb.go
-	// "values": [
-	// {
-	// "members": [],
-	// "grants": [
-	// {
-	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-	// "metadata": null,
-	// "uri": "kas10",
-	// "public_key": {
-	// "remote": "https://example.com/kas"
-	// }
-	// }
-	// ],
-	// "id": "e2140c39-f478-43cf-9559-0067d596654f",
-	// "metadata": null,
-	// "attribute_id": "",
-	// "value": "value1"
-	// }
-	// ],
-	// "grants": [
-	// {
-	// "id": "bb50eaac-0d95-4f28-9a36-9bbf412a7b95",
-	// "metadata": null,
-	// "uri": "kas10",
-	// "public_key": {
-	// "remote": "https://example.com/kas"
-	// }
-	// }
-	// ],
-	// "id": "2dc75d97-f6a4-4036-9a6a-acc99171fff1",
-	// "metadata": {
-	// "labels": [],
-	// "created_at": {
-	// "seconds": "1706878441",
-	// "nanos": 147178000
-	// },
-	// "updated_at": {
-	// "seconds": "1706878441",
-	// "nanos": 147178000
-	// },
-	// "description": ""
-	// },
-	// "namespace": {
-	// "id": "c85d126a-c2f2-4bb6-bc6d-a513015363cb",
-	// "name": "demo.com"
-	// },
-	// "name": "test",
-	// "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"
-=======
 	// "id": "attribute_id",
 	// "metadata": {
 	// "created_at": "2021-01-01T00:00:00Z",
@@ -543,7 +430,6 @@ type AttributesServiceServer interface {
 	// }
 	// ],
 	// "active": true
->>>>>>> main:sdk/attributes/attributes_grpc.pb.go
 	// }
 	// ]
 	// }
@@ -614,11 +500,7 @@ type AttributesServiceServer interface {
 	//	grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue
 	CreateAttributeValue(context.Context, *CreateAttributeValueRequest) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error)
-<<<<<<< HEAD:protocol/go/policy/attributes/attributes_grpc.pb.go
-	DeleteAttributeValue(context.Context, *DeleteAttributeValueRequest) (*DeleteAttributeValueResponse, error)
-=======
 	DeactivateAttributeValue(context.Context, *DeactivateAttributeValueRequest) (*DeactivateAttributeValueResponse, error)
->>>>>>> main:sdk/attributes/attributes_grpc.pb.go
 	// Assign Key Access Server to Attribute
 	//
 	// grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute

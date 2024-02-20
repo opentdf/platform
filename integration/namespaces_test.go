@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

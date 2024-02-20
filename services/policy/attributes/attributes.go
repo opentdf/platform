@@ -46,11 +46,11 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 }
 
 func (s *AttributesService) ListAttributes(ctx context.Context,
-	req *attributes.ListAttributesRequest,
-) (*attributes.ListAttributesResponse, error) {
+	req *attr.ListAttributesRequest,
+) (*attr.ListAttributesResponse, error) {
 	state := services.GetDbStateTypeTransformedEnum(req.State)
 	slog.Debug("listing attribute definitions", slog.String("state", state))
-	rsp := &attributes.ListAttributesResponse{}
+	rsp := &attr.ListAttributesResponse{}
 
 	list, err := s.dbClient.ListAllAttributes(ctx, state)
 	if err != nil {
@@ -91,9 +91,9 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 }
 
 func (s *AttributesService) DeactivateAttribute(ctx context.Context,
-	req *attributes.DeactivateAttributeRequest,
-) (*attributes.DeactivateAttributeResponse, error) {
-	rsp := &attributes.DeactivateAttributeResponse{}
+	req *attr.DeactivateAttributeRequest,
+) (*attr.DeactivateAttributeResponse, error) {
+	rsp := &attr.DeactivateAttributeResponse{}
 
 	a, err := s.dbClient.DeactivateAttribute(ctx, req.Id)
 	if err != nil {
@@ -119,7 +119,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attr.
 	}, nil
 }
 
-func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
+func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attr.ListAttributeValuesRequest) (*attr.ListAttributeValuesResponse, error) {
 	state := services.GetDbStateTypeTransformedEnum(req.State)
 	slog.Debug("listing attribute values", slog.String("attributeId", req.AttributeId), slog.String("state", state))
 	list, err := s.dbClient.ListAttributeValues(ctx, req.AttributeId, state)
@@ -154,13 +154,13 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attr.
 	}, nil
 }
 
-func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *attributes.DeactivateAttributeValueRequest) (*attributes.DeactivateAttributeValueResponse, error) {
+func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *attr.DeactivateAttributeValueRequest) (*attr.DeactivateAttributeValueResponse, error) {
 	a, err := s.dbClient.DeactivateAttributeValue(ctx, req.Id)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 
-	return &attributes.DeactivateAttributeValueResponse{
+	return &attr.DeactivateAttributeValueResponse{
 		Value: a,
 	}, nil
 }

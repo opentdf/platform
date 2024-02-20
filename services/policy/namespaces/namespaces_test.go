@@ -1,4 +1,4 @@
-package policy
+package namespaces
 
 import (
 	"log/slog"

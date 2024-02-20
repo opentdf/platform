@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package namespaces;
+package policy.namespaces;
 
 import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
@@ -70,7 +70,7 @@ service NamespaceService {
 
   /* 
     Request: 
-      grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 namespaces.NamespaceService/GetNamespace
+      grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace
     Response:
       {
         "namespace": {
@@ -89,7 +89,7 @@ service NamespaceService {
   /*
     NOTE: ACTIVE state by default, INACTIVE or ANY when specified
     Request: 
-      grpcurl -plaintext localhost:9000 namespaces.NamespaceService/ListNamespaces
+      grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
     Response:
       {
         "namespaces": [
@@ -109,7 +109,7 @@ service NamespaceService {
 
   /*
     Request: 
-      grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 namespaces.NamespaceService/CreateNamespace
+      grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
     Response:
       { "namespace": { "id": "namespace-id", "active": true } }
   */

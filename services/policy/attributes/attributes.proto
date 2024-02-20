@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package attributes;
+package policy.attributes;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
@@ -233,9 +233,9 @@ service AttributesService {
   /*
       NOTE: ACTIVE state by default, INACTIVE or ANY when specified
       Request:
-        grpcurl -plaintext localhost:9000 attributes.AttributesService/ListAttributes
+        grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
           OR (for inactive)
-        grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+        grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
       Response:
         {
           "attributes": [
@@ -297,7 +297,7 @@ service AttributesService {
      
      Request:
         NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-        grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 attributes.AttributesService/ListAttributes
+        grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
      Response:
         {
           "attributes": [
@@ -337,7 +337,7 @@ service AttributesService {
 
   /* Create Attribute
     Request:
-      grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 attributes.AttributesService/CreateAttribute
+      grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
     Response
       {
         "attribute": {
@@ -380,7 +380,7 @@ service AttributesService {
 
   // Create Attribute Value
   // Example:
-  //  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:8080 attributes.AttributesService/CreateAttributeValue
+  //  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue
   rpc CreateAttributeValue(CreateAttributeValueRequest) returns (CreateAttributeValueResponse) {
     option (google.api.http) = {
       post: "/attributes/{attribute_id}/values"
@@ -402,7 +402,7 @@ service AttributesService {
   /*
       Assign Key Access Server to Attribute
 
-     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToAttribute
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
 
       Example Request:
       {
@@ -428,7 +428,7 @@ service AttributesService {
   /*
       Remove Key Access Server to Attribute
 
-     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
 
       Example Request:
       {
@@ -454,7 +454,7 @@ service AttributesService {
   /*
       Assign Key Access Server to Value
 
-     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/AssignKeyAccessServerToValue
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
 
       Example Request:
       {
@@ -479,7 +479,7 @@ service AttributesService {
 
   /*
      Remove Key Access Server to Value
-     grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 attributes.AttributesService/RemoveKeyAccessServerFromValue
+     grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
 
      Example Request:
      {

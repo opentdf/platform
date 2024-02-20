@@ -20,7 +20,10 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/server"
 
 	"github.com/opentdf/opentdf-v2-poc/services/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/services/policy"
+	attr "github.com/opentdf/opentdf-v2-poc/services/policy/attributes"
+	"github.com/opentdf/opentdf-v2-poc/services/policy/namespaces"
+	"github.com/opentdf/opentdf-v2-poc/services/policy/resourcemapping"
+	"github.com/opentdf/opentdf-v2-poc/services/policy/subjectmapping"
 
 	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
 	"github.com/spf13/cobra"
@@ -134,19 +137,19 @@ func createDatabaseClient(ctx context.Context, conf db.Config) (*db.Client, erro
 func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
 	var err error
 	slog.Info("registering resource mappings server")
-	err = policy.NewResourceMappingServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = resourcemapping.NewResourceMappingServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register resource mappings service: %w", err)
 	}
 
 	slog.Info("registering attributes server")
-	err = policy.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = attr.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register attributes service: %w", err)
 	}
 
 	slog.Info("registering subject mappings service")
-	err = policy.NewSubjectMappingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
+	err = subjectmapping.NewSubjectMappingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register subject mappings service: %w", err)
 	}
@@ -158,7 +161,7 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	}
 
 	slog.Info("registering namespaces server")
-	err = policy.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = namespaces.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register namespaces service: %w", err)
 	}

@@ -1,4 +1,4 @@
-package policy
+package attributes
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	attr "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/attributes"
 	"github.com/opentdf/opentdf-v2-poc/services"
+	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	"google.golang.org/grpc"
 )
 

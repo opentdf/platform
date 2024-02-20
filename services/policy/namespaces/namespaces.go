@@ -1,4 +1,4 @@
-package policy
+package namespaces
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	namespaces "github.com/opentdf/opentdf-v2-poc/protocol/go/policy/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/services"
+	policydb "github.com/opentdf/opentdf-v2-poc/services/policy/db"
 	"google.golang.org/grpc"
 )
 

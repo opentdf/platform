@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package subjectmapping;
+package policy.subjectmapping;
 
 import "policy/attributes/attributes.proto";
 import "buf/validate/validate.proto";
@@ -34,7 +34,7 @@ import "google/api/annotations.proto";
        "subject_values": ["CZE"],
        "operator": "IN"
      }
-   }' localhost:8080 SubjectMappingService.CreateSubjectMapping
+   }' localhost:8080 policy.SubjectMappingService.CreateSubjectMapping
    ```
 
    ### Response

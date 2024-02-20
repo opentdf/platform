@@ -48,9 +48,11 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *attributes.ListAttributesRequest,
 ) (*attributes.ListAttributesResponse, error) {
+	state := services.GetDbStateTypeTransformedEnum(req.State)
+	slog.Debug("listing attribute definitions", slog.String("state", state))
 	rsp := &attributes.ListAttributesResponse{}
 
-	list, err := s.dbClient.ListAllAttributes(ctx)
+	list, err := s.dbClient.ListAllAttributes(ctx, state)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
 	}
@@ -88,12 +90,12 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	return rsp, nil
 }
 
-func (s *AttributesService) DeleteAttribute(ctx context.Context,
-	req *attributes.DeleteAttributeRequest,
-) (*attributes.DeleteAttributeResponse, error) {
-	rsp := &attributes.DeleteAttributeResponse{}
+func (s *AttributesService) DeactivateAttribute(ctx context.Context,
+	req *attributes.DeactivateAttributeRequest,
+) (*attributes.DeactivateAttributeResponse, error) {
+	rsp := &attributes.DeactivateAttributeResponse{}
 
-	a, err := s.dbClient.DeleteAttribute(ctx, req.Id)
+	a, err := s.dbClient.DeactivateAttribute(ctx, req.Id)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
@@ -118,7 +120,9 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 }
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
-	list, err := s.dbClient.ListAttributeValues(ctx, req.AttributeId)
+	state := services.GetDbStateTypeTransformedEnum(req.State)
+	slog.Debug("listing attribute values", slog.String("attributeId", req.AttributeId), slog.String("state", state))
+	list, err := s.dbClient.ListAttributeValues(ctx, req.AttributeId, state)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrListRetrievalFailed, slog.String("attributeId", req.AttributeId))
 	}
@@ -150,13 +154,13 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 	}, nil
 }
 
-func (s *AttributesService) DeleteAttributeValue(ctx context.Context, req *attributes.DeleteAttributeValueRequest) (*attributes.DeleteAttributeValueResponse, error) {
-	a, err := s.dbClient.DeleteAttributeValue(ctx, req.Id)
+func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *attributes.DeactivateAttributeValueRequest) (*attributes.DeactivateAttributeValueResponse, error) {
+	a, err := s.dbClient.DeactivateAttributeValue(ctx, req.Id)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
 	}
 
-	return &attributes.DeleteAttributeValueResponse{
+	return &attributes.DeactivateAttributeValueResponse{
 		Value: a,
 	}, nil
 }

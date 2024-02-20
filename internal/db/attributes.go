@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -52,17 +53,18 @@ func attributesValuesProtojson(valuesJson []byte) ([]*attributes.Value, error) {
 
 func attributesSelect() sq.SelectBuilder {
 	return newStatementBuilder().Select(
-		tableField(AttributeTable, "id"),
-		tableField(AttributeTable, "name"),
-		tableField(AttributeTable, "rule"),
-		tableField(AttributeTable, "metadata"),
-		tableField(AttributeTable, "namespace_id"),
-		tableField(NamespacesTable, "name"),
+		Tables.Attributes.Field("id"),
+		Tables.Attributes.Field("name"),
+		Tables.Attributes.Field("rule"),
+		Tables.Attributes.Field("metadata"),
+		Tables.Attributes.Field("namespace_id"),
+		Tables.Attributes.Field("active"),
+		Tables.Namespaces.Field("name"),
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
-			"'id', "+tableField(AttributeValueTable, "id")+", "+
-			"'value', "+tableField(AttributeValueTable, "value")+","+
-			"'members', "+tableField(AttributeValueTable, "members")+","+
+			"'id', "+Tables.AttributeValues.Field("id")+", "+
+			"'value', "+Tables.AttributeValues.Field("value")+","+
+			"'members', "+Tables.AttributeValues.Field("members")+","+
 			"'grants', ("+
 			"SELECT JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
@@ -78,9 +80,9 @@ func attributesSelect() sq.SelectBuilder {
 			")) AS values",
 		"JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
-			"'id', "+tableField(KeyAccessServerTable, "id")+", "+
-			"'uri', "+tableField(KeyAccessServerTable, "uri")+", "+
-			"'public_key', "+tableField(KeyAccessServerTable, "public_key")+
+			"'id', "+Tables.KeyAccessServerRegistry.Field("id")+", "+
+			"'uri', "+Tables.KeyAccessServerRegistry.Field("uri")+", "+
+			"'public_key', "+Tables.KeyAccessServerRegistry.Field("public_key")+
 			")"+
 			") AS grants",
 	).
@@ -88,7 +90,7 @@ func attributesSelect() sq.SelectBuilder {
 		LeftJoin(NamespacesTable+" ON "+NamespacesTable+".id = "+AttributeTable+".namespace_id").
 		LeftJoin(Tables.AttributeKeyAccessGrants.Name()+" ON "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".attribute_definition_id = "+AttributeTable+".id").
 		LeftJoin(KeyAccessServerTable+" ON "+KeyAccessServerTable+".id = "+Tables.AttributeKeyAccessGrants.WithoutSchema().Name()+".key_access_server_id").
-		GroupBy(tableField(AttributeTable, "id"), tableField(NamespacesTable, "name"))
+		GroupBy(Tables.Attributes.Field("id"), Tables.Namespaces.Field("name"))
 }
 
 func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
@@ -98,11 +100,12 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		rule          string
 		metadataJson  []byte
 		namespaceId   string
+		isActive      bool
 		namespaceName string
 		valuesJson    []byte
 		grants        []byte
 	)
-	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson, &grants)
+	err := row.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &isActive, &namespaceName, &valuesJson, &grants)
 	if err != nil {
 		return nil, WrapIfKnownInvalidQueryErr(err)
 	}
@@ -133,6 +136,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 		Id:        id,
 		Name:      name,
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
+		Active:    &wrapperspb.BoolValue{Value: isActive},
 		Metadata:  m,
 		Values:    v,
 		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
@@ -152,11 +156,12 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 			rule          string
 			metadataJson  []byte
 			namespaceId   string
+			isActive      bool
 			namespaceName string
 			valuesJson    []byte
 			grants        []byte
 		)
-		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName, &valuesJson, &grants)
+		err := rows.Scan(&id, &name, &rule, &metadataJson, &namespaceId, &isActive, &namespaceName, &valuesJson, &grants)
 		if err != nil {
 			return nil, WrapIfKnownInvalidQueryErr(err)
 		}
@@ -169,6 +174,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 				Id:   namespaceId,
 				Name: namespaceName,
 			},
+			Active: &wrapperspb.BoolValue{Value: isActive},
 		}
 
 		if metadataJson != nil {
@@ -204,14 +210,17 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 // CRUD operations
 ///
 
-func listAllAttributesSql() (string, []interface{}, error) {
-	return attributesSelect().
-		From(AttributeTable).
+func listAllAttributesSql(state string) (string, []interface{}, error) {
+	q := attributesSelect()
+	if state != StateAny {
+		q = q.Where(sq.Eq{Tables.Attributes.Field("active"): state == StateActive})
+	}
+	return q.From(Tables.Attributes.Name()).
 		ToSql()
 }
 
-func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute, error) {
-	sql, args, err := listAllAttributesSql()
+func (c Client) ListAllAttributes(ctx context.Context, state string) ([]*attributes.Attribute, error) {
+	sql, args, err := listAllAttributesSql(state)
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
@@ -229,7 +238,7 @@ func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute,
 
 func getAttributeSql(id string) (string, []interface{}, error) {
 	return attributesSelect().
-		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
+		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
 		From(AttributeTable).
 		ToSql()
 }
@@ -252,7 +261,7 @@ func (c Client) GetAttribute(ctx context.Context, id string) (*attributes.Attrib
 
 func getAttributesByNamespaceSql(namespaceId string) (string, []interface{}, error) {
 	return attributesSelect().
-		Where(sq.Eq{tableField(AttributeTable, "namespace_id"): namespaceId}).
+		Where(sq.Eq{Tables.Attributes.Field("namespace_id"): namespaceId}).
 		From(AttributeTable).
 		ToSql()
 }
@@ -305,6 +314,7 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 		Namespace: &namespaces.Namespace{
 			Id: attr.NamespaceId,
 		},
+		Active: &wrapperspb.BoolValue{Value: true},
 	}
 	return a, nil
 }
@@ -321,7 +331,7 @@ func updateAttributeSql(id string, name string, rule string, metadata []byte) (s
 	}
 
 	return sb.Set("metadata", metadata).
-		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
+		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
 		ToSql()
 }
 
@@ -350,10 +360,28 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 	return a, nil
 }
 
+func deactivateAttributeSql(id string) (string, []interface{}, error) {
+	return newStatementBuilder().
+		Update(Tables.Attributes.Name()).
+		Set("active", false).
+		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
+		ToSql()
+}
+
+func (c Client) DeactivateAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+	sql, args, err := deactivateAttributeSql(id)
+
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+	return c.GetAttribute(ctx, id)
+}
+
 func deleteAttributeSql(id string) (string, []interface{}, error) {
 	return newStatementBuilder().
 		Delete(AttributeTable).
-		Where(sq.Eq{tableField(AttributeTable, "id"): id}).
+		Where(sq.Eq{Tables.Attributes.Field("id"): id}).
 		ToSql()
 }
 

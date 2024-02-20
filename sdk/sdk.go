@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
 	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
@@ -30,6 +31,7 @@ type SDK struct {
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
+	Authorization           authorization.AuthorizationServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -55,6 +57,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(conn),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(conn),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(conn),
+		Authorization:           authorization.NewAuthorizationServiceClient(conn),
 	}, nil
 }
 

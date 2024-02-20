@@ -23,6 +23,8 @@ plugins:
     out: sdk
     opt:
       - paths=source_relative
+  - plugin: buf.build/grpc/java:v1.61.1
+    out: sdkjava
   - plugin: buf.build/grpc-ecosystem/openapiv2:v2.18.1
     out: docs/openapi
   - plugin: doc # invokes protoc-gen-doc: https://github.com/pseudomuto/protoc-gen-doc

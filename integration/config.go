@@ -1,6 +1,6 @@
 package integration
 
-import "github.com/opentdf/opentdf-v2-poc/internal/config"
+import "github.com/opentdf/platform/internal/config"
 
 var Config *config.Config
 

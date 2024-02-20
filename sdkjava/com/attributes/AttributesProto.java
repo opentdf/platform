@@ -359,11 +359,11 @@ public final class AttributesProto {
       "essServerFromValueRequest\0322.attributes.R" +
       "emoveKeyAccessServerFromValueResponse\"J\202" +
       "\323\344\223\002D\")/attributes/values/keyaccessserve" +
-      "r/remove:\027value_key_access_serverB\233\001\n\016co" +
-      "m.attributesB\017AttributesProtoP\001Z0github." +
-      "com/opentdf/opentdf-v2-poc/sdk/attribute" +
-      "s\242\002\003AXX\252\002\nAttributes\312\002\nAttributes\342\002\026Attr" +
-      "ibutes\\GPBMetadata\352\002\nAttributesb\006proto3"
+      "r/remove:\027value_key_access_serverB\225\001\n\016co" +
+      "m.attributesB\017AttributesProtoP\001Z*github." +
+      "com/opentdf/platform/sdk/attributes\242\002\003AX" +
+      "X\252\002\nAttributes\312\002\nAttributes\342\002\026Attributes" +
+      "\\GPBMetadata\352\002\nAttributesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

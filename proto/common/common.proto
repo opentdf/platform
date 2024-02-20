@@ -32,5 +32,5 @@ enum ActiveStateEnum {
 }
 
 // message ListOptions {
-  // TODO: limit/offset [https://github.com/opentdf/opentdf-v2-poc/issues/55]
+  // TODO: limit/offset [https://github.com/opentdf/platform/issues/55]
 // }

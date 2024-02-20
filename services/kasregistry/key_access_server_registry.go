@@ -6,9 +6,9 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/services"
+	"github.com/opentdf/platform/internal/db"
+	kasr "github.com/opentdf/platform/sdk/kasregistry"
+	"github.com/opentdf/platform/services"
 	"google.golang.org/grpc"
 )
 

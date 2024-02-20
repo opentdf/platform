@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/sdk/common"
 )
 
 func GetDbStateTypeTransformedEnum(state common.ActiveStateEnum) string {

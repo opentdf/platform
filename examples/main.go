@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/opentdf/opentdf-v2-poc/examples/cmd"
+	"github.com/opentdf/platform/examples/cmd"
 )
 
 func main() {

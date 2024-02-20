@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/platform/internal/db"
 )
 
 type DBInterface struct {

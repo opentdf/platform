@@ -12,7 +12,7 @@ import bytes
 import io
 import os
 import strings
-import "github.com/opentdf/opentdf-v2-poc/sdk"
+import "github.com/opentdf/platform/sdk"
 
 
 func main() {

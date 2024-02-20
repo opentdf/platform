@@ -1,4 +1,4 @@
-module github.com/opentdf/opentdf-v2-poc/sdk
+module github.com/opentdf/platform/sdk
 
 go 1.21.5
 

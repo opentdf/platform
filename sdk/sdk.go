@@ -3,12 +3,12 @@ package sdk
 import (
 	"errors"
 
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/authorization"
-	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
-	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
-	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
+	"github.com/opentdf/platform/sdk/attributes"
+	"github.com/opentdf/platform/sdk/authorization"
+	"github.com/opentdf/platform/sdk/kasregistry"
+	"github.com/opentdf/platform/sdk/namespaces"
+	"github.com/opentdf/platform/sdk/resourcemapping"
+	"github.com/opentdf/platform/sdk/subjectmapping"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

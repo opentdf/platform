@@ -127,7 +127,7 @@ func attributesHydrateItem(row pgx.Row) (*attributes.Attribute, error) {
 	}
 	var k []*kasregistry.KeyAccessServer
 	if grants != nil {
-		k, err = db.KeyAccessServerProtojson(grants)
+		k, err = db.KeyAccessServerProtoJSON(grants)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +195,7 @@ func attributesHydrateList(rows pgx.Rows) ([]*attributes.Attribute, error) {
 		}
 
 		if grants != nil {
-			k, err := db.KeyAccessServerProtojson(grants)
+			k, err := db.KeyAccessServerProtoJSON(grants)
 			if err != nil {
 				return nil, err
 			}

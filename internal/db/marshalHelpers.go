@@ -40,7 +40,7 @@ func MarshalUpdateMetadata(existingMetadata *common.Metadata, metadata *common.M
 	return marshalMetadata(metadata, m)
 }
 
-func KeyAccessServerProtojson(keyAccessServerJSON []byte) ([]*kasr.KeyAccessServer, error) {
+func KeyAccessServerProtoJSON(keyAccessServerJSON []byte) ([]*kasr.KeyAccessServer, error) {
 	var (
 		keyAccessServers []*kasr.KeyAccessServer
 		raw              []json.RawMessage

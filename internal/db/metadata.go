@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
+	"github.com/opentdf/platform/sdk/common"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

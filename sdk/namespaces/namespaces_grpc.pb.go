@@ -19,22 +19,49 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	NamespaceService_GetNamespace_FullMethodName    = "/namespaces.NamespaceService/GetNamespace"
-	NamespaceService_ListNamespaces_FullMethodName  = "/namespaces.NamespaceService/ListNamespaces"
-	NamespaceService_CreateNamespace_FullMethodName = "/namespaces.NamespaceService/CreateNamespace"
-	NamespaceService_UpdateNamespace_FullMethodName = "/namespaces.NamespaceService/UpdateNamespace"
-	NamespaceService_DeleteNamespace_FullMethodName = "/namespaces.NamespaceService/DeleteNamespace"
+	NamespaceService_GetNamespace_FullMethodName        = "/namespaces.NamespaceService/GetNamespace"
+	NamespaceService_ListNamespaces_FullMethodName      = "/namespaces.NamespaceService/ListNamespaces"
+	NamespaceService_CreateNamespace_FullMethodName     = "/namespaces.NamespaceService/CreateNamespace"
+	NamespaceService_UpdateNamespace_FullMethodName     = "/namespaces.NamespaceService/UpdateNamespace"
+	NamespaceService_DeactivateNamespace_FullMethodName = "/namespaces.NamespaceService/DeactivateNamespace"
 )
 
 // NamespaceServiceClient is the client API for NamespaceService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NamespaceServiceClient interface {
+	// Request:
+	// grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 namespaces.NamespaceService/GetNamespace
+	// Response:
+	// {
+	// "namespace": {
+	// "id": "namespace-id",
+	// "name": "namespace-name",
+	// "active": true
+	// }
+	// }
 	GetNamespace(ctx context.Context, in *GetNamespaceRequest, opts ...grpc.CallOption) (*GetNamespaceResponse, error)
+	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+	// Request:
+	// grpcurl -plaintext localhost:9000 namespaces.NamespaceService/ListNamespaces
+	// Response:
+	// {
+	// "namespaces": [
+	// {
+	// "id": "namespace-id",
+	// "name": "namespace-name",
+	// "active": true
+	// }
+	// ]
+	// }
 	ListNamespaces(ctx context.Context, in *ListNamespacesRequest, opts ...grpc.CallOption) (*ListNamespacesResponse, error)
+	// Request:
+	// grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 namespaces.NamespaceService/CreateNamespace
+	// Response:
+	// { "namespace": { "id": "namespace-id", "active": true } }
 	CreateNamespace(ctx context.Context, in *CreateNamespaceRequest, opts ...grpc.CallOption) (*CreateNamespaceResponse, error)
 	UpdateNamespace(ctx context.Context, in *UpdateNamespaceRequest, opts ...grpc.CallOption) (*UpdateNamespaceResponse, error)
-	DeleteNamespace(ctx context.Context, in *DeleteNamespaceRequest, opts ...grpc.CallOption) (*DeleteNamespaceResponse, error)
+	DeactivateNamespace(ctx context.Context, in *DeactivateNamespaceRequest, opts ...grpc.CallOption) (*DeactivateNamespaceResponse, error)
 }
 
 type namespaceServiceClient struct {
@@ -81,9 +108,9 @@ func (c *namespaceServiceClient) UpdateNamespace(ctx context.Context, in *Update
 	return out, nil
 }
 
-func (c *namespaceServiceClient) DeleteNamespace(ctx context.Context, in *DeleteNamespaceRequest, opts ...grpc.CallOption) (*DeleteNamespaceResponse, error) {
-	out := new(DeleteNamespaceResponse)
-	err := c.cc.Invoke(ctx, NamespaceService_DeleteNamespace_FullMethodName, in, out, opts...)
+func (c *namespaceServiceClient) DeactivateNamespace(ctx context.Context, in *DeactivateNamespaceRequest, opts ...grpc.CallOption) (*DeactivateNamespaceResponse, error) {
+	out := new(DeactivateNamespaceResponse)
+	err := c.cc.Invoke(ctx, NamespaceService_DeactivateNamespace_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,11 +121,38 @@ func (c *namespaceServiceClient) DeleteNamespace(ctx context.Context, in *Delete
 // All implementations must embed UnimplementedNamespaceServiceServer
 // for forward compatibility
 type NamespaceServiceServer interface {
+	// Request:
+	// grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 namespaces.NamespaceService/GetNamespace
+	// Response:
+	// {
+	// "namespace": {
+	// "id": "namespace-id",
+	// "name": "namespace-name",
+	// "active": true
+	// }
+	// }
 	GetNamespace(context.Context, *GetNamespaceRequest) (*GetNamespaceResponse, error)
+	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+	// Request:
+	// grpcurl -plaintext localhost:9000 namespaces.NamespaceService/ListNamespaces
+	// Response:
+	// {
+	// "namespaces": [
+	// {
+	// "id": "namespace-id",
+	// "name": "namespace-name",
+	// "active": true
+	// }
+	// ]
+	// }
 	ListNamespaces(context.Context, *ListNamespacesRequest) (*ListNamespacesResponse, error)
+	// Request:
+	// grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 namespaces.NamespaceService/CreateNamespace
+	// Response:
+	// { "namespace": { "id": "namespace-id", "active": true } }
 	CreateNamespace(context.Context, *CreateNamespaceRequest) (*CreateNamespaceResponse, error)
 	UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error)
-	DeleteNamespace(context.Context, *DeleteNamespaceRequest) (*DeleteNamespaceResponse, error)
+	DeactivateNamespace(context.Context, *DeactivateNamespaceRequest) (*DeactivateNamespaceResponse, error)
 	mustEmbedUnimplementedNamespaceServiceServer()
 }
 
@@ -118,8 +172,8 @@ func (UnimplementedNamespaceServiceServer) CreateNamespace(context.Context, *Cre
 func (UnimplementedNamespaceServiceServer) UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateNamespace not implemented")
 }
-func (UnimplementedNamespaceServiceServer) DeleteNamespace(context.Context, *DeleteNamespaceRequest) (*DeleteNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteNamespace not implemented")
+func (UnimplementedNamespaceServiceServer) DeactivateNamespace(context.Context, *DeactivateNamespaceRequest) (*DeactivateNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeactivateNamespace not implemented")
 }
 func (UnimplementedNamespaceServiceServer) mustEmbedUnimplementedNamespaceServiceServer() {}
 
@@ -206,20 +260,20 @@ func _NamespaceService_UpdateNamespace_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NamespaceService_DeleteNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteNamespaceRequest)
+func _NamespaceService_DeactivateNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivateNamespaceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NamespaceServiceServer).DeleteNamespace(ctx, in)
+		return srv.(NamespaceServiceServer).DeactivateNamespace(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: NamespaceService_DeleteNamespace_FullMethodName,
+		FullMethod: NamespaceService_DeactivateNamespace_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NamespaceServiceServer).DeleteNamespace(ctx, req.(*DeleteNamespaceRequest))
+		return srv.(NamespaceServiceServer).DeactivateNamespace(ctx, req.(*DeactivateNamespaceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -248,8 +302,8 @@ var NamespaceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _NamespaceService_UpdateNamespace_Handler,
 		},
 		{
-			MethodName: "DeleteNamespace",
-			Handler:    _NamespaceService_DeleteNamespace_Handler,
+			MethodName: "DeactivateNamespace",
+			Handler:    _NamespaceService_DeactivateNamespace_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -11,16 +11,15 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
-	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
+	"github.com/opentdf/platform/sdk/attributes"
+	"github.com/opentdf/platform/sdk/common"
+	"github.com/opentdf/platform/sdk/kasregistry"
+	"github.com/opentdf/platform/sdk/namespaces"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var (
-	AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
-)
+var AttributeRuleTypeEnumPrefix = "ATTRIBUTE_RULE_TYPE_ENUM_"
 
 func attributesRuleTypeEnumTransformIn(value string) string {
 	return strings.TrimPrefix(value, AttributeRuleTypeEnumPrefix)
@@ -53,6 +52,7 @@ type attributesSelectOptions struct {
 	withAttributeValues bool
 	withKeyAccessGrants bool
 	withFqn             bool
+	state               string
 }
 
 func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
@@ -71,6 +71,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("rule"),
 		t.Field("metadata"),
 		t.Field("namespace_id"),
+		t.Field("active"),
 		nt.Field("name"),
 	}
 	if opts.withAttributeValues {
@@ -106,18 +107,18 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		selectFields = append(selectFields, "fqn")
 	}
 
-	b := newStatementBuilder().Select(selectFields...).
+	sb := newStatementBuilder().Select(selectFields...).
 		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
 
 	if opts.withAttributeValues {
-		b = b.LeftJoin(avt.Name() + " ON " + avt.Field("attribute_definition_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin(avt.Name() + " ON " + avt.Field("attribute_definition_id") + " = " + t.Field("id"))
 	}
 	if opts.withKeyAccessGrants {
-		b = b.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
+		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
 			LeftJoin(KeyAccessServerTable + " ON " + KeyAccessServerTable + ".id = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
 	}
 	if opts.withFqn {
-		b = b.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("attribute_id") + " = " + t.Field("id") +
+		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("attribute_id") + " = " + t.Field("id") +
 			" AND " + Tables.AttrFqn.Field("value_id") + " = NULL")
 	}
 
@@ -127,7 +128,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		g = append(g, Tables.AttrFqn.Field("fqn"))
 	}
 
-	return b.GroupBy(g...)
+	return sb.GroupBy(g...)
 }
 
 func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attributes.Attribute, error) {
@@ -141,13 +142,14 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 		rule          string
 		metadataJson  []byte
 		namespaceId   string
+		active        bool
 		namespaceName string
 		valuesJson    []byte
 		grants        []byte
 		fqn           sql.NullString
 	)
 
-	fields := []interface{}{&id, &name, &rule, &metadataJson, &namespaceId, &namespaceName}
+	fields := []interface{}{&id, &name, &rule, &metadataJson, &namespaceId, &active, &namespaceName}
 	if opts.withAttributeValues {
 		fields = append(fields, &valuesJson)
 	}
@@ -193,6 +195,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 		Id:        id,
 		Name:      name,
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
+		Active:    &wrapperspb.BoolValue{Value: active},
 		Metadata:  m,
 		Values:    v,
 		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
@@ -221,17 +224,23 @@ func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions) ([]*attr
 
 func listAllAttributesSql(opts attributesSelectOptions) (string, []interface{}, error) {
 	t := Tables.Attributes
-	return attributesSelect(opts).
-		From(t.Name()).
-		ToSql()
+	sb := attributesSelect(opts).
+		From(t.Name())
+
+	if opts.state != "" && opts.state != StateAny {
+		sb = sb.Where(sq.Eq{t.Field("active"): opts.state == StateActive})
+	}
+	return sb.ToSql()
 }
 
-func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute, error) {
+func (c Client) ListAllAttributes(ctx context.Context, state string) ([]*attributes.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: false,
 		withFqn:             true,
+		state:               state,
 	}
+
 	sql, args, err := listAllAttributesSql(opts)
 	slog.Info("list all attributes", slog.String("sql", sql), slog.Any("args", args))
 	rows, err := c.query(ctx, sql, args, err)
@@ -249,12 +258,14 @@ func (c Client) ListAllAttributes(ctx context.Context) ([]*attributes.Attribute,
 	return list, nil
 }
 
-func (c Client) ListAllAttributesWithout(ctx context.Context) ([]*attributes.Attribute, error) {
+func (c Client) ListAllAttributesWithout(ctx context.Context, state string) ([]*attributes.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: false,
 		withKeyAccessGrants: false,
 		withFqn:             true,
+		state:               state,
 	}
+
 	sql, args, err := listAllAttributesSql(opts)
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
@@ -305,6 +316,7 @@ func getAttributeByFqnSql(fqn string, opts attributesSelectOptions) (string, []i
 		From(Tables.Attributes.Name()).
 		ToSql()
 }
+
 func (c Client) GetAttributeByFqn(ctx context.Context, fqn string) (*attributes.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
@@ -386,6 +398,7 @@ func (c Client) CreateAttribute(ctx context.Context, attr *attributes.AttributeC
 		Namespace: &namespaces.Namespace{
 			Id: attr.NamespaceId,
 		},
+		Active: &wrapperspb.BoolValue{Value: true},
 	}
 	return a, nil
 }
@@ -433,6 +446,25 @@ func (c Client) UpdateAttribute(ctx context.Context, id string, attr *attributes
 	// TODO: see if returning the old is the behavior we should consistently implement throughout services
 	// return the attribute before updating
 	return a, nil
+}
+
+func deactivateAttributeSql(id string) (string, []interface{}, error) {
+	t := Tables.Attributes
+	return newStatementBuilder().
+		Update(t.Name()).
+		Set("active", false).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
+		ToSql()
+}
+
+func (c Client) DeactivateAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+	sql, args, err := deactivateAttributeSql(id)
+
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+	return c.GetAttribute(ctx, id)
 }
 
 func deleteAttributeSql(id string) (string, []interface{}, error) {

@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/opentdf/opentdf-v2-poc/sdk
+    default: github.com/opentdf/platform/sdk
     except:
       - buf.build/bufbuild/protovalidate
       - buf.build/googleapis/googleapis
@@ -17,12 +17,14 @@ plugins:
     out: sdk
     opt:
       - paths=source_relative
-  - plugin: buf.build/protocolbuffers/java
+  - plugin: buf.build/protocolbuffers/java:v25.3
     out: sdkjava
   - plugin: buf.build/grpc/go:v1.3.0
     out: sdk
     opt:
       - paths=source_relative
+  - plugin: buf.build/grpc/java:v1.61.1
+    out: sdkjava
   - plugin: buf.build/grpc-ecosystem/openapiv2:v2.18.1
     out: docs/openapi
   - plugin: doc # invokes protoc-gen-doc: https://github.com/pseudomuto/protoc-gen-doc

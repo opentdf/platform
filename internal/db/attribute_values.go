@@ -6,20 +6,23 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/common"
+	"github.com/opentdf/platform/sdk/attributes"
+	"github.com/opentdf/platform/sdk/common"
 	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type attributeValueSelectOptions struct {
 	withFqn bool
+	state   string
 }
 
 func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
 	var (
 		id           string
 		value        string
+		active       bool
 		members      []string
 		metadataJson []byte
 		attributeId  string
@@ -29,6 +32,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	fields := []interface{}{
 		&id,
 		&value,
+		&active,
 		&members,
 		&metadataJson,
 		&attributeId,
@@ -51,6 +55,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	v := &attributes.Value{
 		Id:          id,
 		Value:       value,
+		Active:      &wrapperspb.BoolValue{Value: active},
 		Members:     members,
 		Metadata:    m,
 		AttributeId: attributeId,
@@ -79,7 +84,8 @@ func createAttributeValueSql(
 	attribute_id string,
 	value string,
 	members []string,
-	metadata []byte) (string, []interface{}, error) {
+	metadata []byte,
+) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	return newStatementBuilder().
 		Insert(t.Name()).
@@ -98,6 +104,7 @@ func createAttributeValueSql(
 		Suffix("RETURNING id").
 		ToSql()
 }
+
 func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	metadataJson, metadata, err := marshalCreateMetadata(v.Metadata)
 	if err != nil {
@@ -130,6 +137,7 @@ func (c Client) CreateAttributeValue(ctx context.Context, attributeId string, v 
 		Value:       v.Value,
 		Members:     v.Members,
 		Metadata:    metadata,
+		Active:      &wrapperspb.BoolValue{Value: true},
 	}
 	return rV, nil
 }
@@ -139,6 +147,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	fields := []string{
 		t.Field("id"),
 		t.Field("value"),
+		t.Field("active"),
 		t.Field("members"),
 		t.Field("metadata"),
 		t.Field("attribute_definition_id"),
@@ -158,6 +167,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	return sb.Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
+
 func (c Client) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true}
 	sql, args, err := getAttributeValueSql(id, opts)
@@ -180,6 +190,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 	fields := []string{
 		t.Field("id"),
 		t.Field("value"),
+		t.Field("active"),
 		t.Field("members"),
 		t.Field("metadata"),
 		t.Field("attribute_definition_id"),
@@ -195,13 +206,21 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("value_id") + " = " + t.Field("id"))
 	}
 
+	where := sq.Eq{}
+	if opts.state != "" && opts.state != StateAny {
+		where[t.Field("active")] = opts.state == StateActive
+	}
+	where[t.Field("attribute_definition_id")] = attribute_id
+
 	return sb.
 		From(t.Name()).
-		Where(sq.Eq{t.Field("attribute_definition_id"): attribute_id}).
+		Where(where).
 		ToSql()
 }
-func (c Client) ListAttributeValues(ctx context.Context, attribute_id string) ([]*attributes.Value, error) {
-	opts := attributeValueSelectOptions{withFqn: true}
+
+func (c Client) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*attributes.Value, error) {
+	opts := attributeValueSelectOptions{withFqn: true, state: state}
+
 	sql, args, err := listAttributeValuesSql(attribute_id, opts)
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
@@ -216,6 +235,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 	fields := []string{
 		t.Field("id"),
 		t.Field("value"),
+		t.Field("active"),
 		t.Field("members"),
 		t.Field("metadata"),
 		t.Field("attribute_definition_id"),
@@ -234,8 +254,9 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		From(t.Name()).
 		ToSql()
 }
-func (c Client) ListAllAttributeValues(ctx context.Context) ([]*attributes.Value, error) {
-	opts := attributeValueSelectOptions{withFqn: true}
+
+func (c Client) ListAllAttributeValues(ctx context.Context, state string) ([]*attributes.Value, error) {
+	opts := attributeValueSelectOptions{withFqn: true, state: state}
 	sql, args, err := listAllAttributeValuesSql(opts)
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
@@ -249,7 +270,8 @@ func updateAttributeValueSql(
 	id string,
 	value string,
 	members []string,
-	metadata []byte) (string, []interface{}, error) {
+	metadata []byte,
+) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	sb := newStatementBuilder().
 		Update(t.Name()).
@@ -266,6 +288,7 @@ func updateAttributeValueSql(
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
+
 func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {
@@ -297,6 +320,23 @@ func (c Client) UpdateAttributeValue(ctx context.Context, id string, v *attribut
 	return prev, nil
 }
 
+func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
+	t := Tables.AttributeValues
+	return newStatementBuilder().
+		Update(t.Name()).
+		Set(t.Field("active"), false).
+		Where(sq.Eq{t.Field("id"): id}).
+		ToSql()
+}
+
+func (c Client) DeactivateAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
+	sql, args, err := deactivateAttributeValueSql(id)
+	if err := c.exec(ctx, sql, args, err); err != nil {
+		return nil, err
+	}
+	return c.GetAttributeValue(ctx, id)
+}
+
 func deleteAttributeValueSql(id string) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	return newStatementBuilder().
@@ -304,6 +344,7 @@ func deleteAttributeValueSql(id string) (string, []interface{}, error) {
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
+
 func (c Client) DeleteAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {

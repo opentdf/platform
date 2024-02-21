@@ -102,19 +102,19 @@ func (c *Client) AttrFqnReindex() (res struct {
 }) {
 
 	// Get all namespaces
-	ns, err := c.ListNamespaces(context.Background())
+	ns, err := c.ListNamespaces(context.Background(), StateAny)
 	if err != nil {
 		panic(fmt.Errorf("could not get namespaces: %w", err))
 	}
 
 	// Get all attributes
-	attrs, err := c.ListAllAttributesWithout(context.Background())
+	attrs, err := c.ListAllAttributesWithout(context.Background(), StateAny)
 	if err != nil {
 		panic(fmt.Errorf("could not get attributes: %w", err))
 	}
 
 	// Get all attribute values
-	values, err := c.ListAllAttributeValues(context.Background())
+	values, err := c.ListAllAttributeValues(context.Background(), StateAny)
 	if err != nil {
 		panic(fmt.Errorf("could not get attribute values: %w", err))
 	}

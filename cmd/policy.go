@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/config"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/platform/internal/config"
+	"github.com/opentdf/platform/internal/db"
 	"github.com/spf13/cobra"
 )
 

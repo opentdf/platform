@@ -10,7 +10,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/internal/crypto"
@@ -44,18 +43,6 @@ const (
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
 	kGMACPayloadLength     = 16
-	// kClientPublicKey        = "clientPublicKey"
-	kSignedRequestToken = "signedRequestToken"
-	// kKasURL                 = "url"
-	kRewrapV2             = "/v2/rewrap"
-	kAuthorizationKey     = "Authorization"
-	kContentTypeKey       = "Content-Type"
-	kAcceptKey            = "Accept"
-	kContentTypeJSONValue = "application/json"
-	kEntityWrappedKey     = "entityWrappedKey"
-	// kPolicy                 = "policy"
-	// kHmacIntegrityAlgorithm = "HS256"
-	// kGmacIntegrityAlgorithm = "GMAC"
 )
 
 type Reader struct {
@@ -74,17 +61,6 @@ type TDFObject struct {
 	TdfSize    int64
 	aesGcm     crypto.AesGcm
 	payloadKey [kKeySize]byte
-}
-
-type rewrapJWTClaims struct {
-	jwt.RegisteredClaims
-	Body string `json:"requestBody"`
-}
-
-type RequestBody struct {
-	KeyAccess       `json:"keyAccess"`
-	ClientPublicKey string `json:"clientPublicKey"`
-	Policy          string `json:"policy"`
 }
 
 // CreateTDF tdf

@@ -3,7 +3,6 @@ package sdk
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -75,8 +74,6 @@ func TestCreatingRequest(t *testing.T) {
 	if req.SignedRequestToken == "" {
 		t.Fatalf("didn't produce a signed request token")
 	}
-
-	fmt.Printf("here it is: %s\n", req.SignedRequestToken)
 
 	pubKey, _ := tokenSource.dPOPKey.PublicKey()
 

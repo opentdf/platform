@@ -22,6 +22,7 @@ import (
 )
 
 var (
+	errFileTooLarge            = errors.New("tdf: can't create tdf larger than 64gb")
 	errRootSigValidation       = errors.New("tdf: failed integrity check on root signature")
 	errSegSizeMismatch         = errors.New("tdf: mismatch encrypted segment size in manifest")
 	errTDFReaderFailed         = errors.New("tdf: fail to read bytes from TDFReader")
@@ -96,6 +97,10 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+
+	if inputSize > maxFileSizeSupported {
+		return nil, errFileTooLarge
 	}
 
 	_, err = reader.Seek(0, io.SeekStart)
@@ -809,20 +814,23 @@ func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
 	}
 
 	response, err := handleKasRequest(kRewrapV2, requestBody, authConfig)
-	if err != nil {
-		slog.Error("failed http request")
-		return nil, fmt.Errorf("http request error: %w", err)
-	}
-	if response.StatusCode != kHTTPOk {
-		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)
-	}
-
 	defer func() {
+		if response == nil {
+			return
+		}
 		err := response.Body.Close()
 		if err != nil {
 			slog.Error("Fail to close HTTP response")
 		}
 	}()
+
+	if err != nil {
+		slog.Error("failed http request")
+		return nil, err
+	}
+	if response.StatusCode != kHTTPOk {
+		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)
+	}
 
 	rewrapResponseBody, err := io.ReadAll(response.Body)
 	if err != nil {

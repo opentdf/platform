@@ -10,7 +10,7 @@ import (
 
 type AuthorizationSuite struct {
 	suite.Suite
-	mock            pgxmock.PgxPoolIface
+	mock                pgxmock.PgxPoolIface
 	authorizationServer *AuthorizationService
 }
 

@@ -35,32 +35,32 @@ var (
 )
 
 const (
-	maxFileSizeSupported   = 68719476736 // 64gb
-	defaultMimeType        = "application/octet-stream"
-	tdfAsZip               = "zip"
-	gcmIvSize              = 12
-	aesBlockSize           = 16
-	hmacIntegrityAlgorithm = "HS256"
-	gmacIntegrityAlgorithm = "GMAC"
-	tdfZipReference        = "reference"
-	kKeySize               = 32
-	kWrapped               = "wrapped"
-	kKasProtocol           = "kas"
-	kSplitKeyType          = "split"
-	kGCMCipherAlgorithm    = "AES-256-GCM"
-	kGMACPayloadLength     = 16
-	// kClientPublicKey        = "clientPublicKey"
-	kSignedRequestToken = "signedRequestToken"
-	// kKasURL                 = "url"
-	kRewrapV2             = "/v2/rewrap"
-	kAuthorizationKey     = "Authorization"
-	kContentTypeKey       = "Content-Type"
-	kAcceptKey            = "Accept"
-	kContentTypeJSONValue = "application/json"
-	kEntityWrappedKey     = "entityWrappedKey"
-	// kPolicy                 = "policy"
-	// kHmacIntegrityAlgorithm = "HS256"
-	// kGmacIntegrityAlgorithm = "GMAC"
+	maxFileSizeSupported    = 68719476736 // 64gb
+	defaultMimeType         = "application/octet-stream"
+	tdfAsZip                = "zip"
+	gcmIvSize               = 12
+	aesBlockSize            = 16
+	hmacIntegrityAlgorithm  = "HS256"
+	gmacIntegrityAlgorithm  = "GMAC"
+	tdfZipReference         = "reference"
+	kKeySize                = 32
+	kWrapped                = "wrapped"
+	kKasProtocol            = "kas"
+	kSplitKeyType           = "split"
+	kGCMCipherAlgorithm     = "AES-256-GCM"
+	kGMACPayloadLength      = 16
+	kClientPublicKey        = "clientPublicKey"
+	kSignedRequestToken     = "signedRequestToken"
+	kKasURL                 = "url"
+	kRewrapV2               = "/v2/rewrap"
+	kAuthorizationKey       = "Authorization"
+	kContentTypeKey         = "Content-Type"
+	kAcceptKey              = "Accept"
+	kContentTypeJSONValue   = "application/json"
+	kEntityWrappedKey       = "entityWrappedKey"
+	kPolicy                 = "policy"
+	kHmacIntegrityAlgorithm = "HS256"
+	kGmacIntegrityAlgorithm = "GMAC"
 )
 
 type Reader struct {
@@ -92,8 +92,8 @@ type RequestBody struct {
 	Policy          string `json:"policy"`
 }
 
-// CreateTDF tdf
-func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+// CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -108,8 +108,13 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
+	tdfConfig, err := NewTDFConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
+	}
+
 	tdfObject := &TDFObject{}
-	err = tdfObject.prepareManifest(tdfConfig)
+	err = tdfObject.prepareManifest(*tdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -251,7 +256,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 	}
 
 	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
-	symKeys := [][]byte{}
+	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
 	for _, kasInfo := range tdfConfig.kasInfoList {
 		if len(kasInfo.publicKey) == 0 {
 			return errKasPubKeyMissing
@@ -296,8 +301,10 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 			}
 
 			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
-			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)),
-				Iv: string(crypto.Base64Encode(iv))}
+			metadata := EncryptedMetadata{
+				Cipher: string(crypto.Base64Encode(encryptedMetaData)),
+				Iv:     string(crypto.Base64Encode(iv)),
+			}
 
 			metadataJSON, err := json.Marshal(metadata)
 			if err != nil {
@@ -737,7 +744,7 @@ func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) 
 
 	claims := rewrapJWTClaims{
 		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)), // Set expiration to be one minute from now
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 		string(requestBodyData),
@@ -807,8 +814,10 @@ func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
 	}
 
 	response, err := handleKasRequest(kRewrapV2, requestBody, authConfig)
-
 	defer func() {
+		if response == nil {
+			return
+		}
 		err := response.Body.Close()
 		if err != nil {
 			slog.Error("Fail to close HTTP response")
@@ -817,7 +826,7 @@ func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
 
 	if err != nil {
 		slog.Error("failed http request")
-		return nil, fmt.Errorf("http request error: %w", err)
+		return nil, err
 	}
 	if response.StatusCode != kHTTPOk {
 		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)

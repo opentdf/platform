@@ -1,98 +1,127 @@
 package sdk
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
+	"testing"
 
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
-type FakeUnwrapper struct {
-	decrypt      crypto.AsymDecryption
-	publicKeyPEM string
-}
-
-func NewFakeUnwrapper(kasPrivateKey string) (FakeUnwrapper, error) {
-	kasPrivateKey = strings.ReplaceAll(kasPrivateKey, "\n\t", "\n")
-	block, _ := pem.Decode([]byte(kasPrivateKey))
-	if block == nil {
-		return FakeUnwrapper{}, errors.New("failed to parse PEM formatted private key")
-	}
-
-	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return FakeUnwrapper{}, fmt.Errorf("could not create fake unwrapper:%v", err)
-	}
-	publicKey := privKey.(*rsa.PrivateKey).PublicKey
-	pkBytes, err := x509.MarshalPKIXPublicKey(&publicKey)
-	if err != nil {
-		return FakeUnwrapper{}, fmt.Errorf("can't marshal public key: %v", err)
-	}
-	privateBlock := pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pkBytes,
-	}
-	publicKeyPEM := new(strings.Builder)
-	pem.Encode(publicKeyPEM, &privateBlock)
-	asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
-	if err != nil {
-		return FakeUnwrapper{}, err
-	}
-
-	return FakeUnwrapper{decrypt: asymDecrypt, publicKeyPEM: publicKeyPEM.String()}, nil
-}
-
-func (fake FakeUnwrapper) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
-	wrappedKey, err := crypto.Base64Decode([]byte(keyAccess.WrappedKey))
-	if err != nil {
-		return nil, err
-	}
-	return fake.decrypt.Decrypt(wrappedKey)
-}
-
-func (fake FakeUnwrapper) GetKASPublicKey(kasInfo KASInfo) (string, error) {
+func (fake FakeUnwrapper) GetRewrappingPublicKey(kasInfo KASInfo) (string, error) {
 	return fake.publicKeyPEM, nil
 }
 
-// func getCredentials() AccessTokenCredentials {
-// 	dpopKey, _ := crypto.NewRSAKeyPair(2048)
-// 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
-// 	decryption, _ := crypto.NewAsymDecryption(dpopPEM)
-// 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	dpopJWK.Set("alg", jwa.RS256.String())
+type FakeAccessTokenSource struct {
+	dPOPKey        jwk.Key
+	asymDecryption crypto.AsymDecryption
+	accessToken    string
+}
 
-// 	return AccessTokenCredentials{
-// 		DPoPKey:        dpopJWK,
-// 		AsymDecryption: decryption,
-// 		AccessToken:    "thisistheaccesstoken",
-// 	}
-// }
+func (fake FakeAccessTokenSource) GetAccessToken() (AccessToken, error) {
+	return AccessToken(fake.accessToken), nil
+}
+func (fake FakeAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
+	return fake.asymDecryption
+}
+func (fake FakeAccessTokenSource) GetDPoPKey() jwk.Key {
+	return fake.dPOPKey
+}
+func (fake FakeAccessTokenSource) GetDPoPPublicKeyPEM() string {
+	return "this is the PEM"
+}
+func (fake FakeAccessTokenSource) RefreshAccessToken() error {
+	return errors.New("can't refresh this one")
+}
 
-// func TestCreatingRequest(t *testing.T) {
-// 	client := KasClient{creds: getCredentials()}
-// 	keyAccess := KeyAccess{
-// 		KeyType:           "type1",
-// 		KasURL:            "https://kas.example.org",
-// 		Protocol:          "protocol one",
-// 		WrappedKey:        "wrapped",
-// 		PolicyBinding:     "bound",
-// 		EncryptedMetadata: "encrypted",
-// 	}
+func getTokenSource(t *testing.T) FakeAccessTokenSource {
+	dpopKey, _ := crypto.NewRSAKeyPair(2048)
+	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
+	decryption, _ := crypto.NewAsymDecryption(dpopPEM)
+	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
+	if err != nil {
+		t.Fatalf("error creating JWK: %v", err)
+	}
+	dpopJWK.Set("alg", jwa.RS256.String())
 
-// 	req, err := client.getRewrapRequest(keyAccess, "a policy")
-// 	if err != nil {
-// 		t.Fatalf("failed to create a rewrap request: %v", err)
-// 	}
+	return FakeAccessTokenSource{
+		dPOPKey:        dpopJWK,
+		asymDecryption: decryption,
+		accessToken:    "thisistheaccesstoken",
+	}
+}
 
-// 	if req.SignedRequestToken == "" {
-// 		t.Fatalf("didn't produce a signed request token")
-// 	}
+func TestCreatingRequest(t *testing.T) {
+	tokenSource := getTokenSource(t)
+	client := KASClient{accessTokenSource: tokenSource}
+	keyAccess := KeyAccess{
+		KeyType:           "type1",
+		KasURL:            "https://kas.example.org",
+		Protocol:          "protocol one",
+		WrappedKey:        "wrapped",
+		PolicyBinding:     "bound",
+		EncryptedMetadata: "encrypted",
+	}
 
-// }
+	req, err := client.getRewrapRequest(keyAccess, "a policy")
+	if err != nil {
+		t.Fatalf("failed to create a rewrap request: %v", err)
+	}
+
+	if req.SignedRequestToken == "" {
+		t.Fatalf("didn't produce a signed request token")
+	}
+
+	fmt.Printf("here it is: %s\n", req.SignedRequestToken)
+
+	pubKey, _ := tokenSource.dPOPKey.PublicKey()
+
+	tok, err := jwt.ParseString(req.SignedRequestToken, jwt.WithKey(tokenSource.dPOPKey.Algorithm(), pubKey))
+	if err != nil {
+		t.Fatalf("couldn't parse signed token: %v", err)
+	}
+
+	rb, ok := tok.Get("requestBody")
+	if !ok {
+		t.Fatalf("didn't contain a request body")
+	}
+	requestBodyJSON := rb.(string)
+	var requestBody map[string]interface{}
+
+	err = json.Unmarshal([]byte(requestBodyJSON), &requestBody)
+	if err != nil {
+		t.Fatalf("error unmarshaling request body: %v", err)
+	}
+
+	if requestBody["clientPublicKey"].(string) != "this is the PEM" {
+		t.Fatalf("incorrect public key included")
+	}
+	if requestBody["policy"].(string) != "a policy" {
+		t.Fatalf("incorrect policy")
+	}
+
+	requestKeyAccess := requestBody["keyAccess"].(map[string]interface{})
+
+	if requestKeyAccess["url"] != "https://kas.example.org" {
+		t.Fatalf("incorrect kasURL")
+	}
+	if requestKeyAccess["protocol"] != "protocol one" {
+		t.Fatalf("incorrect protocol")
+	}
+	if requestKeyAccess["url"] != "https://kas.example.org" {
+		t.Fatalf("incorrect kasURL")
+	}
+	if requestKeyAccess["wrappedKey"] != "wrapped" {
+		t.Fatalf("incorrect wrapped key")
+	}
+	if requestKeyAccess["policyBinding"] != "bound" {
+		t.Fatalf("incorrect policy binding")
+	}
+	if requestKeyAccess["encryptedMetadata"] != "encrypted" {
+		t.Fatalf("incorrect encrypted metadata")
+	}
+}

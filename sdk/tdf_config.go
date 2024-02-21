@@ -86,7 +86,7 @@ func (tdfConfig *TDFConfig) AddKasInformation(unwrapper Unwrapper, kasInfoList [
 		newEntry := KASInfo{}
 		newEntry.url = kasInfo.url
 		if kasInfo.publicKey == "" {
-			pk, err := unwrapper.GetKASPublicKey(kasInfo)
+			pk, err := unwrapper.GetRewrappingPublicKey(kasInfo)
 			if err != nil {
 				return err
 			}

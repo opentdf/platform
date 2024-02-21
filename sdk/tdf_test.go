@@ -2,14 +2,22 @@ package sdk
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
+
+	"github.com/opentdf/platform/internal/oauth"
+	"github.com/opentdf/platform/sdk/internal/crypto"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -81,10 +89,53 @@ var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
 	qcddVKB624a93ZBssn7OivnR
 	-----END PRIVATE KEY-----`
 
+type FakeUnwrapper struct {
+	decrypt      crypto.AsymDecryption
+	publicKeyPEM string
+}
+
+func NewFakeUnwrapper(kasPrivateKey string) (FakeUnwrapper, error) {
+	kasPrivateKey = strings.ReplaceAll(kasPrivateKey, "\n\t", "\n")
+	block, _ := pem.Decode([]byte(kasPrivateKey))
+	if block == nil {
+		return FakeUnwrapper{}, fmt.Errorf("failed to parse PEM formatted private key")
+	}
+
+	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return FakeUnwrapper{}, fmt.Errorf("could not create fake unwrapper:%v", err)
+	}
+	publicKey := privKey.(*rsa.PrivateKey).PublicKey
+	pkBytes, err := x509.MarshalPKIXPublicKey(&publicKey)
+	if err != nil {
+		return FakeUnwrapper{}, fmt.Errorf("can't marshal public key: %v", err)
+	}
+	privateBlock := pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pkBytes,
+	}
+	publicKeyPEM := new(strings.Builder)
+	pem.Encode(publicKeyPEM, &privateBlock)
+	asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
+	if err != nil {
+		return FakeUnwrapper{}, fmt.Errorf("error creating asymmetric decryption: %v", err)
+	}
+
+	return FakeUnwrapper{decrypt: asymDecrypt, publicKeyPEM: publicKeyPEM.String()}, nil
+}
+
+func (fake FakeUnwrapper) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
+	wrappedKey, err := crypto.Base64Decode([]byte(keyAccess.WrappedKey))
+	if err != nil {
+		return nil, err
+	}
+	return fake.decrypt.Decrypt(wrappedKey)
+}
+
 var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 	{
 		fileSize:    5,
-		tdfFileSize: 1562,
+		tdfFileSize: 1557,
 		checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 		kasInfoList: []KASInfo{
 			{
@@ -95,7 +146,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	},
 	{
 		fileSize:    oneKB,
-		tdfFileSize: 2586,
+		tdfFileSize: 2581,
 		checksum:    "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
 		kasInfoList: []KASInfo{
 			{
@@ -106,7 +157,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	},
 	{
 		fileSize:    hundredMB,
-		tdfFileSize: 104866420,
+		tdfFileSize: 104866410,
 		checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 		kasInfoList: []KASInfo{
 			{
@@ -121,7 +172,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	},
 	{
 		fileSize:    5 * hundredMB,
-		tdfFileSize: 524324220,
+		tdfFileSize: 524324210,
 		checksum:    "d2fb707e70a804cf2ea770c9229295689831b4c88879c62bdb966e77e7336f18",
 		kasInfoList: []KASInfo{
 			{
@@ -270,21 +321,11 @@ func init() {
 }
 
 func TestSimpleTDF(t *testing.T) {
-	// oauthCredentials := oauth.ClientCredentials{
-	// 	ClientId:   "xxxxxxxxxx",
-	// 	ClientAuth: "xxxxxxx",
-	// }
-	// idpCredentials, err := NewIDPAccessTokenSource(
-	// 	oauthCredentials,
-	// 	"http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token",
-	// 	[]string{})
 
-	// if err != nil {
-	// 	t.Fatalf("error creating IDP credentials: %v", err)
-	// }
-
-	// create auth config
-	unwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
+	unwrapper, err := getUnwrapper()
+	if err != nil {
+		t.Fatalf("error getting unwrapper: %v", err)
+	}
 
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
 
@@ -293,7 +334,7 @@ func TestSimpleTDF(t *testing.T) {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(2810)
+	expectedTdfSize := int64(2792)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -305,11 +346,11 @@ func TestSimpleTDF(t *testing.T) {
 
 		kasURLs := []KASInfo{
 			{
-				url:       "http://localhost:65432/api/kas",
+				url:       "http://localhost:9000",
 				publicKey: "",
 			},
 			{
-				url:       "http://localhost:65432/api/kas",
+				url:       "http://localhost:9000",
 				publicKey: "",
 			},
 		}
@@ -426,12 +467,15 @@ func TestSimpleTDF(t *testing.T) {
 }
 
 func TestTDFReader(t *testing.T) {
-	unwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
+	unwrapper, err := getUnwrapper()
+	if err != nil {
+		t.Fatalf("error getting unwrapper: %v", err)
+	}
 
 	for _, test := range partialTDFTestHarnesses { // create .txt file
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
-			kasInfoList[index].url = "https://kas" + fmt.Sprint(index) + ".example.org"
+			kasInfoList[index].url = "http://localhost:9000"
 			kasInfoList[index].publicKey = ""
 		}
 
@@ -511,7 +555,10 @@ func TestTDFReader(t *testing.T) {
 }
 
 func TestTDF(t *testing.T) {
-	fakeUnwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
+	unwrapper, err := getUnwrapper()
+	if err != nil {
+		t.Fatalf("error getting unwrapper: %v", err)
+	}
 
 	for index, test := range testHarnesses {
 		// create .txt file
@@ -521,7 +568,7 @@ func TestTDF(t *testing.T) {
 
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
-			kasInfoList[index].url = "https://server" + fmt.Sprint(index) + ".example.org"
+			kasInfoList[index].url = "https://localhost:9000"
 			kasInfoList[index].publicKey = ""
 		}
 
@@ -530,7 +577,7 @@ func TestTDF(t *testing.T) {
 			t.Fatalf("Fail to create tdf config: %v", err)
 		}
 
-		err = tdfConfig.AddKasInformation(fakeUnwrapper, kasInfoList)
+		err = tdfConfig.AddKasInformation(unwrapper, kasInfoList)
 		if err != nil {
 			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
 		}
@@ -539,7 +586,7 @@ func TestTDF(t *testing.T) {
 		testEncrypt(t, *tdfConfig, plaintTextFileName, tdfFileName, test)
 
 		// test decrypt with reader
-		testDecryptWithReader(t, fakeUnwrapper, tdfFileName, decryptedTdfFileName, test)
+		testDecryptWithReader(t, unwrapper, tdfFileName, decryptedTdfFileName, test)
 
 		// Remove the test files
 		_ = os.Remove(plaintTextFileName)
@@ -558,11 +605,14 @@ func BenchmarkReader(b *testing.B) {
 		},
 	}
 
-	unwrapper, _ := NewFakeUnwrapper(mockKasPrivateKey)
+	unwrapper, err := getUnwrapper()
+	if err != nil {
+		b.Fatalf("error getting unwrapper: %v", err)
+	}
 
 	kasInfoList := test.kasInfoList
 	for index := range kasInfoList {
-		kasInfoList[index].url = "https://kas" + fmt.Sprint(index) + ".example.org"
+		kasInfoList[index].url = "http://localhost:9000"
 		kasInfoList[index].publicKey = ""
 	}
 
@@ -754,4 +804,32 @@ func checkIdentical(t *testing.T, file, checksum string) bool {
 
 	// slog.Info(fmt.Sprintf("%x", c))
 	return checksum == fmt.Sprintf("%x", c)
+}
+
+func getUnwrapper() (Unwrapper, error) {
+	clientID := os.Getenv("SDK_OIDC_CLIENT_ID")
+	clientSecret := os.Getenv("SDK_OIDC_CLIENT_SECRET")
+
+	if clientID != "" && clientSecret != "" {
+		oauthCredentials := oauth.ClientCredentials{
+			ClientId:   clientID,
+			ClientAuth: clientSecret,
+		}
+		idpTokenSource, err := NewIDPAccessTokenSource(
+			oauthCredentials,
+			"http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token",
+			[]string{})
+
+		if err != nil {
+			return FakeUnwrapper{}, err
+		}
+		return KASClient{accessTokenSource: &idpTokenSource, grpcTransportCredentials: insecure.NewCredentials()}, nil
+	} else {
+		unwrapper, err := NewFakeUnwrapper(mockKasPrivateKey)
+		if err != nil {
+			return nil, err
+		}
+
+		return unwrapper, nil
+	}
 }

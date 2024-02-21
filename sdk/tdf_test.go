@@ -734,7 +734,7 @@ func createFileName(buf []byte, filename string, size int64) {
 	}
 }
 
-func runKas() (*httptest.Server, string, string) {
+func runKas() (*httptest.Server, string, string) { //nolint:gocognit
 	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		panic(fmt.Sprintf("crypto.NewRSAKeyPair: %v", err))

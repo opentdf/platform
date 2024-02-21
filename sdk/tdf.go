@@ -233,7 +233,7 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 }
 
 // prepare the manifest for TDF
-func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:gocognit
+func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
 	manifest := Manifest{}
 	if len(tdfConfig.kasInfoList) == 0 {
 		return errInvalidKasInfo

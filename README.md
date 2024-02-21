@@ -10,7 +10,7 @@
 - [Home](https://opentdf.github.io/platform)
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
-- [Policy Config Schema](./migrations/20240131000000_diagram.md)
+- [Policy Config Schema](./migrations/20240212000000_schema_erd.md)
 - [Policy Config Testing Diagram](./integration/testing_diagram.png)
 
 ## Development

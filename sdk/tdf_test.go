@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/platform/sdk/internal/crypto"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 const (
@@ -291,26 +291,12 @@ func TestSimpleTDF(t *testing.T) {
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
-		// CreateTDF TDFConfig
-		tdfConfig, err := NewTDFConfig()
-		if err != nil {
-			t.Fatalf("Fail to create tdf config: %v", err)
-		}
-
 		kasURLs := []KASInfo{
 			{
 				url:       server.URL,
 				publicKey: "",
 			},
 		}
-
-		err = tdfConfig.AddKasInformation(kasURLs)
-		if err != nil {
-			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-		}
-
-		tdfConfig.SetMetaData(metaDataStr)
-		tdfConfig.AddAttributes(attributes)
 
 		inBuf := bytes.NewBufferString(plainText)
 		bufReader := bytes.NewReader(inBuf.Bytes())
@@ -326,7 +312,10 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(fileWriter)
 
-		tdfObj, err := CreateTDF(*tdfConfig, bufReader, fileWriter)
+		tdfObj, err := CreateTDF(bufReader, fileWriter,
+			WithKasInformation(kasURLs),
+			WithMetaData(metaDataStr),
+			WithDataAttributes(attributes))
 		if err != nil {
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}
@@ -440,16 +429,6 @@ func TestTDFReader(t *testing.T) {
 			kasInfoList[index].publicKey = ""
 		}
 
-		tdfConfig, err := NewTDFConfig()
-		if err != nil {
-			t.Fatalf("Fail to create tdf config: %v", err)
-		}
-
-		err = tdfConfig.AddKasInformation(kasInfoList)
-		if err != nil {
-			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-		}
-
 		// create auth config
 		authConfig, err := NewAuthConfig()
 		if err != nil {
@@ -457,11 +436,13 @@ func TestTDFReader(t *testing.T) {
 		}
 
 		for _, readAtTest := range test.readAtTests {
-			tdfConfig.SetDefaultSegmentSize(readAtTest.segmentSize)
 
 			tdfBuf := bytes.Buffer{}
 			readSeeker := bytes.NewReader([]byte(test.payload))
-			_, err = CreateTDF(*tdfConfig, readSeeker, io.Writer(&tdfBuf))
+			_, err := CreateTDF(readSeeker, io.Writer(&tdfBuf),
+				WithKasInformation(kasInfoList),
+				WithSegmentSize(readAtTest.segmentSize))
+
 			if err != nil {
 				t.Fatalf("tdf.CreateTDF failed: %v", err)
 			}
@@ -541,18 +522,8 @@ func TestTDF(t *testing.T) {
 			kasInfoList[index].publicKey = ""
 		}
 
-		tdfConfig, err := NewTDFConfig()
-		if err != nil {
-			t.Fatalf("Fail to create tdf config: %v", err)
-		}
-
-		err = tdfConfig.AddKasInformation(kasInfoList)
-		if err != nil {
-			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-		}
-
 		// test encrypt
-		testEncrypt(t, *tdfConfig, plaintTextFileName, tdfFileName, test)
+		testEncrypt(t, kasInfoList, plaintTextFileName, tdfFileName, test)
 
 		// create auth config
 		authConfig, err := NewAuthConfig()
@@ -593,16 +564,6 @@ func BenchmarkReader(b *testing.B) {
 		kasInfoList[index].publicKey = ""
 	}
 
-	tdfConfig, err := NewTDFConfig()
-	if err != nil {
-		b.Fatalf("Fail to create tdf config: %v", err)
-	}
-
-	err = tdfConfig.AddKasInformation(kasInfoList)
-	if err != nil {
-		b.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-	}
-
 	// encrypt
 	// create a buffer and write with 0xff
 	inBuf := make([]byte, test.fileSize)
@@ -612,7 +573,7 @@ func BenchmarkReader(b *testing.B) {
 
 	tdfBuf := bytes.Buffer{}
 	readSeeker := bytes.NewReader(inBuf)
-	_, err = CreateTDF(*tdfConfig, readSeeker, io.Writer(&tdfBuf))
+	_, err := CreateTDF(readSeeker, io.Writer(&tdfBuf), WithKasInformation(kasInfoList))
 	if err != nil {
 		b.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
@@ -647,7 +608,7 @@ func BenchmarkReader(b *testing.B) {
 }
 
 // create tdf
-func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileName string, test tdfTest) {
+func testEncrypt(t *testing.T, kasInfoList []KASInfo, plainTextFilename, tdfFileName string, test tdfTest) {
 	// create a plain text file
 	createFileName(buffer, plainTextFilename, test.fileSize)
 
@@ -675,7 +636,7 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
 	}(fileWriter) // CreateTDF TDFConfig
-	tdfObj, err := CreateTDF(tdfConfig, readSeeker, fileWriter)
+	tdfObj, err := CreateTDF(readSeeker, fileWriter, WithKasInformation(kasInfoList))
 	if err != nil {
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}

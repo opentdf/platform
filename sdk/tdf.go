@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"io"
 	"log/slog"
 	"math"
@@ -15,10 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
-	"github.com/opentdf/platform/sdk/internal/archive"
-	"github.com/opentdf/platform/sdk/internal/crypto"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
+	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
 )
 
 var (
@@ -35,32 +35,32 @@ var (
 )
 
 const (
-	maxFileSizeSupported   = 68719476736 // 64gb
-	defaultMimeType        = "application/octet-stream"
-	tdfAsZip               = "zip"
-	gcmIvSize              = 12
-	aesBlockSize           = 16
-	hmacIntegrityAlgorithm = "HS256"
-	gmacIntegrityAlgorithm = "GMAC"
-	tdfZipReference        = "reference"
-	kKeySize               = 32
-	kWrapped               = "wrapped"
-	kKasProtocol           = "kas"
-	kSplitKeyType          = "split"
-	kGCMCipherAlgorithm    = "AES-256-GCM"
-	kGMACPayloadLength     = 16
-	// kClientPublicKey        = "clientPublicKey"
-	kSignedRequestToken = "signedRequestToken"
-	// kKasURL                 = "url"
-	kRewrapV2             = "/v2/rewrap"
-	kAuthorizationKey     = "Authorization"
-	kContentTypeKey       = "Content-Type"
-	kAcceptKey            = "Accept"
-	kContentTypeJSONValue = "application/json"
-	kEntityWrappedKey     = "entityWrappedKey"
-	// kPolicy                 = "policy"
-	// kHmacIntegrityAlgorithm = "HS256"
-	// kGmacIntegrityAlgorithm = "GMAC"
+	maxFileSizeSupported    = 68719476736 // 64gb
+	defaultMimeType         = "application/octet-stream"
+	tdfAsZip                = "zip"
+	gcmIvSize               = 12
+	aesBlockSize            = 16
+	hmacIntegrityAlgorithm  = "HS256"
+	gmacIntegrityAlgorithm  = "GMAC"
+	tdfZipReference         = "reference"
+	kKeySize                = 32
+	kWrapped                = "wrapped"
+	kKasProtocol            = "kas"
+	kSplitKeyType           = "split"
+	kGCMCipherAlgorithm     = "AES-256-GCM"
+	kGMACPayloadLength      = 16
+	kClientPublicKey        = "clientPublicKey"
+	kSignedRequestToken     = "signedRequestToken"
+	kKasURL                 = "url"
+	kRewrapV2               = "/v2/rewrap"
+	kAuthorizationKey       = "Authorization"
+	kContentTypeKey         = "Content-Type"
+	kAcceptKey              = "Accept"
+	kContentTypeJSONValue   = "application/json"
+	kEntityWrappedKey       = "entityWrappedKey"
+	kPolicy                 = "policy"
+	kHmacIntegrityAlgorithm = "HS256"
+	kGmacIntegrityAlgorithm = "GMAC"
 )
 
 type Reader struct {
@@ -93,14 +93,11 @@ type RequestBody struct {
 }
 
 // CreateTDF tdf
-func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+func CreateTDF(reader io.ReadSeeker, writer io.Writer, opts ...TDFOption) (*TDFObject, error) {
+
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
-	if inputSize > maxFileSizeSupported {
-		return nil, errFileTooLarge
 	}
 
 	_, err = reader.Seek(0, io.SeekStart)
@@ -108,8 +105,13 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
+	tdfConfig, err := NewTDFConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
+	}
+
 	tdfObject := &TDFObject{}
-	err = tdfObject.prepareManifest(tdfConfig)
+	err = tdfObject.prepareManifest(*tdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -232,7 +234,8 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 }
 
 // prepare the manifest for TDF
-func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
+func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error {
+
 	manifest := Manifest{}
 	if len(tdfConfig.kasInfoList) == 0 {
 		return errInvalidKasInfo
@@ -251,7 +254,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 	}
 
 	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
-	symKeys := [][]byte{}
+	var symKeys [][]byte
 	for _, kasInfo := range tdfConfig.kasInfoList {
 		if len(kasInfo.publicKey) == 0 {
 			return errKasPubKeyMissing
@@ -296,15 +299,14 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 			}
 
 			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
-			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)),
-				Iv: string(crypto.Base64Encode(iv))}
+			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)), Iv: string(crypto.Base64Encode(iv))}
 
-			metadataJSON, err := json.Marshal(metadata)
+			metadataJson, err := json.Marshal(metadata)
 			if err != nil {
 				return fmt.Errorf(" json.Marshal failed:%w", err)
 			}
 
-			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(metadataJSON))
+			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(metadataJson))
 		}
 
 		symKeys = append(symKeys, symKey)
@@ -395,7 +397,7 @@ func (reader *Reader) Read(p []byte) (int, error) {
 
 // WriteTo writes data to writer until there's no more data to write or
 // when an error occurs.
-func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
+func (reader *Reader) WriteTo(writer io.Writer) (n int64, err error) {
 	if reader.payloadKey == nil {
 		err := reader.getPayloadKey()
 		if err != nil {
@@ -421,7 +423,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
+		payloadSig, err := calculateSignature(readBuf, reader.payloadKey[:], sigAlg)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -456,7 +458,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
-func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
+func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) {
 	if reader.payloadKey == nil {
 		err := reader.getPayloadKey()
 		if err != nil {
@@ -507,7 +509,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
+		payloadSig, err := calculateSignature(readBuf, reader.payloadKey[:], sigAlg)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -538,7 +540,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 		}
 	}
 
-	var err error
+	var err error = nil
 	bufLen := int64(len(buf))
 	if (offset + int64(len(buf))) > reader.payloadSize {
 		bufLen = reader.payloadSize - offset
@@ -606,7 +608,8 @@ func (reader *Reader) DataAttributes() ([]string, error) {
 }
 
 // Get the payload key th
-func (reader *Reader) getPayloadKey() error { //nolint:gocognit
+func (reader *Reader) getPayloadKey() error {
+
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range reader.Manifest.EncryptionInformation.KeyAccessObjs {
@@ -737,7 +740,7 @@ func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) 
 
 	claims := rewrapJWTClaims{
 		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)), // Set expiration to be one minute from now
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(60 * time.Second)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 		string(requestBodyData),
@@ -783,13 +786,14 @@ func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) 
 	response, err := client.Do(request)
 	if err != nil {
 		slog.Error("failed http request")
-		return nil, fmt.Errorf("http request failed: %w", err)
+		return nil, err
 	}
 
 	return response, nil
 }
 
 func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
+
 	clientKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
@@ -807,21 +811,20 @@ func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
 	}
 
 	response, err := handleKasRequest(kRewrapV2, requestBody, authConfig)
-
-	defer func() {
-		err := response.Body.Close()
-		if err != nil {
-			slog.Error("Fail to close HTTP response")
-		}
-	}()
-
 	if err != nil {
 		slog.Error("failed http request")
-		return nil, fmt.Errorf("http request error: %w", err)
+		return nil, err
 	}
 	if response.StatusCode != kHTTPOk {
 		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)
 	}
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			slog.Error("Fail to close HTTP response")
+		}
+	}(response.Body)
 
 	rewrapResponseBody, err := io.ReadAll(response.Body)
 	if err != nil {

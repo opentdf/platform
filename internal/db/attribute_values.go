@@ -324,8 +324,9 @@ func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	return newStatementBuilder().
 		Update(t.Name()).
-		Set(t.Field("active"), false).
+		Set("active", false).
 		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 

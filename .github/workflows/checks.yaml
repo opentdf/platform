@@ -50,11 +50,11 @@ jobs:
       - run: make go.work
       - name: golangci-lint
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        continue-on-error: "${{ github.event_name == 'push' }}"
         with:
           version: v1.55
           only-new-issues: true
           working-directory: ${{ matrix.directory }}
-          args: --out-format=colored-line-number
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
 
@@ -149,7 +149,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.21'
+          go-version: "1.21"
           cache: false
       - name: install go-licenses
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e

@@ -2,23 +2,87 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/sdk/namespaces"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func getNamespaceSql(id string) (string, []interface{}, error) {
+type namespaceSelectOptions struct {
+	withFqn bool
+	state   string
+}
+
+func hydrateNamespaceItem(row pgx.Row, opts namespaceSelectOptions) (*namespaces.Namespace, error) {
+	var (
+		id     string
+		name   string 
+		active bool
+		fqn    sql.NullString
+	)
+
+	fields := []interface{}{&id, &name, &active}
+	if opts.withFqn {
+		fields = append(fields, &fqn)
+	}
+
+	if err := row.Scan(fields...); err != nil {
+		return nil, WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &namespaces.Namespace{
+		Id:     id,
+		Name:   name,
+		Active: &wrapperspb.BoolValue{Value: active},
+		Fqn:    fqn.String,
+	}, nil
+}
+
+func hydrateNamespaceItems(rows pgx.Rows, opts namespaceSelectOptions) ([]*namespaces.Namespace, error) {
+	var list []*namespaces.Namespace
+
+	for rows.Next() {
+		n, err := hydrateNamespaceItem(rows, opts)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, n)
+	}
+
+	return list, nil
+}
+
+func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	return newStatementBuilder().
-		Select(t.Field("id"), t.Field("name"), t.Field("active")).
-		From(t.Name()).
+	fields := []string{
+		t.Field("id"),
+		t.Field("name"),
+		t.Field("active"),
+	}
+
+	if opts.withFqn {
+		fields = append(fields, Tables.AttrFqn.Field("fqn"))
+	}
+
+	sb := newStatementBuilder().
+		Select(fields...).
+		From(t.Name())
+
+	if opts.withFqn {
+		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("namespace_id") + " = " + t.Field("id"))
+	}
+
+	return sb.
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
 func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
-	sql, args, err := getNamespaceSql(id)
+	opts := namespaceSelectOptions{withFqn: true}
+	sql, args, err := getNamespaceSql(id, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -28,52 +92,64 @@ func (c Client) GetNamespace(ctx context.Context, id string) (*namespaces.Namesp
 		return nil, err
 	}
 
-	var namespace namespaces.Namespace
-	var isActive bool
-	if err := row.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
-		return nil, WrapIfKnownInvalidQueryErr(err)
+	n, err := hydrateNamespaceItem(row, opts)
+	if err != nil {
+		return nil, err
 	}
-	namespace.Active = &wrapperspb.BoolValue{Value: isActive}
 
-	return &namespace, nil
+	return n, nil
 }
 
-func listNamespacesSql(state string) (string, []interface{}, error) {
+func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, error) {
 	t := Tables.Namespaces
+
+	fields := []string{
+		t.Field("id"),
+		t.Field("name"),
+		t.Field("active"),
+	}
+
+	if opts.withFqn {
+		fields = append(fields, Tables.AttrFqn.Field("fqn"))
+	}
+
 	sb := newStatementBuilder().
-		Select(t.Field("id"), t.Field("name"), t.Field("active")).
+		Select(fields...).
 		From(t.Name())
 
-	if state != StateAny {
-		sb = sb.Where(sq.Eq{t.Field("active"): state == StateActive})
+	if opts.withFqn {
+		sb = sb.LeftJoin(Tables.AttrFqn.Name() + " ON " + Tables.AttrFqn.Field("namespace_id") + " = " + t.Field("id"))
 	}
+
+	if opts.state != "" && opts.state != StateAny {
+		sb = sb.Where(sq.Eq{t.Field("active"): opts.state == StateActive})
+	}
+
 	return sb.ToSql()
 }
 
 func (c Client) ListNamespaces(ctx context.Context, state string) ([]*namespaces.Namespace, error) {
-	namespacesList := []*namespaces.Namespace{}
+	opts := namespaceSelectOptions{withFqn: true, state: state}
 
-	sql, args, err := listNamespacesSql(state)
+	sql, args, err := listNamespacesSql(opts)
 	if err != nil {
+		slog.Error("error listing namespaces", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	rows, err := c.query(ctx, sql, args, err)
 	if err != nil {
+		slog.Error("error listing namespaces", slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	for rows.Next() {
-		var namespace namespaces.Namespace
-		var isActive bool
-		if err := rows.Scan(&namespace.Id, &namespace.Name, &isActive); err != nil {
-			return nil, WrapIfKnownInvalidQueryErr(err)
-		}
-		namespace.Active = &wrapperspb.BoolValue{Value: isActive}
-		namespacesList = append(namespacesList, &namespace)
+	list, err := hydrateNamespaceItems(rows, opts)
+	if err != nil {
+		slog.Error("error hydrating namespace items", slog.String("sql", sql), slog.String("error", err.Error()))
+		return nil, err
 	}
 
-	return namespacesList, nil
+	return list, nil
 }
 
 func createNamespaceSql(name string) (string, []interface{}, error) {
@@ -95,6 +171,10 @@ func (c Client) CreateNamespace(ctx context.Context, name string) (string, error
 	} else if e := r.Scan(&id); e != nil {
 		return "", WrapIfKnownInvalidQueryErr(e)
 	}
+
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
+
 	return id, nil
 }
 
@@ -113,6 +193,9 @@ func (c Client) UpdateNamespace(ctx context.Context, id string, name string) (*n
 	if e := c.exec(ctx, sql, args, err); e != nil {
 		return nil, e
 	}
+
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
 
 	return c.GetNamespace(ctx, id)
 }

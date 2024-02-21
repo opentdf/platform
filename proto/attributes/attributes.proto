@@ -39,8 +39,10 @@ message Attribute {
 
   repeated kasregistry.KeyAccessServer grants = 8;
 
+  string fqn = 9;
+
   // active by default until explicitly deactivated
-  google.protobuf.BoolValue active = 9;
+  google.protobuf.BoolValue active = 10;
 }
 
 message AttributeCreateUpdate {
@@ -79,8 +81,10 @@ message Value {
   // list of key access servers
   repeated kasregistry.KeyAccessServer grants = 6;
 
+  string fqn = 7;
+  
   // active by default until explicitly deactivated
-  google.protobuf.BoolValue active = 7;
+  google.protobuf.BoolValue active = 8;
 }
 
 message ValueCreateUpdate {

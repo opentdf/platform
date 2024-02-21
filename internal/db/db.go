@@ -16,6 +16,7 @@ var (
 	TableAttributes                    = "attribute_definitions"
 	TableAttributeValues               = "attribute_values"
 	TableNamespaces                    = "attribute_namespaces"
+	TableAttrFqn                       = "attribute_fqns"
 	TableKeyAccessServerRegistry       = "key_access_servers"
 	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"
 	TableAttributeValueKeyAccessGrants = "attribute_value_key_access_grants"
@@ -27,6 +28,7 @@ var Tables struct {
 	Attributes                    Table
 	AttributeValues               Table
 	Namespaces                    Table
+	AttrFqn                       Table
 	KeyAccessServerRegistry       Table
 	AttributeKeyAccessGrants      Table
 	AttributeValueKeyAccessGrants Table
@@ -97,16 +99,6 @@ type Config struct {
 type Client struct {
 	PgxIface
 	config Config
-	Tables struct {
-		Attributes                    Table
-		AttributeValues               Table
-		Namespaces                    Table
-		KeyAccessServerRegistry       Table
-		AttributeKeyAccessGrants      Table
-		AttributeValueKeyAccessGrants Table
-		ResourceMappings              Table
-		SubjectMappings               Table
-	}
 }
 
 func NewClient(config Config) (*Client, error) {
@@ -118,6 +110,7 @@ func NewClient(config Config) (*Client, error) {
 	Tables.Attributes = NewTable(TableAttributes, config.Schema)
 	Tables.AttributeValues = NewTable(TableAttributeValues, config.Schema)
 	Tables.Namespaces = NewTable(TableNamespaces, config.Schema)
+	Tables.AttrFqn = NewTable(TableAttrFqn, config.Schema)
 	Tables.KeyAccessServerRegistry = NewTable(TableKeyAccessServerRegistry, config.Schema)
 	Tables.AttributeKeyAccessGrants = NewTable(TableAttributeKeyAccessGrants, config.Schema)
 	Tables.AttributeValueKeyAccessGrants = NewTable(TableAttributeValueKeyAccessGrants, config.Schema)

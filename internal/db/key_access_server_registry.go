@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -24,6 +25,7 @@ func keyAccessServerProtojson(keyAccessServerJSON []byte) ([]*kasr.KeyAccessServ
 	for _, r := range raw {
 		kas := kasr.KeyAccessServer{}
 		if err := protojson.Unmarshal(r, &kas); err != nil {
+			slog.Error("error unmarshalling key access server: %v", err)
 			return nil, err
 		}
 		keyAccessServers = append(keyAccessServers, &kas)

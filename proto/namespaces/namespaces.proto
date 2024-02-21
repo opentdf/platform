@@ -21,13 +21,15 @@ message Namespace {
     }
   ];
 
+  string fqn = 3;
+
   // active by default until explicitly deactivated
-  google.protobuf.BoolValue active = 3;
+  google.protobuf.BoolValue active = 4;
 }
 
 /*
 
-    Namespace Service Definitions
+   Namespace Service Definitions
 
 */
 
@@ -81,9 +83,7 @@ service NamespaceService {
       }
   */
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
-    option (google.api.http) = {
-      get: "/attributes/namespaces/{id}"
-    };
+    option (google.api.http) = {get: "/attributes/namespaces/{id}"};
   }
 
   /*
@@ -102,9 +102,7 @@ service NamespaceService {
       }
   */  
   rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse) {
-      option (google.api.http) = {
-      get: "/attributes/namespaces"
-      };
+    option (google.api.http) = {get: "/attributes/namespaces"};
   }
 
   /*
@@ -114,14 +112,10 @@ service NamespaceService {
       { "namespace": { "id": "namespace-id", "active": true } }
   */
   rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse) {
-      option (google.api.http) = {
-      post: "/attributes/namespaces"
-      };
+    option (google.api.http) = {post: "/attributes/namespaces"};
   }
   rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse) {
-      option (google.api.http) = {
-      put: "/attributes/namespaces/{id}"
-      };
+    option (google.api.http) = {put: "/attributes/namespaces/{id}"};
   }
   rpc DeactivateNamespace(DeactivateNamespaceRequest) returns (DeactivateNamespaceResponse) {
       option (google.api.http) = {

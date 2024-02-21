@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -68,20 +69,20 @@ func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, 
 
 func resourceMappingSelect() sq.SelectBuilder {
 	t := Tables.ResourceMappings
-	aT := Tables.AttributeValues
+	at := Tables.AttributeValues
 	return newStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("metadata"),
 		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
-			"'id', "+aT.Field("id")+", "+
-			"'value', "+aT.Field("value")+","+
-			"'members', "+aT.Field("members")+
+			"'id', "+at.Field("id")+", "+
+			"'value', "+at.Field("value")+","+
+			"'members', "+at.Field("members")+
 			")"+
 			" AS attribute_value",
 	).
-		LeftJoin(AttributeValueTable+" ON "+aT.Field("id")+" = "+t.Field("attribute_value_id")).
-		GroupBy(t.Field("id"), aT.Field("id"))
+		LeftJoin(at.Name()+" ON "+at.Field("id")+" = "+t.Field("attribute_value_id")).
+		GroupBy(t.Field("id"), at.Field("id"))
 }
 
 /*
@@ -128,6 +129,7 @@ func (c Client) CreateResourceMapping(ctx context.Context, rm *resourcemapping.R
 
 	av, err := c.GetAttributeValue(ctx, rm.AttributeValueId)
 	if err != nil {
+		slog.Error("failed to get attribute value", "id", rm.AttributeValueId, "err", err)
 		return nil, err
 	}
 

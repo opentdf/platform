@@ -97,7 +97,7 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 
 	a, err := s.dbClient.DeactivateAttribute(ctx, req.Id)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
+		return nil, services.HandleError(err, services.ErrDeactivationFailed, slog.String("id", req.Id))
 	}
 	rsp.Attribute = a
 
@@ -157,7 +157,7 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *attributes.DeactivateAttributeValueRequest) (*attributes.DeactivateAttributeValueResponse, error) {
 	a, err := s.dbClient.DeactivateAttributeValue(ctx, req.Id)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
+		return nil, services.HandleError(err, services.ErrDeactivationFailed, slog.String("id", req.Id))
 	}
 
 	return &attributes.DeactivateAttributeValueResponse{

@@ -6,6 +6,7 @@ import (
 
 	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/db"
+	policydb "github.com/opentdf/platform/services/policy/db"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +53,7 @@ var (
 	}
 )
 
-func policyDBClient() (*db.Client, error) {
+func policyDBClient() (*policydb.PolicyDbClient, error) {
 	// Load the config
 	conf, err := config.LoadConfig()
 	if err != nil {
@@ -65,8 +66,7 @@ func policyDBClient() (*db.Client, error) {
 		//nolint:wrapcheck // we want to return the error as is. the start command will wrap it
 		return nil, err
 	}
-	return dbClient, nil
-
+	return policydb.NewClient(*dbClient), nil
 }
 
 func init() {

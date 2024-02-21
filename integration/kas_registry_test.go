@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
-	"github.com/opentdf/platform/sdk/common"
-	kasr "github.com/opentdf/platform/sdk/kasregistry"
+	"github.com/opentdf/platform/protocol/go/common"
+	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -46,7 +46,7 @@ func getKasRegistryFixtures() []FixtureDataKasRegistry {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
 	fixtures := getKasRegistryFixtures()
-	list, err := s.db.Client.ListKeyAccessServers(s.ctx)
+	list, err := s.db.KASRClient.ListKeyAccessServers(s.ctx)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), list)
 	for _, fixture := range fixtures {
@@ -68,14 +68,14 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	remoteFixture := fixtures.GetKasRegistryKey("key_access_server_1")
 	localFixture := fixtures.GetKasRegistryKey("key_access_server_2")
 
-	remote, err := s.db.Client.GetKeyAccessServer(s.ctx, remoteFixture.Id)
+	remote, err := s.db.KASRClient.GetKeyAccessServer(s.ctx, remoteFixture.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), remote)
 	assert.Equal(s.T(), remoteFixture.Id, remote.Id)
 	assert.Equal(s.T(), remoteFixture.Uri, remote.Uri)
 	assert.Equal(s.T(), remoteFixture.PubKey.Remote, remote.PublicKey.GetRemote())
 
-	local, err := s.db.Client.GetKeyAccessServer(s.ctx, localFixture.Id)
+	local, err := s.db.KASRClient.GetKeyAccessServer(s.ctx, localFixture.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), local)
 	assert.Equal(s.T(), localFixture.Id, local.Id)
@@ -84,7 +84,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 }
 
 func (s *KasRegistrySuite) Test_GetKeyAccessServerWithNonExistentIdFails() {
-	resp, err := s.db.Client.GetKeyAccessServer(s.ctx, nonExistentKasRegistryId)
+	resp, err := s.db.KASRClient.GetKeyAccessServer(s.ctx, nonExistentKasRegistryId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
@@ -109,7 +109,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		PublicKey: pubKey,
 		Metadata:  metadata,
 	}
-	createdKasRegistry, err := s.db.Client.CreateKeyAccessServer(s.ctx, kasRegistry)
+	createdKasRegistry, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdKasRegistry)
 	assert.Equal(s.T(), kasRegistry.Uri, createdKasRegistry.Uri)
@@ -139,7 +139,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 		PublicKey: pubKey,
 		Metadata:  metadata,
 	}
-	createdKasRegistry, err := s.db.Client.CreateKeyAccessServer(s.ctx, kasRegistry)
+	createdKasRegistry, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdKasRegistry)
 	assert.Equal(s.T(), kasRegistry.Uri, createdKasRegistry.Uri)
@@ -161,7 +161,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
 		Uri:       "testingUpdateWithRemoteKey.com",
 		PublicKey: pubKey,
 	}
-	createdKas, err := s.db.Client.CreateKeyAccessServer(s.ctx, testKas)
+	createdKas, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, testKas)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdKas)
 
@@ -177,12 +177,12 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
 		PublicKey: pubKey,
 		Metadata:  updatedMetadata,
 	}
-	updated, err := s.db.Client.UpdateKeyAccessServer(s.ctx, createdKas.Id, updatedKas)
+	updated, err := s.db.KASRClient.UpdateKeyAccessServer(s.ctx, createdKas.Id, updatedKas)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
 
 	// get after update to validate changes were successful
-	got, err := s.db.Client.GetKeyAccessServer(s.ctx, createdKas.Id)
+	got, err := s.db.KASRClient.GetKeyAccessServer(s.ctx, createdKas.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), createdKas.Id, got.Id)
@@ -202,7 +202,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
 		Uri:       "someKasUri.com",
 		PublicKey: pubKey,
 	}
-	resp, err := s.db.Client.UpdateKeyAccessServer(s.ctx, nonExistentKasRegistryId, updatedKas)
+	resp, err := s.db.KASRClient.UpdateKeyAccessServer(s.ctx, nonExistentKasRegistryId, updatedKas)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
@@ -219,23 +219,23 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 		Uri:       "deleting.net",
 		PublicKey: pubKey,
 	}
-	createdKas, err := s.db.Client.CreateKeyAccessServer(s.ctx, testKas)
+	createdKas, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, testKas)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdKas)
 
 	// delete it
-	deleted, err := s.db.Client.DeleteKeyAccessServer(s.ctx, createdKas.Id)
+	deleted, err := s.db.KASRClient.DeleteKeyAccessServer(s.ctx, createdKas.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), deleted)
 
 	// get after delete to validate it's gone
-	resp, err := s.db.Client.GetKeyAccessServer(s.ctx, createdKas.Id)
+	resp, err := s.db.KASRClient.GetKeyAccessServer(s.ctx, createdKas.Id)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
 }
 
 func (s *KasRegistrySuite) Test_DeleteKeyAccessServerWithNonExistentIdFails() {
-	resp, err := s.db.Client.DeleteKeyAccessServer(s.ctx, nonExistentKasRegistryId)
+	resp, err := s.db.KASRClient.DeleteKeyAccessServer(s.ctx, nonExistentKasRegistryId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), resp)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)

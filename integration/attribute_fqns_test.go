@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/opentdf/platform/sdk/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -54,10 +54,10 @@ func (s *AttributeFqnSuite) TearDownSuite() {
 // Test Create Namespace
 func (s *AttributeFqnSuite) TestCreateNamespace() {
 	name := "test_namespace"
-	id, err := s.db.Client.CreateNamespace(s.ctx, name)
+	id, err := s.db.PolicyClient.CreateNamespace(s.ctx, name)
 	s.NoError(err)
 	// Verify FQN
-	fqn, err := s.db.Client.GetNamespace(s.ctx, id)
+	fqn, err := s.db.PolicyClient.GetNamespace(s.ctx, id)
 	s.NoError(err)
 	s.NotEmpty(fqn.Fqn)
 	s.Equal(fqnBuilder(name, "", ""), fqn.Fqn)
@@ -67,14 +67,14 @@ func (s *AttributeFqnSuite) TestCreateNamespace() {
 func (s *AttributeFqnSuite) TestCreateAttribute() {
 	n := fixtures.GetNamespaceKey("example.com")
 	name := "test_namespace"
-	a, err := s.db.Client.CreateAttribute(s.ctx, &attributes.AttributeCreateUpdate{
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.AttributeCreateUpdate{
 		NamespaceId: n.Id,
 		Name:        name,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	})
 	s.NoError(err)
 	// Verify FQN
-	fqn, err := s.db.Client.GetAttribute(s.ctx, a.Id)
+	fqn, err := s.db.PolicyClient.GetAttribute(s.ctx, a.Id)
 	s.NoError(err)
 	s.NotEmpty(fqn.Fqn)
 	s.Equal(fqnBuilder(n.Name, a.Name, ""), fqn.Fqn)
@@ -85,12 +85,12 @@ func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 	a := fixtures.GetAttributeKey("example.com/attr/attr1")
 	n := fixtures.GetNamespaceKey(a.NamespaceId)
 	name := "test_namespace"
-	v, err := s.db.Client.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
+	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
 		Value: name,
 	})
 	s.NoError(err)
 	// Verify FQN
-	fqn, err := s.db.Client.GetAttributeValue(s.ctx, v.Id)
+	fqn, err := s.db.PolicyClient.GetAttributeValue(s.ctx, v.Id)
 	s.NoError(err)
 	s.NotEmpty(fqn.Fqn)
 	s.Equal(fqnBuilder(n.Name, a.Name, v.Value), fqn.Fqn)

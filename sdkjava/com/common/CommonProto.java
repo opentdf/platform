@@ -60,10 +60,10 @@ public final class CommonProto {
       "ctiveStateEnum\022!\n\035ACTIVE_STATE_ENUM_UNSP" +
       "ECIFIED\020\000\022\034\n\030ACTIVE_STATE_ENUM_ACTIVE\020\001\022" +
       "\036\n\032ACTIVE_STATE_ENUM_INACTIVE\020\002\022\031\n\025ACTIV" +
-      "E_STATE_ENUM_ANY\020\003By\n\ncom.commonB\013Common" +
-      "ProtoP\001Z&github.com/opentdf/platform/sdk" +
-      "/common\242\002\003CXX\252\002\006Common\312\002\006Common\342\002\022Common" +
-      "\\GPBMetadata\352\002\006Commonb\006proto3"
+      "E_STATE_ENUM_ANY\020\003B\201\001\n\ncom.commonB\013Commo" +
+      "nProtoP\001Z.github.com/opentdf/platform/pr" +
+      "otocol/go/common\242\002\003CXX\252\002\006Common\312\002\006Common" +
+      "\342\002\022Common\\GPBMetadata\352\002\006Commonb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

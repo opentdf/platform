@@ -93,7 +93,7 @@ type RequestBody struct {
 }
 
 // CreateTDF tdf
-func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TDFObject, error) {
+func CreateTDF(reader io.ReadSeeker, writer io.Writer, opts ...TDFOption) (*TDFObject, error) {
 
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
@@ -105,8 +105,13 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
+	tdfConfig, err := NewTDFConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
+	}
+
 	tdfObject := &TDFObject{}
-	err = tdfObject.prepareManifest(tdfConfig)
+	err = tdfObject.prepareManifest(*tdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}

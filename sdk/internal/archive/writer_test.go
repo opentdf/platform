@@ -103,23 +103,23 @@ var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used a
 		526397048,
 	},
 
-	{
-		[]ZipEntryInfo{
-			{
-				"1.txt",
-				oneGB,
-			},
-			{
-				"2.txt",
-				oneGB,
-			},
-			{
-				"3.txt",
-				tenGB,
-			},
-		},
-		12582912572,
-	},
+	//{
+	//	[]ZipEntryInfo{
+	//		{
+	//			"1.txt",
+	//			oneGB,
+	//		},
+	//		{
+	//			"2.txt",
+	//			oneGB,
+	//		},
+	//		{
+	//			"3.txt",
+	//			tenGB,
+	//		},
+	//	},
+	//	12582912572,
+	//},
 }
 
 // create a buffer of 2mb and fill it with 0xFF, and

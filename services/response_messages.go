@@ -12,6 +12,7 @@ import (
 const (
 	ErrCreationFailed      = "resource creation failed"
 	ErrDeletionFailed      = "resource deletion failed"
+	ErrDeactivationFailed  = "resource deactivation failed"
 	ErrGetRetrievalFailed  = "resource retrieval failed"
 	ErrListRetrievalFailed = "resource list retrieval failed"
 	ErrUpdateFailed        = "resource update failed"

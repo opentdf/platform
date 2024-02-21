@@ -1,6 +1,6 @@
 module github.com/opentdf/platform
 
-go 1.21.5
+go 1.21.7
 
 replace github.com/opentdf/platform/sdk => ./sdk
 

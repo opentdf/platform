@@ -1,0 +1,507 @@
+syntax = "proto3";
+
+package policy.attributes;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
+import "kasregistry/key_access_server_registry.proto";
+import "policy/namespaces/namespaces.proto";
+
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum AttributeRuleTypeEnum {
+  ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED = 0;
+  ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF = 1;
+  ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF = 2;
+  ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY = 3;
+}
+
+message Attribute {
+  string id = 1;
+
+  // Optional metadata for the attribute definition
+  common.Metadata metadata = 2;
+
+  // namespace of the attribute
+  namespaces.Namespace namespace = 3;
+
+  //attribute name
+  string name = 4;
+
+  // attribute rule enum
+  AttributeRuleTypeEnum rule = 5 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  repeated Value values = 7;
+
+  repeated kasregistry.KeyAccessServer grants = 8;
+
+  string fqn = 9;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 10;
+}
+
+message AttributeCreateUpdate {
+  // Optional metadata for the attribute definition
+  common.MetadataMutable metadata = 1;
+
+  // namespace of the attribute
+  string namespace_id = 2 [(buf.validate.field).required = true];
+
+  //attribute name
+  string name = 3 [(buf.validate.field).required = true];
+
+  // attribute rule enum
+  AttributeRuleTypeEnum rule = 4 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  // optional
+  repeated ValueCreateUpdate values = 5;
+}
+
+message Value {
+  // generated uuid in database
+  string id = 1;
+
+  common.Metadata metadata = 2;
+
+  string attribute_id = 3 [(buf.validate.field).required = true];
+
+  string value = 4;
+
+  // list of attribute values that this value is related to (attribute group)
+  repeated string members = 5;
+
+  // list of key access servers
+  repeated kasregistry.KeyAccessServer grants = 6;
+
+  string fqn = 7;
+  
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 8;
+}
+
+message ValueCreateUpdate {
+  common.MetadataMutable metadata = 1;
+
+  string value = 2;
+
+  // list of attribute values that this value is related to (attribute group)
+  repeated string members = 3;
+}
+
+/*
+   Key Access Server Grants
+*/
+
+message AttributeKeyAccessServer {
+  string attribute_id = 1;
+  string key_access_server_id = 2;
+}
+
+message ValueKeyAccessServer {
+  string value_id = 1;
+  string key_access_server_id = 2;
+}
+
+/*
+   Attribute Service Definitions
+*/
+
+message ListAttributesRequest {
+  // ACTIVE by default when not specified
+  common.ActiveStateEnum state = 1;
+}
+message ListAttributesResponse {
+  repeated Attribute attributes = 1;
+}
+
+message GetAttributeRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message GetAttributeResponse {
+  Attribute attribute = 1;
+}
+
+message CreateAttributeRequest {
+  AttributeCreateUpdate attribute = 1 [(buf.validate.field).required = true];
+}
+message CreateAttributeResponse {
+  Attribute attribute = 1;
+}
+
+message UpdateAttributeRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  AttributeCreateUpdate attribute = 2 [(buf.validate.field).required = true];
+}
+message UpdateAttributeResponse {
+  Attribute attribute = 1;
+}
+
+message DeactivateAttributeRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeactivateAttributeResponse {
+  Attribute attribute = 1;
+}
+
+///
+/// Value RPC messages
+///
+message GetAttributeValueRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message GetAttributeValueResponse {
+  Value value = 1;
+}
+
+message ListAttributeValuesRequest {
+  string attribute_id = 1 [(buf.validate.field).required = true];
+  // ACTIVE by default when not specified
+  common.ActiveStateEnum state = 2;
+}
+message ListAttributeValuesResponse {
+  repeated Value values = 1;
+}
+
+message CreateAttributeValueRequest {
+  string attribute_id = 1 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 2 [(buf.validate.field).required = true];
+}
+message CreateAttributeValueResponse {
+  Value value = 1;
+}
+
+message UpdateAttributeValueRequest {
+  string attribute_id = 1 [(buf.validate.field).required = true];
+  string id = 2 [(buf.validate.field).required = true];
+  ValueCreateUpdate value = 3 [(buf.validate.field).required = true];
+}
+message UpdateAttributeValueResponse {
+  Value value = 1;
+}
+
+message DeactivateAttributeValueRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeactivateAttributeValueResponse {
+  Value value = 1;
+}
+
+/*
+   Assign Key Access Server to Attribute and Value
+*/
+
+message AssignKeyAccessServerToAttributeRequest {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToAttributeResponse {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromAttributeRequest {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromAttributeResponse {
+  AttributeKeyAccessServer attribute_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToValueRequest {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToValueResponse {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromValueRequest {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromValueResponse {
+  ValueKeyAccessServer value_key_access_server = 1;
+}
+
+///
+/// Attribute Service
+///
+service AttributesService {
+  /*
+      NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+      Request:
+        grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
+          OR (for inactive)
+        grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
+      Response:
+        {
+          "attributes": [
+            {
+              "id": "attribute_id",
+              "metadata": {
+                "created_at": "2021-01-01T00:00:00Z",
+                "updated_at": "2021-01-01T00:00:00Z"
+              },
+              "namespace": {
+                "id": "namespace_id",
+                "name": "namespace_name"
+              },
+              "name": "attribute_name",
+              "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+              "values": [
+                {
+                  "id": "value_id",
+                  "metadata": {
+                    "created_at": "2021-01-01T00:00:00Z",
+                    "updated_at": "2021-01-01T00:00:00Z"
+                  },
+                  "attribute_id": "attribute_id",
+                  "value": "value",
+                  "members": ["value_id"],
+                  "grants": [
+                    {
+                      "id": "key_access_server_id",
+                      "metadata": {
+                        "created_at": "2021-01-01T00:00:00Z",
+                        "updated_at": "2021-01-01T00:00:00Z"
+                      },
+                      "name": "key_access_server_name",
+                      "description": "key_access_server_description",
+                    }
+                  ],
+                }
+              ],
+              "grants": [
+                {
+                  "id": "key_access_server_id",
+                  "metadata": {
+                    "created_at": "2021-01-01T00:00:00Z",
+                    "updated_at": "2021-01-01T00:00:00Z"
+                  },
+                  "name": "key_access_server_name",
+                  "description": "key_access_server_description",
+                }
+              ],
+              "active": true
+            }
+          ]
+        }
+  */
+  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
+
+  /*
+     List Values
+     
+     Request:
+        NOTE: ACTIVE state by default, INACTIVE or ANY when specified
+        grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
+     Response:
+        {
+          "attributes": [
+            {
+              "id": "attribute_id",
+              "metadata": {
+                "createdAt": "2024-02-14T20:24:23.057404Z",
+                "updatedAt": "2024-02-14T20:24:23.057404Z"
+              },
+              "namespace": {
+                "id": "namespace_id",
+                "name": "namespace_name"
+              },
+              "name": "attribute_name",
+              "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+              "values": [
+                {
+                  ... VALUES ...
+                }
+              ],
+              "grants": [
+                {
+                  ... GRANTS ...
+                }
+              ],
+              "active": true
+            }
+          ]
+        }
+
+  */
+  rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {}
+
+  rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
+    option (google.api.http) = {get: "/attributes/{id}"};
+  }
+
+  /* Create Attribute
+    Request:
+      grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
+    Response
+      {
+        "attribute": {
+          "id": "e06f067b-d158-44bc-a814-1aa3f968dcf0",
+          "metadata": {
+            "createdAt": "2024-02-14T20:24:23.057404Z",
+            "updatedAt": "2024-02-14T20:24:23.057404Z"
+          },
+          "namespace": {
+            "id": "namespace_id"
+          },
+          "name": "attribute_name",
+          "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+          "active": true
+        }
+      }
+ */
+  rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
+    option (google.api.http) = {
+      post: "/attributes"
+      body: "attribute"
+    };
+  }
+
+  rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {
+    option (google.api.http) = {
+      post: "/attributes/{id}"
+      body: "attribute"
+    };
+  }
+
+  rpc DeactivateAttribute(DeactivateAttributeRequest) returns (DeactivateAttributeResponse) {
+    option (google.api.http) = {delete: "/attributes/{id}"};
+  }
+
+  /** Attribute Value **/
+  rpc GetAttributeValue(GetAttributeValueRequest) returns (GetAttributeValueResponse) {
+    option (google.api.http) = {get: "/attributes/_/values/{id}"};
+  }
+
+  // Create Attribute Value
+  // Example:
+  //  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue
+  rpc CreateAttributeValue(CreateAttributeValueRequest) returns (CreateAttributeValueResponse) {
+    option (google.api.http) = {
+      post: "/attributes/{attribute_id}/values"
+      body: "value"
+    };
+  }
+
+  rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {
+    option (google.api.http) = {
+      post: "/attributes/{attribute_id}/values/{id}"
+      body: "value"
+    };
+  }
+
+  rpc DeactivateAttributeValue(DeactivateAttributeValueRequest) returns (DeactivateAttributeValueResponse) {
+    option (google.api.http) = {delete: "/attributes/_/values/{id}"};
+  }
+
+  /*
+      Assign Key Access Server to Attribute
+
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
+
+      Example Request:
+      {
+        "attribute_key_access_server": {
+          "attribute_id": "attribute_id",
+          "key_access_server_id
+      }
+
+      Example Response:
+      {
+        "attribute_key_access_server": {
+          "attribute_id": "attribute_id",
+          "key_access_server_id: "key_access_server_id"
+      }
+  */
+  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
+    option (google.api.http) = {
+      post: "/attributes/keyaccessserver/assign"
+      body: "attribute_key_access_server"
+    };
+  }
+
+  /*
+      Remove Key Access Server to Attribute
+
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
+
+      Example Request:
+      {
+        "attribute_key_access_server": {
+          "attribute_id": "attribute_id",
+          "key_access_server_id
+      }
+
+      Example Response:
+      {
+        "attribute_key_access_server": {
+          "attribute_id": "attribute_id",
+          "key_access_server_id: "key_access_server_id"
+      }
+  */
+  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
+    option (google.api.http) = {
+      post: "/attributes/keyaccessserver/remove"
+      body: "attribute_key_access_server"
+    };
+  }
+
+  /*
+      Assign Key Access Server to Value
+
+     grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
+
+      Example Request:
+      {
+        "attribute_key_access_server": {
+          "value_id": "attribute_id",
+          "key_access_server_id
+      }
+
+      Example Response:
+      {
+        "attribute_key_access_server": {
+          "value_id": "attribute_id",
+          "key_access_server_id: "key_access_server_id"
+      }
+  */
+  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
+    option (google.api.http) = {
+      post: "/attributes/values/keyaccessserver/assign"
+      body: "value_key_access_server"
+    };
+  }
+
+  /*
+     Remove Key Access Server to Value
+     grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
+
+     Example Request:
+     {
+       "value_key_access_server": {
+         "value_id": "value_id",
+         "key_access_server_id
+     }
+
+     Example Response:
+     {
+       "value_key_access_server": {
+         "value_id": "value_id",
+         "key_access_server_id
+  */
+  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
+    option (google.api.http) = {
+      post: "/attributes/values/keyaccessserver/remove"
+      body: "value_key_access_server"
+    };
+  }
+}

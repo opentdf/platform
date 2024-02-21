@@ -7,6 +7,7 @@
 ![Vulnerability Check](https://github.com/opentdf/platform/actions/workflows/vulnerability-check.yaml/badge.svg?branch=main)
 
 ## Documentation
+
 - [Home](https://opentdf.github.io/platform)
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
@@ -77,7 +78,7 @@ grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAtt
 {
     "definition": {
         "name": "relto",
-        "rule":"ATTRIBUTE_RULE_TYPE_ANY_OF",
+        "rule":"ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
         "values": [
             {
                 "value": "test1"
@@ -122,3 +123,26 @@ The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` 
 generated code.
 
 For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.
+
+## Services
+
+### Policy
+
+The policy service is responsible for managing policy configurations. It provides a gRPC API for
+creating, updating, and deleting policy configurations.
+
+#### Attributes
+
+##### Namespaces
+
+##### Definitions
+
+##### Values
+
+#### Attribute FQNs
+
+Attribute FQNs are a unique string identifier for an attribute (and its respective parts) that is
+used to reference the attribute in policy configurations. Specific places where this will be used:
+
+- TDF attributes
+- Key Access Server (KAS) to determine key release

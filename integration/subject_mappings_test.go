@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/opentdf/platform/sdk/common"
-	"github.com/opentdf/platform/sdk/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -44,7 +44,7 @@ func (s *SubjectMappingsSuite) Test_CreateSubjectMapping() {
 		SubjectValues:    []string{"subject_attribute_values--test1", "subject_attribute_values--test2"},
 		Metadata:         metadata,
 	}
-	createdMapping, err := s.db.Client.CreateSubjectMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 }
@@ -58,11 +58,11 @@ func (s *SubjectMappingsSuite) Test_GetSubjectMapping() {
 		SubjectValues:    []string{"subject_attribute_values--test1", "subject_attribute_values--test2"},
 		Metadata:         &common.MetadataMutable{},
 	}
-	createdMapping, err := s.db.Client.CreateSubjectMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 
-	gotMapping, err := s.db.Client.GetSubjectMapping(s.ctx, createdMapping.Id)
+	gotMapping, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, createdMapping.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotMapping)
 }

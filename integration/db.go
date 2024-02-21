@@ -7,11 +7,15 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/internal/db"
+	kasdb "github.com/opentdf/platform/services/kasregistry/db"
+	policydb "github.com/opentdf/platform/services/policy/db"
 )
 
 type DBInterface struct {
-	Client *db.Client
-	schema string
+	Client       *db.Client
+	PolicyClient *policydb.PolicyDbClient
+	KASRClient   *kasdb.KasRegistryDbClient
+	schema       string
 }
 
 func NewDBInterface(schema string) DBInterface {
@@ -23,8 +27,10 @@ func NewDBInterface(schema string) DBInterface {
 		panic(err)
 	}
 	return DBInterface{
-		Client: c,
-		schema: schema,
+		Client:       c,
+		schema:       schema,
+		PolicyClient: policydb.NewClient(*c),
+		KASRClient:   kasdb.NewClient(*c),
 	}
 }
 
@@ -69,7 +75,7 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]str
 		}
 		sql += " (" + strings.Join(v, ",") + ")"
 	}
-	pconn, err := d.Client.Exec(context.Background(), sql)
+	pconn, err := d.Client.Pgx.Exec(context.Background(), sql)
 	if err != nil {
 		slog.Error("insert error", "stmt", sql, "err", err)
 		return 0, err
@@ -79,7 +85,7 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]str
 
 func (d *DBInterface) DropSchema() error {
 	sql := "DROP SCHEMA IF EXISTS " + d.schema + " CASCADE"
-	_, err := d.Client.Exec(context.Background(), sql)
+	_, err := d.Client.Pgx.Exec(context.Background(), sql)
 	if err != nil {
 		slog.Error("drop error", "stmt", sql, "err", err)
 		return err

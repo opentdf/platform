@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/sdk/authorization"
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"google.golang.org/grpc"
 )
 
@@ -27,7 +27,7 @@ func NewAuthorizationServer(g *grpc.Server, s *runtime.ServeMux) error {
 func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
 	slog.Debug("getting decisions")
 
-	//Temporary canned echo response with permit decision for all requested decision/entity/ra combos
+	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos
 	rsp := &authorization.GetDecisionsResponse{
 		DecisionResponses: make([]*authorization.DecisionResponse, 0),
 	}
@@ -39,7 +39,8 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 					EntityChainId: ec.Id,
 					Action: &authorization.Action{
 						Value: &authorization.Action_Standard{
-							Standard: authorization.Action_STANDARD_ACTION_TRANSMIT},
+							Standard: authorization.Action_STANDARD_ACTION_TRANSMIT,
+						},
 					},
 					ResourceAttributesId: ra.Id,
 				}

@@ -293,7 +293,7 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdVal)
 
-	// deactivate the attribute
+	// deactivate the attribute value
 	deactivatedAttr, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, createdVal.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), deactivatedAttr)

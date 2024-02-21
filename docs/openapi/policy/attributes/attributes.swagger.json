@@ -475,6 +475,9 @@
             "$ref": "#/definitions/kasregistryKeyAccessServer"
           }
         },
+        "fqn": {
+          "type": "string"
+        },
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
@@ -667,6 +670,9 @@
           },
           "title": "list of key access servers"
         },
+        "fqn": {
+          "type": "string"
+        },
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
@@ -798,6 +804,9 @@
         "name": {
           "type": "string",
           "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+        },
+        "fqn": {
+          "type": "string"
         },
         "active": {
           "type": "boolean",

@@ -23,6 +23,7 @@ private static final long serialVersionUID = 0L;
     members_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
     grants_ = java.util.Collections.emptyList();
+    fqn_ = "";
   }
 
   @java.lang.Override
@@ -311,14 +312,53 @@ private static final long serialVersionUID = 0L;
     return grants_.get(index);
   }
 
-  public static final int ACTIVE_FIELD_NUMBER = 7;
+  public static final int FQN_FIELD_NUMBER = 7;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object fqn_ = "";
+  /**
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * @return The fqn.
+   */
+  @java.lang.Override
+  public java.lang.String getFqn() {
+    java.lang.Object ref = fqn_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      fqn_ = s;
+      return s;
+    }
+  }
+  /**
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * @return The bytes for fqn.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFqnBytes() {
+    java.lang.Object ref = fqn_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      fqn_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
+  public static final int ACTIVE_FIELD_NUMBER = 8;
   private com.google.protobuf.BoolValue active_;
   /**
    * <pre>
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    * @return Whether the active field is set.
    */
   @java.lang.Override
@@ -330,7 +370,7 @@ private static final long serialVersionUID = 0L;
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    * @return The active.
    */
   @java.lang.Override
@@ -342,7 +382,7 @@ private static final long serialVersionUID = 0L;
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    */
   @java.lang.Override
   public com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder() {
@@ -381,8 +421,11 @@ private static final long serialVersionUID = 0L;
     for (int i = 0; i < grants_.size(); i++) {
       output.writeMessage(6, grants_.get(i));
     }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(fqn_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 7, fqn_);
+    }
     if (((bitField0_ & 0x00000002) != 0)) {
-      output.writeMessage(7, getActive());
+      output.writeMessage(8, getActive());
     }
     getUnknownFields().writeTo(output);
   }
@@ -418,9 +461,12 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(6, grants_.get(i));
     }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(fqn_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(7, fqn_);
+    }
     if (((bitField0_ & 0x00000002) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(7, getActive());
+        .computeMessageSize(8, getActive());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -452,6 +498,8 @@ private static final long serialVersionUID = 0L;
         .equals(other.getMembersList())) return false;
     if (!getGrantsList()
         .equals(other.getGrantsList())) return false;
+    if (!getFqn()
+        .equals(other.getFqn())) return false;
     if (hasActive() != other.hasActive()) return false;
     if (hasActive()) {
       if (!getActive()
@@ -486,6 +534,8 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + GRANTS_FIELD_NUMBER;
       hash = (53 * hash) + getGrantsList().hashCode();
     }
+    hash = (37 * hash) + FQN_FIELD_NUMBER;
+    hash = (53 * hash) + getFqn().hashCode();
     if (hasActive()) {
       hash = (37 * hash) + ACTIVE_FIELD_NUMBER;
       hash = (53 * hash) + getActive().hashCode();
@@ -646,6 +696,7 @@ private static final long serialVersionUID = 0L;
         grantsBuilder_.clear();
       }
       bitField0_ = (bitField0_ & ~0x00000020);
+      fqn_ = "";
       active_ = null;
       if (activeBuilder_ != null) {
         activeBuilder_.dispose();
@@ -718,6 +769,9 @@ private static final long serialVersionUID = 0L;
         result.members_ = members_;
       }
       if (((from_bitField0_ & 0x00000040) != 0)) {
+        result.fqn_ = fqn_;
+      }
+      if (((from_bitField0_ & 0x00000080) != 0)) {
         result.active_ = activeBuilder_ == null
             ? active_
             : activeBuilder_.build();
@@ -824,6 +878,11 @@ private static final long serialVersionUID = 0L;
           }
         }
       }
+      if (!other.getFqn().isEmpty()) {
+        fqn_ = other.fqn_;
+        bitField0_ |= 0x00000040;
+        onChanged();
+      }
       if (other.hasActive()) {
         mergeActive(other.getActive());
       }
@@ -895,12 +954,17 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 50
             case 58: {
-              input.readMessage(
-                  getActiveFieldBuilder().getBuilder(),
-                  extensionRegistry);
+              fqn_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000040;
               break;
             } // case 58
+            case 66: {
+              input.readMessage(
+                  getActiveFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000080;
+              break;
+            } // case 66
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -1734,6 +1798,78 @@ private static final long serialVersionUID = 0L;
       return grantsBuilder_;
     }
 
+    private java.lang.Object fqn_ = "";
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @return The fqn.
+     */
+    public java.lang.String getFqn() {
+      java.lang.Object ref = fqn_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        fqn_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @return The bytes for fqn.
+     */
+    public com.google.protobuf.ByteString
+        getFqnBytes() {
+      java.lang.Object ref = fqn_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        fqn_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @param value The fqn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFqn(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      fqn_ = value;
+      bitField0_ |= 0x00000040;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFqn() {
+      fqn_ = getDefaultInstance().getFqn();
+      bitField0_ = (bitField0_ & ~0x00000040);
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * @param value The bytes for fqn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFqnBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      fqn_ = value;
+      bitField0_ |= 0x00000040;
+      onChanged();
+      return this;
+    }
+
     private com.google.protobuf.BoolValue active_;
     private com.google.protobuf.SingleFieldBuilderV3<
         com.google.protobuf.BoolValue, com.google.protobuf.BoolValue.Builder, com.google.protobuf.BoolValueOrBuilder> activeBuilder_;
@@ -1742,18 +1878,18 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      * @return Whether the active field is set.
      */
     public boolean hasActive() {
-      return ((bitField0_ & 0x00000040) != 0);
+      return ((bitField0_ & 0x00000080) != 0);
     }
     /**
      * <pre>
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      * @return The active.
      */
     public com.google.protobuf.BoolValue getActive() {
@@ -1768,7 +1904,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      */
     public Builder setActive(com.google.protobuf.BoolValue value) {
       if (activeBuilder_ == null) {
@@ -1779,7 +1915,7 @@ private static final long serialVersionUID = 0L;
       } else {
         activeBuilder_.setMessage(value);
       }
-      bitField0_ |= 0x00000040;
+      bitField0_ |= 0x00000080;
       onChanged();
       return this;
     }
@@ -1788,7 +1924,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      */
     public Builder setActive(
         com.google.protobuf.BoolValue.Builder builderForValue) {
@@ -1797,7 +1933,7 @@ private static final long serialVersionUID = 0L;
       } else {
         activeBuilder_.setMessage(builderForValue.build());
       }
-      bitField0_ |= 0x00000040;
+      bitField0_ |= 0x00000080;
       onChanged();
       return this;
     }
@@ -1806,11 +1942,11 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      */
     public Builder mergeActive(com.google.protobuf.BoolValue value) {
       if (activeBuilder_ == null) {
-        if (((bitField0_ & 0x00000040) != 0) &&
+        if (((bitField0_ & 0x00000080) != 0) &&
           active_ != null &&
           active_ != com.google.protobuf.BoolValue.getDefaultInstance()) {
           getActiveBuilder().mergeFrom(value);
@@ -1821,7 +1957,7 @@ private static final long serialVersionUID = 0L;
         activeBuilder_.mergeFrom(value);
       }
       if (active_ != null) {
-        bitField0_ |= 0x00000040;
+        bitField0_ |= 0x00000080;
         onChanged();
       }
       return this;
@@ -1831,10 +1967,10 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      */
     public Builder clearActive() {
-      bitField0_ = (bitField0_ & ~0x00000040);
+      bitField0_ = (bitField0_ & ~0x00000080);
       active_ = null;
       if (activeBuilder_ != null) {
         activeBuilder_.dispose();
@@ -1848,10 +1984,10 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      */
     public com.google.protobuf.BoolValue.Builder getActiveBuilder() {
-      bitField0_ |= 0x00000040;
+      bitField0_ |= 0x00000080;
       onChanged();
       return getActiveFieldBuilder().getBuilder();
     }
@@ -1860,7 +1996,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      */
     public com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder() {
       if (activeBuilder_ != null) {
@@ -1875,7 +2011,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
         com.google.protobuf.BoolValue, com.google.protobuf.BoolValue.Builder, com.google.protobuf.BoolValueOrBuilder> 

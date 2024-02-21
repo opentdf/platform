@@ -153,11 +153,23 @@ public interface ValueOrBuilder extends
       int index);
 
   /**
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * @return The fqn.
+   */
+  java.lang.String getFqn();
+  /**
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * @return The bytes for fqn.
+   */
+  com.google.protobuf.ByteString
+      getFqnBytes();
+
+  /**
    * <pre>
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    * @return Whether the active field is set.
    */
   boolean hasActive();
@@ -166,7 +178,7 @@ public interface ValueOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    * @return The active.
    */
   com.google.protobuf.BoolValue getActive();
@@ -175,7 +187,7 @@ public interface ValueOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    */
   com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder();
 }

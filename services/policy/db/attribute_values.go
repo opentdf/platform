@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -12,17 +14,35 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
+type attributeValueSelectOptions struct {
+	withFqn bool
+	state   string
+}
+
+func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
 	var (
 		id           string
 		value        string
+		active       bool
 		members      []string
 		metadataJson []byte
 		attributeId  string
-		isActive     bool
+		fqn          sql.NullString
 	)
 
-	if err := row.Scan(&id, &value, &members, &metadataJson, &attributeId, &isActive); err != nil {
+	fields := []interface{}{
+		&id,
+		&value,
+		&active,
+		&members,
+		&metadataJson,
+		&attributeId,
+	}
+	if opts.withFqn {
+		fields = append(fields, &fqn)
+	}
+
+	if err := row.Scan(fields...); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -36,12 +56,25 @@ func attributeValueHydrateItem(row pgx.Row) (*attributes.Value, error) {
 	v := &attributes.Value{
 		Id:          id,
 		Value:       value,
+		Active:      &wrapperspb.BoolValue{Value: active},
 		Members:     members,
 		Metadata:    m,
 		AttributeId: attributeId,
-		Active:      &wrapperspb.BoolValue{Value: isActive},
+		Fqn:         fqn.String,
 	}
 	return v, nil
+}
+
+func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions) ([]*attributes.Value, error) {
+	list := make([]*attributes.Value, 0)
+	for rows.Next() {
+		v, err := attributeValueHydrateItem(rows, opts)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, v)
+	}
+	return list, nil
 }
 
 ///
@@ -54,8 +87,9 @@ func createAttributeValueSql(
 	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
+	t := db.Tables.AttributeValues
 	return db.NewStatementBuilder().
-		Insert(AttributeValueTable).
+		Insert(t.Name()).
 		Columns(
 			"attribute_definition_id",
 			"value",
@@ -95,6 +129,9 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
+
 	rV := &attributes.Value{
 		Id:          id,
 		AttributeId: attributeId,
@@ -106,74 +143,131 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	return rV, nil
 }
 
-func getAttributeValueSql(id string) (string, []interface{}, error) {
-	return db.NewStatementBuilder().
-		Select(
-			db.Tables.AttributeValues.Field("id"),
-			db.Tables.AttributeValues.Field("value"),
-			db.Tables.AttributeValues.Field("members"),
-			db.Tables.AttributeValues.Field("metadata"),
-			db.Tables.AttributeValues.Field("attribute_definition_id"),
-			db.Tables.AttributeValues.Field("active"),
-		).
-		From(AttributeValueTable).
-		Where(sq.Eq{db.Tables.AttributeValues.Field("id"): id}).
+func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
+	t := db.Tables.AttributeValues
+	fields := []string{
+		t.Field("id"),
+		t.Field("value"),
+		t.Field("active"),
+		t.Field("members"),
+		t.Field("metadata"),
+		t.Field("attribute_definition_id"),
+	}
+	if opts.withFqn {
+		fields = append(fields, db.Tables.AttrFqn.Field("fqn"))
+	}
+
+	sb := db.NewStatementBuilder().
+		Select(fields...).
+		From(t.Name())
+
+	if opts.withFqn {
+		fqnT := db.Tables.AttrFqn
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
+	}
+
+	return sb.Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
 func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
-	sql, args, err := getAttributeValueSql(id)
+	opts := attributeValueSelectOptions{withFqn: true}
+	sql, args, err := getAttributeValueSql(id, opts)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
+		slog.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	v, err := attributeValueHydrateItem(row)
+	a, err := attributeValueHydrateItem(row, opts)
 	if err != nil {
+		slog.Error("error hydrating attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
-
-	return v, nil
+	return a, nil
 }
 
-func listAttributeValuesSql(attribute_id string, state string) (string, []interface{}, error) {
+func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
+	t := db.Tables.AttributeValues
+	fields := []string{
+		t.Field("id"),
+		t.Field("value"),
+		t.Field("active"),
+		t.Field("members"),
+		t.Field("metadata"),
+		t.Field("attribute_definition_id"),
+	}
+	if opts.withFqn {
+		fields = append(fields, "fqn")
+	}
+
 	sb := db.NewStatementBuilder().
-		Select(
-			db.Tables.AttributeValues.Field("id"),
-			db.Tables.AttributeValues.Field("value"),
-			db.Tables.AttributeValues.Field("members"),
-			db.Tables.AttributeValues.Field("metadata"),
-			db.Tables.AttributeValues.Field("attribute_definition_id"),
-			db.Tables.AttributeValues.Field("active"),
-		).
-		From(AttributeValueTable)
+		Select(fields...)
+
+	if opts.withFqn {
+		fqnT := db.Tables.AttrFqn
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
+	}
 
 	where := sq.Eq{}
-	if state != StateAny {
-		where[db.Tables.AttributeValues.Field("active")] = state == StateActive
+	if opts.state != "" && opts.state != StateAny {
+		where[t.Field("active")] = opts.state == StateActive
 	}
-	where[db.Tables.AttributeValues.Field("attribute_definition_id")] = attribute_id
-	return sb.Where(where).ToSql()
+	where[t.Field("attribute_definition_id")] = attribute_id
+
+	return sb.
+		From(t.Name()).
+		Where(where).
+		ToSql()
 }
 
 func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*attributes.Value, error) {
-	sql, args, err := listAttributeValuesSql(attribute_id, state)
+	opts := attributeValueSelectOptions{withFqn: true, state: state}
+
+	sql, args, err := listAttributeValuesSql(attribute_id, opts)
 	rows, err := c.Query(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	return attributeValueHydrateItems(rows, opts)
+}
 
-	list := make([]*attributes.Value, 0)
-	for rows.Next() {
-		v, err := attributeValueHydrateItem(rows)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, v)
+func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []interface{}, error) {
+	t := db.Tables.AttributeValues
+	fields := []string{
+		t.Field("id"),
+		t.Field("value"),
+		t.Field("active"),
+		t.Field("members"),
+		t.Field("metadata"),
+		t.Field("attribute_definition_id"),
+	}
+	if opts.withFqn {
+		fields = append(fields, "fqn")
+	}
+	sb := db.NewStatementBuilder().
+		Select(fields...)
+
+	if opts.withFqn {
+		fqnT := db.Tables.AttrFqn
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
 	}
 
-	return list, nil
+	return sb.
+		From(t.Name()).
+		ToSql()
+}
+
+func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string) ([]*attributes.Value, error) {
+	opts := attributeValueSelectOptions{withFqn: true, state: state}
+	sql, args, err := listAllAttributeValuesSql(opts)
+	rows, err := c.Query(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return attributeValueHydrateItems(rows, opts)
 }
 
 func updateAttributeValueSql(
@@ -182,8 +276,9 @@ func updateAttributeValueSql(
 	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
+	t := db.Tables.AttributeValues
 	sb := db.NewStatementBuilder().
-		Update(AttributeValueTable).
+		Update(t.Name()).
 		Set("metadata", metadata)
 
 	if value != "" {
@@ -194,7 +289,7 @@ func updateAttributeValueSql(
 	}
 
 	return sb.
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
@@ -223,14 +318,19 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, v *
 		return nil, err
 	}
 
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
+
 	return prev, nil
 }
 
 func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
+	t := db.Tables.AttributeValues
 	return db.NewStatementBuilder().
-		Update(AttributeValueTable).
+		Update(t.Name()).
 		Set("active", false).
-		Where(sq.Eq{db.Tables.AttributeValues.Field("id"): id}).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
@@ -243,9 +343,10 @@ func (c PolicyDbClient) DeactivateAttributeValue(ctx context.Context, id string)
 }
 
 func deleteAttributeValueSql(id string) (string, []interface{}, error) {
+	t := db.Tables.AttributeValues
 	return db.NewStatementBuilder().
-		Delete(AttributeValueTable).
-		Where(sq.Eq{db.Tables.AttributeValues.Field("id"): id}).
+		Delete(t.Name()).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
@@ -289,7 +390,7 @@ func removeKeyAccessServerFromValueSql(valueID, keyAccessServerID string) (strin
 	t := db.Tables.AttributeValueKeyAccessGrants
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
-		Where(sq.Eq{"attribute_value_id": valueID, "key_access_server_id": keyAccessServerID}).
+		Where(sq.Eq{t.Field("attribute_value_id"): valueID, t.Field("key_access_server_id"): keyAccessServerID}).
 		Suffix("IS TRUE RETURNING *").
 		ToSql()
 }

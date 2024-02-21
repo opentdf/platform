@@ -205,6 +205,9 @@
           },
           "title": "list of key access servers"
         },
+        "fqn": {
+          "type": "string"
+        },
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"

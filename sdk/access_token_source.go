@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -89,6 +90,7 @@ type IDPAccessTokenSource struct {
 	dpopKey          jwk.Key
 	asymDecryption   crypto.AsymDecryption
 	dpopPEM          string
+	tokenMutex       sync.Mutex
 }
 
 func NewIDPAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPAccessTokenSource, error) {
@@ -133,6 +135,9 @@ func (creds *IDPAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
 }
 
 func (creds *IDPAccessTokenSource) RefreshAccessToken() error {
+	creds.tokenMutex.Lock()
+	defer creds.tokenMutex.Unlock()
+
 	tok, err := oauth.GetAccessToken(creds.idpTokenEndpoint.String(), creds.scopes, creds.credentials, creds.dpopKey)
 	if err != nil {
 		return fmt.Errorf("error getting access token: %v", err)

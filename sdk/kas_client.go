@@ -70,7 +70,10 @@ func (client KASClient) Unwrap(keyAccess KeyAccess, policy string) ([]byte, erro
 	if err != nil {
 		switch status.Code(err) {
 		case codes.Unauthenticated:
-			client.accessTokenSource.RefreshAccessToken()
+			err = client.accessTokenSource.RefreshAccessToken()
+			if err != nil {
+				return nil, err
+			}
 			response, err = client.makeRewrapRequest(keyAccess, policy)
 			if err != nil {
 				return nil, fmt.Errorf("Error making rewrap request: %w", err)

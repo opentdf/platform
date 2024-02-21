@@ -70,7 +70,7 @@ func TestMain(m *testing.M) {
 	req := tc.GenericContainerRequest{
 		ProviderType: providerType,
 		ContainerRequest: tc.ContainerRequest{
-			Image:        "public.ecr.aws/docker/library/postgres:15-alpine3.18",
+			Image:        "public.ecr.aws/docker/library/postgres:15-alpine",
 			Name:         "testcontainer-postgres",
 			ExposedPorts: []string{"5432/tcp"},
 

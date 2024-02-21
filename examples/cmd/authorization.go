@@ -3,11 +3,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/sdk/authorization"
+	"github.com/opentdf/platform/sdk/entity"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
-	"log/slog"
 )
 
 var AuthorizationExampleCmd = &cobra.Command{
@@ -37,10 +39,10 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 	// model two groups of entities; user bob and user alice
 	entityChains := []*authorization.EntityChain{{
 		Id:       "ec1", //ec1 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"}}},
+		Entities: []*entity.Entity{{EntityType: &entity.Entity_EmailAddress{EmailAddress: "bob@example.org"}}},
 	}, {
 		Id:       "ec2", //ec2 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"}}},
+		Entities: []*entity.Entity{{EntityType: &entity.Entity_UserName{UserName: "alice@example.org"}}},
 	}}
 
 	// TODO Get attribute value ids

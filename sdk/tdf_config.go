@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 	"io"
 	"log/slog"
 	"net/http"

@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/archive"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
+	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 var (
@@ -93,7 +93,7 @@ type RequestBody struct {
 }
 
 // CreateTDF tdf
-func CreateTDF(reader io.ReadSeeker, writer io.Writer, opts ...TDFOption) (*TDFObject, error) {
+func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
 
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
@@ -301,12 +301,12 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error {
 			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
 			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)), Iv: string(crypto.Base64Encode(iv))}
 
-			metadataJson, err := json.Marshal(metadata)
+			metadataJSON, err := json.Marshal(metadata)
 			if err != nil {
 				return fmt.Errorf(" json.Marshal failed:%w", err)
 			}
 
-			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(metadataJson))
+			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(metadataJSON))
 		}
 
 		symKeys = append(symKeys, symKey)
@@ -509,7 +509,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey[:], sigAlg)
+		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}

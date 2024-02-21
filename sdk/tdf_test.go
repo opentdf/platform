@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 const (
@@ -312,7 +312,7 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(fileWriter)
 
-		tdfObj, err := CreateTDF(bufReader, fileWriter,
+		tdfObj, err := CreateTDF(fileWriter, bufReader,
 			WithKasInformation(kasURLs),
 			WithMetaData(metaDataStr),
 			WithDataAttributes(attributes))
@@ -439,7 +439,7 @@ func TestTDFReader(t *testing.T) {
 
 			tdfBuf := bytes.Buffer{}
 			readSeeker := bytes.NewReader([]byte(test.payload))
-			_, err := CreateTDF(readSeeker, io.Writer(&tdfBuf),
+			_, err := CreateTDF(io.Writer(&tdfBuf), readSeeker,
 				WithKasInformation(kasInfoList),
 				WithSegmentSize(readAtTest.segmentSize))
 
@@ -573,7 +573,7 @@ func BenchmarkReader(b *testing.B) {
 
 	tdfBuf := bytes.Buffer{}
 	readSeeker := bytes.NewReader(inBuf)
-	_, err := CreateTDF(readSeeker, io.Writer(&tdfBuf), WithKasInformation(kasInfoList))
+	_, err := CreateTDF(io.Writer(&tdfBuf), readSeeker, WithKasInformation(kasInfoList))
 	if err != nil {
 		b.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
@@ -636,7 +636,7 @@ func testEncrypt(t *testing.T, kasInfoList []KASInfo, plainTextFilename, tdfFile
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
 	}(fileWriter) // CreateTDF TDFConfig
-	tdfObj, err := CreateTDF(readSeeker, fileWriter, WithKasInformation(kasInfoList))
+	tdfObj, err := CreateTDF(fileWriter, readSeeker, WithKasInformation(kasInfoList))
 	if err != nil {
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}

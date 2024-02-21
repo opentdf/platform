@@ -46,7 +46,6 @@ type TDFOption func(*TDFConfig) error
 
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
-	ctx                       *context.Context
 	defaultSegmentSize        int64
 	enableEncryption          bool
 	tdfFormat                 TDFFormat
@@ -55,7 +54,7 @@ type TDFConfig struct {
 	metaData                  string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
-	assertions                []Assertion
+	assertions                []Assertion //nolint:unused // TODO
 	attributes                []string
 	kasInfoList               []KASInfo
 }
@@ -107,7 +106,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 
 // WithKasInformation adds all the kas urls and their corresponding public keys
 // that is required to create and read the tdf.
-func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
+func WithKasInformation(kasInfoList ...KASInfo) TDFOption { //nolint:gocognit
 	return func(c *TDFConfig) error {
 		for _, kasInfo := range kasInfoList {
 			newEntry := kasInfo

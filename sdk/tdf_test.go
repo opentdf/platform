@@ -40,7 +40,7 @@ type tdfTest struct {
 	kasInfoList []KASInfo
 }
 
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // Mock Value
 var mockKasPublicKey = `-----BEGIN CERTIFICATE-----
 MIICmDCCAYACCQC3BCaSANRhYzANBgkqhkiG9w0BAQsFADAOMQwwCgYDVQQDDANr
 YXMwHhcNMjEwOTE1MTQxMTQ4WhcNMjIwOTE1MTQxMTQ4WjAOMQwwCgYDVQQDDANr
@@ -58,7 +58,7 @@ I099IoRfC5djHUYYLMU/VkOIHuPC3sb7J65pSN26eR8bTMVNagk187V/xNwUuvkf
 wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 -----END CERTIFICATE-----`
 
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // Mock value
 var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
 	MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOpiotrvV2i5h6
 	clHMzDGgh3h/kMa0LoGx2OkDPd8jogycUh7pgE5GNiN2lpSmFkjxwYMXnyrwr9Ex
@@ -141,7 +141,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 			},
 		},
 	},
-	//{
+	// {
 	//	fileSize:    2 * oneGB,
 	//	tdfFileSize: 2097291006,
 	//	checksum:    "57bb3422770a98f193baa6f0fd67dd9743dc07c868abd95ad0606dff0bee32b4",
@@ -155,8 +155,8 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	//			publicKey: mockKasPublicKey,
 	//		},
 	//	},
-	//},
-	//{
+	// },
+	// {
 	//	fileSize:    4 * oneGB,
 	//	tdfFileSize: 4194580006,
 	//	checksum:    "a9c267f8600c18263250a10b0ab7995528cf80fc85275ab5a36ada3e350519fd",
@@ -170,8 +170,8 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	//			publicKey: mockKasPublicKey,
 	//		},
 	//	},
-	//},
-	//{
+	// },
+	// {
 	//	fileSize:    6 * oneGB,
 	//	tdfFileSize: 6291869194,
 	//	checksum:    "1a48fc773889be3361e9ca826fad32c191b10309f03996e1d233e02bc4c4b979",
@@ -185,8 +185,8 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	//			publicKey: mockKasPublicKey,
 	//		},
 	//	},
-	//},
-	//{
+	// },
+	// {
 	//	fileSize:    20 * oneGB,
 	//	tdfFileSize: 20972892194,
 	//	checksum:    "bd218f6cc4dc038d5707a276b0fdd5d1b3725cebe4e2e7b475cf2d09d551af08",
@@ -200,7 +200,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	//			publicKey: mockKasPublicKey,
 	//		},
 	//	},
-	//},
+	// },
 }
 
 type TestReadAt struct {
@@ -210,7 +210,7 @@ type TestReadAt struct {
 	expectedPayload string
 }
 
-type partialReadTdfTest struct { //nolint:gochecknoglobals // requires for testing tdf
+type partialReadTdfTest struct {
 	payload     string
 	kasInfoList []KASInfo
 	readAtTests []TestReadAt
@@ -266,7 +266,7 @@ var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals //
 	},
 }
 
-var buffer []byte //nolint:gochecknoglobals
+var buffer []byte //nolint:gochecknoglobals // for testing
 
 func init() {
 	// create a buffer and write with 0xff
@@ -276,7 +276,7 @@ func init() {
 	}
 }
 
-func TestSimpleTDF(t *testing.T) {
+func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 	server, signingPubKey, signingPrivateKey := runKas()
 	defer server.Close()
 
@@ -418,7 +418,7 @@ func TestSimpleTDF(t *testing.T) {
 	_ = os.Remove(tdfFilename)
 }
 
-func TestTDFReader(t *testing.T) {
+func TestTDFReader(t *testing.T) { //nolint:gocognit
 	server, signingPubKey, signingPrivateKey := runKas()
 	defer server.Close()
 
@@ -782,7 +782,7 @@ func runKas() (*httptest.Server, string, string) { //nolint:gocognit
 			if !ok {
 				panic("signed token missing in rewrap response")
 			}
-			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(_ *jwt.Token) (interface{}, error) {
 				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(signingPubKey))
 				if err != nil {
 					return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
@@ -790,7 +790,7 @@ func runKas() (*httptest.Server, string, string) { //nolint:gocognit
 
 				return signingRSAPublicKey, nil
 			})
-			var rewrapRequest = ""
+			var rewrapRequest string
 			if err != nil {
 				panic(fmt.Sprintf("jwt.ParseWithClaims failed:%v", err))
 			} else if claims, fine := token.Claims.(*rewrapJWTClaims); fine {

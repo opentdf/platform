@@ -22,7 +22,6 @@ import (
 )
 
 var (
-	errFileTooLarge            = errors.New("tdf: can't create tdf larger than 64gb")
 	errRootSigValidation       = errors.New("tdf: failed integrity check on root signature")
 	errSegSizeMismatch         = errors.New("tdf: mismatch encrypted segment size in manifest")
 	errTDFReaderFailed         = errors.New("tdf: fail to read bytes from TDFReader")
@@ -252,7 +251,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 	}
 
 	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
-	var symKeys [][]byte
+	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
 	for _, kasInfo := range tdfConfig.kasInfoList {
 		if len(kasInfo.publicKey) == 0 {
 			return errKasPubKeyMissing
@@ -786,7 +785,7 @@ func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) 
 	response, err := client.Do(request)
 	if err != nil {
 		slog.Error("failed http request")
-		return nil, err
+		return nil, fmt.Errorf("http request failed: %w", err)
 	}
 
 	return response, nil

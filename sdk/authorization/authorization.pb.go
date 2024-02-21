@@ -7,7 +7,7 @@
 package authorization
 
 import (
-	common "github.com/opentdf/platform/sdk/common"
+	entity "github.com/opentdf/platform/sdk/entity"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -128,7 +128,7 @@ type EntityChain struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id       string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // ephemeral id for tracking between request and response
-	Entities []*common.Entity `protobuf:"bytes,2,rep,name=entities,proto3" json:"entities,omitempty"`
+	Entities []*entity.Entity `protobuf:"bytes,2,rep,name=entities,proto3" json:"entities,omitempty"`
 }
 
 func (x *EntityChain) Reset() {
@@ -170,7 +170,7 @@ func (x *EntityChain) GetId() string {
 	return ""
 }
 
-func (x *EntityChain) GetEntities() []*common.Entity {
+func (x *EntityChain) GetEntities() []*entity.Entity {
 	if x != nil {
 		return x.Entities
 	}
@@ -599,7 +599,7 @@ type GetEntitlementsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Entities []*common.Entity    `protobuf:"bytes,1,rep,name=entities,proto3" json:"entities,omitempty"` // list of requested entities
+	Entities []*entity.Entity    `protobuf:"bytes,1,rep,name=entities,proto3" json:"entities,omitempty"` // list of requested entities
 	Scope    *ResourceAttributes `protobuf:"bytes,2,opt,name=scope,proto3,oneof" json:"scope,omitempty"` //optional attribute fqn as a scope
 }
 
@@ -635,7 +635,7 @@ func (*GetEntitlementsRequest) Descriptor() ([]byte, []int) {
 	return file_authorization_authorization_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *GetEntitlementsRequest) GetEntities() []*common.Entity {
+func (x *GetEntitlementsRequest) GetEntities() []*entity.Entity {
 	if x != nil {
 		return x.Entities
 	}
@@ -837,7 +837,7 @@ var file_authorization_authorization_proto_rawDesc = []byte{
 	0x6f, 0x74, 0x6f, 0x12, 0x0d, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61, 0x74, 0x69,
 	0x6f, 0x6e, 0x1a, 0x1c, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x61,
 	0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x1a, 0x13, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2f, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x2e,
+	0x1a, 0x13, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x2f, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x2e,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x49, 0x0a, 0x0b, 0x45, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x43,
 	0x68, 0x61, 0x69, 0x6e, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
 	0x52, 0x02, 0x69, 0x64, 0x12, 0x2a, 0x0a, 0x08, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x69, 0x65, 0x73,
@@ -987,7 +987,7 @@ var file_authorization_authorization_proto_goTypes = []interface{}{
 	(*EntityEntitlements)(nil),      // 9: authorization.EntityEntitlements
 	(*ResourceAttributes)(nil),      // 10: authorization.ResourceAttributes
 	(*GetEntitlementsResponse)(nil), // 11: authorization.GetEntitlementsResponse
-	(*common.Entity)(nil),           // 12: entity.Entity
+	(*entity.Entity)(nil),           // 12: entity.Entity
 }
 var file_authorization_authorization_proto_depIdxs = []int32{
 	12, // 0: authorization.EntityChain.entities:type_name -> entity.Entity

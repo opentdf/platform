@@ -3,7 +3,7 @@ syntax = "proto3";
 package authorization;
 
 import "google/api/annotations.proto";
-import "common/entity.proto";
+import "entity/entity.proto";
 
 // A set of related PE and NPE
 message EntityChain {

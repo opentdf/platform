@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package entity;
 
-import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 
 // PE (Person Entity) or NPE (Non-Person Entity)

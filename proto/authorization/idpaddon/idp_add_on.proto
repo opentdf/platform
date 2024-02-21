@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package authorization.idpaddon;
 
-import "common/entity.proto";
+import "entity/entity.proto";
 
 /// IDP will only handle requests for entities providing email, username, or jwt
 

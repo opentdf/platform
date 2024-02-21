@@ -76,7 +76,7 @@ public final class AuthorizationProto {
     java.lang.String[] descriptorData = {
       "\n!authorization/authorization.proto\022\raut" +
       "horization\032\034google/api/annotations.proto" +
-      "\032\023common/entity.proto\"I\n\013EntityChain\022\016\n\002" +
+      "\032\023entity/entity.proto\"I\n\013EntityChain\022\016\n\002" +
       "id\030\001 \001(\tR\002id\022*\n\010entities\030\002 \003(\0132\016.entity." +
       "EntityR\010entities\"\335\001\n\006Action\022B\n\010standard\030" +
       "\001 \001(\0162$.authorization.Action.StandardAct" +

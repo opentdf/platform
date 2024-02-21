@@ -13,24 +13,24 @@ public interface GetEntitlementsRequestOrBuilder extends
    * list of requested entities
    * </pre>
    *
-   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .entity.Entity entities = 1 [json_name = "entities"];</code>
    */
-  java.util.List<com.authorization.Entity> 
+  java.util.List<com.entity.Entity> 
       getEntitiesList();
   /**
    * <pre>
    * list of requested entities
    * </pre>
    *
-   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .entity.Entity entities = 1 [json_name = "entities"];</code>
    */
-  com.authorization.Entity getEntities(int index);
+  com.entity.Entity getEntities(int index);
   /**
    * <pre>
    * list of requested entities
    * </pre>
    *
-   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .entity.Entity entities = 1 [json_name = "entities"];</code>
    */
   int getEntitiesCount();
   /**
@@ -38,18 +38,18 @@ public interface GetEntitlementsRequestOrBuilder extends
    * list of requested entities
    * </pre>
    *
-   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .entity.Entity entities = 1 [json_name = "entities"];</code>
    */
-  java.util.List<? extends com.authorization.EntityOrBuilder> 
+  java.util.List<? extends com.entity.EntityOrBuilder> 
       getEntitiesOrBuilderList();
   /**
    * <pre>
    * list of requested entities
    * </pre>
    *
-   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .entity.Entity entities = 1 [json_name = "entities"];</code>
    */
-  com.authorization.EntityOrBuilder getEntitiesOrBuilder(
+  com.entity.EntityOrBuilder getEntitiesOrBuilder(
       int index);
 
   /**

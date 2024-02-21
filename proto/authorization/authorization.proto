@@ -3,32 +3,14 @@ syntax = "proto3";
 package authorization;
 
 import "google/api/annotations.proto";
-import "google/protobuf/any.proto";
-
-// PE (Person Entity) or NPE (Non-Person Entity)
-message Entity {
-  string id = 1; // ephemeral id for tracking between request and response
-  // Standard entity types supported by the platform
-  oneof entity_type {
-    string email_address = 2;
-    string user_name = 3;
-    string remote_claims_url = 4;
-    string jwt = 5;
-    google.protobuf.Any claims = 6;
-    EntityCustom custom = 7;
-  }
-}
-
-// Entity type for custom entities beyond the standard types
-message EntityCustom {
-  google.protobuf.Any extension = 1;
-}
+import "common/entity.proto";
 
 // A set of related PE and NPE
 message EntityChain {
   string id = 1; // ephemeral id for tracking between request and response
-  repeated Entity entities = 2;
+  repeated entity.Entity entities = 2;
 }
+
 
 // An action an entity can take
 message Action {
@@ -184,7 +166,7 @@ message GetDecisionsResponse {
 
 */
 message GetEntitlementsRequest {
-  repeated Entity entities = 1; // list of requested entities
+  repeated entity.Entity entities = 1; // list of requested entities
   optional ResourceAttributes scope = 2; //optional attribute fqn as a scope
 }
 

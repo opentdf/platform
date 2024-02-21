@@ -169,34 +169,6 @@
       "description": "Results:\n- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation\n- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes\n- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\",\n\"obligations\":  [\n\"http://www.example.org/obligation/watermark\"\n]\n},\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_DENY\"\n}",
       "title": "Example response for a Decision Request -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
     },
-    "authorizationEntity": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "emailAddress": {
-          "type": "string"
-        },
-        "userName": {
-          "type": "string"
-        },
-        "remoteClaimsUrl": {
-          "type": "string"
-        },
-        "jwt": {
-          "type": "string"
-        },
-        "claims": {
-          "$ref": "#/definitions/protobufAny"
-        },
-        "custom": {
-          "$ref": "#/definitions/authorizationEntityCustom"
-        }
-      },
-      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
-    },
     "authorizationEntityChain": {
       "type": "object",
       "properties": {
@@ -208,20 +180,11 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationEntity"
+            "$ref": "#/definitions/entityEntity"
           }
         }
       },
       "title": "A set of related PE and NPE"
-    },
-    "authorizationEntityCustom": {
-      "type": "object",
-      "properties": {
-        "extension": {
-          "$ref": "#/definitions/protobufAny"
-        }
-      },
-      "title": "Entity type for custom entities beyond the standard types"
     },
     "authorizationEntityEntitlements": {
       "type": "object",
@@ -277,6 +240,43 @@
         }
       },
       "title": "A logical bucket of attributes belonging to a \"Resource\""
+    },
+    "entityEntity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "emailAddress": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "remoteClaimsUrl": {
+          "type": "string"
+        },
+        "jwt": {
+          "type": "string"
+        },
+        "claims": {
+          "$ref": "#/definitions/protobufAny"
+        },
+        "custom": {
+          "$ref": "#/definitions/entityEntityCustom"
+        }
+      },
+      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
+    },
+    "entityEntityCustom": {
+      "type": "object",
+      "properties": {
+        "extension": {
+          "$ref": "#/definitions/protobufAny"
+        }
+      },
+      "title": "Entity type for custom entities beyond the standard types"
     },
     "protobufAny": {
       "type": "object",

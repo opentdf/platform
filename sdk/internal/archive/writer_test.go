@@ -120,7 +120,7 @@ var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used a
 	//		},
 	//	},
 	//	12582912572,
-	//},
+	// },
 }
 
 // create a buffer of 2mb and fill it with 0xFF, and

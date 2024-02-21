@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/opentdf/platform/sdk/internal/crypto"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+
+	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 const (
@@ -46,6 +46,7 @@ type TDFOption func(*TDFConfig) error
 
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
+	ctx                       *context.Context
 	defaultSegmentSize        int64
 	enableEncryption          bool
 	tdfFormat                 TDFFormat
@@ -103,15 +104,12 @@ func WithDataAttributes(attributes []string) TDFOption {
 	}
 }
 
-// WithKasInformation Add all the kas urls and their corresponding public keys
+// WithKasInformation adds all the kas urls and their corresponding public keys
 // that is required to create and read the tdf.
-func WithKasInformation(kasInfoList []KASInfo) TDFOption {
+func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 	return func(c *TDFConfig) error {
 		for _, kasInfo := range kasInfoList {
-			newEntry := KASInfo{}
-			newEntry.url = kasInfo.url
-			newEntry.publicKey = kasInfo.publicKey
-
+			newEntry := kasInfo
 			if newEntry.publicKey != "" {
 				c.kasInfoList = append(c.kasInfoList, newEntry)
 				continue
@@ -136,16 +134,18 @@ func WithKasInformation(kasInfoList []KASInfo) TDFOption {
 			client := &http.Client{}
 
 			response, err := client.Do(request)
-			if response.StatusCode != kHTTPOk {
-				return fmt.Errorf("client.Do failed: %w", err)
-			}
-
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
+			defer func() {
+				if response == nil {
+					return
+				}
+				err := response.Body.Close()
 				if err != nil {
 					slog.Error("Fail to close HTTP response")
 				}
-			}(response.Body)
+			}()
+			if response.StatusCode != kHTTPOk {
+				return fmt.Errorf("client.Do failed: %w", err)
+			}
 
 			var jsonResponse interface{}
 			err = json.NewDecoder(response.Body).Decode(&jsonResponse)

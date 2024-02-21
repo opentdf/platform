@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
 	"io"
 	"log/slog"
 	"math"
@@ -17,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
@@ -92,9 +92,8 @@ type RequestBody struct {
 	Policy          string `json:"policy"`
 }
 
-// CreateTDF tdf
-func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
-
+// CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -234,8 +233,7 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 }
 
 // prepare the manifest for TDF
-func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error {
-
+func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:gocognit
 	manifest := Manifest{}
 	if len(tdfConfig.kasInfoList) == 0 {
 		return errInvalidKasInfo
@@ -299,7 +297,10 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error {
 			}
 
 			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
-			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)), Iv: string(crypto.Base64Encode(iv))}
+			metadata := EncryptedMetadata{
+				Cipher: string(crypto.Base64Encode(encryptedMetaData)),
+				Iv:     string(crypto.Base64Encode(iv)),
+			}
 
 			metadataJSON, err := json.Marshal(metadata)
 			if err != nil {
@@ -397,7 +398,7 @@ func (reader *Reader) Read(p []byte) (int, error) {
 
 // WriteTo writes data to writer until there's no more data to write or
 // when an error occurs.
-func (reader *Reader) WriteTo(writer io.Writer) (n int64, err error) {
+func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 	if reader.payloadKey == nil {
 		err := reader.getPayloadKey()
 		if err != nil {
@@ -423,7 +424,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (n int64, err error) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey[:], sigAlg)
+		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -458,7 +459,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (n int64, err error) {
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
-func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) {
+func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
 	if reader.payloadKey == nil {
 		err := reader.getPayloadKey()
 		if err != nil {
@@ -540,7 +541,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) {
 		}
 	}
 
-	var err error = nil
+	var err error
 	bufLen := int64(len(buf))
 	if (offset + int64(len(buf))) > reader.payloadSize {
 		bufLen = reader.payloadSize - offset
@@ -608,8 +609,7 @@ func (reader *Reader) DataAttributes() ([]string, error) {
 }
 
 // Get the payload key th
-func (reader *Reader) getPayloadKey() error {
-
+func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range reader.Manifest.EncryptionInformation.KeyAccessObjs {
@@ -740,7 +740,7 @@ func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) 
 
 	claims := rewrapJWTClaims{
 		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(60 * time.Second)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 		string(requestBodyData),

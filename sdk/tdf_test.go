@@ -313,9 +313,9 @@ func TestSimpleTDF(t *testing.T) {
 		}(fileWriter)
 
 		tdfObj, err := CreateTDF(fileWriter, bufReader,
-			WithKasInformation(kasURLs),
+			WithKasInformation(kasURLs...),
 			WithMetaData(metaDataStr),
-			WithDataAttributes(attributes))
+			WithDataAttributes(attributes...))
 		if err != nil {
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}
@@ -436,12 +436,14 @@ func TestTDFReader(t *testing.T) {
 		}
 
 		for _, readAtTest := range test.readAtTests {
-
 			tdfBuf := bytes.Buffer{}
 			readSeeker := bytes.NewReader([]byte(test.payload))
-			_, err := CreateTDF(io.Writer(&tdfBuf), readSeeker,
-				WithKasInformation(kasInfoList),
-				WithSegmentSize(readAtTest.segmentSize))
+			_, err := CreateTDF(
+				io.Writer(&tdfBuf),
+				readSeeker,
+				WithKasInformation(kasInfoList...),
+				WithSegmentSize(readAtTest.segmentSize),
+			)
 
 			if err != nil {
 				t.Fatalf("tdf.CreateTDF failed: %v", err)
@@ -573,7 +575,7 @@ func BenchmarkReader(b *testing.B) {
 
 	tdfBuf := bytes.Buffer{}
 	readSeeker := bytes.NewReader(inBuf)
-	_, err := CreateTDF(io.Writer(&tdfBuf), readSeeker, WithKasInformation(kasInfoList))
+	_, err := CreateTDF(io.Writer(&tdfBuf), readSeeker, WithKasInformation(kasInfoList...))
 	if err != nil {
 		b.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
@@ -636,7 +638,7 @@ func testEncrypt(t *testing.T, kasInfoList []KASInfo, plainTextFilename, tdfFile
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
 	}(fileWriter) // CreateTDF TDFConfig
-	tdfObj, err := CreateTDF(fileWriter, readSeeker, WithKasInformation(kasInfoList))
+	tdfObj, err := CreateTDF(fileWriter, readSeeker, WithKasInformation(kasInfoList...))
 	if err != nil {
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}

@@ -60,9 +60,8 @@ type TDFConfig struct {
 	kasInfoList               []KASInfo
 }
 
+// NewTDFConfig CreateTDF a new instance of tdf config.
 func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
-	c := new(TDFConfig)
-
 	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
@@ -78,13 +77,15 @@ func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
-	c.tdfPrivateKey = privateKey
-	c.tdfPublicKey = publicKey
-	c.defaultSegmentSize = defaultSegmentSize
-	c.enableEncryption = true
-	c.tdfFormat = JSONFormat
-	c.integrityAlgorithm = HS256
-	c.segmentIntegrityAlgorithm = GMAC
+	c := &TDFConfig{
+		tdfPrivateKey:             privateKey,
+		tdfPublicKey:              publicKey,
+		defaultSegmentSize:        defaultSegmentSize,
+		enableEncryption:          true,
+		tdfFormat:                 JSONFormat,
+		integrityAlgorithm:        HS256,
+		segmentIntegrityAlgorithm: GMAC,
+	}
 
 	for _, o := range opt {
 		err := o(c)
@@ -96,8 +97,8 @@ func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	return c, nil
 }
 
-// WithDataAttributes returns an Option that add data attributes to TDF.
-func WithDataAttributes(attributes []string) TDFOption {
+// WithDataAttributes appends the given data attributes to the bound policy
+func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributes = append(c.attributes, attributes...)
 		return nil

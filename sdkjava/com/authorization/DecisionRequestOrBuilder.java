@@ -57,26 +57,26 @@ public interface DecisionRequestOrBuilder extends
       int index);
 
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
-  java.util.List<com.authorization.ResourceAttributes> 
+  java.util.List<com.authorization.ResourceAttribute> 
       getResourceAttributesList();
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
-  com.authorization.ResourceAttributes getResourceAttributes(int index);
+  com.authorization.ResourceAttribute getResourceAttributes(int index);
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
   int getResourceAttributesCount();
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
-  java.util.List<? extends com.authorization.ResourceAttributesOrBuilder> 
+  java.util.List<? extends com.authorization.ResourceAttributeOrBuilder> 
       getResourceAttributesOrBuilderList();
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
-  com.authorization.ResourceAttributesOrBuilder getResourceAttributesOrBuilder(
+  com.authorization.ResourceAttributeOrBuilder getResourceAttributesOrBuilder(
       int index);
 }

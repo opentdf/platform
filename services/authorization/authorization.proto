@@ -102,7 +102,7 @@ message Action {
 message DecisionRequest {
   repeated Action actions = 1;
   repeated EntityChain entity_chains = 2;
-  repeated ResourceAttributes resource_attributes = 3;
+  repeated ResourceAttribute resource_attributes = 3;
 }
 
 /*
@@ -185,7 +185,7 @@ message GetDecisionsResponse {
 */
 message GetEntitlementsRequest {
   repeated Entity entities = 1; // list of requested entities
-  optional ResourceAttributes scope = 2; //optional attribute fqn as a scope
+  optional ResourceAttribute scope = 2; //optional attribute fqn as a scope
 }
 
 message EntityEntitlements {
@@ -194,9 +194,9 @@ message EntityEntitlements {
 }
 
 //A logical bucket of attributes belonging to a "Resource"
-message ResourceAttributes {
+message ResourceAttribute {
   string id = 1;
-  repeated string attribute_id = 2;
+  repeated string value_ids = 2;
 }
 
 /*

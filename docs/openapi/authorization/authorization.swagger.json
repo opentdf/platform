@@ -63,7 +63,7 @@
             "type": "string"
           },
           {
-            "name": "scope.attributeId",
+            "name": "scope.valueIds",
             "in": "query",
             "required": false,
             "type": "array",
@@ -132,7 +132,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationResourceAttributes"
+            "$ref": "#/definitions/authorizationResourceAttribute"
           }
         }
       },
@@ -263,13 +263,13 @@
       "description": "{\n\"entitlements\":  [\n{\n\"entityId\":  \"e1\",\n\"attributeValueReferences\":  [\n{\n\"attributeFqn\":  \"http://www.example.org/attr/foo/value/bar\"\n}\n]\n},\n{\n\"entityId\":  \"e2\",\n\"attributeValueReferences\":  [\n{\n\"attributeFqn\":  \"http://www.example.org/attr/color/value/red\"\n}\n]\n}\n]\n}",
       "title": "Example Response for a request of : Get entitlements for bob and alice (both represented using an email address"
     },
-    "authorizationResourceAttributes": {
+    "authorizationResourceAttribute": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
-        "attributeId": {
+        "valueIds": {
           "type": "array",
           "items": {
             "type": "string"

@@ -57,7 +57,7 @@ public interface GetEntitlementsRequestOrBuilder extends
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    * @return Whether the scope field is set.
    */
   boolean hasScope();
@@ -66,16 +66,16 @@ public interface GetEntitlementsRequestOrBuilder extends
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    * @return The scope.
    */
-  com.authorization.ResourceAttributes getScope();
+  com.authorization.ResourceAttribute getScope();
   /**
    * <pre>
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    */
-  com.authorization.ResourceAttributesOrBuilder getScopeOrBuilder();
+  com.authorization.ResourceAttributeOrBuilder getScopeOrBuilder();
 }

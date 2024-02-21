@@ -123,13 +123,13 @@ private static final long serialVersionUID = 0L;
   }
 
   public static final int SCOPE_FIELD_NUMBER = 2;
-  private com.authorization.ResourceAttributes scope_;
+  private com.authorization.ResourceAttribute scope_;
   /**
    * <pre>
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    * @return Whether the scope field is set.
    */
   @java.lang.Override
@@ -141,23 +141,23 @@ private static final long serialVersionUID = 0L;
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    * @return The scope.
    */
   @java.lang.Override
-  public com.authorization.ResourceAttributes getScope() {
-    return scope_ == null ? com.authorization.ResourceAttributes.getDefaultInstance() : scope_;
+  public com.authorization.ResourceAttribute getScope() {
+    return scope_ == null ? com.authorization.ResourceAttribute.getDefaultInstance() : scope_;
   }
   /**
    * <pre>
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    */
   @java.lang.Override
-  public com.authorization.ResourceAttributesOrBuilder getScopeOrBuilder() {
-    return scope_ == null ? com.authorization.ResourceAttributes.getDefaultInstance() : scope_;
+  public com.authorization.ResourceAttributeOrBuilder getScopeOrBuilder() {
+    return scope_ == null ? com.authorization.ResourceAttribute.getDefaultInstance() : scope_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -912,15 +912,15 @@ private static final long serialVersionUID = 0L;
       return entitiesBuilder_;
     }
 
-    private com.authorization.ResourceAttributes scope_;
+    private com.authorization.ResourceAttribute scope_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        com.authorization.ResourceAttributes, com.authorization.ResourceAttributes.Builder, com.authorization.ResourceAttributesOrBuilder> scopeBuilder_;
+        com.authorization.ResourceAttribute, com.authorization.ResourceAttribute.Builder, com.authorization.ResourceAttributeOrBuilder> scopeBuilder_;
     /**
      * <pre>
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      * @return Whether the scope field is set.
      */
     public boolean hasScope() {
@@ -931,12 +931,12 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      * @return The scope.
      */
-    public com.authorization.ResourceAttributes getScope() {
+    public com.authorization.ResourceAttribute getScope() {
       if (scopeBuilder_ == null) {
-        return scope_ == null ? com.authorization.ResourceAttributes.getDefaultInstance() : scope_;
+        return scope_ == null ? com.authorization.ResourceAttribute.getDefaultInstance() : scope_;
       } else {
         return scopeBuilder_.getMessage();
       }
@@ -946,9 +946,9 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
-    public Builder setScope(com.authorization.ResourceAttributes value) {
+    public Builder setScope(com.authorization.ResourceAttribute value) {
       if (scopeBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -966,10 +966,10 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
     public Builder setScope(
-        com.authorization.ResourceAttributes.Builder builderForValue) {
+        com.authorization.ResourceAttribute.Builder builderForValue) {
       if (scopeBuilder_ == null) {
         scope_ = builderForValue.build();
       } else {
@@ -984,13 +984,13 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
-    public Builder mergeScope(com.authorization.ResourceAttributes value) {
+    public Builder mergeScope(com.authorization.ResourceAttribute value) {
       if (scopeBuilder_ == null) {
         if (((bitField0_ & 0x00000002) != 0) &&
           scope_ != null &&
-          scope_ != com.authorization.ResourceAttributes.getDefaultInstance()) {
+          scope_ != com.authorization.ResourceAttribute.getDefaultInstance()) {
           getScopeBuilder().mergeFrom(value);
         } else {
           scope_ = value;
@@ -1009,7 +1009,7 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
     public Builder clearScope() {
       bitField0_ = (bitField0_ & ~0x00000002);
@@ -1026,9 +1026,9 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
-    public com.authorization.ResourceAttributes.Builder getScopeBuilder() {
+    public com.authorization.ResourceAttribute.Builder getScopeBuilder() {
       bitField0_ |= 0x00000002;
       onChanged();
       return getScopeFieldBuilder().getBuilder();
@@ -1038,14 +1038,14 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
-    public com.authorization.ResourceAttributesOrBuilder getScopeOrBuilder() {
+    public com.authorization.ResourceAttributeOrBuilder getScopeOrBuilder() {
       if (scopeBuilder_ != null) {
         return scopeBuilder_.getMessageOrBuilder();
       } else {
         return scope_ == null ?
-            com.authorization.ResourceAttributes.getDefaultInstance() : scope_;
+            com.authorization.ResourceAttribute.getDefaultInstance() : scope_;
       }
     }
     /**
@@ -1053,14 +1053,14 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        com.authorization.ResourceAttributes, com.authorization.ResourceAttributes.Builder, com.authorization.ResourceAttributesOrBuilder> 
+        com.authorization.ResourceAttribute, com.authorization.ResourceAttribute.Builder, com.authorization.ResourceAttributeOrBuilder> 
         getScopeFieldBuilder() {
       if (scopeBuilder_ == null) {
         scopeBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            com.authorization.ResourceAttributes, com.authorization.ResourceAttributes.Builder, com.authorization.ResourceAttributesOrBuilder>(
+            com.authorization.ResourceAttribute, com.authorization.ResourceAttribute.Builder, com.authorization.ResourceAttributeOrBuilder>(
                 getScope(),
                 getParentForChildren(),
                 isClean());

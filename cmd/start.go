@@ -1,6 +1,3 @@
-/*
-'Copyright 2023 Virtru Corporation'
-*/
 package cmd
 
 import (

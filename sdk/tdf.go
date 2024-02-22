@@ -236,11 +236,12 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 	return tdfObject, nil
 }
 
-func (this *TDFObject) Manifest() Manifest {
-	return this.manifest
+func (t *TDFObject) Manifest() Manifest {
+	return t.manifest
 }
-func (this *Reader) Manifest() Manifest {
-	return this.manifest
+
+func (r *Reader) Manifest() Manifest {
+	return r.manifest
 }
 
 // prepare the manifest for TDF

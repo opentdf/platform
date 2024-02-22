@@ -37,7 +37,6 @@ package io.opentdf.platform.authorization;
  *],
  *"resourceAttributes": [
  *{
- *"id": "attr-set-1",
  *"attributeValueReferences": [
  *{
  *"attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -45,7 +44,6 @@ package io.opentdf.platform.authorization;
  *]
  *},
  *{
- *"id": "request-set-2",
  *"attributeValueReferences": [
  *{
  *"attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -180,41 +178,41 @@ private static final long serialVersionUID = 0L;
 
   public static final int RESOURCE_ATTRIBUTES_FIELD_NUMBER = 3;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.authorization.ResourceAttributes> resourceAttributes_;
+  private java.util.List<io.opentdf.platform.authorization.ResourceAttribute> resourceAttributes_;
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.authorization.ResourceAttributes> getResourceAttributesList() {
+  public java.util.List<io.opentdf.platform.authorization.ResourceAttribute> getResourceAttributesList() {
     return resourceAttributes_;
   }
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.authorization.ResourceAttributesOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.authorization.ResourceAttributeOrBuilder> 
       getResourceAttributesOrBuilderList() {
     return resourceAttributes_;
   }
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
   @java.lang.Override
   public int getResourceAttributesCount() {
     return resourceAttributes_.size();
   }
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.ResourceAttributes getResourceAttributes(int index) {
+  public io.opentdf.platform.authorization.ResourceAttribute getResourceAttributes(int index) {
     return resourceAttributes_.get(index);
   }
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.ResourceAttributesOrBuilder getResourceAttributesOrBuilder(
+  public io.opentdf.platform.authorization.ResourceAttributeOrBuilder getResourceAttributesOrBuilder(
       int index) {
     return resourceAttributes_.get(index);
   }
@@ -437,7 +435,6 @@ private static final long serialVersionUID = 0L;
    *],
    *"resourceAttributes": [
    *{
-   *"id": "attr-set-1",
    *"attributeValueReferences": [
    *{
    *"attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -445,7 +442,6 @@ private static final long serialVersionUID = 0L;
    *]
    *},
    *{
-   *"id": "request-set-2",
    *"attributeValueReferences": [
    *{
    *"attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -754,9 +750,9 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 18
             case 26: {
-              io.opentdf.platform.authorization.ResourceAttributes m =
+              io.opentdf.platform.authorization.ResourceAttribute m =
                   input.readMessage(
-                      io.opentdf.platform.authorization.ResourceAttributes.parser(),
+                      io.opentdf.platform.authorization.ResourceAttribute.parser(),
                       extensionRegistry);
               if (resourceAttributesBuilder_ == null) {
                 ensureResourceAttributesIsMutable();
@@ -1263,22 +1259,22 @@ private static final long serialVersionUID = 0L;
       return entityChainsBuilder_;
     }
 
-    private java.util.List<io.opentdf.platform.authorization.ResourceAttributes> resourceAttributes_ =
+    private java.util.List<io.opentdf.platform.authorization.ResourceAttribute> resourceAttributes_ =
       java.util.Collections.emptyList();
     private void ensureResourceAttributesIsMutable() {
       if (!((bitField0_ & 0x00000004) != 0)) {
-        resourceAttributes_ = new java.util.ArrayList<io.opentdf.platform.authorization.ResourceAttributes>(resourceAttributes_);
+        resourceAttributes_ = new java.util.ArrayList<io.opentdf.platform.authorization.ResourceAttribute>(resourceAttributes_);
         bitField0_ |= 0x00000004;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.ResourceAttributes, io.opentdf.platform.authorization.ResourceAttributes.Builder, io.opentdf.platform.authorization.ResourceAttributesOrBuilder> resourceAttributesBuilder_;
+        io.opentdf.platform.authorization.ResourceAttribute, io.opentdf.platform.authorization.ResourceAttribute.Builder, io.opentdf.platform.authorization.ResourceAttributeOrBuilder> resourceAttributesBuilder_;
 
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public java.util.List<io.opentdf.platform.authorization.ResourceAttributes> getResourceAttributesList() {
+    public java.util.List<io.opentdf.platform.authorization.ResourceAttribute> getResourceAttributesList() {
       if (resourceAttributesBuilder_ == null) {
         return java.util.Collections.unmodifiableList(resourceAttributes_);
       } else {
@@ -1286,7 +1282,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public int getResourceAttributesCount() {
       if (resourceAttributesBuilder_ == null) {
@@ -1296,9 +1292,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public io.opentdf.platform.authorization.ResourceAttributes getResourceAttributes(int index) {
+    public io.opentdf.platform.authorization.ResourceAttribute getResourceAttributes(int index) {
       if (resourceAttributesBuilder_ == null) {
         return resourceAttributes_.get(index);
       } else {
@@ -1306,10 +1302,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public Builder setResourceAttributes(
-        int index, io.opentdf.platform.authorization.ResourceAttributes value) {
+        int index, io.opentdf.platform.authorization.ResourceAttribute value) {
       if (resourceAttributesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -1323,10 +1319,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public Builder setResourceAttributes(
-        int index, io.opentdf.platform.authorization.ResourceAttributes.Builder builderForValue) {
+        int index, io.opentdf.platform.authorization.ResourceAttribute.Builder builderForValue) {
       if (resourceAttributesBuilder_ == null) {
         ensureResourceAttributesIsMutable();
         resourceAttributes_.set(index, builderForValue.build());
@@ -1337,9 +1333,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public Builder addResourceAttributes(io.opentdf.platform.authorization.ResourceAttributes value) {
+    public Builder addResourceAttributes(io.opentdf.platform.authorization.ResourceAttribute value) {
       if (resourceAttributesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -1353,10 +1349,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public Builder addResourceAttributes(
-        int index, io.opentdf.platform.authorization.ResourceAttributes value) {
+        int index, io.opentdf.platform.authorization.ResourceAttribute value) {
       if (resourceAttributesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -1370,10 +1366,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public Builder addResourceAttributes(
-        io.opentdf.platform.authorization.ResourceAttributes.Builder builderForValue) {
+        io.opentdf.platform.authorization.ResourceAttribute.Builder builderForValue) {
       if (resourceAttributesBuilder_ == null) {
         ensureResourceAttributesIsMutable();
         resourceAttributes_.add(builderForValue.build());
@@ -1384,10 +1380,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public Builder addResourceAttributes(
-        int index, io.opentdf.platform.authorization.ResourceAttributes.Builder builderForValue) {
+        int index, io.opentdf.platform.authorization.ResourceAttribute.Builder builderForValue) {
       if (resourceAttributesBuilder_ == null) {
         ensureResourceAttributesIsMutable();
         resourceAttributes_.add(index, builderForValue.build());
@@ -1398,10 +1394,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public Builder addAllResourceAttributes(
-        java.lang.Iterable<? extends io.opentdf.platform.authorization.ResourceAttributes> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.authorization.ResourceAttribute> values) {
       if (resourceAttributesBuilder_ == null) {
         ensureResourceAttributesIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -1413,7 +1409,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public Builder clearResourceAttributes() {
       if (resourceAttributesBuilder_ == null) {
@@ -1426,7 +1422,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
     public Builder removeResourceAttributes(int index) {
       if (resourceAttributesBuilder_ == null) {
@@ -1439,16 +1435,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public io.opentdf.platform.authorization.ResourceAttributes.Builder getResourceAttributesBuilder(
+    public io.opentdf.platform.authorization.ResourceAttribute.Builder getResourceAttributesBuilder(
         int index) {
       return getResourceAttributesFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public io.opentdf.platform.authorization.ResourceAttributesOrBuilder getResourceAttributesOrBuilder(
+    public io.opentdf.platform.authorization.ResourceAttributeOrBuilder getResourceAttributesOrBuilder(
         int index) {
       if (resourceAttributesBuilder_ == null) {
         return resourceAttributes_.get(index);  } else {
@@ -1456,9 +1452,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.authorization.ResourceAttributesOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.authorization.ResourceAttributeOrBuilder> 
          getResourceAttributesOrBuilderList() {
       if (resourceAttributesBuilder_ != null) {
         return resourceAttributesBuilder_.getMessageOrBuilderList();
@@ -1467,33 +1463,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public io.opentdf.platform.authorization.ResourceAttributes.Builder addResourceAttributesBuilder() {
+    public io.opentdf.platform.authorization.ResourceAttribute.Builder addResourceAttributesBuilder() {
       return getResourceAttributesFieldBuilder().addBuilder(
-          io.opentdf.platform.authorization.ResourceAttributes.getDefaultInstance());
+          io.opentdf.platform.authorization.ResourceAttribute.getDefaultInstance());
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public io.opentdf.platform.authorization.ResourceAttributes.Builder addResourceAttributesBuilder(
+    public io.opentdf.platform.authorization.ResourceAttribute.Builder addResourceAttributesBuilder(
         int index) {
       return getResourceAttributesFieldBuilder().addBuilder(
-          index, io.opentdf.platform.authorization.ResourceAttributes.getDefaultInstance());
+          index, io.opentdf.platform.authorization.ResourceAttribute.getDefaultInstance());
     }
     /**
-     * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+     * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
      */
-    public java.util.List<io.opentdf.platform.authorization.ResourceAttributes.Builder> 
+    public java.util.List<io.opentdf.platform.authorization.ResourceAttribute.Builder> 
          getResourceAttributesBuilderList() {
       return getResourceAttributesFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.ResourceAttributes, io.opentdf.platform.authorization.ResourceAttributes.Builder, io.opentdf.platform.authorization.ResourceAttributesOrBuilder> 
+        io.opentdf.platform.authorization.ResourceAttribute, io.opentdf.platform.authorization.ResourceAttribute.Builder, io.opentdf.platform.authorization.ResourceAttributeOrBuilder> 
         getResourceAttributesFieldBuilder() {
       if (resourceAttributesBuilder_ == null) {
         resourceAttributesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.authorization.ResourceAttributes, io.opentdf.platform.authorization.ResourceAttributes.Builder, io.opentdf.platform.authorization.ResourceAttributesOrBuilder>(
+            io.opentdf.platform.authorization.ResourceAttribute, io.opentdf.platform.authorization.ResourceAttribute.Builder, io.opentdf.platform.authorization.ResourceAttributeOrBuilder>(
                 resourceAttributes_,
                 ((bitField0_ & 0x00000004) != 0),
                 getParentForChildren(),

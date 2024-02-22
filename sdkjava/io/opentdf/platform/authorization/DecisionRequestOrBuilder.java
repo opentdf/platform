@@ -57,26 +57,26 @@ public interface DecisionRequestOrBuilder extends
       int index);
 
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
-  java.util.List<io.opentdf.platform.authorization.ResourceAttributes> 
+  java.util.List<io.opentdf.platform.authorization.ResourceAttribute> 
       getResourceAttributesList();
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
-  io.opentdf.platform.authorization.ResourceAttributes getResourceAttributes(int index);
+  io.opentdf.platform.authorization.ResourceAttribute getResourceAttributes(int index);
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
   int getResourceAttributesCount();
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.authorization.ResourceAttributesOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.authorization.ResourceAttributeOrBuilder> 
       getResourceAttributesOrBuilderList();
   /**
-   * <code>repeated .authorization.ResourceAttributes resource_attributes = 3 [json_name = "resourceAttributes"];</code>
+   * <code>repeated .authorization.ResourceAttribute resource_attributes = 3 [json_name = "resourceAttributes"];</code>
    */
-  io.opentdf.platform.authorization.ResourceAttributesOrBuilder getResourceAttributesOrBuilder(
+  io.opentdf.platform.authorization.ResourceAttributeOrBuilder getResourceAttributesOrBuilder(
       int index);
 }

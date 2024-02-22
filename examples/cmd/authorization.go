@@ -43,8 +43,8 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 	}}
 
 	// TODO Get attribute value ids
-	tradeSecretAttributeValueId := "replaceme"
-	openAttributeValueId := "Open"
+	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/val/replaceme"
+	openAttributeValueFqn := "https://open.io/attr/attr_name/val/open"
 
 	slog.Info("Getting decision for bob and alice for transmit action on resource set with trade secret and resource" +
 		" set with trade secret + open attribute values")
@@ -53,10 +53,9 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 	drs = append(drs, &authorization.DecisionRequest{
 		Actions:      actions,
 		EntityChains: entityChains,
-		ResourceAttributes: []*authorization.ResourceAttributes{
-			{Id: "request-set-1", AttributeId: []string{tradeSecretAttributeValueId}}, // request-set-1 is arbitrary tracking id
-			{Id: "request-set-2", AttributeId: []string{tradeSecretAttributeValueId, openAttributeValueId}},
-		}, // request-set-2 is arbitrary tracking id
+		ResourceAttributes: []*authorization.ResourceAttribute{
+			{AttributeFqns: []string{tradeSecretAttributeValueFqn, openAttributeValueFqn}},
+		},
 	})
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}

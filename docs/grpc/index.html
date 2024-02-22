@@ -223,7 +223,7 @@
                 </li>
               
                 <li>
-                  <a href="#authorization.ResourceAttributes"><span class="badge">M</span>ResourceAttributes</a>
+                  <a href="#authorization.ResourceAttribute"><span class="badge">M</span>ResourceAttribute</a>
                 </li>
               
               
@@ -730,7 +730,7 @@
         
       
         <h3 id="authorization.DecisionRequest">DecisionRequest</h3>
-        <p>Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)</p><p>and Alice (represented by entity chain ec2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>{</p><p>"actions": [</p><p>{</p><p>"standard": "STANDARD_ACTION_TRANSMIT"</p><p>}</p><p>],</p><p>"entityChains": [</p><p>{</p><p>"id": "ec1",</p><p>"entities": [</p><p>{</p><p>"emailAddress": "bob@example.org"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "ec2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice@example.org"</p><p>}</p><p>]</p><p>}</p><p>],</p><p>"resourceAttributes": [</p><p>{</p><p>"id": "attr-set-1",</p><p>"attributeValueReferences": [</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/foo/value/bar"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "request-set-2",</p><p>"attributeValueReferences": [</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/foo/value/bar"</p><p>},</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/color/value/red"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
+        <p>Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)</p><p>and Alice (represented by entity chain ec2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>{</p><p>"actions": [</p><p>{</p><p>"standard": "STANDARD_ACTION_TRANSMIT"</p><p>}</p><p>],</p><p>"entityChains": [</p><p>{</p><p>"id": "ec1",</p><p>"entities": [</p><p>{</p><p>"emailAddress": "bob@example.org"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "ec2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice@example.org"</p><p>}</p><p>]</p><p>}</p><p>],</p><p>"resourceAttributes": [</p><p>{</p><p>"attributeValueReferences": [</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/foo/value/bar"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"attributeValueReferences": [</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/foo/value/bar"</p><p>},</p><p>{</p><p>"attributeFqn": "http://www.example.org/attr/color/value/red"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
 
         
           <table class="field-table">
@@ -755,7 +755,7 @@
               
                 <tr>
                   <td>resource_attributes</td>
-                  <td><a href="#authorization.ResourceAttributes">ResourceAttributes</a></td>
+                  <td><a href="#authorization.ResourceAttribute">ResourceAttribute</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -1038,7 +1038,7 @@
               
                 <tr>
                   <td>scope</td>
-                  <td><a href="#authorization.ResourceAttributes">ResourceAttributes</a></td>
+                  <td><a href="#authorization.ResourceAttribute">ResourceAttribute</a></td>
                   <td>optional</td>
                   <td><p>optional attribute fqn as a scope </p></td>
                 </tr>
@@ -1074,7 +1074,7 @@
 
         
       
-        <h3 id="authorization.ResourceAttributes">ResourceAttributes</h3>
+        <h3 id="authorization.ResourceAttribute">ResourceAttribute</h3>
         <p>A logical bucket of attributes belonging to a "Resource"</p>
 
         
@@ -1085,14 +1085,7 @@
             <tbody>
               
                 <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>attribute_id</td>
+                  <td>attribute_fqns</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>

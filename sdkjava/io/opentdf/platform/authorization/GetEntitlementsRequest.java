@@ -123,13 +123,13 @@ private static final long serialVersionUID = 0L;
   }
 
   public static final int SCOPE_FIELD_NUMBER = 2;
-  private io.opentdf.platform.authorization.ResourceAttributes scope_;
+  private io.opentdf.platform.authorization.ResourceAttribute scope_;
   /**
    * <pre>
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    * @return Whether the scope field is set.
    */
   @java.lang.Override
@@ -141,23 +141,23 @@ private static final long serialVersionUID = 0L;
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    * @return The scope.
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.ResourceAttributes getScope() {
-    return scope_ == null ? io.opentdf.platform.authorization.ResourceAttributes.getDefaultInstance() : scope_;
+  public io.opentdf.platform.authorization.ResourceAttribute getScope() {
+    return scope_ == null ? io.opentdf.platform.authorization.ResourceAttribute.getDefaultInstance() : scope_;
   }
   /**
    * <pre>
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.ResourceAttributesOrBuilder getScopeOrBuilder() {
-    return scope_ == null ? io.opentdf.platform.authorization.ResourceAttributes.getDefaultInstance() : scope_;
+  public io.opentdf.platform.authorization.ResourceAttributeOrBuilder getScopeOrBuilder() {
+    return scope_ == null ? io.opentdf.platform.authorization.ResourceAttribute.getDefaultInstance() : scope_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -912,15 +912,15 @@ private static final long serialVersionUID = 0L;
       return entitiesBuilder_;
     }
 
-    private io.opentdf.platform.authorization.ResourceAttributes scope_;
+    private io.opentdf.platform.authorization.ResourceAttribute scope_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.authorization.ResourceAttributes, io.opentdf.platform.authorization.ResourceAttributes.Builder, io.opentdf.platform.authorization.ResourceAttributesOrBuilder> scopeBuilder_;
+        io.opentdf.platform.authorization.ResourceAttribute, io.opentdf.platform.authorization.ResourceAttribute.Builder, io.opentdf.platform.authorization.ResourceAttributeOrBuilder> scopeBuilder_;
     /**
      * <pre>
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      * @return Whether the scope field is set.
      */
     public boolean hasScope() {
@@ -931,12 +931,12 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      * @return The scope.
      */
-    public io.opentdf.platform.authorization.ResourceAttributes getScope() {
+    public io.opentdf.platform.authorization.ResourceAttribute getScope() {
       if (scopeBuilder_ == null) {
-        return scope_ == null ? io.opentdf.platform.authorization.ResourceAttributes.getDefaultInstance() : scope_;
+        return scope_ == null ? io.opentdf.platform.authorization.ResourceAttribute.getDefaultInstance() : scope_;
       } else {
         return scopeBuilder_.getMessage();
       }
@@ -946,9 +946,9 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
-    public Builder setScope(io.opentdf.platform.authorization.ResourceAttributes value) {
+    public Builder setScope(io.opentdf.platform.authorization.ResourceAttribute value) {
       if (scopeBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -966,10 +966,10 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
     public Builder setScope(
-        io.opentdf.platform.authorization.ResourceAttributes.Builder builderForValue) {
+        io.opentdf.platform.authorization.ResourceAttribute.Builder builderForValue) {
       if (scopeBuilder_ == null) {
         scope_ = builderForValue.build();
       } else {
@@ -984,13 +984,13 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
-    public Builder mergeScope(io.opentdf.platform.authorization.ResourceAttributes value) {
+    public Builder mergeScope(io.opentdf.platform.authorization.ResourceAttribute value) {
       if (scopeBuilder_ == null) {
         if (((bitField0_ & 0x00000002) != 0) &&
           scope_ != null &&
-          scope_ != io.opentdf.platform.authorization.ResourceAttributes.getDefaultInstance()) {
+          scope_ != io.opentdf.platform.authorization.ResourceAttribute.getDefaultInstance()) {
           getScopeBuilder().mergeFrom(value);
         } else {
           scope_ = value;
@@ -1009,7 +1009,7 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
     public Builder clearScope() {
       bitField0_ = (bitField0_ & ~0x00000002);
@@ -1026,9 +1026,9 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
-    public io.opentdf.platform.authorization.ResourceAttributes.Builder getScopeBuilder() {
+    public io.opentdf.platform.authorization.ResourceAttribute.Builder getScopeBuilder() {
       bitField0_ |= 0x00000002;
       onChanged();
       return getScopeFieldBuilder().getBuilder();
@@ -1038,14 +1038,14 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
-    public io.opentdf.platform.authorization.ResourceAttributesOrBuilder getScopeOrBuilder() {
+    public io.opentdf.platform.authorization.ResourceAttributeOrBuilder getScopeOrBuilder() {
       if (scopeBuilder_ != null) {
         return scopeBuilder_.getMessageOrBuilder();
       } else {
         return scope_ == null ?
-            io.opentdf.platform.authorization.ResourceAttributes.getDefaultInstance() : scope_;
+            io.opentdf.platform.authorization.ResourceAttribute.getDefaultInstance() : scope_;
       }
     }
     /**
@@ -1053,14 +1053,14 @@ private static final long serialVersionUID = 0L;
      *optional attribute fqn as a scope
      * </pre>
      *
-     * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+     * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.authorization.ResourceAttributes, io.opentdf.platform.authorization.ResourceAttributes.Builder, io.opentdf.platform.authorization.ResourceAttributesOrBuilder> 
+        io.opentdf.platform.authorization.ResourceAttribute, io.opentdf.platform.authorization.ResourceAttribute.Builder, io.opentdf.platform.authorization.ResourceAttributeOrBuilder> 
         getScopeFieldBuilder() {
       if (scopeBuilder_ == null) {
         scopeBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.authorization.ResourceAttributes, io.opentdf.platform.authorization.ResourceAttributes.Builder, io.opentdf.platform.authorization.ResourceAttributesOrBuilder>(
+            io.opentdf.platform.authorization.ResourceAttribute, io.opentdf.platform.authorization.ResourceAttribute.Builder, io.opentdf.platform.authorization.ResourceAttributeOrBuilder>(
                 getScope(),
                 getParentForChildren(),
                 isClean());

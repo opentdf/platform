@@ -66,10 +66,10 @@ public final class AuthorizationProto {
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_authorization_EntityEntitlements_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_authorization_ResourceAttributes_descriptor;
+    internal_static_authorization_ResourceAttribute_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_authorization_ResourceAttributes_fieldAccessorTable;
+      internal_static_authorization_ResourceAttribute_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_authorization_GetEntitlementsResponse_descriptor;
   static final 
@@ -103,48 +103,47 @@ public final class AuthorizationProto {
       "tom\"l\n\016StandardAction\022\037\n\033STANDARD_ACTION" +
       "_UNSPECIFIED\020\000\022\033\n\027STANDARD_ACTION_DECRYP" +
       "T\020\001\022\034\n\030STANDARD_ACTION_TRANSMIT\020\002B\007\n\005val" +
-      "ue\"\327\001\n\017DecisionRequest\022/\n\007actions\030\001 \003(\0132" +
+      "ue\"\326\001\n\017DecisionRequest\022/\n\007actions\030\001 \003(\0132" +
       "\025.authorization.ActionR\007actions\022?\n\rentit" +
       "y_chains\030\002 \003(\0132\032.authorization.EntityCha" +
-      "inR\014entityChains\022R\n\023resource_attributes\030" +
-      "\003 \003(\0132!.authorization.ResourceAttributes" +
-      "R\022resourceAttributes\"\325\002\n\020DecisionRespons" +
-      "e\022&\n\017entity_chain_id\030\001 \001(\tR\rentityChainI" +
-      "d\0224\n\026resource_attributes_id\030\002 \001(\tR\024resou" +
-      "rceAttributesId\022-\n\006action\030\003 \001(\0132\025.author" +
-      "ization.ActionR\006action\022D\n\010decision\030\004 \001(\016" +
-      "2(.authorization.DecisionResponse.Decisi" +
-      "onR\010decision\022 \n\013obligations\030\005 \003(\tR\013oblig" +
-      "ations\"L\n\010Decision\022\030\n\024DECISION_UNSPECIFI" +
-      "ED\020\000\022\021\n\rDECISION_DENY\020\001\022\023\n\017DECISION_PERM" +
-      "IT\020\002\"b\n\023GetDecisionsRequest\022K\n\021decision_" +
-      "requests\030\001 \003(\0132\036.authorization.DecisionR" +
-      "equestR\020decisionRequests\"f\n\024GetDecisions" +
-      "Response\022N\n\022decision_responses\030\001 \003(\0132\037.a" +
-      "uthorization.DecisionResponseR\021decisionR" +
-      "esponses\"\223\001\n\026GetEntitlementsRequest\0221\n\010e" +
-      "ntities\030\001 \003(\0132\025.authorization.EntityR\010en" +
-      "tities\022<\n\005scope\030\002 \001(\0132!.authorization.Re" +
-      "sourceAttributesH\000R\005scope\210\001\001B\010\n\006_scope\"T" +
-      "\n\022EntityEntitlements\022\033\n\tentity_id\030\001 \001(\tR" +
-      "\010entityId\022!\n\014attribute_id\030\002 \003(\tR\013attribu" +
-      "teId\"G\n\022ResourceAttributes\022\016\n\002id\030\001 \001(\tR\002" +
-      "id\022!\n\014attribute_id\030\002 \003(\tR\013attributeId\"`\n" +
-      "\027GetEntitlementsResponse\022E\n\014entitlements" +
-      "\030\001 \003(\0132!.authorization.EntityEntitlement" +
-      "sR\014entitlements2\206\002\n\024AuthorizationService" +
-      "\022r\n\014GetDecisions\022\".authorization.GetDeci" +
-      "sionsRequest\032#.authorization.GetDecision" +
-      "sResponse\"\031\202\323\344\223\002\023\"\021/v1/authorization\022z\n\017" +
-      "GetEntitlements\022%.authorization.GetEntit" +
-      "lementsRequest\032&.authorization.GetEntitl" +
-      "ementsResponse\"\030\202\323\344\223\002\022\"\020/v1/entitlements" +
-      "B\302\001\n!io.opentdf.platform.authorizationB\022" +
-      "AuthorizationProtoP\001Z5github.com/opentdf" +
-      "/platform/protocol/go/authorization\242\002\003AX" +
-      "X\252\002\rAuthorization\312\002\rAuthorization\342\002\031Auth" +
-      "orization\\GPBMetadata\352\002\rAuthorizationb\006p" +
-      "roto3"
+      "inR\014entityChains\022Q\n\023resource_attributes\030" +
+      "\003 \003(\0132 .authorization.ResourceAttributeR" +
+      "\022resourceAttributes\"\325\002\n\020DecisionResponse" +
+      "\022&\n\017entity_chain_id\030\001 \001(\tR\rentityChainId" +
+      "\0224\n\026resource_attributes_id\030\002 \001(\tR\024resour" +
+      "ceAttributesId\022-\n\006action\030\003 \001(\0132\025.authori" +
+      "zation.ActionR\006action\022D\n\010decision\030\004 \001(\0162" +
+      "(.authorization.DecisionResponse.Decisio" +
+      "nR\010decision\022 \n\013obligations\030\005 \003(\tR\013obliga" +
+      "tions\"L\n\010Decision\022\030\n\024DECISION_UNSPECIFIE" +
+      "D\020\000\022\021\n\rDECISION_DENY\020\001\022\023\n\017DECISION_PERMI" +
+      "T\020\002\"b\n\023GetDecisionsRequest\022K\n\021decision_r" +
+      "equests\030\001 \003(\0132\036.authorization.DecisionRe" +
+      "questR\020decisionRequests\"f\n\024GetDecisionsR" +
+      "esponse\022N\n\022decision_responses\030\001 \003(\0132\037.au" +
+      "thorization.DecisionResponseR\021decisionRe" +
+      "sponses\"\222\001\n\026GetEntitlementsRequest\0221\n\010en" +
+      "tities\030\001 \003(\0132\025.authorization.EntityR\010ent" +
+      "ities\022;\n\005scope\030\002 \001(\0132 .authorization.Res" +
+      "ourceAttributeH\000R\005scope\210\001\001B\010\n\006_scope\"T\n\022" +
+      "EntityEntitlements\022\033\n\tentity_id\030\001 \001(\tR\010e" +
+      "ntityId\022!\n\014attribute_id\030\002 \003(\tR\013attribute" +
+      "Id\":\n\021ResourceAttribute\022%\n\016attribute_fqn" +
+      "s\030\002 \003(\tR\rattributeFqns\"`\n\027GetEntitlement" +
+      "sResponse\022E\n\014entitlements\030\001 \003(\0132!.author" +
+      "ization.EntityEntitlementsR\014entitlements" +
+      "2\206\002\n\024AuthorizationService\022r\n\014GetDecision" +
+      "s\022\".authorization.GetDecisionsRequest\032#." +
+      "authorization.GetDecisionsResponse\"\031\202\323\344\223" +
+      "\002\023\"\021/v1/authorization\022z\n\017GetEntitlements" +
+      "\022%.authorization.GetEntitlementsRequest\032" +
+      "&.authorization.GetEntitlementsResponse\"" +
+      "\030\202\323\344\223\002\022\"\020/v1/entitlementsB\302\001\n!io.opentdf" +
+      ".platform.authorizationB\022AuthorizationPr" +
+      "otoP\001Z5github.com/opentdf/platform/proto" +
+      "col/go/authorization\242\002\003AXX\252\002\rAuthorizati" +
+      "on\312\002\rAuthorization\342\002\031Authorization\\GPBMe" +
+      "tadata\352\002\rAuthorizationb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -212,12 +211,12 @@ public final class AuthorizationProto {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_authorization_EntityEntitlements_descriptor,
         new java.lang.String[] { "EntityId", "AttributeId", });
-    internal_static_authorization_ResourceAttributes_descriptor =
+    internal_static_authorization_ResourceAttribute_descriptor =
       getDescriptor().getMessageTypes().get(10);
-    internal_static_authorization_ResourceAttributes_fieldAccessorTable = new
+    internal_static_authorization_ResourceAttribute_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_authorization_ResourceAttributes_descriptor,
-        new java.lang.String[] { "Id", "AttributeId", });
+        internal_static_authorization_ResourceAttribute_descriptor,
+        new java.lang.String[] { "AttributeFqns", });
     internal_static_authorization_GetEntitlementsResponse_descriptor =
       getDescriptor().getMessageTypes().get(11);
     internal_static_authorization_GetEntitlementsResponse_fieldAccessorTable = new

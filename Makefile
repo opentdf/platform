@@ -31,9 +31,9 @@ go.work go.work.sum:
 	go work init . examples sdk
 
 fix:
-	(cd sdk && go mod tidy && go fmt ./...)
-	(cd . && go mod tidy && go fmt ./...)
-	(cd examples && go mod tidy && go fmt ./...)
+	(cd sdk && go fmt ./...)
+	(cd . && go fmt ./...)
+	(cd examples && go fmt ./...)
 
 lint: buf-lint golangci-lint
 

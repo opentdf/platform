@@ -28,10 +28,9 @@ pre-build:
 	@golangci-lint --version | grep "version 1.55" > /dev/null || (echo "golangci-lint version must be v1.55" && exit 1)
 
 go.work go.work.sum:
-	go work init . examples protocol/go sdk
+	go work init . examples sdk
 
 fix:
-	(cd protocol/go && go mod tidy && go fmt ./...)
 	(cd sdk && go mod tidy && go fmt ./...)
 	(cd . && go mod tidy && go fmt ./...)
 	(cd examples && go mod tidy && go fmt ./...)

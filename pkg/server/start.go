@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/opentdf/opentdf-v2-poc/internal/config"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
@@ -20,8 +23,16 @@ func WithConfigName(name string) func(StartConfig) StartConfig {
 	}
 }
 
+func WithWaitForShutdownSignal() func(StartConfig) StartConfig {
+	return func(c StartConfig) StartConfig {
+		c.WaitForShutdownSignal = true
+		return c
+	}
+}
+
 type StartConfig struct {
-	ConfigName string
+	ConfigName            string
+	WaitForShutdownSignal bool
 }
 
 func Start(f ...func(StartConfig) StartConfig) error {
@@ -87,17 +98,19 @@ func Start(f ...func(StartConfig) StartConfig) error {
 
 	otdf.Run()
 
-	// waitForShutdownSignal()
+	if startConfig.WaitForShutdownSignal {
+		waitForShutdownSignal()
+	}
 
 	return nil
 }
 
-// // waitForShutdownSignal blocks until a SIGINT or SIGTERM is received.
-// func waitForShutdownSignal() {
-// 	sigs := make(chan os.Signal, 1)
-// 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-// 	<-sigs
-// }
+// waitForShutdownSignal blocks until a SIGINT or SIGTERM is received.
+func waitForShutdownSignal() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	<-sigs
+}
 
 func createDatabaseClient(ctx context.Context, conf db.Config) (*db.Client, error) {
 	slog.Info("creating database client")

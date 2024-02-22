@@ -128,22 +128,22 @@ public final class AuthorizationProto {
       "ourceAttributeH\000R\005scope\210\001\001B\010\n\006_scope\"T\n\022" +
       "EntityEntitlements\022\033\n\tentity_id\030\001 \001(\tR\010e" +
       "ntityId\022!\n\014attribute_id\030\002 \003(\tR\013attribute" +
-      "Id\"@\n\021ResourceAttribute\022\016\n\002id\030\001 \001(\tR\002id\022" +
-      "\033\n\tvalue_ids\030\002 \003(\tR\010valueIds\"`\n\027GetEntit" +
-      "lementsResponse\022E\n\014entitlements\030\001 \003(\0132!." +
-      "authorization.EntityEntitlementsR\014entitl" +
-      "ements2\206\002\n\024AuthorizationService\022r\n\014GetDe" +
-      "cisions\022\".authorization.GetDecisionsRequ" +
-      "est\032#.authorization.GetDecisionsResponse" +
-      "\"\031\202\323\344\223\002\023\"\021/v1/authorization\022z\n\017GetEntitl" +
-      "ements\022%.authorization.GetEntitlementsRe" +
-      "quest\032&.authorization.GetEntitlementsRes" +
-      "ponse\"\030\202\323\344\223\002\022\"\020/v1/entitlementsB\302\001\n!io.o" +
-      "pentdf.platform.authorizationB\022Authoriza" +
-      "tionProtoP\001Z5github.com/opentdf/platform" +
-      "/protocol/go/authorization\242\002\003AXX\252\002\rAutho" +
-      "rization\312\002\rAuthorization\342\002\031Authorization" +
-      "\\GPBMetadata\352\002\rAuthorizationb\006proto3"
+      "Id\":\n\021ResourceAttribute\022%\n\016attribute_fqn" +
+      "s\030\002 \003(\tR\rattributeFqns\"`\n\027GetEntitlement" +
+      "sResponse\022E\n\014entitlements\030\001 \003(\0132!.author" +
+      "ization.EntityEntitlementsR\014entitlements" +
+      "2\206\002\n\024AuthorizationService\022r\n\014GetDecision" +
+      "s\022\".authorization.GetDecisionsRequest\032#." +
+      "authorization.GetDecisionsResponse\"\031\202\323\344\223" +
+      "\002\023\"\021/v1/authorization\022z\n\017GetEntitlements" +
+      "\022%.authorization.GetEntitlementsRequest\032" +
+      "&.authorization.GetEntitlementsResponse\"" +
+      "\030\202\323\344\223\002\022\"\020/v1/entitlementsB\302\001\n!io.opentdf" +
+      ".platform.authorizationB\022AuthorizationPr" +
+      "otoP\001Z5github.com/opentdf/platform/proto" +
+      "col/go/authorization\242\002\003AXX\252\002\rAuthorizati" +
+      "on\312\002\rAuthorization\342\002\031Authorization\\GPBMe" +
+      "tadata\352\002\rAuthorizationb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -216,7 +216,7 @@ public final class AuthorizationProto {
     internal_static_authorization_ResourceAttribute_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_authorization_ResourceAttribute_descriptor,
-        new java.lang.String[] { "Id", "ValueIds", });
+        new java.lang.String[] { "AttributeFqns", });
     internal_static_authorization_GetEntitlementsResponse_descriptor =
       getDescriptor().getMessageTypes().get(11);
     internal_static_authorization_GetEntitlementsResponse_fieldAccessorTable = new

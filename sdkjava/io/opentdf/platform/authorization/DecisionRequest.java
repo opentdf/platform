@@ -37,7 +37,6 @@ package io.opentdf.platform.authorization;
  *],
  *"resourceAttributes": [
  *{
- *"id": "attr-set-1",
  *"attributeValueReferences": [
  *{
  *"attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -45,7 +44,6 @@ package io.opentdf.platform.authorization;
  *]
  *},
  *{
- *"id": "request-set-2",
  *"attributeValueReferences": [
  *{
  *"attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -437,7 +435,6 @@ private static final long serialVersionUID = 0L;
    *],
    *"resourceAttributes": [
    *{
-   *"id": "attr-set-1",
    *"attributeValueReferences": [
    *{
    *"attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -445,7 +442,6 @@ private static final long serialVersionUID = 0L;
    *]
    *},
    *{
-   *"id": "request-set-2",
    *"attributeValueReferences": [
    *{
    *"attributeFqn": "http://www.example.org/attr/foo/value/bar"

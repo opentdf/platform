@@ -21,8 +21,7 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private ResourceAttribute() {
-    id_ = "";
-    valueIds_ =
+    attributeFqns_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
   }
 
@@ -46,80 +45,41 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.authorization.ResourceAttribute.class, io.opentdf.platform.authorization.ResourceAttribute.Builder.class);
   }
 
-  public static final int ID_FIELD_NUMBER = 1;
+  public static final int ATTRIBUTE_FQNS_FIELD_NUMBER = 2;
   @SuppressWarnings("serial")
-  private volatile java.lang.Object id_ = "";
-  /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The id.
-   */
-  @java.lang.Override
-  public java.lang.String getId() {
-    java.lang.Object ref = id_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      id_ = s;
-      return s;
-    }
-  }
-  /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The bytes for id.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getIdBytes() {
-    java.lang.Object ref = id_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      id_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
-  }
-
-  public static final int VALUE_IDS_FIELD_NUMBER = 2;
-  @SuppressWarnings("serial")
-  private com.google.protobuf.LazyStringArrayList valueIds_ =
+  private com.google.protobuf.LazyStringArrayList attributeFqns_ =
       com.google.protobuf.LazyStringArrayList.emptyList();
   /**
-   * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-   * @return A list containing the valueIds.
+   * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+   * @return A list containing the attributeFqns.
    */
   public com.google.protobuf.ProtocolStringList
-      getValueIdsList() {
-    return valueIds_;
+      getAttributeFqnsList() {
+    return attributeFqns_;
   }
   /**
-   * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-   * @return The count of valueIds.
+   * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+   * @return The count of attributeFqns.
    */
-  public int getValueIdsCount() {
-    return valueIds_.size();
+  public int getAttributeFqnsCount() {
+    return attributeFqns_.size();
   }
   /**
-   * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
+   * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
    * @param index The index of the element to return.
-   * @return The valueIds at the given index.
+   * @return The attributeFqns at the given index.
    */
-  public java.lang.String getValueIds(int index) {
-    return valueIds_.get(index);
+  public java.lang.String getAttributeFqns(int index) {
+    return attributeFqns_.get(index);
   }
   /**
-   * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
+   * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
    * @param index The index of the value to return.
-   * @return The bytes of the valueIds at the given index.
+   * @return The bytes of the attributeFqns at the given index.
    */
   public com.google.protobuf.ByteString
-      getValueIdsBytes(int index) {
-    return valueIds_.getByteString(index);
+      getAttributeFqnsBytes(int index) {
+    return attributeFqns_.getByteString(index);
   }
 
   private byte memoizedIsInitialized = -1;
@@ -136,11 +96,8 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
-    }
-    for (int i = 0; i < valueIds_.size(); i++) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, valueIds_.getRaw(i));
+    for (int i = 0; i < attributeFqns_.size(); i++) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, attributeFqns_.getRaw(i));
     }
     getUnknownFields().writeTo(output);
   }
@@ -151,16 +108,13 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
-    }
     {
       int dataSize = 0;
-      for (int i = 0; i < valueIds_.size(); i++) {
-        dataSize += computeStringSizeNoTag(valueIds_.getRaw(i));
+      for (int i = 0; i < attributeFqns_.size(); i++) {
+        dataSize += computeStringSizeNoTag(attributeFqns_.getRaw(i));
       }
       size += dataSize;
-      size += 1 * getValueIdsList().size();
+      size += 1 * getAttributeFqnsList().size();
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -177,10 +131,8 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.authorization.ResourceAttribute other = (io.opentdf.platform.authorization.ResourceAttribute) obj;
 
-    if (!getId()
-        .equals(other.getId())) return false;
-    if (!getValueIdsList()
-        .equals(other.getValueIdsList())) return false;
+    if (!getAttributeFqnsList()
+        .equals(other.getAttributeFqnsList())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -192,11 +144,9 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    hash = (37 * hash) + ID_FIELD_NUMBER;
-    hash = (53 * hash) + getId().hashCode();
-    if (getValueIdsCount() > 0) {
-      hash = (37 * hash) + VALUE_IDS_FIELD_NUMBER;
-      hash = (53 * hash) + getValueIdsList().hashCode();
+    if (getAttributeFqnsCount() > 0) {
+      hash = (37 * hash) + ATTRIBUTE_FQNS_FIELD_NUMBER;
+      hash = (53 * hash) + getAttributeFqnsList().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -333,8 +283,7 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      id_ = "";
-      valueIds_ =
+      attributeFqns_ =
           com.google.protobuf.LazyStringArrayList.emptyList();
       return this;
     }
@@ -370,11 +319,8 @@ private static final long serialVersionUID = 0L;
     private void buildPartial0(io.opentdf.platform.authorization.ResourceAttribute result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.id_ = id_;
-      }
-      if (((from_bitField0_ & 0x00000002) != 0)) {
-        valueIds_.makeImmutable();
-        result.valueIds_ = valueIds_;
+        attributeFqns_.makeImmutable();
+        result.attributeFqns_ = attributeFqns_;
       }
     }
 
@@ -422,18 +368,13 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.authorization.ResourceAttribute other) {
       if (other == io.opentdf.platform.authorization.ResourceAttribute.getDefaultInstance()) return this;
-      if (!other.getId().isEmpty()) {
-        id_ = other.id_;
-        bitField0_ |= 0x00000001;
-        onChanged();
-      }
-      if (!other.valueIds_.isEmpty()) {
-        if (valueIds_.isEmpty()) {
-          valueIds_ = other.valueIds_;
-          bitField0_ |= 0x00000002;
+      if (!other.attributeFqns_.isEmpty()) {
+        if (attributeFqns_.isEmpty()) {
+          attributeFqns_ = other.attributeFqns_;
+          bitField0_ |= 0x00000001;
         } else {
-          ensureValueIdsIsMutable();
-          valueIds_.addAll(other.valueIds_);
+          ensureAttributeFqnsIsMutable();
+          attributeFqns_.addAll(other.attributeFqns_);
         }
         onChanged();
       }
@@ -463,15 +404,10 @@ private static final long serialVersionUID = 0L;
             case 0:
               done = true;
               break;
-            case 10: {
-              id_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000001;
-              break;
-            } // case 10
             case 18: {
               java.lang.String s = input.readStringRequireUtf8();
-              ensureValueIdsIsMutable();
-              valueIds_.add(s);
+              ensureAttributeFqnsIsMutable();
+              attributeFqns_.add(s);
               break;
             } // case 18
             default: {
@@ -491,185 +427,113 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.lang.Object id_ = "";
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return The id.
-     */
-    public java.lang.String getId() {
-      java.lang.Object ref = id_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        id_ = s;
-        return s;
-      } else {
-        return (java.lang.String) ref;
-      }
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return The bytes for id.
-     */
-    public com.google.protobuf.ByteString
-        getIdBytes() {
-      java.lang.Object ref = id_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        id_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @param value The id to set.
-     * @return This builder for chaining.
-     */
-    public Builder setId(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      id_ = value;
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearId() {
-      id_ = getDefaultInstance().getId();
-      bitField0_ = (bitField0_ & ~0x00000001);
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @param value The bytes for id to set.
-     * @return This builder for chaining.
-     */
-    public Builder setIdBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      id_ = value;
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-
-    private com.google.protobuf.LazyStringArrayList valueIds_ =
+    private com.google.protobuf.LazyStringArrayList attributeFqns_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
-    private void ensureValueIdsIsMutable() {
-      if (!valueIds_.isModifiable()) {
-        valueIds_ = new com.google.protobuf.LazyStringArrayList(valueIds_);
+    private void ensureAttributeFqnsIsMutable() {
+      if (!attributeFqns_.isModifiable()) {
+        attributeFqns_ = new com.google.protobuf.LazyStringArrayList(attributeFqns_);
       }
-      bitField0_ |= 0x00000002;
+      bitField0_ |= 0x00000001;
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-     * @return A list containing the valueIds.
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+     * @return A list containing the attributeFqns.
      */
     public com.google.protobuf.ProtocolStringList
-        getValueIdsList() {
-      valueIds_.makeImmutable();
-      return valueIds_;
+        getAttributeFqnsList() {
+      attributeFqns_.makeImmutable();
+      return attributeFqns_;
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-     * @return The count of valueIds.
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+     * @return The count of attributeFqns.
      */
-    public int getValueIdsCount() {
-      return valueIds_.size();
+    public int getAttributeFqnsCount() {
+      return attributeFqns_.size();
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
      * @param index The index of the element to return.
-     * @return The valueIds at the given index.
+     * @return The attributeFqns at the given index.
      */
-    public java.lang.String getValueIds(int index) {
-      return valueIds_.get(index);
+    public java.lang.String getAttributeFqns(int index) {
+      return attributeFqns_.get(index);
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
      * @param index The index of the value to return.
-     * @return The bytes of the valueIds at the given index.
+     * @return The bytes of the attributeFqns at the given index.
      */
     public com.google.protobuf.ByteString
-        getValueIdsBytes(int index) {
-      return valueIds_.getByteString(index);
+        getAttributeFqnsBytes(int index) {
+      return attributeFqns_.getByteString(index);
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
      * @param index The index to set the value at.
-     * @param value The valueIds to set.
+     * @param value The attributeFqns to set.
      * @return This builder for chaining.
      */
-    public Builder setValueIds(
+    public Builder setAttributeFqns(
         int index, java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
-      ensureValueIdsIsMutable();
-      valueIds_.set(index, value);
-      bitField0_ |= 0x00000002;
+      ensureAttributeFqnsIsMutable();
+      attributeFqns_.set(index, value);
+      bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-     * @param value The valueIds to add.
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+     * @param value The attributeFqns to add.
      * @return This builder for chaining.
      */
-    public Builder addValueIds(
+    public Builder addAttributeFqns(
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
-      ensureValueIdsIsMutable();
-      valueIds_.add(value);
-      bitField0_ |= 0x00000002;
+      ensureAttributeFqnsIsMutable();
+      attributeFqns_.add(value);
+      bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-     * @param values The valueIds to add.
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+     * @param values The attributeFqns to add.
      * @return This builder for chaining.
      */
-    public Builder addAllValueIds(
+    public Builder addAllAttributeFqns(
         java.lang.Iterable<java.lang.String> values) {
-      ensureValueIdsIsMutable();
+      ensureAttributeFqnsIsMutable();
       com.google.protobuf.AbstractMessageLite.Builder.addAll(
-          values, valueIds_);
-      bitField0_ |= 0x00000002;
+          values, attributeFqns_);
+      bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearValueIds() {
-      valueIds_ =
+    public Builder clearAttributeFqns() {
+      attributeFqns_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000002);;
+      bitField0_ = (bitField0_ & ~0x00000001);;
       onChanged();
       return this;
     }
     /**
-     * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-     * @param value The bytes of the valueIds to add.
+     * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+     * @param value The bytes of the attributeFqns to add.
      * @return This builder for chaining.
      */
-    public Builder addValueIdsBytes(
+    public Builder addAttributeFqnsBytes(
         com.google.protobuf.ByteString value) {
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
-      ensureValueIdsIsMutable();
-      valueIds_.add(value);
-      bitField0_ |= 0x00000002;
+      ensureAttributeFqnsIsMutable();
+      attributeFqns_.add(value);
+      bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }

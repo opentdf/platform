@@ -75,7 +75,6 @@ message Action {
      ],
      "resourceAttributes": [
        {
-         "id": "attr-set-1",
          "attributeValueReferences": [
            {
              "attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -83,7 +82,6 @@ message Action {
          ]
        },
        {
-         "id": "request-set-2",
          "attributeValueReferences": [
            {
              "attributeFqn": "http://www.example.org/attr/foo/value/bar"
@@ -195,8 +193,7 @@ message EntityEntitlements {
 
 //A logical bucket of attributes belonging to a "Resource"
 message ResourceAttribute {
-  string id = 1;
-  repeated string value_ids = 2;
+  repeated string attribute_fqns = 2;
 }
 
 /*

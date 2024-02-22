@@ -9,39 +9,27 @@ public interface ResourceAttributeOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The id.
-   */
-  java.lang.String getId();
-  /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The bytes for id.
-   */
-  com.google.protobuf.ByteString
-      getIdBytes();
-
-  /**
-   * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-   * @return A list containing the valueIds.
+   * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+   * @return A list containing the attributeFqns.
    */
   java.util.List<java.lang.String>
-      getValueIdsList();
+      getAttributeFqnsList();
   /**
-   * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
-   * @return The count of valueIds.
+   * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
+   * @return The count of attributeFqns.
    */
-  int getValueIdsCount();
+  int getAttributeFqnsCount();
   /**
-   * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
+   * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
    * @param index The index of the element to return.
-   * @return The valueIds at the given index.
+   * @return The attributeFqns at the given index.
    */
-  java.lang.String getValueIds(int index);
+  java.lang.String getAttributeFqns(int index);
   /**
-   * <code>repeated string value_ids = 2 [json_name = "valueIds"];</code>
+   * <code>repeated string attribute_fqns = 2 [json_name = "attributeFqns"];</code>
    * @param index The index of the value to return.
-   * @return The bytes of the valueIds at the given index.
+   * @return The bytes of the attributeFqns at the given index.
    */
   com.google.protobuf.ByteString
-      getValueIdsBytes(int index);
+      getAttributeFqnsBytes(int index);
 }

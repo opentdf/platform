@@ -397,9 +397,9 @@ func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
 // io.EOF error when the stream ends.
 func (r *Reader) Read(p []byte) (int, error) {
 	if r.payloadKey == nil {
-		err := r.getPayloadKey()
+		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
+			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
@@ -409,12 +409,12 @@ func (r *Reader) Read(p []byte) (int, error) {
 }
 
 // WriteTo writes data to writer until there's no more data to write or
-// when an error occurs.
+// when an error occurs. This implements the io.WriterTo interface.
 func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	if r.payloadKey == nil {
-		err := r.getPayloadKey()
+		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
+			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
@@ -473,9 +473,9 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
 func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
 	if r.payloadKey == nil {
-		err := r.getPayloadKey()
+		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
+			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
@@ -568,9 +568,9 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 // UnencryptedMetadata return decrypted metadata in manifest.
 func (r *Reader) UnencryptedMetadata() (string, error) {
 	if r.payloadKey == nil {
-		err := r.getPayloadKey()
+		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return "", fmt.Errorf("reader.getPayloadKey failed: %w", err)
+			return "", fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
@@ -617,7 +617,7 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 // Unwraps the payload key, if possible, using the access service
-func (r *Reader) getPayloadKey() error { //nolint:gocognit
+func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {

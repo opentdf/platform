@@ -35,7 +35,7 @@ var (
 
 func migrateDbClient() (*db.Client, error) {
 	// Load the config
-	conf, err := config.LoadConfig()
+	conf, err := config.LoadConfig("")
 	if err != nil {
 		return nil, err
 	}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/pkg/server"
+	"github.com/opentdf/opentdf-v2-poc/pkg/serviceregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
 	"github.com/opentdf/opentdf-v2-poc/services"
 )
@@ -16,12 +16,16 @@ type ResourceMappingService struct {
 	dbClient *db.Client
 }
 
-func init() {
-	server.RegisterService("policy", &resourcemapping.ResourceMappingService_ServiceDesc, func(srp server.ServiceRegisterArgs) (any, server.ServiceHandlerServer) {
-		return &ResourceMappingService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-			return resourcemapping.RegisterResourceMappingServiceHandlerServer(ctx, mux, server.(resourcemapping.ResourceMappingServiceServer))
-		}
-	})
+func NewRegistration() serviceregistry.Registration {
+	return serviceregistry.Registration{
+		Namespace:   "policy",
+		ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			return &ResourceMappingService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+				return resourcemapping.RegisterResourceMappingServiceHandlerServer(ctx, mux, s.(resourcemapping.ResourceMappingServiceServer))
+			}
+		},
+	}
 }
 
 /*

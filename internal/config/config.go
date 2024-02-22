@@ -16,6 +16,7 @@ import (
 )
 
 type ServiceConfig struct {
+	Enabled    bool                   `yaml:"enabled"`
 	ExtraProps map[string]interface{} `json:"-"`
 }
 

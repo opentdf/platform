@@ -76,8 +76,11 @@ func Start(f ...func(StartConfig) StartConfig) error {
 	// 	return fmt.Errorf("issue registering services: %w", err)
 	// }
 
-	slog.Info("bind services")
-	bindServices(*conf, otdf, dbClient, eng)
+	slog.Info("registering services")
+	registerServices()
+
+	slog.Info("starting services")
+	startServices(*conf, otdf, dbClient, eng)
 
 	// Start the server
 	slog.Info("starting opentdf")
@@ -114,15 +117,21 @@ func createDatabaseClient(ctx context.Context, conf db.Config) (*db.Client, erro
 	return dbClient, nil
 }
 
-func bindServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
+func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
 	// Iterate through the registered namespaces
 	for ns, registers := range serviceregistry.RegisteredServices {
+		// Check if the service is enabled
+		if !cfg.Services[ns].Enabled {
+			slog.Debug("start service skipped", slog.String("namespace", ns))
+			continue
+		}
+
 		for _, r := range registers {
 			// Add service config to the service register
 			r.Config = cfg.Services[ns]
 
 			// Create the service
-			impl, handler := r.Func(serviceregistry.ServiceRegisterArgs{
+			impl, handler := r.RegisterFunc(serviceregistry.RegistrationParams{
 				Config:   cfg,
 				OTDF:     otdf,
 				DBClient: dbClient,
@@ -130,15 +139,15 @@ func bindServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.Cl
 			})
 
 			// Register the service with the gRPC server
-			otdf.GrpcServer.RegisterService(r.Desc, impl)
+			otdf.GrpcServer.RegisterService(r.ServiceDesc, impl)
 
 			// Register the service with the gRPC gateway
 			if err := handler(context.Background(), otdf.Mux, impl); err != nil {
-				slog.Error("failed to bind service", slog.String("namespace", r.Namespace), slog.String("error", err.Error()))
+				slog.Error("failed to start service", slog.String("namespace", r.Namespace), slog.String("error", err.Error()))
 				return err
 			}
 
-			slog.Info("bound service", slog.String("namespace", ns), slog.String("service", r.Desc.ServiceName))
+			slog.Info("started service", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
 			r.Enabled = true
 		}
 	}

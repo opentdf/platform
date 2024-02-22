@@ -8,7 +8,6 @@ import (
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
 	"github.com/opentdf/opentdf-v2-poc/pkg/serviceregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/serviceregistry"
 	"github.com/opentdf/opentdf-v2-poc/services"
 )
 
@@ -17,12 +16,16 @@ type AttributesService struct {
 	dbClient *db.Client
 }
 
-func init() {
-	serviceregistry.RegisterService("policy", &attributes.AttributesService_ServiceDesc, func(srp serviceregistry.ServiceRegisterArgs) (any, serviceregistry.ServiceHandlerServer) {
-		return &AttributesService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-			return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, server.(attributes.AttributesServiceServer))
-		}
-	})
+func NewRegistration() serviceregistry.Registration {
+	return serviceregistry.Registration{
+		Namespace:   "policy",
+		ServiceDesc: &attributes.AttributesService_ServiceDesc,
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			return &AttributesService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+				return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, server.(attributes.AttributesServiceServer))
+			}
+		},
+	}
 }
 
 func (s AttributesService) CreateAttribute(ctx context.Context,

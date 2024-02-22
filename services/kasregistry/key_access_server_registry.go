@@ -6,7 +6,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/pkg/server"
+	"github.com/opentdf/opentdf-v2-poc/pkg/serviceregistry"
 	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/services"
 )
@@ -16,12 +16,16 @@ type KeyAccessServerRegistry struct {
 	dbClient *db.Client
 }
 
-func init() {
-	server.RegisterService("policy", &kasr.KeyAccessServerRegistryService_ServiceDesc, func(srp server.ServiceRegisterArgs) (any, server.ServiceHandlerServer) {
-		return &KeyAccessServerRegistry{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-			return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, server.(kasr.KeyAccessServerRegistryServiceServer))
-		}
-	})
+func NewRegistration() serviceregistry.Registration {
+	return serviceregistry.Registration{
+		Namespace:   "policy",
+		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			return &KeyAccessServerRegistry{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, s.(kasr.KeyAccessServerRegistryServiceServer))
+			}
+		},
+	}
 }
 
 func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,

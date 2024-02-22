@@ -6,7 +6,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/pkg/server"
+	"github.com/opentdf/opentdf-v2-poc/pkg/serviceregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 
 	"github.com/opentdf/opentdf-v2-poc/services"
@@ -17,12 +17,16 @@ type SubjectMappingService struct {
 	dbClient *db.Client
 }
 
-func init() {
-	server.RegisterService("policy", &subjectmapping.SubjectMappingService_ServiceDesc, func(srp server.ServiceRegisterArgs) (any, server.ServiceHandlerServer) {
-		return &SubjectMappingService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-			return subjectmapping.RegisterSubjectMappingServiceHandlerServer(ctx, mux, server.(subjectmapping.SubjectMappingServiceServer))
-		}
-	})
+func NewRegistration() serviceregistry.Registration {
+	return serviceregistry.Registration{
+		Namespace:   "policy",
+		ServiceDesc: &subjectmapping.SubjectMappingService_ServiceDesc,
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			return &SubjectMappingService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+				return subjectmapping.RegisterSubjectMappingServiceHandlerServer(ctx, mux, s.(subjectmapping.SubjectMappingServiceServer))
+			}
+		},
+	}
 }
 
 func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,

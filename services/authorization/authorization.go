@@ -42,7 +42,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 							Standard: authorization.Action_STANDARD_ACTION_TRANSMIT,
 						},
 					},
-					ResourceAttributesId: ra.Id,
+					ResourceAttributesId: "resourceAttributesId_stub" + ra.String(),
 				}
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decision)
 			}

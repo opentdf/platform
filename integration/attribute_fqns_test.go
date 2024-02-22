@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -94,4 +95,55 @@ func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 	s.NoError(err)
 	s.NotEmpty(fqn.Fqn)
 	s.Equal(fqnBuilder(n.Name, a.Name, v.Value), fqn.Fqn)
+}
+
+// Test Get one attribute by fqn
+func (s *AttributeFqnSuite) TestGetAttributeByFqn() {
+	fqnFixture := "example.com/attr/attr1/value/value1"
+	a := fixtures.GetAttributeValueKey(fqnFixture)
+	fqn, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fqnFixture)
+	s.NoError(err)
+	s.Equal(a.Id, fqn.Id)
+	s.Equal(fqnFixture, fqn.Fqn)
+	s.Contains(fqn.Values, a.Value)
+}
+
+// Test multiple get attributes by multiple fqns
+func (s *AttributeFqnSuite) TestGetAttributesByFqns() {
+	namespace := "https://testing_multiple_fqns.get"
+	attr := "test_attr"
+	value := "test_value"
+	fqn := fqnBuilder(namespace, attr, value)
+
+	// Create namespace
+	nsId, err := s.db.PolicyClient.CreateNamespace(s.ctx, namespace)
+	assert.NoError(s.T(), err)
+
+	// Create attribute
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.AttributeCreateUpdate{
+		NamespaceId: nsId,
+		Name:        attr,
+		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	assert.NoError(s.T(), err)
+
+	// Create attribute value
+	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
+		Value: value,
+	})
+	assert.NoError(s.T(), err)
+
+	// Get attributes by fqns
+	fqns := []string{fqn}
+	attrs, err := s.db.PolicyClient.GetAttributesByFqns(s.ctx, fqns)
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), attrs, 1)
+	val, ok := attrs[fqn]
+	assert.True(s.T(), ok)
+	assert.Equal(s.T(), a.Id, val.Id)
+	assert.Equal(s.T(), fqn, val.Fqn)
+	assert.Equal(s.T(), a.Id, val.Values[0].AttributeId)
+	assert.Equal(s.T(), v.Id, val.Values[0].Id)
+	assert.Equal(s.T(), v.Value, val.Values[0].Value)
+	assert.Equal(s.T(), fqn, val.Values[0].Fqn)
 }

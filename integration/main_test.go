@@ -127,7 +127,7 @@ func TestMain(m *testing.M) {
 	slog.Info("🚚 applied migrations", slog.Int("count", applied))
 
 	slog.Info("🏠 loading fixtures")
-	loadFixtureData()
+	LoadFixtureData(fixtureFilename)
 
 	// otdf, err := server.NewOpenTDFServer(conf.Server)
 	// if err != nil {

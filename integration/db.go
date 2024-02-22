@@ -15,7 +15,7 @@ type DBInterface struct {
 	Client       *db.Client
 	PolicyClient *policydb.PolicyDbClient
 	KASRClient   *kasdb.KasRegistryDbClient
-	schema       string
+	Schema       string
 }
 
 func NewDBInterface(schema string) DBInterface {
@@ -28,7 +28,7 @@ func NewDBInterface(schema string) DBInterface {
 	}
 	return DBInterface{
 		Client:       c,
-		schema:       schema,
+		Schema:       schema,
 		PolicyClient: policydb.NewClient(*c),
 		KASRClient:   kasdb.NewClient(*c),
 	}
@@ -62,7 +62,7 @@ func (d *DBInterface) UUIDWrap(v string) string {
 }
 
 func (d *DBInterface) TableName(v string) string {
-	return d.schema + "." + v
+	return d.Schema + "." + v
 }
 
 func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]string) (int64, error) {
@@ -84,7 +84,7 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]str
 }
 
 func (d *DBInterface) DropSchema() error {
-	sql := "DROP SCHEMA IF EXISTS " + d.schema + " CASCADE"
+	sql := "DROP SCHEMA IF EXISTS " + d.Schema + " CASCADE"
 	_, err := d.Client.Pgx.Exec(context.Background(), sql)
 	if err != nil {
 		slog.Error("drop error", "stmt", sql, "err", err)

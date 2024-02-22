@@ -354,7 +354,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 			t.Fatalf("Fail to load the tdf:%v", err)
 		}
 
-		unencryptedMetaData, err := r.GetUnencryptedMetadata()
+		unencryptedMetaData, err := r.UnencryptedMetadata()
 		if err != nil {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}

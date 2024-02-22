@@ -245,7 +245,7 @@ func (r *Reader) Manifest() Manifest {
 }
 
 // prepare the manifest for TDF
-func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
+func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
 	manifest := Manifest{}
 	if len(tdfConfig.kasInfoList) == 0 {
 		return errInvalidKasInfo
@@ -253,7 +253,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
 
-	policyObj, err := tdfObject.createPolicyObject(tdfConfig.attributes)
+	policyObj, err := t.createPolicyObject(tdfConfig.attributes)
 	if err != nil {
 		return fmt.Errorf("fail to create policy object:%w", err)
 	}
@@ -332,22 +332,22 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 	// create the payload key by XOR all the keys in key access object.
 	for _, symKey := range symKeys {
 		for keyByteIndex, keyByte := range symKey {
-			tdfObject.payloadKey[keyByteIndex] ^= keyByte
+			t.payloadKey[keyByteIndex] ^= keyByte
 		}
 	}
 
-	gcm, err := crypto.NewAESGcm(tdfObject.payloadKey[:])
+	gcm, err := crypto.NewAESGcm(t.payloadKey[:])
 	if err != nil {
 		return fmt.Errorf(" crypto.NewAESGcm failed:%w", err)
 	}
 
-	tdfObject.manifest = manifest
-	tdfObject.aesGcm = gcm
+	t.manifest = manifest
+	t.aesGcm = gcm
 	return nil
 }
 
 // create policy object
-func (tdfObject *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error) {
+func (t *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
@@ -395,24 +395,24 @@ func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
 // Read reads up to len(p) bytes into p. It returns the number of bytes
 // read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
-func (reader *Reader) Read(p []byte) (int, error) {
-	if reader.payloadKey == nil {
-		err := reader.getPayloadKey()
+func (r *Reader) Read(p []byte) (int, error) {
+	if r.payloadKey == nil {
+		err := r.getPayloadKey()
 		if err != nil {
 			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
 		}
 	}
 
-	n, err := reader.ReadAt(p, reader.cursor)
-	reader.cursor += int64(n)
+	n, err := r.ReadAt(p, r.cursor)
+	r.cursor += int64(n)
 	return n, err
 }
 
 // WriteTo writes data to writer until there's no more data to write or
 // when an error occurs.
-func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
-	if reader.payloadKey == nil {
-		err := reader.getPayloadKey()
+func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
+	if r.payloadKey == nil {
+		err := r.getPayloadKey()
 		if err != nil {
 			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
 		}
@@ -420,8 +420,8 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 
 	var totalBytes int64
 	var payloadReadOffset int64
-	for _, seg := range reader.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		readBuf, err := reader.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
 		if err != nil {
 			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
@@ -430,13 +430,13 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, errTDFReaderFailed
 		}
 
-		segHashAlg := reader.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
+		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -445,7 +445,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, errSegSigValidation
 		}
 
-		writeBuf, err := reader.aesGcm.Decrypt(readBuf)
+		writeBuf, err := r.aesGcm.Decrypt(readBuf)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.decrypt failed: %w", err)
 		}
@@ -471,9 +471,9 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
-func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
-	if reader.payloadKey == nil {
-		err := reader.getPayloadKey()
+func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
+	if r.payloadKey == nil {
+		err := r.getPayloadKey()
 		if err != nil {
 			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
 		}
@@ -483,7 +483,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 		return 0, errTDFPayloadInvalidOffset
 	}
 
-	defaultSegmentSize := reader.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
 	var start = math.Floor(float64(offset) / float64(defaultSegmentSize))
 	var end = math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
 
@@ -495,19 +495,19 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 		return 0, errTDFPayloadReadFail
 	}
 
-	if offset > reader.payloadSize {
+	if offset > r.payloadSize {
 		return 0, errTDFPayloadReadFail
 	}
 
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
-	for index, seg := range reader.manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
 		if firstSegment > int64(index) {
 			payloadReadOffset += seg.EncryptedSize
 			continue
 		}
 
-		readBuf, err := reader.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
 		if err != nil {
 			return 0, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
@@ -516,13 +516,13 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 			return 0, errTDFReaderFailed
 		}
 
-		segHashAlg := reader.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
+		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -531,7 +531,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 			return 0, errSegSigValidation
 		}
 
-		writeBuf, err := reader.aesGcm.Decrypt(readBuf)
+		writeBuf, err := r.aesGcm.Decrypt(readBuf)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.decrypt failed: %w", err)
 		}
@@ -555,8 +555,8 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 
 	var err error
 	bufLen := int64(len(buf))
-	if (offset + int64(len(buf))) > reader.payloadSize {
-		bufLen = reader.payloadSize - offset
+	if (offset + int64(len(buf))) > r.payloadSize {
+		bufLen = r.payloadSize - offset
 		err = io.EOF
 	}
 
@@ -566,22 +566,22 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 }
 
 // UnencryptedMetadata return decrypted metadata in manifest.
-func (reader *Reader) UnencryptedMetadata() (string, error) {
-	if reader.payloadKey == nil {
-		err := reader.getPayloadKey()
+func (r *Reader) UnencryptedMetadata() (string, error) {
+	if r.payloadKey == nil {
+		err := r.getPayloadKey()
 		if err != nil {
 			return "", fmt.Errorf("reader.getPayloadKey failed: %w", err)
 		}
 	}
 
-	return reader.unencryptedMetadata, nil
+	return r.unencryptedMetadata, nil
 }
 
 // Policy returns a copy of the policy object in manifest, if it is valid.
 // Otherwise, returns an error.
-func (reader *Reader) Policy() (PolicyObject, error) {
+func (r *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
-	policy, err := crypto.Base64Decode([]byte(reader.manifest.Policy))
+	policy, err := crypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
 		return policyObj, fmt.Errorf("crypto.Base64Decode failed:%w", err)
 	}
@@ -595,8 +595,8 @@ func (reader *Reader) Policy() (PolicyObject, error) {
 }
 
 // DataAttributes return the data attributes present in tdf.
-func (reader *Reader) DataAttributes() ([]string, error) {
-	policy, err := crypto.Base64Decode([]byte(reader.manifest.Policy))
+func (r *Reader) DataAttributes() ([]string, error) {
+	policy, err := crypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
 		return nil, fmt.Errorf("crypto.Base64Decode failed:%w", err)
 	}
@@ -617,12 +617,12 @@ func (reader *Reader) DataAttributes() ([]string, error) {
 }
 
 // Unwraps the payload key, if possible, using the access service
-func (reader *Reader) getPayloadKey() error { //nolint:gocognit
+func (r *Reader) getPayloadKey() error { //nolint:gocognit
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
-	for _, keyAccessObj := range reader.manifest.EncryptionInformation.KeyAccessObjs {
-		requestBody := RequestBody{keyAccessObj, "", reader.manifest.EncryptionInformation.Policy}
-		wrappedKey, err := rewrap(reader.authConfig, &requestBody)
+	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
+		requestBody := RequestBody{keyAccessObj, "", r.manifest.EncryptionInformation.Policy}
+		wrappedKey, err := rewrap(r.authConfig, &requestBody)
 		if err != nil {
 			return fmt.Errorf(" splitKey.rewrap failed:%w", err)
 		}
@@ -659,7 +659,7 @@ func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 		}
 	}
 
-	res, err := validateRootSignature(reader.manifest, payloadKey[:])
+	res, err := validateRootSignature(r.manifest, payloadKey[:])
 	if err != nil {
 		return fmt.Errorf("splitKey.validateRootSignature failed: %w", err)
 	}
@@ -668,15 +668,15 @@ func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 		return errRootSigValidation
 	}
 
-	segSize := reader.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	encryptedSegSize := reader.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
+	segSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	encryptedSegSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
 
 	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
 		return errSegSizeMismatch
 	}
 
 	var payloadSize int64
-	for _, seg := range reader.manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
 		payloadSize += seg.Size
 	}
 
@@ -685,10 +685,10 @@ func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 		return fmt.Errorf(" crypto.NewAESGcm failed:%w", err)
 	}
 
-	reader.payloadSize = payloadSize
-	reader.unencryptedMetadata = unencryptedMetadata
-	reader.payloadKey = payloadKey[:]
-	reader.aesGcm = gcm
+	r.payloadSize = payloadSize
+	r.unencryptedMetadata = unencryptedMetadata
+	r.payloadKey = payloadKey[:]
+	r.aesGcm = gcm
 
 	return nil
 }

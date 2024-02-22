@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
-	"github.com/opentdf/platform/sdk/common"
-	resourcemapping "github.com/opentdf/platform/sdk/resourcemapping"
+	"github.com/opentdf/platform/protocol/go/common"
+	resourcemapping "github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -59,7 +59,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
 	}
-	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 }
@@ -72,7 +72,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeVa
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
 	}
-	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), createdMapping)
 	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
@@ -87,7 +87,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 		Metadata:         metadata,
 		Terms:            []string{},
 	}
-	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 	assert.NotNil(s.T(), createdMapping.Terms)
@@ -97,7 +97,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 	// make sure we can get all fixtures
 	testData := getResourceMappingFixtures()
-	mappings, err := s.db.Client.ListResourceMappings(s.ctx)
+	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), mappings)
 	for _, testMapping := range testData {
@@ -116,7 +116,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 	// make sure we can get all fixtures
 	testData := getResourceMappingFixtures()
 	for _, testMapping := range testData {
-		mapping, err := s.db.Client.GetResourceMapping(s.ctx, testMapping.Id)
+		mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, testMapping.Id)
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), mapping)
 		assert.Equal(s.T(), testMapping.Id, mapping.Id)
@@ -126,7 +126,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
-	mapping, err := s.db.Client.GetResourceMapping(s.ctx, nonExistentResourceMappingUUID)
+	mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, nonExistentResourceMappingUUID)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), mapping)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
@@ -141,11 +141,11 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
 	}
-	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 
-	got, err := s.db.Client.GetResourceMapping(s.ctx, createdMapping.Id)
+	got, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), mapping)
 	assert.Equal(s.T(), createdMapping.Id, got.Id)
@@ -167,7 +167,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		Metadata:         metadata,
 		Terms:            []string{"some term", "other term"},
 	}
-	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 
@@ -184,12 +184,12 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		Metadata:         updatedMetadata,
 		Terms:            []string{"updated term1", "updated term 2"},
 	}
-	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, createdMapping.Id, updatedMapping)
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.Id, updatedMapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
 
 	// get after update to verify db reflects changes made
-	got, err := s.db.Client.GetResourceMapping(s.ctx, createdMapping.Id)
+	got, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), createdMapping.Id, got.Id)
@@ -205,7 +205,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"asdf qwerty"},
 	}
-	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 
@@ -214,7 +214,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 		AttributeValueId: createdMapping.AttributeValue.Id,
 		Terms:            []string{"asdf updated term1"},
 	}
-	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUUID, updatedMapping)
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUUID, updatedMapping)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
@@ -226,7 +226,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"testing"},
 	}
-	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 
@@ -235,7 +235,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 		AttributeValueId: nonExistentAttributeValueUuid,
 		Terms:            []string{"testing-2"},
 	}
-	updated, err := s.db.Client.UpdateResourceMapping(s.ctx, createdMapping.Id, updatedMapping)
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.Id, updatedMapping)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
 	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
@@ -247,21 +247,21 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"term1", "term2"},
 	}
-	createdMapping, err := s.db.Client.CreateResourceMapping(s.ctx, mapping)
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 
-	deleted, err := s.db.Client.DeleteResourceMapping(s.ctx, createdMapping.Id)
+	deleted, err := s.db.PolicyClient.DeleteResourceMapping(s.ctx, createdMapping.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), deleted)
 
-	deletedMapping, err := s.db.Client.GetResourceMapping(s.ctx, createdMapping.Id)
+	deletedMapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.Id)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), deletedMapping)
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMappingWithUnknownIdFails() {
-	deleted, err := s.db.Client.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUUID)
+	deleted, err := s.db.PolicyClient.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUUID)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), deleted)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)

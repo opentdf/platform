@@ -4,8 +4,8 @@ import (
 	ctx "context"
 	"testing"
 
-	attrs "github.com/opentdf/platform/sdk/attributes"
-	"github.com/opentdf/platform/sdk/namespaces"
+	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -312,7 +312,7 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 
 func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-	//There are no data attribute instances in this test so the data attribute definitions
+	// There are no data attribute instances in this test so the data attribute definitions
 	// are useless, and should be ignored, but supply the definitions anyway to test that assumption
 	mockAttrDefinitions := []attrs.Attribute{
 		{

@@ -3,25 +3,25 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/opentdf/platform/services/authorization"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/opentdf/platform/services/authorization"
 
 	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/logger"
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/internal/server"
-	"github.com/opentdf/platform/services/resourcemapping"
 
-	// "github.com/opentdf/platform/services/acre"
-	"github.com/opentdf/platform/services/attributes"
 	"github.com/opentdf/platform/services/kasregistry"
-	"github.com/opentdf/platform/services/subjectmapping"
+	attr "github.com/opentdf/platform/services/policy/attributes"
+	"github.com/opentdf/platform/services/policy/namespaces"
+	"github.com/opentdf/platform/services/policy/resourcemapping"
+	"github.com/opentdf/platform/services/policy/subjectmapping"
 
-	"github.com/opentdf/platform/services/namespaces"
 	// "github.com/opentdf/platform/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
@@ -140,7 +140,7 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	}
 
 	slog.Info("registering attributes server")
-	err = attributes.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = attr.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register attributes service: %w", err)
 	}

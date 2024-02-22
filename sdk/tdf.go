@@ -29,20 +29,32 @@ var (
 )
 
 const (
-	maxFileSizeSupported   = 68719476736 // 64gb
-	defaultMimeType        = "application/octet-stream"
-	tdfAsZip               = "zip"
-	gcmIvSize              = 12
-	aesBlockSize           = 16
-	hmacIntegrityAlgorithm = "HS256"
-	gmacIntegrityAlgorithm = "GMAC"
-	tdfZipReference        = "reference"
-	kKeySize               = 32
-	kWrapped               = "wrapped"
-	kKasProtocol           = "kas"
-	kSplitKeyType          = "split"
-	kGCMCipherAlgorithm    = "AES-256-GCM"
-	kGMACPayloadLength     = 16
+	maxFileSizeSupported    = 68719476736 // 64gb
+	defaultMimeType         = "application/octet-stream"
+	tdfAsZip                = "zip"
+	gcmIvSize               = 12
+	aesBlockSize            = 16
+	hmacIntegrityAlgorithm  = "HS256"
+	gmacIntegrityAlgorithm  = "GMAC"
+	tdfZipReference         = "reference"
+	kKeySize                = 32
+	kWrapped                = "wrapped"
+	kKasProtocol            = "kas"
+	kSplitKeyType           = "split"
+	kGCMCipherAlgorithm     = "AES-256-GCM"
+	kGMACPayloadLength      = 16
+	kClientPublicKey        = "clientPublicKey"
+	kSignedRequestToken     = "signedRequestToken"
+	kKasURL                 = "url"
+	kRewrapV2               = "/v2/rewrap"
+	kAuthorizationKey       = "Authorization"
+	kContentTypeKey         = "Content-Type"
+	kAcceptKey              = "Accept"
+	kContentTypeJSONValue   = "application/json"
+	kEntityWrappedKey       = "entityWrappedKey"
+	kPolicy                 = "policy"
+	kHmacIntegrityAlgorithm = "HS256"
+	kGmacIntegrityAlgorithm = "GMAC"
 )
 
 type Reader struct {
@@ -63,8 +75,8 @@ type TDFObject struct {
 	payloadKey [kKeySize]byte
 }
 
-// CreateTDF tdf
-func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+// CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+func CreateTDF(writer io.Writer, reader io.ReadSeeker, unwrapper Unwrapper, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -79,8 +91,18 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
+	tdfConfig, err := NewTDFConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
+	}
+
+	err = getPublicKeys(unwrapper, tdfConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving public keys: %w", err)
+	}
+
 	tdfObject := &TDFObject{}
-	err = tdfObject.prepareManifest(tdfConfig)
+	err = tdfObject.prepareManifest(*tdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -222,7 +244,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 	}
 
 	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
-	symKeys := [][]byte{}
+	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
 	for _, kasInfo := range tdfConfig.kasInfoList {
 		if len(kasInfo.publicKey) == 0 {
 			return errKasPubKeyMissing
@@ -267,8 +289,10 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 			}
 
 			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
-			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)),
-				Iv: string(crypto.Base64Encode(iv))}
+			metadata := EncryptedMetadata{
+				Cipher: string(crypto.Base64Encode(encryptedMetaData)),
+				Iv:     string(crypto.Base64Encode(iv)),
+			}
 
 			metadataJSON, err := json.Marshal(metadata)
 			if err != nil {
@@ -697,4 +721,24 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func getPublicKeys(unwrapper Unwrapper, tdfConfig *TDFConfig) error {
+	newKasInfos := make([]KASInfo, 0)
+	for _, kasInfo := range tdfConfig.kasInfoList {
+		if kasInfo.publicKey == "" {
+			publicKey, err := unwrapper.GetRewrappingPublicKey(kasInfo)
+			if err != nil {
+				return err
+			}
+
+			kasInfo.publicKey = publicKey
+		}
+
+		newKasInfos = append(newKasInfos, kasInfo)
+	}
+
+	tdfConfig.kasInfoList = newKasInfos
+
+	return nil
 }

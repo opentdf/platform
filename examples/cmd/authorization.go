@@ -3,11 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/sdk/authorization"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
-	"log/slog"
 )
 
 var AuthorizationExampleCmd = &cobra.Command{
@@ -20,9 +21,7 @@ var AuthorizationExampleCmd = &cobra.Command{
 }
 
 func authorizationExamples(examplesConfig *ExampleConfig) error {
-
 	s, err := sdk.New(examplesConfig.PlatformEndpoint, sdk.WithInsecureConn())
-
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		return err
@@ -36,10 +35,10 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 
 	// model two groups of entities; user bob and user alice
 	entityChains := []*authorization.EntityChain{{
-		Id:       "ec1", //ec1 is an arbitrary tracking id to match results to request
+		Id:       "ec1", // ec1 is an arbitrary tracking id to match results to request
 		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"}}},
 	}, {
-		Id:       "ec2", //ec2 is an arbitrary tracking id to match results to request
+		Id:       "ec2", // ec2 is an arbitrary tracking id to match results to request
 		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"}}},
 	}}
 
@@ -55,8 +54,9 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 		Actions:      actions,
 		EntityChains: entityChains,
 		ResourceAttributes: []*authorization.ResourceAttributes{
-			{Id: "request-set-1", AttributeId: []string{tradeSecretAttributeValueId}},                        // request-set-1 is arbitrary tracking id
-			{Id: "request-set-2", AttributeId: []string{tradeSecretAttributeValueId, openAttributeValueId}}}, // request-set-2 is arbitrary tracking id
+			{Id: "request-set-1", AttributeId: []string{tradeSecretAttributeValueId}}, // request-set-1 is arbitrary tracking id
+			{Id: "request-set-2", AttributeId: []string{tradeSecretAttributeValueId, openAttributeValueId}},
+		}, // request-set-2 is arbitrary tracking id
 	})
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}

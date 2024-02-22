@@ -13,6 +13,7 @@ COPY internal/ internal/
 COPY migrations/ migrations/
 COPY policies/ policies/
 COPY services/ services/
+COPY protocol/ protocol/
 
 RUN go build -o opentdf .
 

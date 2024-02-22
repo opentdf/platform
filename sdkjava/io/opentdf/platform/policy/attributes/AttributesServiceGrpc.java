@@ -113,6 +113,37 @@ public final class AttributesServiceGrpc {
     return getGetAttributeMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest,
+      io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse> getGetAttributesByFqnMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "GetAttributesByFqn",
+      requestType = io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest.class,
+      responseType = io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest,
+      io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse> getGetAttributesByFqnMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest, io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse> getGetAttributesByFqnMethod;
+    if ((getGetAttributesByFqnMethod = AttributesServiceGrpc.getGetAttributesByFqnMethod) == null) {
+      synchronized (AttributesServiceGrpc.class) {
+        if ((getGetAttributesByFqnMethod = AttributesServiceGrpc.getGetAttributesByFqnMethod) == null) {
+          AttributesServiceGrpc.getGetAttributesByFqnMethod = getGetAttributesByFqnMethod =
+              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest, io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "GetAttributesByFqn"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new AttributesServiceMethodDescriptorSupplier("GetAttributesByFqn"))
+              .build();
+        }
+      }
+    }
+    return getGetAttributesByFqnMethod;
+  }
+
   private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.attributes.CreateAttributeRequest,
       io.opentdf.platform.policy.attributes.CreateAttributeResponse> getCreateAttributeMethod;
 
@@ -624,6 +655,13 @@ public final class AttributesServiceGrpc {
     }
 
     /**
+     */
+    default void getAttributesByFqn(io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetAttributesByFqnMethod(), responseObserver);
+    }
+
+    /**
      * <pre>
      * Create Attribute
      *Request:
@@ -950,6 +988,14 @@ public final class AttributesServiceGrpc {
     }
 
     /**
+     */
+    public void getAttributesByFqn(io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetAttributesByFqnMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
      * <pre>
      * Create Attribute
      *Request:
@@ -1268,6 +1314,13 @@ public final class AttributesServiceGrpc {
     }
 
     /**
+     */
+    public io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse getAttributesByFqn(io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetAttributesByFqnMethod(), getCallOptions(), request);
+    }
+
+    /**
      * <pre>
      * Create Attribute
      *Request:
@@ -1578,6 +1631,14 @@ public final class AttributesServiceGrpc {
     }
 
     /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse> getAttributesByFqn(
+        io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetAttributesByFqnMethod(), getCallOptions()), request);
+    }
+
+    /**
      * <pre>
      * Create Attribute
      *Request:
@@ -1761,17 +1822,18 @@ public final class AttributesServiceGrpc {
   private static final int METHODID_LIST_ATTRIBUTES = 0;
   private static final int METHODID_LIST_ATTRIBUTE_VALUES = 1;
   private static final int METHODID_GET_ATTRIBUTE = 2;
-  private static final int METHODID_CREATE_ATTRIBUTE = 3;
-  private static final int METHODID_UPDATE_ATTRIBUTE = 4;
-  private static final int METHODID_DEACTIVATE_ATTRIBUTE = 5;
-  private static final int METHODID_GET_ATTRIBUTE_VALUE = 6;
-  private static final int METHODID_CREATE_ATTRIBUTE_VALUE = 7;
-  private static final int METHODID_UPDATE_ATTRIBUTE_VALUE = 8;
-  private static final int METHODID_DEACTIVATE_ATTRIBUTE_VALUE = 9;
-  private static final int METHODID_ASSIGN_KEY_ACCESS_SERVER_TO_ATTRIBUTE = 10;
-  private static final int METHODID_REMOVE_KEY_ACCESS_SERVER_FROM_ATTRIBUTE = 11;
-  private static final int METHODID_ASSIGN_KEY_ACCESS_SERVER_TO_VALUE = 12;
-  private static final int METHODID_REMOVE_KEY_ACCESS_SERVER_FROM_VALUE = 13;
+  private static final int METHODID_GET_ATTRIBUTES_BY_FQN = 3;
+  private static final int METHODID_CREATE_ATTRIBUTE = 4;
+  private static final int METHODID_UPDATE_ATTRIBUTE = 5;
+  private static final int METHODID_DEACTIVATE_ATTRIBUTE = 6;
+  private static final int METHODID_GET_ATTRIBUTE_VALUE = 7;
+  private static final int METHODID_CREATE_ATTRIBUTE_VALUE = 8;
+  private static final int METHODID_UPDATE_ATTRIBUTE_VALUE = 9;
+  private static final int METHODID_DEACTIVATE_ATTRIBUTE_VALUE = 10;
+  private static final int METHODID_ASSIGN_KEY_ACCESS_SERVER_TO_ATTRIBUTE = 11;
+  private static final int METHODID_REMOVE_KEY_ACCESS_SERVER_FROM_ATTRIBUTE = 12;
+  private static final int METHODID_ASSIGN_KEY_ACCESS_SERVER_TO_VALUE = 13;
+  private static final int METHODID_REMOVE_KEY_ACCESS_SERVER_FROM_VALUE = 14;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -1801,6 +1863,10 @@ public final class AttributesServiceGrpc {
         case METHODID_GET_ATTRIBUTE:
           serviceImpl.getAttribute((io.opentdf.platform.policy.attributes.GetAttributeRequest) request,
               (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.GetAttributeResponse>) responseObserver);
+          break;
+        case METHODID_GET_ATTRIBUTES_BY_FQN:
+          serviceImpl.getAttributesByFqn((io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse>) responseObserver);
           break;
         case METHODID_CREATE_ATTRIBUTE:
           serviceImpl.createAttribute((io.opentdf.platform.policy.attributes.CreateAttributeRequest) request,
@@ -1885,6 +1951,13 @@ public final class AttributesServiceGrpc {
               io.opentdf.platform.policy.attributes.GetAttributeRequest,
               io.opentdf.platform.policy.attributes.GetAttributeResponse>(
                 service, METHODID_GET_ATTRIBUTE)))
+        .addMethod(
+          getGetAttributesByFqnMethod(),
+          io.grpc.stub.ServerCalls.asyncUnaryCall(
+            new MethodHandlers<
+              io.opentdf.platform.policy.attributes.GetAttributesByFqnRequest,
+              io.opentdf.platform.policy.attributes.GetAttributesByFqnResponse>(
+                service, METHODID_GET_ATTRIBUTES_BY_FQN)))
         .addMethod(
           getCreateAttributeMethod(),
           io.grpc.stub.ServerCalls.asyncUnaryCall(
@@ -2013,6 +2086,7 @@ public final class AttributesServiceGrpc {
               .addMethod(getListAttributesMethod())
               .addMethod(getListAttributeValuesMethod())
               .addMethod(getGetAttributeMethod())
+              .addMethod(getGetAttributesByFqnMethod())
               .addMethod(getCreateAttributeMethod())
               .addMethod(getUpdateAttributeMethod())
               .addMethod(getDeactivateAttributeMethod())

@@ -49,6 +49,40 @@
         ]
       }
     },
+    "/attributes/_/fqn": {
+      "get": {
+        "operationId": "AttributesService_GetAttributesByFqn",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesGetAttributesByFqnResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "fqns",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
     "/attributes/_/values/{id}": {
       "get": {
         "summary": "* Attribute Value *",
@@ -580,6 +614,18 @@
       "properties": {
         "value": {
           "$ref": "#/definitions/attributesValue"
+        }
+      }
+    },
+    "attributesGetAttributesByFqnResponse": {
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/attributesAttribute"
+          }
         }
       }
     },

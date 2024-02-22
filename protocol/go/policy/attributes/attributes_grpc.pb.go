@@ -22,6 +22,7 @@ const (
 	AttributesService_ListAttributes_FullMethodName                     = "/policy.attributes.AttributesService/ListAttributes"
 	AttributesService_ListAttributeValues_FullMethodName                = "/policy.attributes.AttributesService/ListAttributeValues"
 	AttributesService_GetAttribute_FullMethodName                       = "/policy.attributes.AttributesService/GetAttribute"
+	AttributesService_GetAttributesByFqn_FullMethodName                 = "/policy.attributes.AttributesService/GetAttributesByFqn"
 	AttributesService_CreateAttribute_FullMethodName                    = "/policy.attributes.AttributesService/CreateAttribute"
 	AttributesService_UpdateAttribute_FullMethodName                    = "/policy.attributes.AttributesService/UpdateAttribute"
 	AttributesService_DeactivateAttribute_FullMethodName                = "/policy.attributes.AttributesService/DeactivateAttribute"
@@ -134,6 +135,7 @@ type AttributesServiceClient interface {
 	// }
 	ListAttributeValues(ctx context.Context, in *ListAttributeValuesRequest, opts ...grpc.CallOption) (*ListAttributeValuesResponse, error)
 	GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error)
+	GetAttributesByFqn(ctx context.Context, in *GetAttributesByFqnRequest, opts ...grpc.CallOption) (*GetAttributesByFqnResponse, error)
 	// Create Attribute
 	// Request:
 	// grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
@@ -266,6 +268,15 @@ func (c *attributesServiceClient) ListAttributeValues(ctx context.Context, in *L
 func (c *attributesServiceClient) GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error) {
 	out := new(GetAttributeResponse)
 	err := c.cc.Invoke(ctx, AttributesService_GetAttribute_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) GetAttributesByFqn(ctx context.Context, in *GetAttributesByFqnRequest, opts ...grpc.CallOption) (*GetAttributesByFqnResponse, error) {
+	out := new(GetAttributesByFqnResponse)
+	err := c.cc.Invoke(ctx, AttributesService_GetAttributesByFqn_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -470,6 +481,7 @@ type AttributesServiceServer interface {
 	// }
 	ListAttributeValues(context.Context, *ListAttributeValuesRequest) (*ListAttributeValuesResponse, error)
 	GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error)
+	GetAttributesByFqn(context.Context, *GetAttributesByFqnRequest) (*GetAttributesByFqnResponse, error)
 	// Create Attribute
 	// Request:
 	// grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
@@ -587,6 +599,9 @@ func (UnimplementedAttributesServiceServer) ListAttributeValues(context.Context,
 func (UnimplementedAttributesServiceServer) GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAttribute not implemented")
 }
+func (UnimplementedAttributesServiceServer) GetAttributesByFqn(context.Context, *GetAttributesByFqnRequest) (*GetAttributesByFqnResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAttributesByFqn not implemented")
+}
 func (UnimplementedAttributesServiceServer) CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAttribute not implemented")
 }
@@ -683,6 +698,24 @@ func _AttributesService_GetAttribute_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AttributesServiceServer).GetAttribute(ctx, req.(*GetAttributeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_GetAttributesByFqn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAttributesByFqnRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).GetAttributesByFqn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_GetAttributesByFqn_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).GetAttributesByFqn(ctx, req.(*GetAttributesByFqnRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -903,6 +936,10 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAttribute",
 			Handler:    _AttributesService_GetAttribute_Handler,
+		},
+		{
+			MethodName: "GetAttributesByFqn",
+			Handler:    _AttributesService_GetAttributesByFqn_Handler,
 		},
 		{
 			MethodName: "CreateAttribute",

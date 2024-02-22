@@ -483,6 +483,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.GetAttributesByFqnRequest"><span class="badge">M</span>GetAttributesByFqnRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetAttributesByFqnResponse"><span class="badge">M</span>GetAttributesByFqnResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.ListAttributeValuesRequest"><span class="badge">M</span>ListAttributeValuesRequest</a>
                 </li>
               
@@ -3036,6 +3044,54 @@ Response:
 
         
       
+        <h3 id="policy.attributes.GetAttributesByFqnRequest">GetAttributesByFqnRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetAttributesByFqnResponse">GetAttributesByFqnResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attributes</td>
+                  <td><a href="#policy.attributes.Attribute">Attribute</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.ListAttributeValuesRequest">ListAttributeValuesRequest</h3>
         <p></p>
 
@@ -3655,6 +3711,13 @@ Response:
               </tr>
             
               <tr>
+                <td>GetAttributesByFqn</td>
+                <td><a href="#policy.attributes.GetAttributesByFqnRequest">GetAttributesByFqnRequest</a></td>
+                <td><a href="#policy.attributes.GetAttributesByFqnResponse">GetAttributesByFqnResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>CreateAttribute</td>
                 <td><a href="#policy.attributes.CreateAttributeRequest">CreateAttributeRequest</a></td>
                 <td><a href="#policy.attributes.CreateAttributeResponse">CreateAttributeResponse</a></td>
@@ -3837,6 +3900,16 @@ Example Response:
                 <td>GetAttribute</td>
                 <td>GET</td>
                 <td>/attributes/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetAttributesByFqn</td>
+                <td>GET</td>
+                <td>/attributes/_/fqn</td>
                 <td></td>
               </tr>
               

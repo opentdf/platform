@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
 // These values are optional, but at least one must be set. The other values will be derived from
@@ -145,4 +146,17 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 	}
 
 	return res
+}
+
+func (c *PolicyDbClient) GetAttributesByFqns(ctx context.Context, fqns []string) (map[string]*attributes.Attribute, error) {
+	list := make(map[string]*attributes.Attribute, len(fqns))
+	for _, fqn := range fqns {
+		attr, err := c.GetAttributeByFqn(ctx, fqn)
+		if err != nil {
+			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
+			return nil, err
+		}
+		list[fqn] = attr
+	}
+	return list, nil
 }

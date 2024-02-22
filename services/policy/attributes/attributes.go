@@ -77,6 +77,20 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	return rsp, err
 }
 
+func (s *AttributesService) GetAttributesByFqns(ctx context.Context,
+	req *attr.GetAttributesByFqnsRequest,
+) (*attr.GetAttributesByFqnsResponse, error) {
+	rsp := &attr.GetAttributesByFqnsResponse{}
+
+	fqnsToAttributes, err := s.dbClient.GetAttributesByFqns(ctx, req.Fqns)
+	if err != nil {
+		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Fqns)))
+	}
+	rsp.Attributes = fqnsToAttributes
+
+	return rsp, nil
+}
+
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	req *attr.UpdateAttributeRequest,
 ) (*attr.UpdateAttributeResponse, error) {

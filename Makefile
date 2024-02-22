@@ -30,7 +30,7 @@ pre-build:
 go.work go.work.sum:
 	go work init . examples protocol/go sdk
 	go work edit --go=1.21.7
-	go work sync
+
 
 fix:
 	(cd protocol/go && go mod tidy && go fmt ./...)

@@ -31,7 +31,6 @@ go.work go.work.sum:
 	go work init . examples protocol/go sdk
 	go work edit --go=1.21.7
 
-
 fix:
 	(cd protocol/go && go mod tidy && go fmt ./...)
 	(cd sdk && go mod tidy && go fmt ./...)

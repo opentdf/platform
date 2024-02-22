@@ -320,8 +320,8 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}
 
-		if tdfObj.TdfSize != expectedTdfSize {
-			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.TdfSize, expectedTdfSize)
+		if tdfObj.size != expectedTdfSize {
+			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.size, expectedTdfSize)
 		}
 	}
 
@@ -354,7 +354,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 			t.Fatalf("Fail to load the tdf:%v", err)
 		}
 
-		unencryptedMetaData, err := r.GetUnencryptedMetadata()
+		unencryptedMetaData, err := r.UnencryptedMetadata()
 		if err != nil {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
@@ -643,8 +643,8 @@ func testEncrypt(t *testing.T, kasInfoList []KASInfo, plainTextFilename, tdfFile
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
 
-	if tdfObj.TdfSize != test.tdfFileSize {
-		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfObj.TdfSize)
+	if tdfObj.size != test.tdfFileSize {
+		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfObj.size)
 	}
 }
 

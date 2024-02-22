@@ -49,26 +49,31 @@ This should bring up a grpc server on port **9000** and http server on port **80
 ```bash
   grpcurl -plaintext localhost:9000 list
 
-  attributes.AttributesService
+  authorization.AuthorizationService
   grpc.reflection.v1.ServerReflection
   grpc.reflection.v1alpha.ServerReflection
   kasregistry.KeyAccessServerRegistryService
-  namespaces.NamespaceService
-  resourcemapping.ResourceMappingService
-  subjectmapping.SubjectMappingService
+  policy.attributes.AttributesService
+  policy.namespaces.NamespaceService
+  policy.resourcemapping.ResourceMappingService
+  policy.subjectmapping.SubjectMappingService
 
-  grpcurl -plaintext localhost:9000 list attributes.AttributesService
+  grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
 
-  attributes.AttributesService.CreateAttribute
-  attributes.AttributesService.CreateAttributeValue
-  attributes.AttributesService.DeleteAttribute
-  attributes.AttributesService.DeleteAttributeValue
-  attributes.AttributesService.GetAttribute
-  attributes.AttributesService.GetAttributeValue
-  attributes.AttributesService.ListAttributeValues
-  attributes.AttributesService.ListAttributes
-  attributes.AttributesService.UpdateAttribute
-  attributes.AttributesService.UpdateAttributeValue
+  policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
+  policy.attributes.AttributesService.AssignKeyAccessServerToValue
+  policy.attributes.AttributesService.CreateAttribute
+  policy.attributes.AttributesService.CreateAttributeValue
+  policy.attributes.AttributesService.DeactivateAttribute
+  policy.attributes.AttributesService.DeactivateAttributeValue
+  policy.attributes.AttributesService.GetAttribute
+  policy.attributes.AttributesService.GetAttributeValue
+  policy.attributes.AttributesService.ListAttributeValues
+  policy.attributes.AttributesService.ListAttributes
+  policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute
+  policy.attributes.AttributesService.RemoveKeyAccessServerFromValue
+  policy.attributes.AttributesService.UpdateAttribute
+  policy.attributes.AttributesService.UpdateAttributeValue
 ```
 
 Create Attribute

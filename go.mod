@@ -4,7 +4,6 @@ go 1.21.7
 
 replace (
 	github.com/opentdf/platform/protocol/go => ./protocol/go
-	github.com/opentdf/platform/sdk => ./sdk
 )
 
 require (

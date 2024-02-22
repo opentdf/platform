@@ -74,7 +74,8 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		From(t.Name())
 
 	if opts.withFqn {
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("namespace_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("namespace_id") + " = " + t.Field("id") +
+		" AND " + fqnT.Field("attribute_id") + " IS NULL")
 	}
 
 	return sb.

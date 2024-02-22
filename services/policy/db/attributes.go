@@ -64,6 +64,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	t := db.Tables.Attributes
 	nt := db.Tables.Namespaces
 	avt := db.Tables.AttributeValues
+	fqnt := db.Tables.AttrFqn
 	// akt := db.Tables.AttributeKeyAccessGrants
 	// avkt := db.Tables.AttributeKeyAccessGrants
 	selectFields := []string{
@@ -105,7 +106,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			")) AS grants")
 	}
 	if opts.withFqn {
-		selectFields = append(selectFields, "fqn")
+		selectFields = append(selectFields, fqnt.Field("fqn"))
 	}
 
 	sb := db.NewStatementBuilder().Select(selectFields...).
@@ -119,8 +120,8 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			LeftJoin(db.Tables.KeyAccessServerRegistry.Name() + " ON " + db.Tables.KeyAccessServerRegistry.Name() + ".id = " + db.Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
 	}
 	if opts.withFqn {
-		sb = sb.LeftJoin(db.Tables.AttrFqn.Name() + " ON " + db.Tables.AttrFqn.Field("attribute_id") + " = " + t.Field("id") +
-			" AND " + db.Tables.AttrFqn.Field("value_id") + " = NULL")
+		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
+			" AND " + fqnt.Field("value_id") + " IS NULL")
 	}
 
 	g := []string{t.Field("id"), nt.Field("name")}

@@ -1,11 +1,14 @@
 module github.com/opentdf/platform/examples
 
-go 1.21.5
+go 1.21.7
+
+toolchain go1.22.0
 
 require (
+	github.com/opentdf/platform v0.0.0-20240222003228-345c156f84d3
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.8.0
-	google.golang.org/grpc v1.60.1
+	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.31.0
 )
 
@@ -16,7 +19,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/uuid v1.4.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/text v0.2.0 // indirect

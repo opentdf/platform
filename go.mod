@@ -2,10 +2,6 @@ module github.com/opentdf/platform
 
 go 1.21.7
 
-replace (
-	github.com/opentdf/platform/protocol/go => ./protocol/go
-)
-
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/bufbuild/protovalidate-go v0.4.3
@@ -31,6 +27,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.5.0
 )
+
+replace github.com/opentdf/platform/protocol/go => ./protocol/go
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20231115204500-e097f827e652.1 // indirect

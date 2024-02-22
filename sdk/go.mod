@@ -2,14 +2,14 @@ module github.com/opentdf/platform/sdk
 
 go 1.21.7
 
-replace github.com/opentdf/platform/protocol/go => ../protocol/go
-
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.6.0
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.61.0
 )
+
+replace github.com/opentdf/platform/protocol/go => ../protocol/go
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20231115204500-e097f827e652.1 // indirect

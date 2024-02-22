@@ -2,14 +2,14 @@ package attributes
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/pkg/serviceregistry"
 	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
+	"github.com/opentdf/opentdf-v2-poc/serviceregistry"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"google.golang.org/grpc"
 )
 
 type AttributesService struct {
@@ -17,16 +17,12 @@ type AttributesService struct {
 	dbClient *db.Client
 }
 
-func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
-	as := &AttributesService{
-		dbClient: dbClient,
-	}
-	attributes.RegisterAttributesServiceServer(g, as)
-	err := attributes.RegisterAttributesServiceHandlerServer(context.Background(), s, as)
-	if err != nil {
-		return fmt.Errorf("failed to register attributes service handler: %w", err)
-	}
-	return nil
+func init() {
+	serviceregistry.RegisterService("policy", &attributes.AttributesService_ServiceDesc, func(srp serviceregistry.ServiceRegisterArgs) (any, serviceregistry.ServiceHandlerServer) {
+		return &AttributesService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, server.(attributes.AttributesServiceServer))
+		}
+	})
 }
 
 func (s AttributesService) CreateAttribute(ctx context.Context,

@@ -2,14 +2,13 @@ package namespaces
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/pkg/server"
 	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"google.golang.org/grpc"
 )
 
 type NamespacesService struct {
@@ -17,16 +16,12 @@ type NamespacesService struct {
 	dbClient *db.Client
 }
 
-func NewNamespacesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
-	ns := &NamespacesService{
-		dbClient: dbClient,
-	}
-	namespaces.RegisterNamespaceServiceServer(g, ns)
-	err := namespaces.RegisterNamespaceServiceHandlerServer(context.Background(), s, ns)
-	if err != nil {
-		return fmt.Errorf("failed to register namespace service handler: %w", err)
-	}
-	return nil
+func init() {
+	server.RegisterService("policy", &namespaces.NamespaceService_ServiceDesc, func(srp server.ServiceRegisterArgs) (any, server.ServiceHandlerServer) {
+		return &NamespacesService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return namespaces.RegisterNamespaceServiceHandlerServer(ctx, mux, server.(namespaces.NamespaceServiceServer))
+		}
+	})
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {

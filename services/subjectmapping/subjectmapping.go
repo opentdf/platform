@@ -2,15 +2,14 @@ package subjectmapping
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/pkg/server"
 	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
 
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"google.golang.org/grpc"
 )
 
 type SubjectMappingService struct {
@@ -18,21 +17,12 @@ type SubjectMappingService struct {
 	dbClient *db.Client
 }
 
-func NewSubjectMappingServer(dbClient *db.Client, grpcServer *grpc.Server,
-	grpcInprocess *grpc.Server, mux *runtime.ServeMux,
-) error {
-	s := &SubjectMappingService{
-		dbClient: dbClient,
-	}
-	subjectmapping.RegisterSubjectMappingServiceServer(grpcServer, s)
-	if grpcInprocess != nil {
-		subjectmapping.RegisterSubjectMappingServiceServer(grpcInprocess, s)
-	}
-	err := subjectmapping.RegisterSubjectMappingServiceHandlerServer(context.Background(), mux, s)
-	if err != nil {
-		return fmt.Errorf("failed to register subject encoding service handler: %w", err)
-	}
-	return nil
+func init() {
+	server.RegisterService("policy", &subjectmapping.SubjectMappingService_ServiceDesc, func(srp server.ServiceRegisterArgs) (any, server.ServiceHandlerServer) {
+		return &SubjectMappingService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return subjectmapping.RegisterSubjectMappingServiceHandlerServer(ctx, mux, server.(subjectmapping.SubjectMappingServiceServer))
+		}
+	})
 }
 
 func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,

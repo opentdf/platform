@@ -2,14 +2,13 @@ package kasregistry
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/pkg/server"
 	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
 	"github.com/opentdf/opentdf-v2-poc/services"
-	"google.golang.org/grpc"
 )
 
 type KeyAccessServerRegistry struct {
@@ -17,17 +16,12 @@ type KeyAccessServerRegistry struct {
 	dbClient *db.Client
 }
 
-func NewKeyAccessServerRegistryServer(dbClient *db.Client, grpcServer *grpc.Server, mux *runtime.ServeMux) error {
-	kagSvc := &KeyAccessServerRegistry{
-		dbClient: dbClient,
-	}
-	kasr.RegisterKeyAccessServerRegistryServiceServer(grpcServer, kagSvc)
-
-	err := kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(context.Background(), mux, kagSvc)
-	if err != nil {
-		return fmt.Errorf("failed to register key access server service handler: %w", err)
-	}
-	return nil
+func init() {
+	server.RegisterService("policy", &kasr.KeyAccessServerRegistryService_ServiceDesc, func(srp server.ServiceRegisterArgs) (any, server.ServiceHandlerServer) {
+		return &KeyAccessServerRegistry{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, server.(kasr.KeyAccessServerRegistryServiceServer))
+		}
+	})
 }
 
 func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,

@@ -2,15 +2,13 @@ package resourcemapping
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/opentdf-v2-poc/internal/db"
+	"github.com/opentdf/opentdf-v2-poc/pkg/server"
 	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
 	"github.com/opentdf/opentdf-v2-poc/services"
-
-	"google.golang.org/grpc"
 )
 
 type ResourceMappingService struct {
@@ -18,16 +16,12 @@ type ResourceMappingService struct {
 	dbClient *db.Client
 }
 
-func NewResourceMappingServer(dbClient *db.Client, grpcServer *grpc.Server, mux *runtime.ServeMux) error {
-	as := &ResourceMappingService{
-		dbClient: dbClient,
-	}
-	resourcemapping.RegisterResourceMappingServiceServer(grpcServer, as)
-	err := resourcemapping.RegisterResourceMappingServiceHandlerServer(context.Background(), mux, as)
-	if err != nil {
-		return errors.New("failed to register resource encoding service handler")
-	}
-	return nil
+func init() {
+	server.RegisterService("policy", &resourcemapping.ResourceMappingService_ServiceDesc, func(srp server.ServiceRegisterArgs) (any, server.ServiceHandlerServer) {
+		return &ResourceMappingService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return resourcemapping.RegisterResourceMappingServiceHandlerServer(ctx, mux, server.(resourcemapping.ResourceMappingServiceServer))
+		}
+	})
 }
 
 /*

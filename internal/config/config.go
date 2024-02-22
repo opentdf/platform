@@ -15,12 +15,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+type ServiceConfig struct {
+	ExtraProps map[string]interface{} `json:"-"`
+}
+
 type Config struct {
-	DB      db.Config     `yaml:"db"`
-	OPA     opa.Config    `yaml:"opa"`
-	Server  server.Config `yaml:"server"`
-	OpenTDF OpenTDFConfig `yaml:"services" mapstructure:"services"`
-	Logger  logger.Config `yaml:"logger"`
+	DB       db.Config                `yaml:"db"`
+	OPA      opa.Config               `yaml:"opa"`
+	Server   server.Config            `yaml:"server"`
+	OpenTDF  OpenTDFConfig            `yaml:"services" mapstructure:"services"`
+	Logger   logger.Config            `yaml:"logger"`
+	Services map[string]ServiceConfig `yaml:"services"`
 }
 
 type OpenTDFConfig struct {

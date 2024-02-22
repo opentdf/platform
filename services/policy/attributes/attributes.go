@@ -62,7 +62,6 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	return rsp, nil
 }
 
-//nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s *AttributesService) GetAttribute(ctx context.Context,
 	req *attr.GetAttributeRequest,
 ) (*attr.GetAttributeResponse, error) {

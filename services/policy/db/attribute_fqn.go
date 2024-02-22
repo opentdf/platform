@@ -151,6 +151,7 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 func (c *PolicyDbClient) GetAttributesByFqns(ctx context.Context, fqns []string) (map[string]*attributes.Attribute, error) {
 	list := make(map[string]*attributes.Attribute, len(fqns))
 	for _, fqn := range fqns {
+		// TODO: get a full attribute by value FQN
 		attr, err := c.GetAttributeByFqn(ctx, fqn)
 		if err != nil {
 			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))

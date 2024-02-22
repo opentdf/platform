@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opentdf/platform/internal/oauth"
 	"github.com/opentdf/platform/sdk/internal/crypto"
+	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -321,7 +321,10 @@ func init() {
 }
 
 func TestSimpleTDF(t *testing.T) { //nolint:gocognit
-	unwrapper, _ := getUnwrapper()
+	unwrapper, err := getUnwrapper()
+	if err != nil {
+		t.Fatalf("error creating unwrapper: %v", err)
+	}
 
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
 

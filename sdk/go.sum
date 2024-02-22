@@ -96,6 +96,8 @@ github.com/opentdf/backend-go v0.1.14 h1:s4jOSG2WZfpz7U/lvJqinMgnElwjpPxB+VDF3kq
 github.com/opentdf/backend-go v0.1.14/go.mod h1:DjYcypUkMDgQI8jITVGFCStzYOmIhxo1ado+LyjBuyI=
 github.com/opentdf/platform v0.0.0-20240221144107-6d2f674fdf6e h1:MNLp2epoXc3iATJwZMQ2x9yTIBzS9bVuYgT9aoCIb0Y=
 github.com/opentdf/platform v0.0.0-20240221144107-6d2f674fdf6e/go.mod h1:ORXD8sxMIswFo8LvQnpbQ9o3gZMDTc7yE4ER0u2tyEo=
+github.com/opentdf/platform v0.0.0-20240222151331-6a0017b41641 h1:7Tnr0DTfXUWnkZsa75GXFjAJgvH4WnSd0S/3vaFEYWk=
+github.com/opentdf/platform v0.0.0-20240222151331-6a0017b41641/go.mod h1:KEQtBIeP5B1Y0BS9/jaEA5DN72bnbkMBVw4VbKh9ejY=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

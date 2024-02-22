@@ -10,7 +10,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0
 	github.com/lestrrat-go/jwx/v2 v2.0.19
 	github.com/opentdf/backend-go v0.1.14
-	github.com/opentdf/platform v0.0.0-20240221144107-6d2f674fdf6e
+	github.com/opentdf/platform v0.0.0-20240222151331-6a0017b41641
 	golang.org/x/oauth2 v0.16.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240102182953-50ed04b92917
 	google.golang.org/grpc v1.61.0

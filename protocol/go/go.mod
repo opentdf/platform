@@ -1,11 +1,10 @@
-module github.com/opentdf/opentdf-v2-poc/protocol/go
+module github.com/opentdf/platform/protocol/go
 
 go 1.21.7
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20231115204500-e097f827e652.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
-	github.com/opentdf/platform v0.0.0-20240221200459-49f2e496ae12
 	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014
 	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.32.0

@@ -129,10 +129,10 @@ message GetAttributeResponse {
   Attribute attribute = 1;
 }
 
-message GetAttributesByFqnRequest {
+message GetAttributesByFqnsRequest {
   repeated string fqns = 1 [(buf.validate.field).required = true];
 }
-message GetAttributesByFqnResponse {
+message GetAttributesByFqnsResponse {
   repeated Attribute attributes = 1;
 }
 
@@ -346,7 +346,7 @@ service AttributesService {
     option (google.api.http) = {get: "/attributes/{id}"};
   }
 
-  rpc GetAttributesByFqn(GetAttributesByFqnRequest) returns (GetAttributesByFqnResponse) {
+  rpc GetAttributesByFqns(GetAttributesByFqnsRequest) returns (GetAttributesByFqnsResponse) {
     option (google.api.http) = {get: "/attributes/_/fqn"};
   }
 

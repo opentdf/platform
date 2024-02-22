@@ -4,12 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 
 	"github.com/opentdf/platform/sdk/internal/crypto"
+)
+
+const (
+	tdf3KeySize        = 2048
+	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
+	kasPublicKeyPath   = "/kas_public_key"
 )
 
 type TDFFormat = int
@@ -33,6 +38,13 @@ type KASInfo struct {
 	publicKey string // Public key can be empty.
 }
 
+func NewKasInfo(url string) KASInfo {
+	return KASInfo{url: url}
+}
+
+type TDFOption func(*TDFConfig) error
+
+// TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
 	defaultSegmentSize        int64
 	enableEncryption          bool
@@ -42,19 +54,13 @@ type TDFConfig struct {
 	metaData                  string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
-	assertions                []Assertion
+	assertions                []Assertion //nolint:unused // TODO
 	attributes                []string
 	kasInfoList               []KASInfo
 }
 
-const (
-	tdf3KeySize        = 2048
-	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
-	kasPublicKeyPath   = "/kas_public_key"
-)
-
 // NewTDFConfig CreateTDF a new instance of tdf config.
-func NewTDFConfig() (*TDFConfig, error) {
+func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
@@ -70,7 +76,7 @@ func NewTDFConfig() (*TDFConfig, error) {
 		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
-	return &TDFConfig{
+	c := &TDFConfig{
 		tdfPrivateKey:             privateKey,
 		tdfPublicKey:              publicKey,
 		defaultSegmentSize:        defaultSegmentSize,
@@ -78,91 +84,96 @@ func NewTDFConfig() (*TDFConfig, error) {
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
-	}, nil
-}
-
-func NewKasInfo(url string) KASInfo {
-	return KASInfo{url: url}
-}
-
-// AddKasInformation Add all the kas urls and their corresponding public keys
-// that is required to create and read the tdf.
-func (tdfConfig *TDFConfig) AddKasInformation(kasInfoList []KASInfo) error {
-	for _, kasInfo := range kasInfoList {
-		newEntry := KASInfo{}
-		newEntry.url = kasInfo.url
-		newEntry.publicKey = kasInfo.publicKey
-
-		if newEntry.publicKey != "" {
-			tdfConfig.kasInfoList = append(tdfConfig.kasInfoList, newEntry)
-			continue
-		}
-
-		// get kas public
-		kasPubKeyURL, err := url.JoinPath(kasInfo.url, kasPublicKeyPath)
-		if err != nil {
-			return fmt.Errorf("url.Parse failed: %w", err)
-		}
-
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, kasPubKeyURL, nil)
-		if err != nil {
-			return fmt.Errorf("http.NewRequestWithContext failed: %w", err)
-		}
-
-		// add required headers
-		request.Header = http.Header{
-			kAcceptKey: {kContentTypeJSONValue},
-		}
-
-		client := &http.Client{}
-
-		response, err := client.Do(request)
-		if response.StatusCode != kHTTPOk {
-			return fmt.Errorf("client.Do failed: %w", err)
-		}
-
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				slog.Error("Fail to close HTTP response")
-			}
-		}(response.Body)
-
-		var jsonResponse interface{}
-		err = json.NewDecoder(response.Body).Decode(&jsonResponse)
-		if err != nil {
-			return fmt.Errorf("json.NewDecoder.Decode failed: %w", err)
-		}
-
-		newEntry.publicKey = fmt.Sprintf("%s", jsonResponse)
-
-		tdfConfig.kasInfoList = append(tdfConfig.kasInfoList, newEntry)
 	}
 
-	return nil
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
 }
 
-// AddAttributes Add all the attributes used to create and read the tdf.
-func (tdfConfig *TDFConfig) AddAttributes(attributes []string) {
-	tdfConfig.attributes = append(tdfConfig.attributes, attributes...)
+// WithDataAttributes appends the given data attributes to the bound policy
+func WithDataAttributes(attributes ...string) TDFOption {
+	return func(c *TDFConfig) error {
+		c.attributes = append(c.attributes, attributes...)
+		return nil
+	}
 }
 
-// SetMetaData Set the meta data.
-func (tdfConfig *TDFConfig) SetMetaData(metaData string) {
-	tdfConfig.metaData = metaData
+// WithKasInformation adds all the kas urls and their corresponding public keys
+// that is required to create and read the tdf.
+func WithKasInformation(kasInfoList ...KASInfo) TDFOption { //nolint:gocognit
+	return func(c *TDFConfig) error {
+		for _, kasInfo := range kasInfoList {
+			newEntry := kasInfo
+			if newEntry.publicKey != "" {
+				c.kasInfoList = append(c.kasInfoList, newEntry)
+				continue
+			}
+
+			// get kas public
+			kasPubKeyURL, err := url.JoinPath(kasInfo.url, kasPublicKeyPath)
+			if err != nil {
+				return fmt.Errorf("url.Parse failed: %w", err)
+			}
+
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, kasPubKeyURL, nil)
+			if err != nil {
+				return fmt.Errorf("http.NewRequestWithContext failed: %w", err)
+			}
+
+			// add required headers
+			request.Header = http.Header{
+				kAcceptKey: {kContentTypeJSONValue},
+			}
+
+			client := &http.Client{}
+
+			response, err := client.Do(request)
+			defer func() {
+				if response == nil {
+					return
+				}
+				err := response.Body.Close()
+				if err != nil {
+					slog.Error("Fail to close HTTP response")
+				}
+			}()
+			if response.StatusCode != kHTTPOk {
+				return fmt.Errorf("client.Do failed: %w", err)
+			}
+
+			var jsonResponse interface{}
+			err = json.NewDecoder(response.Body).Decode(&jsonResponse)
+			if err != nil {
+				return fmt.Errorf("json.NewDecoder.Decode failed: %w", err)
+			}
+
+			newEntry.publicKey = fmt.Sprintf("%s", jsonResponse)
+
+			c.kasInfoList = append(c.kasInfoList, newEntry)
+		}
+
+		return nil
+	}
 }
 
-// SetDefaultSegmentSize Set the default segment size.
-func (tdfConfig *TDFConfig) SetDefaultSegmentSize(size int64) {
-	tdfConfig.defaultSegmentSize = size
+// WithMetaData returns an Option that add metadata to TDF.
+func WithMetaData(metaData string) TDFOption {
+	return func(c *TDFConfig) error {
+		c.metaData = metaData
+		return nil
+	}
 }
 
-// SetXMLFormat TDFs created with this config will be in XML format.
-func (tdfConfig *TDFConfig) SetXMLFormat() {
-	tdfConfig.tdfFormat = XMLFormat
-}
-
-// DisableEncryption TDFs create with this config will not be encrypted.
-func (tdfConfig *TDFConfig) DisableEncryption() {
-	tdfConfig.enableEncryption = false
+// WithSegmentSize returns an Option that set the default segment size to TDF.
+func WithSegmentSize(size int64) TDFOption {
+	return func(c *TDFConfig) error {
+		c.defaultSegmentSize = size
+		return nil
+	}
 }

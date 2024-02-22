@@ -164,46 +164,6 @@
     }
   },
   "definitions": {
-    "attributesValue": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "generated uuid in database"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
-        "attributeId": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "list of attribute values that this value is related to (attribute group)"
-        },
-        "grants": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/kasregistryKeyAccessServer"
-          },
-          "title": "list of key access servers"
-        },
-        "fqn": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean",
-          "title": "active by default until explicitly deactivated"
-        }
-      }
-    },
     "commonMetadata": {
       "type": "object",
       "properties": {
@@ -276,6 +236,46 @@
         "local": {
           "type": "string",
           "title": "public key - optional since can also be retrieved via url"
+        }
+      }
+    },
+    "policyattributesValue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        },
+        "attributeId": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of attribute values that this value is related to (attribute group)"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          },
+          "title": "list of key access servers"
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
         }
       }
     },
@@ -356,7 +356,7 @@
           "title": "TODO should this be a list of values?"
         },
         "attributeValue": {
-          "$ref": "#/definitions/attributesValue",
+          "$ref": "#/definitions/policyattributesValue",
           "title": "Attribute Value to be mapped to"
         },
         "subjectAttribute": {

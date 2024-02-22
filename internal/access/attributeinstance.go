@@ -6,24 +6,24 @@ import (
 	"strings"
 )
 
-// attributeInstance is created by selecting the Authority, Name and a specific Value from
+// AttributeInstance is created by selecting the Authority, Name and a specific Value from
 // an AttributeDefinition.
 //
-// An attributeInstance is a single, unique attribute, with a single value.
+// An AttributeInstance is a single, unique attribute, with a single value.
 //
-// Applied to an entity, the attributeInstance becomes an entity attribute.
-// Applied to data, the attributeInstance becomes a data attribute.
+// Applied to an entity, the AttributeInstance becomes an entity attribute.
+// Applied to data, the AttributeInstance becomes a data attribute.
 //
 // When making an access decisions, these two kinds of AttributeInstances are compared with each other.
 //
-// Example attributeInstance:
+// Example AttributeInstance:
 // https://derp.com/attr/Blob/value/Green ->
 //
 //	Authority = https://derp.com
 //	Name = Blob
 //	CanonicalName = Authority + Name https://derp.com/attr/Blob
 //	Value = Green
-type attributeInstance struct {
+type AttributeInstance struct {
 	Authority string `json:"authority"`
 	Name      string `json:"name"`
 	Value     string `json:"value"`
@@ -33,7 +33,7 @@ type attributeInstance struct {
 // and return a string in the canonical attributeInstance format of
 //
 //	<authority>/attr/<name>/value/<value>
-func (attr attributeInstance) String() string {
+func (attr AttributeInstance) String() string {
 	return fmt.Sprintf("%s/attr/%s/value/%s",
 		attr.Authority,
 		attr.Name,
@@ -45,14 +45,14 @@ func (attr attributeInstance) String() string {
 // (e.g. <authority>/attr/<name> - the authority and name, but not the value):
 //
 //	<authority>/attr/<name>
-func (attr attributeInstance) GetCanonicalName() string {
+func (attr AttributeInstance) GetCanonicalName() string {
 	return fmt.Sprintf("%s/attr/%s",
 		attr.Authority,
 		attr.Name,
 	)
 }
 
-func (attr attributeInstance) GetAuthority() string {
+func (attr AttributeInstance) GetAuthority() string {
 	return attr.Authority
 }
 
@@ -61,30 +61,30 @@ func (attr attributeInstance) GetAuthority() string {
 // attributeInstance.
 //
 // Strings that are not valid URLs will result in a parsing failure, and return an error.
-func ParseInstanceFromURI(attributeURI string) (attributeInstance, error) {
+func ParseInstanceFromURI(attributeURI string) (AttributeInstance, error) {
 
 	parsedAttr, err := url.Parse(attributeURI)
 	if err != nil {
-		return attributeInstance{}, err
+		return AttributeInstance{}, err
 	}
 
 	// Needs to be absolute - that is, rooted with a scheme, and not relative.
 	if !parsedAttr.IsAbs() {
-		return attributeInstance{}, fmt.Errorf("Could not parse attributeURI %s - is not an absolute URI", attributeURI)
+		return AttributeInstance{}, fmt.Errorf("Could not parse attributeURI %s - is not an absolute URI", attributeURI)
 	}
 
 	pathParts := strings.Split(strings.Trim(parsedAttr.Path, "/"), "/")
 	// If we don't end up with exactly 4 segments, e.g. `attr/MyAttrName/value/MyAttrValue` ->
 	// then something is wrong, this is not a canonical attr representation and we need to return an error
 	if len(pathParts) != 4 {
-		return attributeInstance{}, fmt.Errorf("Could not parse attributeURI %s - path %s is not in canonical format, parts were %s", attributeURI, parsedAttr.Path, pathParts)
+		return AttributeInstance{}, fmt.Errorf("Could not parse attributeURI %s - path %s is not in canonical format, parts were %s", attributeURI, parsedAttr.Path, pathParts)
 	}
 
 	authority := fmt.Sprintf("%s://%s", parsedAttr.Scheme, parsedAttr.Hostname()) // == https://example.org
 	name := pathParts[1]                                                          // == MyAttrName
 	value := pathParts[3]                                                         // == MyAttrValue
 
-	return attributeInstance{
+	return AttributeInstance{
 		Authority: authority, //Just scheme://host of the attribute - that is, the authority
 		Name:      name,
 		Value:     value,
@@ -92,7 +92,7 @@ func ParseInstanceFromURI(attributeURI string) (attributeInstance, error) {
 }
 
 // ParseInstanceFromParts Accepts attribute namespace, name and value strings, and returns an attributeInstance
-func ParseInstanceFromParts(namespace, name, value string) (attributeInstance, error) {
+func ParseInstanceFromParts(namespace, name, value string) (AttributeInstance, error) {
 	fmtAttr := fmt.Sprintf("%s/attr/%s/value/%s", namespace, name, value)
 	return ParseInstanceFromURI(fmtAttr)
 }

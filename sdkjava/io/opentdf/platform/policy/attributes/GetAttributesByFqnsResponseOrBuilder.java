@@ -9,26 +9,56 @@ public interface GetAttributesByFqnsResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-   */
-  java.util.List<io.opentdf.platform.policy.attributes.Attribute> 
-      getAttributesList();
-  /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-   */
-  io.opentdf.platform.policy.attributes.Attribute getAttributes(int index);
-  /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
    */
   int getAttributesCount();
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
-      getAttributesOrBuilderList();
+  boolean containsAttributes(
+      java.lang.String key);
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * Use {@link #getAttributesMap()} instead.
    */
-  io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributesOrBuilder(
-      int index);
+  @java.lang.Deprecated
+  java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
+  getAttributes();
+  /**
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   */
+  java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
+  getAttributesMap();
+  /**
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   */
+  /* nullable */
+io.opentdf.platform.policy.attributes.Attribute getAttributesOrDefault(
+      java.lang.String key,
+      /* nullable */
+io.opentdf.platform.policy.attributes.Attribute defaultValue);
+  /**
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   */
+  io.opentdf.platform.policy.attributes.Attribute getAttributesOrThrow(
+      java.lang.String key);
 }

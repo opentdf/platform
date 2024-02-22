@@ -621,11 +621,11 @@
       "type": "object",
       "properties": {
         "attributes": {
-          "type": "array",
-          "items": {
-            "type": "object",
+          "type": "object",
+          "additionalProperties": {
             "$ref": "#/definitions/attributesAttribute"
-          }
+          },
+          "title": "map of fqns as keys to attributes as values"
         }
       }
     },

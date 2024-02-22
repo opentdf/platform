@@ -17,7 +17,6 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private GetAttributesByFqnsResponse() {
-    attributes_ = java.util.Collections.emptyList();
   }
 
   @java.lang.Override
@@ -32,6 +31,18 @@ private static final long serialVersionUID = 0L;
     return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByFqnsResponse_descriptor;
   }
 
+  @SuppressWarnings({"rawtypes"})
+  @java.lang.Override
+  protected com.google.protobuf.MapFieldReflectionAccessor internalGetMapFieldReflection(
+      int number) {
+    switch (number) {
+      case 1:
+        return internalGetAttributes();
+      default:
+        throw new RuntimeException(
+            "Invalid map field number: " + number);
+    }
+  }
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
@@ -41,44 +52,98 @@ private static final long serialVersionUID = 0L;
   }
 
   public static final int ATTRIBUTES_FIELD_NUMBER = 1;
+  private static final class AttributesDefaultEntryHolder {
+    static final com.google.protobuf.MapEntry<
+        java.lang.String, io.opentdf.platform.policy.attributes.Attribute> defaultEntry =
+            com.google.protobuf.MapEntry
+            .<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>newDefaultInstance(
+                io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByFqnsResponse_AttributesEntry_descriptor, 
+                com.google.protobuf.WireFormat.FieldType.STRING,
+                "",
+                com.google.protobuf.WireFormat.FieldType.MESSAGE,
+                io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance());
+  }
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.attributes.Attribute> attributes_;
-  /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.attributes.Attribute> getAttributesList() {
+  private com.google.protobuf.MapField<
+      java.lang.String, io.opentdf.platform.policy.attributes.Attribute> attributes_;
+  private com.google.protobuf.MapField<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
+  internalGetAttributes() {
+    if (attributes_ == null) {
+      return com.google.protobuf.MapField.emptyMapField(
+          AttributesDefaultEntryHolder.defaultEntry);
+    }
     return attributes_;
   }
-  /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
-      getAttributesOrBuilderList() {
-    return attributes_;
-  }
-  /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-   */
-  @java.lang.Override
   public int getAttributesCount() {
-    return attributes_.size();
+    return internalGetAttributes().getMap().size();
   }
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.Attribute getAttributes(int index) {
-    return attributes_.get(index);
+  public boolean containsAttributes(
+      java.lang.String key) {
+    if (key == null) { throw new NullPointerException("map key"); }
+    return internalGetAttributes().getMap().containsKey(key);
   }
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * Use {@link #getAttributesMap()} instead.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributesOrBuilder(
-      int index) {
-    return attributes_.get(index);
+  @java.lang.Deprecated
+  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> getAttributes() {
+    return getAttributesMap();
+  }
+  /**
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   */
+  @java.lang.Override
+  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> getAttributesMap() {
+    return internalGetAttributes().getMap();
+  }
+  /**
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   */
+  @java.lang.Override
+  public /* nullable */
+io.opentdf.platform.policy.attributes.Attribute getAttributesOrDefault(
+      java.lang.String key,
+      /* nullable */
+io.opentdf.platform.policy.attributes.Attribute defaultValue) {
+    if (key == null) { throw new NullPointerException("map key"); }
+    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> map =
+        internalGetAttributes().getMap();
+    return map.containsKey(key) ? map.get(key) : defaultValue;
+  }
+  /**
+   * <pre>
+   * map of fqns as keys to attributes as values
+   * </pre>
+   *
+   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.attributes.Attribute getAttributesOrThrow(
+      java.lang.String key) {
+    if (key == null) { throw new NullPointerException("map key"); }
+    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> map =
+        internalGetAttributes().getMap();
+    if (!map.containsKey(key)) {
+      throw new java.lang.IllegalArgumentException();
+    }
+    return map.get(key);
   }
 
   private byte memoizedIsInitialized = -1;
@@ -95,9 +160,12 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    for (int i = 0; i < attributes_.size(); i++) {
-      output.writeMessage(1, attributes_.get(i));
-    }
+    com.google.protobuf.GeneratedMessageV3
+      .serializeStringMapTo(
+        output,
+        internalGetAttributes(),
+        AttributesDefaultEntryHolder.defaultEntry,
+        1);
     getUnknownFields().writeTo(output);
   }
 
@@ -107,9 +175,15 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    for (int i = 0; i < attributes_.size(); i++) {
+    for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> entry
+         : internalGetAttributes().getMap().entrySet()) {
+      com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
+      attributes__ = AttributesDefaultEntryHolder.defaultEntry.newBuilderForType()
+          .setKey(entry.getKey())
+          .setValue(entry.getValue())
+          .build();
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(1, attributes_.get(i));
+          .computeMessageSize(1, attributes__);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -126,8 +200,8 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse other = (io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse) obj;
 
-    if (!getAttributesList()
-        .equals(other.getAttributesList())) return false;
+    if (!internalGetAttributes().equals(
+        other.internalGetAttributes())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -139,9 +213,9 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    if (getAttributesCount() > 0) {
+    if (!internalGetAttributes().getMap().isEmpty()) {
       hash = (37 * hash) + ATTRIBUTES_FIELD_NUMBER;
-      hash = (53 * hash) + getAttributesList().hashCode();
+      hash = (53 * hash) + internalGetAttributes().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -252,6 +326,28 @@ private static final long serialVersionUID = 0L;
       return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByFqnsResponse_descriptor;
     }
 
+    @SuppressWarnings({"rawtypes"})
+    protected com.google.protobuf.MapFieldReflectionAccessor internalGetMapFieldReflection(
+        int number) {
+      switch (number) {
+        case 1:
+          return internalGetAttributes();
+        default:
+          throw new RuntimeException(
+              "Invalid map field number: " + number);
+      }
+    }
+    @SuppressWarnings({"rawtypes"})
+    protected com.google.protobuf.MapFieldReflectionAccessor internalGetMutableMapFieldReflection(
+        int number) {
+      switch (number) {
+        case 1:
+          return internalGetMutableAttributes();
+        default:
+          throw new RuntimeException(
+              "Invalid map field number: " + number);
+      }
+    }
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
@@ -274,13 +370,7 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      if (attributesBuilder_ == null) {
-        attributes_ = java.util.Collections.emptyList();
-      } else {
-        attributes_ = null;
-        attributesBuilder_.clear();
-      }
-      bitField0_ = (bitField0_ & ~0x00000001);
+      internalGetMutableAttributes().clear();
       return this;
     }
 
@@ -307,26 +397,16 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse buildPartial() {
       io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse result = new io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse(this);
-      buildPartialRepeatedFields(result);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartialRepeatedFields(io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse result) {
-      if (attributesBuilder_ == null) {
-        if (((bitField0_ & 0x00000001) != 0)) {
-          attributes_ = java.util.Collections.unmodifiableList(attributes_);
-          bitField0_ = (bitField0_ & ~0x00000001);
-        }
-        result.attributes_ = attributes_;
-      } else {
-        result.attributes_ = attributesBuilder_.build();
-      }
-    }
-
     private void buildPartial0(io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse result) {
       int from_bitField0_ = bitField0_;
+      if (((from_bitField0_ & 0x00000001) != 0)) {
+        result.attributes_ = internalGetAttributes().build(AttributesDefaultEntryHolder.defaultEntry);
+      }
     }
 
     @java.lang.Override
@@ -373,32 +453,9 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse other) {
       if (other == io.opentdf.platform.policy.attributes.GetAttributesByFqnsResponse.getDefaultInstance()) return this;
-      if (attributesBuilder_ == null) {
-        if (!other.attributes_.isEmpty()) {
-          if (attributes_.isEmpty()) {
-            attributes_ = other.attributes_;
-            bitField0_ = (bitField0_ & ~0x00000001);
-          } else {
-            ensureAttributesIsMutable();
-            attributes_.addAll(other.attributes_);
-          }
-          onChanged();
-        }
-      } else {
-        if (!other.attributes_.isEmpty()) {
-          if (attributesBuilder_.isEmpty()) {
-            attributesBuilder_.dispose();
-            attributesBuilder_ = null;
-            attributes_ = other.attributes_;
-            bitField0_ = (bitField0_ & ~0x00000001);
-            attributesBuilder_ = 
-              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
-                 getAttributesFieldBuilder() : null;
-          } else {
-            attributesBuilder_.addAllMessages(other.attributes_);
-          }
-        }
-      }
+      internalGetMutableAttributes().mergeFrom(
+          other.internalGetAttributes());
+      bitField0_ |= 0x00000001;
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -426,16 +483,12 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.policy.attributes.Attribute m =
-                  input.readMessage(
-                      io.opentdf.platform.policy.attributes.Attribute.parser(),
-                      extensionRegistry);
-              if (attributesBuilder_ == null) {
-                ensureAttributesIsMutable();
-                attributes_.add(m);
-              } else {
-                attributesBuilder_.addMessage(m);
-              }
+              com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
+              attributes__ = input.readMessage(
+                  AttributesDefaultEntryHolder.defaultEntry.getParserForType(), extensionRegistry);
+              internalGetMutableAttributes().ensureBuilderMap().put(
+                  attributes__.getKey(), attributes__.getValue());
+              bitField0_ |= 0x00000001;
               break;
             } // case 10
             default: {
@@ -455,244 +508,191 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.policy.attributes.Attribute> attributes_ =
-      java.util.Collections.emptyList();
-    private void ensureAttributesIsMutable() {
-      if (!((bitField0_ & 0x00000001) != 0)) {
-        attributes_ = new java.util.ArrayList<io.opentdf.platform.policy.attributes.Attribute>(attributes_);
-        bitField0_ |= 0x00000001;
-       }
-    }
-
-    private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder> attributesBuilder_;
-
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
-    public java.util.List<io.opentdf.platform.policy.attributes.Attribute> getAttributesList() {
-      if (attributesBuilder_ == null) {
-        return java.util.Collections.unmodifiableList(attributes_);
-      } else {
-        return attributesBuilder_.getMessageList();
+    private static final class AttributesConverter implements com.google.protobuf.MapFieldBuilder.Converter<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder, io.opentdf.platform.policy.attributes.Attribute> {
+      @java.lang.Override
+      public io.opentdf.platform.policy.attributes.Attribute build(io.opentdf.platform.policy.attributes.AttributeOrBuilder val) {
+        if (val instanceof io.opentdf.platform.policy.attributes.Attribute) { return (io.opentdf.platform.policy.attributes.Attribute) val; }
+        return ((io.opentdf.platform.policy.attributes.Attribute.Builder) val).build();
       }
+
+      @java.lang.Override
+      public com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> defaultEntry() {
+        return AttributesDefaultEntryHolder.defaultEntry;
+      }
+    };
+    private static final AttributesConverter attributesConverter = new AttributesConverter();
+
+    private com.google.protobuf.MapFieldBuilder<
+        java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder, io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder> attributes_;
+    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder, io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder>
+        internalGetAttributes() {
+      if (attributes_ == null) {
+        return new com.google.protobuf.MapFieldBuilder<>(attributesConverter);
+      }
+      return attributes_;
     }
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
+    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder, io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder>
+        internalGetMutableAttributes() {
+      if (attributes_ == null) {
+        attributes_ = new com.google.protobuf.MapFieldBuilder<>(attributesConverter);
+      }
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return attributes_;
+    }
     public int getAttributesCount() {
-      if (attributesBuilder_ == null) {
-        return attributes_.size();
-      } else {
-        return attributesBuilder_.getCount();
-      }
+      return internalGetAttributes().ensureBuilderMap().size();
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <pre>
+     * map of fqns as keys to attributes as values
+     * </pre>
+     *
+     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Attribute getAttributes(int index) {
-      if (attributesBuilder_ == null) {
-        return attributes_.get(index);
-      } else {
-        return attributesBuilder_.getMessage(index);
-      }
+    @java.lang.Override
+    public boolean containsAttributes(
+        java.lang.String key) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      return internalGetAttributes().ensureBuilderMap().containsKey(key);
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * Use {@link #getAttributesMap()} instead.
      */
-    public Builder setAttributes(
-        int index, io.opentdf.platform.policy.attributes.Attribute value) {
-      if (attributesBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        ensureAttributesIsMutable();
-        attributes_.set(index, value);
-        onChanged();
-      } else {
-        attributesBuilder_.setMessage(index, value);
-      }
-      return this;
+    @java.lang.Override
+    @java.lang.Deprecated
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> getAttributes() {
+      return getAttributesMap();
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <pre>
+     * map of fqns as keys to attributes as values
+     * </pre>
+     *
+     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
      */
-    public Builder setAttributes(
-        int index, io.opentdf.platform.policy.attributes.Attribute.Builder builderForValue) {
-      if (attributesBuilder_ == null) {
-        ensureAttributesIsMutable();
-        attributes_.set(index, builderForValue.build());
-        onChanged();
-      } else {
-        attributesBuilder_.setMessage(index, builderForValue.build());
-      }
-      return this;
+    @java.lang.Override
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> getAttributesMap() {
+      return internalGetAttributes().getImmutableMap();
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <pre>
+     * map of fqns as keys to attributes as values
+     * </pre>
+     *
+     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
      */
-    public Builder addAttributes(io.opentdf.platform.policy.attributes.Attribute value) {
-      if (attributesBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        ensureAttributesIsMutable();
-        attributes_.add(value);
-        onChanged();
-      } else {
-        attributesBuilder_.addMessage(value);
-      }
-      return this;
+    @java.lang.Override
+    public /* nullable */
+io.opentdf.platform.policy.attributes.Attribute getAttributesOrDefault(
+        java.lang.String key,
+        /* nullable */
+io.opentdf.platform.policy.attributes.Attribute defaultValue) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder> map = internalGetMutableAttributes().ensureBuilderMap();
+      return map.containsKey(key) ? attributesConverter.build(map.get(key)) : defaultValue;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <pre>
+     * map of fqns as keys to attributes as values
+     * </pre>
+     *
+     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
      */
-    public Builder addAttributes(
-        int index, io.opentdf.platform.policy.attributes.Attribute value) {
-      if (attributesBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        ensureAttributesIsMutable();
-        attributes_.add(index, value);
-        onChanged();
-      } else {
-        attributesBuilder_.addMessage(index, value);
+    @java.lang.Override
+    public io.opentdf.platform.policy.attributes.Attribute getAttributesOrThrow(
+        java.lang.String key) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder> map = internalGetMutableAttributes().ensureBuilderMap();
+      if (!map.containsKey(key)) {
+        throw new java.lang.IllegalArgumentException();
       }
-      return this;
+      return attributesConverter.build(map.get(key));
     }
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
-    public Builder addAttributes(
-        io.opentdf.platform.policy.attributes.Attribute.Builder builderForValue) {
-      if (attributesBuilder_ == null) {
-        ensureAttributesIsMutable();
-        attributes_.add(builderForValue.build());
-        onChanged();
-      } else {
-        attributesBuilder_.addMessage(builderForValue.build());
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
-    public Builder addAttributes(
-        int index, io.opentdf.platform.policy.attributes.Attribute.Builder builderForValue) {
-      if (attributesBuilder_ == null) {
-        ensureAttributesIsMutable();
-        attributes_.add(index, builderForValue.build());
-        onChanged();
-      } else {
-        attributesBuilder_.addMessage(index, builderForValue.build());
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
-    public Builder addAllAttributes(
-        java.lang.Iterable<? extends io.opentdf.platform.policy.attributes.Attribute> values) {
-      if (attributesBuilder_ == null) {
-        ensureAttributesIsMutable();
-        com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, attributes_);
-        onChanged();
-      } else {
-        attributesBuilder_.addAllMessages(values);
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
     public Builder clearAttributes() {
-      if (attributesBuilder_ == null) {
-        attributes_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000001);
-        onChanged();
-      } else {
-        attributesBuilder_.clear();
-      }
+      bitField0_ = (bitField0_ & ~0x00000001);
+      internalGetMutableAttributes().clear();
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <pre>
+     * map of fqns as keys to attributes as values
+     * </pre>
+     *
+     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
      */
-    public Builder removeAttributes(int index) {
-      if (attributesBuilder_ == null) {
-        ensureAttributesIsMutable();
-        attributes_.remove(index);
-        onChanged();
-      } else {
-        attributesBuilder_.remove(index);
-      }
+    public Builder removeAttributes(
+        java.lang.String key) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      internalGetMutableAttributes().ensureBuilderMap()
+          .remove(key);
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * Use alternate mutation accessors instead.
      */
-    public io.opentdf.platform.policy.attributes.Attribute.Builder getAttributesBuilder(
-        int index) {
-      return getAttributesFieldBuilder().getBuilder(index);
+    @java.lang.Deprecated
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
+        getMutableAttributes() {
+      bitField0_ |= 0x00000001;
+      return internalGetMutableAttributes().ensureMessageMap();
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <pre>
+     * map of fqns as keys to attributes as values
+     * </pre>
+     *
+     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
      */
-    public io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributesOrBuilder(
-        int index) {
-      if (attributesBuilder_ == null) {
-        return attributes_.get(index);  } else {
-        return attributesBuilder_.getMessageOrBuilder(index);
+    public Builder putAttributes(
+        java.lang.String key,
+        io.opentdf.platform.policy.attributes.Attribute value) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      if (value == null) { throw new NullPointerException("map value"); }
+      internalGetMutableAttributes().ensureBuilderMap()
+          .put(key, value);
+      bitField0_ |= 0x00000001;
+      return this;
+    }
+    /**
+     * <pre>
+     * map of fqns as keys to attributes as values
+     * </pre>
+     *
+     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     */
+    public Builder putAllAttributes(
+        java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> values) {
+      for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> e : values.entrySet()) {
+        if (e.getKey() == null || e.getValue() == null) {
+          throw new NullPointerException();
+        }
       }
+      internalGetMutableAttributes().ensureBuilderMap()
+          .putAll(values);
+      bitField0_ |= 0x00000001;
+      return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <pre>
+     * map of fqns as keys to attributes as values
+     * </pre>
+     *
+     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
-         getAttributesOrBuilderList() {
-      if (attributesBuilder_ != null) {
-        return attributesBuilder_.getMessageOrBuilderList();
-      } else {
-        return java.util.Collections.unmodifiableList(attributes_);
+    public io.opentdf.platform.policy.attributes.Attribute.Builder putAttributesBuilderIfAbsent(
+        java.lang.String key) {
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder> builderMap = internalGetMutableAttributes().ensureBuilderMap();
+      io.opentdf.platform.policy.attributes.AttributeOrBuilder entry = builderMap.get(key);
+      if (entry == null) {
+        entry = io.opentdf.platform.policy.attributes.Attribute.newBuilder();
+        builderMap.put(key, entry);
       }
-    }
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
-    public io.opentdf.platform.policy.attributes.Attribute.Builder addAttributesBuilder() {
-      return getAttributesFieldBuilder().addBuilder(
-          io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance());
-    }
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
-    public io.opentdf.platform.policy.attributes.Attribute.Builder addAttributesBuilder(
-        int index) {
-      return getAttributesFieldBuilder().addBuilder(
-          index, io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance());
-    }
-    /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
-     */
-    public java.util.List<io.opentdf.platform.policy.attributes.Attribute.Builder> 
-         getAttributesBuilderList() {
-      return getAttributesFieldBuilder().getBuilderList();
-    }
-    private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
-        getAttributesFieldBuilder() {
-      if (attributesBuilder_ == null) {
-        attributesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder>(
-                attributes_,
-                ((bitField0_ & 0x00000001) != 0),
-                getParentForChildren(),
-                isClean());
-        attributes_ = null;
+      if (entry instanceof io.opentdf.platform.policy.attributes.Attribute) {
+        entry = ((io.opentdf.platform.policy.attributes.Attribute) entry).toBuilder();
+        builderMap.put(key, entry);
       }
-      return attributesBuilder_;
+      return (io.opentdf.platform.policy.attributes.Attribute.Builder) entry;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

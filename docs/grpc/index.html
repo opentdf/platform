@@ -491,6 +491,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.GetAttributesByFqnsResponse.AttributesEntry"><span class="badge">M</span>GetAttributesByFqnsResponse.AttributesEntry</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.ListAttributeValuesRequest"><span class="badge">M</span>ListAttributeValuesRequest</a>
                 </li>
               
@@ -3080,8 +3084,39 @@ Response:
               
                 <tr>
                   <td>attributes</td>
-                  <td><a href="#policy.attributes.Attribute">Attribute</a></td>
+                  <td><a href="#policy.attributes.GetAttributesByFqnsResponse.AttributesEntry">GetAttributesByFqnsResponse.AttributesEntry</a></td>
                   <td>repeated</td>
+                  <td><p>map of fqns as keys to attributes as values </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetAttributesByFqnsResponse.AttributesEntry">GetAttributesByFqnsResponse.AttributesEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.attributes.Attribute">Attribute</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               

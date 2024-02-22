@@ -801,7 +801,8 @@ type GetAttributesByFqnsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Attributes []*Attribute `protobuf:"bytes,1,rep,name=attributes,proto3" json:"attributes,omitempty"`
+	// map of fqns as keys to attributes as values
+	Attributes map[string]*Attribute `protobuf:"bytes,1,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *GetAttributesByFqnsResponse) Reset() {
@@ -836,7 +837,7 @@ func (*GetAttributesByFqnsResponse) Descriptor() ([]byte, []int) {
 	return file_policy_attributes_attributes_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *GetAttributesByFqnsResponse) GetAttributes() []*Attribute {
+func (x *GetAttributesByFqnsResponse) GetAttributes() map[string]*Attribute {
 	if x != nil {
 		return x.Attributes
 	}
@@ -2137,13 +2138,21 @@ var file_policy_attributes_attributes_proto_rawDesc = []byte{
 	0x1a, 0x47, 0x65, 0x74, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x42, 0x79,
 	0x46, 0x71, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x04, 0x66,
 	0x71, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x42, 0x06, 0xba, 0x48, 0x03, 0xc8, 0x01,
-	0x01, 0x52, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x22, 0x5b, 0x0a, 0x1b, 0x47, 0x65, 0x74, 0x41, 0x74,
-	0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x42, 0x79, 0x46, 0x71, 0x6e, 0x73, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3c, 0x0a, 0x0a, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62,
-	0x75, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x70, 0x6f, 0x6c,
-	0x69, 0x63, 0x79, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e, 0x41,
-	0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x52, 0x0a, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62,
-	0x75, 0x74, 0x65, 0x73, 0x22, 0x68, 0x0a, 0x16, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x41, 0x74,
+	0x01, 0x52, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x22, 0xda, 0x01, 0x0a, 0x1b, 0x47, 0x65, 0x74, 0x41,
+	0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x42, 0x79, 0x46, 0x71, 0x6e, 0x73, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x5e, 0x0a, 0x0a, 0x61, 0x74, 0x74, 0x72, 0x69,
+	0x62, 0x75, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3e, 0x2e, 0x70, 0x6f,
+	0x6c, 0x69, 0x63, 0x79, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e,
+	0x47, 0x65, 0x74, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x42, 0x79, 0x46,
+	0x71, 0x6e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x41, 0x74, 0x74, 0x72,
+	0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x0a, 0x61, 0x74, 0x74,
+	0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x1a, 0x5b, 0x0a, 0x0f, 0x41, 0x74, 0x74, 0x72, 0x69,
+	0x62, 0x75, 0x74, 0x65, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65,
+	0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x32, 0x0a, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x70, 0x6f,
+	0x6c, 0x69, 0x63, 0x79, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x2e,
+	0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
+	0x3a, 0x02, 0x38, 0x01, 0x22, 0x68, 0x0a, 0x16, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x41, 0x74,
 	0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x4e,
 	0x0a, 0x09, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x0b, 0x32, 0x28, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x61, 0x74, 0x74, 0x72, 0x69,
@@ -2509,7 +2518,7 @@ func file_policy_attributes_attributes_proto_rawDescGZIP() []byte {
 }
 
 var file_policy_attributes_attributes_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_policy_attributes_attributes_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_policy_attributes_attributes_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_policy_attributes_attributes_proto_goTypes = []interface{}{
 	(AttributeRuleTypeEnum)(0),                         // 0: policy.attributes.AttributeRuleTypeEnum
 	(*Attribute)(nil),                                  // 1: policy.attributes.Attribute
@@ -2548,38 +2557,39 @@ var file_policy_attributes_attributes_proto_goTypes = []interface{}{
 	(*AssignKeyAccessServerToValueResponse)(nil),       // 34: policy.attributes.AssignKeyAccessServerToValueResponse
 	(*RemoveKeyAccessServerFromValueRequest)(nil),      // 35: policy.attributes.RemoveKeyAccessServerFromValueRequest
 	(*RemoveKeyAccessServerFromValueResponse)(nil),     // 36: policy.attributes.RemoveKeyAccessServerFromValueResponse
-	(*common.Metadata)(nil),                            // 37: common.Metadata
-	(*namespaces.Namespace)(nil),                       // 38: policy.namespaces.Namespace
-	(*kasregistry.KeyAccessServer)(nil),                // 39: kasregistry.KeyAccessServer
-	(*wrapperspb.BoolValue)(nil),                       // 40: google.protobuf.BoolValue
-	(*common.MetadataMutable)(nil),                     // 41: common.MetadataMutable
-	(common.ActiveStateEnum)(0),                        // 42: common.ActiveStateEnum
+	nil,                                 // 37: policy.attributes.GetAttributesByFqnsResponse.AttributesEntry
+	(*common.Metadata)(nil),             // 38: common.Metadata
+	(*namespaces.Namespace)(nil),        // 39: policy.namespaces.Namespace
+	(*kasregistry.KeyAccessServer)(nil), // 40: kasregistry.KeyAccessServer
+	(*wrapperspb.BoolValue)(nil),        // 41: google.protobuf.BoolValue
+	(*common.MetadataMutable)(nil),      // 42: common.MetadataMutable
+	(common.ActiveStateEnum)(0),         // 43: common.ActiveStateEnum
 }
 var file_policy_attributes_attributes_proto_depIdxs = []int32{
-	37, // 0: policy.attributes.Attribute.metadata:type_name -> common.Metadata
-	38, // 1: policy.attributes.Attribute.namespace:type_name -> policy.namespaces.Namespace
+	38, // 0: policy.attributes.Attribute.metadata:type_name -> common.Metadata
+	39, // 1: policy.attributes.Attribute.namespace:type_name -> policy.namespaces.Namespace
 	0,  // 2: policy.attributes.Attribute.rule:type_name -> policy.attributes.AttributeRuleTypeEnum
 	3,  // 3: policy.attributes.Attribute.values:type_name -> policy.attributes.Value
-	39, // 4: policy.attributes.Attribute.grants:type_name -> kasregistry.KeyAccessServer
-	40, // 5: policy.attributes.Attribute.active:type_name -> google.protobuf.BoolValue
-	41, // 6: policy.attributes.AttributeCreateUpdate.metadata:type_name -> common.MetadataMutable
+	40, // 4: policy.attributes.Attribute.grants:type_name -> kasregistry.KeyAccessServer
+	41, // 5: policy.attributes.Attribute.active:type_name -> google.protobuf.BoolValue
+	42, // 6: policy.attributes.AttributeCreateUpdate.metadata:type_name -> common.MetadataMutable
 	0,  // 7: policy.attributes.AttributeCreateUpdate.rule:type_name -> policy.attributes.AttributeRuleTypeEnum
 	4,  // 8: policy.attributes.AttributeCreateUpdate.values:type_name -> policy.attributes.ValueCreateUpdate
-	37, // 9: policy.attributes.Value.metadata:type_name -> common.Metadata
-	39, // 10: policy.attributes.Value.grants:type_name -> kasregistry.KeyAccessServer
-	40, // 11: policy.attributes.Value.active:type_name -> google.protobuf.BoolValue
-	41, // 12: policy.attributes.ValueCreateUpdate.metadata:type_name -> common.MetadataMutable
-	42, // 13: policy.attributes.ListAttributesRequest.state:type_name -> common.ActiveStateEnum
+	38, // 9: policy.attributes.Value.metadata:type_name -> common.Metadata
+	40, // 10: policy.attributes.Value.grants:type_name -> kasregistry.KeyAccessServer
+	41, // 11: policy.attributes.Value.active:type_name -> google.protobuf.BoolValue
+	42, // 12: policy.attributes.ValueCreateUpdate.metadata:type_name -> common.MetadataMutable
+	43, // 13: policy.attributes.ListAttributesRequest.state:type_name -> common.ActiveStateEnum
 	1,  // 14: policy.attributes.ListAttributesResponse.attributes:type_name -> policy.attributes.Attribute
 	1,  // 15: policy.attributes.GetAttributeResponse.attribute:type_name -> policy.attributes.Attribute
-	1,  // 16: policy.attributes.GetAttributesByFqnsResponse.attributes:type_name -> policy.attributes.Attribute
+	37, // 16: policy.attributes.GetAttributesByFqnsResponse.attributes:type_name -> policy.attributes.GetAttributesByFqnsResponse.AttributesEntry
 	2,  // 17: policy.attributes.CreateAttributeRequest.attribute:type_name -> policy.attributes.AttributeCreateUpdate
 	1,  // 18: policy.attributes.CreateAttributeResponse.attribute:type_name -> policy.attributes.Attribute
 	2,  // 19: policy.attributes.UpdateAttributeRequest.attribute:type_name -> policy.attributes.AttributeCreateUpdate
 	1,  // 20: policy.attributes.UpdateAttributeResponse.attribute:type_name -> policy.attributes.Attribute
 	1,  // 21: policy.attributes.DeactivateAttributeResponse.attribute:type_name -> policy.attributes.Attribute
 	3,  // 22: policy.attributes.GetAttributeValueResponse.value:type_name -> policy.attributes.Value
-	42, // 23: policy.attributes.ListAttributeValuesRequest.state:type_name -> common.ActiveStateEnum
+	43, // 23: policy.attributes.ListAttributeValuesRequest.state:type_name -> common.ActiveStateEnum
 	3,  // 24: policy.attributes.ListAttributeValuesResponse.values:type_name -> policy.attributes.Value
 	4,  // 25: policy.attributes.CreateAttributeValueRequest.value:type_name -> policy.attributes.ValueCreateUpdate
 	3,  // 26: policy.attributes.CreateAttributeValueResponse.value:type_name -> policy.attributes.Value
@@ -2594,41 +2604,42 @@ var file_policy_attributes_attributes_proto_depIdxs = []int32{
 	6,  // 35: policy.attributes.AssignKeyAccessServerToValueResponse.value_key_access_server:type_name -> policy.attributes.ValueKeyAccessServer
 	6,  // 36: policy.attributes.RemoveKeyAccessServerFromValueRequest.value_key_access_server:type_name -> policy.attributes.ValueKeyAccessServer
 	6,  // 37: policy.attributes.RemoveKeyAccessServerFromValueResponse.value_key_access_server:type_name -> policy.attributes.ValueKeyAccessServer
-	7,  // 38: policy.attributes.AttributesService.ListAttributes:input_type -> policy.attributes.ListAttributesRequest
-	21, // 39: policy.attributes.AttributesService.ListAttributeValues:input_type -> policy.attributes.ListAttributeValuesRequest
-	9,  // 40: policy.attributes.AttributesService.GetAttribute:input_type -> policy.attributes.GetAttributeRequest
-	11, // 41: policy.attributes.AttributesService.GetAttributesByFqns:input_type -> policy.attributes.GetAttributesByFqnsRequest
-	13, // 42: policy.attributes.AttributesService.CreateAttribute:input_type -> policy.attributes.CreateAttributeRequest
-	15, // 43: policy.attributes.AttributesService.UpdateAttribute:input_type -> policy.attributes.UpdateAttributeRequest
-	17, // 44: policy.attributes.AttributesService.DeactivateAttribute:input_type -> policy.attributes.DeactivateAttributeRequest
-	19, // 45: policy.attributes.AttributesService.GetAttributeValue:input_type -> policy.attributes.GetAttributeValueRequest
-	23, // 46: policy.attributes.AttributesService.CreateAttributeValue:input_type -> policy.attributes.CreateAttributeValueRequest
-	25, // 47: policy.attributes.AttributesService.UpdateAttributeValue:input_type -> policy.attributes.UpdateAttributeValueRequest
-	27, // 48: policy.attributes.AttributesService.DeactivateAttributeValue:input_type -> policy.attributes.DeactivateAttributeValueRequest
-	29, // 49: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute:input_type -> policy.attributes.AssignKeyAccessServerToAttributeRequest
-	31, // 50: policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute:input_type -> policy.attributes.RemoveKeyAccessServerFromAttributeRequest
-	33, // 51: policy.attributes.AttributesService.AssignKeyAccessServerToValue:input_type -> policy.attributes.AssignKeyAccessServerToValueRequest
-	35, // 52: policy.attributes.AttributesService.RemoveKeyAccessServerFromValue:input_type -> policy.attributes.RemoveKeyAccessServerFromValueRequest
-	8,  // 53: policy.attributes.AttributesService.ListAttributes:output_type -> policy.attributes.ListAttributesResponse
-	22, // 54: policy.attributes.AttributesService.ListAttributeValues:output_type -> policy.attributes.ListAttributeValuesResponse
-	10, // 55: policy.attributes.AttributesService.GetAttribute:output_type -> policy.attributes.GetAttributeResponse
-	12, // 56: policy.attributes.AttributesService.GetAttributesByFqns:output_type -> policy.attributes.GetAttributesByFqnsResponse
-	14, // 57: policy.attributes.AttributesService.CreateAttribute:output_type -> policy.attributes.CreateAttributeResponse
-	16, // 58: policy.attributes.AttributesService.UpdateAttribute:output_type -> policy.attributes.UpdateAttributeResponse
-	18, // 59: policy.attributes.AttributesService.DeactivateAttribute:output_type -> policy.attributes.DeactivateAttributeResponse
-	20, // 60: policy.attributes.AttributesService.GetAttributeValue:output_type -> policy.attributes.GetAttributeValueResponse
-	24, // 61: policy.attributes.AttributesService.CreateAttributeValue:output_type -> policy.attributes.CreateAttributeValueResponse
-	26, // 62: policy.attributes.AttributesService.UpdateAttributeValue:output_type -> policy.attributes.UpdateAttributeValueResponse
-	28, // 63: policy.attributes.AttributesService.DeactivateAttributeValue:output_type -> policy.attributes.DeactivateAttributeValueResponse
-	30, // 64: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute:output_type -> policy.attributes.AssignKeyAccessServerToAttributeResponse
-	32, // 65: policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute:output_type -> policy.attributes.RemoveKeyAccessServerFromAttributeResponse
-	34, // 66: policy.attributes.AttributesService.AssignKeyAccessServerToValue:output_type -> policy.attributes.AssignKeyAccessServerToValueResponse
-	36, // 67: policy.attributes.AttributesService.RemoveKeyAccessServerFromValue:output_type -> policy.attributes.RemoveKeyAccessServerFromValueResponse
-	53, // [53:68] is the sub-list for method output_type
-	38, // [38:53] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	1,  // 38: policy.attributes.GetAttributesByFqnsResponse.AttributesEntry.value:type_name -> policy.attributes.Attribute
+	7,  // 39: policy.attributes.AttributesService.ListAttributes:input_type -> policy.attributes.ListAttributesRequest
+	21, // 40: policy.attributes.AttributesService.ListAttributeValues:input_type -> policy.attributes.ListAttributeValuesRequest
+	9,  // 41: policy.attributes.AttributesService.GetAttribute:input_type -> policy.attributes.GetAttributeRequest
+	11, // 42: policy.attributes.AttributesService.GetAttributesByFqns:input_type -> policy.attributes.GetAttributesByFqnsRequest
+	13, // 43: policy.attributes.AttributesService.CreateAttribute:input_type -> policy.attributes.CreateAttributeRequest
+	15, // 44: policy.attributes.AttributesService.UpdateAttribute:input_type -> policy.attributes.UpdateAttributeRequest
+	17, // 45: policy.attributes.AttributesService.DeactivateAttribute:input_type -> policy.attributes.DeactivateAttributeRequest
+	19, // 46: policy.attributes.AttributesService.GetAttributeValue:input_type -> policy.attributes.GetAttributeValueRequest
+	23, // 47: policy.attributes.AttributesService.CreateAttributeValue:input_type -> policy.attributes.CreateAttributeValueRequest
+	25, // 48: policy.attributes.AttributesService.UpdateAttributeValue:input_type -> policy.attributes.UpdateAttributeValueRequest
+	27, // 49: policy.attributes.AttributesService.DeactivateAttributeValue:input_type -> policy.attributes.DeactivateAttributeValueRequest
+	29, // 50: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute:input_type -> policy.attributes.AssignKeyAccessServerToAttributeRequest
+	31, // 51: policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute:input_type -> policy.attributes.RemoveKeyAccessServerFromAttributeRequest
+	33, // 52: policy.attributes.AttributesService.AssignKeyAccessServerToValue:input_type -> policy.attributes.AssignKeyAccessServerToValueRequest
+	35, // 53: policy.attributes.AttributesService.RemoveKeyAccessServerFromValue:input_type -> policy.attributes.RemoveKeyAccessServerFromValueRequest
+	8,  // 54: policy.attributes.AttributesService.ListAttributes:output_type -> policy.attributes.ListAttributesResponse
+	22, // 55: policy.attributes.AttributesService.ListAttributeValues:output_type -> policy.attributes.ListAttributeValuesResponse
+	10, // 56: policy.attributes.AttributesService.GetAttribute:output_type -> policy.attributes.GetAttributeResponse
+	12, // 57: policy.attributes.AttributesService.GetAttributesByFqns:output_type -> policy.attributes.GetAttributesByFqnsResponse
+	14, // 58: policy.attributes.AttributesService.CreateAttribute:output_type -> policy.attributes.CreateAttributeResponse
+	16, // 59: policy.attributes.AttributesService.UpdateAttribute:output_type -> policy.attributes.UpdateAttributeResponse
+	18, // 60: policy.attributes.AttributesService.DeactivateAttribute:output_type -> policy.attributes.DeactivateAttributeResponse
+	20, // 61: policy.attributes.AttributesService.GetAttributeValue:output_type -> policy.attributes.GetAttributeValueResponse
+	24, // 62: policy.attributes.AttributesService.CreateAttributeValue:output_type -> policy.attributes.CreateAttributeValueResponse
+	26, // 63: policy.attributes.AttributesService.UpdateAttributeValue:output_type -> policy.attributes.UpdateAttributeValueResponse
+	28, // 64: policy.attributes.AttributesService.DeactivateAttributeValue:output_type -> policy.attributes.DeactivateAttributeValueResponse
+	30, // 65: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute:output_type -> policy.attributes.AssignKeyAccessServerToAttributeResponse
+	32, // 66: policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute:output_type -> policy.attributes.RemoveKeyAccessServerFromAttributeResponse
+	34, // 67: policy.attributes.AttributesService.AssignKeyAccessServerToValue:output_type -> policy.attributes.AssignKeyAccessServerToValueResponse
+	36, // 68: policy.attributes.AttributesService.RemoveKeyAccessServerFromValue:output_type -> policy.attributes.RemoveKeyAccessServerFromValueResponse
+	54, // [54:69] is the sub-list for method output_type
+	39, // [39:54] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_policy_attributes_attributes_proto_init() }
@@ -3076,7 +3087,7 @@ func file_policy_attributes_attributes_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_policy_attributes_attributes_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   36,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

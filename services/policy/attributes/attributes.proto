@@ -133,7 +133,8 @@ message GetAttributesByFqnsRequest {
   repeated string fqns = 1 [(buf.validate.field).required = true];
 }
 message GetAttributesByFqnsResponse {
-  repeated Attribute attributes = 1;
+  // map of fqns as keys to attributes as values
+  map<string, Attribute> attributes = 1;
 }
 
 message CreateAttributeRequest {

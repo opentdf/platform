@@ -35,7 +35,6 @@ fix:
 	(cd . && go mod tidy && go fmt ./...)
 	(cd examples && go mod tidy && go fmt ./...)
 
-
 lint: buf-lint golangci-lint
 
 buf-lint:

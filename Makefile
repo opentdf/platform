@@ -16,7 +16,7 @@ V_BUFGENERATE=buf generate services
 # GolangCI-Lint
 V_GOLANGCILINT=golangci-lint run
 
-.PHONY: all lint buf-lint buf-generate golangci-lint test clean build docker-build
+.PHONY: all fix lint buf-lint buf-generate golangci-lint test clean build docker-build
 
 all: pre-build lint test build
 
@@ -28,7 +28,15 @@ pre-build:
 	@golangci-lint --version | grep "version 1.55" > /dev/null || (echo "golangci-lint version must be v1.55" && exit 1)
 
 go.work go.work.sum:
-	go work init . examples sdk
+	go work init . examples protocol/go sdk
+	go work edit --go=1.21.7
+
+fix:
+	(cd protocol/go && go mod tidy && go fmt ./...)
+	(cd sdk && go mod tidy && go fmt ./...)
+	(cd . && go mod tidy && go fmt ./...)
+	(cd examples && go mod tidy && go fmt ./...)
+
 
 lint: buf-lint golangci-lint
 

@@ -112,6 +112,7 @@ func NewIDPAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoi
 		asymDecryption:   *asymDecryption,
 		dpopKey:          dpopKey,
 		dpopPEM:          dpopPublicKeyPEM,
+		tokenMutex:       &sync.Mutex{},
 	}
 
 	return creds, nil

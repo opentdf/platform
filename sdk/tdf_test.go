@@ -752,15 +752,7 @@ func getKASRequestHandler(expectedAccessToken, dpopPublicKeyPEM string) func(htt
 
 		switch {
 		case r.URL.Path == kasPublicKeyPath:
-			kasPublicKeyResponse, err := json.Marshal(mockKasPublicKey)
-			if err != nil {
-				panic(fmt.Sprintf("json.Marshal failed: %v", err))
-			}
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(kasPublicKeyResponse)
-			if err != nil {
-				panic(fmt.Sprintf("http.ResponseWriter.Write failed: %v", err))
-			}
+			sendPublicKey(w)
 		case r.URL.Path == kRewrapV2:
 			requestBody, err := io.ReadAll(r.Body)
 			if err != nil {
@@ -836,6 +828,18 @@ func getKASRequestHandler(expectedAccessToken, dpopPublicKeyPEM string) func(htt
 		default:
 			panic(fmt.Sprintf("expected to request: %s", r.URL.Path))
 		}
+	}
+}
+
+func sendPublicKey(w http.ResponseWriter) {
+	kasPublicKeyResponse, err := json.Marshal(mockKasPublicKey)
+	if err != nil {
+		panic(fmt.Sprintf("json.Marshal failed: %v", err))
+	}
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(kasPublicKeyResponse)
+	if err != nil {
+		panic(fmt.Sprintf("http.ResponseWriter.Write failed: %v", err))
 	}
 }
 

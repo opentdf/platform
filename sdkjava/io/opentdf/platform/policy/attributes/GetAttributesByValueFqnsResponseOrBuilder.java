@@ -10,55 +10,55 @@ public interface GetAttributesByValueFqnsResponseOrBuilder extends
 
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
-  int getAttributesCount();
+  int getFqnAttributeValuesCount();
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
-  boolean containsAttributes(
+  boolean containsFqnAttributeValues(
       java.lang.String key);
   /**
-   * Use {@link #getAttributesMap()} instead.
+   * Use {@link #getFqnAttributeValuesMap()} instead.
    */
   @java.lang.Deprecated
-  java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
-  getAttributes();
+  java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+  getFqnAttributeValues();
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
-  java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
-  getAttributesMap();
+  java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+  getFqnAttributeValuesMap();
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   /* nullable */
-io.opentdf.platform.policy.attributes.Attribute getAttributesOrDefault(
+io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrDefault(
       java.lang.String key,
       /* nullable */
-io.opentdf.platform.policy.attributes.Attribute defaultValue);
+io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue);
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
-  io.opentdf.platform.policy.attributes.Attribute getAttributesOrThrow(
+  io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrThrow(
       java.lang.String key);
 }

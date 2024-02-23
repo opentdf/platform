@@ -6,8 +6,9 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/services/policy/db"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -166,35 +167,38 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 
 	// Get attributes by fqns with a solo value
 	fqns := []string{fqn1}
-	attrs, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, fqns)
+	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, fqns)
 	assert.NoError(s.T(), err)
 
 	// Verify attribute1 is sole attribute
-	assert.Len(s.T(), attrs, 1)
-	val, ok := attrs[fqn1]
+	assert.Len(s.T(), attributeAndValue, 1)
+	val, ok := attributeAndValue[fqn1]
 	assert.True(s.T(), ok)
-	assert.Equal(s.T(), a.Id, val.Id)
-	assert.Equal(s.T(), v1.Id, val.Values[0].Id)
-	assert.Equal(s.T(), v1.Value, val.Values[0].Value)
+	assert.Equal(s.T(), a.Id, val.Attribute.Id)
+
+	assert.Equal(s.T(), v1.Id, val.Attribute.Values[0].Id)
+	assert.Equal(s.T(), v1.Value, val.Value.Value)
+
+	assert.Equal(s.T(), v1.Value, val.Attribute.Values[0].Value)
+	assert.Equal(s.T(), v1.Id, val.Value.Id)
 
 	// Create attribute value2
 	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
 		Value: value2,
 	})
 	assert.NoError(s.T(), err)
-	fmt.Println(v2)
 
 	// Get attributes by fqns with two values
 	fqns = []string{fqn1, fqn2}
-	attrs, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, fqns)
+	attributeAndValue, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, fqns)
 	assert.NoError(s.T(), err)
-	assert.Len(s.T(), attrs, 2)
+	assert.Len(s.T(), attributeAndValue, 2)
 
-	val, ok = attrs[fqn2]
+	val, ok = attributeAndValue[fqn2]
 	assert.True(s.T(), ok)
-	assert.Equal(s.T(), a.Id, val.Id)
+	assert.Equal(s.T(), a.Id, val.Attribute.Id)
 
-	for _, v := range val.Values {
+	for _, v := range val.Attribute.Values {
 		if v.Id == v1.Id {
 			assert.Equal(s.T(), v1.Id, v.Id)
 			assert.Equal(s.T(), v1.Value, v.Value)
@@ -207,7 +211,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	}
 }
 
-func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(){
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns() {
 	nsFqn := fqnBuilder("example.com", "", "")
 	attrFqn := fqnBuilder("example.com", "attr1", "")
 	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, []string{nsFqn})

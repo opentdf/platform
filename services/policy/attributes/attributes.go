@@ -85,7 +85,7 @@ func (s *AttributesService) GetAttributesByValueFqns(ctx context.Context,
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Fqns)))
 	}
-	rsp.Attributes = fqnsToAttributes
+	rsp.FqnAttributeValues = fqnsToAttributes
 
 	return rsp, nil
 }

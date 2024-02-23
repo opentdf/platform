@@ -37,7 +37,7 @@ private static final long serialVersionUID = 0L;
       int number) {
     switch (number) {
       case 1:
-        return internalGetAttributes();
+        return internalGetFqnAttributeValues();
       default:
         throw new RuntimeException(
             "Invalid map field number: " + number);
@@ -51,95 +51,95 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.class, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.Builder.class);
   }
 
-  public static final int ATTRIBUTES_FIELD_NUMBER = 1;
-  private static final class AttributesDefaultEntryHolder {
+  public static final int FQN_ATTRIBUTE_VALUES_FIELD_NUMBER = 1;
+  private static final class FqnAttributeValuesDefaultEntryHolder {
     static final com.google.protobuf.MapEntry<
-        java.lang.String, io.opentdf.platform.policy.attributes.Attribute> defaultEntry =
+        java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> defaultEntry =
             com.google.protobuf.MapEntry
-            .<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>newDefaultInstance(
-                io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsResponse_AttributesEntry_descriptor, 
+            .<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>newDefaultInstance(
+                io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsResponse_FqnAttributeValuesEntry_descriptor, 
                 com.google.protobuf.WireFormat.FieldType.STRING,
                 "",
                 com.google.protobuf.WireFormat.FieldType.MESSAGE,
-                io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance());
+                io.opentdf.platform.policy.attributes.AttributeAndValue.getDefaultInstance());
   }
   @SuppressWarnings("serial")
   private com.google.protobuf.MapField<
-      java.lang.String, io.opentdf.platform.policy.attributes.Attribute> attributes_;
-  private com.google.protobuf.MapField<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
-  internalGetAttributes() {
-    if (attributes_ == null) {
+      java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> fqnAttributeValues_;
+  private com.google.protobuf.MapField<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+  internalGetFqnAttributeValues() {
+    if (fqnAttributeValues_ == null) {
       return com.google.protobuf.MapField.emptyMapField(
-          AttributesDefaultEntryHolder.defaultEntry);
+          FqnAttributeValuesDefaultEntryHolder.defaultEntry);
     }
-    return attributes_;
+    return fqnAttributeValues_;
   }
-  public int getAttributesCount() {
-    return internalGetAttributes().getMap().size();
+  public int getFqnAttributeValuesCount() {
+    return internalGetFqnAttributeValues().getMap().size();
   }
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   @java.lang.Override
-  public boolean containsAttributes(
+  public boolean containsFqnAttributeValues(
       java.lang.String key) {
     if (key == null) { throw new NullPointerException("map key"); }
-    return internalGetAttributes().getMap().containsKey(key);
+    return internalGetFqnAttributeValues().getMap().containsKey(key);
   }
   /**
-   * Use {@link #getAttributesMap()} instead.
+   * Use {@link #getFqnAttributeValuesMap()} instead.
    */
   @java.lang.Override
   @java.lang.Deprecated
-  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> getAttributes() {
-    return getAttributesMap();
+  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> getFqnAttributeValues() {
+    return getFqnAttributeValuesMap();
   }
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   @java.lang.Override
-  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> getAttributesMap() {
-    return internalGetAttributes().getMap();
+  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> getFqnAttributeValuesMap() {
+    return internalGetFqnAttributeValues().getMap();
   }
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   @java.lang.Override
   public /* nullable */
-io.opentdf.platform.policy.attributes.Attribute getAttributesOrDefault(
+io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrDefault(
       java.lang.String key,
       /* nullable */
-io.opentdf.platform.policy.attributes.Attribute defaultValue) {
+io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
     if (key == null) { throw new NullPointerException("map key"); }
-    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> map =
-        internalGetAttributes().getMap();
+    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> map =
+        internalGetFqnAttributeValues().getMap();
     return map.containsKey(key) ? map.get(key) : defaultValue;
   }
   /**
    * <pre>
-   * map of fqns as keys to attributes as values
+   * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.Attribute getAttributesOrThrow(
+  public io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrThrow(
       java.lang.String key) {
     if (key == null) { throw new NullPointerException("map key"); }
-    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> map =
-        internalGetAttributes().getMap();
+    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> map =
+        internalGetFqnAttributeValues().getMap();
     if (!map.containsKey(key)) {
       throw new java.lang.IllegalArgumentException();
     }
@@ -163,8 +163,8 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
     com.google.protobuf.GeneratedMessageV3
       .serializeStringMapTo(
         output,
-        internalGetAttributes(),
-        AttributesDefaultEntryHolder.defaultEntry,
+        internalGetFqnAttributeValues(),
+        FqnAttributeValuesDefaultEntryHolder.defaultEntry,
         1);
     getUnknownFields().writeTo(output);
   }
@@ -175,15 +175,15 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
     if (size != -1) return size;
 
     size = 0;
-    for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> entry
-         : internalGetAttributes().getMap().entrySet()) {
-      com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
-      attributes__ = AttributesDefaultEntryHolder.defaultEntry.newBuilderForType()
+    for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> entry
+         : internalGetFqnAttributeValues().getMap().entrySet()) {
+      com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+      fqnAttributeValues__ = FqnAttributeValuesDefaultEntryHolder.defaultEntry.newBuilderForType()
           .setKey(entry.getKey())
           .setValue(entry.getValue())
           .build();
       size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(1, attributes__);
+          .computeMessageSize(1, fqnAttributeValues__);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -200,8 +200,8 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
     }
     io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse other = (io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse) obj;
 
-    if (!internalGetAttributes().equals(
-        other.internalGetAttributes())) return false;
+    if (!internalGetFqnAttributeValues().equals(
+        other.internalGetFqnAttributeValues())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -213,9 +213,9 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    if (!internalGetAttributes().getMap().isEmpty()) {
-      hash = (37 * hash) + ATTRIBUTES_FIELD_NUMBER;
-      hash = (53 * hash) + internalGetAttributes().hashCode();
+    if (!internalGetFqnAttributeValues().getMap().isEmpty()) {
+      hash = (37 * hash) + FQN_ATTRIBUTE_VALUES_FIELD_NUMBER;
+      hash = (53 * hash) + internalGetFqnAttributeValues().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -331,7 +331,7 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
         int number) {
       switch (number) {
         case 1:
-          return internalGetAttributes();
+          return internalGetFqnAttributeValues();
         default:
           throw new RuntimeException(
               "Invalid map field number: " + number);
@@ -342,7 +342,7 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
         int number) {
       switch (number) {
         case 1:
-          return internalGetMutableAttributes();
+          return internalGetMutableFqnAttributeValues();
         default:
           throw new RuntimeException(
               "Invalid map field number: " + number);
@@ -370,7 +370,7 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      internalGetMutableAttributes().clear();
+      internalGetMutableFqnAttributeValues().clear();
       return this;
     }
 
@@ -405,7 +405,7 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
     private void buildPartial0(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.attributes_ = internalGetAttributes().build(AttributesDefaultEntryHolder.defaultEntry);
+        result.fqnAttributeValues_ = internalGetFqnAttributeValues().build(FqnAttributeValuesDefaultEntryHolder.defaultEntry);
       }
     }
 
@@ -453,8 +453,8 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
 
     public Builder mergeFrom(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse other) {
       if (other == io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.getDefaultInstance()) return this;
-      internalGetMutableAttributes().mergeFrom(
-          other.internalGetAttributes());
+      internalGetMutableFqnAttributeValues().mergeFrom(
+          other.internalGetFqnAttributeValues());
       bitField0_ |= 0x00000001;
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -483,11 +483,11 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
               done = true;
               break;
             case 10: {
-              com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
-              attributes__ = input.readMessage(
-                  AttributesDefaultEntryHolder.defaultEntry.getParserForType(), extensionRegistry);
-              internalGetMutableAttributes().ensureBuilderMap().put(
-                  attributes__.getKey(), attributes__.getValue());
+              com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+              fqnAttributeValues__ = input.readMessage(
+                  FqnAttributeValuesDefaultEntryHolder.defaultEntry.getParserForType(), extensionRegistry);
+              internalGetMutableFqnAttributeValues().ensureBuilderMap().put(
+                  fqnAttributeValues__.getKey(), fqnAttributeValues__.getValue());
               bitField0_ |= 0x00000001;
               break;
             } // case 10
@@ -508,123 +508,123 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
     }
     private int bitField0_;
 
-    private static final class AttributesConverter implements com.google.protobuf.MapFieldBuilder.Converter<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder, io.opentdf.platform.policy.attributes.Attribute> {
+    private static final class FqnAttributeValuesConverter implements com.google.protobuf.MapFieldBuilder.Converter<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.AttributeAndValue> {
       @java.lang.Override
-      public io.opentdf.platform.policy.attributes.Attribute build(io.opentdf.platform.policy.attributes.AttributeOrBuilder val) {
-        if (val instanceof io.opentdf.platform.policy.attributes.Attribute) { return (io.opentdf.platform.policy.attributes.Attribute) val; }
-        return ((io.opentdf.platform.policy.attributes.Attribute.Builder) val).build();
+      public io.opentdf.platform.policy.attributes.AttributeAndValue build(io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder val) {
+        if (val instanceof io.opentdf.platform.policy.attributes.AttributeAndValue) { return (io.opentdf.platform.policy.attributes.AttributeAndValue) val; }
+        return ((io.opentdf.platform.policy.attributes.AttributeAndValue.Builder) val).build();
       }
 
       @java.lang.Override
-      public com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> defaultEntry() {
-        return AttributesDefaultEntryHolder.defaultEntry;
+      public com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> defaultEntry() {
+        return FqnAttributeValuesDefaultEntryHolder.defaultEntry;
       }
     };
-    private static final AttributesConverter attributesConverter = new AttributesConverter();
+    private static final FqnAttributeValuesConverter fqnAttributeValuesConverter = new FqnAttributeValuesConverter();
 
     private com.google.protobuf.MapFieldBuilder<
-        java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder, io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder> attributes_;
-    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder, io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder>
-        internalGetAttributes() {
-      if (attributes_ == null) {
-        return new com.google.protobuf.MapFieldBuilder<>(attributesConverter);
+        java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.AttributeAndValue, io.opentdf.platform.policy.attributes.AttributeAndValue.Builder> fqnAttributeValues_;
+    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.AttributeAndValue, io.opentdf.platform.policy.attributes.AttributeAndValue.Builder>
+        internalGetFqnAttributeValues() {
+      if (fqnAttributeValues_ == null) {
+        return new com.google.protobuf.MapFieldBuilder<>(fqnAttributeValuesConverter);
       }
-      return attributes_;
+      return fqnAttributeValues_;
     }
-    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder, io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder>
-        internalGetMutableAttributes() {
-      if (attributes_ == null) {
-        attributes_ = new com.google.protobuf.MapFieldBuilder<>(attributesConverter);
+    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.AttributeAndValue, io.opentdf.platform.policy.attributes.AttributeAndValue.Builder>
+        internalGetMutableFqnAttributeValues() {
+      if (fqnAttributeValues_ == null) {
+        fqnAttributeValues_ = new com.google.protobuf.MapFieldBuilder<>(fqnAttributeValuesConverter);
       }
       bitField0_ |= 0x00000001;
       onChanged();
-      return attributes_;
+      return fqnAttributeValues_;
     }
-    public int getAttributesCount() {
-      return internalGetAttributes().ensureBuilderMap().size();
+    public int getFqnAttributeValuesCount() {
+      return internalGetFqnAttributeValues().ensureBuilderMap().size();
     }
     /**
      * <pre>
-     * map of fqns as keys to attributes as values
+     * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     @java.lang.Override
-    public boolean containsAttributes(
+    public boolean containsFqnAttributeValues(
         java.lang.String key) {
       if (key == null) { throw new NullPointerException("map key"); }
-      return internalGetAttributes().ensureBuilderMap().containsKey(key);
+      return internalGetFqnAttributeValues().ensureBuilderMap().containsKey(key);
     }
     /**
-     * Use {@link #getAttributesMap()} instead.
+     * Use {@link #getFqnAttributeValuesMap()} instead.
      */
     @java.lang.Override
     @java.lang.Deprecated
-    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> getAttributes() {
-      return getAttributesMap();
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> getFqnAttributeValues() {
+      return getFqnAttributeValuesMap();
     }
     /**
      * <pre>
-     * map of fqns as keys to attributes as values
+     * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     @java.lang.Override
-    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> getAttributesMap() {
-      return internalGetAttributes().getImmutableMap();
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> getFqnAttributeValuesMap() {
+      return internalGetFqnAttributeValues().getImmutableMap();
     }
     /**
      * <pre>
-     * map of fqns as keys to attributes as values
+     * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     @java.lang.Override
     public /* nullable */
-io.opentdf.platform.policy.attributes.Attribute getAttributesOrDefault(
+io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrDefault(
         java.lang.String key,
         /* nullable */
-io.opentdf.platform.policy.attributes.Attribute defaultValue) {
+io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
       if (key == null) { throw new NullPointerException("map key"); }
-      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder> map = internalGetMutableAttributes().ensureBuilderMap();
-      return map.containsKey(key) ? attributesConverter.build(map.get(key)) : defaultValue;
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder> map = internalGetMutableFqnAttributeValues().ensureBuilderMap();
+      return map.containsKey(key) ? fqnAttributeValuesConverter.build(map.get(key)) : defaultValue;
     }
     /**
      * <pre>
-     * map of fqns as keys to attributes as values
+     * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     @java.lang.Override
-    public io.opentdf.platform.policy.attributes.Attribute getAttributesOrThrow(
+    public io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrThrow(
         java.lang.String key) {
       if (key == null) { throw new NullPointerException("map key"); }
-      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder> map = internalGetMutableAttributes().ensureBuilderMap();
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder> map = internalGetMutableFqnAttributeValues().ensureBuilderMap();
       if (!map.containsKey(key)) {
         throw new java.lang.IllegalArgumentException();
       }
-      return attributesConverter.build(map.get(key));
+      return fqnAttributeValuesConverter.build(map.get(key));
     }
-    public Builder clearAttributes() {
+    public Builder clearFqnAttributeValues() {
       bitField0_ = (bitField0_ & ~0x00000001);
-      internalGetMutableAttributes().clear();
+      internalGetMutableFqnAttributeValues().clear();
       return this;
     }
     /**
      * <pre>
-     * map of fqns as keys to attributes as values
+     * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
-    public Builder removeAttributes(
+    public Builder removeFqnAttributeValues(
         java.lang.String key) {
       if (key == null) { throw new NullPointerException("map key"); }
-      internalGetMutableAttributes().ensureBuilderMap()
+      internalGetMutableFqnAttributeValues().ensureBuilderMap()
           .remove(key);
       return this;
     }
@@ -632,67 +632,67 @@ io.opentdf.platform.policy.attributes.Attribute defaultValue) {
      * Use alternate mutation accessors instead.
      */
     @java.lang.Deprecated
-    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute>
-        getMutableAttributes() {
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+        getMutableFqnAttributeValues() {
       bitField0_ |= 0x00000001;
-      return internalGetMutableAttributes().ensureMessageMap();
+      return internalGetMutableFqnAttributeValues().ensureMessageMap();
     }
     /**
      * <pre>
-     * map of fqns as keys to attributes as values
+     * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
-    public Builder putAttributes(
+    public Builder putFqnAttributeValues(
         java.lang.String key,
-        io.opentdf.platform.policy.attributes.Attribute value) {
+        io.opentdf.platform.policy.attributes.AttributeAndValue value) {
       if (key == null) { throw new NullPointerException("map key"); }
       if (value == null) { throw new NullPointerException("map value"); }
-      internalGetMutableAttributes().ensureBuilderMap()
+      internalGetMutableFqnAttributeValues().ensureBuilderMap()
           .put(key, value);
       bitField0_ |= 0x00000001;
       return this;
     }
     /**
      * <pre>
-     * map of fqns as keys to attributes as values
+     * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
-    public Builder putAllAttributes(
-        java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> values) {
-      for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.Attribute> e : values.entrySet()) {
+    public Builder putAllFqnAttributeValues(
+        java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> values) {
+      for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> e : values.entrySet()) {
         if (e.getKey() == null || e.getValue() == null) {
           throw new NullPointerException();
         }
       }
-      internalGetMutableAttributes().ensureBuilderMap()
+      internalGetMutableFqnAttributeValues().ensureBuilderMap()
           .putAll(values);
       bitField0_ |= 0x00000001;
       return this;
     }
     /**
      * <pre>
-     * map of fqns as keys to attributes as values
+     * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.Attribute&gt; attributes = 1 [json_name = "attributes"];</code>
+     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Attribute.Builder putAttributesBuilderIfAbsent(
+    public io.opentdf.platform.policy.attributes.AttributeAndValue.Builder putFqnAttributeValuesBuilderIfAbsent(
         java.lang.String key) {
-      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeOrBuilder> builderMap = internalGetMutableAttributes().ensureBuilderMap();
-      io.opentdf.platform.policy.attributes.AttributeOrBuilder entry = builderMap.get(key);
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder> builderMap = internalGetMutableFqnAttributeValues().ensureBuilderMap();
+      io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder entry = builderMap.get(key);
       if (entry == null) {
-        entry = io.opentdf.platform.policy.attributes.Attribute.newBuilder();
+        entry = io.opentdf.platform.policy.attributes.AttributeAndValue.newBuilder();
         builderMap.put(key, entry);
       }
-      if (entry instanceof io.opentdf.platform.policy.attributes.Attribute) {
-        entry = ((io.opentdf.platform.policy.attributes.Attribute) entry).toBuilder();
+      if (entry instanceof io.opentdf.platform.policy.attributes.AttributeAndValue) {
+        entry = ((io.opentdf.platform.policy.attributes.AttributeAndValue) entry).toBuilder();
         builderMap.put(key, entry);
       }
-      return (io.opentdf.platform.policy.attributes.Attribute.Builder) entry;
+      return (io.opentdf.platform.policy.attributes.AttributeAndValue.Builder) entry;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

@@ -518,6 +518,17 @@
         }
       }
     },
+    "attributesAttributeAndValue": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
+        },
+        "value": {
+          "$ref": "#/definitions/attributesValue"
+        }
+      }
+    },
     "attributesAttributeCreateUpdate": {
       "type": "object",
       "properties": {
@@ -620,12 +631,12 @@
     "attributesGetAttributesByValueFqnsResponse": {
       "type": "object",
       "properties": {
-        "attributes": {
+        "fqnAttributeValues": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/attributesAttribute"
+            "$ref": "#/definitions/attributesAttributeAndValue"
           },
-          "title": "map of fqns as keys to attributes as values"
+          "title": "map of fqns to complete attributes and the one selected value"
         }
       }
     },

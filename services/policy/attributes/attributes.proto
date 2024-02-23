@@ -96,6 +96,11 @@ message ValueCreateUpdate {
   repeated string members = 3;
 }
 
+message AttributeAndValue {
+  Attribute attribute = 1;
+  Value value = 2;
+}
+
 /*
    Key Access Server Grants
 */
@@ -133,8 +138,8 @@ message GetAttributesByValueFqnsRequest {
   repeated string fqns = 1 [(buf.validate.field).required = true];
 }
 message GetAttributesByValueFqnsResponse {
-  // map of fqns as keys to attributes as values
-  map<string, Attribute> attributes = 1;
+  // map of fqns to complete attributes and the one selected value
+  map<string, AttributeAndValue> fqn_attribute_values = 1;
 }
 
 message CreateAttributeRequest {

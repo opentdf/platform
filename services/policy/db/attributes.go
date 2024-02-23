@@ -53,9 +53,9 @@ type attributesSelectOptions struct {
 	withAttributeValues bool
 	withKeyAccessGrants bool
 	// withFqn and withOneValueByFqn are mutually exclusive
-	withFqn             bool
-	withOneValueByFqn   bool
-	state               string
+	withFqn           bool
+	withOneValueByFqn bool
+	state             string
 }
 
 func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {

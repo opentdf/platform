@@ -2,6 +2,13 @@ module github.com/opentdf/platform/sdk
 
 go 1.21.7
 
+require (
+	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/google/uuid v1.6.0
+	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
+	google.golang.org/grpc v1.61.0
+)
+
 replace github.com/opentdf/platform/protocol/go => ../protocol/go
 
 require (
@@ -15,9 +22,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240102182953-50ed04b92917
 	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.32.0
-)
-
-require (
 	github.com/coreos/go-oidc/v3 v3.9.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
@@ -46,4 +50,14 @@ require (
 	google.golang.org/genproto v0.0.0-20231212172506-995d672761c0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240102182953-50ed04b92917 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20231115204500-e097f827e652.1 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
+	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	google.golang.org/genproto v0.0.0-20240125205218-1f4bbc51befe // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
 )

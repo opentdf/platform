@@ -34,7 +34,7 @@ func TestAttributeFqnSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attributes integration tests")
 	}
-	suite.Run(t, new(AttributesSuite))
+	suite.Run(t, new(AttributeFqnSuite))
 }
 
 func (s *AttributeFqnSuite) SetupSuite() {
@@ -83,7 +83,7 @@ func (s *AttributeFqnSuite) TestCreateAttribute() {
 // Test Create Attribute Value
 func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 	a := fixtures.GetAttributeKey("example.com/attr/attr1")
-	n := fixtures.GetNamespaceKey(a.NamespaceId)
+	n := fixtures.GetNamespaceKey("example.com")
 	name := "test_namespace"
 	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
 		Value: name,

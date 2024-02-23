@@ -57,7 +57,7 @@ public interface GetEntitlementsRequestOrBuilder extends
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    * @return Whether the scope field is set.
    */
   boolean hasScope();
@@ -66,16 +66,16 @@ public interface GetEntitlementsRequestOrBuilder extends
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    * @return The scope.
    */
-  io.opentdf.platform.authorization.ResourceAttributes getScope();
+  io.opentdf.platform.authorization.ResourceAttribute getScope();
   /**
    * <pre>
    *optional attribute fqn as a scope
    * </pre>
    *
-   * <code>optional .authorization.ResourceAttributes scope = 2 [json_name = "scope"];</code>
+   * <code>optional .authorization.ResourceAttribute scope = 2 [json_name = "scope"];</code>
    */
-  io.opentdf.platform.authorization.ResourceAttributesOrBuilder getScopeOrBuilder();
+  io.opentdf.platform.authorization.ResourceAttributeOrBuilder getScopeOrBuilder();
 }

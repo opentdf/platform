@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/opentdf/platform/kas/pkg/p11"
+	accesspb "github.com/opentdf/platform/protocol/go/access"
 )
 
 const (
@@ -16,7 +17,7 @@ const (
 )
 
 type Provider struct {
-	AccessServiceServer
+	accesspb.AccessServiceServer
 	URI           url.URL `json:"uri"`
 	PrivateKey    p11.Pkcs11PrivateKeyRSA
 	PublicKeyRSA  rsa.PublicKey `json:"publicKey"`

@@ -23,6 +23,7 @@ import (
 	"github.com/opentdf/platform/kas/internal/version"
 	"github.com/opentdf/platform/kas/pkg/access"
 	"github.com/opentdf/platform/kas/pkg/p11"
+	accesspb "github.com/opentdf/platform/protocol/go/access"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -414,7 +415,7 @@ func main() {
 
 	gwmux := runtime.NewServeMux()
 	// Register Greeter
-	err = access.RegisterAccessServiceHandler(context.Background(), gwmux, conn)
+	err = accesspb.RegisterAccessServiceHandler(context.Background(), gwmux, conn)
 	if err != nil {
 		slog.Error("Failed to register gateway", "err", err)
 		panic(err)
@@ -444,7 +445,7 @@ func loadGRPC(port int, kas *access.Provider) int {
 	healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
 	healthgrpc.RegisterHealthServer(s, healthcheck)
 
-	access.RegisterAccessServiceServer(s, kas)
+	accesspb.RegisterAccessServiceServer(s, kas)
 	slog.Info("Serving gRPC on [" + lis.Addr().String() + "] for server known as[" + kas.URI.String() + "]")
 
 	go func() {

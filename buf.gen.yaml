@@ -9,6 +9,10 @@ managed:
       - buf.build/grpc-ecosystem/grpc-gateway
   java_package_prefix:
     default: io.opentdf.platform
+    except:
+      - buf.build/bufbuild/protovalidate
+      - buf.build/googleapis/googleapis
+      - buf.build/grpc-ecosystem/grpc-gateway
 plugins:
   - plugin: buf.build/grpc-ecosystem/gateway:v2.18.1
     out: protocol/go

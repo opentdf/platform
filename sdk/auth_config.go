@@ -77,6 +77,9 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("error making request to IdP for token exchange: %w", err)
+	}
 	type keycloakResponsePayload struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`

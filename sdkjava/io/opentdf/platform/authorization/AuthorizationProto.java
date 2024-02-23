@@ -148,7 +148,7 @@ public final class AuthorizationProto {
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
-          io.opentdf.platform.google.api.AnnotationsProto.getDescriptor(),
+          com.google.api.AnnotationsProto.getDescriptor(),
           com.google.protobuf.AnyProto.getDescriptor(),
         });
     internal_static_authorization_Entity_descriptor =
@@ -225,10 +225,10 @@ public final class AuthorizationProto {
         new java.lang.String[] { "Entitlements", });
     com.google.protobuf.ExtensionRegistry registry =
         com.google.protobuf.ExtensionRegistry.newInstance();
-    registry.add(io.opentdf.platform.google.api.AnnotationsProto.http);
+    registry.add(com.google.api.AnnotationsProto.http);
     com.google.protobuf.Descriptors.FileDescriptor
         .internalUpdateFileDescriptor(descriptor, registry);
-    io.opentdf.platform.google.api.AnnotationsProto.getDescriptor();
+    com.google.api.AnnotationsProto.getDescriptor();
     com.google.protobuf.AnyProto.getDescriptor();
   }
 

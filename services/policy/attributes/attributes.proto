@@ -96,6 +96,11 @@ message ValueCreateUpdate {
   repeated string members = 3;
 }
 
+message AttributeAndValue {
+  Attribute attribute = 1;
+  Value value = 2;
+}
+
 /*
    Key Access Server Grants
 */
@@ -127,6 +132,14 @@ message GetAttributeRequest {
 }
 message GetAttributeResponse {
   Attribute attribute = 1;
+}
+
+message GetAttributesByValueFqnsRequest {
+  repeated string fqns = 1 [(buf.validate.field).required = true];
+}
+message GetAttributesByValueFqnsResponse {
+  // map of fqns to complete attributes and the one selected value
+  map<string, AttributeAndValue> fqn_attribute_values = 1;
 }
 
 message CreateAttributeRequest {
@@ -337,6 +350,10 @@ service AttributesService {
 
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};
+  }
+
+  rpc GetAttributesByValueFqns(GetAttributesByValueFqnsRequest) returns (GetAttributesByValueFqnsResponse) {
+    option (google.api.http) = {get: "/attributes/_/fqn"};
   }
 
   /* Create Attribute

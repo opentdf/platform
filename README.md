@@ -68,6 +68,7 @@ This should bring up a grpc server on port **9000** and http server on port **80
   policy.attributes.AttributesService.DeactivateAttributeValue
   policy.attributes.AttributesService.GetAttribute
   policy.attributes.AttributesService.GetAttributeValue
+  policy.attributes.AttributesService.GetAttributesByValueFqns
   policy.attributes.AttributesService.ListAttributeValues
   policy.attributes.AttributesService.ListAttributes
   policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute

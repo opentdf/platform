@@ -210,7 +210,6 @@ func (f *Fixtures) Provision() {
 		slog.Int64("attribute_key_access_server", akas),
 		slog.Int64("attribute_value_key_access_server", avkas),
 	)
-
 	slog.Info("📚 indexing FQNs for fixtures")
 	f.db.PolicyClient.AttrFqnReindex()
 	slog.Info("📚 successfully indexed FQNs")

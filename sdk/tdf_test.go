@@ -743,8 +743,8 @@ func runKas() (string, func(), Unwrapper) { //nolint:ireturn // this unwrapper i
 	return server.URL, func() { server.Close() }, &authConfig
 }
 
-func getKASRequestHandler(expectedAccessToken,
-	dpopPublicKeyPEM string) func(http.ResponseWriter, *http.Request) { //nolint:gocognit // KAS is pretty complicated
+func getKASRequestHandler(expectedAccessToken, //nolint:gocognit // KAS is pretty complicated
+	dpopPublicKeyPEM string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(kAcceptKey) != kContentTypeJSONValue {
 			panic(fmt.Sprintf("expected Accept: application/json header, got: %s", r.Header.Get("Accept")))

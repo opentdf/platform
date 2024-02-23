@@ -15,6 +15,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 	"golang.org/x/oauth2"
 )
 
@@ -43,23 +44,29 @@ func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredenti
 		formData.Set("scope", strings.Join(scopes, " "))
 	}
 
-	switch ca := clientCredentials.ClientAuth.(type) {
-	case string:
-		req.SetBasicAuth(clientCredentials.ClientId, string(ca))
-	case jwk.Key:
-		signedToken, err := getSignedToken(clientCredentials.ClientId, tokenEndpoint, ca)
-		if err != nil {
-			return nil, fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
-		}
-		formData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
-		formData.Set("client_assertion", string(signedToken))
-	default:
-		return nil, fmt.Errorf("unsupported type for ClientAuth: %T", ca)
-	}
+	setClientAuth(clientCredentials, &formData, tokenEndpoint)
 
 	req.Body = io.NopCloser(strings.NewReader(formData.Encode()))
 
 	return req, nil
+}
+
+func setClientAuth(cc ClientCredentials, formData *url.Values, tokenEndpoint string) error {
+	switch ca := cc.ClientAuth.(type) {
+	case string:
+		formData.Set("client_secret", ca)
+	case jwk.Key:
+		signedToken, err := getSignedToken(cc.ClientId, tokenEndpoint, ca)
+		if err != nil {
+			return fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
+		}
+		formData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+		formData.Set("client_assertion", string(signedToken))
+	default:
+		return fmt.Errorf("unsupported type for ClientAuth: %T", ca)
+	}
+
+	return nil
 }
 
 func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error) {
@@ -186,4 +193,31 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 	}
 
 	return string(proof), nil
+}
+
+func ExchangeToken(clientCredentials ClientCredentials, tokenExchangeEndpoint, subjectToken, dpopPEM string) (*oauth2.Token, error) {
+	data := url.Values{}
+	data.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
+	data.Set("subject_token", subjectToken)
+	data.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
+	setClientAuth(clientCredentials, &data, tokenExchangeEndpoint)
+
+	body := strings.NewReader(data.Encode())
+
+	req, err := http.NewRequest(http.MethodPost, tokenExchangeEndpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	certB64 := crypto.Base64Encode([]byte(dpopPEM))
+	req.Header.Set("X-VirtruPubKey", string(certB64))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to exchange token: %w", err)
+	}
+
+	return processResponse(resp)
 }

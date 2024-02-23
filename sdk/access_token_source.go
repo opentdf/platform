@@ -90,7 +90,7 @@ type IDPAccessTokenSource struct {
 	dpopKey          jwk.Key
 	asymDecryption   crypto.AsymDecryption
 	dpopPEM          string
-	tokenMutex       sync.Mutex
+	tokenMutex       *sync.Mutex
 }
 
 func NewIDPAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPAccessTokenSource, error) {
@@ -153,4 +153,53 @@ func (creds *IDPAccessTokenSource) GetDPoPKey() jwk.Key {
 
 func (creds *IDPAccessTokenSource) GetDPoPPublicKeyPEM() string {
 	return creds.dpopPEM
+}
+
+type TokenExchangeTokenSource struct {
+	clientCredentials     oauth.ClientCredentials
+	tokenExchangeEndpoint string
+	subjectToken          string
+	asymDecryption        crypto.AsymDecryption
+	dpopKey               jwk.Key
+	dpopPEM               string
+	token                 AccessToken
+	tokenRefreshMutex     *sync.Mutex
+}
+
+func (t *TokenExchangeTokenSource) GetAccessToken() (AccessToken, error) {
+	if t.token == "" {
+		err := t.RefreshAccessToken()
+		if err != nil {
+			return AccessToken(""), err
+		}
+	}
+
+	return t.token, nil
+}
+
+// probably better to use `crypto.AsymDecryption` here than roll our own since this should be
+// more closely linked to what happens in KAS in terms of crypto params
+func (t *TokenExchangeTokenSource) GetAsymDecryption() crypto.AsymDecryption {
+	return t.asymDecryption
+}
+
+func (t *TokenExchangeTokenSource) GetDPoPKey() jwk.Key {
+	return t.dpopKey
+}
+
+func (t *TokenExchangeTokenSource) GetDPoPPublicKeyPEM() string {
+	return t.dpopPEM
+}
+
+func (t *TokenExchangeTokenSource) RefreshAccessToken() error {
+	t.tokenRefreshMutex.Lock()
+	defer t.tokenRefreshMutex.Unlock()
+	tok, err := oauth.ExchangeToken(t.clientCredentials, t.tokenExchangeEndpoint, t.subjectToken, t.dpopPEM)
+	if err != nil {
+		return err
+	}
+
+	t.token = AccessToken(tok.AccessToken)
+
+	return nil
 }

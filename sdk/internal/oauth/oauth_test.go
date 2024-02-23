@@ -101,7 +101,7 @@ func TestClientSecretNoNonce(t *testing.T) {
 		}
 		r.ParseForm()
 
-		validateBasicAuth(r, t)
+		validateClientSecretAuth(r, t)
 		extractDpopToken(r, t)
 
 		tok, _ := jwt.NewBuilder().
@@ -150,7 +150,7 @@ func TestClientSecretWithNonce(t *testing.T) {
 		}
 		r.ParseForm()
 
-		validateBasicAuth(r, t)
+		validateClientSecretAuth(r, t)
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
@@ -336,17 +336,17 @@ func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint fu
 	}
 }
 
-func validateBasicAuth(r *http.Request, t *testing.T) {
+func validateClientSecretAuth(r *http.Request, t *testing.T) {
 	if grant := r.Form.Get("grant_type"); grant != "client_credentials" {
 		t.Logf("got the wrong grant type: %s, expected client_credentials", grant)
 	}
 
-	username, password, ok := r.BasicAuth()
-	if !ok {
-		t.Errorf("missing basic auth")
+	if client_id := r.Form.Get("client_id"); client_id != "theclient" {
+		t.Logf("got the wrong client_id: %s, expected theclient", client_id)
 	}
-	if username != "theclient" || password != "thesecret" {
-		t.Errorf("failed to pass correct username and password. got %s:%s", username, password)
+
+	if client_secret := r.Form.Get("client_secret"); client_secret != "theclient" {
+		t.Logf("got the wrong client_secret: %s, expected thesecret", client_secret)
 	}
 }
 

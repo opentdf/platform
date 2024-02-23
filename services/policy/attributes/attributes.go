@@ -62,7 +62,6 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	return rsp, nil
 }
 
-//nolint:dupl // there probably is duplication in these crud operations but its not worth refactoring yet.
 func (s *AttributesService) GetAttribute(ctx context.Context,
 	req *attr.GetAttributeRequest,
 ) (*attr.GetAttributeResponse, error) {
@@ -75,6 +74,20 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	rsp.Attribute = item
 
 	return rsp, err
+}
+
+func (s *AttributesService) GetAttributesByValueFqns(ctx context.Context,
+	req *attr.GetAttributesByValueFqnsRequest,
+) (*attr.GetAttributesByValueFqnsResponse, error) {
+	rsp := &attr.GetAttributesByValueFqnsResponse{}
+
+	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req.Fqns)
+	if err != nil {
+		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Fqns)))
+	}
+	rsp.FqnAttributeValues = fqnsToAttributes
+
+	return rsp, nil
 }
 
 func (s *AttributesService) UpdateAttribute(ctx context.Context,

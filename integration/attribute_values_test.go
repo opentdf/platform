@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	policydb "github.com/opentdf/platform/services/policy/db"
@@ -20,18 +21,18 @@ var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
 type AttributeValuesSuite struct {
 	suite.Suite
 	schema string
-	f      Fixtures
-	db     DBInterface
+	f      fixtures.Fixtures
+	db     fixtures.DBInterface
 	ctx    context.Context
 }
 
 func (s *AttributeValuesSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeValues test suite")
 	s.ctx = context.Background()
-	fixtureKeyAccessServerId = fixtures.GetKasRegistryKey("key_access_server_1").Id
+	fixtureKeyAccessServerId = s.f.GetKasRegistryKey("key_access_server_1").Id
 	s.schema = "test_opentdf_attribute_values"
-	s.db = NewDBInterface(s.schema)
-	s.f = NewFixture(s.db)
+	s.db = fixtures.NewDBInterface(*Config)
+	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 	stillActiveNsId, stillActiveAttributeId, deactivatedAttrValueId = setupDeactivateAttributeValue(s)
 }
@@ -42,15 +43,15 @@ func (s *AttributeValuesSuite) TearDownSuite() {
 }
 
 func (s *AttributeValuesSuite) Test_ListAttributeValues() {
-	attrId := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionId
+	attrId := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionId
 
 	list, err := s.db.PolicyClient.ListAttributeValues(s.ctx, attrId, policydb.StateActive)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), list)
 
 	// ensure list contains the two test fixtures and that response matches expected data
-	f1 := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	f2 := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 
 	for _, item := range list {
 		if item.Id == f1.Id {
@@ -68,7 +69,7 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue() {
-	f := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, f.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), v)
@@ -88,7 +89,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDefault() {
-	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 
 	value := &attributes.ValueCreateUpdate{
 		Value: "testing create gives active true by default",
@@ -100,7 +101,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDe
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
-	inactive := fixtures.GetAttributeValueKey("deactivated.io/attr/attr1/value/deactivated_value")
+	inactive := s.f.GetAttributeValueKey("deactivated.io/attr/attr1/value/deactivated_value")
 
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, inactive.Id)
 	assert.Nil(s.T(), err)
@@ -112,7 +113,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
-	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
 			"name": "this is the test name of my attribute value",
@@ -139,7 +140,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() {
-	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
 			"name": "testing create with members",
@@ -150,8 +151,8 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	value := &attributes.ValueCreateUpdate{
 		Value: "value3",
 		Members: []string{
-			fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-			fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value2").Id,
+			s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
+			s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").Id,
 		},
 		Metadata: metadata,
 	}
@@ -181,7 +182,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	// create a value
-	attrDef := fixtures.GetAttributeKey("example.net/attr/attr1")
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
 			"name": "created attribute value",
@@ -237,7 +238,7 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute() {
 	value := &attributes.ValueCreateUpdate{
 		Value: "created value testing delete",
 	}
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, fixtures.GetAttributeKey("example.net/attr/attr1").Id, value)
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, s.f.GetAttributeKey("example.net/attr/attr1").Id, value)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdValue)
 
@@ -444,7 +445,7 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_W
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_KeyAccessServer_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
-		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
+		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
 		KeyAccessServerId: nonExistentKasRegistryId,
 	}
 
@@ -457,7 +458,7 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_W
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
 	v := &attributes.ValueKeyAccessServer{
-		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
+		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
 		KeyAccessServerId: fixtureKeyAccessServerId,
 	}
 
@@ -483,7 +484,7 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error
 
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_KeyAccessServer_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
-		ValueId:           fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
+		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
 		KeyAccessServerId: "non-existent-kas-id",
 	}
 
@@ -496,8 +497,8 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error
 
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
 	v := &attributes.ValueKeyAccessServer{
-		ValueId:           fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1").Id,
-		KeyAccessServerId: fixtures.GetKasRegistryKey("key_access_server_1").Id,
+		ValueId:           s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").Id,
+		KeyAccessServerId: s.f.GetKasRegistryKey("key_access_server_1").Id,
 	}
 
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)

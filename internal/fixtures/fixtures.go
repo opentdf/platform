@@ -1,4 +1,4 @@
-package integration
+package fixtures
 
 import (
 	"context"
@@ -104,8 +104,8 @@ type FixtureData struct {
 	} `yaml:"kas_registry"`
 }
 
-func loadFixtureData() {
-	c, err := os.ReadFile(fixtureFilename)
+func LoadFixtureData(file string) {
+	c, err := os.ReadFile(file)
 	if err != nil {
 		slog.Error("could not read "+fixtureFilename, slog.String("error", err.Error()))
 		panic(err)
@@ -177,7 +177,7 @@ func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 }
 
 func (f *Fixtures) Provision() {
-	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.schema))
+	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(context.Background())
 	if err != nil {
 		panic(err)
@@ -216,7 +216,7 @@ func (f *Fixtures) Provision() {
 }
 
 func (f *Fixtures) TearDown() {
-	slog.Info("🗑  dropping schema", slog.String("schema", f.db.schema))
+	slog.Info("🗑  dropping schema", slog.String("schema", f.db.Schema))
 	if err := f.db.DropSchema(); err != nil {
 		slog.Error("could not truncate tables", slog.String("error", err.Error()))
 		panic(err)

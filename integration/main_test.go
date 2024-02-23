@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/creasty/defaults"
+	"github.com/opentdf/platform/internal/fixtures"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
-
-var fixtures Fixtures
 
 const note = `
 ====================================================================================
@@ -112,7 +111,7 @@ func TestMain(m *testing.M) {
 
 	conf.DB.Port = port.Int()
 
-	db := NewDBInterface("test_opentdf")
+	db := fixtures.NewDBInterface(*Config)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		panic(err)
@@ -127,7 +126,7 @@ func TestMain(m *testing.M) {
 	slog.Info("🚚 applied migrations", slog.Int("count", applied))
 
 	slog.Info("🏠 loading fixtures")
-	loadFixtureData()
+	fixtures.LoadFixtureData("../internal/fixtures/fixtures.yaml")
 
 	slog.Info("📚 indexing FQNs for test fixtures")
 	db.PolicyClient.AttrFqnReindex()

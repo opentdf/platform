@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
 	resourcemapping "github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/stretchr/testify/assert"
@@ -18,8 +19,8 @@ var nonExistentResourceMappingUUID = "45674556-8888-9999-9999-000001230000"
 type ResourceMappingsSuite struct {
 	suite.Suite
 	schema string
-	f      Fixtures
-	db     DBInterface
+	f      fixtures.Fixtures
+	db     fixtures.DBInterface
 	ctx    context.Context
 }
 
@@ -27,8 +28,8 @@ func (s *ResourceMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.ResourceMappings test suite")
 	s.ctx = context.Background()
 	s.schema = "test_opentdf_resource_mappings"
-	s.db = NewDBInterface(s.schema)
-	s.f = NewFixture(s.db)
+	s.db = fixtures.NewDBInterface(*Config)
+	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 }
 
@@ -37,11 +38,11 @@ func (s *ResourceMappingsSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func getResourceMappingFixtures() []FixtureDataResourceMapping {
-	return []FixtureDataResourceMapping{
-		fixtures.GetResourceMappingKey("resource_mapping_to_attribute_value1"),
-		fixtures.GetResourceMappingKey("resource_mapping_to_attribute_value2"),
-		fixtures.GetResourceMappingKey("resource_mapping_to_attribute_value3"),
+func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureDataResourceMapping {
+	return []fixtures.FixtureDataResourceMapping{
+		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value1"),
+		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value2"),
+		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3"),
 	}
 }
 
@@ -53,7 +54,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 		Description: "test create resource mapping description",
 	}
 
-	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
@@ -81,7 +82,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeVa
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds() {
 	metadata := &common.MetadataMutable{}
 
-	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
@@ -96,7 +97,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 	// make sure we can get all fixtures
-	testData := getResourceMappingFixtures()
+	testData := s.getResourceMappingFixtures()
 	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), mappings)
@@ -114,7 +115,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 
 func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 	// make sure we can get all fixtures
-	testData := getResourceMappingFixtures()
+	testData := s.getResourceMappingFixtures()
 	for _, testMapping := range testData {
 		mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, testMapping.Id)
 		assert.Nil(s.T(), err)
@@ -135,7 +136,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
 func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 	metadata := &common.MetadataMutable{}
 
-	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
@@ -161,7 +162,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		Description: "some description",
 	}
 
-	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
@@ -200,7 +201,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
-	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"asdf qwerty"},
@@ -221,7 +222,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeValueIdFails() {
-	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"testing"},
@@ -242,7 +243,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
-	attrValue := fixtures.GetAttributeValueKey("example.net/attr/attr1/value/value1")
+	attrValue := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1")
 	mapping := &resourcemapping.ResourceMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"term1", "term2"},

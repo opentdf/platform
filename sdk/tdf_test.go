@@ -788,32 +788,7 @@ func getKASRequestHandler(expectedAccessToken, dpopPublicKeyPEM string) func(htt
 				panic("unknown claims type, cannot proceed")
 			}
 
-			bodyData := RequestBody{}
-			err = json.Unmarshal([]byte(rewrapRequest), &bodyData)
-			if err != nil {
-				panic(fmt.Sprintf("json.Unmarshal failed: %v", err))
-			}
-			wrappedKey, err := crypto.Base64Decode([]byte(bodyData.WrappedKey))
-			if err != nil {
-				panic(fmt.Sprintf("crypto.Base64Decode failed: %v", err))
-			}
-			kasPrivateKey := strings.ReplaceAll(mockKasPrivateKey, "\n\t", "\n")
-			asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
-			if err != nil {
-				panic(fmt.Sprintf("crypto.NewAsymDecryption failed: %v", err))
-			}
-			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-			if err != nil {
-				panic(fmt.Sprintf("crypto.Decrypt failed: %v", err))
-			}
-			asymEncrypt, err := crypto.NewAsymEncryption(bodyData.ClientPublicKey)
-			if err != nil {
-				panic(fmt.Sprintf("crypto.NewAsymEncryption failed: %v", err))
-			}
-			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-			if err != nil {
-				panic(fmt.Sprintf("crypto.encrypt failed: %v", err))
-			}
+			entityWrappedKey := getRewrappedKey(rewrapRequest)
 			response, err := json.Marshal(map[string]string{
 				kEntityWrappedKey: string(crypto.Base64Encode(entityWrappedKey)),
 			})
@@ -829,6 +804,36 @@ func getKASRequestHandler(expectedAccessToken, dpopPublicKeyPEM string) func(htt
 			panic(fmt.Sprintf("expected to request: %s", r.URL.Path))
 		}
 	}
+}
+
+func getRewrappedKey(rewrapRequest string) []byte {
+	bodyData := RequestBody{}
+	err := json.Unmarshal([]byte(rewrapRequest), &bodyData)
+	if err != nil {
+		panic(fmt.Sprintf("json.Unmarshal failed: %v", err))
+	}
+	wrappedKey, err := crypto.Base64Decode([]byte(bodyData.WrappedKey))
+	if err != nil {
+		panic(fmt.Sprintf("crypto.Base64Decode failed: %v", err))
+	}
+	kasPrivateKey := strings.ReplaceAll(mockKasPrivateKey, "\n\t", "\n")
+	asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
+	if err != nil {
+		panic(fmt.Sprintf("crypto.NewAsymDecryption failed: %v", err))
+	}
+	symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
+	if err != nil {
+		panic(fmt.Sprintf("crypto.Decrypt failed: %v", err))
+	}
+	asymEncrypt, err := crypto.NewAsymEncryption(bodyData.ClientPublicKey)
+	if err != nil {
+		panic(fmt.Sprintf("crypto.NewAsymEncryption failed: %v", err))
+	}
+	entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
+	if err != nil {
+		panic(fmt.Sprintf("crypto.encrypt failed: %v", err))
+	}
+	return entityWrappedKey
 }
 
 func sendPublicKey(w http.ResponseWriter) {

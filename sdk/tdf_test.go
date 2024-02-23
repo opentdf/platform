@@ -704,9 +704,7 @@ func runKas() (*httptest.Server, AuthConfig) { //nolint:gocognit
 
 	accessTokenBytes := make([]byte, 10)
 	if _, err := rand.Read(accessTokenBytes); err != nil {
-		if err != nil {
-			panic("failed to create random access token")
-		}
+		panic("failed to create random access token")
 	}
 	accessToken := crypto.Base64Encode(accessTokenBytes)
 

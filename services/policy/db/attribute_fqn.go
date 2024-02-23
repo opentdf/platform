@@ -2,13 +2,17 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
+
+var ErrFqnMissingValue = errors.New("ErrFqnMissingValue: FQN must include a value")
 
 // These values are optional, but at least one must be set. The other values will be derived from
 // the set values.
@@ -151,7 +155,10 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []string) (map[string]*attributes.Attribute, error) {
 	list := make(map[string]*attributes.Attribute, len(fqns))
 	for _, fqn := range fqns {
-		// TODO: get a full attribute by value FQN
+		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
+		if !strings.Contains(fqn, "/value/") {
+			return nil, ErrFqnMissingValue
+		}
 		attr, err := c.GetAttributeByFqn(ctx, fqn)
 		if err != nil {
 			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))

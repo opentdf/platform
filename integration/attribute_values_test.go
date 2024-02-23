@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"testing"
 
@@ -51,11 +50,8 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 
 	// ensure list contains the two test fixtures and that response matches expected data
 	f1 := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	fmt.Println("f1", f1)
 	f2 := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value2")
-	fmt.Println("f2", f2)
 
-	fmt.Println(list)
 	for _, item := range list {
 		if item.Id == f1.Id {
 			assert.Equal(s.T(), f1.Id, item.Id)
@@ -80,6 +76,8 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	assert.Equal(s.T(), f.Id, v.Id)
 	assert.Equal(s.T(), f.Value, v.Value)
 	assert.Equal(s.T(), len(f.Members), len(v.Members))
+	assert.Equal(s.T(), f.AttributeDefinitionId, v.AttributeId)
+	assert.Equal(s.T(), "https://example.com/attr/attr1/value/value1", v.Fqn)
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {

@@ -6,10 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
-	"net/url"
 
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"google.golang.org/grpc"
@@ -21,23 +19,16 @@ const (
 	ErrAttributeDefinitionsServiceCall = Error("attribute definitions service call unexpected")
 )
 
-func (p *Provider) dialAttributes(addr string, opts ...grpc.DialOption) {
-	if len(opts) == 0 {
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-	conn, err := grpc.Dial(addr, opts...)
+func (p *Provider) fetchAttributes(ctx context.Context, namespaces []string) ([]attributes.Attribute, error) {
+	conn, err := grpc.Dial(p.AttributeSvc, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		slog.ErrorContext(ctx, "unable to connect to attribute service", "err", err)
+		return nil, fmt.Errorf("attribute service connection failed: %w", err)
 	}
 	defer conn.Close()
-	p.AttributeSvc = attributes.NewAttributesServiceClient(conn)
-}
+	a := attributes.NewAttributesServiceClient(conn)
+	response, err := a.ListAttributes(ctx, &attributes.ListAttributesRequest{})
 
-func (p *Provider) closeAttributesConnection() error {
-	p.AttributeSvc
-}
-
-func (p *Provider) fetchAttributes(ctx context.Context, namespaces []string) ([]attributes.AttributeDefinition, error) {
 	var definitions []attributes.AttributeDefinition
 	for _, ns := range namespaces {
 		attrDefs, err := p.fetchAttributesForNamespace(ctx, ns)

@@ -24,7 +24,7 @@ type attrFqnUpsertOptions struct {
 // 1. namespaceId
 // 2. namespaceId, attributeId
 // 3. namespaceId, attributeId, valueId
-func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (string, []interface{}, error) {
+func upsertAttrFqnSql(namespaceId, attributeId, valueId string) (string, []interface{}, error) {
 	t := db.Tables.AttrFqn
 	nT := db.Tables.Namespaces
 	adT := db.Tables.Attributes
@@ -35,18 +35,18 @@ func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (s
 	// Since we are creating relationships we don't need to know the namespaceId when given the
 	// valueId. This is because the valueId is unique across all namespaces.
 	if valueId != "" {
-		subQ = sb.Select("n.id", "ad.id", "av.id", "CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn").
+		subQ = sb.Select("n.id", "ad.id", "av.id", "('https://' || n.name || '/attr/' || ad.name || '/value/' || av.value) AS fqn").
 			From(nT.Name()+" n").
 			Join(adT.Name()+" ad ON ad.namespace_id = n.id").
 			Join(avT.Name()+" av ON av.attribute_definition_id = ad.id").
 			Where("av.id = ?", valueId)
 	} else if attributeId != "" {
-		subQ = sb.Select("n.id", "ad.id", "NULL", "CONCAT('https://', n.name, '/attr/', ad.name) AS fqn").
+		subQ = sb.Select("n.id", "ad.id", "NULL", "('https://' || n.name || '/attr/' || ad.name) AS fqn").
 			From(nT.Name()+" n").
 			Join(adT.Name()+" ad ON ad.namespace_id = n.id").
 			Where("ad.id = ?", attributeId)
 	} else if namespaceId != "" {
-		subQ = sb.Select("n.id", "NULL", "NULL", "CONCAT('https://', n.name) AS fqn").
+		subQ = sb.Select("n.id", "NULL", "NULL", "('https://' || n.name) AS fqn").
 			From(nT.Name()+" n").
 			Where("n.id = ?", namespaceId)
 	} else {

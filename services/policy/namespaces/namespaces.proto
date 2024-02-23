@@ -21,6 +21,7 @@ message Namespace {
     }
   ];
 
+  // Namespace formatted as URL, of the form `https://name/`
   string fqn = 3;
 
   // active by default until explicitly deactivated

@@ -25,7 +25,7 @@ type Provider struct {
 	PublicKeyEC   ecdsa.PublicKey
 	Certificate   x509.Certificate `json:"certificate"`
 	CertificateEC x509.Certificate `json:"certificateEc"`
-	AttributeSvc  *apb.NewAttributesServiceClient
+	AttributeSvc  string
 	Session       p11.Pkcs11Session
 	OIDCVerifier  *oidc.IDTokenVerifier
 }

@@ -113,7 +113,6 @@ message ValueKeyAccessServer {
 /*
    Attribute Service Definitions
 */
-
 message ListAttributesRequest {
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;

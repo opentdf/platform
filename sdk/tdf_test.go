@@ -346,8 +346,8 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 		}
 
 		// override the signing keys to get the mock working.
-		authConfig.signingPublicKey = signingPubKey
-		authConfig.signingPrivateKey = signingPrivateKey
+		authConfig.dpopPublicKeyPEM = signingPubKey
+		authConfig.dpopPrivateKeyPEM = signingPrivateKey
 
 		r, err := LoadTDF(*authConfig, readSeeker)
 		if err != nil {
@@ -395,8 +395,8 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 		}
 
 		// override the signing keys to get the mock working.
-		authConfig.signingPublicKey = signingPubKey
-		authConfig.signingPrivateKey = signingPrivateKey
+		authConfig.dpopPublicKeyPEM = signingPubKey
+		authConfig.dpopPrivateKeyPEM = signingPrivateKey
 
 		r, err := LoadTDF(*authConfig, readSeeker)
 		if err != nil {
@@ -450,8 +450,8 @@ func TestTDFReader(t *testing.T) { //nolint:gocognit
 			}
 
 			// override the signing keys to get the mock working.
-			authConfig.signingPublicKey = signingPubKey
-			authConfig.signingPrivateKey = signingPrivateKey
+			authConfig.dpopPublicKeyPEM = signingPubKey
+			authConfig.dpopPrivateKeyPEM = signingPrivateKey
 
 			// test reader
 			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
@@ -534,8 +534,8 @@ func TestTDF(t *testing.T) {
 		}
 
 		// override the signing keys to get the mock working.
-		authConfig.signingPublicKey = signingPubKey
-		authConfig.signingPrivateKey = signingPrivateKey
+		authConfig.dpopPublicKeyPEM = signingPubKey
+		authConfig.dpopPrivateKeyPEM = signingPrivateKey
 
 		// test decrypt with reader
 		testDecryptWithReader(t, *authConfig, tdfFileName, decryptedTdfFileName, test)
@@ -587,8 +587,8 @@ func BenchmarkReader(b *testing.B) {
 	}
 
 	// override the signing keys to get the mock working.
-	authConfig.signingPublicKey = signingPubKey
-	authConfig.signingPrivateKey = signingPrivateKey
+	authConfig.dpopPublicKeyPEM = signingPubKey
+	authConfig.dpopPrivateKeyPEM = signingPrivateKey
 
 	readSeeker = bytes.NewReader(tdfBuf.Bytes())
 	r, err := LoadTDF(*authConfig, readSeeker)

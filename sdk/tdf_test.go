@@ -736,7 +736,14 @@ func runKas() (string, func(), Unwrapper) { //nolint:ireturn // this unwrapper i
 	}
 	accessToken := crypto.Base64Encode(accessTokenBytes)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(getKASRequestHandler(string(accessToken), signingPubKey)))
+
+	authConfig := AuthConfig{dpopPublicKeyPEM: signingPubKey, dpopPrivateKeyPEM: signingPrivateKey, accessToken: string(accessToken)}
+	return server.URL, func() { server.Close() }, &authConfig
+}
+
+func getKASRequestHandler(expectedAccessToken, dpopPublicKeyPEM string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(kAcceptKey) != kContentTypeJSONValue {
 			panic(fmt.Sprintf("expected Accept: application/json header, got: %s", r.Header.Get("Accept")))
 		}
@@ -759,7 +766,7 @@ func runKas() (string, func(), Unwrapper) { //nolint:ireturn // this unwrapper i
 			if err != nil {
 				panic(fmt.Sprintf("io.ReadAll failed: %v", err))
 			}
-			if r.Header.Get("authorization") != fmt.Sprintf("Bearer %s", accessToken) {
+			if r.Header.Get("authorization") != fmt.Sprintf("Bearer %s", expectedAccessToken) {
 				panic(fmt.Sprintf("got a bad auth header: [%s]", r.Header.Get("authorization")))
 			}
 
@@ -773,7 +780,7 @@ func runKas() (string, func(), Unwrapper) { //nolint:ireturn // this unwrapper i
 				panic("signed token missing in rewrap response")
 			}
 			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(_ *jwt.Token) (interface{}, error) {
-				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(signingPubKey))
+				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(dpopPublicKeyPEM))
 				if err != nil {
 					return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
 				}
@@ -829,10 +836,7 @@ func runKas() (string, func(), Unwrapper) { //nolint:ireturn // this unwrapper i
 		default:
 			panic(fmt.Sprintf("expected to request: %s", r.URL.Path))
 		}
-	}))
-
-	authConfig := AuthConfig{dpopPublicKeyPEM: signingPubKey, dpopPrivateKeyPEM: signingPrivateKey, accessToken: string(accessToken)}
-	return server.URL, func() { server.Close() }, &authConfig
+	}
 }
 
 func checkIdentical(t *testing.T, file, checksum string) bool {

@@ -129,6 +129,10 @@ func TestMain(m *testing.M) {
 	slog.Info("🏠 loading fixtures")
 	loadFixtureData()
 
+	slog.Info("📚 indexing FQNs for test fixtures")
+	db.PolicyClient.AttrFqnReindex()
+	slog.Info("📚 successfully indexed FQNs")
+
 	// otdf, err := server.NewOpenTDFServer(conf.Server)
 	// if err != nil {
 	// 	slog.Error("issue creating opentdf server", slog.String("error", err.Error()))

@@ -2,20 +2,33 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"google.golang.org/grpc/credentials/insecure"
 	"log/slog"
+	"os"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/open-policy-agent/opa/metrics"
+	"github.com/open-policy-agent/opa/profiler"
+	"github.com/open-policy-agent/opa/sdk"
+	"github.com/opentdf/platform/internal/entitlements"
+	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"google.golang.org/grpc"
 )
 
 type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
+	eng *opa.Engine
 }
 
-func NewAuthorizationServer(g *grpc.Server, s *runtime.ServeMux) error {
-	as := &AuthorizationService{}
+func NewAuthorizationServer(g *grpc.Server, s *runtime.ServeMux, eng *opa.Engine) error {
+	as := &AuthorizationService{
+		eng: eng,
+	}
 	authorization.RegisterAuthorizationServiceServer(g, as)
 	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)
 	if err != nil {
@@ -25,7 +38,7 @@ func NewAuthorizationServer(g *grpc.Server, s *runtime.ServeMux) error {
 }
 
 func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
-	slog.Debug("getting decisions")
+	slog.DebugContext(ctx, "getting decisions")
 
 	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos
 	rsp := &authorization.GetDecisionsResponse{
@@ -53,12 +66,53 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
-
+	// get subject mappings
+	h := "localhost:50051"
+	slog.InfoContext(ctx, fmt.Sprintf("Dialing %s ...", h))
+	do := grpc.WithTransportCredentials(insecure.NewCredentials())
+	cc, err := grpc.DialContext(ctx, h, do)
+	if err != nil {
+		slog.ErrorContext(ctx, err.Error())
+		return nil, err
+	}
+	smc := subjectmapping.NewSubjectMappingServiceClient(cc)
+	ins := subjectmapping.GetSubjectSetRequest{
+		Id: "abc",
+	}
+	out, err := smc.GetSubjectSet(ctx, &ins)
+	if err != nil {
+		slog.ErrorContext(ctx, err.Error())
+		return nil, err
+	}
+	slog.InfoContext(ctx, out.String())
+	// OPA
+	in, err := entitlements.OpaInput(req.Entities[0])
+	if err != nil {
+		return nil, err
+	}
+	slog.Debug("entitlements", "input", fmt.Sprintf("%+v", in))
+	if err := json.NewEncoder(os.Stdout).Encode(in); err != nil {
+		panic(err)
+	}
+	options := sdk.DecisionOptions{
+		Now:                 time.Now(),
+		Path:                "opentdf/entitlements/entitlements",
+		Input:               in,
+		NDBCache:            nil,
+		StrictBuiltinErrors: false,
+		Tracer:              nil,
+		Metrics:             metrics.New(),
+		Profiler:            profiler.New(),
+		Instrument:          true,
+		DecisionID:          fmt.Sprintf("%-v", req.String()),
+	}
+	decision, err := as.eng.Decision(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	slog.DebugContext(ctx, "opa", "result", fmt.Sprintf("%+v", decision.Result))
+	var ee []*authorization.EntityEntitlements
 	rsp := &authorization.GetEntitlementsResponse{}
-
-	var empty_entityEntitlements []*authorization.EntityEntitlements
-
-	rsp.Entitlements = empty_entityEntitlements
-
+	rsp.Entitlements = ee
 	return rsp, nil
 }

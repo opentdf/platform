@@ -49,7 +49,7 @@ public interface SubjectMappingOrBuilder extends
 
   /**
    * <pre>
-   * Attribute Value to be mapped to
+   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -58,7 +58,7 @@ public interface SubjectMappingOrBuilder extends
   boolean hasAttributeValue();
   /**
    * <pre>
-   * Attribute Value to be mapped to
+   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -67,7 +67,7 @@ public interface SubjectMappingOrBuilder extends
   io.opentdf.platform.policy.attributes.Value getAttributeValue();
   /**
    * <pre>
-   * Attribute Value to be mapped to
+   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -76,81 +76,89 @@ public interface SubjectMappingOrBuilder extends
 
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * the subjects included in this mapping
    * </pre>
    *
-   * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-   * @return The subjectAttribute.
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
    */
-  java.lang.String getSubjectAttribute();
+  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet>
+      getSubjectSetsList();
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * the subjects included in this mapping
    * </pre>
    *
-   * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-   * @return The bytes for subjectAttribute.
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
    */
-  com.google.protobuf.ByteString
-      getSubjectAttributeBytes();
+  io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
+  /**
+   * <pre>
+   * the subjects included in this mapping
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   */
+  int getSubjectSetsCount();
+  /**
+   * <pre>
+   * the subjects included in this mapping
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   */
+  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>
+      getSubjectSetsOrBuilderList();
+  /**
+   * <pre>
+   * the subjects included in this mapping
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   */
+  io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+      int index);
 
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-   * @return A list containing the subjectValues.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  java.util.List<java.lang.String>
-      getSubjectValuesList();
+  java.util.List<io.opentdf.platform.authorization.Action>
+      getActionsList();
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-   * @return The count of subjectValues.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  int getSubjectValuesCount();
+  io.opentdf.platform.authorization.Action getActions(int index);
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-   * @param index The index of the element to return.
-   * @return The subjectValues at the given index.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  java.lang.String getSubjectValues(int index);
+  int getActionsCount();
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-   * @param index The index of the value to return.
-   * @return The bytes of the subjectValues at the given index.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  com.google.protobuf.ByteString
-      getSubjectValuesBytes(int index);
-
+  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder>
+      getActionsOrBuilderList();
   /**
    * <pre>
-   * the operator
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-   * @return The enum numeric value on the wire for operator.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  int getOperatorValue();
-  /**
-   * <pre>
-   * the operator
-   * </pre>
-   *
-   * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-   * @return The operator.
-   */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum getOperator();
+  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+      int index);
 }

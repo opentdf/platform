@@ -19,10 +19,10 @@ services:
       #     clientId: "test"
       #     clientSecret:
       #       fromEnv: "KEYCLOAK_CLIENT_SECRET"
-          
+
       - type: ldap
         name: ad-1
-        ldap:  
+        ldap:
           baseDN: "dc=dev,dc=example,dc=com"
           host: ""
           port: 389

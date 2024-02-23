@@ -1,6 +1,8 @@
 module github.com/opentdf/platform/examples
 
-go 1.21.5
+go 1.21.7
+
+toolchain go1.22.0
 
 require (
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000

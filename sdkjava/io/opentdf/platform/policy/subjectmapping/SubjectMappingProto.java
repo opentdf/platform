@@ -166,9 +166,9 @@ public final class SubjectMappingProto {
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
           io.opentdf.platform.policy.attributes.AttributesProto.getDescriptor(),
-          io.opentdf.platform.buf.validate.ValidateProto.getDescriptor(),
+          build.buf.validate.ValidateProto.getDescriptor(),
           io.opentdf.platform.common.CommonProto.getDescriptor(),
-          io.opentdf.platform.google.api.AnnotationsProto.getDescriptor(),
+          com.google.api.AnnotationsProto.getDescriptor(),
         });
     internal_static_policy_subjectmapping_SubjectMapping_descriptor =
       getDescriptor().getMessageTypes().get(0);
@@ -244,14 +244,14 @@ public final class SubjectMappingProto {
         new java.lang.String[] { "SubjectMapping", });
     com.google.protobuf.ExtensionRegistry registry =
         com.google.protobuf.ExtensionRegistry.newInstance();
-    registry.add(io.opentdf.platform.buf.validate.ValidateProto.field);
-    registry.add(io.opentdf.platform.google.api.AnnotationsProto.http);
+    registry.add(build.buf.validate.ValidateProto.field);
+    registry.add(com.google.api.AnnotationsProto.http);
     com.google.protobuf.Descriptors.FileDescriptor
         .internalUpdateFileDescriptor(descriptor, registry);
     io.opentdf.platform.policy.attributes.AttributesProto.getDescriptor();
-    io.opentdf.platform.buf.validate.ValidateProto.getDescriptor();
+    build.buf.validate.ValidateProto.getDescriptor();
     io.opentdf.platform.common.CommonProto.getDescriptor();
-    io.opentdf.platform.google.api.AnnotationsProto.getDescriptor();
+    com.google.api.AnnotationsProto.getDescriptor();
   }
 
   // @@protoc_insertion_point(outer_class_scope)

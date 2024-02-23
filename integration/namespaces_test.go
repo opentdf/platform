@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	policydb "github.com/opentdf/platform/services/policy/db"
 	"github.com/stretchr/testify/assert"
@@ -17,8 +18,8 @@ import (
 type NamespacesSuite struct {
 	suite.Suite
 	schema string
-	f      Fixtures
-	db     DBInterface
+	f      fixtures.Fixtures
+	db     fixtures.DBInterface
 	ctx    context.Context
 }
 
@@ -36,8 +37,8 @@ func (s *NamespacesSuite) SetupSuite() {
 	slog.Info("setting up db.Namespaces test suite")
 	s.ctx = context.Background()
 	s.schema = "test_opentdf_namespaces"
-	s.db = NewDBInterface(s.schema)
-	s.f = NewFixture(s.db)
+	s.db = fixtures.NewDBInterface(*Config)
+	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 	deactivatedNsId, deactivatedAttrId, deactivatedAttrValueId = setupCascadeDeactivateNamespace(s)
 }
@@ -47,16 +48,16 @@ func (s *NamespacesSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func getActiveNamespaceFixtures() []FixtureDataNamespace {
-	return []FixtureDataNamespace{
-		fixtures.GetNamespaceKey("example.com"),
-		fixtures.GetNamespaceKey("example.net"),
-		fixtures.GetNamespaceKey("example.org"),
+func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
+	return []fixtures.FixtureDataNamespace{
+		s.f.GetNamespaceKey("example.com"),
+		s.f.GetNamespaceKey("example.net"),
+		s.f.GetNamespaceKey("example.org"),
 	}
 }
 
 func (s *NamespacesSuite) Test_CreateNamespace() {
-	testData := getActiveNamespaceFixtures()
+	testData := s.getActiveNamespaceFixtures()
 
 	for _, ns := range testData {
 		ns.Name = strings.Replace(ns.Name, "example", "test", 1)
@@ -74,7 +75,7 @@ func (s *NamespacesSuite) Test_CreateNamespace() {
 }
 
 func (s *NamespacesSuite) Test_GetNamespace() {
-	testData := getActiveNamespaceFixtures()
+	testData := s.getActiveNamespaceFixtures()
 
 	for _, test := range testData {
 		gotNamespace, err := s.db.PolicyClient.GetNamespace(s.ctx, test.Id)
@@ -91,7 +92,7 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 }
 
 func (s *NamespacesSuite) Test_GetNamespace_InactiveState_Succeeds() {
-	inactive := fixtures.GetNamespaceKey("deactivated_ns")
+	inactive := s.f.GetNamespaceKey("deactivated_ns")
 	// Ensure our fixtures matches expected string enum
 	assert.Equal(s.T(), inactive.Active, false)
 
@@ -109,7 +110,7 @@ func (s *NamespacesSuite) Test_GetNamespace_DoesNotExist_ShouldFail() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces() {
-	testData := getActiveNamespaceFixtures()
+	testData := s.getActiveNamespaceFixtures()
 
 	gotNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateActive)
 	assert.Nil(s.T(), err)
@@ -118,7 +119,7 @@ func (s *NamespacesSuite) Test_ListNamespaces() {
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace() {
-	testData := getActiveNamespaceFixtures()
+	testData := s.getActiveNamespaceFixtures()
 
 	for i, ns := range testData {
 		updatedName := fmt.Sprintf("%s-updated", ns.Name)
@@ -149,7 +150,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
 }
 
 func (s *NamespacesSuite) Test_DeleteNamespace() {
-	testData := getActiveNamespaceFixtures()
+	testData := s.getActiveNamespaceFixtures()
 
 	// Deletion should fail when the namespace is referenced as FK in attribute(s)
 	for _, ns := range testData {

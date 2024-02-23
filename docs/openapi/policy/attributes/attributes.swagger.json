@@ -49,6 +49,40 @@
         ]
       }
     },
+    "/attributes/_/fqn": {
+      "get": {
+        "operationId": "AttributesService_GetAttributesByValueFqns",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesGetAttributesByValueFqnsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "fqns",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
     "/attributes/_/values/{id}": {
       "get": {
         "summary": "* Attribute Value *",
@@ -484,6 +518,17 @@
         }
       }
     },
+    "attributesAttributeAndValue": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
+        },
+        "value": {
+          "$ref": "#/definitions/attributesValue"
+        }
+      }
+    },
     "attributesAttributeCreateUpdate": {
       "type": "object",
       "properties": {
@@ -580,6 +625,18 @@
       "properties": {
         "value": {
           "$ref": "#/definitions/attributesValue"
+        }
+      }
+    },
+    "attributesGetAttributesByValueFqnsResponse": {
+      "type": "object",
+      "properties": {
+        "fqnAttributeValues": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/attributesAttributeAndValue"
+          },
+          "title": "map of fqns to complete attributes and the one selected value"
         }
       }
     },

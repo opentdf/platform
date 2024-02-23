@@ -41,7 +41,7 @@ func TestNewOIDCAuthConfig(t *testing.T) {
 		t.Fatalf("authconfig failed: %v", err)
 	}
 
-	if authConfig.authToken != expectedAccessToken {
-		t.Fatalf("Auth token expected %s recived %s", expectedAccessToken, authConfig.authToken)
+	if authConfig.accessToken != expectedAccessToken {
+		t.Fatalf("Auth token expected %s recived %s", expectedAccessToken, authConfig.accessToken)
 	}
 }

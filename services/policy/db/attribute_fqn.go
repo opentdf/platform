@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
 // These values are optional, but at least one must be set. The other values will be derived from
@@ -145,4 +147,39 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 	}
 
 	return res
+}
+
+func filterValues(values []*attributes.Value, fqn string) *attributes.Value {
+	val := strings.Split(fqn, "/value/")[1]
+	for _, v := range values {
+		if v.Value == val {
+			return v
+		}
+	}
+	return nil
+}
+
+func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []string) (map[string]*attributes.AttributeAndValue, error) {
+	list := make(map[string]*attributes.AttributeAndValue, len(fqns))
+	for _, fqn := range fqns {
+		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
+		if !strings.Contains(fqn, "/value/") {
+			return nil, db.ErrFqnMissingValue
+		}
+		attr, err := c.GetAttributeByFqn(ctx, fqn)
+		if err != nil {
+			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
+			return nil, err
+		}
+		selected := filterValues(attr.Values, fqn)
+		if selected == nil {
+			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
+			return nil, fmt.Errorf("could not find value for FQN: %s", fqn)
+		}
+		list[fqn] = &attributes.AttributeAndValue{
+			Attribute: attr,
+			Value:     filterValues(attr.Values, fqn),
+		}
+	}
+	return list, nil
 }

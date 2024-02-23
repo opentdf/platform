@@ -43,8 +43,8 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 	}}
 
 	// TODO Get attribute value ids
-	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/val/replaceme"
-	openAttributeValueFqn := "https://open.io/attr/attr_name/val/open"
+	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/value/replaceme"
+	openAttributeValueFqn := "https://open.io/attr/attr_name/value/open"
 
 	slog.Info("Getting decision for bob and alice for transmit action on resource set with trade secret and resource" +
 		" set with trade secret + open attribute values")

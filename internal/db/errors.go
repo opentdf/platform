@@ -25,6 +25,7 @@ const (
 	ErrNotFound                  DbError = "ErrNotFound: value not found"
 	ErrEnumValueInvalid          DbError = "ErrEnumValueInvalid: not a valid enum value"
 	ErrUuidInvalid               DbError = "ErrUuidInvalid: value not a valid UUID"
+	ErrFqnMissingValue		     DbError = "ErrFqnMissingValue: FQN must include a value"
 )
 
 // Get helpful error message for PostgreSQL violation

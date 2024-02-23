@@ -1,10 +1,17 @@
 # OpenTDF Enhancements POC
 
+![CI](https://github.com/opentdf/platform/actions/workflows/checks.yaml/badge.svg?branch=main)
+
+![lint](https://github.com/opentdf/platform/actions/workflows/lint-all.yaml/badge.svg?branch=main)
+
+![Vulnerability Check](https://github.com/opentdf/platform/actions/workflows/vulnerability-check.yaml/badge.svg?branch=main)
+
 ## Documentation
-- [Home](https://opentdf.github.io/opentdf-v2-poc)<!-- change this once repo is renamed  -->
+
+- [Home](https://opentdf.github.io/platform)
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
-- [Policy Config Schema](./migrations/20240131000000_diagram.md)
+- [Policy Config Schema](./migrations/20240212000000_schema_erd.md)
 - [Policy Config Testing Diagram](./integration/testing_diagram.png)
 
 ## Development
@@ -27,7 +34,7 @@ With go 1.18 or higher:
 
 ### Run
 
-1. `docker-compose -f opentdf-compose.yaml up`
+1. `docker-compose up`
 
 2. `goose -dir=./migrations postgres "postgres://postgres:changeme@localhost:5432/opentdf" up`
 
@@ -35,33 +42,38 @@ With go 1.18 or higher:
 
 4. `air`
 
-This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/opentdf-v2-poc/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
+This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/platform/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
 
 ### Test
 
 ```bash
   grpcurl -plaintext localhost:9000 list
 
-  attributes.AttributesService
+  authorization.AuthorizationService
   grpc.reflection.v1.ServerReflection
   grpc.reflection.v1alpha.ServerReflection
   kasregistry.KeyAccessServerRegistryService
-  namespaces.NamespaceService
-  resourcemapping.ResourceMappingService
-  subjectmapping.SubjectMappingService
+  policy.attributes.AttributesService
+  policy.namespaces.NamespaceService
+  policy.resourcemapping.ResourceMappingService
+  policy.subjectmapping.SubjectMappingService
 
-  grpcurl -plaintext localhost:9000 list attributes.AttributesService
+  grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
 
-  attributes.AttributesService.CreateAttribute
-  attributes.AttributesService.CreateAttributeValue
-  attributes.AttributesService.DeleteAttribute
-  attributes.AttributesService.DeleteAttributeValue
-  attributes.AttributesService.GetAttribute
-  attributes.AttributesService.GetAttributeValue
-  attributes.AttributesService.ListAttributeValues
-  attributes.AttributesService.ListAttributes
-  attributes.AttributesService.UpdateAttribute
-  attributes.AttributesService.UpdateAttributeValue
+  policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
+  policy.attributes.AttributesService.AssignKeyAccessServerToValue
+  policy.attributes.AttributesService.CreateAttribute
+  policy.attributes.AttributesService.CreateAttributeValue
+  policy.attributes.AttributesService.DeactivateAttribute
+  policy.attributes.AttributesService.DeactivateAttributeValue
+  policy.attributes.AttributesService.GetAttribute
+  policy.attributes.AttributesService.GetAttributeValue
+  policy.attributes.AttributesService.ListAttributeValues
+  policy.attributes.AttributesService.ListAttributes
+  policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute
+  policy.attributes.AttributesService.RemoveKeyAccessServerFromValue
+  policy.attributes.AttributesService.UpdateAttribute
+  policy.attributes.AttributesService.UpdateAttributeValue
 ```
 
 Create Attribute
@@ -71,7 +83,7 @@ grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAtt
 {
     "definition": {
         "name": "relto",
-        "rule":"ATTRIBUTE_RULE_TYPE_ANY_OF",
+        "rule":"ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
         "values": [
             {
                 "value": "test1"
@@ -116,3 +128,26 @@ The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` 
 generated code.
 
 For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.
+
+## Services
+
+### Policy
+
+The policy service is responsible for managing policy configurations. It provides a gRPC API for
+creating, updating, and deleting policy configurations.
+
+#### Attributes
+
+##### Namespaces
+
+##### Definitions
+
+##### Values
+
+#### Attribute FQNs
+
+Attribute FQNs are a unique string identifier for an attribute (and its respective parts) that is
+used to reference the attribute in policy configurations. Specific places where this will be used:
+
+- TDF attributes
+- Key Access Server (KAS) to determine key release

@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/opentdf-v2-poc/sdk/internal/crypto"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 const (
@@ -40,7 +40,7 @@ type tdfTest struct {
 	kasInfoList []KASInfo
 }
 
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // Mock Value
 var mockKasPublicKey = `-----BEGIN CERTIFICATE-----
 MIICmDCCAYACCQC3BCaSANRhYzANBgkqhkiG9w0BAQsFADAOMQwwCgYDVQQDDANr
 YXMwHhcNMjEwOTE1MTQxMTQ4WhcNMjIwOTE1MTQxMTQ4WjAOMQwwCgYDVQQDDANr
@@ -58,7 +58,7 @@ I099IoRfC5djHUYYLMU/VkOIHuPC3sb7J65pSN26eR8bTMVNagk187V/xNwUuvkf
 wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 -----END CERTIFICATE-----`
 
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // Mock value
 var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
 	MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOpiotrvV2i5h6
 	clHMzDGgh3h/kMa0LoGx2OkDPd8jogycUh7pgE5GNiN2lpSmFkjxwYMXnyrwr9Ex
@@ -141,7 +141,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 			},
 		},
 	},
-	//{
+	// {
 	//	fileSize:    2 * oneGB,
 	//	tdfFileSize: 2097291006,
 	//	checksum:    "57bb3422770a98f193baa6f0fd67dd9743dc07c868abd95ad0606dff0bee32b4",
@@ -155,8 +155,8 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	//			publicKey: mockKasPublicKey,
 	//		},
 	//	},
-	//},
-	//{
+	// },
+	// {
 	//	fileSize:    4 * oneGB,
 	//	tdfFileSize: 4194580006,
 	//	checksum:    "a9c267f8600c18263250a10b0ab7995528cf80fc85275ab5a36ada3e350519fd",
@@ -170,8 +170,8 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	//			publicKey: mockKasPublicKey,
 	//		},
 	//	},
-	//},
-	//{
+	// },
+	// {
 	//	fileSize:    6 * oneGB,
 	//	tdfFileSize: 6291869194,
 	//	checksum:    "1a48fc773889be3361e9ca826fad32c191b10309f03996e1d233e02bc4c4b979",
@@ -185,8 +185,8 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	//			publicKey: mockKasPublicKey,
 	//		},
 	//	},
-	//},
-	//{
+	// },
+	// {
 	//	fileSize:    20 * oneGB,
 	//	tdfFileSize: 20972892194,
 	//	checksum:    "bd218f6cc4dc038d5707a276b0fdd5d1b3725cebe4e2e7b475cf2d09d551af08",
@@ -200,7 +200,7 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 	//			publicKey: mockKasPublicKey,
 	//		},
 	//	},
-	//},
+	// },
 }
 
 type TestReadAt struct {
@@ -210,7 +210,7 @@ type TestReadAt struct {
 	expectedPayload string
 }
 
-type partialReadTdfTest struct { //nolint:gochecknoglobals // requires for testing tdf
+type partialReadTdfTest struct {
 	payload     string
 	kasInfoList []KASInfo
 	readAtTests []TestReadAt
@@ -266,7 +266,7 @@ var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals //
 	},
 }
 
-var buffer []byte //nolint:gochecknoglobals
+var buffer []byte //nolint:gochecknoglobals // for testing
 
 func init() {
 	// create a buffer and write with 0xff
@@ -276,7 +276,7 @@ func init() {
 	}
 }
 
-func TestSimpleTDF(t *testing.T) {
+func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 	server, signingPubKey, signingPrivateKey := runKas()
 	defer server.Close()
 
@@ -291,26 +291,12 @@ func TestSimpleTDF(t *testing.T) {
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
-		// CreateTDF TDFConfig
-		tdfConfig, err := NewTDFConfig()
-		if err != nil {
-			t.Fatalf("Fail to create tdf config: %v", err)
-		}
-
 		kasURLs := []KASInfo{
 			{
 				url:       server.URL,
 				publicKey: "",
 			},
 		}
-
-		err = tdfConfig.AddKasInformation(kasURLs)
-		if err != nil {
-			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-		}
-
-		tdfConfig.SetMetaData(metaDataStr)
-		tdfConfig.AddAttributes(attributes)
 
 		inBuf := bytes.NewBufferString(plainText)
 		bufReader := bytes.NewReader(inBuf.Bytes())
@@ -326,13 +312,16 @@ func TestSimpleTDF(t *testing.T) {
 			}
 		}(fileWriter)
 
-		tdfSize, err := CreateTDF(*tdfConfig, bufReader, fileWriter)
+		tdfObj, err := CreateTDF(fileWriter, bufReader,
+			WithKasInformation(kasURLs...),
+			WithMetaData(metaDataStr),
+			WithDataAttributes(attributes...))
 		if err != nil {
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}
 
-		if tdfSize != expectedTdfSize {
-			t.Errorf("tdf size test failed expected %v, got %v", tdfSize, expectedTdfSize)
+		if tdfObj.size != expectedTdfSize {
+			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.size, expectedTdfSize)
 		}
 	}
 
@@ -360,12 +349,16 @@ func TestSimpleTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		r, err := NewReader(*authConfig, readSeeker)
+		r, err := LoadTDF(*authConfig, readSeeker)
+		if err != nil {
+			t.Fatalf("Fail to load the tdf:%v", err)
+		}
+
+		unencryptedMetaData, err := r.UnencryptedMetadata()
 		if err != nil {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
 
-		unencryptedMetaData := r.UnencryptedMetadata()
 		if metaDataStr != unencryptedMetaData {
 			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, unencryptedMetaData)
 		}
@@ -405,7 +398,7 @@ func TestSimpleTDF(t *testing.T) {
 		authConfig.signingPublicKey = signingPubKey
 		authConfig.signingPrivateKey = signingPrivateKey
 
-		r, err := NewReader(*authConfig, readSeeker)
+		r, err := LoadTDF(*authConfig, readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to create reader:%v", err)
 		}
@@ -425,7 +418,7 @@ func TestSimpleTDF(t *testing.T) {
 	_ = os.Remove(tdfFilename)
 }
 
-func TestTDFReader(t *testing.T) {
+func TestTDFReader(t *testing.T) { //nolint:gocognit
 	server, signingPubKey, signingPrivateKey := runKas()
 	defer server.Close()
 
@@ -436,16 +429,6 @@ func TestTDFReader(t *testing.T) {
 			kasInfoList[index].publicKey = ""
 		}
 
-		tdfConfig, err := NewTDFConfig()
-		if err != nil {
-			t.Fatalf("Fail to create tdf config: %v", err)
-		}
-
-		err = tdfConfig.AddKasInformation(kasInfoList)
-		if err != nil {
-			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-		}
-
 		// create auth config
 		authConfig, err := NewAuthConfig()
 		if err != nil {
@@ -453,11 +436,15 @@ func TestTDFReader(t *testing.T) {
 		}
 
 		for _, readAtTest := range test.readAtTests {
-			tdfConfig.SetDefaultSegmentSize(readAtTest.segmentSize)
-
 			tdfBuf := bytes.Buffer{}
 			readSeeker := bytes.NewReader([]byte(test.payload))
-			_, err = CreateTDF(*tdfConfig, readSeeker, io.Writer(&tdfBuf))
+			_, err := CreateTDF(
+				io.Writer(&tdfBuf),
+				readSeeker,
+				WithKasInformation(kasInfoList...),
+				WithSegmentSize(readAtTest.segmentSize),
+			)
+
 			if err != nil {
 				t.Fatalf("tdf.CreateTDF failed: %v", err)
 			}
@@ -468,7 +455,7 @@ func TestTDFReader(t *testing.T) {
 
 			// test reader
 			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
-			r, err := NewReader(*authConfig, tdfReadSeeker)
+			r, err := LoadTDF(*authConfig, tdfReadSeeker)
 			if err != nil {
 				t.Fatalf("failed to read tdf: %v", err)
 			}
@@ -537,18 +524,8 @@ func TestTDF(t *testing.T) {
 			kasInfoList[index].publicKey = ""
 		}
 
-		tdfConfig, err := NewTDFConfig()
-		if err != nil {
-			t.Fatalf("Fail to create tdf config: %v", err)
-		}
-
-		err = tdfConfig.AddKasInformation(kasInfoList)
-		if err != nil {
-			t.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-		}
-
 		// test encrypt
-		testEncrypt(t, *tdfConfig, plaintTextFileName, tdfFileName, test)
+		testEncrypt(t, kasInfoList, plaintTextFileName, tdfFileName, test)
 
 		// create auth config
 		authConfig, err := NewAuthConfig()
@@ -589,16 +566,6 @@ func BenchmarkReader(b *testing.B) {
 		kasInfoList[index].publicKey = ""
 	}
 
-	tdfConfig, err := NewTDFConfig()
-	if err != nil {
-		b.Fatalf("Fail to create tdf config: %v", err)
-	}
-
-	err = tdfConfig.AddKasInformation(kasInfoList)
-	if err != nil {
-		b.Fatalf("tdfConfig.AddKasUrls failed: %v", err)
-	}
-
 	// encrypt
 	// create a buffer and write with 0xff
 	inBuf := make([]byte, test.fileSize)
@@ -608,7 +575,7 @@ func BenchmarkReader(b *testing.B) {
 
 	tdfBuf := bytes.Buffer{}
 	readSeeker := bytes.NewReader(inBuf)
-	_, err = CreateTDF(*tdfConfig, readSeeker, io.Writer(&tdfBuf))
+	_, err := CreateTDF(io.Writer(&tdfBuf), readSeeker, WithKasInformation(kasInfoList...))
 	if err != nil {
 		b.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
@@ -624,7 +591,7 @@ func BenchmarkReader(b *testing.B) {
 	authConfig.signingPrivateKey = signingPrivateKey
 
 	readSeeker = bytes.NewReader(tdfBuf.Bytes())
-	r, err := NewReader(*authConfig, readSeeker)
+	r, err := LoadTDF(*authConfig, readSeeker)
 	if err != nil {
 		b.Fatalf("failed to read tdf: %v", err)
 	}
@@ -643,7 +610,7 @@ func BenchmarkReader(b *testing.B) {
 }
 
 // create tdf
-func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileName string, test tdfTest) {
+func testEncrypt(t *testing.T, kasInfoList []KASInfo, plainTextFilename, tdfFileName string, test tdfTest) {
 	// create a plain text file
 	createFileName(buffer, plainTextFilename, test.fileSize)
 
@@ -671,13 +638,13 @@ func testEncrypt(t *testing.T, tdfConfig TDFConfig, plainTextFilename, tdfFileNa
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
 	}(fileWriter) // CreateTDF TDFConfig
-	tdfSize, err := CreateTDF(tdfConfig, readSeeker, fileWriter)
+	tdfObj, err := CreateTDF(fileWriter, readSeeker, WithKasInformation(kasInfoList...))
 	if err != nil {
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
 
-	if tdfSize != test.tdfFileSize {
-		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfSize)
+	if tdfObj.size != test.tdfFileSize {
+		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfObj.size)
 	}
 }
 
@@ -694,7 +661,7 @@ func testDecryptWithReader(t *testing.T, authConfig AuthConfig, tdfFile, decrypt
 		}
 	}(readSeeker)
 
-	r, err := NewReader(authConfig, readSeeker)
+	r, err := LoadTDF(authConfig, readSeeker)
 	if err != nil {
 		t.Fatalf("failed to read tdf: %v", err)
 	}
@@ -767,7 +734,7 @@ func createFileName(buf []byte, filename string, size int64) {
 	}
 }
 
-func runKas() (*httptest.Server, string, string) {
+func runKas() (*httptest.Server, string, string) { //nolint:gocognit
 	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		panic(fmt.Sprintf("crypto.NewRSAKeyPair: %v", err))
@@ -815,7 +782,7 @@ func runKas() (*httptest.Server, string, string) {
 			if !ok {
 				panic("signed token missing in rewrap response")
 			}
-			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(_ *jwt.Token) (interface{}, error) {
 				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(signingPubKey))
 				if err != nil {
 					return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
@@ -823,7 +790,7 @@ func runKas() (*httptest.Server, string, string) {
 
 				return signingRSAPublicKey, nil
 			})
-			var rewrapRequest = ""
+			var rewrapRequest string
 			if err != nil {
 				panic(fmt.Sprintf("jwt.ParseWithClaims failed:%v", err))
 			} else if claims, fine := token.Claims.(*rewrapJWTClaims); fine {

@@ -3,11 +3,12 @@ package sdk
 import (
 	"errors"
 
-	"github.com/opentdf/opentdf-v2-poc/sdk/attributes"
-	"github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/sdk/namespaces"
-	"github.com/opentdf/opentdf-v2-poc/sdk/resourcemapping"
-	"github.com/opentdf/opentdf-v2-poc/sdk/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -30,6 +31,7 @@ type SDK struct {
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
+	Authorization           authorization.AuthorizationServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -55,6 +57,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(conn),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(conn),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(conn),
+		Authorization:           authorization.NewAuthorizationServiceClient(conn),
 	}, nil
 }
 

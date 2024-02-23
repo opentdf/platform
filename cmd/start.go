@@ -1,14 +1,7 @@
-/*
-'Copyright 2023 Virtru Corporation'
-*/
 package cmd
 
 import (
 	"github.com/opentdf/opentdf-v2-poc/pkg/server"
-
-	// "github.com/opentdf/opentdf-v2-poc/services/acre"
-
-	// "github.com/opentdf/opentdf-v2-poc/services/keyaccessgrants"
 	"github.com/spf13/cobra"
 )
 

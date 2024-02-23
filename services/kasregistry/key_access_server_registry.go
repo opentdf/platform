@@ -5,15 +5,16 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/pkg/serviceregistry"
-	kasr "github.com/opentdf/opentdf-v2-poc/sdk/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/services"
+	"github.com/opentdf/platform/internal/db"
+	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
+	"github.com/opentdf/platform/services"
+	kasDb "github.com/opentdf/platform/services/kasregistry/db"
+	"google.golang.org/grpc"
 )
 
 type KeyAccessServerRegistry struct {
 	kasr.UnimplementedKeyAccessServerRegistryServiceServer
-	dbClient *db.Client
+	dbClient *kasDb.KasRegistryDbClient
 }
 
 func NewRegistration() serviceregistry.Registration {

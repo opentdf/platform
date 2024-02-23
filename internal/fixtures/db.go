@@ -1,10 +1,12 @@
-package integration
+package fixtures
 
 import (
 	"context"
 	"log/slog"
 	"strconv"
 	"strings"
+
+	"github.com/opentdf/platform/internal/config"
 
 	"github.com/opentdf/platform/internal/db"
 	kasdb "github.com/opentdf/platform/services/kasregistry/db"
@@ -18,9 +20,9 @@ type DBInterface struct {
 	Schema       string
 }
 
-func NewDBInterface(schema string) DBInterface {
-	config := Config.DB
-	config.Schema = schema
+func NewDBInterface(cfg config.Config) DBInterface {
+	config := cfg.DB
+	config.Schema = cfg.DB.Schema
 	c, err := db.NewClient(config)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
@@ -28,7 +30,7 @@ func NewDBInterface(schema string) DBInterface {
 	}
 	return DBInterface{
 		Client:       c,
-		Schema:       schema,
+		Schema:       config.Schema,
 		PolicyClient: policydb.NewClient(*c),
 		KASRClient:   kasdb.NewClient(*c),
 	}

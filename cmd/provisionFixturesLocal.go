@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/opentdf/platform/integration"
 	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/fixtures"
 	kasdb "github.com/opentdf/platform/services/kasregistry/db"
 	policydb "github.com/opentdf/platform/services/policy/db"
 	"github.com/spf13/cobra"
@@ -41,14 +41,14 @@ var (
 )
 
 func provisionFixtures(db *db.Client) {
-	dbI := integration.DBInterface{
+	dbI := fixtures.DBInterface{
 		Client:       db,
 		PolicyClient: policydb.NewClient(*db),
 		KASRClient:   kasdb.NewClient(*db),
 		Schema:       "opentdf",
 	}
-	f := integration.NewFixture(dbI)
-	integration.LoadFixtureData("integration/fixtures.yaml")
+	f := fixtures.NewFixture(dbI)
+	fixtures.LoadFixtureData("integration/fixtures.yaml")
 	f.Provision()
 }
 

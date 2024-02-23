@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/suite"
 )
@@ -12,8 +13,8 @@ import (
 type AttributeFqnSuite struct {
 	suite.Suite
 	schema string
-	f      Fixtures
-	db     DBInterface
+	f      fixtures.Fixtures
+	db     fixtures.DBInterface
 	ctx    context.Context
 }
 
@@ -41,8 +42,8 @@ func (s *AttributeFqnSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeFqn test suite")
 	s.ctx = context.Background()
 	s.schema = "test_opentdf_attribute_fqn"
-	s.db = NewDBInterface(s.schema)
-	s.f = NewFixture(s.db)
+	s.db = fixtures.NewDBInterface(*Config)
+	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 }
 
@@ -65,7 +66,7 @@ func (s *AttributeFqnSuite) TestCreateNamespace() {
 
 // Test Create Attribute
 func (s *AttributeFqnSuite) TestCreateAttribute() {
-	n := fixtures.GetNamespaceKey("example.com")
+	n := s.f.GetNamespaceKey("example.com")
 	name := "test_namespace"
 	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.AttributeCreateUpdate{
 		NamespaceId: n.Id,
@@ -82,8 +83,8 @@ func (s *AttributeFqnSuite) TestCreateAttribute() {
 
 // Test Create Attribute Value
 func (s *AttributeFqnSuite) TestCreateAttributeValue() {
-	a := fixtures.GetAttributeKey("example.com/attr/attr1")
-	n := fixtures.GetNamespaceKey("example.com")
+	a := s.f.GetAttributeKey("example.com/attr/attr1")
+	n := s.f.GetNamespaceKey("example.com")
 	name := "test_namespace"
 	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
 		Value: name,

@@ -129,9 +129,7 @@ func (client KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 		return nil, fmt.Errorf("failed to create jwt: %v", err)
 	}
 
-	dpopKey := client.accessTokenSource.GetDPoPKey()
-
-	signedToken, err := jwt.Sign(tok, jwt.WithKey(dpopKey.Algorithm(), dpopKey))
+	signedToken, err := client.accessTokenSource.SignToken(tok)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}

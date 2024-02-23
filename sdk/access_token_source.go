@@ -12,6 +12,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"golang.org/x/oauth2"
@@ -24,7 +25,7 @@ type AccessTokenSource interface {
 	// probably better to use `crypto.AsymDecryption` here than roll our own since this should be
 	// more closely linked to what happens in KAS in terms of crypto params
 	GetAsymDecryption() crypto.AsymDecryption
-	GetDPoPKey() jwk.Key
+	SignToken(jwt.Token) ([]byte, error)
 	GetDPoPPublicKeyPEM() string
 	RefreshAccessToken() error
 }
@@ -148,8 +149,13 @@ func (creds *IDPAccessTokenSource) RefreshAccessToken() error {
 	return nil
 }
 
-func (creds *IDPAccessTokenSource) GetDPoPKey() jwk.Key {
-	return creds.dpopKey
+func (t *IDPAccessTokenSource) SignToken(tok jwt.Token) ([]byte, error) {
+	signed, err := jwt.Sign(tok, jwt.WithKey(t.dpopKey.Algorithm(), t.dpopKey))
+	if err != nil {
+		return nil, fmt.Errorf("error signing DPOP token: %w", err)
+	}
+
+	return signed, nil
 }
 
 func (creds *IDPAccessTokenSource) GetDPoPPublicKeyPEM() string {
@@ -184,8 +190,13 @@ func (t *TokenExchangeTokenSource) GetAsymDecryption() crypto.AsymDecryption {
 	return t.asymDecryption
 }
 
-func (t *TokenExchangeTokenSource) GetDPoPKey() jwk.Key {
-	return t.dpopKey
+func (t *TokenExchangeTokenSource) SignToken(tok jwt.Token) ([]byte, error) {
+	signed, err := jwt.Sign(tok, jwt.WithKey(t.dpopKey.Algorithm(), t.dpopKey))
+	if err != nil {
+		return nil, fmt.Errorf("error signing DPOP token: %w", err)
+	}
+
+	return signed, nil
 }
 
 func (t *TokenExchangeTokenSource) GetDPoPPublicKeyPEM() string {

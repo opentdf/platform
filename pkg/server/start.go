@@ -8,12 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/opentdf/opentdf-v2-poc/internal/config"
-	"github.com/opentdf/opentdf-v2-poc/internal/db"
-	"github.com/opentdf/opentdf-v2-poc/internal/logger"
-	"github.com/opentdf/opentdf-v2-poc/internal/opa"
-	"github.com/opentdf/opentdf-v2-poc/internal/server"
-	"github.com/opentdf/opentdf-v2-poc/pkg/serviceregistry"
+	"github.com/opentdf/platform/internal/config"
+	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/logger"
+	"github.com/opentdf/platform/internal/opa"
+	"github.com/opentdf/platform/internal/server"
+	"github.com/opentdf/platform/pkg/serviceregistry"
 )
 
 func WithConfigName(name string) func(StartConfig) StartConfig {

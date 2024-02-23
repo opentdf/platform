@@ -5,11 +5,11 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/pkg/serviceregistry"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/services"
 	policydb "github.com/opentdf/platform/services/policy/db"
-	"google.golang.org/grpc"
 )
 
 type AttributesService struct {
@@ -22,7 +22,7 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "policy",
 		ServiceDesc: &attributes.AttributesService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &AttributesService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &AttributesService{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, server.(attributes.AttributesServiceServer))
 			}
 		},

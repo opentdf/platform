@@ -5,11 +5,10 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/pkg/serviceregistry"
 	namespaces "github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/services"
 	policydb "github.com/opentdf/platform/services/policy/db"
-	"google.golang.org/grpc"
 )
 
 type NamespacesService struct {
@@ -22,7 +21,7 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "policy",
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &NamespacesService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &NamespacesService{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return namespaces.RegisterNamespaceServiceHandlerServer(ctx, mux, server.(namespaces.NamespaceServiceServer))
 			}
 		},

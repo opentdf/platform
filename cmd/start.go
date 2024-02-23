@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/opentdf/opentdf-v2-poc/pkg/server"
+	"github.com/opentdf/platform/pkg/server"
 	"github.com/spf13/cobra"
 )
 

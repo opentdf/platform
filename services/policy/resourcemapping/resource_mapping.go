@@ -5,12 +5,11 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/pkg/serviceregistry"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	rsMp "github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/services"
 	policydb "github.com/opentdf/platform/services/policy/db"
-
-	"google.golang.org/grpc"
 )
 
 type ResourceMappingService struct {
@@ -23,7 +22,7 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "policy",
 		ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &ResourceMappingService{dbClient: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+			return &ResourceMappingService{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
 				return resourcemapping.RegisterResourceMappingServiceHandlerServer(ctx, mux, s.(resourcemapping.ResourceMappingServiceServer))
 			}
 		},

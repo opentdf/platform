@@ -1,12 +1,12 @@
 package server
 
 import (
-	"github.com/opentdf/opentdf-v2-poc/pkg/serviceregistry"
-	"github.com/opentdf/opentdf-v2-poc/services/attributes"
-	"github.com/opentdf/opentdf-v2-poc/services/kasregistry"
-	"github.com/opentdf/opentdf-v2-poc/services/namespaces"
-	"github.com/opentdf/opentdf-v2-poc/services/resourcemapping"
-	"github.com/opentdf/opentdf-v2-poc/services/subjectmapping"
+	"github.com/opentdf/platform/pkg/serviceregistry"
+	"github.com/opentdf/platform/services/kasregistry"
+	"github.com/opentdf/platform/services/policy/attributes"
+	"github.com/opentdf/platform/services/policy/namespaces"
+	"github.com/opentdf/platform/services/policy/resourcemapping"
+	"github.com/opentdf/platform/services/policy/subjectmapping"
 )
 
 func registerServices() {

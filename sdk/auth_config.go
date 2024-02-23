@@ -229,7 +229,7 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 	return key, nil
 }
 
-func (_ *AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
+func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
 	kasPubKeyURL, err := url.JoinPath(kasInfo.url, kasPublicKeyPath)
 	if err != nil {
 		return "", fmt.Errorf("url.Parse failed: %w", err)

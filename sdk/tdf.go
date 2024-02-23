@@ -738,7 +738,7 @@ func fillInPublicKeys(unwrapper Unwrapper, kasInfos []KASInfo) error {
 
 		publicKey, err := unwrapper.getPublicKey(kasInfo)
 		if err != nil {
-			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %v", kasInfo.url, err)
+			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.url, err)
 		}
 
 		kasInfos[idx].publicKey = publicKey

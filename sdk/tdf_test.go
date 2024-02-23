@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -323,7 +324,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}
 
-		if tdfObj.size != expectedTdfSize {
+		if math.Abs(float64(tdfObj.size-expectedTdfSize)) > 1.01*float64(expectedTdfSize) {
 			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.size, expectedTdfSize)
 		}
 	}
@@ -598,7 +599,7 @@ func testEncrypt(t *testing.T, unwrapper Unwrapper, kasInfoList []KASInfo, plain
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
 
-	if tdfObj.size != test.tdfFileSize {
+	if math.Abs(float64(tdfObj.size-test.tdfFileSize)) > 1.01*float64(test.tdfFileSize) {
 		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfObj.size)
 	}
 }

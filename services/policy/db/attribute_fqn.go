@@ -148,7 +148,7 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 	return res
 }
 
-func (c *PolicyDbClient) GetAttributesByFqns(ctx context.Context, fqns []string) (map[string]*attributes.Attribute, error) {
+func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []string) (map[string]*attributes.Attribute, error) {
 	list := make(map[string]*attributes.Attribute, len(fqns))
 	for _, fqn := range fqns {
 		// TODO: get a full attribute by value FQN

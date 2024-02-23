@@ -51,12 +51,12 @@
     },
     "/attributes/_/fqn": {
       "get": {
-        "operationId": "AttributesService_GetAttributesByFqns",
+        "operationId": "AttributesService_GetAttributesByValueFqns",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesGetAttributesByFqnsResponse"
+              "$ref": "#/definitions/attributesGetAttributesByValueFqnsResponse"
             }
           },
           "default": {
@@ -617,7 +617,7 @@
         }
       }
     },
-    "attributesGetAttributesByFqnsResponse": {
+    "attributesGetAttributesByValueFqnsResponse": {
       "type": "object",
       "properties": {
         "attributes": {

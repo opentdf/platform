@@ -3,7 +3,7 @@
 
 .PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
 
-MODS=protocol/go sdk . examples
+MODS=protocol/go kas sdk . examples
 
 
 LINT_OPTIONS?=--new
@@ -18,7 +18,7 @@ toolcheck:
 	@golangci-lint --version | grep "version 1.55" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
 
 go.work go.work.sum:
-	go work init . examples protocol/go sdk
+	go work init . examples kas protocol/go sdk
 	go work edit --go=1.21.7
 
 fix:

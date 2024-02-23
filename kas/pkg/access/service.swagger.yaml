@@ -1,0 +1,160 @@
+swagger: "2.0"
+info:
+  title: OpenTDF Key Access Service
+  version: 1.5.0
+  license:
+    name: BSD 3-Clause Clear
+    url: https://github.com/opentdf/backend/blob/master/LICENSE
+tags:
+  - name: AccessService
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /:
+    get:
+      summary: Get the current version of the service
+      operationId: AccessService_Info
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/accessInfoResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - AccessService
+  /kas_public_key:
+    get:
+      operationId: AccessService_LegacyPublicKey
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            type: string
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: algorithm
+          in: query
+          required: false
+          type: string
+      tags:
+        - AccessService
+  /v2/kas_public_key:
+    get:
+      operationId: AccessService_PublicKey
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/accessPublicKeyResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: algorithm
+          in: query
+          required: false
+          type: string
+        - name: fmt
+          description: version
+          in: query
+          required: false
+          type: string
+        - name: v
+          description: version
+          in: query
+          required: false
+          type: string
+      tags:
+        - AccessService
+  /v2/rewrap:
+    post:
+      operationId: AccessService_Rewrap
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/accessRewrapResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/accessRewrapRequest'
+      tags:
+        - AccessService
+definitions:
+  accessInfoResponse:
+    type: object
+    properties:
+      version:
+        type: string
+    title: Service application level metadata
+  accessPublicKeyResponse:
+    type: object
+    properties:
+      publicKey:
+        type: string
+  accessRewrapRequest:
+    type: object
+    properties:
+      signedRequestToken:
+        type: string
+      bearer:
+        type: string
+  accessRewrapResponse:
+    type: object
+    properties:
+      metadata:
+        type: object
+        additionalProperties: {}
+      entityWrappedKey:
+        type: string
+        format: byte
+      sessionPublicKey:
+        type: string
+      schemaVersion:
+        type: string
+  protobufAny:
+    type: object
+    properties:
+      '@type':
+        type: string
+    additionalProperties: {}
+  protobufNullValue:
+    type: string
+    enum:
+      - NULL_VALUE
+    default: NULL_VALUE
+    description: |-
+      `NullValue` is a singleton enumeration to represent the null value for the
+      `Value` type union.
+
+      The JSON representation for `NullValue` is JSON `null`.
+
+       - NULL_VALUE: Null value.
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/protobufAny'

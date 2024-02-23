@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+NANOTDF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
+PROJECT_ROOT="$(cd "$NANOTDF_DIR"/../ >/dev/null && pwd)"
+export PATH="$PATH:$PROJECT_ROOT/tools"
+
+echo "Running [$0${1+ }$*]"
+
+e() {
+  local rval=$?
+  echo "${@}"
+  exit $rval
+}
+
+cd "$NANOTDF_DIR"
+mkdir -p build/gencode ||
+  e "Failed to create output folder folder 'build/gencode'"
+docker build --tag ksc:0.9 --target compiler . 1> >(echo DEBUG) 2> >(echo ERROR) ||
+  e "Failed to build kaitai struct compiler container"
+docker run -it --volume "$PWD":/workdir ksc:0.9 \
+  --target go \
+  --outdir build/gencode \
+  nanotdf.ksy 1> >(echo DEBUG) 2> >(echo ERROR) ||
+  e "Failed to compile nanotdf.ksy"
+python -m py_compile build/gencode/nanotdf.py 1> >(echo DEBUG) 2> >(echo ERROR) ||
+  e "nanotdf.py is invalid or missing"
+
+echo "Finished [$0${1+ }$*]"

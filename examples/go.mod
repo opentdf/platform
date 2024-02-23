@@ -2,16 +2,18 @@ module github.com/opentdf/platform/examples
 
 go 1.21.7
 
-toolchain go1.22.0
-
 require (
+	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.8.0
 	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.32.0
 )
 
-replace github.com/opentdf/platform/sdk => ./../sdk
+replace (
+	github.com/opentdf/platform/protocol/go => ../protocol/go
+	github.com/opentdf/platform/sdk => ../sdk
+)
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20231115204500-e097f827e652.1 // indirect

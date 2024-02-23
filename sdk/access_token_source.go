@@ -18,6 +18,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const (
+	dpopKeySize = 2048
+)
+
 type AccessToken string
 
 type AccessTokenSource interface {
@@ -30,8 +34,8 @@ type AccessTokenSource interface {
 	RefreshAccessToken() error
 }
 
-func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) {
-	dpopPrivate, err := rsa.GenerateKey(rand.Reader, 2048)
+func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) { //nolint:ireturn // this is only internal
+	dpopPrivate, err := rsa.GenerateKey(rand.Reader, dpopKeySize)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating DPoP keypair: %w", err)
 	}
@@ -39,7 +43,10 @@ func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) {
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating JWK: %w", err)
 	}
-	dpopKey.Set("alg", jwa.RS256)
+	err = dpopKey.Set("alg", jwa.RS256)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("error setting the key algorithm: %w", err)
+	}
 
 	dpopKeyDER, err := x509.MarshalPKCS8PrivateKey(dpopPrivate)
 	if err != nil {
@@ -48,7 +55,7 @@ func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) {
 
 	var dpopPrivatePEM strings.Builder
 
-	pem.Encode(&dpopPrivatePEM, &pem.Block{
+	err = pem.Encode(&dpopPrivatePEM, &pem.Block{
 		Type:  "PRIVATE KEY",
 		Bytes: dpopKeyDER,
 	})
@@ -94,7 +101,8 @@ type IDPAccessTokenSource struct {
 	tokenMutex       *sync.Mutex
 }
 
-func NewIDPAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPAccessTokenSource, error) {
+func NewIDPAccessTokenSource(
+	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
 		return IDPAccessTokenSource{}, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
@@ -120,31 +128,30 @@ func NewIDPAccessTokenSource(credentials oauth.ClientCredentials, idpTokenEndpoi
 }
 
 // use a pointer receiver so that the token state is shared
-func (creds *IDPAccessTokenSource) GetAccessToken() (AccessToken, error) {
-	// TODO: make this thread-safe
-	if creds.token == nil {
-		err := creds.RefreshAccessToken()
+func (t *IDPAccessTokenSource) GetAccessToken() (AccessToken, error) {
+	if t.token == nil {
+		err := t.RefreshAccessToken()
 		if err != nil {
 			return AccessToken(""), err
 		}
 	}
 
-	return AccessToken(creds.token.AccessToken), nil
+	return AccessToken(t.token.AccessToken), nil
 }
 
-func (creds *IDPAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
-	return creds.asymDecryption
+func (t *IDPAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
+	return t.asymDecryption
 }
 
-func (creds *IDPAccessTokenSource) RefreshAccessToken() error {
-	creds.tokenMutex.Lock()
-	defer creds.tokenMutex.Unlock()
+func (t *IDPAccessTokenSource) RefreshAccessToken() error {
+	t.tokenMutex.Lock()
+	defer t.tokenMutex.Unlock()
 
-	tok, err := oauth.GetAccessToken(creds.idpTokenEndpoint.String(), creds.scopes, creds.credentials, creds.dpopKey)
+	tok, err := oauth.GetAccessToken(t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 	if err != nil {
-		return fmt.Errorf("error getting access token: %v", err)
+		return fmt.Errorf("error getting access token: %w", err)
 	}
-	creds.token = tok
+	t.token = tok
 
 	return nil
 }
@@ -158,8 +165,8 @@ func (t *IDPAccessTokenSource) SignToken(tok jwt.Token) ([]byte, error) {
 	return signed, nil
 }
 
-func (creds *IDPAccessTokenSource) GetDPoPPublicKeyPEM() string {
-	return creds.dpopPEM
+func (t *IDPAccessTokenSource) GetDPoPPublicKeyPEM() string {
+	return t.dpopPEM
 }
 
 type TokenExchangeTokenSource struct {
@@ -208,7 +215,7 @@ func (t *TokenExchangeTokenSource) RefreshAccessToken() error {
 	defer t.tokenRefreshMutex.Unlock()
 	tok, err := oauth.ExchangeToken(t.clientCredentials, t.tokenExchangeEndpoint, t.subjectToken, t.dpopPEM)
 	if err != nil {
-		return err
+		return fmt.Errorf("error performing token exchange: %w", err)
 	}
 
 	t.token = AccessToken(tok.AccessToken)

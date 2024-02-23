@@ -20,8 +20,6 @@ const (
 	GMAC
 )
 
-const kHTTPOk = 200
-
 type KASInfo struct {
 	url       string
 	publicKey string // Public key can be empty.
@@ -76,9 +74,8 @@ func WithDataAttributes(attributes ...string) TDFOption {
 
 // WithKasInformation adds all the kas urls and their corresponding public keys
 // that is required to create and read the tdf.
-func WithKasInformation(kasInfoList ...KASInfo) TDFOption { //nolint:gocognit
+func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 	return func(c *TDFConfig) error {
-
 		c.kasInfoList = append(c.kasInfoList, kasInfoList...)
 
 		return nil

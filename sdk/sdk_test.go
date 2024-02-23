@@ -11,12 +11,13 @@ import (
 	"github.com/opentdf/platform/sdk"
 )
 
-var (
+const (
 	goodPlatformEndpoint = "localhost:9000"
 	badPlatformEndpoint  = "localhost:9999"
 )
 
-func GetMethods(i interface{}) (m []string) {
+func GetMethods(i interface{}) []string {
+	m := make([]string, 0)
 	r := reflect.TypeOf(i)
 	for i := 0; i < r.NumMethod(); i++ {
 		m = append(m, r.Method(i).Name)
@@ -33,8 +34,8 @@ func Test_ShouldCreateNewSDK(t *testing.T) {
 	}
 	if sdk == nil {
 		t.Errorf("Expected sdk, got nil")
+		return
 	}
-
 	// check if the clients are available
 	if sdk.Attributes == nil {
 		t.Errorf("Expected Attributes client, got nil")

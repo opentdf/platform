@@ -733,7 +733,7 @@ func getPublicKeys(unwrapper Unwrapper, tdfConfig *TDFConfig) error {
 		if kasInfo.publicKey == "" {
 			publicKey, err := unwrapper.GetRewrappingPublicKey(kasInfo)
 			if err != nil {
-				return err
+				return fmt.Errorf("error getting public key: %w", err)
 			}
 
 			kasInfo.publicKey = publicKey

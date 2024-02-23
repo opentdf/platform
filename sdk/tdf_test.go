@@ -103,28 +103,28 @@ func NewFakeUnwrapper(kasPrivateKey string) (FakeUnwrapper, error) {
 
 	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return FakeUnwrapper{}, fmt.Errorf("could not create fake unwrapper:%v", err)
+		return FakeUnwrapper{}, fmt.Errorf("could not create fake unwrapper:%w", err)
 	}
 	publicKey := privKey.(*rsa.PrivateKey).PublicKey
 	pkBytes, err := x509.MarshalPKIXPublicKey(&publicKey)
 	if err != nil {
-		return FakeUnwrapper{}, fmt.Errorf("can't marshal public key: %v", err)
+		return FakeUnwrapper{}, fmt.Errorf("can't marshal public key: %w", err)
 	}
 	privateBlock := pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: pkBytes,
 	}
 	publicKeyPEM := new(strings.Builder)
-	pem.Encode(publicKeyPEM, &privateBlock)
+	_ = pem.Encode(publicKeyPEM, &privateBlock)
 	asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
 	if err != nil {
-		return FakeUnwrapper{}, fmt.Errorf("error creating asymmetric decryption: %v", err)
+		return FakeUnwrapper{}, fmt.Errorf("error creating asymmetric decryption: %w", err)
 	}
 
 	return FakeUnwrapper{decrypt: asymDecrypt, publicKeyPEM: publicKeyPEM.String()}, nil
 }
 
-func (fake FakeUnwrapper) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
+func (fake FakeUnwrapper) Unwrap(keyAccess KeyAccess, _ string) ([]byte, error) {
 	wrappedKey, err := crypto.Base64Decode([]byte(keyAccess.WrappedKey))
 	if err != nil {
 		return nil, err
@@ -455,7 +455,6 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 }
 
 func TestTDFReader(t *testing.T) { //nolint:gocognit
-
 	for _, test := range partialTDFTestHarnesses { // create .txt file
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
@@ -774,7 +773,7 @@ func checkIdentical(t *testing.T, file, checksum string) bool {
 	return checksum == fmt.Sprintf("%x", c)
 }
 
-func getUnwrapper() (Unwrapper, error) {
+func getUnwrapper() (Unwrapper, error) { //nolint:ireturn // this is internal to this file only
 	clientID := os.Getenv("SDK_OIDC_CLIENT_ID")
 	clientSecret := os.Getenv("SDK_OIDC_CLIENT_SECRET")
 
@@ -792,12 +791,11 @@ func getUnwrapper() (Unwrapper, error) {
 			return FakeUnwrapper{}, err
 		}
 		return KASClient{accessTokenSource: &idpTokenSource, grpcTransportCredentials: insecure.NewCredentials()}, nil
-	} else {
-		unwrapper, err := NewFakeUnwrapper(mockKasPrivateKey)
-		if err != nil {
-			return nil, err
-		}
-
-		return unwrapper, nil
 	}
+	unwrapper, err := NewFakeUnwrapper(mockKasPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return unwrapper, nil
 }

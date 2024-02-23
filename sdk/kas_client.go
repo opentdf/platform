@@ -15,6 +15,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	secondsPerMinute = 60
+)
+
 type Unwrapper interface {
 	Unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
 	GetRewrappingPublicKey(kasInfo KASInfo) (string, error)
@@ -25,7 +29,7 @@ type KASClient struct {
 	grpcTransportCredentials credentials.TransportCredentials
 }
 
-// TODO: use the same type that the golang backend uses here
+// once the backend moves over we should use the same type that the golang backend uses here
 type rewrapRequestBody struct {
 	KeyAccess       KeyAccess `json:"keyAccess"`
 	Policy          string    `json:"policy,omitempty"`
@@ -34,7 +38,7 @@ type rewrapRequestBody struct {
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
 }
 
-// TODO: use a single connection and pass in a context. It should come from how the client is using the library
+// there is no connection caching as of now
 func (client KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapResponse, error) {
 	rewrapRequest, err := client.getRewrapRequest(keyAccess, policy)
 	if err != nil {
@@ -57,22 +61,23 @@ func (client KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*
 	ctx := context.Background()
 	serviceClient := kas.NewAccessServiceClient(conn)
 
-	return serviceClient.Rewrap(ctx, rewrapRequest)
-}
+	response, err := serviceClient.Rewrap(ctx, rewrapRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error making rewrap request: %w", err)
+	}
 
-func (client KASClient) GetKASInfo(keyAccess KeyAccess) (KASInfo, error) {
-	return KASInfo{}, nil
+	return response, nil
 }
 
 func (client KASClient) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 	response, err := client.makeRewrapRequest(keyAccess, policy)
 
 	if err != nil {
-		switch status.Code(err) {
+		switch status.Code(err) { //nolint:exhaustive // we can only handle authentication
 		case codes.Unauthenticated:
 			err = client.accessTokenSource.RefreshAccessToken()
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("error refreshing access token: %w", err)
 			}
 			response, err = client.makeRewrapRequest(keyAccess, policy)
 			if err != nil {
@@ -85,7 +90,7 @@ func (client KASClient) Unwrap(keyAccess KeyAccess, policy string) ([]byte, erro
 
 	key, err := client.accessTokenSource.GetAsymDecryption().Decrypt(response.EntityWrappedKey)
 	if err != nil {
-		return nil, fmt.Errorf("error decrypting payload from KAS: %v", err)
+		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}
 
 	return key, nil
@@ -114,19 +119,19 @@ func (client KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 		ClientPublicKey: client.accessTokenSource.GetDPoPPublicKeyPEM(),
 	}
 
-	requestBodyJson, err := json.Marshal(requestBody)
+	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)
 	}
 
 	tok, err := jwt.NewBuilder().
-		Claim("requestBody", string(requestBodyJson)).
+		Claim("requestBody", string(requestBodyJSON)).
 		IssuedAt(time.Now()).
-		Expiration(time.Now().Add(60 * time.Second)).
+		Expiration(time.Now().Add(secondsPerMinute * time.Second)).
 		Build()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create jwt: %v", err)
+		return nil, fmt.Errorf("failed to create jwt: %w", err)
 	}
 
 	signedToken, err := client.accessTokenSource.SignToken(tok)
@@ -136,7 +141,7 @@ func (client KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*k
 
 	accessToken, err := client.accessTokenSource.GetAccessToken()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting access token: %w", err)
 	}
 
 	rewrapRequest := kas.RewrapRequest{
@@ -165,7 +170,7 @@ func (client KASClient) GetRewrappingPublicKey(kasInfo KASInfo) (string, error) 
 	resp, err := serviceClient.PublicKey(ctx, &req)
 
 	if err != nil {
-		return "", fmt.Errorf("error making request to KAS: %v", err)
+		return "", fmt.Errorf("error making request to KAS: %w", err)
 	}
 
 	return resp.PublicKey, nil

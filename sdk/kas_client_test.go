@@ -12,7 +12,7 @@ import (
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
-func (fake FakeUnwrapper) GetRewrappingPublicKey(kasInfo KASInfo) (string, error) {
+func (fake FakeUnwrapper) GetRewrappingPublicKey(_ KASInfo) (string, error) {
 	return fake.publicKeyPEM, nil
 }
 
@@ -50,7 +50,10 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	if err != nil {
 		t.Fatalf("error creating JWK: %v", err)
 	}
-	dpopJWK.Set("alg", jwa.RS256.String())
+	err = dpopJWK.Set("alg", jwa.RS256.String())
+	if err != nil {
+		t.Fatalf("error setting DPoP key algorithm: %v", err)
+	}
 
 	return FakeAccessTokenSource{
 		dPOPKey:        dpopJWK,
@@ -91,7 +94,7 @@ func TestCreatingRequest(t *testing.T) {
 	if !ok {
 		t.Fatalf("didn't contain a request body")
 	}
-	requestBodyJSON := rb.(string)
+	requestBodyJSON, _ := rb.(string)
 	var requestBody map[string]interface{}
 
 	err = json.Unmarshal([]byte(requestBodyJSON), &requestBody)
@@ -106,7 +109,7 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("incorrect policy")
 	}
 
-	requestKeyAccess := requestBody["keyAccess"].(map[string]interface{})
+	requestKeyAccess, _ := requestBody["keyAccess"].(map[string]interface{})
 
 	if requestKeyAccess["url"] != "https://kas.example.org" {
 		t.Fatalf("incorrect kasURL")

@@ -38,14 +38,14 @@ func WithInsecureConn() Option {
 }
 
 // WithToken returns an Option that sets up authentication with a access token.
-func WithToken(token string) Option {
+func WithToken(_ string) Option {
 	return func(c *config) {
 		c.token = grpc.WithPerRPCCredentials(nil)
 	}
 }
 
 // WithClientCredentials returns an Option that sets up authentication with client credentials.
-func WithClientCredentials(clientID, clientSecret string) Option {
+func WithClientCredentials(_, _ string) Option {
 	return func(c *config) {
 		c.clientCredentials = grpc.WithPerRPCCredentials(nil)
 	}

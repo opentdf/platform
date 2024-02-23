@@ -340,7 +340,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 			}
 		}(readSeeker)
 
-		r, err := LoadTDF(authConfig, readSeeker)
+		r, err := LoadTDF(&authConfig, readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to load the tdf:%v", err)
 		}
@@ -380,7 +380,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 
 		buf := make([]byte, 8)
 
-		r, err := LoadTDF(authConfig, readSeeker)
+		r, err := LoadTDF(&authConfig, readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to create reader:%v", err)
 		}
@@ -427,7 +427,7 @@ func TestTDFReader(t *testing.T) { //nolint:gocognit
 
 			// test reader
 			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
-			r, err := LoadTDF(authConfig, tdfReadSeeker)
+			r, err := LoadTDF(&authConfig, tdfReadSeeker)
 			if err != nil {
 				t.Fatalf("failed to read tdf: %v", err)
 			}
@@ -543,7 +543,7 @@ func BenchmarkReader(b *testing.B) {
 	}
 
 	readSeeker = bytes.NewReader(tdfBuf.Bytes())
-	r, err := LoadTDF(authConfig, readSeeker)
+	r, err := LoadTDF(&authConfig, readSeeker)
 	if err != nil {
 		b.Fatalf("failed to read tdf: %v", err)
 	}
@@ -613,7 +613,7 @@ func testDecryptWithReader(t *testing.T, authConfig AuthConfig, tdfFile, decrypt
 		}
 	}(readSeeker)
 
-	r, err := LoadTDF(authConfig, readSeeker)
+	r, err := LoadTDF(&authConfig, readSeeker)
 	if err != nil {
 		t.Fatalf("failed to read tdf: %v", err)
 	}

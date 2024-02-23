@@ -62,7 +62,7 @@ type Reader struct {
 	manifest            Manifest
 	unencryptedMetadata string
 	tdfReader           archive.TDFReader
-	authConfig          AuthConfig
+	unwrapper           Unwrapper
 	cursor              int64
 	aesGcm              crypto.AesGcm
 	payloadSize         int64
@@ -82,8 +82,7 @@ type rewrapJWTClaims struct {
 }
 
 type Unwrapper interface {
-	Unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
-	GetRewrappingPublicKey(kasInfo KASInfo) (string, error)
+	unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
@@ -361,7 +360,7 @@ func (t *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
+func LoadTDF(unwrapper Unwrapper, reader io.ReadSeeker) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
@@ -380,9 +379,9 @@ func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
 	}
 
 	return &Reader{
-		tdfReader:  tdfReader,
-		manifest:   *manifestObj,
-		authConfig: authConfig,
+		tdfReader: tdfReader,
+		manifest:  *manifestObj,
+		unwrapper: unwrapper,
 	}, nil
 }
 
@@ -615,7 +614,7 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
-		wrappedKey, err := r.authConfig.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
+		wrappedKey, err := r.unwrapper.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
 		if err != nil {
 			return fmt.Errorf(" splitKey.rewrap failed:%w", err)
 		}

@@ -13,7 +13,7 @@ import (
 )
 
 type RegistrationParams struct {
-	Config   config.Config
+	Config   config.ServiceConfig
 	OTDF     *server.OpenTDFServer
 	DBClient *db.Client
 	Engine   *opa.Engine
@@ -28,8 +28,6 @@ type Registration struct {
 
 type Service struct {
 	Registration
-	Config  config.ServiceConfig
-	Enabled bool
 }
 
 // Map of namespaces to services

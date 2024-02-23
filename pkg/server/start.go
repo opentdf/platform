@@ -81,17 +81,14 @@ func Start(f ...func(StartConfig) StartConfig) error {
 	}
 	defer otdf.Stop()
 
-	// Register the services
-	// err = RegisterServices(*conf, otdf, dbClient, eng)
-	// if err != nil {
-	// 	return fmt.Errorf("issue registering services: %w", err)
-	// }
-
 	slog.Info("registering services")
 	registerServices()
 
 	slog.Info("starting services")
-	startServices(*conf, otdf, dbClient, eng)
+	if err := startServices(*conf, otdf, dbClient, eng); err != nil {
+		slog.Error("issue starting services", slog.String("error", err.Error()))
+		return fmt.Errorf("issue starting services: %w", err)
+	}
 
 	// Start the server
 	slog.Info("starting opentdf")
@@ -140,12 +137,9 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 		}
 
 		for _, r := range registers {
-			// Add service config to the service register
-			r.Config = cfg.Services[ns]
-
 			// Create the service
 			impl, handler := r.RegisterFunc(serviceregistry.RegistrationParams{
-				Config:   cfg,
+				Config:   cfg.Services[ns],
 				OTDF:     otdf,
 				DBClient: dbClient,
 				Engine:   eng,
@@ -161,45 +155,8 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 			}
 
 			slog.Info("started service", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
-			r.Enabled = true
 		}
 	}
 
 	return nil
 }
-
-//nolint:revive // the opa engine will be used in the future
-// func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
-// 	var err error
-// 	slog.Info("registering resource mappings server")
-// 	err = resourcemapping.NewResourceMappingServer(dbClient, otdf.GrpcServer, otdf.Mux)
-// 	if err != nil {
-// 		return fmt.Errorf("could not register resource mappings service: %w", err)
-// 	}
-
-// 	slog.Info("registering attributes server")
-// 	err = attributes.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
-// 	if err != nil {
-// 		return fmt.Errorf("could not register attributes service: %w", err)
-// 	}
-
-// 	slog.Info("registering subject mappings service")
-// 	err = subjectmapping.NewSubjectMappingServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
-// 	if err != nil {
-// 		return fmt.Errorf("could not register subject mappings service: %w", err)
-// 	}
-
-// 	slog.Info("registering key access server registry")
-// 	err = kasregistry.NewKeyAccessServerRegistryServer(dbClient, otdf.GrpcServer, otdf.Mux)
-// 	if err != nil {
-// 		return fmt.Errorf("could not register key access grants service: %w", err)
-// 	}
-
-// 	slog.Info("registering namespaces server")
-// 	err = namespaces.NewNamespacesServer(dbClient, otdf.GrpcServer, otdf.Mux)
-// 	if err != nil {
-// 		return fmt.Errorf("could not register namespaces service: %w", err)
-// 	}
-
-// 	return nil
-// }

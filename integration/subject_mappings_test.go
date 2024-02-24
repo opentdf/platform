@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/assert"
@@ -14,8 +15,8 @@ import (
 type SubjectMappingsSuite struct {
 	suite.Suite
 	schema string
-	f      Fixtures
-	db     DBInterface
+	f      fixtures.Fixtures
+	db     fixtures.DBInterface
 	ctx    context.Context
 }
 
@@ -23,8 +24,8 @@ func (s *SubjectMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.SubjectMappings test suite")
 	s.ctx = context.Background()
 	s.schema = "test_opentdf_subject_mappings"
-	s.db = NewDBInterface(s.schema)
-	s.f = NewFixture(s.db)
+	s.db = fixtures.NewDBInterface(*Config)
+	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 }
 
@@ -36,7 +37,7 @@ func (s *SubjectMappingsSuite) TearDownSuite() {
 func (s *SubjectMappingsSuite) Test_CreateSubjectMapping() {
 	metadata := &common.MetadataMutable{}
 
-	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	mapping := &subjectmapping.SubjectMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Operator:         subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
@@ -50,7 +51,7 @@ func (s *SubjectMappingsSuite) Test_CreateSubjectMapping() {
 }
 
 func (s *SubjectMappingsSuite) Test_GetSubjectMapping() {
-	attrValue := fixtures.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	mapping := &subjectmapping.SubjectMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Operator:         subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,

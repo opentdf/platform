@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	policydb "github.com/opentdf/platform/services/policy/db"
@@ -17,8 +18,8 @@ import (
 type AttributesSuite struct {
 	suite.Suite
 	schema string
-	f      Fixtures
-	db     DBInterface
+	f      fixtures.Fixtures
+	db     fixtures.DBInterface
 	ctx    context.Context
 }
 
@@ -31,11 +32,11 @@ var (
 func (s *AttributesSuite) SetupSuite() {
 	slog.Info("setting up db.Attributes test suite")
 	s.ctx = context.Background()
-	fixtureNamespaceId = fixtures.GetNamespaceKey("example.com").Id
-	fixtureKeyAccessServerId = fixtures.GetKasRegistryKey("key_access_server_1").Id
+	fixtureNamespaceId = s.f.GetNamespaceKey("example.com").Id
+	fixtureKeyAccessServerId = s.f.GetKasRegistryKey("key_access_server_1").Id
 	s.schema = "test_opentdf_attribute_definitions"
-	s.db = NewDBInterface(s.schema)
-	s.f = NewFixture(s.db)
+	s.db = fixtures.NewDBInterface(*Config)
+	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 	stillActiveNsId, deactivatedAttrId, deactivatedAttrValueId = setupCascadeDeactivateAttribute(s)
 }
@@ -45,16 +46,16 @@ func (s *AttributesSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func getAttributeFixtures() []FixtureDataAttribute {
-	return []FixtureDataAttribute{
-		fixtures.GetAttributeKey("example.com/attr/attr1"),
-		fixtures.GetAttributeKey("example.com/attr/attr2"),
-		fixtures.GetAttributeKey("example.net/attr/attr1"),
-		fixtures.GetAttributeKey("example.net/attr/attr2"),
-		fixtures.GetAttributeKey("example.net/attr/attr3"),
-		fixtures.GetAttributeKey("example.org/attr/attr1"),
-		fixtures.GetAttributeKey("example.org/attr/attr2"),
-		fixtures.GetAttributeKey("example.org/attr/attr3"),
+func (s *AttributesSuite) getAttributeFixtures() []fixtures.FixtureDataAttribute {
+	return []fixtures.FixtureDataAttribute{
+		s.f.GetAttributeKey("example.com/attr/attr1"),
+		s.f.GetAttributeKey("example.com/attr/attr2"),
+		s.f.GetAttributeKey("example.net/attr/attr1"),
+		s.f.GetAttributeKey("example.net/attr/attr2"),
+		s.f.GetAttributeKey("example.net/attr/attr3"),
+		s.f.GetAttributeKey("example.org/attr/attr1"),
+		s.f.GetAttributeKey("example.org/attr/attr2"),
+		s.f.GetAttributeKey("example.org/attr/attr3"),
 	}
 }
 
@@ -112,7 +113,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithInvalidNamespaceFails() {
 
 func (s *AttributesSuite) Test_CreateAttribute_WithNonUniqueNameConflictFails() {
 	attr := &attributes.AttributeCreateUpdate{
-		Name:        fixtures.GetAttributeKey("example.com/attr/attr1").Name,
+		Name:        s.f.GetAttributeKey("example.com/attr/attr1").Name,
 		NamespaceId: fixtureNamespaceId,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
@@ -123,7 +124,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithNonUniqueNameConflictFails() 
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
-	otherNamespaceId := fixtures.GetNamespaceKey("example.net").Id
+	otherNamespaceId := s.f.GetNamespaceKey("example.net").Id
 	attr := &attributes.AttributeCreateUpdate{
 		Name:        "test__create_attribute_with_any_of_rule_value",
 		NamespaceId: otherNamespaceId,
@@ -175,7 +176,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithInvalidRuleFails() {
 }
 
 func (s *AttributesSuite) Test_GetAttribute() {
-	fixtures := getAttributeFixtures()
+	fixtures := s.getAttributeFixtures()
 
 	for _, f := range fixtures {
 		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, f.Id)
@@ -197,7 +198,7 @@ func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 }
 
 func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
-	deactivated := fixtures.GetAttributeKey("deactivated.io/attr/attr1")
+	deactivated := s.f.GetAttributeKey("deactivated.io/attr/attr1")
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivated.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
@@ -207,7 +208,7 @@ func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 }
 
 func (s *AttributesSuite) Test_ListAttribute() {
-	fixtures := getAttributeFixtures()
+	fixtures := s.getAttributeFixtures()
 
 	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive)
 	assert.Nil(s.T(), err)
@@ -267,7 +268,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 	original := &attributes.AttributeCreateUpdate{
 		Name:        "test__update_attribute_namespace_immutable",
-		NamespaceId: fixtures.GetNamespaceKey("example.com").Id,
+		NamespaceId: s.f.GetNamespaceKey("example.com").Id,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
@@ -277,7 +278,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 	// should error on attempt to change namespace
 	update := &attributes.AttributeCreateUpdate{
 		Name:        original.Name,
-		NamespaceId: fixtures.GetNamespaceKey("example.net").Id,
+		NamespaceId: s.f.GetNamespaceKey("example.net").Id,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, createdAttr.Id, update)
@@ -293,7 +294,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 }
 
 func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFails() {
-	fixtureData := fixtures.GetAttributeKey("example.org/attr/attr3")
+	fixtureData := s.f.GetAttributeKey("example.org/attr/attr3")
 	original := &attributes.AttributeCreateUpdate{
 		Name:        "test__update_attribute_with_same_name_and_namespace",
 		NamespaceId: fixtureData.NamespaceId,
@@ -524,7 +525,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_Wh
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr1").Id,
+		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").Id,
 		KeyAccessServerId: nonExistentAttrId,
 	}
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
@@ -536,7 +537,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_Wh
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr2").Id,
+		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr2").Id,
 		KeyAccessServerId: fixtureKeyAccessServerId,
 	}
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
@@ -560,7 +561,7 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr1").Id,
+		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").Id,
 		KeyAccessServerId: nonExistentAttrId,
 	}
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
@@ -572,8 +573,8 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       fixtures.GetAttributeKey("example.com/attr/attr1").Id,
-		KeyAccessServerId: fixtures.GetKasRegistryKey("key_access_server_1").Id,
+		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").Id,
+		KeyAccessServerId: s.f.GetKasRegistryKey("key_access_server_1").Id,
 	}
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
 

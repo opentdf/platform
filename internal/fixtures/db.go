@@ -1,10 +1,12 @@
-package integration
+package fixtures
 
 import (
 	"context"
 	"log/slog"
 	"strconv"
 	"strings"
+
+	"github.com/opentdf/platform/internal/config"
 
 	"github.com/opentdf/platform/internal/db"
 	kasdb "github.com/opentdf/platform/services/kasregistry/db"
@@ -15,12 +17,12 @@ type DBInterface struct {
 	Client       *db.Client
 	PolicyClient *policydb.PolicyDbClient
 	KASRClient   *kasdb.KasRegistryDbClient
-	schema       string
+	Schema       string
 }
 
-func NewDBInterface(schema string) DBInterface {
-	config := Config.DB
-	config.Schema = schema
+func NewDBInterface(cfg config.Config) DBInterface {
+	config := cfg.DB
+	config.Schema = cfg.DB.Schema
 	c, err := db.NewClient(config)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
@@ -28,7 +30,7 @@ func NewDBInterface(schema string) DBInterface {
 	}
 	return DBInterface{
 		Client:       c,
-		schema:       schema,
+		Schema:       config.Schema,
 		PolicyClient: policydb.NewClient(*c),
 		KASRClient:   kasdb.NewClient(*c),
 	}
@@ -62,7 +64,7 @@ func (d *DBInterface) UUIDWrap(v string) string {
 }
 
 func (d *DBInterface) TableName(v string) string {
-	return d.schema + "." + v
+	return d.Schema + "." + v
 }
 
 func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]string) (int64, error) {
@@ -84,7 +86,7 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]str
 }
 
 func (d *DBInterface) DropSchema() error {
-	sql := "DROP SCHEMA IF EXISTS " + d.schema + " CASCADE"
+	sql := "DROP SCHEMA IF EXISTS " + d.Schema + " CASCADE"
 	_, err := d.Client.Pgx.Exec(context.Background(), sql)
 	if err != nil {
 		slog.Error("drop error", "stmt", sql, "err", err)

@@ -190,7 +190,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 }
 
 func (s OpenTDFServer) startGrpcServer() {
-	slog.Info(fmt.Sprintf("starting grpc server on %v", s.grpcServerAddress))
+	slog.Info("starting grpc server", "address", s.grpcServerAddress)
 	listener, err := net.Listen("tcp", s.grpcServerAddress)
 	if err != nil {
 		slog.Error("failed to create listener", slog.String("error", err.Error()))
@@ -214,10 +214,10 @@ func (s OpenTDFServer) startHTTPServer() {
 	var err error
 
 	if s.HTTPServer.TLSConfig != nil {
-		slog.Info(fmt.Sprintf("starting https serveron %v", s.HTTPServer.Addr))
+		slog.Info("starting https server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServeTLS("", "")
 	} else {
-		slog.Info(fmt.Sprintf("starting http server on %v", s.HTTPServer.Addr))
+		slog.Info("starting http server", "address", s.HTTPServer.Addr) 
 		err = s.HTTPServer.ListenAndServe()
 	}
 

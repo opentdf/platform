@@ -52,8 +52,10 @@ func attributesValuesProtojson(valuesJson []byte) ([]*attributes.Value, error) {
 type attributesSelectOptions struct {
 	withAttributeValues bool
 	withKeyAccessGrants bool
-	withFqn             bool
-	state               string
+	// withFqn and withOneValueByFqn are mutually exclusive
+	withFqn           bool
+	withOneValueByFqn bool
+	state             string
 }
 
 func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
@@ -76,12 +78,13 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("active"),
 		nt.Field("name"),
 	}
-	if opts.withAttributeValues {
+	if opts.withAttributeValues || opts.withOneValueByFqn {
 		selectFields = append(selectFields, "JSON_AGG("+
 			"JSON_BUILD_OBJECT("+
 			"'id', "+avt.Field("id")+", "+
 			"'value', "+avt.Field("value")+","+
-			"'members', "+avt.Field("members")+
+			"'members', "+avt.Field("members")+","+
+			"'active', "+avt.Field("active")+
 			")"+
 			") AS values")
 	}
@@ -123,6 +126,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
 			" AND " + fqnt.Field("value_id") + " IS NULL")
 	}
+	if opts.withOneValueByFqn {
+		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
+			" AND " + fqnt.Field("value_id") + " = " + avt.Field("id"))
+	}
 
 	g := []string{t.Field("id"), nt.Field("name")}
 
@@ -152,7 +159,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 	)
 
 	fields := []interface{}{&id, &name, &rule, &metadataJson, &namespaceId, &active, &namespaceName}
-	if opts.withAttributeValues {
+	if opts.withAttributeValues || opts.withOneValueByFqn {
 		fields = append(fields, &valuesJson)
 	}
 	if opts.withKeyAccessGrants {
@@ -322,7 +329,11 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*att
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: false,
-		withFqn:             true,
+	}
+	if strings.Contains(fqn, "/value/") {
+		opts.withOneValueByFqn = true
+	} else {
+		opts.withFqn = true
 	}
 	sql, args, err := getAttributeByFqnSql(fqn, opts)
 	row, err := c.QueryRow(ctx, sql, args, err)

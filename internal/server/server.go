@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -99,7 +100,14 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		grpcOpts...,
 	)
 
-	mux := runtime.NewServeMux()
+	grpcInprocess := &inProcessServer{
+		ln:  fasthttputil.NewInmemoryListener(),
+		srv: grpc.NewServer(),
+	}
+
+	mux := runtime.NewServeMux(
+		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
+	)
 
 	// Enable grpc reflection
 	if config.Grpc.ReflectionEnabled {
@@ -129,10 +137,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		HTTPServer:        httpServer,
 		GrpcServer:        grpcServer,
 		grpcServerAddress: fmt.Sprintf(":%d", config.Grpc.Port),
-		GrpcInProcess: &inProcessServer{
-			ln:  fasthttputil.NewInmemoryListener(),
-			srv: grpc.NewServer(),
-		},
+		GrpcInProcess:     grpcInprocess,
 	}, nil
 }
 

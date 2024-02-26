@@ -44,6 +44,8 @@ func WithTokenEndpoint(tokenEndpoint string) Option {
 	}
 }
 
+// temporary option to allow the for token exchange and other flows
+// that we haven't implemented
 func WithAuthConfig(authConfig AuthConfig) Option {
 	return func(c *config) {
 		c.authConfig = &authConfig

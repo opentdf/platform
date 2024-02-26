@@ -1,8 +1,6 @@
 package sdk
 
 import (
-	"context"
-
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,7 +14,6 @@ type config struct {
 	clientCredentials oauth.ClientCredentials
 	tokenEndpoint     string
 	scopes            []string
-	ctx               context.Context
 	authConfig        *AuthConfig
 }
 

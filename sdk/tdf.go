@@ -10,7 +10,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/internal/crypto"
@@ -76,17 +75,13 @@ type TDFObject struct {
 	payloadKey [kKeySize]byte
 }
 
-type rewrapJWTClaims struct {
-	jwt.RegisteredClaims
-	Body string `json:"requestBody"`
-}
-
 type Unwrapper interface {
 	unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
+	getPublicKey(kas KASInfo) (string, error)
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
-func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+func CreateTDF(writer io.Writer, reader io.ReadSeeker, unwrapper Unwrapper, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -104,6 +99,11 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 	tdfConfig, err := NewTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
+	}
+
+	err = fillInPublicKeys(unwrapper, tdfConfig.kasInfoList)
+	if err != nil {
+		return nil, err
 	}
 
 	tdfObject := &TDFObject{}
@@ -728,4 +728,20 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func fillInPublicKeys(unwrapper Unwrapper, kasInfos []KASInfo) error {
+	for idx, kasInfo := range kasInfos {
+		if kasInfo.publicKey != "" {
+			continue
+		}
+
+		publicKey, err := unwrapper.getPublicKey(kasInfo)
+		if err != nil {
+			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.url, err)
+		}
+
+		kasInfos[idx].publicKey = publicKey
+	}
+	return nil
 }

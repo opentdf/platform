@@ -1,7 +1,9 @@
 package sdk
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/kasregistry"
@@ -26,6 +28,8 @@ func (c Error) Error() string {
 
 type SDK struct {
 	conn                    *grpc.ClientConn
+	ctx                     context.Context
+	unwrapper               Unwrapper
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
@@ -45,6 +49,17 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
+	var unwrapper Unwrapper
+	if cfg.authConfig == nil {
+		uw, err := buildKASClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		unwrapper = &uw
+	} else {
+		unwrapper = cfg.authConfig
+	}
+
 	conn, err := grpc.Dial(platformEndpoint, cfg.build()...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
@@ -52,6 +67,8 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	return &SDK{
 		conn:                    conn,
+		unwrapper:               unwrapper,
+		ctx:                     cfg.ctx,
 		Attributes:              attributes.NewAttributesServiceClient(conn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(conn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(conn),
@@ -59,6 +76,40 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(conn),
 		Authorization:           authorization.NewAuthorizationServiceClient(conn),
 	}, nil
+}
+
+func buildKASClient(c *config) (KASClient, error) {
+	if (c.clientCredentials.ClientId == "") != (c.clientCredentials.ClientAuth == nil) {
+		return KASClient{}, errors.New("if specifying client credentials must specify both client id and authentication secret")
+	}
+	if (c.clientCredentials.ClientId == "") != (c.tokenEndpoint == "") {
+		return KASClient{}, errors.New("either both or neither of client credentials and token endpoint must be specified")
+	}
+
+	// at this point we have either both client credentials and a token endpoint or none of the above
+	var tokenSource AccessTokenSource
+	if c.clientCredentials.ClientId == "" {
+		tokenSource = &EmptyTokenSource{}
+	} else {
+		ts, err := NewIDPAccessTokenSource(
+			c.clientCredentials,
+			c.tokenEndpoint,
+			c.scopes,
+		)
+
+		if err != nil {
+			return KASClient{}, fmt.Errorf("error configuring IDP access: %w", err)
+		}
+
+		tokenSource = &ts
+	}
+
+	kasClient := KASClient{
+		accessTokenSource: tokenSource,
+		dialOptions:       c.build(),
+	}
+
+	return kasClient, nil
 }
 
 // Close closes the underlying grpc.ClientConn.

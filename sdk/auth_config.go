@@ -28,6 +28,11 @@ type RequestBody struct {
 	Policy          string `json:"policy"`
 }
 
+type rewrapJWTClaims struct {
+	jwt.RegisteredClaims
+	Body string `json:"requestBody"`
+}
+
 // NewAuthConfig Create a new instance of authConfig
 func NewAuthConfig() (*AuthConfig, error) {
 	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
@@ -222,4 +227,45 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 	}
 
 	return key, nil
+}
+
+func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
+	kasPubKeyURL, err := url.JoinPath(kasInfo.url, kasPublicKeyPath)
+	if err != nil {
+		return "", fmt.Errorf("url.Parse failed: %w", err)
+	}
+
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, kasPubKeyURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("http.NewRequestWithContext failed: %w", err)
+	}
+
+	// add required headers
+	request.Header = http.Header{
+		kAcceptKey: {kContentTypeJSONValue},
+	}
+
+	client := &http.Client{}
+
+	response, err := client.Do(request)
+	defer func() {
+		if response == nil {
+			return
+		}
+		err := response.Body.Close()
+		if err != nil {
+			slog.Error("Fail to close HTTP response")
+		}
+	}()
+	if response.StatusCode != kHTTPOk {
+		return "", fmt.Errorf("client.Do failed: %w", err)
+	}
+
+	var jsonResponse interface{}
+	err = json.NewDecoder(response.Body).Decode(&jsonResponse)
+	if err != nil {
+		return "", fmt.Errorf("json.NewDecoder.Decode failed: %w", err)
+	}
+
+	return fmt.Sprintf("%s", jsonResponse), nil
 }

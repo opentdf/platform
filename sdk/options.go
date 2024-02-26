@@ -36,6 +36,8 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 	}
 }
 
+// this is the literal token endpoint. When we implement service discovery
+// using a .well-known endpoint this option may become deprecated
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint

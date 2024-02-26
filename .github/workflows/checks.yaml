@@ -130,7 +130,6 @@ jobs:
 
   ci:
     needs:
-      - pr
       - go
       - integration
       - image

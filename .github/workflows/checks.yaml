@@ -7,11 +7,16 @@ on:
   push:
     branches:
       - main
+  merge_group:
+    branches:
+      - main
+    types: 
+      - checks_requested
 
 jobs:
   pr:
     name: Validate PR title
-    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+    if: contains(fromJSON('["pull_request", "pull_request_target", "merge_group"]'), github.event_name)
     runs-on: ubuntu-22.04
     permissions:
       pull-requests: read
@@ -22,7 +27,6 @@ jobs:
 
   go:
     runs-on: ubuntu-22.04
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     permissions:
       checks: write
       contents: read
@@ -57,7 +61,6 @@ jobs:
   integration:
     name: integration tests
     runs-on: ubuntu-22.04
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
@@ -81,7 +84,6 @@ jobs:
 
   image:
     name: image build
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -94,7 +96,6 @@ jobs:
 
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -128,7 +129,6 @@ jobs:
         run: git diff-files --quiet --ignore-submodules
 
   ci:
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     needs:
       - pr
       - go
@@ -141,7 +141,6 @@ jobs:
         run: exit 1
 
   license:
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     name: license check
     runs-on: ubuntu-22.04
     steps:

@@ -43,8 +43,9 @@ func WithTokenEndpoint(tokenEndpoint string) Option {
 	}
 }
 
-// temporary option to allow the for token exchange and other flows
-// that we haven't implemented
+// temporary option to allow the for token exchange and the
+// use of REST-ful KASs. this will likely change as we
+// make these options more robust
 func WithAuthConfig(authConfig AuthConfig) Option {
 	return func(c *config) {
 		c.authConfig = &authConfig

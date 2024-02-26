@@ -2,11 +2,9 @@ package sdk
 
 import (
 	"context"
-	"crypto/tls"
 
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -15,7 +13,6 @@ type Option func(*config)
 // Internal config struct for building SDK options.
 type config struct {
 	tls               grpc.DialOption
-	subjectToken      string
 	clientCredentials oauth.ClientCredentials
 	tokenEndpoint     string
 	scopes            []string
@@ -24,18 +21,7 @@ type config struct {
 }
 
 func (c *config) build() []grpc.DialOption {
-	opts := make([]grpc.DialOption, 0)
-
-	var tlsOption grpc.DialOption
-	if c.tls != nil {
-		tlsOption = c.tls
-	} else {
-		tlsOption = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{}))
-	}
-
-	opts = append(opts, tlsOption)
-
-	return opts
+	return []grpc.DialOption{c.tls}
 }
 
 // WithInsecureConn returns an Option that sets up an http connection.

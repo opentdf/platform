@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 
@@ -39,9 +40,13 @@ type SDK struct {
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
+	tlsConfig := tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
 	// Set default options
 	cfg := &config{
-		tls: grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
+		tls: grpc.WithTransportCredentials(credentials.NewTLS(&tlsConfig)),
 	}
 
 	// Apply options
@@ -80,7 +85,8 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 func buildKASClient(c *config) (KASClient, error) {
 	if (c.clientCredentials.ClientId == "") != (c.clientCredentials.ClientAuth == nil) {
-		return KASClient{}, errors.New("if specifying client credentials must specify both client id and authentication secret")
+		return KASClient{},
+			errors.New("if specifying client credentials must specify both client id and authentication secret")
 	}
 	if (c.clientCredentials.ClientId == "") != (c.tokenEndpoint == "") {
 		return KASClient{}, errors.New("either both or neither of client credentials and token endpoint must be specified")

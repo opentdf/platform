@@ -691,7 +691,7 @@ func createFileName(buf []byte, filename string, size int64) {
 // we are running against a local cluster and dont' need a fake KAS
 // in this case we return a GRPC rewrapper and authenticate against
 // keycloak
-func runKas() (string, func(), *SDK) { //nolint:ireturn // this unwrapper is only used in this file
+func runKas() (string, func(), *SDK) {
 	clientID := os.Getenv("SDK_OIDC_CLIENT_ID")
 	clientSecret := os.Getenv("SDK_OIDC_CLIENT_SECRET")
 	if clientID != "" && clientSecret != "" {

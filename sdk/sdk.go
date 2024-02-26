@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -29,7 +28,6 @@ func (c Error) Error() string {
 
 type SDK struct {
 	conn                    *grpc.ClientConn
-	ctx                     context.Context
 	unwrapper               Unwrapper
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
@@ -73,7 +71,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	return &SDK{
 		conn:                    conn,
 		unwrapper:               unwrapper,
-		ctx:                     cfg.ctx,
 		Attributes:              attributes.NewAttributesServiceClient(conn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(conn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(conn),

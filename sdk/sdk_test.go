@@ -14,11 +14,7 @@ import (
 var (
 	goodPlatformEndpoint = "localhost:9000"
 	badPlatformEndpoint  = "localhost:9999"
-	clientCredentialsOpt = sdk.WithClientCredentials("myid", "mysecret", nil)
-	tokenEndpointOpt     = sdk.WithTokenEndpoint("https://example.org/token")
 )
-
-const ()
 
 func GetMethods(i interface{}) (m []string) {
 	r := reflect.TypeOf(i)
@@ -30,7 +26,10 @@ func GetMethods(i interface{}) (m []string) {
 
 func Test_ShouldCreateNewSDK(t *testing.T) {
 	// When
-	sdk, err := sdk.New(goodPlatformEndpoint, clientCredentialsOpt, tokenEndpointOpt)
+	sdk, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithClientCredentials("myid", "mysecret", nil),
+		sdk.WithTokenEndpoint("https://example.org/token"),
+	)
 	// Then
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
@@ -57,7 +56,10 @@ func Test_ShouldCreateNewSDK(t *testing.T) {
 func Test_ShouldCloseSDKConnection(t *testing.T) {
 	t.Skip("Skipping test since close is broken")
 	// Given
-	sdk, err := sdk.New(goodPlatformEndpoint, clientCredentialsOpt, tokenEndpointOpt)
+	sdk, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithClientCredentials("myid", "mysecret", nil),
+		sdk.WithTokenEndpoint("https://example.org/token"),
+	)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -70,7 +72,10 @@ func Test_ShouldCloseSDKConnection(t *testing.T) {
 }
 
 func Test_ShouldHaveSameMethods(t *testing.T) {
-	sdk, err := sdk.New(goodPlatformEndpoint, clientCredentialsOpt, tokenEndpointOpt)
+	sdk, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithClientCredentials("myid", "mysecret", nil),
+		sdk.WithTokenEndpoint("https://example.org/token"),
+	)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}

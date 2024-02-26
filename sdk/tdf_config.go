@@ -1,12 +1,7 @@
 package sdk
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"log/slog"
-	"net/http"
-	"net/url"
 
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
@@ -108,55 +103,9 @@ func WithDataAttributes(attributes ...string) TDFOption {
 // that is required to create and read the tdf.
 func WithKasInformation(kasInfoList ...KASInfo) TDFOption { //nolint:gocognit
 	return func(c *TDFConfig) error {
-		for _, kasInfo := range kasInfoList {
-			newEntry := kasInfo
-			if newEntry.publicKey != "" {
-				c.kasInfoList = append(c.kasInfoList, newEntry)
-				continue
-			}
-
-			// get kas public
-			kasPubKeyURL, err := url.JoinPath(kasInfo.url, kasPublicKeyPath)
-			if err != nil {
-				return fmt.Errorf("url.Parse failed: %w", err)
-			}
-
-			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, kasPubKeyURL, nil)
-			if err != nil {
-				return fmt.Errorf("http.NewRequestWithContext failed: %w", err)
-			}
-
-			// add required headers
-			request.Header = http.Header{
-				kAcceptKey: {kContentTypeJSONValue},
-			}
-
-			client := &http.Client{}
-
-			response, err := client.Do(request)
-			defer func() {
-				if response == nil {
-					return
-				}
-				err := response.Body.Close()
-				if err != nil {
-					slog.Error("Fail to close HTTP response")
-				}
-			}()
-			if response.StatusCode != kHTTPOk {
-				return fmt.Errorf("client.Do failed: %w", err)
-			}
-
-			var jsonResponse interface{}
-			err = json.NewDecoder(response.Body).Decode(&jsonResponse)
-			if err != nil {
-				return fmt.Errorf("json.NewDecoder.Decode failed: %w", err)
-			}
-
-			newEntry.publicKey = fmt.Sprintf("%s", jsonResponse)
-
-			c.kasInfoList = append(c.kasInfoList, newEntry)
-		}
+		newKasInfos := make([]KASInfo, 0)
+		newKasInfos = append(newKasInfos, kasInfoList...)
+		c.kasInfoList = newKasInfos
 
 		return nil
 	}

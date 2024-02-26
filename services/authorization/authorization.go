@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	"google.golang.org/grpc/credentials/insecure"
 	"log/slog"
 	"os"
 	"time"
@@ -23,11 +22,13 @@ import (
 type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
 	eng *opa.Engine
+	cc  *grpc.ClientConn
 }
 
-func NewAuthorizationServer(g *grpc.Server, s *runtime.ServeMux, eng *opa.Engine) error {
+func NewAuthorizationServer(g *grpc.Server, cc *grpc.ClientConn, s *runtime.ServeMux, eng *opa.Engine) error {
 	as := &AuthorizationService{
 		eng: eng,
+		cc:  cc,
 	}
 	authorization.RegisterAuthorizationServiceServer(g, as)
 	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)
@@ -69,13 +70,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	// get subject mappings
 	h := "localhost:50051"
 	slog.InfoContext(ctx, fmt.Sprintf("Dialing %s ...", h))
-	do := grpc.WithTransportCredentials(insecure.NewCredentials())
-	cc, err := grpc.DialContext(ctx, h, do)
-	if err != nil {
-		slog.ErrorContext(ctx, err.Error())
-		return nil, err
-	}
-	smc := subjectmapping.NewSubjectMappingServiceClient(cc)
+	smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
 	ins := subjectmapping.GetSubjectSetRequest{
 		Id: "abc",
 	}

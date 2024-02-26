@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -156,26 +155,4 @@ func (t *IDPAccessTokenSource) SignToken(tok jwt.Token) ([]byte, error) {
 
 func (t *IDPAccessTokenSource) GetDPoPPublicKeyPEM() string {
 	return t.dpopPEM
-}
-
-// a token source that just tells you there's no token
-type EmptyTokenSource struct {
-}
-
-func (*EmptyTokenSource) GetAccessToken() (AccessToken, error) {
-	return "", errors.New("must specify credentials to obtain an access token")
-}
-
-func (*EmptyTokenSource) GetAsymDecryption() crypto.AsymDecryption {
-	return crypto.AsymDecryption{}
-}
-
-func (*EmptyTokenSource) SignToken(jwt.Token) ([]byte, error) {
-	return nil, errors.New("cannot sign a token without a DPoP key")
-}
-func (*EmptyTokenSource) GetDPoPPublicKeyPEM() string {
-	return ""
-}
-func (*EmptyTokenSource) RefreshAccessToken() error {
-	return errors.New("cannot refresh an access token without credentials")
 }

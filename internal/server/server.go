@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -174,7 +175,7 @@ func (s inProcessServer) GetGrpcServer() *grpc.Server {
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
 	defaultOptions := []grpc.DialOption{
-		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+		grpc.WithContextDialer(func(_ context.Context, addr string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)
@@ -189,7 +190,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 }
 
 func (s OpenTDFServer) startGrpcServer() {
-	slog.Info("starting grpc server")
+	slog.Info("starting grpc server", "address", s.grpcServerAddress)
 	listener, err := net.Listen("tcp", s.grpcServerAddress)
 	if err != nil {
 		slog.Error("failed to create listener", slog.String("error", err.Error()))
@@ -213,14 +214,14 @@ func (s OpenTDFServer) startHTTPServer() {
 	var err error
 
 	if s.HTTPServer.TLSConfig != nil {
-		slog.Info("starting https server")
+		slog.Info("starting https server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServeTLS("", "")
 	} else {
-		slog.Info("starting http server")
+		slog.Info("starting http server", "address", s.HTTPServer.Addr) 
 		err = s.HTTPServer.ListenAndServe()
 	}
 
-	if err != nil && err != http.ErrServerClosed {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("failed to serve http", slog.String("error", err.Error()))
 		return
 	}

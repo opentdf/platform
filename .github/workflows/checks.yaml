@@ -16,7 +16,7 @@ on:
 jobs:
   pr:
     name: Validate PR title
-    if: contains(fromJSON('["pull_request", "pull_request_target", "merge_group"]'), github.event_name)
+    if: ${{ github.event_name != 'merge_group' }}
     runs-on: ubuntu-22.04
     permissions:
       pull-requests: read
@@ -130,7 +130,6 @@ jobs:
 
   ci:
     needs:
-      - pr
       - go
       - integration
       - image

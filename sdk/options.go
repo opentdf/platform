@@ -29,14 +29,7 @@ func WithInsecureConn() Option {
 }
 
 // WithClientCredentials returns an Option that sets up authentication with client credentials.
-func WithClientCredentials(clientID, clientSecret string) Option {
-	return func(c *config) {
-		c.clientCredentials = oauth.ClientCredentials{ClientId: clientID, ClientAuth: clientSecret}
-		c.scopes = make([]string, 0)
-	}
-}
-
-func WithScopedClientCredentials(clientID, clientSecret string, scopes []string) Option {
+func WithClientCredentials(clientID, clientSecret string, scopes []string) Option {
 	return func(c *config) {
 		c.clientCredentials = oauth.ClientCredentials{ClientId: clientID, ClientAuth: clientSecret}
 		c.scopes = scopes

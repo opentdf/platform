@@ -697,7 +697,7 @@ func runKas() (string, func(), *SDK) {
 	if clientID != "" && clientSecret != "" {
 		opts := make([]Option, 0)
 		opts = append(opts,
-			WithClientCredentials(clientID, clientSecret),
+			WithClientCredentials(clientID, clientSecret, []string{}),
 			WithTokenEndpoint("http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token"),
 			WithInsecureConn(),
 		)

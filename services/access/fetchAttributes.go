@@ -27,9 +27,9 @@ func (p *Provider) fetchAttributes(ctx context.Context, namespaces []string) ([]
 	}
 	defer conn.Close()
 	a := attributes.NewAttributesServiceClient(conn)
-	response, err := a.ListAttributes(ctx, &attributes.ListAttributesRequest{})
+	_, err = a.ListAttributes(ctx, &attributes.ListAttributesRequest{})
 
-	var definitions []attributes.AttributeDefinition
+	var definitions []attributes.Attribute
 	for _, ns := range namespaces {
 		attrDefs, err := p.fetchAttributesForNamespace(ctx, ns)
 		if err != nil {
@@ -41,9 +41,9 @@ func (p *Provider) fetchAttributes(ctx context.Context, namespaces []string) ([]
 	return definitions, nil
 }
 
-func (p *Provider) fetchAttributesForNamespace(ctx context.Context, namespace string) ([]attributes.AttributeDefinition, error) {
+func (p *Provider) fetchAttributesForNamespace(ctx context.Context, namespace string) ([]attributes.Attribute, error) {
 	slog.DebugContext(ctx, "Fetching", "namespace", namespace)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.AttributeSvc.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.AttributeSvc, nil)
 	if err != nil {
 		slog.ErrorContext(ctx, "unable to create http request to attributes service", "namespace", namespace, "attributeHost", p.AttributeSvc)
 		return nil, errors.Join(ErrAttributeDefinitionsServiceCall, err)
@@ -71,7 +71,7 @@ func (p *Provider) fetchAttributesForNamespace(ctx context.Context, namespace st
 		return nil, errors.Join(ErrAttributeDefinitionsServiceCall, err)
 	}
 
-	var definitions []attributes.AttributeDefinition
+	var definitions []attributes.Attribute
 	err = json.NewDecoder(resp.Body).Decode(&definitions)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to parse response from attributes service", "err", err, "namespace", namespace, "req.URL", req.URL)

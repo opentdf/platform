@@ -90,25 +90,22 @@ func buildKASClient(c *config) (KASClient, error) {
 	}
 
 	// at this point we have either both client credentials and a token endpoint or none of the above
-	var tokenSource AccessTokenSource
 	if c.clientCredentials.ClientId == "" {
 		return KASClient{}, errors.New("cannot create an SDK with no client credentials")
-	} else {
-		ts, err := NewIDPAccessTokenSource(
-			c.clientCredentials,
-			c.tokenEndpoint,
-			c.scopes,
-		)
+	}
 
-		if err != nil {
-			return KASClient{}, fmt.Errorf("error configuring IDP access: %w", err)
-		}
+	ts, err := NewIDPAccessTokenSource(
+		c.clientCredentials,
+		c.tokenEndpoint,
+		c.scopes,
+	)
 
-		tokenSource = &ts
+	if err != nil {
+		return KASClient{}, fmt.Errorf("error configuring IDP access: %w", err)
 	}
 
 	kasClient := KASClient{
-		accessTokenSource: tokenSource,
+		accessTokenSource: &ts,
 		dialOptions:       c.build(),
 	}
 

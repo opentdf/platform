@@ -19,8 +19,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/opentdf/platform/sdk/internal/crypto"
-	"github.com/opentdf/platform/sdk/internal/oauth"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -281,7 +279,7 @@ func init() {
 }
 
 func TestSimpleTDF(t *testing.T) { //nolint:gocognit
-	serverURL, closer, unwrapper := runKas()
+	serverURL, closer, sdk := runKas()
 	defer closer()
 
 	metaDataStr := `{"displayName" : "openTDF go sdk"}`
@@ -316,7 +314,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 			}
 		}(fileWriter)
 
-		tdfObj, err := CreateTDF(fileWriter, bufReader, unwrapper,
+		tdfObj, err := sdk.CreateTDF(fileWriter, bufReader,
 			WithKasInformation(kasURLs...),
 			WithMetaData(metaDataStr),
 			WithDataAttributes(attributes...))
@@ -343,7 +341,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 			}
 		}(readSeeker)
 
-		r, err := LoadTDF(unwrapper, readSeeker)
+		r, err := sdk.LoadTDF(readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to load the tdf:%v", err)
 		}
@@ -383,7 +381,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 
 		buf := make([]byte, 8)
 
-		r, err := LoadTDF(unwrapper, readSeeker)
+		r, err := sdk.LoadTDF(readSeeker)
 		if err != nil {
 			t.Fatalf("Fail to create reader:%v", err)
 		}
@@ -404,7 +402,7 @@ func TestSimpleTDF(t *testing.T) { //nolint:gocognit
 }
 
 func TestTDFReader(t *testing.T) { //nolint:gocognit
-	serverURL, closer, unwrapper := runKas()
+	serverURL, closer, sdk := runKas()
 	defer closer()
 
 	for _, test := range partialTDFTestHarnesses { // create .txt file
@@ -417,10 +415,9 @@ func TestTDFReader(t *testing.T) { //nolint:gocognit
 		for _, readAtTest := range test.readAtTests {
 			tdfBuf := bytes.Buffer{}
 			readSeeker := bytes.NewReader([]byte(test.payload))
-			_, err := CreateTDF(
+			_, err := sdk.CreateTDF(
 				io.Writer(&tdfBuf),
 				readSeeker,
-				unwrapper,
 				WithKasInformation(kasInfoList...),
 				WithSegmentSize(readAtTest.segmentSize),
 			)
@@ -431,7 +428,7 @@ func TestTDFReader(t *testing.T) { //nolint:gocognit
 
 			// test reader
 			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
-			r, err := LoadTDF(unwrapper, tdfReadSeeker)
+			r, err := sdk.LoadTDF(tdfReadSeeker)
 			if err != nil {
 				t.Fatalf("failed to read tdf: %v", err)
 			}
@@ -485,7 +482,7 @@ func TestTDFReader(t *testing.T) { //nolint:gocognit
 }
 
 func TestTDF(t *testing.T) {
-	serverURL, closer, unwrapper := runKas()
+	serverURL, closer, sdk := runKas()
 	defer closer()
 
 	for index, test := range testHarnesses {
@@ -501,10 +498,10 @@ func TestTDF(t *testing.T) {
 		}
 
 		// test encrypt
-		testEncrypt(t, unwrapper, kasInfoList, plaintTextFileName, tdfFileName, test)
+		testEncrypt(t, sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
 
 		// test decrypt with reader
-		testDecryptWithReader(t, unwrapper, tdfFileName, decryptedTdfFileName, test)
+		testDecryptWithReader(t, sdk, tdfFileName, decryptedTdfFileName, test)
 
 		// Remove the test files
 		_ = os.Remove(plaintTextFileName)
@@ -523,7 +520,7 @@ func BenchmarkReader(b *testing.B) {
 		},
 	}
 
-	serverURL, closer, unwrapper := runKas()
+	serverURL, closer, sdk := runKas()
 	defer closer()
 
 	kasInfoList := test.kasInfoList
@@ -541,13 +538,13 @@ func BenchmarkReader(b *testing.B) {
 
 	tdfBuf := bytes.Buffer{}
 	readSeeker := bytes.NewReader(inBuf)
-	_, err := CreateTDF(io.Writer(&tdfBuf), readSeeker, unwrapper, WithKasInformation(kasInfoList...))
+	_, err := sdk.CreateTDF(io.Writer(&tdfBuf), readSeeker, WithKasInformation(kasInfoList...))
 	if err != nil {
 		b.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
 
 	readSeeker = bytes.NewReader(tdfBuf.Bytes())
-	r, err := LoadTDF(unwrapper, readSeeker)
+	r, err := sdk.LoadTDF(readSeeker)
 	if err != nil {
 		b.Fatalf("failed to read tdf: %v", err)
 	}
@@ -566,7 +563,7 @@ func BenchmarkReader(b *testing.B) {
 }
 
 // create tdf
-func testEncrypt(t *testing.T, unwrapper Unwrapper, kasInfoList []KASInfo, plainTextFilename, tdfFileName string, test tdfTest) {
+func testEncrypt(t *testing.T, sdk *SDK, kasInfoList []KASInfo, plainTextFilename, tdfFileName string, test tdfTest) {
 	// create a plain text file
 	createFileName(buffer, plainTextFilename, test.fileSize)
 
@@ -594,7 +591,7 @@ func testEncrypt(t *testing.T, unwrapper Unwrapper, kasInfoList []KASInfo, plain
 			t.Fatalf("Fail to close the tdf file: %v", err)
 		}
 	}(fileWriter) // CreateTDF TDFConfig
-	tdfObj, err := CreateTDF(fileWriter, readSeeker, unwrapper, WithKasInformation(kasInfoList...))
+	tdfObj, err := sdk.CreateTDF(fileWriter, readSeeker, WithKasInformation(kasInfoList...))
 	if err != nil {
 		t.Fatalf("tdf.CreateTDF failed: %v", err)
 	}
@@ -604,7 +601,7 @@ func testEncrypt(t *testing.T, unwrapper Unwrapper, kasInfoList []KASInfo, plain
 	}
 }
 
-func testDecryptWithReader(t *testing.T, unwrapper Unwrapper, tdfFile, decryptedTdfFileName string, test tdfTest) {
+func testDecryptWithReader(t *testing.T, sdk *SDK, tdfFile, decryptedTdfFileName string, test tdfTest) {
 	readSeeker, err := os.Open(tdfFile)
 	if err != nil {
 		t.Fatalf("Fail to open archive file:%s %v", tdfFile, err)
@@ -617,7 +614,7 @@ func testDecryptWithReader(t *testing.T, unwrapper Unwrapper, tdfFile, decrypted
 		}
 	}(readSeeker)
 
-	r, err := LoadTDF(unwrapper, readSeeker)
+	r, err := sdk.LoadTDF(readSeeker)
 	if err != nil {
 		t.Fatalf("failed to read tdf: %v", err)
 	}
@@ -694,26 +691,23 @@ func createFileName(buf []byte, filename string, size int64) {
 // we are running against a local cluster and dont' need a fake KAS
 // in this case we return a GRPC rewrapper and authenticate against
 // keycloak
-func runKas() (string, func(), Unwrapper) { //nolint:ireturn // this unwrapper is only used in this file
+func runKas() (string, func(), *SDK) {
 	clientID := os.Getenv("SDK_OIDC_CLIENT_ID")
 	clientSecret := os.Getenv("SDK_OIDC_CLIENT_SECRET")
-
 	if clientID != "" && clientSecret != "" {
-		oauthCredentials := oauth.ClientCredentials{
-			ClientId:   clientID,
-			ClientAuth: clientSecret,
-		}
-		idpTokenSource, err := NewIDPAccessTokenSource(
-			oauthCredentials,
-			"http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token",
-			[]string{})
+		opts := make([]Option, 0)
+		opts = append(opts,
+			WithClientCredentials(clientID, clientSecret, []string{}),
+			WithTokenEndpoint("http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token"),
+			WithInsecureConn(),
+		)
 
+		sdk, err := New("http://doesntmatterhere.example.org", opts...)
 		if err != nil {
-			panic(fmt.Sprintf("error getting IDP access token source: %v", err))
+			panic(fmt.Sprintf("error creating SDK: %v", err))
 		}
 
-		kasClient := KASClient{accessTokenSource: &idpTokenSource, grpcTransportCredentials: insecure.NewCredentials()}
-		return "grpc://localhost:9000", func() {}, &kasClient
+		return "grpc://localhost:9000", func() {}, sdk
 	}
 
 	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
@@ -740,7 +734,12 @@ func runKas() (string, func(), Unwrapper) { //nolint:ireturn // this unwrapper i
 	server := httptest.NewServer(http.HandlerFunc(getKASRequestHandler(string(accessToken), signingPubKey)))
 
 	authConfig := AuthConfig{dpopPublicKeyPEM: signingPubKey, dpopPrivateKeyPEM: signingPrivateKey, accessToken: string(accessToken)}
-	return server.URL, func() { server.Close() }, &authConfig
+
+	sdk, err := New("http://thisdoesnotmatterhere.example.org", WithAuthConfig(authConfig))
+	if err != nil {
+		panic(fmt.Sprintf("error creating SDK with authconfig: %v", err))
+	}
+	return server.URL, func() { server.Close() }, sdk
 }
 
 func getKASRequestHandler(expectedAccessToken, //nolint:gocognit // KAS is pretty complicated

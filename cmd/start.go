@@ -1,34 +1,7 @@
 package cmd
 
 import (
-<<<<<<< HEAD
 	"github.com/opentdf/platform/pkg/server"
-=======
-	"context"
-	"fmt"
-	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
-
-	"github.com/opentdf/platform/services/authorization"
-	"github.com/opentdf/platform/services/health"
-	"google.golang.org/grpc"
-
-	"github.com/opentdf/platform/internal/config"
-	"github.com/opentdf/platform/internal/db"
-	"github.com/opentdf/platform/internal/logger"
-	"github.com/opentdf/platform/internal/opa"
-	"github.com/opentdf/platform/internal/server"
-
-	"github.com/opentdf/platform/services/kasregistry"
-	attr "github.com/opentdf/platform/services/policy/attributes"
-	"github.com/opentdf/platform/services/policy/namespaces"
-	"github.com/opentdf/platform/services/policy/resourcemapping"
-	"github.com/opentdf/platform/services/policy/subjectmapping"
-
-	// "github.com/opentdf/platform/services/keyaccessgrants"
->>>>>>> main
 	"github.com/spf13/cobra"
 )
 

@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/opentdf/platform/pkg/serviceregistry"
+	"github.com/opentdf/platform/services/health"
 	"github.com/opentdf/platform/services/kasregistry"
 	"github.com/opentdf/platform/services/policy/attributes"
 	"github.com/opentdf/platform/services/policy/namespaces"
@@ -16,4 +17,5 @@ func registerServices() {
 	serviceregistry.RegisterService(subjectmapping.NewRegistration())
 	serviceregistry.RegisterService(attributes.NewRegistration())
 	serviceregistry.RegisterService(kasregistry.NewRegistration())
+	serviceregistry.RegisterService(health.NewRegistration())
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
 	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
 
@@ -18,8 +19,8 @@ var nonExistentKasRegistryId = "78909865-8888-9999-9999-000000654321"
 type KasRegistrySuite struct {
 	suite.Suite
 	schema string
-	f      Fixtures
-	db     DBInterface
+	f      fixtures.Fixtures
+	db     fixtures.DBInterface
 	ctx    context.Context
 }
 
@@ -27,8 +28,8 @@ func (s *KasRegistrySuite) SetupSuite() {
 	slog.Info("setting up db.KasRegistry test suite")
 	s.ctx = context.Background()
 	s.schema = "test_opentdf_kas_registry"
-	s.db = NewDBInterface(s.schema)
-	s.f = NewFixture(s.db)
+	s.db = fixtures.NewDBInterface(*Config)
+	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 }
 
@@ -37,15 +38,15 @@ func (s *KasRegistrySuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func getKasRegistryFixtures() []FixtureDataKasRegistry {
-	return []FixtureDataKasRegistry{
-		fixtures.GetKasRegistryKey("key_access_server_1"),
-		fixtures.GetKasRegistryKey("key_access_server_2"),
+func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
+	return []fixtures.FixtureDataKasRegistry{
+		s.f.GetKasRegistryKey("key_access_server_1"),
+		s.f.GetKasRegistryKey("key_access_server_2"),
 	}
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
-	fixtures := getKasRegistryFixtures()
+	fixtures := s.getKasRegistryFixtures()
 	list, err := s.db.KASRClient.ListKeyAccessServers(s.ctx)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), list)
@@ -65,8 +66,8 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
 }
 
 func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
-	remoteFixture := fixtures.GetKasRegistryKey("key_access_server_1")
-	localFixture := fixtures.GetKasRegistryKey("key_access_server_2")
+	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
+	localFixture := s.f.GetKasRegistryKey("key_access_server_2")
 
 	remote, err := s.db.KASRClient.GetKeyAccessServer(s.ctx, remoteFixture.Id)
 	assert.Nil(s.T(), err)

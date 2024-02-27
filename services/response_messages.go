@@ -22,6 +22,7 @@ const (
 	ErrEnumValueInvalid    = "enum value invalid"
 	ErrUuidInvalid         = "value not a valid uuid"
 	ErrRestrictViolation   = "intended action would violate a restriction"
+	ErrFqnMissingValue     = "FQN must specify a valid value and be of format 'https://<namespace>/attr/<attribute name>/value/<value>'"
 )
 
 func HandleError(err error, fallbackErr string, log ...any) error {
@@ -49,6 +50,10 @@ func HandleError(err error, fallbackErr string, log ...any) error {
 	if errors.Is(err, db.ErrRestrictViolation) {
 		slog.Error(ErrRestrictViolation, l...)
 		return status.Error(codes.InvalidArgument, ErrRestrictViolation)
+	}
+	if errors.Is(err, db.ErrFqnMissingValue) {
+		slog.Error(err.Error(), l...)
+		return status.Error(codes.InvalidArgument, ErrFqnMissingValue)
 	}
 	slog.Error(err.Error(), l...)
 	return status.Error(codes.Internal, fallbackErr)

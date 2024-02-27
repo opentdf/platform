@@ -2,20 +2,14 @@ package sdk
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"math"
-	"net/http"
-	"net/url"
 	"strings"
-	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/internal/crypto"
@@ -67,7 +61,7 @@ type Reader struct {
 	manifest            Manifest
 	unencryptedMetadata string
 	tdfReader           archive.TDFReader
-	authConfig          AuthConfig
+	unwrapper           Unwrapper
 	cursor              int64
 	aesGcm              crypto.AesGcm
 	payloadSize         int64
@@ -81,19 +75,13 @@ type TDFObject struct {
 	payloadKey [kKeySize]byte
 }
 
-type rewrapJWTClaims struct {
-	jwt.RegisteredClaims
-	Body string `json:"requestBody"`
-}
-
-type RequestBody struct {
-	KeyAccess       `json:"keyAccess"`
-	ClientPublicKey string `json:"clientPublicKey"`
-	Policy          string `json:"policy"`
+type Unwrapper interface {
+	unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
+	getPublicKey(kas KASInfo) (string, error)
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
-func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+func CreateTDF(writer io.Writer, reader io.ReadSeeker, unwrapper Unwrapper, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -111,6 +99,11 @@ func CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFO
 	tdfConfig, err := NewTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
+	}
+
+	err = fillInPublicKeys(unwrapper, tdfConfig.kasInfoList)
+	if err != nil {
+		return nil, err
 	}
 
 	tdfObject := &TDFObject{}
@@ -367,7 +360,7 @@ func (t *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
+func LoadTDF(unwrapper Unwrapper, reader io.ReadSeeker) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
@@ -386,9 +379,9 @@ func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
 	}
 
 	return &Reader{
-		tdfReader:  tdfReader,
-		manifest:   *manifestObj,
-		authConfig: authConfig,
+		tdfReader: tdfReader,
+		manifest:  *manifestObj,
+		unwrapper: unwrapper,
 	}, nil
 }
 
@@ -621,8 +614,7 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
-		requestBody := RequestBody{keyAccessObj, "", r.manifest.EncryptionInformation.Policy}
-		wrappedKey, err := rewrap(r.authConfig, &requestBody)
+		wrappedKey, err := r.unwrapper.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
 		if err != nil {
 			return fmt.Errorf(" splitKey.rewrap failed:%w", err)
 		}
@@ -738,143 +730,18 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	return false, nil
 }
 
-func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) (*http.Response, error) {
-	kasURL := body.KasURL
-
-	requestBodyData, err := json.Marshal(body)
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %w", err)
-	}
-
-	claims := rewrapJWTClaims{
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-		string(requestBodyData),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-
-	signingRSAPrivateKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(authConfig.signingPrivateKey))
-	if err != nil {
-		return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
-	}
-
-	signedToken, err := token.SignedString(signingRSAPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("jwt.SignedString failed: %w", err)
-	}
-
-	signedTokenRequestBody, err := json.Marshal(map[string]string{
-		kSignedRequestToken: signedToken,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %w", err)
-	}
-
-	kasRequestURL, err := url.JoinPath(fmt.Sprintf("%v", kasURL), kasPath)
-	if err != nil {
-		return nil, fmt.Errorf("url.JoinPath failed: %w", err)
-	}
-	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, kasRequestURL,
-		bytes.NewBuffer(signedTokenRequestBody))
-	if err != nil {
-		return nil, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
-	}
-
-	// add required headers
-	request.Header = http.Header{
-		kContentTypeKey:   {kContentTypeJSONValue},
-		kAuthorizationKey: {authConfig.authToken},
-		kAcceptKey:        {kContentTypeJSONValue},
-	}
-
-	client := &http.Client{}
-
-	response, err := client.Do(request)
-	if err != nil {
-		slog.Error("failed http request")
-		return nil, fmt.Errorf("http request failed: %w", err)
-	}
-
-	return response, nil
-}
-
-func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
-	clientKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	clientPubKey, err := clientKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
-	}
-	requestBody.ClientPublicKey = clientPubKey
-
-	clientPrivateKey, err := clientKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
-	}
-
-	response, err := handleKasRequest(kRewrapV2, requestBody, authConfig)
-	defer func() {
-		if response == nil {
-			return
+func fillInPublicKeys(unwrapper Unwrapper, kasInfos []KASInfo) error {
+	for idx, kasInfo := range kasInfos {
+		if kasInfo.publicKey != "" {
+			continue
 		}
-		err := response.Body.Close()
+
+		publicKey, err := unwrapper.getPublicKey(kasInfo)
 		if err != nil {
-			slog.Error("Fail to close HTTP response")
+			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.url, err)
 		}
-	}()
 
-	if err != nil {
-		slog.Error("failed http request")
-		return nil, err
+		kasInfos[idx].publicKey = publicKey
 	}
-	if response.StatusCode != kHTTPOk {
-		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)
-	}
-
-	rewrapResponseBody, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("io.ReadAll failed: %w", err)
-	}
-
-	key, err := getWrappedKey(rewrapResponseBody, clientPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unwrap the wrapped key:%w", err)
-	}
-
-	return key, nil
-}
-
-func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, error) {
-	var data map[string]interface{}
-	err := json.Unmarshal(rewrapResponseBody, &data)
-	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
-	}
-
-	entityWrappedKey, ok := data[kEntityWrappedKey]
-	if !ok {
-		return nil, fmt.Errorf("entityWrappedKey is missing in key access object")
-	}
-
-	asymDecrypt, err := crypto.NewAsymDecryption(clientPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAsymDecryption failed: %w", err)
-	}
-
-	entityWrappedKeyDecoded, err := crypto.Base64Decode([]byte(fmt.Sprintf("%v", entityWrappedKey)))
-	if err != nil {
-		return nil, fmt.Errorf("crypto.Base64Decode failed: %w", err)
-	}
-
-	key, err := asymDecrypt.Decrypt(entityWrappedKeyDecoded)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.Decrypt failed: %w", err)
-	}
-
-	return key, nil
+	return nil
 }

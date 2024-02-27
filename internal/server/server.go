@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -100,7 +101,14 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		grpcOpts...,
 	)
 
-	mux := runtime.NewServeMux()
+	grpcInprocess := &inProcessServer{
+		ln:  fasthttputil.NewInmemoryListener(),
+		srv: grpc.NewServer(),
+	}
+
+	mux := runtime.NewServeMux(
+		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
+	)
 
 	// Enable grpc reflection
 	if config.Grpc.ReflectionEnabled {
@@ -130,10 +138,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		HTTPServer:        httpServer,
 		GrpcServer:        grpcServer,
 		grpcServerAddress: fmt.Sprintf(":%d", config.Grpc.Port),
-		GrpcInProcess: &inProcessServer{
-			ln:  fasthttputil.NewInmemoryListener(),
-			srv: grpc.NewServer(),
-		},
+		GrpcInProcess:     grpcInprocess,
 	}, nil
 }
 
@@ -190,7 +195,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 }
 
 func (s OpenTDFServer) startGrpcServer() {
-	slog.Info(fmt.Sprintf("starting grpc server on %v", s.grpcServerAddress))
+	slog.Info("starting grpc server", "address", s.grpcServerAddress)
 	listener, err := net.Listen("tcp", s.grpcServerAddress)
 	if err != nil {
 		slog.Error("failed to create listener", slog.String("error", err.Error()))
@@ -214,10 +219,10 @@ func (s OpenTDFServer) startHTTPServer() {
 	var err error
 
 	if s.HTTPServer.TLSConfig != nil {
-		slog.Info(fmt.Sprintf("starting https serveron %v", s.HTTPServer.Addr))
+		slog.Info("starting https server")
 		err = s.HTTPServer.ListenAndServeTLS("", "")
 	} else {
-		slog.Info(fmt.Sprintf("starting http server on %v", s.HTTPServer.Addr))
+		slog.Info("starting http server")
 		err = s.HTTPServer.ListenAndServe()
 	}
 

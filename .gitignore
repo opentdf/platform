@@ -34,3 +34,4 @@ go.work.sum
 go.work
 *.zip
 examples/examples
+sdkjava/target

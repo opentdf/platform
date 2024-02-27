@@ -9,6 +9,8 @@ import (
 	"syscall"
 
 	"github.com/opentdf/platform/services/authorization"
+	"github.com/opentdf/platform/services/health"
+	"google.golang.org/grpc"
 
 	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/db"
@@ -168,6 +170,9 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	if err != nil {
 		return fmt.Errorf("could not register authorization service: %w", err)
 	}
+
+	slog.Info("registering grpc health service")
+	health.NewHealthService(dbClient, []*grpc.Server{otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer()})
 
 	return nil
 }

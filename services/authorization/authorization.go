@@ -68,8 +68,6 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
 	// get subject mappings
-	h := "localhost:50051"
-	slog.InfoContext(ctx, fmt.Sprintf("Dialing %s ...", h))
 	smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
 	ins := subjectmapping.GetSubjectSetRequest{
 		Id: "abc",
@@ -81,7 +79,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	slog.InfoContext(ctx, out.String())
 	// OPA
-	in, err := entitlements.OpaInput(req.Entities[0])
+	in, err := entitlements.OpaInput(req.Entities[0], out.SubjectSet)
 	if err != nil {
 		return nil, err
 	}

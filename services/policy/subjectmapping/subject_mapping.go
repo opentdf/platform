@@ -111,10 +111,12 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 	return rsp, nil
 }
 
-func (s SubjectMappingService) GetSubjectSet(context.Context, *sm.GetSubjectSetRequest) (*sm.GetSubjectSetResponse, error) {
+func (s SubjectMappingService) GetSubjectSet(ctx context.Context, req *sm.GetSubjectSetRequest) (*sm.GetSubjectSetResponse, error) {
 	// TODO replace mock below with database connection, add fixture
-	ss := sm.GetSubjectSetResponse{
+	slog.DebugContext(ctx, "GetSubjectSet", "id", req.Id)
+	ssr := sm.GetSubjectSetResponse{
 		SubjectSet: &sm.SubjectSet{
+			Id:              req.Id,
 			ConditionGroups: make([]*sm.ConditionGroup, 0),
 		},
 	}
@@ -122,13 +124,12 @@ func (s SubjectMappingService) GetSubjectSet(context.Context, *sm.GetSubjectSetR
 		BooleanType: sm.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
 		Conditions: []*sm.Condition{
 			{
-				SubjectAttribute: "abc",
+				SubjectAttribute: "https://example.com/attr/attr1/value/value1",
 				Operator:         sm.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-				SubjectValues:    []string{"a1,b2,c3"},
+				SubjectValues:    []string{"ec11"},
 			},
 		},
 	}
-	ss.SubjectSet.ConditionGroups = append(ss.SubjectSet.ConditionGroups, &cg)
-	slog.Debug("GetSubjectSet")
-	return &ss, nil
+	ssr.SubjectSet.ConditionGroups = append(ssr.SubjectSet.ConditionGroups, &cg)
+	return &ssr, nil
 }

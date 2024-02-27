@@ -3,12 +3,13 @@ package opentdf.entitlements
 import rego.v1
 
 entitlements[entity_id] := attrs if {
-	some mapping in data.mappings
+	some condition_group in input.subjectset.condition_groups
 	entity_id := input.entity.email_address
 	attrs := [attr |
 		some claim in input.entity.claims
-		acse_evaluate(claim, mapping.operator, mapping.subject_values)
-		attr := mapping.descriptor.fqn
+        some condition in condition_group.conditions
+		acse_evaluate(claim, condition.operator, condition.subject_values)
+		attr := condition.subject_attribute
 	]
 }
 

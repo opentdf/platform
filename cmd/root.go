@@ -10,16 +10,13 @@ import (
 //nolint:gochecknoglobals // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "opentdf",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "A platform for trusted data",
+	Long: `Start, manage, and control an OpenTDF platform.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+The OpenTDF Platform provides services to support Attribute Based Access Control
+of TDF protected data files. This includes storing attribute policy information,
+user authorization, and performing access checks. Use this tool to start, stop,
+manage, configure, or upgrade one or more of the OpenTDF Platform services.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package policy.subjectmapping;
+package subjectmapping;
 
 import "authorization/authorization.proto";
 import "policy/attributes/attributes.proto";
@@ -208,7 +208,7 @@ message SubjectMapping {
   //TODO should this be a list of values?
 
   // Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
-  attributes.Value attribute_value = 3;
+  policy.attributes.Value attribute_value = 3;
 
   // the subjects included in this mapping
   repeated SubjectSet subject_sets = 4;

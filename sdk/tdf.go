@@ -81,7 +81,7 @@ type Unwrapper interface {
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
-func (sdk *SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+func (sdk SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -360,8 +360,7 @@ func (t *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-// func (sdk *SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
-func (sdk *SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
+func (sdk SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {

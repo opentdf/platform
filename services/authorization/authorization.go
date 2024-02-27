@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"log/slog"
 	"os"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/opentdf/platform/internal/entitlements"
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"google.golang.org/grpc"
 )
 
@@ -104,8 +104,34 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 		return nil, err
 	}
 	slog.DebugContext(ctx, "opa", "result", fmt.Sprintf("%+v", decision.Result))
-	var ee []*authorization.EntityEntitlements
-	rsp := &authorization.GetEntitlementsResponse{}
-	rsp.Entitlements = ee
+	results, ok := decision.Result.(map[string]interface{})
+	if !ok {
+		slog.DebugContext(ctx, "not ok", "decision.Result", fmt.Sprintf("%+v", decision.Result))
+		return nil, err
+	}
+	rsp := &authorization.GetEntitlementsResponse{
+		Entitlements: make([]*authorization.EntityEntitlements, 0),
+	}
+	for k, v := range results {
+		va, okk := v.([]interface{})
+		if !okk {
+			slog.DebugContext(ctx, "not ok", k, fmt.Sprintf("%+v", v))
+			continue
+		}
+		var saa []string
+		for _, sv := range va {
+			str, okkk := sv.(string)
+			if !okkk {
+				slog.DebugContext(ctx, "not ok", k, fmt.Sprintf("%+v", sv))
+			}
+			saa = append(saa, str)
+		}
+		slog.DebugContext(ctx, "opa", k, fmt.Sprintf("%+v", va))
+		rsp.Entitlements = append(rsp.Entitlements, &authorization.EntityEntitlements{
+			EntityId:    k,
+			AttributeId: saa,
+		})
+		slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
+	}
 	return rsp, nil
 }

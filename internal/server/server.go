@@ -93,7 +93,13 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
-	grpcOpts = append(grpcOpts, grpc.UnaryInterceptor(
+	authN, err := newAuthNInterceptor()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create authN interceptor: %w", err)
+	}
+
+	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(
+		authN.verifyToken,
 		protovalidate_middleware.UnaryServerInterceptor(validator),
 	))
 
@@ -222,7 +228,7 @@ func (s OpenTDFServer) startHTTPServer() {
 		slog.Info("starting https server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServeTLS("", "")
 	} else {
-		slog.Info("starting http server", "address", s.HTTPServer.Addr) 
+		slog.Info("starting http server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServe()
 	}
 

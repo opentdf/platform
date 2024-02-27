@@ -91,7 +91,7 @@ public interface SubjectMappingCreateUpdateOrBuilder extends
    *
    * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
-  java.util.List<io.opentdf.platform.authorization.Action>
+  java.util.List<io.opentdf.platform.authorization.Action> 
       getActionsList();
   /**
    * <pre>
@@ -116,7 +116,7 @@ public interface SubjectMappingCreateUpdateOrBuilder extends
    *
    * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder>
+  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
       getActionsOrBuilderList();
   /**
    * <pre>

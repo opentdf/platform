@@ -525,7 +525,7 @@
           "$ref": "#/definitions/attributesAttribute"
         },
         "value": {
-          "$ref": "#/definitions/attributesValue"
+          "$ref": "#/definitions/policyattributesValue"
         }
       }
     },

@@ -17,147 +17,147 @@ public final class SubjectMappingProto {
   }
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_Condition_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_Condition_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_ConditionGroup_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_ConditionGroup_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_SubjectSet_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_SubjectSet_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_SubjectMapping_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_SubjectMapping_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_SubjectSetCreateUpdate_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_SubjectSetCreateUpdate_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_GetSubjectSetRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_GetSubjectSetRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_GetSubjectSetResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_GetSubjectSetResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_CreateSubjectSetRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_CreateSubjectSetRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_CreateSubjectSetResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_CreateSubjectSetResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_UpdateSubjectSetRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_UpdateSubjectSetRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_UpdateSubjectSetResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_UpdateSubjectSetResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_DeleteSubjectSetRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_DeleteSubjectSetRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_DeleteSubjectSetResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_DeleteSubjectSetResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_ListSubjectSetsRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_ListSubjectSetsRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_ListSubjectSetsResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_ListSubjectSetsResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_Subject_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_Subject_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_MatchSubjectMappingsRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_MatchSubjectMappingsRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_MatchSubjectMappingsResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_MatchSubjectMappingsResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_SubjectMappingCreateUpdate_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_SubjectMappingCreateUpdate_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_GetSubjectMappingRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_GetSubjectMappingRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_GetSubjectMappingResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_GetSubjectMappingResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_ListSubjectMappingsRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_ListSubjectMappingsRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_ListSubjectMappingsResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_ListSubjectMappingsResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_CreateSubjectMappingRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_CreateSubjectMappingRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_CreateSubjectMappingResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_CreateSubjectMappingResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_UpdateSubjectMappingResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_UpdateSubjectMappingResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_DeleteSubjectMappingRequest_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_DeleteSubjectMappingRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_subjectmapping_DeleteSubjectMappingResponse_descriptor;
-  static final
+  static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_subjectmapping_DeleteSubjectMappingResponse_fieldAccessorTable;
 
@@ -325,6 +325,7 @@ public final class SubjectMappingProto {
           build.buf.validate.ValidateProto.getDescriptor(),
           io.opentdf.platform.common.CommonProto.getDescriptor(),
           com.google.api.AnnotationsProto.getDescriptor(),
+          com.google.protobuf.StructProto.getDescriptor(),
         });
     internal_static_policy_subjectmapping_Condition_descriptor =
       getDescriptor().getMessageTypes().get(0);
@@ -511,6 +512,7 @@ public final class SubjectMappingProto {
     build.buf.validate.ValidateProto.getDescriptor();
     io.opentdf.platform.common.CommonProto.getDescriptor();
     com.google.api.AnnotationsProto.getDescriptor();
+    com.google.protobuf.StructProto.getDescriptor();
   }
 
   // @@protoc_insertion_point(outer_class_scope)

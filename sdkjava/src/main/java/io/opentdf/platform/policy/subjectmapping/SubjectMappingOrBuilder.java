@@ -81,7 +81,7 @@ public interface SubjectMappingOrBuilder extends
    *
    * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet>
+  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
       getSubjectSetsList();
   /**
    * <pre>
@@ -106,7 +106,7 @@ public interface SubjectMappingOrBuilder extends
    *
    * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>
+  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
       getSubjectSetsOrBuilderList();
   /**
    * <pre>
@@ -125,7 +125,7 @@ public interface SubjectMappingOrBuilder extends
    *
    * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  java.util.List<io.opentdf.platform.authorization.Action>
+  java.util.List<io.opentdf.platform.authorization.Action> 
       getActionsList();
   /**
    * <pre>
@@ -150,7 +150,7 @@ public interface SubjectMappingOrBuilder extends
    *
    * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder>
+  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
       getActionsOrBuilderList();
   /**
    * <pre>

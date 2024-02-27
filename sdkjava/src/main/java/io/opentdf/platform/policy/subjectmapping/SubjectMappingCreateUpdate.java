@@ -87,7 +87,7 @@ private static final long serialVersionUID = 0L;
     if (ref instanceof java.lang.String) {
       return (java.lang.String) ref;
     } else {
-      com.google.protobuf.ByteString bs =
+      com.google.protobuf.ByteString bs = 
           (com.google.protobuf.ByteString) ref;
       java.lang.String s = bs.toStringUtf8();
       attributeValueId_ = s;
@@ -107,7 +107,7 @@ private static final long serialVersionUID = 0L;
       getAttributeValueIdBytes() {
     java.lang.Object ref = attributeValueId_;
     if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b =
+      com.google.protobuf.ByteString b = 
           com.google.protobuf.ByteString.copyFromUtf8(
               (java.lang.String) ref);
       attributeValueId_ = b;
@@ -192,7 +192,7 @@ private static final long serialVersionUID = 0L;
    * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder>
+  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
       getActionsOrBuilderList() {
     return actions_;
   }
@@ -632,7 +632,7 @@ private static final long serialVersionUID = 0L;
             actionsBuilder_ = null;
             actions_ = other.actions_;
             bitField0_ = (bitField0_ & ~0x00000008);
-            actionsBuilder_ =
+            actionsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getActionsFieldBuilder() : null;
           } else {
@@ -822,7 +822,7 @@ private static final long serialVersionUID = 0L;
      * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder>
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> 
         getMetadataFieldBuilder() {
       if (metadataBuilder_ == null) {
         metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
@@ -868,7 +868,7 @@ private static final long serialVersionUID = 0L;
         getAttributeValueIdBytes() {
       java.lang.Object ref = attributeValueId_;
       if (ref instanceof String) {
-        com.google.protobuf.ByteString b =
+        com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
         attributeValueId_ = b;
@@ -1329,7 +1329,7 @@ private static final long serialVersionUID = 0L;
      *
      * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder>
+    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
          getActionsOrBuilderList() {
       if (actionsBuilder_ != null) {
         return actionsBuilder_.getMessageOrBuilderList();
@@ -1367,12 +1367,12 @@ private static final long serialVersionUID = 0L;
      *
      * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
      */
-    public java.util.List<io.opentdf.platform.authorization.Action.Builder>
+    public java.util.List<io.opentdf.platform.authorization.Action.Builder> 
          getActionsBuilderList() {
       return getActionsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>
+        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> 
         getActionsFieldBuilder() {
       if (actionsBuilder_ == null) {
         actionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<

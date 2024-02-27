@@ -70,7 +70,7 @@ private static final long serialVersionUID = 0L;
     if (ref instanceof java.lang.String) {
       return (java.lang.String) ref;
     } else {
-      com.google.protobuf.ByteString bs =
+      com.google.protobuf.ByteString bs = 
           (com.google.protobuf.ByteString) ref;
       java.lang.String s = bs.toStringUtf8();
       id_ = s;
@@ -86,7 +86,7 @@ private static final long serialVersionUID = 0L;
       getIdBytes() {
     java.lang.Object ref = id_;
     if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b =
+      com.google.protobuf.ByteString b = 
           com.google.protobuf.ByteString.copyFromUtf8(
               (java.lang.String) ref);
       id_ = b;
@@ -194,7 +194,7 @@ private static final long serialVersionUID = 0L;
    * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>
+  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
       getSubjectSetsOrBuilderList() {
     return subjectSets_;
   }
@@ -255,7 +255,7 @@ private static final long serialVersionUID = 0L;
    * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder>
+  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
       getActionsOrBuilderList() {
     return actions_;
   }
@@ -737,7 +737,7 @@ private static final long serialVersionUID = 0L;
             subjectSetsBuilder_ = null;
             subjectSets_ = other.subjectSets_;
             bitField0_ = (bitField0_ & ~0x00000008);
-            subjectSetsBuilder_ =
+            subjectSetsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getSubjectSetsFieldBuilder() : null;
           } else {
@@ -763,7 +763,7 @@ private static final long serialVersionUID = 0L;
             actionsBuilder_ = null;
             actions_ = other.actions_;
             bitField0_ = (bitField0_ & ~0x00000010);
-            actionsBuilder_ =
+            actionsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getActionsFieldBuilder() : null;
           } else {
@@ -884,7 +884,7 @@ private static final long serialVersionUID = 0L;
         getIdBytes() {
       java.lang.Object ref = id_;
       if (ref instanceof String) {
-        com.google.protobuf.ByteString b =
+        com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
         id_ = b;
@@ -1075,7 +1075,7 @@ private static final long serialVersionUID = 0L;
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder>
+        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> 
         getMetadataFieldBuilder() {
       if (metadataBuilder_ == null) {
         metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
@@ -1232,7 +1232,7 @@ private static final long serialVersionUID = 0L;
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder>
+        io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder> 
         getAttributeValueFieldBuilder() {
       if (attributeValueBuilder_ == null) {
         attributeValueBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
@@ -1500,7 +1500,7 @@ private static final long serialVersionUID = 0L;
      *
      * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>
+    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
          getSubjectSetsOrBuilderList() {
       if (subjectSetsBuilder_ != null) {
         return subjectSetsBuilder_.getMessageOrBuilderList();
@@ -1538,12 +1538,12 @@ private static final long serialVersionUID = 0L;
      *
      * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder>
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder> 
          getSubjectSetsBuilderList() {
       return getSubjectSetsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>
+        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
         getSubjectSetsFieldBuilder() {
       if (subjectSetsBuilder_ == null) {
         subjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
@@ -1812,7 +1812,7 @@ private static final long serialVersionUID = 0L;
      *
      * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder>
+    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
          getActionsOrBuilderList() {
       if (actionsBuilder_ != null) {
         return actionsBuilder_.getMessageOrBuilderList();
@@ -1850,12 +1850,12 @@ private static final long serialVersionUID = 0L;
      *
      * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
-    public java.util.List<io.opentdf.platform.authorization.Action.Builder>
+    public java.util.List<io.opentdf.platform.authorization.Action.Builder> 
          getActionsBuilderList() {
       return getActionsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>
+        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> 
         getActionsFieldBuilder() {
       if (actionsBuilder_ == null) {
         actionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<

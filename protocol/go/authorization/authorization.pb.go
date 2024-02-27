@@ -485,20 +485,14 @@ func (*Action_Custom) isAction_Value() {}
 // ],
 // "resourceAttributes": [
 // {
-// "attributeValueReferences": [
-// {
-// "attributeFqn": "http://www.example.org/attr/foo/value/bar"
-// }
+// "attributeFqns": [
+// "https://www.example.org/attr/foo/value/value1"
 // ]
 // },
 // {
-// "attributeValueReferences": [
-// {
-// "attributeFqn": "http://www.example.org/attr/foo/value/bar"
-// },
-// {
-// "attributeFqn": "http://www.example.org/attr/color/value/red"
-// }
+// "attributeFqns": [
+// "https://example.net/attr/attr1/value/value1",
+// "https://example.net/attr/attr1/value/value2"
 // ]
 // }
 // ]

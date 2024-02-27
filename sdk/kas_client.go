@@ -12,7 +12,6 @@ import (
 	"github.com/opentdf/platform/sdk/internal/crypto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -21,8 +20,8 @@ const (
 )
 
 type KASClient struct {
-	accessTokenSource        AccessTokenSource
-	grpcTransportCredentials credentials.TransportCredentials
+	accessTokenSource AccessTokenSource
+	dialOptions       []grpc.DialOption
 }
 
 type AccessToken string
@@ -53,14 +52,12 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 		return nil, err
 	}
 
-	creds := grpc.WithTransportCredentials(k.grpcTransportCredentials)
-
 	grpcAddress, err := getGRPCAddress(keyAccess.KasURL)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(grpcAddress, creds)
+	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("Error connecting to kas: %w", err)
 	}
@@ -161,12 +158,11 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 
 func (k *KASClient) getPublicKey(kasInfo KASInfo) (string, error) {
 	req := kas.PublicKeyRequest{}
-	creds := grpc.WithTransportCredentials(k.grpcTransportCredentials)
 	grpcAddress, err := getGRPCAddress(kasInfo.url)
 	if err != nil {
 		return "", err
 	}
-	conn, err := grpc.Dial(grpcAddress, creds)
+	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
 	if err != nil {
 		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.url, err)
 	}

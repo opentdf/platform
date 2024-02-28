@@ -4,7 +4,7 @@ go 1.21.7
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/bufbuild/protovalidate-go v0.4.3
+	github.com/bufbuild/protovalidate-go v0.6.0
 	github.com/creasty/defaults v1.7.0
 	github.com/go-chi/cors v1.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
@@ -28,7 +28,7 @@ require (
 replace github.com/opentdf/platform/protocol/go => ./protocol/go
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20231115204500-e097f827e652.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20240221180331-f05a6f4403ce.1 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
@@ -57,7 +57,7 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/cel-go v0.18.2 // indirect
+	github.com/google/cel-go v0.20.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect

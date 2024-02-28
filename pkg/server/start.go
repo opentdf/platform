@@ -43,7 +43,6 @@ func Start(f ...func(StartConfig) StartConfig) error {
 
 	slog.Info("starting opentdf services")
 
-	slog.Info("loading configuration")
 	// Load the config
 	conf, err := config.LoadConfig(startConfig.ConfigName)
 	if err != nil {

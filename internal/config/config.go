@@ -43,7 +43,7 @@ func LoadConfig(key string) (*Config, error) {
 	if key == "" {
 		key = "opentdf"
 		slog.Info("LoadConfig: key not provided, using default", "config", key)
-	} else { 
+	} else {
 		slog.Info("LoadConfig", "config", key)
 	}
 
@@ -74,5 +74,20 @@ func LoadConfig(key string) (*Config, error) {
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
+
+	// Manually handle unmarshaling of ExtraProps for each service
+	for serviceKey, service := range config.Services {
+		var extraProps map[string]interface{}
+		if err := viper.UnmarshalKey("services."+serviceKey, &extraProps); err != nil {
+			return nil, errors.Join(err, ErrLoadingConfig)
+		}
+		service.ExtraProps = extraProps
+
+		// Remove "enabled" from ExtraProps
+		delete(extraProps, "enabled")
+
+		config.Services[serviceKey] = service // Update the service in the map
+	}
+
 	return config, nil
 }

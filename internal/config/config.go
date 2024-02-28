@@ -41,8 +41,10 @@ const (
 // Load config with viper.
 func LoadConfig(key string) (*Config, error) {
 	if key == "" {
-		slog.Info("config key not provided, using default")
 		key = "opentdf"
+		slog.Info("LoadConfig: key not provided, using default", "config", key)
+	} else { 
+		slog.Info("LoadConfig", "config", key)
 	}
 
 	config := &Config{}

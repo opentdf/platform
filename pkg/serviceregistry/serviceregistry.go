@@ -2,6 +2,7 @@ package serviceregistry
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -33,7 +34,7 @@ type Service struct {
 // Map of namespaces to services
 var RegisteredServices map[string]map[string]Service
 
-func RegisterService(r Registration) {
+func RegisterService(r Registration) error {
 	if RegisteredServices == nil {
 		RegisteredServices = make(map[string]map[string]Service, 0)
 	}
@@ -42,12 +43,12 @@ func RegisterService(r Registration) {
 	}
 
 	if RegisteredServices[r.Namespace][r.ServiceDesc.ServiceName].RegisterFunc != nil {
-		slog.Warn("service already registered", slog.String("namespace", r.Namespace), slog.String("service", r.ServiceDesc.ServiceName))
-		return
+		return fmt.Errorf("service already registered namespace:%s service:%s", r.Namespace, r.ServiceDesc.ServiceName)
 	}
 
 	slog.Info("registered service", slog.String("namespace", r.Namespace), slog.String("service", r.ServiceDesc.ServiceName))
 	RegisteredServices[r.Namespace][r.ServiceDesc.ServiceName] = Service{
 		Registration: r,
 	}
+	return nil
 }

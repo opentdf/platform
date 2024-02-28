@@ -81,7 +81,10 @@ func Start(f ...func(StartConfig) StartConfig) error {
 	defer otdf.Stop()
 
 	slog.Info("registering services")
-	registerServices()
+	if err := registerServices(); err != nil {
+		slog.Error("issue registering services", slog.String("error", err.Error()))
+		return fmt.Errorf("issue registering services: %w", err)
+	}
 
 	slog.Info("starting services")
 	if err := startServices(*conf, otdf, dbClient, eng); err != nil {

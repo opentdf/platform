@@ -10,12 +10,30 @@ import (
 	"github.com/opentdf/platform/services/policy/subjectmapping"
 )
 
-func registerServices() {
+func registerServices() error {
 	// Register the services
-	serviceregistry.RegisterService(namespaces.NewRegistration())
-	serviceregistry.RegisterService(resourcemapping.NewRegistration())
-	serviceregistry.RegisterService(subjectmapping.NewRegistration())
-	serviceregistry.RegisterService(attributes.NewRegistration())
-	serviceregistry.RegisterService(kasregistry.NewRegistration())
-	serviceregistry.RegisterService(health.NewRegistration())
+	if err := serviceregistry.RegisterService(namespaces.NewRegistration()); err != nil {
+		return err
+	}
+
+	if err := serviceregistry.RegisterService(resourcemapping.NewRegistration()); err != nil {
+		return err
+	}
+
+	if err := serviceregistry.RegisterService(subjectmapping.NewRegistration()); err != nil {
+		return err
+	}
+
+	if err := serviceregistry.RegisterService(attributes.NewRegistration()); err != nil {
+		return err
+	}
+
+	if err := serviceregistry.RegisterService(kasregistry.NewRegistration()); err != nil {
+		return err
+	}
+
+	if err := serviceregistry.RegisterService(health.NewRegistration()); err != nil {
+		return err
+	}
+	return nil
 }

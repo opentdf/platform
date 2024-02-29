@@ -5,6 +5,20 @@
 package io.opentdf.platform.policy.subjectmapping;
 
 /**
+ * <pre>
+ *
+ *Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination
+ *
+ *Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one
+ *with permitted actions TRANSMIT and DECRYPT
+ *{
+ *"id": "someid",
+ *"attribute_value": {example_one_attribute_value...},
+ *"subject_sets": [{subject_set_1},{subject_set_2}]
+ *"actions": ["TRANSMIT", "DECRYPT"]
+ *}
+ * </pre>
+ *
  * Protobuf type {@code policy.subjectmapping.SubjectMapping}
  */
 public final class SubjectMapping extends
@@ -18,10 +32,8 @@ private static final long serialVersionUID = 0L;
   }
   private SubjectMapping() {
     id_ = "";
-    subjectAttribute_ = "";
-    subjectValues_ =
-        com.google.protobuf.LazyStringArrayList.emptyList();
-    operator_ = 0;
+    subjectSets_ = java.util.Collections.emptyList();
+    actions_ = java.util.Collections.emptyList();
   }
 
   @java.lang.Override
@@ -126,7 +138,7 @@ private static final long serialVersionUID = 0L;
   private io.opentdf.platform.policy.attributes.Value attributeValue_;
   /**
    * <pre>
-   * Attribute Value to be mapped to
+   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -138,7 +150,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * Attribute Value to be mapped to
+   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -150,7 +162,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * Attribute Value to be mapped to
+   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -160,130 +172,126 @@ private static final long serialVersionUID = 0L;
     return attributeValue_ == null ? io.opentdf.platform.policy.attributes.Value.getDefaultInstance() : attributeValue_;
   }
 
-  public static final int SUBJECT_ATTRIBUTE_FIELD_NUMBER = 4;
+  public static final int SUBJECT_SETS_FIELD_NUMBER = 4;
   @SuppressWarnings("serial")
-  private volatile java.lang.Object subjectAttribute_ = "";
+  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_;
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * the subjects included in this mapping
    * </pre>
    *
-   * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-   * @return The subjectAttribute.
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
    */
   @java.lang.Override
-  public java.lang.String getSubjectAttribute() {
-    java.lang.Object ref = subjectAttribute_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      subjectAttribute_ = s;
-      return s;
-    }
+  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
+    return subjectSets_;
   }
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * the subjects included in this mapping
    * </pre>
    *
-   * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-   * @return The bytes for subjectAttribute.
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString
-      getSubjectAttributeBytes() {
-    java.lang.Object ref = subjectAttribute_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      subjectAttribute_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
+  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+      getSubjectSetsOrBuilderList() {
+    return subjectSets_;
+  }
+  /**
+   * <pre>
+   * the subjects included in this mapping
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   */
+  @java.lang.Override
+  public int getSubjectSetsCount() {
+    return subjectSets_.size();
+  }
+  /**
+   * <pre>
+   * the subjects included in this mapping
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
+    return subjectSets_.get(index);
+  }
+  /**
+   * <pre>
+   * the subjects included in this mapping
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+      int index) {
+    return subjectSets_.get(index);
   }
 
-  public static final int SUBJECT_VALUES_FIELD_NUMBER = 5;
+  public static final int ACTIONS_FIELD_NUMBER = 5;
   @SuppressWarnings("serial")
-  private com.google.protobuf.LazyStringArrayList subjectValues_ =
-      com.google.protobuf.LazyStringArrayList.emptyList();
+  private java.util.List<io.opentdf.platform.authorization.Action> actions_;
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-   * @return A list containing the subjectValues.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  public com.google.protobuf.ProtocolStringList
-      getSubjectValuesList() {
-    return subjectValues_;
+  @java.lang.Override
+  public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
+    return actions_;
   }
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-   * @return The count of subjectValues.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  public int getSubjectValuesCount() {
-    return subjectValues_.size();
+  @java.lang.Override
+  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+      getActionsOrBuilderList() {
+    return actions_;
   }
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-   * @param index The index of the element to return.
-   * @return The subjectValues at the given index.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  public java.lang.String getSubjectValues(int index) {
-    return subjectValues_.get(index);
+  @java.lang.Override
+  public int getActionsCount() {
+    return actions_.size();
   }
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-   * @param index The index of the value to return.
-   * @return The bytes of the subjectValues at the given index.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  public com.google.protobuf.ByteString
-      getSubjectValuesBytes(int index) {
-    return subjectValues_.getByteString(index);
-  }
-
-  public static final int OPERATOR_FIELD_NUMBER = 6;
-  private int operator_ = 0;
-  /**
-   * <pre>
-   * the operator
-   * </pre>
-   *
-   * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-   * @return The enum numeric value on the wire for operator.
-   */
-  @java.lang.Override public int getOperatorValue() {
-    return operator_;
+  @java.lang.Override
+  public io.opentdf.platform.authorization.Action getActions(int index) {
+    return actions_.get(index);
   }
   /**
    * <pre>
-   * the operator
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-   * @return The operator.
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
-  @java.lang.Override public io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum getOperator() {
-    io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum result = io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.forNumber(operator_);
-    return result == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.UNRECOGNIZED : result;
+  @java.lang.Override
+  public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+      int index) {
+    return actions_.get(index);
   }
 
   private byte memoizedIsInitialized = -1;
@@ -309,14 +317,11 @@ private static final long serialVersionUID = 0L;
     if (((bitField0_ & 0x00000002) != 0)) {
       output.writeMessage(3, getAttributeValue());
     }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(subjectAttribute_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 4, subjectAttribute_);
+    for (int i = 0; i < subjectSets_.size(); i++) {
+      output.writeMessage(4, subjectSets_.get(i));
     }
-    for (int i = 0; i < subjectValues_.size(); i++) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 5, subjectValues_.getRaw(i));
-    }
-    if (operator_ != io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED.getNumber()) {
-      output.writeEnum(6, operator_);
+    for (int i = 0; i < actions_.size(); i++) {
+      output.writeMessage(5, actions_.get(i));
     }
     getUnknownFields().writeTo(output);
   }
@@ -338,20 +343,13 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(3, getAttributeValue());
     }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(subjectAttribute_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(4, subjectAttribute_);
-    }
-    {
-      int dataSize = 0;
-      for (int i = 0; i < subjectValues_.size(); i++) {
-        dataSize += computeStringSizeNoTag(subjectValues_.getRaw(i));
-      }
-      size += dataSize;
-      size += 1 * getSubjectValuesList().size();
-    }
-    if (operator_ != io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED.getNumber()) {
+    for (int i = 0; i < subjectSets_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeEnumSize(6, operator_);
+        .computeMessageSize(4, subjectSets_.get(i));
+    }
+    for (int i = 0; i < actions_.size(); i++) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(5, actions_.get(i));
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -380,11 +378,10 @@ private static final long serialVersionUID = 0L;
       if (!getAttributeValue()
           .equals(other.getAttributeValue())) return false;
     }
-    if (!getSubjectAttribute()
-        .equals(other.getSubjectAttribute())) return false;
-    if (!getSubjectValuesList()
-        .equals(other.getSubjectValuesList())) return false;
-    if (operator_ != other.operator_) return false;
+    if (!getSubjectSetsList()
+        .equals(other.getSubjectSetsList())) return false;
+    if (!getActionsList()
+        .equals(other.getActionsList())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -406,14 +403,14 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + ATTRIBUTE_VALUE_FIELD_NUMBER;
       hash = (53 * hash) + getAttributeValue().hashCode();
     }
-    hash = (37 * hash) + SUBJECT_ATTRIBUTE_FIELD_NUMBER;
-    hash = (53 * hash) + getSubjectAttribute().hashCode();
-    if (getSubjectValuesCount() > 0) {
-      hash = (37 * hash) + SUBJECT_VALUES_FIELD_NUMBER;
-      hash = (53 * hash) + getSubjectValuesList().hashCode();
+    if (getSubjectSetsCount() > 0) {
+      hash = (37 * hash) + SUBJECT_SETS_FIELD_NUMBER;
+      hash = (53 * hash) + getSubjectSetsList().hashCode();
     }
-    hash = (37 * hash) + OPERATOR_FIELD_NUMBER;
-    hash = (53 * hash) + operator_;
+    if (getActionsCount() > 0) {
+      hash = (37 * hash) + ACTIONS_FIELD_NUMBER;
+      hash = (53 * hash) + getActionsList().hashCode();
+    }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -512,6 +509,20 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
+   * <pre>
+   *
+   *Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination
+   *
+   *Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one
+   *with permitted actions TRANSMIT and DECRYPT
+   *{
+   *"id": "someid",
+   *"attribute_value": {example_one_attribute_value...},
+   *"subject_sets": [{subject_set_1},{subject_set_2}]
+   *"actions": ["TRANSMIT", "DECRYPT"]
+   *}
+   * </pre>
+   *
    * Protobuf type {@code policy.subjectmapping.SubjectMapping}
    */
   public static final class Builder extends
@@ -546,6 +557,8 @@ private static final long serialVersionUID = 0L;
               .alwaysUseFieldBuilders) {
         getMetadataFieldBuilder();
         getAttributeValueFieldBuilder();
+        getSubjectSetsFieldBuilder();
+        getActionsFieldBuilder();
       }
     }
     @java.lang.Override
@@ -563,10 +576,20 @@ private static final long serialVersionUID = 0L;
         attributeValueBuilder_.dispose();
         attributeValueBuilder_ = null;
       }
-      subjectAttribute_ = "";
-      subjectValues_ =
-          com.google.protobuf.LazyStringArrayList.emptyList();
-      operator_ = 0;
+      if (subjectSetsBuilder_ == null) {
+        subjectSets_ = java.util.Collections.emptyList();
+      } else {
+        subjectSets_ = null;
+        subjectSetsBuilder_.clear();
+      }
+      bitField0_ = (bitField0_ & ~0x00000008);
+      if (actionsBuilder_ == null) {
+        actions_ = java.util.Collections.emptyList();
+      } else {
+        actions_ = null;
+        actionsBuilder_.clear();
+      }
+      bitField0_ = (bitField0_ & ~0x00000010);
       return this;
     }
 
@@ -593,9 +616,31 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public io.opentdf.platform.policy.subjectmapping.SubjectMapping buildPartial() {
       io.opentdf.platform.policy.subjectmapping.SubjectMapping result = new io.opentdf.platform.policy.subjectmapping.SubjectMapping(this);
+      buildPartialRepeatedFields(result);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
+    }
+
+    private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.SubjectMapping result) {
+      if (subjectSetsBuilder_ == null) {
+        if (((bitField0_ & 0x00000008) != 0)) {
+          subjectSets_ = java.util.Collections.unmodifiableList(subjectSets_);
+          bitField0_ = (bitField0_ & ~0x00000008);
+        }
+        result.subjectSets_ = subjectSets_;
+      } else {
+        result.subjectSets_ = subjectSetsBuilder_.build();
+      }
+      if (actionsBuilder_ == null) {
+        if (((bitField0_ & 0x00000010) != 0)) {
+          actions_ = java.util.Collections.unmodifiableList(actions_);
+          bitField0_ = (bitField0_ & ~0x00000010);
+        }
+        result.actions_ = actions_;
+      } else {
+        result.actions_ = actionsBuilder_.build();
+      }
     }
 
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.SubjectMapping result) {
@@ -615,16 +660,6 @@ private static final long serialVersionUID = 0L;
             ? attributeValue_
             : attributeValueBuilder_.build();
         to_bitField0_ |= 0x00000002;
-      }
-      if (((from_bitField0_ & 0x00000008) != 0)) {
-        result.subjectAttribute_ = subjectAttribute_;
-      }
-      if (((from_bitField0_ & 0x00000010) != 0)) {
-        subjectValues_.makeImmutable();
-        result.subjectValues_ = subjectValues_;
-      }
-      if (((from_bitField0_ & 0x00000020) != 0)) {
-        result.operator_ = operator_;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -684,23 +719,57 @@ private static final long serialVersionUID = 0L;
       if (other.hasAttributeValue()) {
         mergeAttributeValue(other.getAttributeValue());
       }
-      if (!other.getSubjectAttribute().isEmpty()) {
-        subjectAttribute_ = other.subjectAttribute_;
-        bitField0_ |= 0x00000008;
-        onChanged();
-      }
-      if (!other.subjectValues_.isEmpty()) {
-        if (subjectValues_.isEmpty()) {
-          subjectValues_ = other.subjectValues_;
-          bitField0_ |= 0x00000010;
-        } else {
-          ensureSubjectValuesIsMutable();
-          subjectValues_.addAll(other.subjectValues_);
+      if (subjectSetsBuilder_ == null) {
+        if (!other.subjectSets_.isEmpty()) {
+          if (subjectSets_.isEmpty()) {
+            subjectSets_ = other.subjectSets_;
+            bitField0_ = (bitField0_ & ~0x00000008);
+          } else {
+            ensureSubjectSetsIsMutable();
+            subjectSets_.addAll(other.subjectSets_);
+          }
+          onChanged();
         }
-        onChanged();
+      } else {
+        if (!other.subjectSets_.isEmpty()) {
+          if (subjectSetsBuilder_.isEmpty()) {
+            subjectSetsBuilder_.dispose();
+            subjectSetsBuilder_ = null;
+            subjectSets_ = other.subjectSets_;
+            bitField0_ = (bitField0_ & ~0x00000008);
+            subjectSetsBuilder_ = 
+              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
+                 getSubjectSetsFieldBuilder() : null;
+          } else {
+            subjectSetsBuilder_.addAllMessages(other.subjectSets_);
+          }
+        }
       }
-      if (other.operator_ != 0) {
-        setOperatorValue(other.getOperatorValue());
+      if (actionsBuilder_ == null) {
+        if (!other.actions_.isEmpty()) {
+          if (actions_.isEmpty()) {
+            actions_ = other.actions_;
+            bitField0_ = (bitField0_ & ~0x00000010);
+          } else {
+            ensureActionsIsMutable();
+            actions_.addAll(other.actions_);
+          }
+          onChanged();
+        }
+      } else {
+        if (!other.actions_.isEmpty()) {
+          if (actionsBuilder_.isEmpty()) {
+            actionsBuilder_.dispose();
+            actionsBuilder_ = null;
+            actions_ = other.actions_;
+            bitField0_ = (bitField0_ & ~0x00000010);
+            actionsBuilder_ = 
+              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
+                 getActionsFieldBuilder() : null;
+          } else {
+            actionsBuilder_.addAllMessages(other.actions_);
+          }
+        }
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -748,21 +817,31 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 26
             case 34: {
-              subjectAttribute_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000008;
+              io.opentdf.platform.policy.subjectmapping.SubjectSet m =
+                  input.readMessage(
+                      io.opentdf.platform.policy.subjectmapping.SubjectSet.parser(),
+                      extensionRegistry);
+              if (subjectSetsBuilder_ == null) {
+                ensureSubjectSetsIsMutable();
+                subjectSets_.add(m);
+              } else {
+                subjectSetsBuilder_.addMessage(m);
+              }
               break;
             } // case 34
             case 42: {
-              java.lang.String s = input.readStringRequireUtf8();
-              ensureSubjectValuesIsMutable();
-              subjectValues_.add(s);
+              io.opentdf.platform.authorization.Action m =
+                  input.readMessage(
+                      io.opentdf.platform.authorization.Action.parser(),
+                      extensionRegistry);
+              if (actionsBuilder_ == null) {
+                ensureActionsIsMutable();
+                actions_.add(m);
+              } else {
+                actionsBuilder_.addMessage(m);
+              }
               break;
             } // case 42
-            case 48: {
-              operator_ = input.readEnum();
-              bitField0_ |= 0x00000020;
-              break;
-            } // case 48
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -1014,7 +1093,7 @@ private static final long serialVersionUID = 0L;
         io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder> attributeValueBuilder_;
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1025,7 +1104,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1040,7 +1119,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1060,7 +1139,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1078,7 +1157,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1103,7 +1182,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1120,7 +1199,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1132,7 +1211,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1147,7 +1226,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to
+     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1166,316 +1245,628 @@ private static final long serialVersionUID = 0L;
       return attributeValueBuilder_;
     }
 
-    private java.lang.Object subjectAttribute_ = "";
-    /**
-     * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
-     * </pre>
-     *
-     * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-     * @return The subjectAttribute.
-     */
-    public java.lang.String getSubjectAttribute() {
-      java.lang.Object ref = subjectAttribute_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        subjectAttribute_ = s;
-        return s;
-      } else {
-        return (java.lang.String) ref;
-      }
-    }
-    /**
-     * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
-     * </pre>
-     *
-     * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-     * @return The bytes for subjectAttribute.
-     */
-    public com.google.protobuf.ByteString
-        getSubjectAttributeBytes() {
-      java.lang.Object ref = subjectAttribute_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        subjectAttribute_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-    /**
-     * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
-     * </pre>
-     *
-     * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-     * @param value The subjectAttribute to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSubjectAttribute(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      subjectAttribute_ = value;
-      bitField0_ |= 0x00000008;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
-     * </pre>
-     *
-     * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearSubjectAttribute() {
-      subjectAttribute_ = getDefaultInstance().getSubjectAttribute();
-      bitField0_ = (bitField0_ & ~0x00000008);
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
-     * </pre>
-     *
-     * <code>string subject_attribute = 4 [json_name = "subjectAttribute"];</code>
-     * @param value The bytes for subjectAttribute to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSubjectAttributeBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      subjectAttribute_ = value;
-      bitField0_ |= 0x00000008;
-      onChanged();
-      return this;
+    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_ =
+      java.util.Collections.emptyList();
+    private void ensureSubjectSetsIsMutable() {
+      if (!((bitField0_ & 0x00000008) != 0)) {
+        subjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectSet>(subjectSets_);
+        bitField0_ |= 0x00000008;
+       }
     }
 
-    private com.google.protobuf.LazyStringArrayList subjectValues_ =
-        com.google.protobuf.LazyStringArrayList.emptyList();
-    private void ensureSubjectValuesIsMutable() {
-      if (!subjectValues_.isModifiable()) {
-        subjectValues_ = new com.google.protobuf.LazyStringArrayList(subjectValues_);
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> subjectSetsBuilder_;
+
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
+      if (subjectSetsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(subjectSets_);
+      } else {
+        return subjectSetsBuilder_.getMessageList();
       }
-      bitField0_ |= 0x00000010;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * the subjects included in this mapping
      * </pre>
      *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @return A list containing the subjectValues.
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public com.google.protobuf.ProtocolStringList
-        getSubjectValuesList() {
-      subjectValues_.makeImmutable();
-      return subjectValues_;
+    public int getSubjectSetsCount() {
+      if (subjectSetsBuilder_ == null) {
+        return subjectSets_.size();
+      } else {
+        return subjectSetsBuilder_.getCount();
+      }
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * the subjects included in this mapping
      * </pre>
      *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @return The count of subjectValues.
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public int getSubjectValuesCount() {
-      return subjectValues_.size();
+    public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
+      if (subjectSetsBuilder_ == null) {
+        return subjectSets_.get(index);
+      } else {
+        return subjectSetsBuilder_.getMessage(index);
+      }
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * the subjects included in this mapping
      * </pre>
      *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @param index The index of the element to return.
-     * @return The subjectValues at the given index.
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public java.lang.String getSubjectValues(int index) {
-      return subjectValues_.get(index);
-    }
-    /**
-     * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
-     * </pre>
-     *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @param index The index of the value to return.
-     * @return The bytes of the subjectValues at the given index.
-     */
-    public com.google.protobuf.ByteString
-        getSubjectValuesBytes(int index) {
-      return subjectValues_.getByteString(index);
-    }
-    /**
-     * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
-     * </pre>
-     *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @param index The index to set the value at.
-     * @param value The subjectValues to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSubjectValues(
-        int index, java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      ensureSubjectValuesIsMutable();
-      subjectValues_.set(index, value);
-      bitField0_ |= 0x00000010;
-      onChanged();
+    public Builder setSubjectSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
+      if (subjectSetsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSubjectSetsIsMutable();
+        subjectSets_.set(index, value);
+        onChanged();
+      } else {
+        subjectSetsBuilder_.setMessage(index, value);
+      }
       return this;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * the subjects included in this mapping
      * </pre>
      *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @param value The subjectValues to add.
-     * @return This builder for chaining.
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public Builder addSubjectValues(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      ensureSubjectValuesIsMutable();
-      subjectValues_.add(value);
-      bitField0_ |= 0x00000010;
-      onChanged();
+    public Builder setSubjectSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        subjectSets_.set(index, builderForValue.build());
+        onChanged();
+      } else {
+        subjectSetsBuilder_.setMessage(index, builderForValue.build());
+      }
       return this;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * the subjects included in this mapping
      * </pre>
      *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @param values The subjectValues to add.
-     * @return This builder for chaining.
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public Builder addAllSubjectValues(
-        java.lang.Iterable<java.lang.String> values) {
-      ensureSubjectValuesIsMutable();
-      com.google.protobuf.AbstractMessageLite.Builder.addAll(
-          values, subjectValues_);
-      bitField0_ |= 0x00000010;
-      onChanged();
+    public Builder addSubjectSets(io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
+      if (subjectSetsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSubjectSetsIsMutable();
+        subjectSets_.add(value);
+        onChanged();
+      } else {
+        subjectSetsBuilder_.addMessage(value);
+      }
       return this;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * the subjects included in this mapping
      * </pre>
      *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @return This builder for chaining.
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public Builder clearSubjectValues() {
-      subjectValues_ =
-        com.google.protobuf.LazyStringArrayList.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000010);;
-      onChanged();
+    public Builder addSubjectSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
+      if (subjectSetsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSubjectSetsIsMutable();
+        subjectSets_.add(index, value);
+        onChanged();
+      } else {
+        subjectSetsBuilder_.addMessage(index, value);
+      }
       return this;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * the subjects included in this mapping
      * </pre>
      *
-     * <code>repeated string subject_values = 5 [json_name = "subjectValues"];</code>
-     * @param value The bytes of the subjectValues to add.
-     * @return This builder for chaining.
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
      */
-    public Builder addSubjectValuesBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      ensureSubjectValuesIsMutable();
-      subjectValues_.add(value);
-      bitField0_ |= 0x00000010;
-      onChanged();
+    public Builder addSubjectSets(
+        io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        subjectSets_.add(builderForValue.build());
+        onChanged();
+      } else {
+        subjectSetsBuilder_.addMessage(builderForValue.build());
+      }
       return this;
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public Builder addSubjectSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        subjectSets_.add(index, builderForValue.build());
+        onChanged();
+      } else {
+        subjectSetsBuilder_.addMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public Builder addAllSubjectSets(
+        java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectSet> values) {
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, subjectSets_);
+        onChanged();
+      } else {
+        subjectSetsBuilder_.addAllMessages(values);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public Builder clearSubjectSets() {
+      if (subjectSetsBuilder_ == null) {
+        subjectSets_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000008);
+        onChanged();
+      } else {
+        subjectSetsBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public Builder removeSubjectSets(int index) {
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        subjectSets_.remove(index);
+        onChanged();
+      } else {
+        subjectSetsBuilder_.remove(index);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder getSubjectSetsBuilder(
+        int index) {
+      return getSubjectSetsFieldBuilder().getBuilder(index);
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+        int index) {
+      if (subjectSetsBuilder_ == null) {
+        return subjectSets_.get(index);  } else {
+        return subjectSetsBuilder_.getMessageOrBuilder(index);
+      }
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+         getSubjectSetsOrBuilderList() {
+      if (subjectSetsBuilder_ != null) {
+        return subjectSetsBuilder_.getMessageOrBuilderList();
+      } else {
+        return java.util.Collections.unmodifiableList(subjectSets_);
+      }
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder() {
+      return getSubjectSetsFieldBuilder().addBuilder(
+          io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder(
+        int index) {
+      return getSubjectSetsFieldBuilder().addBuilder(
+          index, io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * the subjects included in this mapping
+     * </pre>
+     *
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     */
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder> 
+         getSubjectSetsBuilderList() {
+      return getSubjectSetsFieldBuilder().getBuilderList();
+    }
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+        getSubjectSetsFieldBuilder() {
+      if (subjectSetsBuilder_ == null) {
+        subjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>(
+                subjectSets_,
+                ((bitField0_ & 0x00000008) != 0),
+                getParentForChildren(),
+                isClean());
+        subjectSets_ = null;
+      }
+      return subjectSetsBuilder_;
     }
 
-    private int operator_ = 0;
-    /**
-     * <pre>
-     * the operator
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-     * @return The enum numeric value on the wire for operator.
-     */
-    @java.lang.Override public int getOperatorValue() {
-      return operator_;
+    private java.util.List<io.opentdf.platform.authorization.Action> actions_ =
+      java.util.Collections.emptyList();
+    private void ensureActionsIsMutable() {
+      if (!((bitField0_ & 0x00000010) != 0)) {
+        actions_ = new java.util.ArrayList<io.opentdf.platform.authorization.Action>(actions_);
+        bitField0_ |= 0x00000010;
+       }
     }
+
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> actionsBuilder_;
+
     /**
      * <pre>
-     * the operator
+     * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-     * @param value The enum numeric value on the wire for operator to set.
-     * @return This builder for chaining.
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
-    public Builder setOperatorValue(int value) {
-      operator_ = value;
-      bitField0_ |= 0x00000020;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * the operator
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-     * @return The operator.
-     */
-    @java.lang.Override
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum getOperator() {
-      io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum result = io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.forNumber(operator_);
-      return result == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.UNRECOGNIZED : result;
-    }
-    /**
-     * <pre>
-     * the operator
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-     * @param value The operator to set.
-     * @return This builder for chaining.
-     */
-    public Builder setOperator(io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum value) {
-      if (value == null) {
-        throw new NullPointerException();
+    public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
+      if (actionsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(actions_);
+      } else {
+        return actionsBuilder_.getMessageList();
       }
-      bitField0_ |= 0x00000020;
-      operator_ = value.getNumber();
-      onChanged();
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public int getActionsCount() {
+      if (actionsBuilder_ == null) {
+        return actions_.size();
+      } else {
+        return actionsBuilder_.getCount();
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public io.opentdf.platform.authorization.Action getActions(int index) {
+      if (actionsBuilder_ == null) {
+        return actions_.get(index);
+      } else {
+        return actionsBuilder_.getMessage(index);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public Builder setActions(
+        int index, io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureActionsIsMutable();
+        actions_.set(index, value);
+        onChanged();
+      } else {
+        actionsBuilder_.setMessage(index, value);
+      }
       return this;
     }
     /**
      * <pre>
-     * the operator
+     * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 6 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-     * @return This builder for chaining.
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
-    public Builder clearOperator() {
-      bitField0_ = (bitField0_ & ~0x00000020);
-      operator_ = 0;
-      onChanged();
+    public Builder setActions(
+        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.set(index, builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.setMessage(index, builderForValue.build());
+      }
       return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public Builder addActions(io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureActionsIsMutable();
+        actions_.add(value);
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public Builder addActions(
+        int index, io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureActionsIsMutable();
+        actions_.add(index, value);
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public Builder addActions(
+        io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.add(builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public Builder addActions(
+        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.add(index, builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public Builder addAllActions(
+        java.lang.Iterable<? extends io.opentdf.platform.authorization.Action> values) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, actions_);
+        onChanged();
+      } else {
+        actionsBuilder_.addAllMessages(values);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public Builder clearActions() {
+      if (actionsBuilder_ == null) {
+        actions_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000010);
+        onChanged();
+      } else {
+        actionsBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public Builder removeActions(int index) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.remove(index);
+        onChanged();
+      } else {
+        actionsBuilder_.remove(index);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder getActionsBuilder(
+        int index) {
+      return getActionsFieldBuilder().getBuilder(index);
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+        int index) {
+      if (actionsBuilder_ == null) {
+        return actions_.get(index);  } else {
+        return actionsBuilder_.getMessageOrBuilder(index);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+         getActionsOrBuilderList() {
+      if (actionsBuilder_ != null) {
+        return actionsBuilder_.getMessageOrBuilderList();
+      } else {
+        return java.util.Collections.unmodifiableList(actions_);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder() {
+      return getActionsFieldBuilder().addBuilder(
+          io.opentdf.platform.authorization.Action.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder(
+        int index) {
+      return getActionsFieldBuilder().addBuilder(
+          index, io.opentdf.platform.authorization.Action.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+     */
+    public java.util.List<io.opentdf.platform.authorization.Action.Builder> 
+         getActionsBuilderList() {
+      return getActionsFieldBuilder().getBuilderList();
+    }
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> 
+        getActionsFieldBuilder() {
+      if (actionsBuilder_ == null) {
+        actionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>(
+                actions_,
+                ((bitField0_ & 0x00000010) != 0),
+                getParentForChildren(),
+                isClean());
+        actions_ = null;
+      }
+      return actionsBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

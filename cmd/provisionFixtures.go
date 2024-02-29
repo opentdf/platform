@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/internal/config"
+	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/spf13/cobra"
 )
@@ -34,13 +35,12 @@ to run this command in a clean database. This command is intended for local deve
 ** Teardown or Issues **
 You can clear/recycle your database with 'docker-compose down' and 'docker-compose up' to start fresh.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			cfg, err := config.LoadConfig()
+			cfg, err := config.LoadConfig("opentdf")
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
-			ctx := cmd.Context()
 
-			dbClient, err := createDatabaseClient(ctx, cfg.DB)
+			dbClient, err := db.NewClient(cfg.DB)
 			if err != nil {
 				panic(fmt.Errorf("issue creating database client: %w", err))
 			}

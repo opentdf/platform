@@ -174,46 +174,6 @@
     }
   },
   "definitions": {
-    "attributesValue": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "generated uuid in database"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
-        "attributeId": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "list of attribute values that this value is related to (attribute group)"
-        },
-        "grants": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/kasregistryKeyAccessServer"
-          },
-          "title": "list of key access servers"
-        },
-        "fqn": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean",
-          "title": "active by default until explicitly deactivated"
-        }
-      }
-    },
     "commonMetadata": {
       "type": "object",
       "properties": {
@@ -289,6 +249,46 @@
         }
       }
     },
+    "policyattributesValue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        },
+        "attributeId": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of attribute values that this value is related to (attribute group)"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          },
+          "title": "list of key access servers"
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -346,7 +346,7 @@
           "$ref": "#/definitions/commonMetadata"
         },
         "attributeValue": {
-          "$ref": "#/definitions/attributesValue"
+          "$ref": "#/definitions/policyattributesValue"
         },
         "terms": {
           "type": "array",

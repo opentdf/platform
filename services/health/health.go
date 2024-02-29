@@ -4,8 +4,9 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/internal/db"
-	"google.golang.org/grpc"
+	"github.com/opentdf/platform/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
@@ -16,12 +17,15 @@ type HealthService struct {
 	db *db.Client
 }
 
-func NewHealthService(dbClient *db.Client, gs []*grpc.Server) {
-	hs := &HealthService{
-		db: dbClient,
-	}
-	for _, g := range gs {
-		healthpb.RegisterHealthServer(g, hs)
+func NewRegistration() serviceregistry.Registration {
+	return serviceregistry.Registration{
+		Namespace:   "health",
+		ServiceDesc: &healthpb.Health_ServiceDesc,
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			return &HealthService{db: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+				return nil
+			}
+		},
 	}
 }
 

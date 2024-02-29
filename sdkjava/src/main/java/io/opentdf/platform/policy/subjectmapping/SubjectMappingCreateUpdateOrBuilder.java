@@ -45,81 +45,86 @@ public interface SubjectMappingCreateUpdateOrBuilder extends
 
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * the subjects sets in this mapping
    * </pre>
    *
-   * <code>string subject_attribute = 3 [json_name = "subjectAttribute"];</code>
-   * @return The subjectAttribute.
-   */
-  java.lang.String getSubjectAttribute();
-  /**
-   * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
-   * </pre>
-   *
-   * <code>string subject_attribute = 3 [json_name = "subjectAttribute"];</code>
-   * @return The bytes for subjectAttribute.
-   */
-  com.google.protobuf.ByteString
-      getSubjectAttributeBytes();
-
-  /**
-   * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
-   * </pre>
-   *
-   * <code>repeated string subject_values = 4 [json_name = "subjectValues"];</code>
-   * @return A list containing the subjectValues.
+   * <code>repeated string subject_set_ids = 3 [json_name = "subjectSetIds"];</code>
+   * @return A list containing the subjectSetIds.
    */
   java.util.List<java.lang.String>
-      getSubjectValuesList();
+      getSubjectSetIdsList();
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * the subjects sets in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 4 [json_name = "subjectValues"];</code>
-   * @return The count of subjectValues.
+   * <code>repeated string subject_set_ids = 3 [json_name = "subjectSetIds"];</code>
+   * @return The count of subjectSetIds.
    */
-  int getSubjectValuesCount();
+  int getSubjectSetIdsCount();
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * the subjects sets in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 4 [json_name = "subjectValues"];</code>
+   * <code>repeated string subject_set_ids = 3 [json_name = "subjectSetIds"];</code>
    * @param index The index of the element to return.
-   * @return The subjectValues at the given index.
+   * @return The subjectSetIds at the given index.
    */
-  java.lang.String getSubjectValues(int index);
+  java.lang.String getSubjectSetIds(int index);
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * the subjects sets in this mapping
    * </pre>
    *
-   * <code>repeated string subject_values = 4 [json_name = "subjectValues"];</code>
+   * <code>repeated string subject_set_ids = 3 [json_name = "subjectSetIds"];</code>
    * @param index The index of the value to return.
-   * @return The bytes of the subjectValues at the given index.
+   * @return The bytes of the subjectSetIds at the given index.
    */
   com.google.protobuf.ByteString
-      getSubjectValuesBytes(int index);
+      getSubjectSetIdsBytes(int index);
 
   /**
    * <pre>
-   * the operator
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 5 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-   * @return The enum numeric value on the wire for operator.
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
-  int getOperatorValue();
+  java.util.List<io.opentdf.platform.authorization.Action> 
+      getActionsList();
   /**
    * <pre>
-   * the operator
+   * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 5 [json_name = "operator", (.buf.validate.field) = { ... }</code>
-   * @return The operator.
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum getOperator();
+  io.opentdf.platform.authorization.Action getActions(int index);
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+   */
+  int getActionsCount();
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+   */
+  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+      getActionsOrBuilderList();
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+   */
+  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+      int index);
 }

@@ -2,25 +2,36 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/open-policy-agent/opa/metrics"
+	"github.com/open-policy-agent/opa/profiler"
+	"github.com/open-policy-agent/opa/sdk"
+	"github.com/opentdf/platform/internal/entitlements"
+	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/services"
 	"google.golang.org/grpc"
 )
 
 type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
-	cc *grpc.ClientConn
+	eng *opa.Engine
+	cc  *grpc.ClientConn
 }
 
-func NewAuthorizationServer(g *grpc.Server, cc *grpc.ClientConn, s *runtime.ServeMux) error {
+func NewAuthorizationServer(g *grpc.Server, cc *grpc.ClientConn, s *runtime.ServeMux, eng *opa.Engine) error {
 	as := &AuthorizationService{
-		cc: cc,
+		eng: eng,
+		cc:  cc,
 	}
 	authorization.RegisterAuthorizationServiceServer(g, as)
 	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)
@@ -31,7 +42,7 @@ func NewAuthorizationServer(g *grpc.Server, cc *grpc.ClientConn, s *runtime.Serv
 }
 
 func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
-	slog.Debug("getting decisions")
+	slog.DebugContext(ctx, "getting decisions")
 
 	attrClient := attr.NewAttributesServiceClient(as.cc)
 
@@ -71,12 +82,71 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
-
-	rsp := &authorization.GetEntitlementsResponse{}
-
-	var empty_entityEntitlements []*authorization.EntityEntitlements
-
-	rsp.Entitlements = empty_entityEntitlements
-
+	// get subject mappings
+	smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
+	ins := subjectmapping.GetSubjectSetRequest{
+		Id: "abc",
+	}
+	out, err := smc.GetSubjectSet(ctx, &ins)
+	if err != nil {
+		slog.ErrorContext(ctx, err.Error())
+		return nil, err
+	}
+	slog.InfoContext(ctx, out.String())
+	// OPA
+	in, err := entitlements.OpaInput(req.Entities[0], out.SubjectSet)
+	if err != nil {
+		return nil, err
+	}
+	slog.Debug("entitlements", "input", fmt.Sprintf("%+v", in))
+	if err := json.NewEncoder(os.Stdout).Encode(in); err != nil {
+		panic(err)
+	}
+	options := sdk.DecisionOptions{
+		Now:                 time.Now(),
+		Path:                "opentdf/entitlements/entitlements",
+		Input:               in,
+		NDBCache:            nil,
+		StrictBuiltinErrors: false,
+		Tracer:              nil,
+		Metrics:             metrics.New(),
+		Profiler:            profiler.New(),
+		Instrument:          true,
+		DecisionID:          fmt.Sprintf("%-v", req.String()),
+	}
+	decision, err := as.eng.Decision(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	slog.DebugContext(ctx, "opa", "result", fmt.Sprintf("%+v", decision.Result))
+	results, ok := decision.Result.(map[string]interface{})
+	if !ok {
+		slog.DebugContext(ctx, "not ok", "decision.Result", fmt.Sprintf("%+v", decision.Result))
+		return nil, err
+	}
+	rsp := &authorization.GetEntitlementsResponse{
+		Entitlements: make([]*authorization.EntityEntitlements, 0),
+	}
+	for k, v := range results {
+		va, okk := v.([]interface{})
+		if !okk {
+			slog.DebugContext(ctx, "not ok", k, fmt.Sprintf("%+v", v))
+			continue
+		}
+		var saa []string
+		for _, sv := range va {
+			str, okkk := sv.(string)
+			if !okkk {
+				slog.DebugContext(ctx, "not ok", k, fmt.Sprintf("%+v", sv))
+			}
+			saa = append(saa, str)
+		}
+		slog.DebugContext(ctx, "opa", k, fmt.Sprintf("%+v", va))
+		rsp.Entitlements = append(rsp.Entitlements, &authorization.EntityEntitlements{
+			EntityId:    k,
+			AttributeId: saa,
+		})
+		slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
+	}
 	return rsp, nil
 }

@@ -238,6 +238,10 @@
                 </li>
               
                 <li>
+                  <a href="#authorization.Entitlements"><span class="badge">M</span>Entitlements</a>
+                </li>
+              
+                <li>
                   <a href="#authorization.Entity"><span class="badge">M</span>Entity</a>
                 </li>
               
@@ -247,10 +251,6 @@
               
                 <li>
                   <a href="#authorization.EntityCustom"><span class="badge">M</span>EntityCustom</a>
-                </li>
-              
-                <li>
-                  <a href="#authorization.EntityEntitlements"><span class="badge">M</span>EntityEntitlements</a>
                 </li>
               
                 <li>
@@ -267,6 +267,10 @@
               
                 <li>
                   <a href="#authorization.GetEntitlementsResponse"><span class="badge">M</span>GetEntitlementsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.GetEntitlementsResponse.EntityEntitlementsEntry"><span class="badge">M</span>GetEntitlementsResponse.EntityEntitlementsEntry</a>
                 </li>
               
                 <li>
@@ -1290,6 +1294,30 @@
 
         
       
+        <h3 id="authorization.Entitlements">Entitlements</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute_fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="authorization.Entity">Entity</h3>
         <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
 
@@ -1411,37 +1439,6 @@
 
         
       
-        <h3 id="authorization.EntityEntitlements">EntityEntitlements</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>entity_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>attribute_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="authorization.GetDecisionsRequest">GetDecisionsRequest</h3>
         <p></p>
 
@@ -1532,9 +1529,40 @@
             <tbody>
               
                 <tr>
-                  <td>entitlements</td>
-                  <td><a href="#authorization.EntityEntitlements">EntityEntitlements</a></td>
+                  <td>entity_entitlements</td>
+                  <td><a href="#authorization.GetEntitlementsResponse.EntityEntitlementsEntry">GetEntitlementsResponse.EntityEntitlementsEntry</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.GetEntitlementsResponse.EntityEntitlementsEntry">GetEntitlementsResponse.EntityEntitlementsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#authorization.Entitlements">Entitlements</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               

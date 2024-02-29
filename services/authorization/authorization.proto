@@ -178,9 +178,8 @@ message GetEntitlementsRequest {
   optional ResourceAttribute scope = 2; //optional attribute fqn as a scope
 }
 
-message EntityEntitlements {
-  string entity_id = 1;
-  repeated string attribute_id = 2;
+message Entitlements {
+  repeated string attribute_fqns = 2;
 }
 
 //A logical bucket of attributes belonging to a "Resource"
@@ -216,7 +215,7 @@ message ResourceAttribute {
 
 */
 message GetEntitlementsResponse {
-  repeated EntityEntitlements entitlements = 1;
+  map<string, Entitlements> entity_entitlements = 1;
 }
 
 service AuthorizationService {

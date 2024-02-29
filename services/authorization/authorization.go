@@ -125,7 +125,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 		return nil, err
 	}
 	rsp := &authorization.GetEntitlementsResponse{
-		Entitlements: make([]*authorization.EntityEntitlements, 0),
+		EntityEntitlements: make(map[string]*authorization.Entitlements),
 	}
 	for k, v := range results {
 		va, okk := v.([]interface{})
@@ -142,10 +142,9 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 			saa = append(saa, str)
 		}
 		slog.DebugContext(ctx, "opa", k, fmt.Sprintf("%+v", va))
-		rsp.Entitlements = append(rsp.Entitlements, &authorization.EntityEntitlements{
-			EntityId:    k,
-			AttributeId: saa,
-		})
+		rsp.EntityEntitlements[k] = &authorization.Entitlements{
+			AttributeFqns: saa,
+		}
 		slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
 	}
 	return rsp, nil

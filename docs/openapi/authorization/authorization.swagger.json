@@ -163,6 +163,17 @@
       "description": "Results:\n- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation\n- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes\n- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\",\n\"obligations\":  [\n\"http://www.example.org/obligation/watermark\"\n]\n},\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_DENY\"\n}",
       "title": "Example response for a Decision Request -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
     },
+    "authorizationEntitlements": {
+      "type": "object",
+      "properties": {
+        "attributeFqns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "authorizationEntity": {
       "type": "object",
       "properties": {
@@ -217,20 +228,6 @@
       },
       "title": "Entity type for custom entities beyond the standard types"
     },
-    "authorizationEntityEntitlements": {
-      "type": "object",
-      "properties": {
-        "entityId": {
-          "type": "string"
-        },
-        "attributeId": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "authorizationGetDecisionsResponse": {
       "type": "object",
       "properties": {
@@ -246,11 +243,10 @@
     "authorizationGetEntitlementsResponse": {
       "type": "object",
       "properties": {
-        "entitlements": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationEntityEntitlements"
+        "entityEntitlements": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/authorizationEntitlements"
           }
         }
       },

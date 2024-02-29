@@ -44,7 +44,6 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private GetEntitlementsResponse() {
-    entitlements_ = java.util.Collections.emptyList();
   }
 
   @java.lang.Override
@@ -59,6 +58,18 @@ private static final long serialVersionUID = 0L;
     return io.opentdf.platform.authorization.AuthorizationProto.internal_static_authorization_GetEntitlementsResponse_descriptor;
   }
 
+  @SuppressWarnings({"rawtypes"})
+  @java.lang.Override
+  protected com.google.protobuf.MapFieldReflectionAccessor internalGetMapFieldReflection(
+      int number) {
+    switch (number) {
+      case 1:
+        return internalGetEntityEntitlements();
+      default:
+        throw new RuntimeException(
+            "Invalid map field number: " + number);
+    }
+  }
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
@@ -67,45 +78,83 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.authorization.GetEntitlementsResponse.class, io.opentdf.platform.authorization.GetEntitlementsResponse.Builder.class);
   }
 
-  public static final int ENTITLEMENTS_FIELD_NUMBER = 1;
+  public static final int ENTITY_ENTITLEMENTS_FIELD_NUMBER = 1;
+  private static final class EntityEntitlementsDefaultEntryHolder {
+    static final com.google.protobuf.MapEntry<
+        java.lang.String, io.opentdf.platform.authorization.Entitlements> defaultEntry =
+            com.google.protobuf.MapEntry
+            .<java.lang.String, io.opentdf.platform.authorization.Entitlements>newDefaultInstance(
+                io.opentdf.platform.authorization.AuthorizationProto.internal_static_authorization_GetEntitlementsResponse_EntityEntitlementsEntry_descriptor, 
+                com.google.protobuf.WireFormat.FieldType.STRING,
+                "",
+                com.google.protobuf.WireFormat.FieldType.MESSAGE,
+                io.opentdf.platform.authorization.Entitlements.getDefaultInstance());
+  }
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.authorization.EntityEntitlements> entitlements_;
-  /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.opentdf.platform.authorization.EntityEntitlements> getEntitlementsList() {
-    return entitlements_;
+  private com.google.protobuf.MapField<
+      java.lang.String, io.opentdf.platform.authorization.Entitlements> entityEntitlements_;
+  private com.google.protobuf.MapField<java.lang.String, io.opentdf.platform.authorization.Entitlements>
+  internalGetEntityEntitlements() {
+    if (entityEntitlements_ == null) {
+      return com.google.protobuf.MapField.emptyMapField(
+          EntityEntitlementsDefaultEntryHolder.defaultEntry);
+    }
+    return entityEntitlements_;
+  }
+  public int getEntityEntitlementsCount() {
+    return internalGetEntityEntitlements().getMap().size();
   }
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.authorization.EntityEntitlementsOrBuilder> 
-      getEntitlementsOrBuilderList() {
-    return entitlements_;
+  public boolean containsEntityEntitlements(
+      java.lang.String key) {
+    if (key == null) { throw new NullPointerException("map key"); }
+    return internalGetEntityEntitlements().getMap().containsKey(key);
   }
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * Use {@link #getEntityEntitlementsMap()} instead.
    */
   @java.lang.Override
-  public int getEntitlementsCount() {
-    return entitlements_.size();
+  @java.lang.Deprecated
+  public java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements> getEntityEntitlements() {
+    return getEntityEntitlementsMap();
   }
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.EntityEntitlements getEntitlements(int index) {
-    return entitlements_.get(index);
+  public java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements> getEntityEntitlementsMap() {
+    return internalGetEntityEntitlements().getMap();
   }
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.EntityEntitlementsOrBuilder getEntitlementsOrBuilder(
-      int index) {
-    return entitlements_.get(index);
+  public /* nullable */
+io.opentdf.platform.authorization.Entitlements getEntityEntitlementsOrDefault(
+      java.lang.String key,
+      /* nullable */
+io.opentdf.platform.authorization.Entitlements defaultValue) {
+    if (key == null) { throw new NullPointerException("map key"); }
+    java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements> map =
+        internalGetEntityEntitlements().getMap();
+    return map.containsKey(key) ? map.get(key) : defaultValue;
+  }
+  /**
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.authorization.Entitlements getEntityEntitlementsOrThrow(
+      java.lang.String key) {
+    if (key == null) { throw new NullPointerException("map key"); }
+    java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements> map =
+        internalGetEntityEntitlements().getMap();
+    if (!map.containsKey(key)) {
+      throw new java.lang.IllegalArgumentException();
+    }
+    return map.get(key);
   }
 
   private byte memoizedIsInitialized = -1;
@@ -122,9 +171,12 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    for (int i = 0; i < entitlements_.size(); i++) {
-      output.writeMessage(1, entitlements_.get(i));
-    }
+    com.google.protobuf.GeneratedMessageV3
+      .serializeStringMapTo(
+        output,
+        internalGetEntityEntitlements(),
+        EntityEntitlementsDefaultEntryHolder.defaultEntry,
+        1);
     getUnknownFields().writeTo(output);
   }
 
@@ -134,9 +186,15 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    for (int i = 0; i < entitlements_.size(); i++) {
+    for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.authorization.Entitlements> entry
+         : internalGetEntityEntitlements().getMap().entrySet()) {
+      com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.authorization.Entitlements>
+      entityEntitlements__ = EntityEntitlementsDefaultEntryHolder.defaultEntry.newBuilderForType()
+          .setKey(entry.getKey())
+          .setValue(entry.getValue())
+          .build();
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(1, entitlements_.get(i));
+          .computeMessageSize(1, entityEntitlements__);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -153,8 +211,8 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.authorization.GetEntitlementsResponse other = (io.opentdf.platform.authorization.GetEntitlementsResponse) obj;
 
-    if (!getEntitlementsList()
-        .equals(other.getEntitlementsList())) return false;
+    if (!internalGetEntityEntitlements().equals(
+        other.internalGetEntityEntitlements())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -166,9 +224,9 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    if (getEntitlementsCount() > 0) {
-      hash = (37 * hash) + ENTITLEMENTS_FIELD_NUMBER;
-      hash = (53 * hash) + getEntitlementsList().hashCode();
+    if (!internalGetEntityEntitlements().getMap().isEmpty()) {
+      hash = (37 * hash) + ENTITY_ENTITLEMENTS_FIELD_NUMBER;
+      hash = (53 * hash) + internalGetEntityEntitlements().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -306,6 +364,28 @@ private static final long serialVersionUID = 0L;
       return io.opentdf.platform.authorization.AuthorizationProto.internal_static_authorization_GetEntitlementsResponse_descriptor;
     }
 
+    @SuppressWarnings({"rawtypes"})
+    protected com.google.protobuf.MapFieldReflectionAccessor internalGetMapFieldReflection(
+        int number) {
+      switch (number) {
+        case 1:
+          return internalGetEntityEntitlements();
+        default:
+          throw new RuntimeException(
+              "Invalid map field number: " + number);
+      }
+    }
+    @SuppressWarnings({"rawtypes"})
+    protected com.google.protobuf.MapFieldReflectionAccessor internalGetMutableMapFieldReflection(
+        int number) {
+      switch (number) {
+        case 1:
+          return internalGetMutableEntityEntitlements();
+        default:
+          throw new RuntimeException(
+              "Invalid map field number: " + number);
+      }
+    }
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
@@ -328,13 +408,7 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      if (entitlementsBuilder_ == null) {
-        entitlements_ = java.util.Collections.emptyList();
-      } else {
-        entitlements_ = null;
-        entitlementsBuilder_.clear();
-      }
-      bitField0_ = (bitField0_ & ~0x00000001);
+      internalGetMutableEntityEntitlements().clear();
       return this;
     }
 
@@ -361,26 +435,16 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public io.opentdf.platform.authorization.GetEntitlementsResponse buildPartial() {
       io.opentdf.platform.authorization.GetEntitlementsResponse result = new io.opentdf.platform.authorization.GetEntitlementsResponse(this);
-      buildPartialRepeatedFields(result);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartialRepeatedFields(io.opentdf.platform.authorization.GetEntitlementsResponse result) {
-      if (entitlementsBuilder_ == null) {
-        if (((bitField0_ & 0x00000001) != 0)) {
-          entitlements_ = java.util.Collections.unmodifiableList(entitlements_);
-          bitField0_ = (bitField0_ & ~0x00000001);
-        }
-        result.entitlements_ = entitlements_;
-      } else {
-        result.entitlements_ = entitlementsBuilder_.build();
-      }
-    }
-
     private void buildPartial0(io.opentdf.platform.authorization.GetEntitlementsResponse result) {
       int from_bitField0_ = bitField0_;
+      if (((from_bitField0_ & 0x00000001) != 0)) {
+        result.entityEntitlements_ = internalGetEntityEntitlements().build(EntityEntitlementsDefaultEntryHolder.defaultEntry);
+      }
     }
 
     @java.lang.Override
@@ -427,32 +491,9 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.authorization.GetEntitlementsResponse other) {
       if (other == io.opentdf.platform.authorization.GetEntitlementsResponse.getDefaultInstance()) return this;
-      if (entitlementsBuilder_ == null) {
-        if (!other.entitlements_.isEmpty()) {
-          if (entitlements_.isEmpty()) {
-            entitlements_ = other.entitlements_;
-            bitField0_ = (bitField0_ & ~0x00000001);
-          } else {
-            ensureEntitlementsIsMutable();
-            entitlements_.addAll(other.entitlements_);
-          }
-          onChanged();
-        }
-      } else {
-        if (!other.entitlements_.isEmpty()) {
-          if (entitlementsBuilder_.isEmpty()) {
-            entitlementsBuilder_.dispose();
-            entitlementsBuilder_ = null;
-            entitlements_ = other.entitlements_;
-            bitField0_ = (bitField0_ & ~0x00000001);
-            entitlementsBuilder_ = 
-              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
-                 getEntitlementsFieldBuilder() : null;
-          } else {
-            entitlementsBuilder_.addAllMessages(other.entitlements_);
-          }
-        }
-      }
+      internalGetMutableEntityEntitlements().mergeFrom(
+          other.internalGetEntityEntitlements());
+      bitField0_ |= 0x00000001;
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -480,16 +521,12 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.authorization.EntityEntitlements m =
-                  input.readMessage(
-                      io.opentdf.platform.authorization.EntityEntitlements.parser(),
-                      extensionRegistry);
-              if (entitlementsBuilder_ == null) {
-                ensureEntitlementsIsMutable();
-                entitlements_.add(m);
-              } else {
-                entitlementsBuilder_.addMessage(m);
-              }
+              com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.authorization.Entitlements>
+              entityEntitlements__ = input.readMessage(
+                  EntityEntitlementsDefaultEntryHolder.defaultEntry.getParserForType(), extensionRegistry);
+              internalGetMutableEntityEntitlements().ensureBuilderMap().put(
+                  entityEntitlements__.getKey(), entityEntitlements__.getValue());
+              bitField0_ |= 0x00000001;
               break;
             } // case 10
             default: {
@@ -509,244 +546,159 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.authorization.EntityEntitlements> entitlements_ =
-      java.util.Collections.emptyList();
-    private void ensureEntitlementsIsMutable() {
-      if (!((bitField0_ & 0x00000001) != 0)) {
-        entitlements_ = new java.util.ArrayList<io.opentdf.platform.authorization.EntityEntitlements>(entitlements_);
-        bitField0_ |= 0x00000001;
-       }
-    }
+    private static final class EntityEntitlementsConverter implements com.google.protobuf.MapFieldBuilder.Converter<java.lang.String, io.opentdf.platform.authorization.EntitlementsOrBuilder, io.opentdf.platform.authorization.Entitlements> {
+      @java.lang.Override
+      public io.opentdf.platform.authorization.Entitlements build(io.opentdf.platform.authorization.EntitlementsOrBuilder val) {
+        if (val instanceof io.opentdf.platform.authorization.Entitlements) { return (io.opentdf.platform.authorization.Entitlements) val; }
+        return ((io.opentdf.platform.authorization.Entitlements.Builder) val).build();
+      }
 
-    private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.EntityEntitlements, io.opentdf.platform.authorization.EntityEntitlements.Builder, io.opentdf.platform.authorization.EntityEntitlementsOrBuilder> entitlementsBuilder_;
+      @java.lang.Override
+      public com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.authorization.Entitlements> defaultEntry() {
+        return EntityEntitlementsDefaultEntryHolder.defaultEntry;
+      }
+    };
+    private static final EntityEntitlementsConverter entityEntitlementsConverter = new EntityEntitlementsConverter();
 
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public java.util.List<io.opentdf.platform.authorization.EntityEntitlements> getEntitlementsList() {
-      if (entitlementsBuilder_ == null) {
-        return java.util.Collections.unmodifiableList(entitlements_);
-      } else {
-        return entitlementsBuilder_.getMessageList();
+    private com.google.protobuf.MapFieldBuilder<
+        java.lang.String, io.opentdf.platform.authorization.EntitlementsOrBuilder, io.opentdf.platform.authorization.Entitlements, io.opentdf.platform.authorization.Entitlements.Builder> entityEntitlements_;
+    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.authorization.EntitlementsOrBuilder, io.opentdf.platform.authorization.Entitlements, io.opentdf.platform.authorization.Entitlements.Builder>
+        internalGetEntityEntitlements() {
+      if (entityEntitlements_ == null) {
+        return new com.google.protobuf.MapFieldBuilder<>(entityEntitlementsConverter);
       }
+      return entityEntitlements_;
+    }
+    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.authorization.EntitlementsOrBuilder, io.opentdf.platform.authorization.Entitlements, io.opentdf.platform.authorization.Entitlements.Builder>
+        internalGetMutableEntityEntitlements() {
+      if (entityEntitlements_ == null) {
+        entityEntitlements_ = new com.google.protobuf.MapFieldBuilder<>(entityEntitlementsConverter);
+      }
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return entityEntitlements_;
+    }
+    public int getEntityEntitlementsCount() {
+      return internalGetEntityEntitlements().ensureBuilderMap().size();
     }
     /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+     * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
      */
-    public int getEntitlementsCount() {
-      if (entitlementsBuilder_ == null) {
-        return entitlements_.size();
-      } else {
-        return entitlementsBuilder_.getCount();
-      }
+    @java.lang.Override
+    public boolean containsEntityEntitlements(
+        java.lang.String key) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      return internalGetEntityEntitlements().ensureBuilderMap().containsKey(key);
     }
     /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+     * Use {@link #getEntityEntitlementsMap()} instead.
      */
-    public io.opentdf.platform.authorization.EntityEntitlements getEntitlements(int index) {
-      if (entitlementsBuilder_ == null) {
-        return entitlements_.get(index);
-      } else {
-        return entitlementsBuilder_.getMessage(index);
-      }
+    @java.lang.Override
+    @java.lang.Deprecated
+    public java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements> getEntityEntitlements() {
+      return getEntityEntitlementsMap();
     }
     /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+     * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
      */
-    public Builder setEntitlements(
-        int index, io.opentdf.platform.authorization.EntityEntitlements value) {
-      if (entitlementsBuilder_ == null) {
-        if (value == null) {
+    @java.lang.Override
+    public java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements> getEntityEntitlementsMap() {
+      return internalGetEntityEntitlements().getImmutableMap();
+    }
+    /**
+     * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
+     */
+    @java.lang.Override
+    public /* nullable */
+io.opentdf.platform.authorization.Entitlements getEntityEntitlementsOrDefault(
+        java.lang.String key,
+        /* nullable */
+io.opentdf.platform.authorization.Entitlements defaultValue) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      java.util.Map<java.lang.String, io.opentdf.platform.authorization.EntitlementsOrBuilder> map = internalGetMutableEntityEntitlements().ensureBuilderMap();
+      return map.containsKey(key) ? entityEntitlementsConverter.build(map.get(key)) : defaultValue;
+    }
+    /**
+     * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
+     */
+    @java.lang.Override
+    public io.opentdf.platform.authorization.Entitlements getEntityEntitlementsOrThrow(
+        java.lang.String key) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      java.util.Map<java.lang.String, io.opentdf.platform.authorization.EntitlementsOrBuilder> map = internalGetMutableEntityEntitlements().ensureBuilderMap();
+      if (!map.containsKey(key)) {
+        throw new java.lang.IllegalArgumentException();
+      }
+      return entityEntitlementsConverter.build(map.get(key));
+    }
+    public Builder clearEntityEntitlements() {
+      bitField0_ = (bitField0_ & ~0x00000001);
+      internalGetMutableEntityEntitlements().clear();
+      return this;
+    }
+    /**
+     * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
+     */
+    public Builder removeEntityEntitlements(
+        java.lang.String key) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      internalGetMutableEntityEntitlements().ensureBuilderMap()
+          .remove(key);
+      return this;
+    }
+    /**
+     * Use alternate mutation accessors instead.
+     */
+    @java.lang.Deprecated
+    public java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements>
+        getMutableEntityEntitlements() {
+      bitField0_ |= 0x00000001;
+      return internalGetMutableEntityEntitlements().ensureMessageMap();
+    }
+    /**
+     * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
+     */
+    public Builder putEntityEntitlements(
+        java.lang.String key,
+        io.opentdf.platform.authorization.Entitlements value) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      if (value == null) { throw new NullPointerException("map value"); }
+      internalGetMutableEntityEntitlements().ensureBuilderMap()
+          .put(key, value);
+      bitField0_ |= 0x00000001;
+      return this;
+    }
+    /**
+     * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
+     */
+    public Builder putAllEntityEntitlements(
+        java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements> values) {
+      for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.authorization.Entitlements> e : values.entrySet()) {
+        if (e.getKey() == null || e.getValue() == null) {
           throw new NullPointerException();
         }
-        ensureEntitlementsIsMutable();
-        entitlements_.set(index, value);
-        onChanged();
-      } else {
-        entitlementsBuilder_.setMessage(index, value);
       }
+      internalGetMutableEntityEntitlements().ensureBuilderMap()
+          .putAll(values);
+      bitField0_ |= 0x00000001;
       return this;
     }
     /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+     * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
      */
-    public Builder setEntitlements(
-        int index, io.opentdf.platform.authorization.EntityEntitlements.Builder builderForValue) {
-      if (entitlementsBuilder_ == null) {
-        ensureEntitlementsIsMutable();
-        entitlements_.set(index, builderForValue.build());
-        onChanged();
-      } else {
-        entitlementsBuilder_.setMessage(index, builderForValue.build());
+    public io.opentdf.platform.authorization.Entitlements.Builder putEntityEntitlementsBuilderIfAbsent(
+        java.lang.String key) {
+      java.util.Map<java.lang.String, io.opentdf.platform.authorization.EntitlementsOrBuilder> builderMap = internalGetMutableEntityEntitlements().ensureBuilderMap();
+      io.opentdf.platform.authorization.EntitlementsOrBuilder entry = builderMap.get(key);
+      if (entry == null) {
+        entry = io.opentdf.platform.authorization.Entitlements.newBuilder();
+        builderMap.put(key, entry);
       }
-      return this;
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public Builder addEntitlements(io.opentdf.platform.authorization.EntityEntitlements value) {
-      if (entitlementsBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        ensureEntitlementsIsMutable();
-        entitlements_.add(value);
-        onChanged();
-      } else {
-        entitlementsBuilder_.addMessage(value);
+      if (entry instanceof io.opentdf.platform.authorization.Entitlements) {
+        entry = ((io.opentdf.platform.authorization.Entitlements) entry).toBuilder();
+        builderMap.put(key, entry);
       }
-      return this;
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public Builder addEntitlements(
-        int index, io.opentdf.platform.authorization.EntityEntitlements value) {
-      if (entitlementsBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        ensureEntitlementsIsMutable();
-        entitlements_.add(index, value);
-        onChanged();
-      } else {
-        entitlementsBuilder_.addMessage(index, value);
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public Builder addEntitlements(
-        io.opentdf.platform.authorization.EntityEntitlements.Builder builderForValue) {
-      if (entitlementsBuilder_ == null) {
-        ensureEntitlementsIsMutable();
-        entitlements_.add(builderForValue.build());
-        onChanged();
-      } else {
-        entitlementsBuilder_.addMessage(builderForValue.build());
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public Builder addEntitlements(
-        int index, io.opentdf.platform.authorization.EntityEntitlements.Builder builderForValue) {
-      if (entitlementsBuilder_ == null) {
-        ensureEntitlementsIsMutable();
-        entitlements_.add(index, builderForValue.build());
-        onChanged();
-      } else {
-        entitlementsBuilder_.addMessage(index, builderForValue.build());
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public Builder addAllEntitlements(
-        java.lang.Iterable<? extends io.opentdf.platform.authorization.EntityEntitlements> values) {
-      if (entitlementsBuilder_ == null) {
-        ensureEntitlementsIsMutable();
-        com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, entitlements_);
-        onChanged();
-      } else {
-        entitlementsBuilder_.addAllMessages(values);
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public Builder clearEntitlements() {
-      if (entitlementsBuilder_ == null) {
-        entitlements_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000001);
-        onChanged();
-      } else {
-        entitlementsBuilder_.clear();
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public Builder removeEntitlements(int index) {
-      if (entitlementsBuilder_ == null) {
-        ensureEntitlementsIsMutable();
-        entitlements_.remove(index);
-        onChanged();
-      } else {
-        entitlementsBuilder_.remove(index);
-      }
-      return this;
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public io.opentdf.platform.authorization.EntityEntitlements.Builder getEntitlementsBuilder(
-        int index) {
-      return getEntitlementsFieldBuilder().getBuilder(index);
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public io.opentdf.platform.authorization.EntityEntitlementsOrBuilder getEntitlementsOrBuilder(
-        int index) {
-      if (entitlementsBuilder_ == null) {
-        return entitlements_.get(index);  } else {
-        return entitlementsBuilder_.getMessageOrBuilder(index);
-      }
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public java.util.List<? extends io.opentdf.platform.authorization.EntityEntitlementsOrBuilder> 
-         getEntitlementsOrBuilderList() {
-      if (entitlementsBuilder_ != null) {
-        return entitlementsBuilder_.getMessageOrBuilderList();
-      } else {
-        return java.util.Collections.unmodifiableList(entitlements_);
-      }
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public io.opentdf.platform.authorization.EntityEntitlements.Builder addEntitlementsBuilder() {
-      return getEntitlementsFieldBuilder().addBuilder(
-          io.opentdf.platform.authorization.EntityEntitlements.getDefaultInstance());
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public io.opentdf.platform.authorization.EntityEntitlements.Builder addEntitlementsBuilder(
-        int index) {
-      return getEntitlementsFieldBuilder().addBuilder(
-          index, io.opentdf.platform.authorization.EntityEntitlements.getDefaultInstance());
-    }
-    /**
-     * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
-     */
-    public java.util.List<io.opentdf.platform.authorization.EntityEntitlements.Builder> 
-         getEntitlementsBuilderList() {
-      return getEntitlementsFieldBuilder().getBuilderList();
-    }
-    private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.EntityEntitlements, io.opentdf.platform.authorization.EntityEntitlements.Builder, io.opentdf.platform.authorization.EntityEntitlementsOrBuilder> 
-        getEntitlementsFieldBuilder() {
-      if (entitlementsBuilder_ == null) {
-        entitlementsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.authorization.EntityEntitlements, io.opentdf.platform.authorization.EntityEntitlements.Builder, io.opentdf.platform.authorization.EntityEntitlementsOrBuilder>(
-                entitlements_,
-                ((bitField0_ & 0x00000001) != 0),
-                getParentForChildren(),
-                isClean());
-        entitlements_ = null;
-      }
-      return entitlementsBuilder_;
+      return (io.opentdf.platform.authorization.Entitlements.Builder) entry;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

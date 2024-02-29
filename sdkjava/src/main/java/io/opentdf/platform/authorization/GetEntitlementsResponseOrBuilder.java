@@ -9,26 +9,36 @@ public interface GetEntitlementsResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
    */
-  java.util.List<io.opentdf.platform.authorization.EntityEntitlements> 
-      getEntitlementsList();
+  int getEntityEntitlementsCount();
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
    */
-  io.opentdf.platform.authorization.EntityEntitlements getEntitlements(int index);
+  boolean containsEntityEntitlements(
+      java.lang.String key);
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * Use {@link #getEntityEntitlementsMap()} instead.
    */
-  int getEntitlementsCount();
+  @java.lang.Deprecated
+  java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements>
+  getEntityEntitlements();
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.authorization.EntityEntitlementsOrBuilder> 
-      getEntitlementsOrBuilderList();
+  java.util.Map<java.lang.String, io.opentdf.platform.authorization.Entitlements>
+  getEntityEntitlementsMap();
   /**
-   * <code>repeated .authorization.EntityEntitlements entitlements = 1 [json_name = "entitlements"];</code>
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
    */
-  io.opentdf.platform.authorization.EntityEntitlementsOrBuilder getEntitlementsOrBuilder(
-      int index);
+  /* nullable */
+io.opentdf.platform.authorization.Entitlements getEntityEntitlementsOrDefault(
+      java.lang.String key,
+      /* nullable */
+io.opentdf.platform.authorization.Entitlements defaultValue);
+  /**
+   * <code>map&lt;string, .authorization.Entitlements&gt; entity_entitlements = 1 [json_name = "entityEntitlements"];</code>
+   */
+  io.opentdf.platform.authorization.Entitlements getEntityEntitlementsOrThrow(
+      java.lang.String key);
 }

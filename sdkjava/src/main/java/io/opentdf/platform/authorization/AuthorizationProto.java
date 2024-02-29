@@ -61,10 +61,10 @@ public final class AuthorizationProto {
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_authorization_GetEntitlementsRequest_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_authorization_EntityEntitlements_descriptor;
+    internal_static_authorization_Entitlements_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_authorization_EntityEntitlements_fieldAccessorTable;
+      internal_static_authorization_Entitlements_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_authorization_ResourceAttribute_descriptor;
   static final 
@@ -75,6 +75,11 @@ public final class AuthorizationProto {
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_authorization_GetEntitlementsResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_authorization_GetEntitlementsResponse_EntityEntitlementsEntry_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_authorization_GetEntitlementsResponse_EntityEntitlementsEntry_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -125,25 +130,28 @@ public final class AuthorizationProto {
       "sponses\"\222\001\n\026GetEntitlementsRequest\0221\n\010en" +
       "tities\030\001 \003(\0132\025.authorization.EntityR\010ent" +
       "ities\022;\n\005scope\030\002 \001(\0132 .authorization.Res" +
-      "ourceAttributeH\000R\005scope\210\001\001B\010\n\006_scope\"T\n\022" +
-      "EntityEntitlements\022\033\n\tentity_id\030\001 \001(\tR\010e" +
-      "ntityId\022!\n\014attribute_id\030\002 \003(\tR\013attribute" +
-      "Id\":\n\021ResourceAttribute\022%\n\016attribute_fqn" +
-      "s\030\002 \003(\tR\rattributeFqns\"`\n\027GetEntitlement" +
-      "sResponse\022E\n\014entitlements\030\001 \003(\0132!.author" +
-      "ization.EntityEntitlementsR\014entitlements" +
-      "2\206\002\n\024AuthorizationService\022r\n\014GetDecision" +
-      "s\022\".authorization.GetDecisionsRequest\032#." +
-      "authorization.GetDecisionsResponse\"\031\202\323\344\223" +
-      "\002\023\"\021/v1/authorization\022z\n\017GetEntitlements" +
-      "\022%.authorization.GetEntitlementsRequest\032" +
-      "&.authorization.GetEntitlementsResponse\"" +
-      "\030\202\323\344\223\002\022\"\020/v1/entitlementsB\302\001\n!io.opentdf" +
-      ".platform.authorizationB\022AuthorizationPr" +
-      "otoP\001Z5github.com/opentdf/platform/proto" +
-      "col/go/authorization\242\002\003AXX\252\002\rAuthorizati" +
-      "on\312\002\rAuthorization\342\002\031Authorization\\GPBMe" +
-      "tadata\352\002\rAuthorizationb\006proto3"
+      "ourceAttributeH\000R\005scope\210\001\001B\010\n\006_scope\"5\n\014" +
+      "Entitlements\022%\n\016attribute_fqns\030\002 \003(\tR\rat" +
+      "tributeFqns\":\n\021ResourceAttribute\022%\n\016attr" +
+      "ibute_fqns\030\002 \003(\tR\rattributeFqns\"\356\001\n\027GetE" +
+      "ntitlementsResponse\022o\n\023entity_entitlemen" +
+      "ts\030\001 \003(\0132>.authorization.GetEntitlements" +
+      "Response.EntityEntitlementsEntryR\022entity" +
+      "Entitlements\032b\n\027EntityEntitlementsEntry\022" +
+      "\020\n\003key\030\001 \001(\tR\003key\0221\n\005value\030\002 \001(\0132\033.autho" +
+      "rization.EntitlementsR\005value:\0028\0012\206\002\n\024Aut" +
+      "horizationService\022r\n\014GetDecisions\022\".auth" +
+      "orization.GetDecisionsRequest\032#.authoriz" +
+      "ation.GetDecisionsResponse\"\031\202\323\344\223\002\023\"\021/v1/" +
+      "authorization\022z\n\017GetEntitlements\022%.autho" +
+      "rization.GetEntitlementsRequest\032&.author" +
+      "ization.GetEntitlementsResponse\"\030\202\323\344\223\002\022\"" +
+      "\020/v1/entitlementsB\302\001\n!io.opentdf.platfor" +
+      "m.authorizationB\022AuthorizationProtoP\001Z5g" +
+      "ithub.com/opentdf/platform/protocol/go/a" +
+      "uthorization\242\002\003AXX\252\002\rAuthorization\312\002\rAut" +
+      "horization\342\002\031Authorization\\GPBMetadata\352\002" +
+      "\rAuthorizationb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -205,12 +213,12 @@ public final class AuthorizationProto {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_authorization_GetEntitlementsRequest_descriptor,
         new java.lang.String[] { "Entities", "Scope", });
-    internal_static_authorization_EntityEntitlements_descriptor =
+    internal_static_authorization_Entitlements_descriptor =
       getDescriptor().getMessageTypes().get(9);
-    internal_static_authorization_EntityEntitlements_fieldAccessorTable = new
+    internal_static_authorization_Entitlements_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_authorization_EntityEntitlements_descriptor,
-        new java.lang.String[] { "EntityId", "AttributeId", });
+        internal_static_authorization_Entitlements_descriptor,
+        new java.lang.String[] { "AttributeFqns", });
     internal_static_authorization_ResourceAttribute_descriptor =
       getDescriptor().getMessageTypes().get(10);
     internal_static_authorization_ResourceAttribute_fieldAccessorTable = new
@@ -222,7 +230,13 @@ public final class AuthorizationProto {
     internal_static_authorization_GetEntitlementsResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_authorization_GetEntitlementsResponse_descriptor,
-        new java.lang.String[] { "Entitlements", });
+        new java.lang.String[] { "EntityEntitlements", });
+    internal_static_authorization_GetEntitlementsResponse_EntityEntitlementsEntry_descriptor =
+      internal_static_authorization_GetEntitlementsResponse_descriptor.getNestedTypes().get(0);
+    internal_static_authorization_GetEntitlementsResponse_EntityEntitlementsEntry_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_authorization_GetEntitlementsResponse_EntityEntitlementsEntry_descriptor,
+        new java.lang.String[] { "Key", "Value", });
     com.google.protobuf.ExtensionRegistry registry =
         com.google.protobuf.ExtensionRegistry.newInstance();
     registry.add(com.google.api.AnnotationsProto.http);

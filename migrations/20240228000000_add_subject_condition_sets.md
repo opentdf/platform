@@ -124,7 +124,7 @@ erDiagram
     }
 
     SubjectMapping }|--|| AttributeValue: has
-    SubjectConditionSet ||--|{ SubjectSets: "marshals in condition column"
+    SubjectConditionSet ||--|| SubjectSets: "marshals in condition column"
     SubjectSets ||--|{ ConditionGroups: has
     ConditionGroups ||--|{ Conditions: has
 

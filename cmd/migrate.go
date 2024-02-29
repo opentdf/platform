@@ -17,7 +17,7 @@ var (
 
 	migrateDownCmd = &cobra.Command{
 		Use:   "down",
-		Short: "Run database migrations",
+		Short: "Run database migration down one version",
 		Run: func(cmd *cobra.Command, args []string) {
 			dbClient, err := migrateDbClient()
 			if err != nil {
@@ -29,6 +29,22 @@ var (
 				panic(fmt.Errorf("migration down failed: %w", err))
 			}
 			fmt.Print("migration down applied: ", slog.Any("res", res))
+		},
+	}
+	migrateUpCmd = &cobra.Command{
+		Use:   "up",
+		Short: "Run database migrations up to the latest version",
+		Run: func(cmd *cobra.Command, args []string) {
+			dbClient, err := migrateDbClient()
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
+
+			res, err := dbClient.RunMigrations(cmd.Context())
+			if err != nil {
+				panic(fmt.Errorf("migration up failed: %w", err))
+			}
+			fmt.Print("migration up applied: ", slog.Any("res", res))
 		},
 	}
 )
@@ -47,10 +63,10 @@ func migrateDbClient() (*db.Client, error) {
 		return nil, err
 	}
 	return dbClient, nil
-
 }
 
 func init() {
 	migrateCmd.AddCommand(migrateDownCmd)
+	migrateCmd.AddCommand(migrateUpCmd)
 	rootCmd.AddCommand(migrateCmd)
 }

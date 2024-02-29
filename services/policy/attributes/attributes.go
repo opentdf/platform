@@ -18,11 +18,14 @@ type AttributesService struct {
 	dbClient *policydb.PolicyDbClient
 }
 
-func NewAttributesServer(dbClient *db.Client, g *grpc.Server, s *runtime.ServeMux) error {
+func NewAttributesServer(dbClient *db.Client, g *grpc.Server, grpcInprocess *grpc.Server, s *runtime.ServeMux) error {
 	as := &AttributesService{
 		dbClient: policydb.NewClient(*dbClient),
 	}
 	attr.RegisterAttributesServiceServer(g, as)
+	if grpcInprocess != nil {
+		attr.RegisterAttributesServiceServer(grpcInprocess, as)
+	}
 	err := attr.RegisterAttributesServiceHandlerServer(context.Background(), s, as)
 	if err != nil {
 		return fmt.Errorf("failed to register attributes service handler: %w", err)

@@ -49,52 +49,44 @@ message Action {
    and Alice (represented by entity chain ec2) have TRANSMIT authorization for
    2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
-   {
-     "actions": [
-       {
-         "standard": "STANDARD_ACTION_TRANSMIT"
-       }
-     ],
-     "entityChains": [
-       {
-         "id": "ec1",
-         "entities": [
-           {
-             "emailAddress": "bob@example.org"
-           }
-         ]
-       },
-       {
-         "id": "ec2",
-         "entities": [
-           {
-             "userName": "alice@example.org"
-           }
-         ]
-       }
-     ],
-     "resourceAttributes": [
-       {
-         "attributeValueReferences": [
-           {
-             "attributeFqn": "http://www.example.org/attr/foo/value/bar"
-           }
-         ]
-       },
-       {
-         "attributeValueReferences": [
-           {
-             "attributeFqn": "http://www.example.org/attr/foo/value/bar"
-           },
-           {
-             "attributeFqn": "http://www.example.org/attr/color/value/red"
-           }
-         ]
-       }
-     ]
-   }
-
-
+  {
+  "actions": [
+    {
+      "standard": "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "entityChains": [
+    {
+      "id": "ec1",
+      "entities": [
+        {
+          "emailAddress": "bob@example.org"
+        }
+      ]
+    },
+    {
+      "id": "ec2",
+      "entities": [
+        {
+          "userName": "alice@example.org"
+        }
+      ]
+    }
+  ],
+  "resourceAttributes": [
+    {
+      "attributeFqns": [
+        "https://www.example.org/attr/foo/value/value1"
+      ]
+    },
+    {
+      "attributeFqns": [
+        "https://example.net/attr/attr1/value/value1",
+        "https://example.net/attr/attr1/value/value2"
+      ]
+    }
+  ]
+}
 
 */
 message DecisionRequest {

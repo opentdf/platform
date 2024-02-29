@@ -142,7 +142,7 @@ func RegisterServices(_ config.Config, otdf *server.OpenTDFServer, dbClient *db.
 	}
 
 	slog.Info("registering attributes server")
-	err = attr.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.Mux)
+	err = attr.NewAttributesServer(dbClient, otdf.GrpcServer, otdf.GrpcInProcess.GetGrpcServer(), otdf.Mux)
 	if err != nil {
 		return fmt.Errorf("could not register attributes service: %w", err)
 	}

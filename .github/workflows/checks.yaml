@@ -10,7 +10,7 @@ on:
   merge_group:
     branches:
       - main
-    types:
+    types: 
       - checks_requested
 
 jobs:
@@ -55,8 +55,6 @@ jobs:
           version: v1.55
           only-new-issues: true
           working-directory: ${{ matrix.directory }}
-      - run: go vet ./...
-        working-directory: ${{ matrix.directory }}
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
 

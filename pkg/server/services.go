@@ -12,28 +12,17 @@ import (
 
 func registerServices() error {
 	// Register the services
-	if err := serviceregistry.RegisterService(namespaces.NewRegistration()); err != nil {
-		return err
-	}
-
-	if err := serviceregistry.RegisterService(resourcemapping.NewRegistration()); err != nil {
-		return err
-	}
-
-	if err := serviceregistry.RegisterService(subjectmapping.NewRegistration()); err != nil {
-		return err
-	}
-
-	if err := serviceregistry.RegisterService(attributes.NewRegistration()); err != nil {
-		return err
-	}
-
-	if err := serviceregistry.RegisterService(kasregistry.NewRegistration()); err != nil {
-		return err
-	}
-
-	if err := serviceregistry.RegisterService(health.NewRegistration()); err != nil {
-		return err
+	for _, s := range []serviceregistry.Registration{
+		namespaces.NewRegistration(),
+		resourcemapping.NewRegistration(),
+		subjectmapping.NewRegistration(),
+		attributes.NewRegistration(),
+		kasregistry.NewRegistration(),
+		health.NewRegistration(),
+	} {
+		if err := serviceregistry.RegisterService(s); err != nil {
+			return err //nolint:wrapcheck // We are all friends here
+		}
 	}
 	return nil
 }

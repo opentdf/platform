@@ -15,7 +15,7 @@ package io.opentdf.platform.policy.subjectmapping;
  *"id": "someid",
  *"attribute_value": {example_one_attribute_value...},
  *"subject_sets": [{subject_set_1},{subject_set_2}]
- *"actions": ["TRANSMIT", "DECRYPT"]
+ *"actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]
  *}
  * </pre>
  *
@@ -99,10 +99,6 @@ private static final long serialVersionUID = 0L;
   public static final int METADATA_FIELD_NUMBER = 2;
   private io.opentdf.platform.common.Metadata metadata_;
   /**
-   * <pre>
-   *TODO should this be a list of values?
-   * </pre>
-   *
    * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
    * @return Whether the metadata field is set.
    */
@@ -111,10 +107,6 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <pre>
-   *TODO should this be a list of values?
-   * </pre>
-   *
    * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
    * @return The metadata.
    */
@@ -123,10 +115,6 @@ private static final long serialVersionUID = 0L;
     return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
   }
   /**
-   * <pre>
-   *TODO should this be a list of values?
-   * </pre>
-   *
    * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
    */
   @java.lang.Override
@@ -519,7 +507,7 @@ private static final long serialVersionUID = 0L;
    *"id": "someid",
    *"attribute_value": {example_one_attribute_value...},
    *"subject_sets": [{subject_set_1},{subject_set_2}]
-   *"actions": ["TRANSMIT", "DECRYPT"]
+   *"actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]
    *}
    * </pre>
    *
@@ -935,10 +923,6 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> metadataBuilder_;
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      * @return Whether the metadata field is set.
      */
@@ -946,10 +930,6 @@ private static final long serialVersionUID = 0L;
       return ((bitField0_ & 0x00000002) != 0);
     }
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      * @return The metadata.
      */
@@ -961,10 +941,6 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      */
     public Builder setMetadata(io.opentdf.platform.common.Metadata value) {
@@ -981,10 +957,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      */
     public Builder setMetadata(
@@ -999,10 +971,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      */
     public Builder mergeMetadata(io.opentdf.platform.common.Metadata value) {
@@ -1024,10 +992,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      */
     public Builder clearMetadata() {
@@ -1041,10 +1005,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      */
     public io.opentdf.platform.common.Metadata.Builder getMetadataBuilder() {
@@ -1053,10 +1013,6 @@ private static final long serialVersionUID = 0L;
       return getMetadataFieldBuilder().getBuilder();
     }
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      */
     public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
@@ -1068,10 +1024,6 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <pre>
-     *TODO should this be a list of values?
-     * </pre>
-     *
      * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<

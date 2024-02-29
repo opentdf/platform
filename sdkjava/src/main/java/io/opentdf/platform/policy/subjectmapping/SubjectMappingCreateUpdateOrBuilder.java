@@ -45,44 +45,47 @@ public interface SubjectMappingCreateUpdateOrBuilder extends
 
   /**
    * <pre>
-   * the subjects sets in this mapping
+   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
    * </pre>
    *
-   * <code>repeated string subject_set_ids = 3 [json_name = "subjectSetIds"];</code>
-   * @return A list containing the subjectSetIds.
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
    */
-  java.util.List<java.lang.String>
-      getSubjectSetIdsList();
+  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
+      getSubjectSetsList();
   /**
    * <pre>
-   * the subjects sets in this mapping
+   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
    * </pre>
    *
-   * <code>repeated string subject_set_ids = 3 [json_name = "subjectSetIds"];</code>
-   * @return The count of subjectSetIds.
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
    */
-  int getSubjectSetIdsCount();
+  io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
   /**
    * <pre>
-   * the subjects sets in this mapping
+   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
    * </pre>
    *
-   * <code>repeated string subject_set_ids = 3 [json_name = "subjectSetIds"];</code>
-   * @param index The index of the element to return.
-   * @return The subjectSetIds at the given index.
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
    */
-  java.lang.String getSubjectSetIds(int index);
+  int getSubjectSetsCount();
   /**
    * <pre>
-   * the subjects sets in this mapping
+   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
    * </pre>
    *
-   * <code>repeated string subject_set_ids = 3 [json_name = "subjectSetIds"];</code>
-   * @param index The index of the value to return.
-   * @return The bytes of the subjectSetIds at the given index.
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
    */
-  com.google.protobuf.ByteString
-      getSubjectSetIdsBytes(int index);
+  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+      getSubjectSetsOrBuilderList();
+  /**
+   * <pre>
+   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+   */
+  io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+      int index);
 
   /**
    * <pre>

@@ -704,27 +704,11 @@
                 </li>
               
                 <li>
-                  <a href="#policy.subjectmapping.CreateSubjectSetRequest"><span class="badge">M</span>CreateSubjectSetRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.CreateSubjectSetResponse"><span class="badge">M</span>CreateSubjectSetResponse</a>
-                </li>
-              
-                <li>
                   <a href="#policy.subjectmapping.DeleteSubjectMappingRequest"><span class="badge">M</span>DeleteSubjectMappingRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.subjectmapping.DeleteSubjectMappingResponse"><span class="badge">M</span>DeleteSubjectMappingResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.DeleteSubjectSetRequest"><span class="badge">M</span>DeleteSubjectSetRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.DeleteSubjectSetResponse"><span class="badge">M</span>DeleteSubjectSetResponse</a>
                 </li>
               
                 <li>
@@ -736,27 +720,11 @@
                 </li>
               
                 <li>
-                  <a href="#policy.subjectmapping.GetSubjectSetRequest"><span class="badge">M</span>GetSubjectSetRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.GetSubjectSetResponse"><span class="badge">M</span>GetSubjectSetResponse</a>
-                </li>
-              
-                <li>
                   <a href="#policy.subjectmapping.ListSubjectMappingsRequest"><span class="badge">M</span>ListSubjectMappingsRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.subjectmapping.ListSubjectMappingsResponse"><span class="badge">M</span>ListSubjectMappingsResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.ListSubjectSetsRequest"><span class="badge">M</span>ListSubjectSetsRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.ListSubjectSetsResponse"><span class="badge">M</span>ListSubjectSetsResponse</a>
                 </li>
               
                 <li>
@@ -784,23 +752,11 @@
                 </li>
               
                 <li>
-                  <a href="#policy.subjectmapping.SubjectSetCreateUpdate"><span class="badge">M</span>SubjectSetCreateUpdate</a>
-                </li>
-              
-                <li>
                   <a href="#policy.subjectmapping.UpdateSubjectMappingRequest"><span class="badge">M</span>UpdateSubjectMappingRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.subjectmapping.UpdateSubjectMappingResponse"><span class="badge">M</span>UpdateSubjectMappingResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.UpdateSubjectSetRequest"><span class="badge">M</span>UpdateSubjectSetRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.UpdateSubjectSetResponse"><span class="badge">M</span>UpdateSubjectSetResponse</a>
                 </li>
               
               
@@ -5183,7 +5139,7 @@ Response Example:
 
       
         <h3 id="policy.subjectmapping.Condition">Condition</h3>
-        <p>A Condition defines a rule of <subject attribute> <operator> <subject values></p><p>Example:  Match Subjects with an attribute "division" with a value of "Accounting" or "Marketing":</p><p>{</p><p>"subject_attribute": "division",</p><p>"operator": "IN",</p><p>"subject_values" : ["Accounting", "Marketing"]</p><p>}</p><p>Example: Match a subject by preferred username:</p><p>{</p><p>"subject_attribute": "preferredUsername",</p><p>"operator": "IN",</p><p>"subject_values" : ["alice@example.org"]</p><p>}</p>
+        <p>A Condition defines a rule of <subject external field name> <operator> <subject external values></p><p>Example:  Match Subjects with field "division" and a value of "Accounting" or "Marketing":</p><p>{</p><p>"subject_external_field": "division",</p><p>"operator": "IN",</p><p>"subject_external_values" : ["Accounting", "Marketing"]</p><p>}</p><p>Example: Match a subject by ensuring they are not part of the Fantastic Four:</p><p>{</p><p>"subject_external_field": "superhero_name",</p><p>"operator": "NOT_IN",</p><p>"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]</p><p>}</p>
 
         
           <table class="field-table">
@@ -5193,10 +5149,10 @@ Response Example:
             <tbody>
               
                 <tr>
-                  <td>subject_attribute</td>
+                  <td>subject_external_field</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Resource Attribute Key; NOT Attribute Definition Attribute name </p></td>
+                  <td><p>externally known field name (such as from idP/LDAP) </p></td>
                 </tr>
               
                 <tr>
@@ -5207,10 +5163,10 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>subject_values</td>
+                  <td>subject_external_values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>The list of comparison values for a resource&#39;s &lt;attribute&gt; value </p></td>
+                  <td><p>list of comparison values for the subject_external_field </p></td>
                 </tr>
               
             </tbody>
@@ -5299,54 +5255,6 @@ Response Example:
 
         
       
-        <h3 id="policy.subjectmapping.CreateSubjectSetRequest">CreateSubjectSetRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>subject_set</td>
-                  <td><a href="#policy.subjectmapping.SubjectSetCreateUpdate">SubjectSetCreateUpdate</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.CreateSubjectSetResponse">CreateSubjectSetResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>subject_set</td>
-                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.subjectmapping.DeleteSubjectMappingRequest">DeleteSubjectMappingRequest</h3>
         <p></p>
 
@@ -5384,54 +5292,6 @@ Response Example:
                 <tr>
                   <td>subject_mapping</td>
                   <td><a href="#policy.subjectmapping.SubjectMapping">SubjectMapping</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.DeleteSubjectSetRequest">DeleteSubjectSetRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.DeleteSubjectSetResponse">DeleteSubjectSetResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>subject_set</td>
-                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -5491,54 +5351,6 @@ Response Example:
 
         
       
-        <h3 id="policy.subjectmapping.GetSubjectSetRequest">GetSubjectSetRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.GetSubjectSetResponse">GetSubjectSetResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>subject_set</td>
-                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.subjectmapping.ListSubjectMappingsRequest">ListSubjectMappingsRequest</h3>
         <p></p>
 
@@ -5559,37 +5371,6 @@ Response Example:
                 <tr>
                   <td>subject_mappings</td>
                   <td><a href="#policy.subjectmapping.SubjectMapping">SubjectMapping</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.ListSubjectSetsRequest">ListSubjectSetsRequest</h3>
-        <p></p>
-
-        
-
-        
-      
-        <h3 id="policy.subjectmapping.ListSubjectSetsResponse">ListSubjectSetsResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>subject_sets</td>
-                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -5674,7 +5455,7 @@ Response Example:
         
       
         <h3 id="policy.subjectmapping.SubjectMapping">SubjectMapping</h3>
-        <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination</p><p>Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one</p><p>with permitted actions TRANSMIT and DECRYPT</p><p>{</p><p>"id": "someid",</p><p>"attribute_value": {example_one_attribute_value...},</p><p>"subject_sets": [{subject_set_1},{subject_set_2}]</p><p>"actions": ["TRANSMIT", "DECRYPT"]</p><p>}</p>
+        <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination</p><p>Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one</p><p>with permitted actions TRANSMIT and DECRYPT</p><p>{</p><p>"id": "someid",</p><p>"attribute_value": {example_one_attribute_value...},</p><p>"subject_sets": [{subject_set_1},{subject_set_2}]</p><p>"actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]</p><p>}</p>
 
         
           <table class="field-table">
@@ -5694,7 +5475,7 @@ Response Example:
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
-                  <td><p>TODO should this be a list of values? </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -5750,10 +5531,10 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>subject_set_ids</td>
-                  <td><a href="#string">string</a></td>
+                  <td>subject_sets</td>
+                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
                   <td>repeated</td>
-                  <td><p>the subjects sets in this mapping </p></td>
+                  <td><p>The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements </p></td>
                 </tr>
               
                 <tr>
@@ -5781,55 +5562,10 @@ Response Example:
             <tbody>
               
                 <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
                   <td>condition_groups</td>
                   <td><a href="#policy.subjectmapping.ConditionGroup">ConditionGroup</a></td>
                   <td>repeated</td>
                   <td><p>The conditions groups describing the matching rules for subjects in the set </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.SubjectSetCreateUpdate">SubjectSetCreateUpdate</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>condition_groups</td>
-                  <td><a href="#policy.subjectmapping.ConditionGroup">ConditionGroup</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -5883,61 +5619,6 @@ Response Example:
                 <tr>
                   <td>subject_mapping</td>
                   <td><a href="#policy.subjectmapping.SubjectMapping">SubjectMapping</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.UpdateSubjectSetRequest">UpdateSubjectSetRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>subject_set</td>
-                  <td><a href="#policy.subjectmapping.SubjectSetCreateUpdate">SubjectSetCreateUpdate</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.UpdateSubjectSetResponse">UpdateSubjectSetResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>subject_set</td>
-                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -6022,41 +5703,6 @@ Response Example:
           <tbody>
             
               <tr>
-                <td>GetSubjectSet</td>
-                <td><a href="#policy.subjectmapping.GetSubjectSetRequest">GetSubjectSetRequest</a></td>
-                <td><a href="#policy.subjectmapping.GetSubjectSetResponse">GetSubjectSetResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CreateSubjectSet</td>
-                <td><a href="#policy.subjectmapping.CreateSubjectSetRequest">CreateSubjectSetRequest</a></td>
-                <td><a href="#policy.subjectmapping.CreateSubjectSetResponse">CreateSubjectSetResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>UpdateSubjectSet</td>
-                <td><a href="#policy.subjectmapping.UpdateSubjectSetRequest">UpdateSubjectSetRequest</a></td>
-                <td><a href="#policy.subjectmapping.UpdateSubjectSetResponse">UpdateSubjectSetResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>DeleteSubjectSet</td>
-                <td><a href="#policy.subjectmapping.DeleteSubjectSetRequest">DeleteSubjectSetRequest</a></td>
-                <td><a href="#policy.subjectmapping.DeleteSubjectSetResponse">DeleteSubjectSetResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>ListSubjectSets</td>
-                <td><a href="#policy.subjectmapping.ListSubjectSetsRequest">ListSubjectSetsRequest</a></td>
-                <td><a href="#policy.subjectmapping.ListSubjectSetsResponse">ListSubjectSetsResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
                 <td>MatchSubjectMappings</td>
                 <td><a href="#policy.subjectmapping.MatchSubjectMappingsRequest">MatchSubjectMappingsRequest</a></td>
                 <td><a href="#policy.subjectmapping.MatchSubjectMappingsResponse">MatchSubjectMappingsResponse</a></td>
@@ -6115,56 +5761,6 @@ Response Example:
               </tr>
             </thead>
             <tbody>
-            
-              
-              
-              <tr>
-                <td>GetSubjectSet</td>
-                <td>GET</td>
-                <td>/subject-sets/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateSubjectSet</td>
-                <td>POST</td>
-                <td>/subject-sets</td>
-                <td>subject_set</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateSubjectSet</td>
-                <td>POST</td>
-                <td>/subject-sets/{id}</td>
-                <td>subject_set</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeleteSubjectSet</td>
-                <td>DELETE</td>
-                <td>/subject-sets/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>ListSubjectSets</td>
-                <td>GET</td>
-                <td>/subject-sets</td>
-                <td></td>
-              </tr>
-              
             
               
               

@@ -48,12 +48,26 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
       - run: make go.work
-      - name: golangci-lint
+      - name: golangci-lint on PR
+        if: github.event_name == 'pull_request'
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
-        continue-on-error: "${{ github.event_name == 'push' }}"
         with:
           version: v1.55
+          working-directory: ${{ matrix.directory }}
           only-new-issues: true
+      - name: golangci-lint on merge_group
+        if: github.event_name == 'merge_group'
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        with:
+          version: v1.55
+          working-directory: ${{ matrix.directory }}
+          args: --new-from-rev=main
+      - name: golangci-lint on push
+        if: github.event_name == 'push'
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        continue-on-error: true
+        with:
+          version: v1.55
           working-directory: ${{ matrix.directory }}
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}

@@ -71,7 +71,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	defer s.Stop()
 
 	// Make request to test service and ensure it registered
-	resp, err := http.Get("http://localhost:43481/testpath/world")
+	resp, err := http.Get("http://127.0.0.1:43481/testpath/world")
 	assert.Nil(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 

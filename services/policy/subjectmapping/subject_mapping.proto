@@ -1,119 +1,119 @@
 syntax = "proto3";
 
-package subjectmapping;
+package policy.subjectmapping;
 
 import "authorization/authorization.proto";
-import "policy/attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
+import "policy/attributes/attributes.proto";
 
 /*
-   # Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
+    # Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
 
-   ## Examples
+    ## Examples
 
-   ### Where:
+    ### Where:
 
-     - attribute_value_id represents the following attribute
-       - FQN: "http://demo.com/attr/example/value/foobar"
-       - UUID: "12345678-1234-1234-1234-123456789012"
+      - attribute_value_id represents the following attribute
+        - FQN: "http://demo.com/attr/example/value/foobar"
+        - UUID: "12345678-1234-1234-1234-123456789012"
 
-   ### Request - Create a Subject Set with a single condition: user attribute division = Marketing or Sales
+    ### Request - Create a Subject Set with a single condition: user attribute division = Marketing or Sales
 
-   ```bash
-   grpcurl -plaintext -d '{
-    "subject_set": {
-      "metadata": {
-        "labels": {
-          "name": "example"
-        }
-      },
-      "condition_groups": [
-        {
-          "conditions": [
-            {
-              "subject_attribute": "division",
-              "subject_values": [
-                "Marketing",
-                "Sales"
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  }' localhost:8080 SubjectMappingService.CreateSubjectSet
+    ```bash
+    grpcurl -plaintext -d '{
+     "subject_set": {
+       "metadata": {
+         "labels": {
+           "name": "example"
+         }
+       },
+       "condition_groups": [
+         {
+           "conditions": [
+             {
+               "subject_attribute": "division",
+               "subject_values": [
+                 "Marketing",
+                 "Sales"
+               ]
+             }
+           ]
+         }
+       ]
+     }
+   }' localhost:8080 SubjectMappingService.CreateSubjectSet
 
-  ```
-
-  #### Response:
-
-  ```
-   {
-    "subject_set": {
-      "id": "0000-1111-2222",
-      "metadata": {
-        "labels": {
-          "name": "example"
-        }
-      },
-      "condition_groups": [
-        {
-          "conditions": [
-            {
-              "subject_attribute": "division",
-              "subject_values": [
-                "Marketing",
-                "Sales"
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  }
-  ```
-
-  ## Create a Subject Mapping Policy using the above (previous) Subject Set for attribute http://demo.com/attr/example/value/foobar
-  and permitted actions TRANSMIT and DECRYPT
-
-   ```bash
-   grpcurl -plaintext -d '{
-  "subject_mapping": {
-    "metadata": {
-      "labels": {
-        "name": "sample-subject-mappings"
-      }
-    },
-    "attribute_value_id": "12345678-1234-1234-1234-123456789012",
-    "subject_set_ids": [
-      "0000-1111-2222"
-    ],
-    "actions": [
-      {
-        "standard": "STANDARD_ACTION_TRANSMIT"
-      },
-      {
-        "standard": "STANDARD_ACTION_DECRYPT"
-      }
-    ]
-  }
-  }' localhost:8080 SubjectMappingService.CreateSubjectMapping
    ```
 
-  ## Find matching subject mappings for Subject alice:
+   #### Response:
 
-  ```bash
+   ```
+    {
+     "subject_set": {
+       "id": "0000-1111-2222",
+       "metadata": {
+         "labels": {
+           "name": "example"
+         }
+       },
+       "condition_groups": [
+         {
+           "conditions": [
+             {
+               "subject_attribute": "division",
+               "subject_values": [
+                 "Marketing",
+                 "Sales"
+               ]
+             }
+           ]
+         }
+       ]
+     }
+   }
+   ```
+
+   ## Create a Subject Mapping Policy using the above (previous) Subject Set for attribute http://demo.com/attr/example/value/foobar
+   and permitted actions TRANSMIT and DECRYPT
+
+    ```bash
     grpcurl -plaintext -d '{
-    "subject":  {
-      "attributes":  {
-        "division":  "Sales",
-        "preferredUsername":  "alice@example.org"
-      }
-    }
-  }' localhost:8080 SubjectMappingService.MatchSubjectMappings
+   "subject_mapping": {
+     "metadata": {
+       "labels": {
+         "name": "sample-subject-mappings"
+       }
+     },
+     "attribute_value_id": "12345678-1234-1234-1234-123456789012",
+     "subject_set_ids": [
+       "0000-1111-2222"
+     ],
+     "actions": [
+       {
+         "standard": "STANDARD_ACTION_TRANSMIT"
+       },
+       {
+         "standard": "STANDARD_ACTION_DECRYPT"
+       }
+     ]
+   }
+   }' localhost:8080 SubjectMappingService.CreateSubjectMapping
+    ```
+
+   ## Find matching subject mappings for Subject alice:
+
+   ```bash
+     grpcurl -plaintext -d '{
+     "subject":  {
+       "attributes":  {
+         "division":  "Sales",
+         "preferredUsername":  "alice@example.org"
+       }
+     }
+   }' localhost:8080 SubjectMappingService.MatchSubjectMappings
 */
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
@@ -131,23 +131,23 @@ enum ConditionBooleanTypeEnum {
 }
 
 /**
- A Condition defines a rule of <subject attribute> <operator> <subject values>
+    A Condition defines a rule of <subject attribute> <operator> <subject values>
 
-Example:  Match Subjects with an attribute "division" with a value of "Accounting" or "Marketing":
-{
-  "subject_attribute": "division",
-  "operator": "IN",
-  "subject_values" : ["Accounting", "Marketing"]
-}
+   Example:  Match Subjects with an attribute "division" with a value of "Accounting" or "Marketing":
+   {
+     "subject_attribute": "division",
+     "operator": "IN",
+     "subject_values" : ["Accounting", "Marketing"]
+   }
 
-Example: Match a subject by preferred username:
-{
-  "subject_attribute": "preferredUsername",
-  "operator": "IN",
-  "subject_values" : ["alice@example.org"]
-}
+   Example: Match a subject by preferred username:
+   {
+     "subject_attribute": "preferredUsername",
+     "operator": "IN",
+     "subject_values" : ["alice@example.org"]
+   }
 */
-message Condition{
+message Condition {
   // Resource Attribute Key; NOT Attribute Definition Attribute name
   string subject_attribute = 1;
 
@@ -165,10 +165,8 @@ message Condition{
 }
 
 // A Group of conditions with either OR or AND evaluation across the contained conditions
-message ConditionGroup{
-  repeated Condition conditions  =  1 [
-    (buf.validate.field).repeated.min_items = 1
-  ];
+message ConditionGroup {
+  repeated Condition conditions = 1 [(buf.validate.field).repeated.min_items = 1];
   // the boolean evaluation type across the conditions
   ConditionBooleanTypeEnum boolean_type = 2 [
     (buf.validate.field).enum.defined_only = true,
@@ -178,29 +176,27 @@ message ConditionGroup{
 
 // A Set of subjects described by matching criteria via a list of condition groups.
 // A Subject Set can be used by multiple Subject Mappings
-message SubjectSet{
+message SubjectSet {
   string id = 1;
 
   common.Metadata metadata = 2;
 
   // The conditions groups describing the matching rules for subjects in the set
-  repeated ConditionGroup condition_groups = 3 [
-    (buf.validate.field).repeated.min_items = 1
-  ];
+  repeated ConditionGroup condition_groups = 3 [(buf.validate.field).repeated.min_items = 1];
 }
 
 /*
- Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination
+   Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination
 
- Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one
- with permitted actions TRANSMIT and DECRYPT
- {
-  "id": "someid",
-  "attribute_value": {example_one_attribute_value...},
-  "subject_sets": [{subject_set_1},{subject_set_2}]
-  "actions": ["TRANSMIT", "DECRYPT"]
- }
- */
+   Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one
+   with permitted actions TRANSMIT and DECRYPT
+   {
+    "id": "someid",
+    "attribute_value": {example_one_attribute_value...},
+    "subject_sets": [{subject_set_1},{subject_set_2}]
+    "actions": ["TRANSMIT", "DECRYPT"]
+   }
+*/
 message SubjectMapping {
   string id = 1;
 
@@ -217,7 +213,7 @@ message SubjectMapping {
   repeated authorization.Action actions = 5;
 }
 
-message SubjectSetCreateUpdate{
+message SubjectSetCreateUpdate {
   common.MetadataMutable metadata = 1;
 
   repeated ConditionGroup condition_groups = 2;
@@ -227,7 +223,7 @@ message GetSubjectSetRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 
-message GetSubjectSetResponse{
+message GetSubjectSetResponse {
   SubjectSet subject_set = 1;
 }
 
@@ -253,22 +249,22 @@ message DeleteSubjectSetResponse {
   SubjectSet subject_set = 1;
 }
 
-message ListSubjectSetsRequest{}
-message ListSubjectSetsResponse{
+message ListSubjectSetsRequest {}
+message ListSubjectSetsResponse {
   repeated SubjectSet subject_sets = 1;
 }
 
 // A Representation of a subject as attribute->value pairs.  This would mirror user attributes retrieved
 // from an authoritative source such as an IDP (Identity Provider) or User Store.  Examples include such ADFS/LDAP, OKTA, etc.
-message Subject{
-  google.protobuf.Struct attributes= 1;
+message Subject {
+  google.protobuf.Struct attributes = 1;
 }
 
-message MatchSubjectMappingsRequest{
+message MatchSubjectMappingsRequest {
   Subject subject = 1;
 }
 
-message MatchSubjectMappingsResponse{
+message MatchSubjectMappingsResponse {
   repeated SubjectMapping subject_mappings = 1;
 }
 
@@ -283,7 +279,6 @@ message SubjectMappingCreateUpdate {
 
   // The actions permitted by subjects in this mapping
   repeated authorization.Action actions = 4;
-
 }
 
 message GetSubjectMappingRequest {
@@ -321,8 +316,7 @@ message DeleteSubjectMappingResponse {
 }
 
 service SubjectMappingService {
-
-  rpc GetSubjectSet(GetSubjectSetRequest) returns (GetSubjectSetResponse){
+  rpc GetSubjectSet(GetSubjectSetRequest) returns (GetSubjectSetResponse) {
     option (google.api.http) = {get: "/subject-sets/{id}"};
   }
 
@@ -349,13 +343,12 @@ service SubjectMappingService {
   }
 
   // Find matching Subject Mappings for a given Subject
-  rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse){
+  rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse) {
     option (google.api.http) = {
       post: "/subject-mappings/match"
       body: "subject"
     };
   }
-
 
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
     option (google.api.http) = {get: "/subject-mappings"};

@@ -2,9 +2,10 @@ package integration
 
 import (
 	"context"
-	"github.com/opentdf/platform/protocol/go/authorization"
 	"log/slog"
 	"testing"
+
+	"github.com/opentdf/platform/protocol/go/authorization"
 
 	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"

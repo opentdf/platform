@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
@@ -80,13 +81,21 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 	}
 
 	s := &subjectmapping.SubjectMapping{
-		Id:               id,
-		Operator:         subjectMappingOperatorEnumTransformOut(operator),
-		SubjectAttribute: subjectAttribute,
-		SubjectValues:    subjectAttributeValues,
-		Metadata:         m,
-		AttributeValue:   v,
+		Id:             id,
+		Metadata:       m,
+		AttributeValue: v,
+		SubjectSets:    make([]*subjectmapping.SubjectSet, 0),
+		Actions:        make([]*authorization.Action, 0),
 	}
+	// FIXME
+	// add operator
+	s.Actions = append(s.Actions, &authorization.Action{})
+	// add subjectAttributeValues
+	s.SubjectSets = append(s.SubjectSets, &subjectmapping.SubjectSet{
+		Id:              subjectAttribute,
+		ConditionGroups: make([]*subjectmapping.ConditionGroup, 0),
+	})
+
 	return s, nil
 }
 
@@ -133,12 +142,12 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	if err != nil {
 		return nil, err
 	}
-
+	// FIXME
 	sql, args, err := createSubjectMappingSql(
 		s.AttributeValueId,
-		subjectMappingOperatorEnumTransformIn(s.Operator.String()),
-		s.SubjectAttribute,
-		s.SubjectValues,
+		"subjectMappingOperatorEnumTransformIn(s.Operator.String())",
+		"s.SubjectAttribute",
+		[]string{"s.SubjectValues"},
 		metadataJson,
 	)
 
@@ -152,12 +161,11 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	// a, err := c.GetAttributeValue(ctx, s.AttributeValueId)
 
 	rS := &subjectmapping.SubjectMapping{
-		Id: id,
-		// Attribute:     a,
-		Operator:         s.Operator,
-		SubjectAttribute: s.SubjectAttribute,
-		SubjectValues:    s.SubjectValues,
-		Metadata:         metadata,
+		Id:             id,
+		Metadata:       metadata,
+		AttributeValue: nil,
+		SubjectSets:    nil,
+		Actions:        nil,
 	}
 	return rS, nil
 }
@@ -253,9 +261,9 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, id string, s *
 	sql, args, err := updateSubjectMappingSql(
 		id,
 		s.AttributeValueId,
-		subjectMappingOperatorEnumTransformIn(s.Operator.String()),
-		s.SubjectAttribute,
-		s.SubjectValues,
+		"subjectMappingOperatorEnumTransformIn(s.Operator.String())",
+		"s.SubjectAttribute",
+		[]string{"s.SubjectValues"},
 		metadataJson,
 	)
 	if err != nil {

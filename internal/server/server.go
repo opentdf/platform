@@ -222,7 +222,7 @@ func (s OpenTDFServer) startHTTPServer() {
 		slog.Info("starting https server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServeTLS("", "")
 	} else {
-		slog.Info("starting http server", "address", s.HTTPServer.Addr) 
+		slog.Info("starting http server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServe()
 	}
 

@@ -68,6 +68,39 @@
         ]
       }
     },
+    "/subject-mappings/match": {
+      "post": {
+        "summary": "Find matching Subject Mappings for a given Subject",
+        "operationId": "SubjectMappingService_MatchSubjectMappings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingMatchSubjectMappingsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/subjectmappingSubject"
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
     "/subject-mappings/{id}": {
       "get": {
         "operationId": "SubjectMappingService_GetSubjectMapping",
@@ -161,9 +194,177 @@
           "SubjectMappingService"
         ]
       }
+    },
+    "/subject-sets": {
+      "get": {
+        "operationId": "SubjectMappingService_ListSubjectSets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingListSubjectSetsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "post": {
+        "operationId": "SubjectMappingService_CreateSubjectSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingCreateSubjectSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subjectSet",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/subjectmappingSubjectSetCreateUpdate"
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
+    "/subject-sets/{id}": {
+      "get": {
+        "operationId": "SubjectMappingService_GetSubjectSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingGetSubjectSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "delete": {
+        "operationId": "SubjectMappingService_DeleteSubjectSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingDeleteSubjectSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "post": {
+        "operationId": "SubjectMappingService_UpdateSubjectSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingUpdateSubjectSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "subjectSet",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/subjectmappingSubjectSetCreateUpdate"
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
     }
   },
   "definitions": {
+    "ActionStandardAction": {
+      "type": "string",
+      "enum": [
+        "STANDARD_ACTION_UNSPECIFIED",
+        "STANDARD_ACTION_DECRYPT",
+        "STANDARD_ACTION_TRANSMIT"
+      ],
+      "default": "STANDARD_ACTION_UNSPECIFIED",
+      "title": "Standard actions supported by the platform"
+    },
+    "authorizationAction": {
+      "type": "object",
+      "properties": {
+        "standard": {
+          "$ref": "#/definitions/ActionStandardAction"
+        },
+        "custom": {
+          "type": "string"
+        }
+      },
+      "title": "An action an entity can take"
+    },
     "commonMetadata": {
       "type": "object",
       "properties": {
@@ -290,6 +491,14 @@
       "additionalProperties": {},
       "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
     },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\nThe JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
     "rpcStatus": {
       "type": "object",
       "properties": {
@@ -309,11 +518,68 @@
         }
       }
     },
+    "subjectmappingCondition": {
+      "type": "object",
+      "properties": {
+        "subjectAttribute": {
+          "type": "string",
+          "title": "Resource Attribute Key; NOT Attribute Definition Attribute name"
+        },
+        "operator": {
+          "$ref": "#/definitions/subjectmappingSubjectMappingOperatorEnum",
+          "title": "the operator"
+        },
+        "subjectValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "The list of comparison values for a resource's \u003cattribute\u003e value"
+        }
+      },
+      "description": "Example:  Match Subjects with an attribute \"division\" with a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_attribute\": \"division\",\n\"operator\": \"IN\",\n\"subject_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Match a subject by preferred username:\n{\n\"subject_attribute\": \"preferredUsername\",\n\"operator\": \"IN\",\n\"subject_values\" : [\"alice@example.org\"]\n}",
+      "title": "*\nA Condition defines a rule of \u003csubject attribute\u003e \u003coperator\u003e \u003csubject values\u003e"
+    },
+    "subjectmappingConditionBooleanTypeEnum": {
+      "type": "string",
+      "enum": [
+        "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+        "CONDITION_BOOLEAN_TYPE_ENUM_AND",
+        "CONDITION_BOOLEAN_TYPE_ENUM_OR"
+      ],
+      "default": "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "subjectmappingConditionGroup": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingCondition"
+          }
+        },
+        "booleanType": {
+          "$ref": "#/definitions/subjectmappingConditionBooleanTypeEnum",
+          "title": "the boolean evaluation type across the conditions"
+        }
+      },
+      "title": "A Group of conditions with either OR or AND evaluation across the contained conditions"
+    },
     "subjectmappingCreateSubjectMappingResponse": {
       "type": "object",
       "properties": {
         "subjectMapping": {
           "$ref": "#/definitions/subjectmappingSubjectMapping"
+        }
+      }
+    },
+    "subjectmappingCreateSubjectSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectSet": {
+          "$ref": "#/definitions/subjectmappingSubjectSet"
         }
       }
     },
@@ -325,11 +591,27 @@
         }
       }
     },
+    "subjectmappingDeleteSubjectSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectSet": {
+          "$ref": "#/definitions/subjectmappingSubjectSet"
+        }
+      }
+    },
     "subjectmappingGetSubjectMappingResponse": {
       "type": "object",
       "properties": {
         "subjectMapping": {
           "$ref": "#/definitions/subjectmappingSubjectMapping"
+        }
+      }
+    },
+    "subjectmappingGetSubjectSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectSet": {
+          "$ref": "#/definitions/subjectmappingSubjectSet"
         }
       }
     },
@@ -345,6 +627,39 @@
         }
       }
     },
+    "subjectmappingListSubjectSetsResponse": {
+      "type": "object",
+      "properties": {
+        "subjectSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingSubjectSet"
+          }
+        }
+      }
+    },
+    "subjectmappingMatchSubjectMappingsResponse": {
+      "type": "object",
+      "properties": {
+        "subjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingSubjectMapping"
+          }
+        }
+      }
+    },
+    "subjectmappingSubject": {
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "type": "object"
+        }
+      },
+      "description": "A Representation of a subject as attribute-\u003evalue pairs.  This would mirror user attributes retrieved\nfrom an authoritative source such as an IDP (Identity Provider) or User Store.  Examples include such ADFS/LDAP, OKTA, etc."
+    },
     "subjectmappingSubjectMapping": {
       "type": "object",
       "properties": {
@@ -357,25 +672,27 @@
         },
         "attributeValue": {
           "$ref": "#/definitions/policyattributesValue",
-          "title": "Attribute Value to be mapped to"
+          "title": "Attribute Value to be mapped to; aka: \"The Entity Entitlement Attribute\""
         },
-        "subjectAttribute": {
-          "type": "string",
-          "title": "Resource Attribute Key; NOT Attribute Definition Attribute name"
-        },
-        "subjectValues": {
+        "subjectSets": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingSubjectSet"
           },
-          "title": "The list of comparison values for a resource's \u003cattribute\u003e value"
+          "title": "the subjects included in this mapping"
         },
-        "operator": {
-          "$ref": "#/definitions/subjectmappingSubjectMappingOperatorEnum",
-          "description": "TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute\n or treat the subject values as regex patterns applied to subject attribute",
-          "title": "the operator"
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationAction"
+          },
+          "title": "The actions permitted by subjects in this mapping"
         }
-      }
+      },
+      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_sets\": [{subject_set_1},{subject_set_2}]\n\"actions\": [\"TRANSMIT\", \"DECRYPT\"]\n}",
+      "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination"
     },
     "subjectmappingSubjectMappingCreateUpdate": {
       "type": "object",
@@ -387,21 +704,20 @@
           "type": "string",
           "title": "Attribute Value to be mapped to"
         },
-        "subjectAttribute": {
-          "type": "string",
-          "title": "Resource Attribute Key; NOT Attribute Definition Attribute name"
-        },
-        "subjectValues": {
+        "subjectSetIds": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "title": "The list of comparison values for a resource's \u003cattribute\u003e value"
+          "title": "the subjects sets in this mapping"
         },
-        "operator": {
-          "$ref": "#/definitions/subjectmappingSubjectMappingOperatorEnum",
-          "description": "TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute\n or treat the subject values as regex patterns applied to subject attribute",
-          "title": "the operator"
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationAction"
+          },
+          "title": "The actions permitted by subjects in this mapping"
         }
       }
     },
@@ -415,11 +731,54 @@
       "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
       "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
+    "subjectmappingSubjectSet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        },
+        "conditionGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingConditionGroup"
+          },
+          "title": "The conditions groups describing the matching rules for subjects in the set"
+        }
+      },
+      "title": "A Set of subjects described by matching criteria via a list of condition groups.\nA Subject Set can be used by multiple Subject Mappings"
+    },
+    "subjectmappingSubjectSetCreateUpdate": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable"
+        },
+        "conditionGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingConditionGroup"
+          }
+        }
+      }
+    },
     "subjectmappingUpdateSubjectMappingResponse": {
       "type": "object",
       "properties": {
         "subjectMapping": {
           "$ref": "#/definitions/subjectmappingSubjectMapping"
+        }
+      }
+    },
+    "subjectmappingUpdateSubjectSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectSet": {
+          "$ref": "#/definitions/subjectmappingSubjectSet"
         }
       }
     }

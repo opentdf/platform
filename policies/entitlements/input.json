@@ -1,0 +1,28 @@
+{
+  "entity": {
+    "claims": [
+      "ec11",
+      "ec12",
+      "ec13"
+    ],
+    "email_address": "a@a.af",
+    "id": "email_address:\"a@a.af\""
+  },
+  "subjectset": {
+    "id": "abc",
+    "condition_groups": [
+      {
+        "conditions": [
+          {
+            "subject_attribute": "https://example.com/attr/attr1/value/value1",
+            "operator": 1,
+            "subject_values": [
+              "ec11"
+            ]
+          }
+        ],
+        "boolean_type": 1
+      }
+    ]
+  }
+}

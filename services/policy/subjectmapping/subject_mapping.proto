@@ -1,11 +1,13 @@
 syntax = "proto3";
 
-package policy.subjectmapping;
+package subjectmapping;
 
+import "authorization/authorization.proto";
 import "policy/attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
 
 /*
    # Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
@@ -15,48 +17,103 @@ import "google/api/annotations.proto";
    ### Where:
 
      - attribute_value_id represents the following attribute
-       - FQN: "http://demo.com/attr/relto/value/CZE"
+       - FQN: "http://demo.com/attr/example/value/foobar"
        - UUID: "12345678-1234-1234-1234-123456789012"
 
-   ### Request
+   ### Request - Create a Subject Set with a single condition: user attribute division = Marketing or Sales
 
    ```bash
    grpcurl -plaintext -d '{
-     "subject_mapping": {
-       "metadata": {
-         "description": "subject mapping 1",
-           "labels": {
-             "test-label": "test-value"
-           }
-       },
-       "attribute_value_id": "12345678-1234-1234-1234-123456789012",
-       "subject_attribute": "nationality",
-       "subject_values": ["CZE"],
-       "operator": "IN"
-     }
-   }' localhost:8080 policy.SubjectMappingService.CreateSubjectMapping
-   ```
+    "subject_set": {
+      "metadata": {
+        "labels": {
+          "name": "example"
+        }
+      },
+      "condition_groups": [
+        {
+          "conditions": [
+            {
+              "subject_attribute": "division",
+              "subject_values": [
+                "Marketing",
+                "Sales"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }' localhost:8080 SubjectMappingService.CreateSubjectSet
 
-   ### Response
+  ```
 
-   ```
+  #### Response:
+
+  ```
    {
-     "subject_mapping": {
-       "metadata": {
-         "id": "12345678-2222-1234-1234-123456789012",
-         "description": "subject mapping 1",
-         "labels": {
-           "test-label": "test-value"
-         }
-       },
-       "attribute_value_id": "12345678-1234-1234-1234-123456789012",
-       "subject_attribute": "nationality",
-       "subject_values": ["CZE"],
-       "operator": "IN"
-     }
-   }
+    "subject_set": {
+      "id": "0000-1111-2222",
+      "metadata": {
+        "labels": {
+          "name": "example"
+        }
+      },
+      "condition_groups": [
+        {
+          "conditions": [
+            {
+              "subject_attribute": "division",
+              "subject_values": [
+                "Marketing",
+                "Sales"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+  ```
+
+  ## Create a Subject Mapping Policy using the above (previous) Subject Set for attribute http://demo.com/attr/example/value/foobar
+  and permitted actions TRANSMIT and DECRYPT
+
+   ```bash
+   grpcurl -plaintext -d '{
+  "subject_mapping": {
+    "metadata": {
+      "labels": {
+        "name": "sample-subject-mappings"
+      }
+    },
+    "attribute_value_id": "12345678-1234-1234-1234-123456789012",
+    "subject_set_ids": [
+      "0000-1111-2222"
+    ],
+    "actions": [
+      {
+        "standard": "STANDARD_ACTION_TRANSMIT"
+      },
+      {
+        "standard": "STANDARD_ACTION_DECRYPT"
+      }
+    ]
+  }
+  }' localhost:8080 SubjectMappingService.CreateSubjectMapping
    ```
 
+  ## Find matching subject mappings for Subject alice:
+
+  ```bash
+    grpcurl -plaintext -d '{
+    "subject":  {
+      "attributes":  {
+        "division":  "Sales",
+        "preferredUsername":  "alice@example.org"
+      }
+    }
+  }' localhost:8080 SubjectMappingService.MatchSubjectMappings
 */
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
@@ -66,28 +123,153 @@ enum SubjectMappingOperatorEnum {
   SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
 }
 
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum ConditionBooleanTypeEnum {
+  CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED = 0;
+  CONDITION_BOOLEAN_TYPE_ENUM_AND = 1;
+  CONDITION_BOOLEAN_TYPE_ENUM_OR = 2;
+}
+
+/**
+ A Condition defines a rule of <subject attribute> <operator> <subject values>
+
+Example:  Match Subjects with an attribute "division" with a value of "Accounting" or "Marketing":
+{
+  "subject_attribute": "division",
+  "operator": "IN",
+  "subject_values" : ["Accounting", "Marketing"]
+}
+
+Example: Match a subject by preferred username:
+{
+  "subject_attribute": "preferredUsername",
+  "operator": "IN",
+  "subject_values" : ["alice@example.org"]
+}
+*/
+message Condition{
+  // Resource Attribute Key; NOT Attribute Definition Attribute name
+  string subject_attribute = 1;
+
+  // the operator
+  SubjectMappingOperatorEnum operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  // The list of comparison values for a resource's <attribute> value
+  repeated string subject_values = 3;
+
+  //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
+  // or treat the subject values as regex patterns applied to subject attribute
+}
+
+// A Group of conditions with either OR or AND evaluation across the contained conditions
+message ConditionGroup{
+  repeated Condition conditions  =  1 [
+    (buf.validate.field).repeated.min_items = 1
+  ];
+  // the boolean evaluation type across the conditions
+  ConditionBooleanTypeEnum boolean_type = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+// A Set of subjects described by matching criteria via a list of condition groups.
+// A Subject Set can be used by multiple Subject Mappings
+message SubjectSet{
+  string id = 1;
+
+  common.Metadata metadata = 2;
+
+  // The conditions groups describing the matching rules for subjects in the set
+  repeated ConditionGroup condition_groups = 3 [
+    (buf.validate.field).repeated.min_items = 1
+  ];
+}
+
+/*
+ Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination
+
+ Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one
+ with permitted actions TRANSMIT and DECRYPT
+ {
+  "id": "someid",
+  "attribute_value": {example_one_attribute_value...},
+  "subject_sets": [{subject_set_1},{subject_set_2}]
+  "actions": ["TRANSMIT", "DECRYPT"]
+ }
+ */
 message SubjectMapping {
   string id = 1;
 
   common.Metadata metadata = 2;
   //TODO should this be a list of values?
 
-  // Attribute Value to be mapped to
-  attributes.Value attribute_value = 3;
+  // Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+  policy.attributes.Value attribute_value = 3;
 
-  // Resource Attribute Key; NOT Attribute Definition Attribute name
-  string subject_attribute = 4;
+  // the subjects included in this mapping
+  repeated SubjectSet subject_sets = 4;
 
-  // The list of comparison values for a resource's <attribute> value
-  repeated string subject_values = 5;
+  // The actions permitted by subjects in this mapping
+  repeated authorization.Action actions = 5;
+}
 
-  // the operator
-  SubjectMappingOperatorEnum operator = 6 [
-    (buf.validate.field).enum.defined_only = true,
-    (buf.validate.field).required = true
-  ];
-  //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
-  // or treat the subject values as regex patterns applied to subject attribute
+message SubjectSetCreateUpdate{
+  common.MetadataMutable metadata = 1;
+
+  repeated ConditionGroup condition_groups = 2;
+}
+
+message GetSubjectSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message GetSubjectSetResponse{
+  SubjectSet subject_set = 1;
+}
+
+message CreateSubjectSetRequest {
+  SubjectSetCreateUpdate subject_set = 1 [(buf.validate.field).required = true];
+}
+message CreateSubjectSetResponse {
+  SubjectSet subject_set = 1;
+}
+
+message UpdateSubjectSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  SubjectSetCreateUpdate subject_set = 2 [(buf.validate.field).required = true];
+}
+message UpdateSubjectSetResponse {
+  SubjectSet subject_set = 1;
+}
+
+message DeleteSubjectSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeleteSubjectSetResponse {
+  SubjectSet subject_set = 1;
+}
+
+message ListSubjectSetsRequest{}
+message ListSubjectSetsResponse{
+  repeated SubjectSet subject_sets = 1;
+}
+
+// A Representation of a subject as attribute->value pairs.  This would mirror user attributes retrieved
+// from an authoritative source such as an IDP (Identity Provider) or User Store.  Examples include such ADFS/LDAP, OKTA, etc.
+message Subject{
+  google.protobuf.Struct attributes= 1;
+}
+
+message MatchSubjectMappingsRequest{
+  Subject subject = 1;
+}
+
+message MatchSubjectMappingsResponse{
+  repeated SubjectMapping subject_mappings = 1;
 }
 
 message SubjectMappingCreateUpdate {
@@ -96,19 +278,12 @@ message SubjectMappingCreateUpdate {
   // Attribute Value to be mapped to
   string attribute_value_id = 2;
 
-  // Resource Attribute Key; NOT Attribute Definition Attribute name
-  string subject_attribute = 3;
+  // the subjects sets in this mapping
+  repeated string subject_set_ids = 3;
 
-  // The list of comparison values for a resource's <attribute> value
-  repeated string subject_values = 4;
+  // The actions permitted by subjects in this mapping
+  repeated authorization.Action actions = 4;
 
-  // the operator
-  SubjectMappingOperatorEnum operator = 5 [
-    (buf.validate.field).enum.defined_only = true,
-    (buf.validate.field).required = true
-  ];
-  //TODO future - add features or idea of pattern/regex like ACSE?  like username regex to pull domain from subject attribute
-  // or treat the subject values as regex patterns applied to subject attribute
 }
 
 message GetSubjectMappingRequest {
@@ -146,6 +321,42 @@ message DeleteSubjectMappingResponse {
 }
 
 service SubjectMappingService {
+
+  rpc GetSubjectSet(GetSubjectSetRequest) returns (GetSubjectSetResponse){
+    option (google.api.http) = {get: "/subject-sets/{id}"};
+  }
+
+  rpc CreateSubjectSet(CreateSubjectSetRequest) returns (CreateSubjectSetResponse) {
+    option (google.api.http) = {
+      post: "/subject-sets"
+      body: "subject_set"
+    };
+  }
+
+  rpc UpdateSubjectSet(UpdateSubjectSetRequest) returns (UpdateSubjectSetResponse) {
+    option (google.api.http) = {
+      post: "/subject-sets/{id}"
+      body: "subject_set"
+    };
+  }
+
+  rpc DeleteSubjectSet(DeleteSubjectSetRequest) returns (DeleteSubjectSetResponse) {
+    option (google.api.http) = {delete: "/subject-sets/{id}"};
+  }
+
+  rpc ListSubjectSets(ListSubjectSetsRequest) returns (ListSubjectSetsResponse) {
+    option (google.api.http) = {get: "/subject-sets"};
+  }
+
+  // Find matching Subject Mappings for a given Subject
+  rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse){
+    option (google.api.http) = {
+      post: "/subject-mappings/match"
+      body: "subject"
+    };
+  }
+
+
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
     option (google.api.http) = {get: "/subject-mappings"};
   }

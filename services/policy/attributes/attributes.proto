@@ -82,7 +82,7 @@ message Value {
   repeated kasregistry.KeyAccessServer grants = 6;
 
   string fqn = 7;
-  
+
   // active by default until explicitly deactivated
   google.protobuf.BoolValue active = 8;
 }
@@ -311,7 +311,7 @@ service AttributesService {
 
   /*
      List Values
-     
+
      Request:
         NOTE: ACTIVE state by default, INACTIVE or ANY when specified
         grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes

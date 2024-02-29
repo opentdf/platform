@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -14,15 +15,17 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Config struct {
-	DB      db.Config     `yaml:"db"`
-	OPA     opa.Config    `yaml:"opa"`
-	Server  server.Config `yaml:"server"`
-	OpenTDF OpenTDFConfig `yaml:"services" mapstructure:"services"`
-	Logger  logger.Config `yaml:"logger"`
+type ServiceConfig struct {
+	Enabled    bool                   `yaml:"enabled"`
+	ExtraProps map[string]interface{} `json:"-"`
 }
 
-type OpenTDFConfig struct {
+type Config struct {
+	DB       db.Config                `yaml:"db"`
+	OPA      opa.Config               `yaml:"opa"`
+	Server   server.Config            `yaml:"server"`
+	Logger   logger.Config            `yaml:"logger"`
+	Services map[string]ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}}"`
 }
 
 type Error string
@@ -36,19 +39,26 @@ const (
 )
 
 // Load config with viper.
-func LoadConfig() (*Config, error) {
+func LoadConfig(key string) (*Config, error) {
+	if key == "" {
+		key = "opentdf"
+		slog.Info("LoadConfig: key not provided, using default", "config", key)
+	} else {
+		slog.Info("LoadConfig", "config", key)
+	}
+
 	config := &Config{}
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
-	viper.AddConfigPath(fmt.Sprintf("%s/.opentdf", homedir))
-	viper.AddConfigPath(".opentdf")
+	viper.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
+	viper.AddConfigPath("." + key)
 	viper.AddConfigPath(".")
-	viper.SetConfigName("opentdf")
+	viper.SetConfigName(key)
 	viper.SetConfigType("yaml")
 
-	viper.SetEnvPrefix("opentdf")
+	viper.SetEnvPrefix(key)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
@@ -64,5 +74,20 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
+
+	// Manually handle unmarshaling of ExtraProps for each service
+	for serviceKey, service := range config.Services {
+		var extraProps map[string]interface{}
+		if err := viper.UnmarshalKey("services."+serviceKey, &extraProps); err != nil {
+			return nil, errors.Join(err, ErrLoadingConfig)
+		}
+		service.ExtraProps = extraProps
+
+		// Remove "enabled" from ExtraProps
+		delete(extraProps, "enabled")
+
+		config.Services[serviceKey] = service // Update the service in the map
+	}
+
 	return config, nil
 }

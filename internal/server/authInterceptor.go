@@ -16,14 +16,16 @@ type authN struct {
 	cache *jwk.Cache
 }
 
+var testIDP = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/certs"
+
 func newAuthNInterceptor() (*authN, error) {
 	a := &authN{}
 	ctx := context.Background()
 
 	a.cache = jwk.NewCache(ctx)
-	a.cache.Register("https://www.googleapis.com/oauth2/v3/certs", jwk.WithMinRefreshInterval(15*time.Minute))
+	a.cache.Register(testIDP, jwk.WithMinRefreshInterval(15*time.Minute))
 
-	_, err := a.cache.Refresh(ctx, "https://www.googleapis.com/oauth2/v3/certs")
+	_, err := a.cache.Refresh(ctx, testIDP)
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +73,17 @@ func (a authN) verifyToken(ctx context.Context, req any, info *grpc.UnaryServerI
 	}
 
 	// Verify the token
-	keySet, err := a.cache.Get(ctx, "https://www.googleapis.com/oauth2/v3/certs")
+	keySet, err := a.cache.Get(ctx, testIDP)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jwk: %w", err)
 	}
 
-	_, err = jwt.Parse([]byte(tokenRaw), jwt.WithKeySet(keySet), jwt.WithValidate(true))
+	_, err = jwt.Parse([]byte(tokenRaw), jwt.WithKeySet(keySet), jwt.WithValidate(true), jwt.WithValidator(jwt.ValidatorFunc(func(ctx context.Context, token jwt.Token) jwt.ValidationError {
+		if cid, exists := token.Get("client_id"); !exists || cid.(string) != "opentdf" {
+			return jwt.NewValidationError(fmt.Errorf("invalid client id"))
+		}
+		return nil
+	})))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}

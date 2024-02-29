@@ -30,9 +30,10 @@ const (
 )
 
 type Config struct {
-	Grpc GrpcConfig `yaml:"grpc"`
-	HTTP HTTPConfig `yaml:"http"`
-	TLS  TLSConfig  `yaml:"tls"`
+	Grpc GrpcConfig   `yaml:"grpc"`
+	HTTP HTTPConfig   `yaml:"http"`
+	TLS  TLSConfig    `yaml:"tls"`
+	Auth []AuthConfig `yaml:"auth"`
 }
 
 type GrpcConfig struct {
@@ -43,6 +44,12 @@ type GrpcConfig struct {
 type HTTPConfig struct {
 	Enabled bool `yaml:"enabled" default:"true"`
 	Port    int  `yaml:"port" default:"8080"`
+}
+
+type AuthConfig struct {
+	Issuer           string                 `yaml:"issuers"`
+	Clients          []string               `yaml:"clients"`
+	ClaimsToValidate map[string]interface{} `yaml:"claimsToValidate"`
 }
 
 type TLSConfig struct {

@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
+.PHONY: all build clean docker-build fix go-lint go-vet lint proto-generate proto-lint sdk/sdk test toolcheck
 
 MODS=protocol/go sdk . examples
 
@@ -24,7 +24,7 @@ go.work go.work.sum:
 fix:
 	for m in $(MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
 
-lint: proto-lint go-lint
+lint: proto-lint go-lint go-vet
 
 proto-lint:
 	buf lint services || (exit_code=$$?; \
@@ -36,7 +36,10 @@ proto-lint:
 		fi)
 
 go-lint:
-	for m in $(MODS); do (golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
+	for m in $(MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
+
+go-vet:
+	for m in $(MODS); do (cd $$m && go vet ./...) || exit 1; done
 
 proto-generate:
 	rm -rf sdkjava/src protocol/go/[a-fh-z]*

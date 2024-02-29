@@ -18,7 +18,12 @@ func NewPdp() *Pdp {
 // DetermineAccess will take data AttributeInstances, data AttributeDefinitions, and entity attributeInstance sets, and
 // compare every data attributeInstance against every entity's attributeInstance set, generating a rolled-up decision
 // result for each entity, as well as a detailed breakdown of every data attributeInstance comparison.
-func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attributeInstance, entityAttributeSets map[string][]attributeInstance, attributeDefinitions []attrs.Attribute) (map[string]*Decision, error) {
+func (pdp *Pdp) DetermineAccess(
+	ctx context.Context,
+	dataAttributes []attributeInstance,
+	entityAttributeSets map[string][]attributeInstance,
+	attributeDefinitions []*attrs.Attribute,
+) (map[string]*Decision, error) {
 	slog.DebugContext(ctx, "DetermineAccess")
 	// Cluster (e.g. group) all the Data AttributeInstances by CanonicalName (that is, "<namespace>/attr/<attrname>")
 	// AttributeInstances in the same cluster/group (keyed by CanonicalName) will be different "instances" of the same attribute,
@@ -77,7 +82,7 @@ func (pdp *Pdp) DetermineAccess(ctx context.Context, dataAttributes []attributeI
 		for entityId, ruleResult := range entityRuleDecision {
 			entityDecision := decisions[entityId]
 
-			ruleResult.RuleDefinition = &attrDefinition
+			ruleResult.RuleDefinition = attrDefinition
 			// If we do not yet have an overall decision for this entity, initialize the map
 			// with entityId as key and a Decision object as value
 			if entityDecision == nil {
@@ -353,7 +358,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 // look through that set of instances for an instance whose value and canonical name matches the single instance
 func findInstanceValueInCluster(instance *attrs.Attribute, cluster []attributeInstance) bool {
 	for i := range cluster {
-		if cluster[i].Value == instance.String() && cluster[i].GetCanonicalName() == GetCanonicalNameADV(*instance) {
+		if cluster[i].Value == instance.String() && cluster[i].GetCanonicalName() == GetCanonicalNameADV(instance) {
 			return true
 		}
 	}
@@ -530,11 +535,12 @@ func ClusterByCanonicalName(attrs []Clusterable) map[string][]Clusterable {
 // ClusterByCanonicalNameAD takes a slice of Clusterable (attributeInstance OR AttributeDefinition),
 // and returns them as a map, where the map is keyed by each unique CanonicalName
 // (e.g. Authority+Name, 'https://myauthority.org/attr/<name>') found in the slice of Clusterables
-func ClusterByCanonicalNameAD(ads []attrs.Attribute) map[string][]attrs.Attribute {
-	clusters := make(map[string][]attrs.Attribute)
+func ClusterByCanonicalNameAD(ads []*attrs.Attribute) map[string][]*attrs.Attribute {
+	clusters := make(map[string][]*attrs.Attribute)
 	// FIXME
 	for _, instance := range ads {
-		clusters[GetCanonicalNameADV(instance)] = append(clusters[GetCanonicalNameADV(instance)], instance)
+		a := GetCanonicalNameADV(instance)
+		clusters[a] = append(clusters[a], instance)
 	}
 
 	return clusters
@@ -558,7 +564,7 @@ func GetCanonicalName(ai attributeInstance) string {
 	)
 }
 
-func GetCanonicalNameADV(instance attrs.Attribute) string {
+func GetCanonicalNameADV(instance *attrs.Attribute) string {
 	return fmt.Sprintf("%s/attr/%s",
 		instance.Namespace.Name,
 		instance.Name,

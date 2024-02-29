@@ -499,7 +499,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/attributesValue"
+            "$ref": "#/definitions/policyattributesValue"
           }
         },
         "grants": {
@@ -525,7 +525,7 @@
           "$ref": "#/definitions/attributesAttribute"
         },
         "value": {
-          "$ref": "#/definitions/attributesValue"
+          "$ref": "#/definitions/policyattributesValue"
         }
       }
     },
@@ -592,7 +592,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/attributesValue"
+          "$ref": "#/definitions/policyattributesValue"
         }
       }
     },
@@ -608,7 +608,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/attributesValue"
+          "$ref": "#/definitions/policyattributesValue"
         }
       }
     },
@@ -624,7 +624,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/attributesValue"
+          "$ref": "#/definitions/policyattributesValue"
         }
       }
     },
@@ -647,7 +647,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/attributesValue"
+            "$ref": "#/definitions/policyattributesValue"
           }
         }
       }
@@ -692,47 +692,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/attributesValue"
-        }
-      }
-    },
-    "attributesValue": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "generated uuid in database"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
-        "attributeId": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "list of attribute values that this value is related to (attribute group)"
-        },
-        "grants": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/kasregistryKeyAccessServer"
-          },
-          "title": "list of key access servers"
-        },
-        "fqn": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean",
-          "title": "active by default until explicitly deactivated"
+          "$ref": "#/definitions/policyattributesValue"
         }
       }
     },
@@ -861,6 +821,46 @@
         "name": {
           "type": "string",
           "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        }
+      }
+    },
+    "policyattributesValue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        },
+        "attributeId": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of attribute values that this value is related to (attribute group)"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          },
+          "title": "list of key access servers"
         },
         "fqn": {
           "type": "string"

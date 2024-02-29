@@ -19,17 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SubjectMappingService_GetSubjectSet_FullMethodName        = "/subjectmapping.SubjectMappingService/GetSubjectSet"
-	SubjectMappingService_CreateSubjectSet_FullMethodName     = "/subjectmapping.SubjectMappingService/CreateSubjectSet"
-	SubjectMappingService_UpdateSubjectSet_FullMethodName     = "/subjectmapping.SubjectMappingService/UpdateSubjectSet"
-	SubjectMappingService_DeleteSubjectSet_FullMethodName     = "/subjectmapping.SubjectMappingService/DeleteSubjectSet"
-	SubjectMappingService_ListSubjectSets_FullMethodName      = "/subjectmapping.SubjectMappingService/ListSubjectSets"
-	SubjectMappingService_MatchSubjectMappings_FullMethodName = "/subjectmapping.SubjectMappingService/MatchSubjectMappings"
-	SubjectMappingService_ListSubjectMappings_FullMethodName  = "/subjectmapping.SubjectMappingService/ListSubjectMappings"
-	SubjectMappingService_GetSubjectMapping_FullMethodName    = "/subjectmapping.SubjectMappingService/GetSubjectMapping"
-	SubjectMappingService_CreateSubjectMapping_FullMethodName = "/subjectmapping.SubjectMappingService/CreateSubjectMapping"
-	SubjectMappingService_UpdateSubjectMapping_FullMethodName = "/subjectmapping.SubjectMappingService/UpdateSubjectMapping"
-	SubjectMappingService_DeleteSubjectMapping_FullMethodName = "/subjectmapping.SubjectMappingService/DeleteSubjectMapping"
+	SubjectMappingService_GetSubjectSet_FullMethodName        = "/policy.subjectmapping.SubjectMappingService/GetSubjectSet"
+	SubjectMappingService_CreateSubjectSet_FullMethodName     = "/policy.subjectmapping.SubjectMappingService/CreateSubjectSet"
+	SubjectMappingService_UpdateSubjectSet_FullMethodName     = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectSet"
+	SubjectMappingService_DeleteSubjectSet_FullMethodName     = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectSet"
+	SubjectMappingService_ListSubjectSets_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/ListSubjectSets"
+	SubjectMappingService_MatchSubjectMappings_FullMethodName = "/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings"
+	SubjectMappingService_ListSubjectMappings_FullMethodName  = "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings"
+	SubjectMappingService_GetSubjectMapping_FullMethodName    = "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping"
+	SubjectMappingService_CreateSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping"
+	SubjectMappingService_UpdateSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping"
+	SubjectMappingService_DeleteSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping"
 )
 
 // SubjectMappingServiceClient is the client API for SubjectMappingService service.
@@ -428,7 +428,7 @@ func _SubjectMappingService_DeleteSubjectMapping_Handler(srv interface{}, ctx co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SubjectMappingService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "subjectmapping.SubjectMappingService",
+	ServiceName: "policy.subjectmapping.SubjectMappingService",
 	HandlerType: (*SubjectMappingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

@@ -15,6 +15,7 @@ COPY migrations/ migrations/
 COPY policies/ policies/
 COPY services/ services/
 COPY protocol/ protocol/
+COPY pkg/ pkg/
 
 RUN go build -o opentdf .
 

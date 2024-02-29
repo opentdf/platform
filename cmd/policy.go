@@ -55,7 +55,7 @@ var (
 
 func policyDBClient() (*policydb.PolicyDbClient, error) {
 	// Load the config
-	conf, err := config.LoadConfig()
+	conf, err := config.LoadConfig("opentdf")
 	if err != nil {
 		return nil, err
 	}

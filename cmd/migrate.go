@@ -24,11 +24,11 @@ var (
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			res, err := dbClient.MigrationDown()
+			err = dbClient.MigrationDown(cmd.Context())
 			if err != nil {
 				panic(fmt.Errorf("migration down failed: %w", err))
 			}
-			fmt.Print("migration down applied: ", slog.Any("res", res))
+			fmt.Print("migration down applied successfully")
 		},
 	}
 	migrateUpCmd = &cobra.Command{

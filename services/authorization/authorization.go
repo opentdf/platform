@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/open-policy-agent/opa/metrics"
@@ -16,8 +16,8 @@ import (
 	"github.com/opentdf/platform/internal/entitlements"
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/services"
 	"google.golang.org/grpc"
 )
@@ -32,6 +32,7 @@ func NewAuthorizationServer(g *grpc.Server, cc *grpc.ClientConn, s *runtime.Serv
 	as := &AuthorizationService{
 		eng: eng,
 		cc:  cc,
+	}
 	authorization.RegisterAuthorizationServiceServer(g, as)
 	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)
 	if err != nil {

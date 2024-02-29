@@ -14,7 +14,7 @@ func OpaInput(entity *authorization.Entity, ss *subjectmapping.SubjectSet) (map[
 	inputUnstructured["subjectset"] = ss
 	// FIXME assumes format email_address:\"a@a.af\"
 	ea := make(map[string]interface{})
-	ea["id"] = entity.String()
+	ea["id"] = entity.Id
 	colonIndex := strings.IndexByte(entity.String(), ':')
 	ea[entity.String()[:colonIndex]] = entity.String()[colonIndex+2 : len(entity.String())-1]
 	ea["claims"] = []string{"ec11", "ec12", "ec13"}

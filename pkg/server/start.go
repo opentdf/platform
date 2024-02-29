@@ -16,14 +16,16 @@ import (
 	"github.com/opentdf/platform/pkg/serviceregistry"
 )
 
-func WithConfigName(name string) func(*StartConfig) {
+type StartOptions func(*StartConfig)
+
+func WithConfigName(name string) StartOptions {
 	return func(c *StartConfig) {
 		c.ConfigName = name
 		return
 	}
 }
 
-func WithWaitForShutdownSignal() func(*StartConfig) {
+func WithWaitForShutdownSignal() StartOptions {
 	return func(c *StartConfig) {
 		c.WaitForShutdownSignal = true
 		return
@@ -35,7 +37,7 @@ type StartConfig struct {
 	WaitForShutdownSignal bool
 }
 
-func Start(f ...func(*StartConfig)) error {
+func Start(f ...StartOptions) error {
 	startConfig := &StartConfig{}
 	for _, fn := range f {
 		fn(startConfig)

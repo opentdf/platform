@@ -21,7 +21,7 @@ func OpaInput(entity *authorization.Entity, ss *subjectmapping.SubjectSet) (map[
 	case *authorization.Entity_Jwt:
 		ea["jwt"] = v.Jwt
 	case *authorization.Entity_Claims:
-		ea["claims"] = v.Claims
+		ea["claims"] = string(v.Claims.Value)
 	case *authorization.Entity_RemoteClaimsUrl:
 		ea["remote_claims_url"] = v.RemoteClaimsUrl
 	case *authorization.Entity_UserName:
@@ -31,7 +31,6 @@ func OpaInput(entity *authorization.Entity, ss *subjectmapping.SubjectSet) (map[
 	default:
 		return nil, errors.New("entity malformed")
 	}
-	ea["claims"] = []string{"ec11", "ec12", "ec13"}
 	inputUnstructured["entity"] = ea
 	return inputUnstructured, nil
 }

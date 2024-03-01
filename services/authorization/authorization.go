@@ -97,7 +97,8 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 		return nil, err
 	}
 	// get subject mappings
-	// smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
+	_ = subjectmapping.NewSubjectMappingServiceClient(cc)
+	// TODO make call here
 	subjectSets := []*subjectmapping.SubjectSet{
 		{
 			ConditionGroups: []*subjectmapping.ConditionGroup{

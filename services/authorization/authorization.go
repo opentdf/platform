@@ -15,6 +15,7 @@ import (
 	"github.com/open-policy-agent/opa/sdk"
 	"github.com/opentdf/platform/internal/entitlements"
 	"github.com/opentdf/platform/internal/opa"
+	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -28,23 +29,30 @@ type AuthorizationService struct {
 	cc  *grpc.ClientConn
 }
 
-func NewAuthorizationServer(g *grpc.Server, cc *grpc.ClientConn, s *runtime.ServeMux, eng *opa.Engine) error {
-	as := &AuthorizationService{
-		eng: eng,
-		cc:  cc,
+func NewRegistration() serviceregistry.Registration {
+	return serviceregistry.Registration{
+		Namespace:   "authorization",
+		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			as := AuthorizationService{
+				eng: srp.Engine,
+			}
+			return &as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
+			}
+		},
 	}
-	authorization.RegisterAuthorizationServiceServer(g, as)
-	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)
-	if err != nil {
-		return fmt.Errorf("failed to register authorization service handler: %w", err)
-	}
-	return nil
 }
 
 func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
 	slog.DebugContext(ctx, "getting decisions")
-
-	attrClient := attr.NewAttributesServiceClient(as.cc)
+	// FIXME use in_process grpc calls, for now dial localhost
+	cc, err := grpc.Dial("localhost:9000", grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		slog.Error(err.Error())
+		return nil, err
+	}
+	attrClient := attr.NewAttributesServiceClient(cc)
 
 	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos
 	rsp := &authorization.GetDecisionsResponse{
@@ -82,8 +90,14 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
+	// FIXME use in_process grpc calls, for now dial localhost
+	cc, err := grpc.Dial("localhost:9000", grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		slog.Error(err.Error())
+		return nil, err
+	}
 	// get subject mappings
-	smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
+	smc := subjectmapping.NewSubjectMappingServiceClient(cc)
 	ins := subjectmapping.GetSubjectSetRequest{
 		Id: "abc",
 	}

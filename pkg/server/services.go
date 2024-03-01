@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/opentdf/platform/pkg/serviceregistry"
+	"github.com/opentdf/platform/services/authorization"
 	"github.com/opentdf/platform/services/health"
 	"github.com/opentdf/platform/services/kasregistry"
 	"github.com/opentdf/platform/services/policy/attributes"
@@ -13,6 +14,7 @@ import (
 func registerServices() error {
 	// Register the services
 	for _, s := range []serviceregistry.Registration{
+		authorization.NewRegistration(),
 		namespaces.NewRegistration(),
 		resourcemapping.NewRegistration(),
 		subjectmapping.NewRegistration(),

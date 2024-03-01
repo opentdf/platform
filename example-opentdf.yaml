@@ -9,32 +9,8 @@ logger:
 #   user: postgres
 #   password: changeme
 services:
-  entitlements:
-    providers:
-      # - type: keycloak
-      #   name: gcp
-      #   keycloak:
-      #     host: "https://keycloak.example.com/auth"
-      #     realm: "test"
-      #     clientId: "test"
-      #     clientSecret:
-      #       fromEnv: "KEYCLOAK_CLIENT_SECRET"
-
-      - type: ldap
-        name: ad-1
-        ldap:
-          baseDN: "dc=dev,dc=example,dc=com"
-          host: ""
-          port: 389
-          bindUsername: ""
-          bindPassword:
-            fromEnv: "LDAP_BIND_PASSWORD"
-          attributeFilters:
-            exclude:
-              - "objectSid"
-              - "objectGUID"
-              - "msExchMailboxGuid"
-              - "msExchMailboxSecurityDescriptor"
+  authorization:
+    enabled: true
 server:
   grpc:
     port: 9000

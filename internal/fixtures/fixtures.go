@@ -53,11 +53,33 @@ type FixtureDataAttributeValueKeyAccessServer struct {
 }
 
 type FixtureDataSubjectMapping struct {
-	Id                     string   `yaml:"id"`
-	AttributeValueId       string   `yaml:"attribute_value_id"`
-	Operator               string   `yaml:"operator"`
-	SubjectAttribute       string   `yaml:"subject_attribute"`
-	SubjectAttributeValues []string `yaml:"subject_attribute_values"`
+	Id                          string   `yaml:"id"`
+	AttributeValueId            string   `yaml:"attribute_value_id"`
+	Actions                     []string `yaml:"actions"`
+	SubjectConditionSetPivotIds []string `yaml:"subject_condition_set_pivot_ids"`
+}
+
+type FixtureSubjectMappingConditionSetPivot struct {
+	Id                    string `yaml:"id"`
+	SubjectMappingId      string `yaml:"subject_mapping_id"`
+	SubjectConditionSetId string `yaml:"subject_condition_set_id"`
+}
+
+type SubjectConditionSet struct {
+	Id        string `yaml:"id"`
+	Name      string `yaml:"name"`
+	Condition struct {
+		SubjectSets []struct {
+			ConditionGroups []struct {
+				BooleanOperator string `yaml:"boolean_operator" json:"boolean_operator"`
+				Conditions      []struct {
+					SubjectExternalField  string   `yaml:"subject_external_field" json:"subject_external_field"`
+					Operator              string   `yaml:"operator" json:"operator"`
+					SubjectExternalValues []string `yaml:"subject_external_values" json:"subject_external_values"`
+				} `yaml:"conditions" json:"conditions"`
+			} `yaml:"condition_groups" json:"condition_groups"`
+		} `yaml:"subject_sets" json:"subject_sets"`
+	} `yaml:"condition" json:"condition"`
 }
 
 type FixtureDataResourceMapping struct {
@@ -94,6 +116,14 @@ type FixtureData struct {
 		Metadata FixtureMetadata                      `yaml:"metadata"`
 		Data     map[string]FixtureDataSubjectMapping `yaml:"data"`
 	} `yaml:"subject_mappings"`
+	SubjectMappingConditionSetPivot struct {
+		Metadata FixtureMetadata                                   `yaml:"metadata"`
+		Data     map[string]FixtureSubjectMappingConditionSetPivot `yaml:"data"`
+	} `yaml:"subject_mapping_condition_set_pivot"`
+	SubjectConditionSet struct {
+		Metadata FixtureMetadata                `yaml:"metadata"`
+		Data     map[string]SubjectConditionSet `yaml:"data"`
+	} `yaml:"subject_condition_set"`
 	ResourceMappings struct {
 		Metadata FixtureMetadata                       `yaml:"metadata"`
 		Data     map[string]FixtureDataResourceMapping `yaml:"data"`
@@ -191,6 +221,10 @@ func (f *Fixtures) Provision() {
 	aV := f.provisionAttributeValues()
 	slog.Info("📦 provisioning subject mapping data")
 	sM := f.provisionSubjectMappings()
+	slog.Info("📦 provisioning subject condition set data")
+	sc := f.provisionSubjectConditionSet()
+	slog.Info("📦 provisioning subject mapping condition set pivot data")
+	smPivot := f.provisionSubjectMappingConditionSetPivot()
 	slog.Info("📦 provisioning resource mapping data")
 	rM := f.provisionResourceMappings()
 	slog.Info("📦 provisioning kas registry data")
@@ -205,6 +239,8 @@ func (f *Fixtures) Provision() {
 		slog.Int64("attributes", a),
 		slog.Int64("attribute_values", aV),
 		slog.Int64("subject_mappings", sM),
+		slog.Int64("subject_mapping_condition_set_pivot", smPivot),
+		slog.Int64("subject_condition_set", sc),
 		slog.Int64("resource_mappings", rM),
 		slog.Int64("kas_registry", kas),
 		slog.Int64("attribute_key_access_server", akas),
@@ -271,12 +307,42 @@ func (f *Fixtures) provisionSubjectMappings() int64 {
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
 			f.db.UUIDWrap(d.AttributeValueId),
-			f.db.StringWrap(d.Operator),
-			f.db.StringWrap(d.SubjectAttribute),
-			f.db.StringArrayWrap(d.SubjectAttributeValues),
+			f.db.StringArrayWrap(d.Actions),
+			f.db.UUIDArrayWrap(d.SubjectConditionSetPivotIds),
 		})
 	}
 	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionSubjectMappingConditionSetPivot() int64 {
+	values := make([][]string, 0, len(fixtureData.SubjectMappingConditionSetPivot.Data))
+	for _, d := range fixtureData.SubjectMappingConditionSetPivot.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.Id),
+			f.db.StringWrap(d.SubjectMappingId),
+			f.db.StringWrap(d.SubjectConditionSetId),
+		})
+	}
+	return f.provision(fixtureData.SubjectMappingConditionSetPivot.Metadata.TableName, fixtureData.SubjectMappingConditionSetPivot.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionSubjectConditionSet() int64 {
+	values := make([][]string, 0, len(fixtureData.SubjectConditionSet.Data))
+	for _, d := range fixtureData.SubjectConditionSet.Data {
+		var conditionJSON []byte
+		conditionJSON, err := json.Marshal(d.Condition)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with subject condition set JSON - check fixtures.yaml for issues")
+			panic("issue with subject condition set JSON")
+		}
+
+		values = append(values, []string{
+			f.db.StringWrap(d.Id),
+			f.db.StringWrap(d.Name),
+			f.db.StringWrap(string(conditionJSON)),
+		})
+	}
+	return f.provision(fixtureData.SubjectConditionSet.Metadata.TableName, fixtureData.SubjectConditionSet.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provisionResourceMappings() int64 {

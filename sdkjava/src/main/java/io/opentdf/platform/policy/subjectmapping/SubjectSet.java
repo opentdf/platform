@@ -22,7 +22,6 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private SubjectSet() {
-    id_ = "";
     conditionGroups_ = java.util.Collections.emptyList();
   }
 
@@ -46,73 +45,7 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.subjectmapping.SubjectSet.class, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder.class);
   }
 
-  private int bitField0_;
-  public static final int ID_FIELD_NUMBER = 1;
-  @SuppressWarnings("serial")
-  private volatile java.lang.Object id_ = "";
-  /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The id.
-   */
-  @java.lang.Override
-  public java.lang.String getId() {
-    java.lang.Object ref = id_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      id_ = s;
-      return s;
-    }
-  }
-  /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The bytes for id.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getIdBytes() {
-    java.lang.Object ref = id_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      id_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
-  }
-
-  public static final int METADATA_FIELD_NUMBER = 2;
-  private io.opentdf.platform.common.Metadata metadata_;
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
-   */
-  @java.lang.Override
-  public boolean hasMetadata() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return The metadata.
-   */
-  @java.lang.Override
-  public io.opentdf.platform.common.Metadata getMetadata() {
-    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
-  }
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   */
-  @java.lang.Override
-  public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
-    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
-  }
-
-  public static final int CONDITION_GROUPS_FIELD_NUMBER = 3;
+  public static final int CONDITION_GROUPS_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
   private java.util.List<io.opentdf.platform.policy.subjectmapping.ConditionGroup> conditionGroups_;
   /**
@@ -120,7 +53,7 @@ private static final long serialVersionUID = 0L;
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public java.util.List<io.opentdf.platform.policy.subjectmapping.ConditionGroup> getConditionGroupsList() {
@@ -131,7 +64,7 @@ private static final long serialVersionUID = 0L;
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.ConditionGroupOrBuilder> 
@@ -143,7 +76,7 @@ private static final long serialVersionUID = 0L;
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public int getConditionGroupsCount() {
@@ -154,7 +87,7 @@ private static final long serialVersionUID = 0L;
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public io.opentdf.platform.policy.subjectmapping.ConditionGroup getConditionGroups(int index) {
@@ -165,7 +98,7 @@ private static final long serialVersionUID = 0L;
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public io.opentdf.platform.policy.subjectmapping.ConditionGroupOrBuilder getConditionGroupsOrBuilder(
@@ -187,14 +120,8 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
-    }
-    if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(2, getMetadata());
-    }
     for (int i = 0; i < conditionGroups_.size(); i++) {
-      output.writeMessage(3, conditionGroups_.get(i));
+      output.writeMessage(1, conditionGroups_.get(i));
     }
     getUnknownFields().writeTo(output);
   }
@@ -205,16 +132,9 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
-    }
-    if (((bitField0_ & 0x00000001) != 0)) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(2, getMetadata());
-    }
     for (int i = 0; i < conditionGroups_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(3, conditionGroups_.get(i));
+        .computeMessageSize(1, conditionGroups_.get(i));
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -231,13 +151,6 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.subjectmapping.SubjectSet other = (io.opentdf.platform.policy.subjectmapping.SubjectSet) obj;
 
-    if (!getId()
-        .equals(other.getId())) return false;
-    if (hasMetadata() != other.hasMetadata()) return false;
-    if (hasMetadata()) {
-      if (!getMetadata()
-          .equals(other.getMetadata())) return false;
-    }
     if (!getConditionGroupsList()
         .equals(other.getConditionGroupsList())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
@@ -251,12 +164,6 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    hash = (37 * hash) + ID_FIELD_NUMBER;
-    hash = (53 * hash) + getId().hashCode();
-    if (hasMetadata()) {
-      hash = (37 * hash) + METADATA_FIELD_NUMBER;
-      hash = (53 * hash) + getMetadata().hashCode();
-    }
     if (getConditionGroupsCount() > 0) {
       hash = (37 * hash) + CONDITION_GROUPS_FIELD_NUMBER;
       hash = (53 * hash) + getConditionGroupsList().hashCode();
@@ -385,38 +292,25 @@ private static final long serialVersionUID = 0L;
 
     // Construct using io.opentdf.platform.policy.subjectmapping.SubjectSet.newBuilder()
     private Builder() {
-      maybeForceBuilderInitialization();
+
     }
 
     private Builder(
         com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
       super(parent);
-      maybeForceBuilderInitialization();
-    }
-    private void maybeForceBuilderInitialization() {
-      if (com.google.protobuf.GeneratedMessageV3
-              .alwaysUseFieldBuilders) {
-        getMetadataFieldBuilder();
-        getConditionGroupsFieldBuilder();
-      }
+
     }
     @java.lang.Override
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      id_ = "";
-      metadata_ = null;
-      if (metadataBuilder_ != null) {
-        metadataBuilder_.dispose();
-        metadataBuilder_ = null;
-      }
       if (conditionGroupsBuilder_ == null) {
         conditionGroups_ = java.util.Collections.emptyList();
       } else {
         conditionGroups_ = null;
         conditionGroupsBuilder_.clear();
       }
-      bitField0_ = (bitField0_ & ~0x00000004);
+      bitField0_ = (bitField0_ & ~0x00000001);
       return this;
     }
 
@@ -451,9 +345,9 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.SubjectSet result) {
       if (conditionGroupsBuilder_ == null) {
-        if (((bitField0_ & 0x00000004) != 0)) {
+        if (((bitField0_ & 0x00000001) != 0)) {
           conditionGroups_ = java.util.Collections.unmodifiableList(conditionGroups_);
-          bitField0_ = (bitField0_ & ~0x00000004);
+          bitField0_ = (bitField0_ & ~0x00000001);
         }
         result.conditionGroups_ = conditionGroups_;
       } else {
@@ -463,17 +357,6 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.SubjectSet result) {
       int from_bitField0_ = bitField0_;
-      if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.id_ = id_;
-      }
-      int to_bitField0_ = 0;
-      if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.metadata_ = metadataBuilder_ == null
-            ? metadata_
-            : metadataBuilder_.build();
-        to_bitField0_ |= 0x00000001;
-      }
-      result.bitField0_ |= to_bitField0_;
     }
 
     @java.lang.Override
@@ -520,19 +403,11 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.SubjectSet other) {
       if (other == io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance()) return this;
-      if (!other.getId().isEmpty()) {
-        id_ = other.id_;
-        bitField0_ |= 0x00000001;
-        onChanged();
-      }
-      if (other.hasMetadata()) {
-        mergeMetadata(other.getMetadata());
-      }
       if (conditionGroupsBuilder_ == null) {
         if (!other.conditionGroups_.isEmpty()) {
           if (conditionGroups_.isEmpty()) {
             conditionGroups_ = other.conditionGroups_;
-            bitField0_ = (bitField0_ & ~0x00000004);
+            bitField0_ = (bitField0_ & ~0x00000001);
           } else {
             ensureConditionGroupsIsMutable();
             conditionGroups_.addAll(other.conditionGroups_);
@@ -545,7 +420,7 @@ private static final long serialVersionUID = 0L;
             conditionGroupsBuilder_.dispose();
             conditionGroupsBuilder_ = null;
             conditionGroups_ = other.conditionGroups_;
-            bitField0_ = (bitField0_ & ~0x00000004);
+            bitField0_ = (bitField0_ & ~0x00000001);
             conditionGroupsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getConditionGroupsFieldBuilder() : null;
@@ -581,18 +456,6 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              id_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000001;
-              break;
-            } // case 10
-            case 18: {
-              input.readMessage(
-                  getMetadataFieldBuilder().getBuilder(),
-                  extensionRegistry);
-              bitField0_ |= 0x00000002;
-              break;
-            } // case 18
-            case 26: {
               io.opentdf.platform.policy.subjectmapping.ConditionGroup m =
                   input.readMessage(
                       io.opentdf.platform.policy.subjectmapping.ConditionGroup.parser(),
@@ -604,7 +467,7 @@ private static final long serialVersionUID = 0L;
                 conditionGroupsBuilder_.addMessage(m);
               }
               break;
-            } // case 26
+            } // case 10
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -622,205 +485,12 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.lang.Object id_ = "";
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return The id.
-     */
-    public java.lang.String getId() {
-      java.lang.Object ref = id_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        id_ = s;
-        return s;
-      } else {
-        return (java.lang.String) ref;
-      }
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return The bytes for id.
-     */
-    public com.google.protobuf.ByteString
-        getIdBytes() {
-      java.lang.Object ref = id_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        id_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @param value The id to set.
-     * @return This builder for chaining.
-     */
-    public Builder setId(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      id_ = value;
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearId() {
-      id_ = getDefaultInstance().getId();
-      bitField0_ = (bitField0_ & ~0x00000001);
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @param value The bytes for id to set.
-     * @return This builder for chaining.
-     */
-    public Builder setIdBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      id_ = value;
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-
-    private io.opentdf.platform.common.Metadata metadata_;
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> metadataBuilder_;
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     * @return Whether the metadata field is set.
-     */
-    public boolean hasMetadata() {
-      return ((bitField0_ & 0x00000002) != 0);
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     * @return The metadata.
-     */
-    public io.opentdf.platform.common.Metadata getMetadata() {
-      if (metadataBuilder_ == null) {
-        return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
-      } else {
-        return metadataBuilder_.getMessage();
-      }
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public Builder setMetadata(io.opentdf.platform.common.Metadata value) {
-      if (metadataBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        metadata_ = value;
-      } else {
-        metadataBuilder_.setMessage(value);
-      }
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public Builder setMetadata(
-        io.opentdf.platform.common.Metadata.Builder builderForValue) {
-      if (metadataBuilder_ == null) {
-        metadata_ = builderForValue.build();
-      } else {
-        metadataBuilder_.setMessage(builderForValue.build());
-      }
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public Builder mergeMetadata(io.opentdf.platform.common.Metadata value) {
-      if (metadataBuilder_ == null) {
-        if (((bitField0_ & 0x00000002) != 0) &&
-          metadata_ != null &&
-          metadata_ != io.opentdf.platform.common.Metadata.getDefaultInstance()) {
-          getMetadataBuilder().mergeFrom(value);
-        } else {
-          metadata_ = value;
-        }
-      } else {
-        metadataBuilder_.mergeFrom(value);
-      }
-      if (metadata_ != null) {
-        bitField0_ |= 0x00000002;
-        onChanged();
-      }
-      return this;
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public Builder clearMetadata() {
-      bitField0_ = (bitField0_ & ~0x00000002);
-      metadata_ = null;
-      if (metadataBuilder_ != null) {
-        metadataBuilder_.dispose();
-        metadataBuilder_ = null;
-      }
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public io.opentdf.platform.common.Metadata.Builder getMetadataBuilder() {
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return getMetadataFieldBuilder().getBuilder();
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
-      if (metadataBuilder_ != null) {
-        return metadataBuilder_.getMessageOrBuilder();
-      } else {
-        return metadata_ == null ?
-            io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
-      }
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> 
-        getMetadataFieldBuilder() {
-      if (metadataBuilder_ == null) {
-        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder>(
-                getMetadata(),
-                getParentForChildren(),
-                isClean());
-        metadata_ = null;
-      }
-      return metadataBuilder_;
-    }
-
     private java.util.List<io.opentdf.platform.policy.subjectmapping.ConditionGroup> conditionGroups_ =
       java.util.Collections.emptyList();
     private void ensureConditionGroupsIsMutable() {
-      if (!((bitField0_ & 0x00000004) != 0)) {
+      if (!((bitField0_ & 0x00000001) != 0)) {
         conditionGroups_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.ConditionGroup>(conditionGroups_);
-        bitField0_ |= 0x00000004;
+        bitField0_ |= 0x00000001;
        }
     }
 
@@ -832,7 +502,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public java.util.List<io.opentdf.platform.policy.subjectmapping.ConditionGroup> getConditionGroupsList() {
       if (conditionGroupsBuilder_ == null) {
@@ -846,7 +516,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public int getConditionGroupsCount() {
       if (conditionGroupsBuilder_ == null) {
@@ -860,7 +530,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.ConditionGroup getConditionGroups(int index) {
       if (conditionGroupsBuilder_ == null) {
@@ -874,7 +544,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder setConditionGroups(
         int index, io.opentdf.platform.policy.subjectmapping.ConditionGroup value) {
@@ -895,7 +565,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder setConditionGroups(
         int index, io.opentdf.platform.policy.subjectmapping.ConditionGroup.Builder builderForValue) {
@@ -913,7 +583,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder addConditionGroups(io.opentdf.platform.policy.subjectmapping.ConditionGroup value) {
       if (conditionGroupsBuilder_ == null) {
@@ -933,7 +603,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder addConditionGroups(
         int index, io.opentdf.platform.policy.subjectmapping.ConditionGroup value) {
@@ -954,7 +624,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder addConditionGroups(
         io.opentdf.platform.policy.subjectmapping.ConditionGroup.Builder builderForValue) {
@@ -972,7 +642,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder addConditionGroups(
         int index, io.opentdf.platform.policy.subjectmapping.ConditionGroup.Builder builderForValue) {
@@ -990,7 +660,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder addAllConditionGroups(
         java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.ConditionGroup> values) {
@@ -1009,12 +679,12 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder clearConditionGroups() {
       if (conditionGroupsBuilder_ == null) {
         conditionGroups_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000004);
+        bitField0_ = (bitField0_ & ~0x00000001);
         onChanged();
       } else {
         conditionGroupsBuilder_.clear();
@@ -1026,7 +696,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public Builder removeConditionGroups(int index) {
       if (conditionGroupsBuilder_ == null) {
@@ -1043,7 +713,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.ConditionGroup.Builder getConditionGroupsBuilder(
         int index) {
@@ -1054,7 +724,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.ConditionGroupOrBuilder getConditionGroupsOrBuilder(
         int index) {
@@ -1068,7 +738,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.ConditionGroupOrBuilder> 
          getConditionGroupsOrBuilderList() {
@@ -1083,7 +753,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.ConditionGroup.Builder addConditionGroupsBuilder() {
       return getConditionGroupsFieldBuilder().addBuilder(
@@ -1094,7 +764,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.ConditionGroup.Builder addConditionGroupsBuilder(
         int index) {
@@ -1106,7 +776,7 @@ private static final long serialVersionUID = 0L;
      * The conditions groups describing the matching rules for subjects in the set
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
      */
     public java.util.List<io.opentdf.platform.policy.subjectmapping.ConditionGroup.Builder> 
          getConditionGroupsBuilderList() {
@@ -1119,7 +789,7 @@ private static final long serialVersionUID = 0L;
         conditionGroupsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.opentdf.platform.policy.subjectmapping.ConditionGroup, io.opentdf.platform.policy.subjectmapping.ConditionGroup.Builder, io.opentdf.platform.policy.subjectmapping.ConditionGroupOrBuilder>(
                 conditionGroups_,
-                ((bitField0_ & 0x00000004) != 0),
+                ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),
                 isClean());
         conditionGroups_ = null;

@@ -15,161 +15,6 @@ public final class SubjectMappingServiceGrpc {
   public static final java.lang.String SERVICE_NAME = "policy.subjectmapping.SubjectMappingService";
 
   // Static method descriptors that strictly reflect the proto.
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest,
-      io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse> getGetSubjectSetMethod;
-
-  @io.grpc.stub.annotations.RpcMethod(
-      fullMethodName = SERVICE_NAME + '/' + "GetSubjectSet",
-      requestType = io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest.class,
-      responseType = io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse.class,
-      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest,
-      io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse> getGetSubjectSetMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest, io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse> getGetSubjectSetMethod;
-    if ((getGetSubjectSetMethod = SubjectMappingServiceGrpc.getGetSubjectSetMethod) == null) {
-      synchronized (SubjectMappingServiceGrpc.class) {
-        if ((getGetSubjectSetMethod = SubjectMappingServiceGrpc.getGetSubjectSetMethod) == null) {
-          SubjectMappingServiceGrpc.getGetSubjectSetMethod = getGetSubjectSetMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest, io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse>newBuilder()
-              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
-              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "GetSubjectSet"))
-              .setSampledToLocalTracing(true)
-              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest.getDefaultInstance()))
-              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse.getDefaultInstance()))
-              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("GetSubjectSet"))
-              .build();
-        }
-      }
-    }
-    return getGetSubjectSetMethod;
-  }
-
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest,
-      io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse> getCreateSubjectSetMethod;
-
-  @io.grpc.stub.annotations.RpcMethod(
-      fullMethodName = SERVICE_NAME + '/' + "CreateSubjectSet",
-      requestType = io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest.class,
-      responseType = io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse.class,
-      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest,
-      io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse> getCreateSubjectSetMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest, io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse> getCreateSubjectSetMethod;
-    if ((getCreateSubjectSetMethod = SubjectMappingServiceGrpc.getCreateSubjectSetMethod) == null) {
-      synchronized (SubjectMappingServiceGrpc.class) {
-        if ((getCreateSubjectSetMethod = SubjectMappingServiceGrpc.getCreateSubjectSetMethod) == null) {
-          SubjectMappingServiceGrpc.getCreateSubjectSetMethod = getCreateSubjectSetMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest, io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse>newBuilder()
-              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
-              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "CreateSubjectSet"))
-              .setSampledToLocalTracing(true)
-              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest.getDefaultInstance()))
-              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse.getDefaultInstance()))
-              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("CreateSubjectSet"))
-              .build();
-        }
-      }
-    }
-    return getCreateSubjectSetMethod;
-  }
-
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest,
-      io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse> getUpdateSubjectSetMethod;
-
-  @io.grpc.stub.annotations.RpcMethod(
-      fullMethodName = SERVICE_NAME + '/' + "UpdateSubjectSet",
-      requestType = io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest.class,
-      responseType = io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse.class,
-      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest,
-      io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse> getUpdateSubjectSetMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest, io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse> getUpdateSubjectSetMethod;
-    if ((getUpdateSubjectSetMethod = SubjectMappingServiceGrpc.getUpdateSubjectSetMethod) == null) {
-      synchronized (SubjectMappingServiceGrpc.class) {
-        if ((getUpdateSubjectSetMethod = SubjectMappingServiceGrpc.getUpdateSubjectSetMethod) == null) {
-          SubjectMappingServiceGrpc.getUpdateSubjectSetMethod = getUpdateSubjectSetMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest, io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse>newBuilder()
-              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
-              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "UpdateSubjectSet"))
-              .setSampledToLocalTracing(true)
-              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest.getDefaultInstance()))
-              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse.getDefaultInstance()))
-              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("UpdateSubjectSet"))
-              .build();
-        }
-      }
-    }
-    return getUpdateSubjectSetMethod;
-  }
-
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest,
-      io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse> getDeleteSubjectSetMethod;
-
-  @io.grpc.stub.annotations.RpcMethod(
-      fullMethodName = SERVICE_NAME + '/' + "DeleteSubjectSet",
-      requestType = io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest.class,
-      responseType = io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse.class,
-      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest,
-      io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse> getDeleteSubjectSetMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest, io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse> getDeleteSubjectSetMethod;
-    if ((getDeleteSubjectSetMethod = SubjectMappingServiceGrpc.getDeleteSubjectSetMethod) == null) {
-      synchronized (SubjectMappingServiceGrpc.class) {
-        if ((getDeleteSubjectSetMethod = SubjectMappingServiceGrpc.getDeleteSubjectSetMethod) == null) {
-          SubjectMappingServiceGrpc.getDeleteSubjectSetMethod = getDeleteSubjectSetMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest, io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse>newBuilder()
-              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
-              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "DeleteSubjectSet"))
-              .setSampledToLocalTracing(true)
-              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest.getDefaultInstance()))
-              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse.getDefaultInstance()))
-              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("DeleteSubjectSet"))
-              .build();
-        }
-      }
-    }
-    return getDeleteSubjectSetMethod;
-  }
-
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest,
-      io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse> getListSubjectSetsMethod;
-
-  @io.grpc.stub.annotations.RpcMethod(
-      fullMethodName = SERVICE_NAME + '/' + "ListSubjectSets",
-      requestType = io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest.class,
-      responseType = io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse.class,
-      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest,
-      io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse> getListSubjectSetsMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest, io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse> getListSubjectSetsMethod;
-    if ((getListSubjectSetsMethod = SubjectMappingServiceGrpc.getListSubjectSetsMethod) == null) {
-      synchronized (SubjectMappingServiceGrpc.class) {
-        if ((getListSubjectSetsMethod = SubjectMappingServiceGrpc.getListSubjectSetsMethod) == null) {
-          SubjectMappingServiceGrpc.getListSubjectSetsMethod = getListSubjectSetsMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest, io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse>newBuilder()
-              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
-              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "ListSubjectSets"))
-              .setSampledToLocalTracing(true)
-              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest.getDefaultInstance()))
-              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse.getDefaultInstance()))
-              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("ListSubjectSets"))
-              .build();
-        }
-      }
-    }
-    return getListSubjectSetsMethod;
-  }
-
   private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest,
       io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsResponse> getMatchSubjectMappingsMethod;
 
@@ -405,41 +250,6 @@ public final class SubjectMappingServiceGrpc {
   public interface AsyncService {
 
     /**
-     */
-    default void getSubjectSet(io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse> responseObserver) {
-      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetSubjectSetMethod(), responseObserver);
-    }
-
-    /**
-     */
-    default void createSubjectSet(io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse> responseObserver) {
-      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getCreateSubjectSetMethod(), responseObserver);
-    }
-
-    /**
-     */
-    default void updateSubjectSet(io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse> responseObserver) {
-      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getUpdateSubjectSetMethod(), responseObserver);
-    }
-
-    /**
-     */
-    default void deleteSubjectSet(io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse> responseObserver) {
-      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getDeleteSubjectSetMethod(), responseObserver);
-    }
-
-    /**
-     */
-    default void listSubjectSets(io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse> responseObserver) {
-      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getListSubjectSetsMethod(), responseObserver);
-    }
-
-    /**
      * <pre>
      * Find matching Subject Mappings for a given Subject
      * </pre>
@@ -513,46 +323,6 @@ public final class SubjectMappingServiceGrpc {
     }
 
     /**
-     */
-    public void getSubjectSet(io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse> responseObserver) {
-      io.grpc.stub.ClientCalls.asyncUnaryCall(
-          getChannel().newCall(getGetSubjectSetMethod(), getCallOptions()), request, responseObserver);
-    }
-
-    /**
-     */
-    public void createSubjectSet(io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse> responseObserver) {
-      io.grpc.stub.ClientCalls.asyncUnaryCall(
-          getChannel().newCall(getCreateSubjectSetMethod(), getCallOptions()), request, responseObserver);
-    }
-
-    /**
-     */
-    public void updateSubjectSet(io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse> responseObserver) {
-      io.grpc.stub.ClientCalls.asyncUnaryCall(
-          getChannel().newCall(getUpdateSubjectSetMethod(), getCallOptions()), request, responseObserver);
-    }
-
-    /**
-     */
-    public void deleteSubjectSet(io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse> responseObserver) {
-      io.grpc.stub.ClientCalls.asyncUnaryCall(
-          getChannel().newCall(getDeleteSubjectSetMethod(), getCallOptions()), request, responseObserver);
-    }
-
-    /**
-     */
-    public void listSubjectSets(io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse> responseObserver) {
-      io.grpc.stub.ClientCalls.asyncUnaryCall(
-          getChannel().newCall(getListSubjectSetsMethod(), getCallOptions()), request, responseObserver);
-    }
-
-    /**
      * <pre>
      * Find matching Subject Mappings for a given Subject
      * </pre>
@@ -621,41 +391,6 @@ public final class SubjectMappingServiceGrpc {
     }
 
     /**
-     */
-    public io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse getSubjectSet(io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest request) {
-      return io.grpc.stub.ClientCalls.blockingUnaryCall(
-          getChannel(), getGetSubjectSetMethod(), getCallOptions(), request);
-    }
-
-    /**
-     */
-    public io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse createSubjectSet(io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest request) {
-      return io.grpc.stub.ClientCalls.blockingUnaryCall(
-          getChannel(), getCreateSubjectSetMethod(), getCallOptions(), request);
-    }
-
-    /**
-     */
-    public io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse updateSubjectSet(io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest request) {
-      return io.grpc.stub.ClientCalls.blockingUnaryCall(
-          getChannel(), getUpdateSubjectSetMethod(), getCallOptions(), request);
-    }
-
-    /**
-     */
-    public io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse deleteSubjectSet(io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest request) {
-      return io.grpc.stub.ClientCalls.blockingUnaryCall(
-          getChannel(), getDeleteSubjectSetMethod(), getCallOptions(), request);
-    }
-
-    /**
-     */
-    public io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse listSubjectSets(io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest request) {
-      return io.grpc.stub.ClientCalls.blockingUnaryCall(
-          getChannel(), getListSubjectSetsMethod(), getCallOptions(), request);
-    }
-
-    /**
      * <pre>
      * Find matching Subject Mappings for a given Subject
      * </pre>
@@ -718,46 +453,6 @@ public final class SubjectMappingServiceGrpc {
     }
 
     /**
-     */
-    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse> getSubjectSet(
-        io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest request) {
-      return io.grpc.stub.ClientCalls.futureUnaryCall(
-          getChannel().newCall(getGetSubjectSetMethod(), getCallOptions()), request);
-    }
-
-    /**
-     */
-    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse> createSubjectSet(
-        io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest request) {
-      return io.grpc.stub.ClientCalls.futureUnaryCall(
-          getChannel().newCall(getCreateSubjectSetMethod(), getCallOptions()), request);
-    }
-
-    /**
-     */
-    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse> updateSubjectSet(
-        io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest request) {
-      return io.grpc.stub.ClientCalls.futureUnaryCall(
-          getChannel().newCall(getUpdateSubjectSetMethod(), getCallOptions()), request);
-    }
-
-    /**
-     */
-    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse> deleteSubjectSet(
-        io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest request) {
-      return io.grpc.stub.ClientCalls.futureUnaryCall(
-          getChannel().newCall(getDeleteSubjectSetMethod(), getCallOptions()), request);
-    }
-
-    /**
-     */
-    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse> listSubjectSets(
-        io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest request) {
-      return io.grpc.stub.ClientCalls.futureUnaryCall(
-          getChannel().newCall(getListSubjectSetsMethod(), getCallOptions()), request);
-    }
-
-    /**
      * <pre>
      * Find matching Subject Mappings for a given Subject
      * </pre>
@@ -809,17 +504,12 @@ public final class SubjectMappingServiceGrpc {
     }
   }
 
-  private static final int METHODID_GET_SUBJECT_SET = 0;
-  private static final int METHODID_CREATE_SUBJECT_SET = 1;
-  private static final int METHODID_UPDATE_SUBJECT_SET = 2;
-  private static final int METHODID_DELETE_SUBJECT_SET = 3;
-  private static final int METHODID_LIST_SUBJECT_SETS = 4;
-  private static final int METHODID_MATCH_SUBJECT_MAPPINGS = 5;
-  private static final int METHODID_LIST_SUBJECT_MAPPINGS = 6;
-  private static final int METHODID_GET_SUBJECT_MAPPING = 7;
-  private static final int METHODID_CREATE_SUBJECT_MAPPING = 8;
-  private static final int METHODID_UPDATE_SUBJECT_MAPPING = 9;
-  private static final int METHODID_DELETE_SUBJECT_MAPPING = 10;
+  private static final int METHODID_MATCH_SUBJECT_MAPPINGS = 0;
+  private static final int METHODID_LIST_SUBJECT_MAPPINGS = 1;
+  private static final int METHODID_GET_SUBJECT_MAPPING = 2;
+  private static final int METHODID_CREATE_SUBJECT_MAPPING = 3;
+  private static final int METHODID_UPDATE_SUBJECT_MAPPING = 4;
+  private static final int METHODID_DELETE_SUBJECT_MAPPING = 5;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -838,26 +528,6 @@ public final class SubjectMappingServiceGrpc {
     @java.lang.SuppressWarnings("unchecked")
     public void invoke(Req request, io.grpc.stub.StreamObserver<Resp> responseObserver) {
       switch (methodId) {
-        case METHODID_GET_SUBJECT_SET:
-          serviceImpl.getSubjectSet((io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest) request,
-              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse>) responseObserver);
-          break;
-        case METHODID_CREATE_SUBJECT_SET:
-          serviceImpl.createSubjectSet((io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest) request,
-              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse>) responseObserver);
-          break;
-        case METHODID_UPDATE_SUBJECT_SET:
-          serviceImpl.updateSubjectSet((io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest) request,
-              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse>) responseObserver);
-          break;
-        case METHODID_DELETE_SUBJECT_SET:
-          serviceImpl.deleteSubjectSet((io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest) request,
-              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse>) responseObserver);
-          break;
-        case METHODID_LIST_SUBJECT_SETS:
-          serviceImpl.listSubjectSets((io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest) request,
-              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse>) responseObserver);
-          break;
         case METHODID_MATCH_SUBJECT_MAPPINGS:
           serviceImpl.matchSubjectMappings((io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest) request,
               (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsResponse>) responseObserver);
@@ -900,41 +570,6 @@ public final class SubjectMappingServiceGrpc {
 
   public static final io.grpc.ServerServiceDefinition bindService(AsyncService service) {
     return io.grpc.ServerServiceDefinition.builder(getServiceDescriptor())
-        .addMethod(
-          getGetSubjectSetMethod(),
-          io.grpc.stub.ServerCalls.asyncUnaryCall(
-            new MethodHandlers<
-              io.opentdf.platform.policy.subjectmapping.GetSubjectSetRequest,
-              io.opentdf.platform.policy.subjectmapping.GetSubjectSetResponse>(
-                service, METHODID_GET_SUBJECT_SET)))
-        .addMethod(
-          getCreateSubjectSetMethod(),
-          io.grpc.stub.ServerCalls.asyncUnaryCall(
-            new MethodHandlers<
-              io.opentdf.platform.policy.subjectmapping.CreateSubjectSetRequest,
-              io.opentdf.platform.policy.subjectmapping.CreateSubjectSetResponse>(
-                service, METHODID_CREATE_SUBJECT_SET)))
-        .addMethod(
-          getUpdateSubjectSetMethod(),
-          io.grpc.stub.ServerCalls.asyncUnaryCall(
-            new MethodHandlers<
-              io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetRequest,
-              io.opentdf.platform.policy.subjectmapping.UpdateSubjectSetResponse>(
-                service, METHODID_UPDATE_SUBJECT_SET)))
-        .addMethod(
-          getDeleteSubjectSetMethod(),
-          io.grpc.stub.ServerCalls.asyncUnaryCall(
-            new MethodHandlers<
-              io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetRequest,
-              io.opentdf.platform.policy.subjectmapping.DeleteSubjectSetResponse>(
-                service, METHODID_DELETE_SUBJECT_SET)))
-        .addMethod(
-          getListSubjectSetsMethod(),
-          io.grpc.stub.ServerCalls.asyncUnaryCall(
-            new MethodHandlers<
-              io.opentdf.platform.policy.subjectmapping.ListSubjectSetsRequest,
-              io.opentdf.platform.policy.subjectmapping.ListSubjectSetsResponse>(
-                service, METHODID_LIST_SUBJECT_SETS)))
         .addMethod(
           getMatchSubjectMappingsMethod(),
           io.grpc.stub.ServerCalls.asyncUnaryCall(
@@ -1025,11 +660,6 @@ public final class SubjectMappingServiceGrpc {
         if (result == null) {
           serviceDescriptor = result = io.grpc.ServiceDescriptor.newBuilder(SERVICE_NAME)
               .setSchemaDescriptor(new SubjectMappingServiceFileDescriptorSupplier())
-              .addMethod(getGetSubjectSetMethod())
-              .addMethod(getCreateSubjectSetMethod())
-              .addMethod(getUpdateSubjectSetMethod())
-              .addMethod(getDeleteSubjectSetMethod())
-              .addMethod(getListSubjectSetsMethod())
               .addMethod(getMatchSubjectMappingsMethod())
               .addMethod(getListSubjectMappingsMethod())
               .addMethod(getGetSubjectMappingMethod())

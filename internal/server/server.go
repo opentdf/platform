@@ -47,7 +47,8 @@ type HTTPConfig struct {
 }
 
 type AuthConfig struct {
-	Issuer           string                 `yaml:"issuers"`
+	Audience         string                 `yaml:"audience"`
+	Issuer           string                 `yaml:"issuer"`
 	Clients          []string               `yaml:"clients"`
 	ClaimsToValidate map[string]interface{} `yaml:"claimsToValidate"`
 }
@@ -100,13 +101,13 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
-	authN, err := newAuthNInterceptor()
+	authN, err := newAuthNInterceptor(config.Auth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authN interceptor: %w", err)
 	}
 
 	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(
-		authN.verifyToken,
+		authN.verifyTokenInterceptor,
 		protovalidate_middleware.UnaryServerInterceptor(validator),
 	))
 

@@ -13,7 +13,7 @@ import (
 func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -70,13 +70,13 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	assert.True(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
 	assert.Equal(t, &mockDataAttrs[1], decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -132,13 +132,13 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 2, len(decisions[entityID].Results[0].ValueFailures))
 	assert.Equal(t, &mockDataAttrs[0], decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -194,13 +194,13 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 2, len(decisions[entityID].Results[0].ValueFailures))
 	assert.Equal(t, &mockDataAttrs[0], decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -256,13 +256,13 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 2, len(decisions[entityID].Results[0].ValueFailures))
 	assert.Equal(t, &mockDataAttrs[0], decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -307,14 +307,14 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 2, len(decisions[entityID].Results[0].ValueFailures))
 	assert.Equal(t, &mockDataAttrs[0], decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	// There are no data attribute instances in this test so the data attribute definitions
 	// are useless, and should be ignored, but supply the definitions anyway to test that assumption
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -363,7 +363,7 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDecisions(t *testing.T) {
 	entityID1 := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	entityID2 := "bubble@squeak.biz"
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -445,7 +445,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -505,13 +505,13 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -572,13 +572,13 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
 	assert.Equal(t, &mockDataAttrs[0], decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -634,13 +634,13 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 2, len(decisions[entityID].Results[0].ValueFailures))
 	assert.Equal(t, &mockDataAttrs[0], decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -701,14 +701,14 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 2, len(decisions[entityID].Results[0].ValueFailures))
 	assert.Equal(t, &mockDataAttrs[0], decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 // Hierarchy tests
 func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -766,13 +766,13 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -835,13 +835,13 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -889,13 +889,13 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -958,13 +958,13 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -1027,13 +1027,13 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -1091,13 +1091,13 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -1150,14 +1150,14 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 	assert.Nil(t, decisions[entityID].Results[0].ValueFailures[0].DataAttribute)
 }
 
 func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -1215,13 +1215,13 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 0, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -1274,14 +1274,14 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []attrs.Attribute{
+	mockAttrDefinitions := []*attrs.Attribute{
 		{
 			Name: "MyAttr",
 			Namespace: &namespaces.Namespace{
@@ -1344,5 +1344,5 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[entityID].Results[0].ValueFailures))
-	assert.Equal(t, &mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[entityID].Results[0].RuleDefinition)
 }

@@ -138,6 +138,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 			str, okkk := sv.(string)
 			if !okkk {
 				slog.DebugContext(ctx, "not ok", k, fmt.Sprintf("%+v", sv))
+				continue
 			}
 			saa = append(saa, str)
 		}

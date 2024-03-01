@@ -88,6 +88,7 @@ func discoverIDP(ctx context.Context, issuer string) (*openidConfiguraton, error
 	return cfg, nil
 }
 
+// verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a authN) verifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
 	if info.FullMethod == "/grpc.health.v1.Health/Check" {

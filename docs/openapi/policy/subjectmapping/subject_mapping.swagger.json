@@ -758,7 +758,7 @@
           "title": "The actions permitted by subjects in this mapping"
         }
       },
-      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_sets\": [{subject_set_1},{subject_set_2}]\n\"actions\": [\"STANDARD_ACTION_TRANSMIT\", \"STANDARD_ACTION_DECRYPT\"]\n}",
+      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_sets\": [{subject_set_1},{subject_set_2}]\n\"actions\": [{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\": \"STANDARD_ACTION_TRANSMIT\"}]\n}",
       "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination"
     },
     "subjectmappingSubjectMappingCreate": {

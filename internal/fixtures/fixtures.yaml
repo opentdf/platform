@@ -187,7 +187,7 @@ subject_mappings:
       id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       actions:
-        - DECRYPT
+        - standard: STANDARD_ACTION_DECRYPT
       subject_condition_set_pivot_ids:
         # subject_mapping_subject_attribute1__pivot__subject_condition_set1
         - da97fc49-dc96-499a-8f8c-c14f8a7954b9
@@ -196,8 +196,8 @@ subject_mappings:
       id: e6a3f940-e24f-4383-8763-718a1a304948
       attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
       actions:
-        - TRANSMIT
-        - DECRYPT
+        - standard: STANDARD_ACTION_TRANSMIT
+        - standard: STANDARD_ACTION_DECRYPT
       subject_condition_set_pivot_ids:
         # subject_mapping_subject_attribute2__pivot__subject_condition_set2:
         - c114c393-bde5-4015-9c7f-a9679a83ae91

@@ -15,7 +15,7 @@ package io.opentdf.platform.policy.subjectmapping;
  *"id": "someid",
  *"attribute_value": {example_one_attribute_value...},
  *"subject_condition_sets": [{subject_set_1},{subject_set_2}]
- *"actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]
+ *"actions": [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard": "STANDARD_ACTION_TRANSMIT"}]
  *}
  * </pre>
  *
@@ -507,7 +507,7 @@ private static final long serialVersionUID = 0L;
    *"id": "someid",
    *"attribute_value": {example_one_attribute_value...},
    *"subject_condition_sets": [{subject_set_1},{subject_set_2}]
-   *"actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]
+   *"actions": [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard": "STANDARD_ACTION_TRANSMIT"}]
    *}
    * </pre>
    *

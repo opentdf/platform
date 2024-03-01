@@ -55,7 +55,10 @@ type FixtureDataAttributeValueKeyAccessServer struct {
 type FixtureDataSubjectMapping struct {
 	Id                          string   `yaml:"id"`
 	AttributeValueId            string   `yaml:"attribute_value_id"`
-	Actions                     []string `yaml:"actions"`
+	Actions                     []struct{
+		Standard string `yaml:"standard" json:"standard,omitempty"`
+		Custom   string `yaml:"custom" json:"custom,omitempty"`
+	} `yaml:"actions"`
 	SubjectConditionSetPivotIds []string `yaml:"subject_condition_set_pivot_ids"`
 }
 
@@ -304,10 +307,17 @@ func (f *Fixtures) provisionAttributeValues() int64 {
 func (f *Fixtures) provisionSubjectMappings() int64 {
 	values := make([][]string, 0, len(fixtureData.SubjectMappings.Data))
 	for _, d := range fixtureData.SubjectMappings.Data {
+		var actionsJSON []byte
+		actionsJSON, err := json.Marshal(d.Actions)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with subject mapping actions JSON - check fixtures.yaml for issues")
+			panic("issue with subject mapping actions JSON")
+		}
+
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
 			f.db.UUIDWrap(d.AttributeValueId),
-			f.db.StringArrayWrap(d.Actions),
+			f.db.StringWrap(string(actionsJSON)),
 			f.db.UUIDArrayWrap(d.SubjectConditionSetPivotIds),
 		})
 	}

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS subject_mapping_condition_set_pivot (
     UNIQUE (subject_mapping_id, subject_condition_set_id)
 );
 
-ALTER TABLE IF EXISTS subject_mappings ADD COLUMN subject_condition_set_pivot_ids UUID[], ADD COLUMN actions VARCHAR[];
+ALTER TABLE IF EXISTS subject_mappings ADD COLUMN subject_condition_set_pivot_ids UUID[], ADD COLUMN actions JSONB;
 
 WITH subject_mappings_migration_data AS (
    SELECT

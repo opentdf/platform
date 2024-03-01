@@ -398,7 +398,7 @@ func (x *SubjectConditionSet) GetSubjectSets() []*SubjectSet {
 // "id": "someid",
 // "attribute_value": {example_one_attribute_value...},
 // "subject_condition_sets": [{subject_set_1},{subject_set_2}]
-// "actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]
+// "actions": [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard": "STANDARD_ACTION_TRANSMIT"}]
 // }
 type SubjectMapping struct {
 	state         protoimpl.MessageState

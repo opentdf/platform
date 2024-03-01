@@ -5807,7 +5807,7 @@ Response Example:
         
       
         <h3 id="policy.subjectmapping.SubjectMapping">SubjectMapping</h3>
-        <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination</p><p>Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one</p><p>with permitted actions TRANSMIT and DECRYPT</p><p>{</p><p>"id": "someid",</p><p>"attribute_value": {example_one_attribute_value...},</p><p>"subject_condition_sets": [{subject_set_1},{subject_set_2}]</p><p>"actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]</p><p>}</p>
+        <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination</p><p>Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one</p><p>with permitted actions TRANSMIT and DECRYPT</p><p>{</p><p>"id": "someid",</p><p>"attribute_value": {example_one_attribute_value...},</p><p>"subject_condition_sets": [{subject_set_1},{subject_set_2}]</p><p>"actions": [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard": "STANDARD_ACTION_TRANSMIT"}]</p><p>}</p>
 
         
           <table class="field-table">

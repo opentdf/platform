@@ -2,9 +2,10 @@ package integration
 
 import (
 	"context"
-	"github.com/opentdf/platform/protocol/go/authorization"
 	"log/slog"
 	"testing"
+
+	"github.com/opentdf/platform/protocol/go/authorization"
 
 	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -43,8 +44,22 @@ func (s *SubjectMappingsSuite) Test_CreateSubjectMapping() {
 	mapping := &subjectmapping.SubjectMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
-		SubjectSetIds:    []string{"subject_attribute--test"},
-		Actions:          []*authorization.Action{},
+		SubjectSets: []*subjectmapping.SubjectSet{
+			{
+				ConditionGroups: []*subjectmapping.ConditionGroup{
+					{
+						Conditions: []*subjectmapping.Condition{
+							{
+								SubjectExternalField:  "Department",
+								Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues: []string{"Marketing", "Sales"},
+							},
+						},
+					},
+				},
+			},
+		},
+		Actions: []*authorization.Action{},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)
@@ -56,9 +71,23 @@ func (s *SubjectMappingsSuite) Test_GetSubjectMapping() {
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	mapping := &subjectmapping.SubjectMappingCreateUpdate{
 		AttributeValueId: attrValue.Id,
-		SubjectSetIds:    []string{"subject_attribute--test"},
-		Actions:          []*authorization.Action{},
-		Metadata:         &common.MetadataMutable{},
+		SubjectSets: []*subjectmapping.SubjectSet{
+			{
+				ConditionGroups: []*subjectmapping.ConditionGroup{
+					{
+						Conditions: []*subjectmapping.Condition{
+							{
+								SubjectExternalField:  "usernames",
+								Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues: []string{"hello@world.com", "tonystark@avengers.gov"},
+							},
+						},
+					},
+				},
+			},
+		},
+		Actions:  []*authorization.Action{},
+		Metadata: &common.MetadataMutable{},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, mapping)
 	assert.Nil(s.T(), err)

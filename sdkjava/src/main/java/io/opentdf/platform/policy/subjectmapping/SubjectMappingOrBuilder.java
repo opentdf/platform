@@ -21,28 +21,16 @@ public interface SubjectMappingOrBuilder extends
       getIdBytes();
 
   /**
-   * <pre>
-   *TODO should this be a list of values?
-   * </pre>
-   *
    * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
    * @return Whether the metadata field is set.
    */
   boolean hasMetadata();
   /**
-   * <pre>
-   *TODO should this be a list of values?
-   * </pre>
-   *
    * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
    * @return The metadata.
    */
   io.opentdf.platform.common.Metadata getMetadata();
   /**
-   * <pre>
-   *TODO should this be a list of values?
-   * </pre>
-   *
    * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
    */
   io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();

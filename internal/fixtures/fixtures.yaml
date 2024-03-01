@@ -172,9 +172,7 @@ attribute_value_key_access_servers:
     key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
 
 ##
-# Subject Mappings
-#
-# Operator Enum: UNSPECIFIED, IN, NOT_IN
+# Subject Mappings < pivot > Subject Condition Sets
 ##
 subject_mappings:
   metadata:
@@ -182,28 +180,124 @@ subject_mappings:
     columns:
       - id
       - attribute_value_id
-      - operator
-      - subject_attribute
-      - subject_attribute_values
+      - actions
+      - subject_condition_set_pivot_ids
   data:
     subject_mapping_subject_attribute1:
       id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
-      operator: IN
-      subject_attribute: subject_attribute1
-      subject_attribute_values:
-        - value1
-        - value2
+      actions:
+        - DECRYPT
+      subject_condition_set_pivot_ids:
+        # subject_mapping_subject_attribute1__pivot__subject_condition_set1
+        - da97fc49-dc96-499a-8f8c-c14f8a7954b9
 
     subject_mapping_subject_attribute2:
       id: e6a3f940-e24f-4383-8763-718a1a304948
       attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
-      operator: NOT_IN
-      subject_attribute: subject_attribute2
-      subject_attribute_values:
-        - value1
-        - value2
-        - value3
+      actions:
+        - TRANSMIT
+        - DECRYPT
+      subject_condition_set_pivot_ids:
+        # subject_mapping_subject_attribute2__pivot__subject_condition_set2:
+        - c114c393-bde5-4015-9c7f-a9679a83ae91
+        # subject_mapping_subject_attribute2__pivot__subject_condition_set3:
+        - b5653d5f-c694-474d-88bf-ec0978afff5b
+
+subject_mapping_condition_set_pivot:
+  metadata:
+    table_name: subject_mapping_condition_set_pivot
+    columns:
+      - id
+      - subject_mapping_id
+      - subject_condition_set_id
+  data:
+    subject_mapping_subject_attribute1__pivot__subject_condition_set1:
+      id: da97fc49-dc96-499a-8f8c-c14f8a7954b9
+      subject_mapping_id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
+      subject_condition_set_id: b3903282-06f9-41a4-924a-7b8eb43dffe0
+    subject_mapping_subject_attribute2__pivot__subject_condition_set2:
+      id: c114c393-bde5-4015-9c7f-a9679a83ae91
+      subject_mapping_id: e6a3f940-e24f-4383-8763-718a1a304948
+      subject_condition_set_id: 798aacd2-abaf-4623-975e-3bb8ca43e318
+    subject_mapping_subject_attribute2__pivot__subject_condition_set3:
+      id: b5653d5f-c694-474d-88bf-ec0978afff5b
+      subject_mapping_id: e6a3f940-e24f-4383-8763-718a1a304948
+      subject_condition_set_id: eaf866c0-327f-4826-846a-5041c3c22f06
+
+subject_condition_set:
+  metadata:
+    table_name: subject_condition_set
+    columns:
+      - id
+      - name
+      - condition
+  data:
+    subject_condition_set1:
+      id: b3903282-06f9-41a4-924a-7b8eb43dffe0
+      name: avenger_hammer_wielders
+      condition:
+        subject_sets:
+          - condition_groups:
+              - boolean_operator: AND
+                conditions:
+                  - subject_external_field: superhero_name
+                    operator: IN
+                    subject_external_values:
+                      - thor
+                      - captain_america
+                  - subject_external_field: superhero_group
+                    operator: IN
+                    subject_external_values:
+                      - avengers
+    subject_condition_set2:
+      id: 798aacd2-abaf-4623-975e-3bb8ca43e318
+      name: sales_and_marketing_executives
+      condition:
+        subject_sets:
+          - condition_groups:
+              - boolean_operator: AND
+                conditions:
+                  - subject_external_field: department
+                    operator: IN
+                    subject_external_values:
+                      - marketing
+                      - sales
+                  - subject_external_field: role
+                    operator: IN
+                    subject_external_values:
+                      - senior_vice_president
+                      - vice_president
+                      - director
+    subject_condition_set3:
+      id: eaf866c0-327f-4826-846a-5041c3c22f06
+      name: engineering_non_managers_who_like_soccer_or_not_ice_cream
+      condition:
+        subject_sets:
+          - condition_groups:
+              - boolean_operator: OR
+                conditions:
+                  - subject_external_field: fave_sport
+                    operator: IN
+                    subject_external_values:
+                      - futbol
+                      - soccer
+                  - subject_external_field: face_dessert
+                    operator: NOT_IN
+                    subject_external_values:
+                      - ice_cream
+              - boolean_operator: AND
+                conditions:
+                  - subject_external_field: department
+                    operator: IN
+                    subject_external_values:
+                      - engineering
+                  - subject_external_field: role
+                    operator: NOT_IN
+                    subject_external_values:
+                      - manager
+                      - director
+                      - vice_president
 
 ##
 # Resource Mappings

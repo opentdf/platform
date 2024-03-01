@@ -2,8 +2,9 @@ package db
 
 import (
 	"context"
-	"github.com/opentdf/platform/protocol/go/authorization"
 	"strings"
+
+	"github.com/opentdf/platform/protocol/go/authorization"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -92,7 +93,6 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 	s.Actions = append(s.Actions, &authorization.Action{})
 	// add subjectAttributeValues
 	s.SubjectSets = append(s.SubjectSets, &subjectmapping.SubjectSet{
-		Id:              subjectAttribute,
 		ConditionGroups: make([]*subjectmapping.ConditionGroup, 0),
 	})
 

@@ -13,27 +13,31 @@ import (
 )
 
 var (
-	TableAttributes                    = "attribute_definitions"
-	TableAttributeValues               = "attribute_values"
-	TableNamespaces                    = "attribute_namespaces"
-	TableAttrFqn                       = "attribute_fqns"
-	TableKeyAccessServerRegistry       = "key_access_servers"
-	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"
-	TableAttributeValueKeyAccessGrants = "attribute_value_key_access_grants"
-	TableResourceMappings              = "resource_mappings"
-	TableSubjectMappings               = "subject_mappings"
+	TableAttributes                      = "attribute_definitions"
+	TableAttributeValues                 = "attribute_values"
+	TableNamespaces                      = "attribute_namespaces"
+	TableAttrFqn                         = "attribute_fqns"
+	TableKeyAccessServerRegistry         = "key_access_servers"
+	TableAttributeKeyAccessGrants        = "attribute_definition_key_access_grants"
+	TableAttributeValueKeyAccessGrants   = "attribute_value_key_access_grants"
+	TableResourceMappings                = "resource_mappings"
+	TableSubjectMappings                 = "subject_mappings"
+	TableSubjectMappingConditionSetPivot = "subject_mapping_condition_set_pivot"
+	TableSubjectConditionSet             = "subject_condition_set"
 )
 
 var Tables struct {
-	Attributes                    Table
-	AttributeValues               Table
-	Namespaces                    Table
-	AttrFqn                       Table
-	KeyAccessServerRegistry       Table
-	AttributeKeyAccessGrants      Table
-	AttributeValueKeyAccessGrants Table
-	ResourceMappings              Table
-	SubjectMappings               Table
+	Attributes                      Table
+	AttributeValues                 Table
+	Namespaces                      Table
+	AttrFqn                         Table
+	KeyAccessServerRegistry         Table
+	AttributeKeyAccessGrants        Table
+	AttributeValueKeyAccessGrants   Table
+	ResourceMappings                Table
+	SubjectMappings                 Table
+	SubjectMappingConditionSetPivot Table
+	SubjectConditionSet             Table
 }
 
 type Table struct {
@@ -109,6 +113,8 @@ func NewClient(config Config) (*Client, error) {
 	Tables.AttributeValueKeyAccessGrants = NewTable(TableAttributeValueKeyAccessGrants, config.Schema)
 	Tables.ResourceMappings = NewTable(TableResourceMappings, config.Schema)
 	Tables.SubjectMappings = NewTable(TableSubjectMappings, config.Schema)
+	Tables.SubjectMappingConditionSetPivot = NewTable(TableSubjectMappingConditionSetPivot, config.Schema)
+	Tables.SubjectConditionSet = NewTable(TableSubjectConditionSet, config.Schema)
 
 	return &Client{
 		Pgx:    pool,

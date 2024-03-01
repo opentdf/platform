@@ -7,20 +7,20 @@ package io.opentdf.platform.policy.subjectmapping;
 /**
  * <pre>
  **
- *A Condition defines a rule of &lt;subject attribute&gt; &lt;operator&gt; &lt;subject values&gt;
+ *A Condition defines a rule of &lt;subject external field name&gt; &lt;operator&gt; &lt;subject external values&gt;
  *
- *Example:  Match Subjects with an attribute "division" with a value of "Accounting" or "Marketing":
+ *Example:  Match Subjects with field "division" and a value of "Accounting" or "Marketing":
  *{
- *"subject_attribute": "division",
+ *"subject_external_field": "division",
  *"operator": "IN",
- *"subject_values" : ["Accounting", "Marketing"]
+ *"subject_external_values" : ["Accounting", "Marketing"]
  *}
  *
- *Example: Match a subject by preferred username:
+ *Example: Match a subject by ensuring they are not part of the Fantastic Four:
  *{
- *"subject_attribute": "preferredUsername",
- *"operator": "IN",
- *"subject_values" : ["alice&#64;example.org"]
+ *"subject_external_field": "superhero_name",
+ *"operator": "NOT_IN",
+ *"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
  *}
  * </pre>
  *
@@ -36,9 +36,9 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private Condition() {
-    subjectAttribute_ = "";
+    subjectExternalField_ = "";
     operator_ = 0;
-    subjectValues_ =
+    subjectExternalValues_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
   }
 
@@ -62,47 +62,47 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.subjectmapping.Condition.class, io.opentdf.platform.policy.subjectmapping.Condition.Builder.class);
   }
 
-  public static final int SUBJECT_ATTRIBUTE_FIELD_NUMBER = 1;
+  public static final int SUBJECT_EXTERNAL_FIELD_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private volatile java.lang.Object subjectAttribute_ = "";
+  private volatile java.lang.Object subjectExternalField_ = "";
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * externally known field name (such as from idP/LDAP)
    * </pre>
    *
-   * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
-   * @return The subjectAttribute.
+   * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
+   * @return The subjectExternalField.
    */
   @java.lang.Override
-  public java.lang.String getSubjectAttribute() {
-    java.lang.Object ref = subjectAttribute_;
+  public java.lang.String getSubjectExternalField() {
+    java.lang.Object ref = subjectExternalField_;
     if (ref instanceof java.lang.String) {
       return (java.lang.String) ref;
     } else {
       com.google.protobuf.ByteString bs = 
           (com.google.protobuf.ByteString) ref;
       java.lang.String s = bs.toStringUtf8();
-      subjectAttribute_ = s;
+      subjectExternalField_ = s;
       return s;
     }
   }
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * externally known field name (such as from idP/LDAP)
    * </pre>
    *
-   * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
-   * @return The bytes for subjectAttribute.
+   * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
+   * @return The bytes for subjectExternalField.
    */
   @java.lang.Override
   public com.google.protobuf.ByteString
-      getSubjectAttributeBytes() {
-    java.lang.Object ref = subjectAttribute_;
+      getSubjectExternalFieldBytes() {
+    java.lang.Object ref = subjectExternalField_;
     if (ref instanceof java.lang.String) {
       com.google.protobuf.ByteString b = 
           com.google.protobuf.ByteString.copyFromUtf8(
               (java.lang.String) ref);
-      subjectAttribute_ = b;
+      subjectExternalField_ = b;
       return b;
     } else {
       return (com.google.protobuf.ByteString) ref;
@@ -135,57 +135,57 @@ private static final long serialVersionUID = 0L;
     return result == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.UNRECOGNIZED : result;
   }
 
-  public static final int SUBJECT_VALUES_FIELD_NUMBER = 3;
+  public static final int SUBJECT_EXTERNAL_VALUES_FIELD_NUMBER = 3;
   @SuppressWarnings("serial")
-  private com.google.protobuf.LazyStringArrayList subjectValues_ =
+  private com.google.protobuf.LazyStringArrayList subjectExternalValues_ =
       com.google.protobuf.LazyStringArrayList.emptyList();
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * list of comparison values for the subject_external_field
    * </pre>
    *
-   * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-   * @return A list containing the subjectValues.
+   * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+   * @return A list containing the subjectExternalValues.
    */
   public com.google.protobuf.ProtocolStringList
-      getSubjectValuesList() {
-    return subjectValues_;
+      getSubjectExternalValuesList() {
+    return subjectExternalValues_;
   }
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * list of comparison values for the subject_external_field
    * </pre>
    *
-   * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-   * @return The count of subjectValues.
+   * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+   * @return The count of subjectExternalValues.
    */
-  public int getSubjectValuesCount() {
-    return subjectValues_.size();
+  public int getSubjectExternalValuesCount() {
+    return subjectExternalValues_.size();
   }
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * list of comparison values for the subject_external_field
    * </pre>
    *
-   * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
+   * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
    * @param index The index of the element to return.
-   * @return The subjectValues at the given index.
+   * @return The subjectExternalValues at the given index.
    */
-  public java.lang.String getSubjectValues(int index) {
-    return subjectValues_.get(index);
+  public java.lang.String getSubjectExternalValues(int index) {
+    return subjectExternalValues_.get(index);
   }
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * list of comparison values for the subject_external_field
    * </pre>
    *
-   * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
+   * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
    * @param index The index of the value to return.
-   * @return The bytes of the subjectValues at the given index.
+   * @return The bytes of the subjectExternalValues at the given index.
    */
   public com.google.protobuf.ByteString
-      getSubjectValuesBytes(int index) {
-    return subjectValues_.getByteString(index);
+      getSubjectExternalValuesBytes(int index) {
+    return subjectExternalValues_.getByteString(index);
   }
 
   private byte memoizedIsInitialized = -1;
@@ -202,14 +202,14 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(subjectAttribute_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, subjectAttribute_);
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(subjectExternalField_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, subjectExternalField_);
     }
     if (operator_ != io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED.getNumber()) {
       output.writeEnum(2, operator_);
     }
-    for (int i = 0; i < subjectValues_.size(); i++) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, subjectValues_.getRaw(i));
+    for (int i = 0; i < subjectExternalValues_.size(); i++) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, subjectExternalValues_.getRaw(i));
     }
     getUnknownFields().writeTo(output);
   }
@@ -220,8 +220,8 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(subjectAttribute_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, subjectAttribute_);
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(subjectExternalField_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, subjectExternalField_);
     }
     if (operator_ != io.opentdf.platform.policy.subjectmapping.SubjectMappingOperatorEnum.SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED.getNumber()) {
       size += com.google.protobuf.CodedOutputStream
@@ -229,11 +229,11 @@ private static final long serialVersionUID = 0L;
     }
     {
       int dataSize = 0;
-      for (int i = 0; i < subjectValues_.size(); i++) {
-        dataSize += computeStringSizeNoTag(subjectValues_.getRaw(i));
+      for (int i = 0; i < subjectExternalValues_.size(); i++) {
+        dataSize += computeStringSizeNoTag(subjectExternalValues_.getRaw(i));
       }
       size += dataSize;
-      size += 1 * getSubjectValuesList().size();
+      size += 1 * getSubjectExternalValuesList().size();
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -250,11 +250,11 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.subjectmapping.Condition other = (io.opentdf.platform.policy.subjectmapping.Condition) obj;
 
-    if (!getSubjectAttribute()
-        .equals(other.getSubjectAttribute())) return false;
+    if (!getSubjectExternalField()
+        .equals(other.getSubjectExternalField())) return false;
     if (operator_ != other.operator_) return false;
-    if (!getSubjectValuesList()
-        .equals(other.getSubjectValuesList())) return false;
+    if (!getSubjectExternalValuesList()
+        .equals(other.getSubjectExternalValuesList())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -266,13 +266,13 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    hash = (37 * hash) + SUBJECT_ATTRIBUTE_FIELD_NUMBER;
-    hash = (53 * hash) + getSubjectAttribute().hashCode();
+    hash = (37 * hash) + SUBJECT_EXTERNAL_FIELD_FIELD_NUMBER;
+    hash = (53 * hash) + getSubjectExternalField().hashCode();
     hash = (37 * hash) + OPERATOR_FIELD_NUMBER;
     hash = (53 * hash) + operator_;
-    if (getSubjectValuesCount() > 0) {
-      hash = (37 * hash) + SUBJECT_VALUES_FIELD_NUMBER;
-      hash = (53 * hash) + getSubjectValuesList().hashCode();
+    if (getSubjectExternalValuesCount() > 0) {
+      hash = (37 * hash) + SUBJECT_EXTERNAL_VALUES_FIELD_NUMBER;
+      hash = (53 * hash) + getSubjectExternalValuesList().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -374,20 +374,20 @@ private static final long serialVersionUID = 0L;
   /**
    * <pre>
    **
-   *A Condition defines a rule of &lt;subject attribute&gt; &lt;operator&gt; &lt;subject values&gt;
+   *A Condition defines a rule of &lt;subject external field name&gt; &lt;operator&gt; &lt;subject external values&gt;
    *
-   *Example:  Match Subjects with an attribute "division" with a value of "Accounting" or "Marketing":
+   *Example:  Match Subjects with field "division" and a value of "Accounting" or "Marketing":
    *{
-   *"subject_attribute": "division",
+   *"subject_external_field": "division",
    *"operator": "IN",
-   *"subject_values" : ["Accounting", "Marketing"]
+   *"subject_external_values" : ["Accounting", "Marketing"]
    *}
    *
-   *Example: Match a subject by preferred username:
+   *Example: Match a subject by ensuring they are not part of the Fantastic Four:
    *{
-   *"subject_attribute": "preferredUsername",
-   *"operator": "IN",
-   *"subject_values" : ["alice&#64;example.org"]
+   *"subject_external_field": "superhero_name",
+   *"operator": "NOT_IN",
+   *"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
    *}
    * </pre>
    *
@@ -424,9 +424,9 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      subjectAttribute_ = "";
+      subjectExternalField_ = "";
       operator_ = 0;
-      subjectValues_ =
+      subjectExternalValues_ =
           com.google.protobuf.LazyStringArrayList.emptyList();
       return this;
     }
@@ -462,14 +462,14 @@ private static final long serialVersionUID = 0L;
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.Condition result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.subjectAttribute_ = subjectAttribute_;
+        result.subjectExternalField_ = subjectExternalField_;
       }
       if (((from_bitField0_ & 0x00000002) != 0)) {
         result.operator_ = operator_;
       }
       if (((from_bitField0_ & 0x00000004) != 0)) {
-        subjectValues_.makeImmutable();
-        result.subjectValues_ = subjectValues_;
+        subjectExternalValues_.makeImmutable();
+        result.subjectExternalValues_ = subjectExternalValues_;
       }
     }
 
@@ -517,21 +517,21 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.Condition other) {
       if (other == io.opentdf.platform.policy.subjectmapping.Condition.getDefaultInstance()) return this;
-      if (!other.getSubjectAttribute().isEmpty()) {
-        subjectAttribute_ = other.subjectAttribute_;
+      if (!other.getSubjectExternalField().isEmpty()) {
+        subjectExternalField_ = other.subjectExternalField_;
         bitField0_ |= 0x00000001;
         onChanged();
       }
       if (other.operator_ != 0) {
         setOperatorValue(other.getOperatorValue());
       }
-      if (!other.subjectValues_.isEmpty()) {
-        if (subjectValues_.isEmpty()) {
-          subjectValues_ = other.subjectValues_;
+      if (!other.subjectExternalValues_.isEmpty()) {
+        if (subjectExternalValues_.isEmpty()) {
+          subjectExternalValues_ = other.subjectExternalValues_;
           bitField0_ |= 0x00000004;
         } else {
-          ensureSubjectValuesIsMutable();
-          subjectValues_.addAll(other.subjectValues_);
+          ensureSubjectExternalValuesIsMutable();
+          subjectExternalValues_.addAll(other.subjectExternalValues_);
         }
         onChanged();
       }
@@ -562,7 +562,7 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              subjectAttribute_ = input.readStringRequireUtf8();
+              subjectExternalField_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000001;
               break;
             } // case 10
@@ -573,8 +573,8 @@ private static final long serialVersionUID = 0L;
             } // case 16
             case 26: {
               java.lang.String s = input.readStringRequireUtf8();
-              ensureSubjectValuesIsMutable();
-              subjectValues_.add(s);
+              ensureSubjectExternalValuesIsMutable();
+              subjectExternalValues_.add(s);
               break;
             } // case 26
             default: {
@@ -594,22 +594,22 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.lang.Object subjectAttribute_ = "";
+    private java.lang.Object subjectExternalField_ = "";
     /**
      * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
+     * externally known field name (such as from idP/LDAP)
      * </pre>
      *
-     * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
-     * @return The subjectAttribute.
+     * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
+     * @return The subjectExternalField.
      */
-    public java.lang.String getSubjectAttribute() {
-      java.lang.Object ref = subjectAttribute_;
+    public java.lang.String getSubjectExternalField() {
+      java.lang.Object ref = subjectExternalField_;
       if (!(ref instanceof java.lang.String)) {
         com.google.protobuf.ByteString bs =
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
-        subjectAttribute_ = s;
+        subjectExternalField_ = s;
         return s;
       } else {
         return (java.lang.String) ref;
@@ -617,20 +617,20 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
+     * externally known field name (such as from idP/LDAP)
      * </pre>
      *
-     * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
-     * @return The bytes for subjectAttribute.
+     * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
+     * @return The bytes for subjectExternalField.
      */
     public com.google.protobuf.ByteString
-        getSubjectAttributeBytes() {
-      java.lang.Object ref = subjectAttribute_;
+        getSubjectExternalFieldBytes() {
+      java.lang.Object ref = subjectExternalField_;
       if (ref instanceof String) {
         com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
-        subjectAttribute_ = b;
+        subjectExternalField_ = b;
         return b;
       } else {
         return (com.google.protobuf.ByteString) ref;
@@ -638,49 +638,49 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
+     * externally known field name (such as from idP/LDAP)
      * </pre>
      *
-     * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
-     * @param value The subjectAttribute to set.
+     * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
+     * @param value The subjectExternalField to set.
      * @return This builder for chaining.
      */
-    public Builder setSubjectAttribute(
+    public Builder setSubjectExternalField(
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
-      subjectAttribute_ = value;
+      subjectExternalField_ = value;
       bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
      * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
+     * externally known field name (such as from idP/LDAP)
      * </pre>
      *
-     * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
+     * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearSubjectAttribute() {
-      subjectAttribute_ = getDefaultInstance().getSubjectAttribute();
+    public Builder clearSubjectExternalField() {
+      subjectExternalField_ = getDefaultInstance().getSubjectExternalField();
       bitField0_ = (bitField0_ & ~0x00000001);
       onChanged();
       return this;
     }
     /**
      * <pre>
-     * Resource Attribute Key; NOT Attribute Definition Attribute name
+     * externally known field name (such as from idP/LDAP)
      * </pre>
      *
-     * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
-     * @param value The bytes for subjectAttribute to set.
+     * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
+     * @param value The bytes for subjectExternalField to set.
      * @return This builder for chaining.
      */
-    public Builder setSubjectAttributeBytes(
+    public Builder setSubjectExternalFieldBytes(
         com.google.protobuf.ByteString value) {
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
-      subjectAttribute_ = value;
+      subjectExternalField_ = value;
       bitField0_ |= 0x00000001;
       onChanged();
       return this;
@@ -759,128 +759,128 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private com.google.protobuf.LazyStringArrayList subjectValues_ =
+    private com.google.protobuf.LazyStringArrayList subjectExternalValues_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
-    private void ensureSubjectValuesIsMutable() {
-      if (!subjectValues_.isModifiable()) {
-        subjectValues_ = new com.google.protobuf.LazyStringArrayList(subjectValues_);
+    private void ensureSubjectExternalValuesIsMutable() {
+      if (!subjectExternalValues_.isModifiable()) {
+        subjectExternalValues_ = new com.google.protobuf.LazyStringArrayList(subjectExternalValues_);
       }
       bitField0_ |= 0x00000004;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-     * @return A list containing the subjectValues.
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+     * @return A list containing the subjectExternalValues.
      */
     public com.google.protobuf.ProtocolStringList
-        getSubjectValuesList() {
-      subjectValues_.makeImmutable();
-      return subjectValues_;
+        getSubjectExternalValuesList() {
+      subjectExternalValues_.makeImmutable();
+      return subjectExternalValues_;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-     * @return The count of subjectValues.
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+     * @return The count of subjectExternalValues.
      */
-    public int getSubjectValuesCount() {
-      return subjectValues_.size();
+    public int getSubjectExternalValuesCount() {
+      return subjectExternalValues_.size();
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
      * @param index The index of the element to return.
-     * @return The subjectValues at the given index.
+     * @return The subjectExternalValues at the given index.
      */
-    public java.lang.String getSubjectValues(int index) {
-      return subjectValues_.get(index);
+    public java.lang.String getSubjectExternalValues(int index) {
+      return subjectExternalValues_.get(index);
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
      * @param index The index of the value to return.
-     * @return The bytes of the subjectValues at the given index.
+     * @return The bytes of the subjectExternalValues at the given index.
      */
     public com.google.protobuf.ByteString
-        getSubjectValuesBytes(int index) {
-      return subjectValues_.getByteString(index);
+        getSubjectExternalValuesBytes(int index) {
+      return subjectExternalValues_.getByteString(index);
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
      * @param index The index to set the value at.
-     * @param value The subjectValues to set.
+     * @param value The subjectExternalValues to set.
      * @return This builder for chaining.
      */
-    public Builder setSubjectValues(
+    public Builder setSubjectExternalValues(
         int index, java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
-      ensureSubjectValuesIsMutable();
-      subjectValues_.set(index, value);
+      ensureSubjectExternalValuesIsMutable();
+      subjectExternalValues_.set(index, value);
       bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-     * @param value The subjectValues to add.
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+     * @param value The subjectExternalValues to add.
      * @return This builder for chaining.
      */
-    public Builder addSubjectValues(
+    public Builder addSubjectExternalValues(
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
-      ensureSubjectValuesIsMutable();
-      subjectValues_.add(value);
+      ensureSubjectExternalValuesIsMutable();
+      subjectExternalValues_.add(value);
       bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-     * @param values The subjectValues to add.
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+     * @param values The subjectExternalValues to add.
      * @return This builder for chaining.
      */
-    public Builder addAllSubjectValues(
+    public Builder addAllSubjectExternalValues(
         java.lang.Iterable<java.lang.String> values) {
-      ensureSubjectValuesIsMutable();
+      ensureSubjectExternalValuesIsMutable();
       com.google.protobuf.AbstractMessageLite.Builder.addAll(
-          values, subjectValues_);
+          values, subjectExternalValues_);
       bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearSubjectValues() {
-      subjectValues_ =
+    public Builder clearSubjectExternalValues() {
+      subjectExternalValues_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
       bitField0_ = (bitField0_ & ~0x00000004);;
       onChanged();
@@ -888,19 +888,19 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The list of comparison values for a resource's &lt;attribute&gt; value
+     * list of comparison values for the subject_external_field
      * </pre>
      *
-     * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-     * @param value The bytes of the subjectValues to add.
+     * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+     * @param value The bytes of the subjectExternalValues to add.
      * @return This builder for chaining.
      */
-    public Builder addSubjectValuesBytes(
+    public Builder addSubjectExternalValuesBytes(
         com.google.protobuf.ByteString value) {
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
-      ensureSubjectValuesIsMutable();
-      subjectValues_.add(value);
+      ensureSubjectExternalValuesIsMutable();
+      subjectExternalValues_.add(value);
       bitField0_ |= 0x00000004;
       onChanged();
       return this;

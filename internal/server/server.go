@@ -37,7 +37,7 @@ type Config struct {
 
 type GrpcConfig struct {
 	Port              int  `yaml:"port" default:"9000"`
-	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"false"`
+	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
 }
 
 type HTTPConfig struct {

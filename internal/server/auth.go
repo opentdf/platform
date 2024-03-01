@@ -25,8 +25,6 @@ type openidConfiguraton struct {
 	Jwks_uri string `json:"jwks_uri"`
 }
 
-var testIDP = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/certs"
-
 func newAuthNInterceptor(cfg []AuthConfig) (*authN, error) {
 	a := &authN{}
 	a.cfg = make(map[string]openidConfiguraton)

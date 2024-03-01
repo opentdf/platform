@@ -2,6 +2,7 @@ package entitlements
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -22,6 +23,7 @@ func OpaInput(entity *authorization.Entity, ss *subjectmapping.SubjectSet) (map[
 		ea["jwt"] = v.Jwt
 	case *authorization.Entity_Claims:
 		ea["claims"] = string(v.Claims.Value)
+		ea["claims_array"] = strings.Split(string(v.Claims.Value), ":")
 	case *authorization.Entity_RemoteClaimsUrl:
 		ea["remote_claims_url"] = v.RemoteClaimsUrl
 	case *authorization.Entity_UserName:

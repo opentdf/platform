@@ -39,6 +39,8 @@ jobs:
           - examples
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: ${{github.event_name != 'merge_group' && 1 || 0}}
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.21"

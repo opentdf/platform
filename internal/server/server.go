@@ -47,10 +47,9 @@ type HTTPConfig struct {
 }
 
 type AuthConfig struct {
-	Audience         string                 `yaml:"audience"`
-	Issuer           string                 `yaml:"issuer"`
-	Clients          []string               `yaml:"clients"`
-	ClaimsToValidate map[string]interface{} `yaml:"claimsToValidate"`
+	Audience string   `yaml:"audience"`
+	Issuer   string   `yaml:"issuer"`
+	Clients  []string `yaml:"clients"`
 }
 
 type TLSConfig struct {

@@ -4,19 +4,25 @@
 CREATE TABLE IF NOT EXISTS subject_condition_set (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR UNIQUE,
+    metadata JSONB,
     condition JSONB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS subject_mapping_condition_set_pivot (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     subject_mapping_id UUID REFERENCES subject_mappings(id) ON DELETE CASCADE,
-    subject_condition_set_id UUID
+    subject_condition_set_id UUID,
+    UNIQUE (subject_mapping_id, subject_condition_set_id)
 );
 
 ALTER TABLE IF EXISTS subject_mappings ADD COLUMN subject_condition_set_pivot_ids UUID[], ADD COLUMN actions VARCHAR[];
 
 WITH subject_mappings_migration_data AS (
    SELECT
+        JSON_BUILD_OBJECT(
+            'created_at', metadata::json->'created_at',
+            'updated_at', metadata::json->'updated_at'
+        ) AS metadata,
         JSON_BUILD_OBJECT(
         'subject_sets',
             JSON_BUILD_ARRAY(
@@ -48,8 +54,8 @@ pivot_insert AS (
 ),
 -- populate the condition set table
 insert_subject_condition_set AS (
-    INSERT INTO subject_condition_set(condition, id)
-    SELECT condition_json, subject_condition_set_id
+    INSERT INTO subject_condition_set(metadata, condition, id)
+    SELECT metadata, condition_json, subject_condition_set_id
     FROM subject_mappings_migration_data JOIN pivot_insert ON subject_mappings_migration_data.sm_id = pivot_insert.subject_mapping_id
 )
 -- populate the subject_mappings column with the new pivot id

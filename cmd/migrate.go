@@ -40,11 +40,11 @@ var (
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			res, err := dbClient.RunMigrations(cmd.Context())
+			count, err := dbClient.RunMigrations(cmd.Context())
 			if err != nil {
 				panic(fmt.Errorf("migration up failed: %w", err))
 			}
-			fmt.Print("migration up applied: ", slog.Any("res", res))
+			fmt.Print("migration up applied: ", slog.Any("versions up", count))
 		},
 	}
 )

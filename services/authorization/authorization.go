@@ -83,18 +83,26 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
 	// get subject mappings
-	smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
-	ins := subjectmapping.GetSubjectSetRequest{
-		Id: "abc",
+	// smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
+	subjectSets := []*subjectmapping.SubjectSet{
+		{
+			ConditionGroups: []*subjectmapping.ConditionGroup{
+				{
+					Conditions: []*subjectmapping.Condition{
+						{
+							SubjectExternalField:  "Department",
+							Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+							SubjectExternalValues: []string{"Marketing", "Sales"},
+						},
+					},
+				},
+			},
+		},
 	}
-	out, err := smc.GetSubjectSet(ctx, &ins)
-	if err != nil {
-		slog.ErrorContext(ctx, err.Error())
-		return nil, err
-	}
-	slog.InfoContext(ctx, out.String())
+
+	slog.InfoContext(ctx, "retrieved from subject mappings service", slog.Any("subjectSets: ", subjectSets))
 	// OPA
-	in, err := entitlements.OpaInput(req.Entities[0], out.SubjectSet)
+	in, err := entitlements.OpaInput(req.Entities[0], subjectSets[0])
 	if err != nil {
 		return nil, err
 	}

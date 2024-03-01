@@ -1,4 +1,4 @@
-package io.opentdf.platform.access;
+package io.opentdf.platform.kas;
 
 import static io.grpc.MethodDescriptor.generateFullMethodName;
 
@@ -9,38 +9,38 @@ import static io.grpc.MethodDescriptor.generateFullMethodName;
  */
 @javax.annotation.Generated(
     value = "by gRPC proto compiler (version 1.61.1)",
-    comments = "Source: access/access.proto")
+    comments = "Source: kas/kas.proto")
 @io.grpc.stub.annotations.GrpcGenerated
 public final class AccessServiceGrpc {
 
   private AccessServiceGrpc() {}
 
-  public static final java.lang.String SERVICE_NAME = "access.AccessService";
+  public static final java.lang.String SERVICE_NAME = "kas.AccessService";
 
   // Static method descriptors that strictly reflect the proto.
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.access.InfoRequest,
-      io.opentdf.platform.access.InfoResponse> getInfoMethod;
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.kas.InfoRequest,
+      io.opentdf.platform.kas.InfoResponse> getInfoMethod;
 
   @io.grpc.stub.annotations.RpcMethod(
       fullMethodName = SERVICE_NAME + '/' + "Info",
-      requestType = io.opentdf.platform.access.InfoRequest.class,
-      responseType = io.opentdf.platform.access.InfoResponse.class,
+      requestType = io.opentdf.platform.kas.InfoRequest.class,
+      responseType = io.opentdf.platform.kas.InfoResponse.class,
       methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.access.InfoRequest,
-      io.opentdf.platform.access.InfoResponse> getInfoMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.access.InfoRequest, io.opentdf.platform.access.InfoResponse> getInfoMethod;
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.kas.InfoRequest,
+      io.opentdf.platform.kas.InfoResponse> getInfoMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.kas.InfoRequest, io.opentdf.platform.kas.InfoResponse> getInfoMethod;
     if ((getInfoMethod = AccessServiceGrpc.getInfoMethod) == null) {
       synchronized (AccessServiceGrpc.class) {
         if ((getInfoMethod = AccessServiceGrpc.getInfoMethod) == null) {
           AccessServiceGrpc.getInfoMethod = getInfoMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.access.InfoRequest, io.opentdf.platform.access.InfoResponse>newBuilder()
+              io.grpc.MethodDescriptor.<io.opentdf.platform.kas.InfoRequest, io.opentdf.platform.kas.InfoResponse>newBuilder()
               .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
               .setFullMethodName(generateFullMethodName(SERVICE_NAME, "Info"))
               .setSampledToLocalTracing(true)
               .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.access.InfoRequest.getDefaultInstance()))
+                  io.opentdf.platform.kas.InfoRequest.getDefaultInstance()))
               .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.access.InfoResponse.getDefaultInstance()))
+                  io.opentdf.platform.kas.InfoResponse.getDefaultInstance()))
               .setSchemaDescriptor(new AccessServiceMethodDescriptorSupplier("Info"))
               .build();
         }
@@ -49,29 +49,29 @@ public final class AccessServiceGrpc {
     return getInfoMethod;
   }
 
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.access.PublicKeyRequest,
-      io.opentdf.platform.access.PublicKeyResponse> getPublicKeyMethod;
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.kas.PublicKeyRequest,
+      io.opentdf.platform.kas.PublicKeyResponse> getPublicKeyMethod;
 
   @io.grpc.stub.annotations.RpcMethod(
       fullMethodName = SERVICE_NAME + '/' + "PublicKey",
-      requestType = io.opentdf.platform.access.PublicKeyRequest.class,
-      responseType = io.opentdf.platform.access.PublicKeyResponse.class,
+      requestType = io.opentdf.platform.kas.PublicKeyRequest.class,
+      responseType = io.opentdf.platform.kas.PublicKeyResponse.class,
       methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.access.PublicKeyRequest,
-      io.opentdf.platform.access.PublicKeyResponse> getPublicKeyMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.access.PublicKeyRequest, io.opentdf.platform.access.PublicKeyResponse> getPublicKeyMethod;
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.kas.PublicKeyRequest,
+      io.opentdf.platform.kas.PublicKeyResponse> getPublicKeyMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.kas.PublicKeyRequest, io.opentdf.platform.kas.PublicKeyResponse> getPublicKeyMethod;
     if ((getPublicKeyMethod = AccessServiceGrpc.getPublicKeyMethod) == null) {
       synchronized (AccessServiceGrpc.class) {
         if ((getPublicKeyMethod = AccessServiceGrpc.getPublicKeyMethod) == null) {
           AccessServiceGrpc.getPublicKeyMethod = getPublicKeyMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.access.PublicKeyRequest, io.opentdf.platform.access.PublicKeyResponse>newBuilder()
+              io.grpc.MethodDescriptor.<io.opentdf.platform.kas.PublicKeyRequest, io.opentdf.platform.kas.PublicKeyResponse>newBuilder()
               .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
               .setFullMethodName(generateFullMethodName(SERVICE_NAME, "PublicKey"))
               .setSampledToLocalTracing(true)
               .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.access.PublicKeyRequest.getDefaultInstance()))
+                  io.opentdf.platform.kas.PublicKeyRequest.getDefaultInstance()))
               .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.access.PublicKeyResponse.getDefaultInstance()))
+                  io.opentdf.platform.kas.PublicKeyResponse.getDefaultInstance()))
               .setSchemaDescriptor(new AccessServiceMethodDescriptorSupplier("PublicKey"))
               .build();
         }
@@ -80,27 +80,27 @@ public final class AccessServiceGrpc {
     return getPublicKeyMethod;
   }
 
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.access.LegacyPublicKeyRequest,
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.kas.LegacyPublicKeyRequest,
       com.google.protobuf.StringValue> getLegacyPublicKeyMethod;
 
   @io.grpc.stub.annotations.RpcMethod(
       fullMethodName = SERVICE_NAME + '/' + "LegacyPublicKey",
-      requestType = io.opentdf.platform.access.LegacyPublicKeyRequest.class,
+      requestType = io.opentdf.platform.kas.LegacyPublicKeyRequest.class,
       responseType = com.google.protobuf.StringValue.class,
       methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.access.LegacyPublicKeyRequest,
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.kas.LegacyPublicKeyRequest,
       com.google.protobuf.StringValue> getLegacyPublicKeyMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.access.LegacyPublicKeyRequest, com.google.protobuf.StringValue> getLegacyPublicKeyMethod;
+    io.grpc.MethodDescriptor<io.opentdf.platform.kas.LegacyPublicKeyRequest, com.google.protobuf.StringValue> getLegacyPublicKeyMethod;
     if ((getLegacyPublicKeyMethod = AccessServiceGrpc.getLegacyPublicKeyMethod) == null) {
       synchronized (AccessServiceGrpc.class) {
         if ((getLegacyPublicKeyMethod = AccessServiceGrpc.getLegacyPublicKeyMethod) == null) {
           AccessServiceGrpc.getLegacyPublicKeyMethod = getLegacyPublicKeyMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.access.LegacyPublicKeyRequest, com.google.protobuf.StringValue>newBuilder()
+              io.grpc.MethodDescriptor.<io.opentdf.platform.kas.LegacyPublicKeyRequest, com.google.protobuf.StringValue>newBuilder()
               .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
               .setFullMethodName(generateFullMethodName(SERVICE_NAME, "LegacyPublicKey"))
               .setSampledToLocalTracing(true)
               .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.access.LegacyPublicKeyRequest.getDefaultInstance()))
+                  io.opentdf.platform.kas.LegacyPublicKeyRequest.getDefaultInstance()))
               .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
                   com.google.protobuf.StringValue.getDefaultInstance()))
               .setSchemaDescriptor(new AccessServiceMethodDescriptorSupplier("LegacyPublicKey"))
@@ -111,29 +111,29 @@ public final class AccessServiceGrpc {
     return getLegacyPublicKeyMethod;
   }
 
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.access.RewrapRequest,
-      io.opentdf.platform.access.RewrapResponse> getRewrapMethod;
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.kas.RewrapRequest,
+      io.opentdf.platform.kas.RewrapResponse> getRewrapMethod;
 
   @io.grpc.stub.annotations.RpcMethod(
       fullMethodName = SERVICE_NAME + '/' + "Rewrap",
-      requestType = io.opentdf.platform.access.RewrapRequest.class,
-      responseType = io.opentdf.platform.access.RewrapResponse.class,
+      requestType = io.opentdf.platform.kas.RewrapRequest.class,
+      responseType = io.opentdf.platform.kas.RewrapResponse.class,
       methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.access.RewrapRequest,
-      io.opentdf.platform.access.RewrapResponse> getRewrapMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.access.RewrapRequest, io.opentdf.platform.access.RewrapResponse> getRewrapMethod;
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.kas.RewrapRequest,
+      io.opentdf.platform.kas.RewrapResponse> getRewrapMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.kas.RewrapRequest, io.opentdf.platform.kas.RewrapResponse> getRewrapMethod;
     if ((getRewrapMethod = AccessServiceGrpc.getRewrapMethod) == null) {
       synchronized (AccessServiceGrpc.class) {
         if ((getRewrapMethod = AccessServiceGrpc.getRewrapMethod) == null) {
           AccessServiceGrpc.getRewrapMethod = getRewrapMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.access.RewrapRequest, io.opentdf.platform.access.RewrapResponse>newBuilder()
+              io.grpc.MethodDescriptor.<io.opentdf.platform.kas.RewrapRequest, io.opentdf.platform.kas.RewrapResponse>newBuilder()
               .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
               .setFullMethodName(generateFullMethodName(SERVICE_NAME, "Rewrap"))
               .setSampledToLocalTracing(true)
               .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.access.RewrapRequest.getDefaultInstance()))
+                  io.opentdf.platform.kas.RewrapRequest.getDefaultInstance()))
               .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.access.RewrapResponse.getDefaultInstance()))
+                  io.opentdf.platform.kas.RewrapResponse.getDefaultInstance()))
               .setSchemaDescriptor(new AccessServiceMethodDescriptorSupplier("Rewrap"))
               .build();
         }
@@ -198,15 +198,15 @@ public final class AccessServiceGrpc {
      * Get the current version of the service
      * </pre>
      */
-    default void info(io.opentdf.platform.access.InfoRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.access.InfoResponse> responseObserver) {
+    default void info(io.opentdf.platform.kas.InfoRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.kas.InfoResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getInfoMethod(), responseObserver);
     }
 
     /**
      */
-    default void publicKey(io.opentdf.platform.access.PublicKeyRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.access.PublicKeyResponse> responseObserver) {
+    default void publicKey(io.opentdf.platform.kas.PublicKeyRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.kas.PublicKeyResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getPublicKeyMethod(), responseObserver);
     }
 
@@ -215,15 +215,15 @@ public final class AccessServiceGrpc {
      * buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
      * </pre>
      */
-    default void legacyPublicKey(io.opentdf.platform.access.LegacyPublicKeyRequest request,
+    default void legacyPublicKey(io.opentdf.platform.kas.LegacyPublicKeyRequest request,
         io.grpc.stub.StreamObserver<com.google.protobuf.StringValue> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getLegacyPublicKeyMethod(), responseObserver);
     }
 
     /**
      */
-    default void rewrap(io.opentdf.platform.access.RewrapRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.access.RewrapResponse> responseObserver) {
+    default void rewrap(io.opentdf.platform.kas.RewrapRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.kas.RewrapResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getRewrapMethod(), responseObserver);
     }
   }
@@ -266,16 +266,16 @@ public final class AccessServiceGrpc {
      * Get the current version of the service
      * </pre>
      */
-    public void info(io.opentdf.platform.access.InfoRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.access.InfoResponse> responseObserver) {
+    public void info(io.opentdf.platform.kas.InfoRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.kas.InfoResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getInfoMethod(), getCallOptions()), request, responseObserver);
     }
 
     /**
      */
-    public void publicKey(io.opentdf.platform.access.PublicKeyRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.access.PublicKeyResponse> responseObserver) {
+    public void publicKey(io.opentdf.platform.kas.PublicKeyRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.kas.PublicKeyResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getPublicKeyMethod(), getCallOptions()), request, responseObserver);
     }
@@ -285,7 +285,7 @@ public final class AccessServiceGrpc {
      * buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
      * </pre>
      */
-    public void legacyPublicKey(io.opentdf.platform.access.LegacyPublicKeyRequest request,
+    public void legacyPublicKey(io.opentdf.platform.kas.LegacyPublicKeyRequest request,
         io.grpc.stub.StreamObserver<com.google.protobuf.StringValue> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getLegacyPublicKeyMethod(), getCallOptions()), request, responseObserver);
@@ -293,8 +293,8 @@ public final class AccessServiceGrpc {
 
     /**
      */
-    public void rewrap(io.opentdf.platform.access.RewrapRequest request,
-        io.grpc.stub.StreamObserver<io.opentdf.platform.access.RewrapResponse> responseObserver) {
+    public void rewrap(io.opentdf.platform.kas.RewrapRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.kas.RewrapResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getRewrapMethod(), getCallOptions()), request, responseObserver);
     }
@@ -324,14 +324,14 @@ public final class AccessServiceGrpc {
      * Get the current version of the service
      * </pre>
      */
-    public io.opentdf.platform.access.InfoResponse info(io.opentdf.platform.access.InfoRequest request) {
+    public io.opentdf.platform.kas.InfoResponse info(io.opentdf.platform.kas.InfoRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getInfoMethod(), getCallOptions(), request);
     }
 
     /**
      */
-    public io.opentdf.platform.access.PublicKeyResponse publicKey(io.opentdf.platform.access.PublicKeyRequest request) {
+    public io.opentdf.platform.kas.PublicKeyResponse publicKey(io.opentdf.platform.kas.PublicKeyRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getPublicKeyMethod(), getCallOptions(), request);
     }
@@ -341,14 +341,14 @@ public final class AccessServiceGrpc {
      * buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
      * </pre>
      */
-    public com.google.protobuf.StringValue legacyPublicKey(io.opentdf.platform.access.LegacyPublicKeyRequest request) {
+    public com.google.protobuf.StringValue legacyPublicKey(io.opentdf.platform.kas.LegacyPublicKeyRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getLegacyPublicKeyMethod(), getCallOptions(), request);
     }
 
     /**
      */
-    public io.opentdf.platform.access.RewrapResponse rewrap(io.opentdf.platform.access.RewrapRequest request) {
+    public io.opentdf.platform.kas.RewrapResponse rewrap(io.opentdf.platform.kas.RewrapRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getRewrapMethod(), getCallOptions(), request);
     }
@@ -378,16 +378,16 @@ public final class AccessServiceGrpc {
      * Get the current version of the service
      * </pre>
      */
-    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.access.InfoResponse> info(
-        io.opentdf.platform.access.InfoRequest request) {
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.kas.InfoResponse> info(
+        io.opentdf.platform.kas.InfoRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getInfoMethod(), getCallOptions()), request);
     }
 
     /**
      */
-    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.access.PublicKeyResponse> publicKey(
-        io.opentdf.platform.access.PublicKeyRequest request) {
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.kas.PublicKeyResponse> publicKey(
+        io.opentdf.platform.kas.PublicKeyRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getPublicKeyMethod(), getCallOptions()), request);
     }
@@ -398,15 +398,15 @@ public final class AccessServiceGrpc {
      * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<com.google.protobuf.StringValue> legacyPublicKey(
-        io.opentdf.platform.access.LegacyPublicKeyRequest request) {
+        io.opentdf.platform.kas.LegacyPublicKeyRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getLegacyPublicKeyMethod(), getCallOptions()), request);
     }
 
     /**
      */
-    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.access.RewrapResponse> rewrap(
-        io.opentdf.platform.access.RewrapRequest request) {
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.kas.RewrapResponse> rewrap(
+        io.opentdf.platform.kas.RewrapRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getRewrapMethod(), getCallOptions()), request);
     }
@@ -435,20 +435,20 @@ public final class AccessServiceGrpc {
     public void invoke(Req request, io.grpc.stub.StreamObserver<Resp> responseObserver) {
       switch (methodId) {
         case METHODID_INFO:
-          serviceImpl.info((io.opentdf.platform.access.InfoRequest) request,
-              (io.grpc.stub.StreamObserver<io.opentdf.platform.access.InfoResponse>) responseObserver);
+          serviceImpl.info((io.opentdf.platform.kas.InfoRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.kas.InfoResponse>) responseObserver);
           break;
         case METHODID_PUBLIC_KEY:
-          serviceImpl.publicKey((io.opentdf.platform.access.PublicKeyRequest) request,
-              (io.grpc.stub.StreamObserver<io.opentdf.platform.access.PublicKeyResponse>) responseObserver);
+          serviceImpl.publicKey((io.opentdf.platform.kas.PublicKeyRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.kas.PublicKeyResponse>) responseObserver);
           break;
         case METHODID_LEGACY_PUBLIC_KEY:
-          serviceImpl.legacyPublicKey((io.opentdf.platform.access.LegacyPublicKeyRequest) request,
+          serviceImpl.legacyPublicKey((io.opentdf.platform.kas.LegacyPublicKeyRequest) request,
               (io.grpc.stub.StreamObserver<com.google.protobuf.StringValue>) responseObserver);
           break;
         case METHODID_REWRAP:
-          serviceImpl.rewrap((io.opentdf.platform.access.RewrapRequest) request,
-              (io.grpc.stub.StreamObserver<io.opentdf.platform.access.RewrapResponse>) responseObserver);
+          serviceImpl.rewrap((io.opentdf.platform.kas.RewrapRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.kas.RewrapResponse>) responseObserver);
           break;
         default:
           throw new AssertionError();
@@ -472,29 +472,29 @@ public final class AccessServiceGrpc {
           getInfoMethod(),
           io.grpc.stub.ServerCalls.asyncUnaryCall(
             new MethodHandlers<
-              io.opentdf.platform.access.InfoRequest,
-              io.opentdf.platform.access.InfoResponse>(
+              io.opentdf.platform.kas.InfoRequest,
+              io.opentdf.platform.kas.InfoResponse>(
                 service, METHODID_INFO)))
         .addMethod(
           getPublicKeyMethod(),
           io.grpc.stub.ServerCalls.asyncUnaryCall(
             new MethodHandlers<
-              io.opentdf.platform.access.PublicKeyRequest,
-              io.opentdf.platform.access.PublicKeyResponse>(
+              io.opentdf.platform.kas.PublicKeyRequest,
+              io.opentdf.platform.kas.PublicKeyResponse>(
                 service, METHODID_PUBLIC_KEY)))
         .addMethod(
           getLegacyPublicKeyMethod(),
           io.grpc.stub.ServerCalls.asyncUnaryCall(
             new MethodHandlers<
-              io.opentdf.platform.access.LegacyPublicKeyRequest,
+              io.opentdf.platform.kas.LegacyPublicKeyRequest,
               com.google.protobuf.StringValue>(
                 service, METHODID_LEGACY_PUBLIC_KEY)))
         .addMethod(
           getRewrapMethod(),
           io.grpc.stub.ServerCalls.asyncUnaryCall(
             new MethodHandlers<
-              io.opentdf.platform.access.RewrapRequest,
-              io.opentdf.platform.access.RewrapResponse>(
+              io.opentdf.platform.kas.RewrapRequest,
+              io.opentdf.platform.kas.RewrapResponse>(
                 service, METHODID_REWRAP)))
         .build();
   }
@@ -505,7 +505,7 @@ public final class AccessServiceGrpc {
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.FileDescriptor getFileDescriptor() {
-      return io.opentdf.platform.access.AccessProto.getDescriptor();
+      return io.opentdf.platform.kas.KasProto.getDescriptor();
     }
 
     @java.lang.Override

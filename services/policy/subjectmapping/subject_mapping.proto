@@ -96,19 +96,20 @@ message Condition {
   // externally known field name (such as from idP/LDAP)
   string subject_external_field = 1;
 
-  // the operator
+  // the evaluation operator of relation
   SubjectMappingOperatorEnum operator = 2 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
 
-  // list of comparison values for the subject_external_field
+  // list of comparison values for the subject_external_field, evaluated by the operator
   repeated string subject_external_values = 3;
 }
 
-// A Group of conditions with either OR or AND evaluation across the contained conditions
+// A collection of Conditions evaluated by the boolean_type provided
 message ConditionGroup {
   repeated Condition conditions = 1 [(buf.validate.field).repeated.min_items = 1];
+
   // the boolean evaluation type across the conditions
   ConditionBooleanTypeEnum boolean_type = 2 [
     (buf.validate.field).enum.defined_only = true,
@@ -116,11 +117,25 @@ message ConditionGroup {
   ];
 }
 
-// A Set of subjects described by matching criteria via a list of condition groups.
-// A Subject Set can be used by multiple Subject Mappings
+// A collection of Condition Groups
 message SubjectSet {
-  // The conditions groups describing the matching rules for subjects in the set
+  // multiple Condition Groups are evaluated with AND logic
   repeated ConditionGroup condition_groups = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet
+// are evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple
+// Subject Mappings / Attribute Values and is an independent unit.
+message SubjectConditionSet {
+  string id = 1;
+
+  // an optional name for ease of reference
+  string name = 2;
+
+  common.Metadata metadata = 3;
+
+  // multiple Subject Sets are evaluated with AND logic
+  repeated SubjectSet subject_sets = 4 [(buf.validate.field).repeated.min_items = 1];
 }
 
 /*
@@ -131,7 +146,7 @@ message SubjectSet {
    {
     "id": "someid",
     "attribute_value": {example_one_attribute_value...},
-    "subject_sets": [{subject_set_1},{subject_set_2}]
+    "subject_condition_sets": [{subject_set_1},{subject_set_2}]
     "actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]
    }
 */
@@ -140,11 +155,11 @@ message SubjectMapping {
 
   common.Metadata metadata = 2;
 
-  // Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+  // the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
   policy.attributes.Value attribute_value = 3;
 
-  // the subjects included in this mapping
-  repeated SubjectSet subject_sets = 4;
+  // the reusable SubjectConditionSets mapped to the given Attribute Value
+  repeated SubjectConditionSet subject_condition_sets = 4;
 
   // The actions permitted by subjects in this mapping
   repeated authorization.Action actions = 5;
@@ -164,18 +179,9 @@ message MatchSubjectMappingsResponse {
   repeated SubjectMapping subject_mappings = 1;
 }
 
-message SubjectMappingCreateUpdate {
-  common.MetadataMutable metadata = 1;
-
-  // Attribute Value to be mapped to
-  string attribute_value_id = 2;
-
-  // The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
-  repeated SubjectSet subject_sets = 3;
-
-  // The actions permitted by subjects in this mapping
-  repeated authorization.Action actions = 4;
-}
+/*
+  Subject Mappings CRUD Operations
+*/
 
 message GetSubjectMappingRequest {
   string id = 1 [(buf.validate.field).required = true];
@@ -189,16 +195,40 @@ message ListSubjectMappingsResponse {
   repeated SubjectMapping subject_mappings = 1;
 }
 
+message SubjectMappingCreate{
+  common.MetadataMutable metadata = 1;
+
+  // Attribute Value to be mapped to
+  string attribute_value_id = 2;
+
+  // Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+  repeated string existing_subject_condition_set_ids = 3;
+
+  // Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+  repeated SubjectConditionSet new_subject_condition_sets = 4;
+
+  // The actions permitted by subjects in this mapping
+  repeated authorization.Action actions = 5;
+}
 message CreateSubjectMappingRequest {
-  SubjectMappingCreateUpdate subject_mapping = 1 [(buf.validate.field).required = true];
+  SubjectMappingCreate subject_mapping = 1;
 }
 message CreateSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
 }
 
+message SubjectMappingUpdate {
+  common.MetadataMutable updated_metadata = 2;
+
+  // Replaces entire list of existing SubjectConditionSet ids
+  repeated string updated_subject_condition_set_ids = 3;
+
+  // Replaces entire list of actions permitted by subjects
+  repeated authorization.Action udpated_actions = 5;
+}
 message UpdateSubjectMappingRequest {
   string id = 1 [(buf.validate.field).required = true];
-  SubjectMappingCreateUpdate subject_mapping = 2 [(buf.validate.field).required = true];
+  SubjectMappingUpdate subject_mapping = 2;
 }
 message UpdateSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
@@ -210,6 +240,62 @@ message DeleteSubjectMappingRequest {
 message DeleteSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
 }
+
+/**
+  SubjectConditionSet CRUD operations
+*/
+
+message GetSubjectConditionSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message GetSubjectConditionSetResponse {
+  SubjectConditionSet subject_condition_set = 1;
+  // contextualized Subject Mappings associated with this SubjectConditionSet
+  repeated SubjectMapping associated_subject_mappings = 2;
+}
+
+message ListSubjectConditionSetsRequest {}
+message ListSubjectConditionSetsResponse {
+  repeated SubjectConditionSet subject_condition_sets = 1;
+}
+
+message SubjectConditionSetCreate {
+  common.MetadataMutable metadata = 1;
+
+  // an optional name for ease of reference
+  string name = 2;
+
+  // multiple Subject Sets are evaluated with AND logic
+  repeated SubjectSet subject_sets = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+message CreateSubjectConditionSetRequest {
+  SubjectConditionSetCreate subject_condition_set = 1;
+}
+message CreateSubjectConditionSetResponse {
+  SubjectConditionSet subject_condition_set = 1;
+}
+
+message SubjectConditionSetUpdate {
+  common.MetadataMutable updated_metadata = 2;
+
+  // Replaces entire existing graph relation of Subject Sets, Condition Groups, & Conditions
+  repeated SubjectSet updated_subject_sets = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+message UpdateSubjectConditionSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  SubjectConditionSetUpdate subject_condition_set = 2;
+}
+message UpdateSubjectConditionSetResponse {
+  SubjectConditionSet subject_condition_set = 1;
+}
+
+message DeleteSubjectConditionSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeleteSubjectConditionSetResponse {
+  SubjectConditionSet subject_condition_set = 1;
+}
+
 
 service SubjectMappingService {
 
@@ -245,4 +331,31 @@ service SubjectMappingService {
   rpc DeleteSubjectMapping(DeleteSubjectMappingRequest) returns (DeleteSubjectMappingResponse) {
     option (google.api.http) = {delete: "/subject-mappings/{id}"};
   }
+
+  rpc ListSubjectConditionSets(ListSubjectConditionSetsRequest) returns (ListSubjectConditionSetsResponse) {
+    option (google.api.http) = {get: "/subject-condition-sets"};
+  }
+
+  rpc GetSubjectConditionSet(GetSubjectConditionSetRequest) returns (GetSubjectConditionSetResponse) {
+    option (google.api.http) = {get: "/subject-condition-sets/{id}"};
+  }
+
+  rpc CreateSubjectConditionSet(CreateSubjectConditionSetRequest) returns (CreateSubjectConditionSetResponse) {
+    option (google.api.http) = {
+      post: "/subject-condition-sets"
+      body: "subject_condition_set"
+    };
+  }
+
+  rpc UpdateSubjectConditionSet(UpdateSubjectConditionSetRequest) returns (UpdateSubjectConditionSetResponse) {
+    option (google.api.http) = {
+      patch: "/subject-condition-sets/{id}"
+      body: "subject_condition_set"
+    };
+  }
+
+  rpc DeleteSubjectConditionSet(DeleteSubjectConditionSetRequest) returns (DeleteSubjectConditionSetResponse) {
+    option (google.api.http) = {delete: "/subject-condition-sets/{id}"};
+  }
+
 }

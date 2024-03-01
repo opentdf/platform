@@ -37,7 +37,7 @@ public interface SubjectMappingOrBuilder extends
 
   /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -46,7 +46,7 @@ public interface SubjectMappingOrBuilder extends
   boolean hasAttributeValue();
   /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -55,7 +55,7 @@ public interface SubjectMappingOrBuilder extends
   io.opentdf.platform.policy.attributes.Value getAttributeValue();
   /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -64,46 +64,46 @@ public interface SubjectMappingOrBuilder extends
 
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
-      getSubjectSetsList();
+  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> 
+      getSubjectConditionSetsList();
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSets(int index);
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
-  int getSubjectSetsCount();
+  int getSubjectConditionSetsCount();
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-      getSubjectSetsOrBuilderList();
+  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+      getSubjectConditionSetsOrBuilderList();
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetsOrBuilder(
       int index);
 
   /**

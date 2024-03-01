@@ -10,7 +10,7 @@ public interface SubjectSetOrBuilder extends
 
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -19,7 +19,7 @@ public interface SubjectSetOrBuilder extends
       getConditionGroupsList();
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -27,7 +27,7 @@ public interface SubjectSetOrBuilder extends
   io.opentdf.platform.policy.subjectmapping.ConditionGroup getConditionGroups(int index);
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -35,7 +35,7 @@ public interface SubjectSetOrBuilder extends
   int getConditionGroupsCount();
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -44,7 +44,7 @@ public interface SubjectSetOrBuilder extends
       getConditionGroupsOrBuilderList();
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>

@@ -14,7 +14,7 @@ package io.opentdf.platform.policy.subjectmapping;
  *{
  *"id": "someid",
  *"attribute_value": {example_one_attribute_value...},
- *"subject_sets": [{subject_set_1},{subject_set_2}]
+ *"subject_condition_sets": [{subject_set_1},{subject_set_2}]
  *"actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]
  *}
  * </pre>
@@ -32,7 +32,7 @@ private static final long serialVersionUID = 0L;
   }
   private SubjectMapping() {
     id_ = "";
-    subjectSets_ = java.util.Collections.emptyList();
+    subjectConditionSets_ = java.util.Collections.emptyList();
     actions_ = java.util.Collections.emptyList();
   }
 
@@ -126,7 +126,7 @@ private static final long serialVersionUID = 0L;
   private io.opentdf.platform.policy.attributes.Value attributeValue_;
   /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -138,7 +138,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -150,7 +150,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
    * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -160,65 +160,65 @@ private static final long serialVersionUID = 0L;
     return attributeValue_ == null ? io.opentdf.platform.policy.attributes.Value.getDefaultInstance() : attributeValue_;
   }
 
-  public static final int SUBJECT_SETS_FIELD_NUMBER = 4;
+  public static final int SUBJECT_CONDITION_SETS_FIELD_NUMBER = 4;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_;
+  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> subjectConditionSets_;
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
-    return subjectSets_;
+  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> getSubjectConditionSetsList() {
+    return subjectConditionSets_;
   }
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-      getSubjectSetsOrBuilderList() {
-    return subjectSets_;
+  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+      getSubjectConditionSetsOrBuilderList() {
+    return subjectConditionSets_;
   }
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
   @java.lang.Override
-  public int getSubjectSetsCount() {
-    return subjectSets_.size();
+  public int getSubjectConditionSetsCount() {
+    return subjectConditionSets_.size();
   }
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
-    return subjectSets_.get(index);
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSets(int index) {
+    return subjectConditionSets_.get(index);
   }
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSets mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetsOrBuilder(
       int index) {
-    return subjectSets_.get(index);
+    return subjectConditionSets_.get(index);
   }
 
   public static final int ACTIONS_FIELD_NUMBER = 5;
@@ -305,8 +305,8 @@ private static final long serialVersionUID = 0L;
     if (((bitField0_ & 0x00000002) != 0)) {
       output.writeMessage(3, getAttributeValue());
     }
-    for (int i = 0; i < subjectSets_.size(); i++) {
-      output.writeMessage(4, subjectSets_.get(i));
+    for (int i = 0; i < subjectConditionSets_.size(); i++) {
+      output.writeMessage(4, subjectConditionSets_.get(i));
     }
     for (int i = 0; i < actions_.size(); i++) {
       output.writeMessage(5, actions_.get(i));
@@ -331,9 +331,9 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(3, getAttributeValue());
     }
-    for (int i = 0; i < subjectSets_.size(); i++) {
+    for (int i = 0; i < subjectConditionSets_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(4, subjectSets_.get(i));
+        .computeMessageSize(4, subjectConditionSets_.get(i));
     }
     for (int i = 0; i < actions_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
@@ -366,8 +366,8 @@ private static final long serialVersionUID = 0L;
       if (!getAttributeValue()
           .equals(other.getAttributeValue())) return false;
     }
-    if (!getSubjectSetsList()
-        .equals(other.getSubjectSetsList())) return false;
+    if (!getSubjectConditionSetsList()
+        .equals(other.getSubjectConditionSetsList())) return false;
     if (!getActionsList()
         .equals(other.getActionsList())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
@@ -391,9 +391,9 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + ATTRIBUTE_VALUE_FIELD_NUMBER;
       hash = (53 * hash) + getAttributeValue().hashCode();
     }
-    if (getSubjectSetsCount() > 0) {
-      hash = (37 * hash) + SUBJECT_SETS_FIELD_NUMBER;
-      hash = (53 * hash) + getSubjectSetsList().hashCode();
+    if (getSubjectConditionSetsCount() > 0) {
+      hash = (37 * hash) + SUBJECT_CONDITION_SETS_FIELD_NUMBER;
+      hash = (53 * hash) + getSubjectConditionSetsList().hashCode();
     }
     if (getActionsCount() > 0) {
       hash = (37 * hash) + ACTIONS_FIELD_NUMBER;
@@ -506,7 +506,7 @@ private static final long serialVersionUID = 0L;
    *{
    *"id": "someid",
    *"attribute_value": {example_one_attribute_value...},
-   *"subject_sets": [{subject_set_1},{subject_set_2}]
+   *"subject_condition_sets": [{subject_set_1},{subject_set_2}]
    *"actions": ["STANDARD_ACTION_TRANSMIT", "STANDARD_ACTION_DECRYPT"]
    *}
    * </pre>
@@ -545,7 +545,7 @@ private static final long serialVersionUID = 0L;
               .alwaysUseFieldBuilders) {
         getMetadataFieldBuilder();
         getAttributeValueFieldBuilder();
-        getSubjectSetsFieldBuilder();
+        getSubjectConditionSetsFieldBuilder();
         getActionsFieldBuilder();
       }
     }
@@ -564,11 +564,11 @@ private static final long serialVersionUID = 0L;
         attributeValueBuilder_.dispose();
         attributeValueBuilder_ = null;
       }
-      if (subjectSetsBuilder_ == null) {
-        subjectSets_ = java.util.Collections.emptyList();
+      if (subjectConditionSetsBuilder_ == null) {
+        subjectConditionSets_ = java.util.Collections.emptyList();
       } else {
-        subjectSets_ = null;
-        subjectSetsBuilder_.clear();
+        subjectConditionSets_ = null;
+        subjectConditionSetsBuilder_.clear();
       }
       bitField0_ = (bitField0_ & ~0x00000008);
       if (actionsBuilder_ == null) {
@@ -611,14 +611,14 @@ private static final long serialVersionUID = 0L;
     }
 
     private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.SubjectMapping result) {
-      if (subjectSetsBuilder_ == null) {
+      if (subjectConditionSetsBuilder_ == null) {
         if (((bitField0_ & 0x00000008) != 0)) {
-          subjectSets_ = java.util.Collections.unmodifiableList(subjectSets_);
+          subjectConditionSets_ = java.util.Collections.unmodifiableList(subjectConditionSets_);
           bitField0_ = (bitField0_ & ~0x00000008);
         }
-        result.subjectSets_ = subjectSets_;
+        result.subjectConditionSets_ = subjectConditionSets_;
       } else {
-        result.subjectSets_ = subjectSetsBuilder_.build();
+        result.subjectConditionSets_ = subjectConditionSetsBuilder_.build();
       }
       if (actionsBuilder_ == null) {
         if (((bitField0_ & 0x00000010) != 0)) {
@@ -707,29 +707,29 @@ private static final long serialVersionUID = 0L;
       if (other.hasAttributeValue()) {
         mergeAttributeValue(other.getAttributeValue());
       }
-      if (subjectSetsBuilder_ == null) {
-        if (!other.subjectSets_.isEmpty()) {
-          if (subjectSets_.isEmpty()) {
-            subjectSets_ = other.subjectSets_;
+      if (subjectConditionSetsBuilder_ == null) {
+        if (!other.subjectConditionSets_.isEmpty()) {
+          if (subjectConditionSets_.isEmpty()) {
+            subjectConditionSets_ = other.subjectConditionSets_;
             bitField0_ = (bitField0_ & ~0x00000008);
           } else {
-            ensureSubjectSetsIsMutable();
-            subjectSets_.addAll(other.subjectSets_);
+            ensureSubjectConditionSetsIsMutable();
+            subjectConditionSets_.addAll(other.subjectConditionSets_);
           }
           onChanged();
         }
       } else {
-        if (!other.subjectSets_.isEmpty()) {
-          if (subjectSetsBuilder_.isEmpty()) {
-            subjectSetsBuilder_.dispose();
-            subjectSetsBuilder_ = null;
-            subjectSets_ = other.subjectSets_;
+        if (!other.subjectConditionSets_.isEmpty()) {
+          if (subjectConditionSetsBuilder_.isEmpty()) {
+            subjectConditionSetsBuilder_.dispose();
+            subjectConditionSetsBuilder_ = null;
+            subjectConditionSets_ = other.subjectConditionSets_;
             bitField0_ = (bitField0_ & ~0x00000008);
-            subjectSetsBuilder_ = 
+            subjectConditionSetsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
-                 getSubjectSetsFieldBuilder() : null;
+                 getSubjectConditionSetsFieldBuilder() : null;
           } else {
-            subjectSetsBuilder_.addAllMessages(other.subjectSets_);
+            subjectConditionSetsBuilder_.addAllMessages(other.subjectConditionSets_);
           }
         }
       }
@@ -805,15 +805,15 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 26
             case 34: {
-              io.opentdf.platform.policy.subjectmapping.SubjectSet m =
+              io.opentdf.platform.policy.subjectmapping.SubjectConditionSet m =
                   input.readMessage(
-                      io.opentdf.platform.policy.subjectmapping.SubjectSet.parser(),
+                      io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.parser(),
                       extensionRegistry);
-              if (subjectSetsBuilder_ == null) {
-                ensureSubjectSetsIsMutable();
-                subjectSets_.add(m);
+              if (subjectConditionSetsBuilder_ == null) {
+                ensureSubjectConditionSetsIsMutable();
+                subjectConditionSets_.add(m);
               } else {
-                subjectSetsBuilder_.addMessage(m);
+                subjectConditionSetsBuilder_.addMessage(m);
               }
               break;
             } // case 34
@@ -1045,7 +1045,7 @@ private static final long serialVersionUID = 0L;
         io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder> attributeValueBuilder_;
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1056,7 +1056,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1071,7 +1071,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1091,7 +1091,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1109,7 +1109,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1134,7 +1134,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1151,7 +1151,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1163,7 +1163,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1178,7 +1178,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+     * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
      * </pre>
      *
      * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
@@ -1197,316 +1197,316 @@ private static final long serialVersionUID = 0L;
       return attributeValueBuilder_;
     }
 
-    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_ =
+    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> subjectConditionSets_ =
       java.util.Collections.emptyList();
-    private void ensureSubjectSetsIsMutable() {
+    private void ensureSubjectConditionSetsIsMutable() {
       if (!((bitField0_ & 0x00000008) != 0)) {
-        subjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectSet>(subjectSets_);
+        subjectConditionSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet>(subjectConditionSets_);
         bitField0_ |= 0x00000008;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> subjectSetsBuilder_;
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> subjectConditionSetsBuilder_;
 
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
-      if (subjectSetsBuilder_ == null) {
-        return java.util.Collections.unmodifiableList(subjectSets_);
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> getSubjectConditionSetsList() {
+      if (subjectConditionSetsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(subjectConditionSets_);
       } else {
-        return subjectSetsBuilder_.getMessageList();
+        return subjectConditionSetsBuilder_.getMessageList();
       }
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public int getSubjectSetsCount() {
-      if (subjectSetsBuilder_ == null) {
-        return subjectSets_.size();
+    public int getSubjectConditionSetsCount() {
+      if (subjectConditionSetsBuilder_ == null) {
+        return subjectConditionSets_.size();
       } else {
-        return subjectSetsBuilder_.getCount();
+        return subjectConditionSetsBuilder_.getCount();
       }
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
-      if (subjectSetsBuilder_ == null) {
-        return subjectSets_.get(index);
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSets(int index) {
+      if (subjectConditionSetsBuilder_ == null) {
+        return subjectConditionSets_.get(index);
       } else {
-        return subjectSetsBuilder_.getMessage(index);
+        return subjectConditionSetsBuilder_.getMessage(index);
       }
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder setSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (subjectSetsBuilder_ == null) {
+    public Builder setSubjectConditionSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+      if (subjectConditionSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureSubjectSetsIsMutable();
-        subjectSets_.set(index, value);
+        ensureSubjectConditionSetsIsMutable();
+        subjectConditionSets_.set(index, value);
         onChanged();
       } else {
-        subjectSetsBuilder_.setMessage(index, value);
+        subjectConditionSetsBuilder_.setMessage(index, value);
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder setSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
-        subjectSets_.set(index, builderForValue.build());
+    public Builder setSubjectConditionSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder builderForValue) {
+      if (subjectConditionSetsBuilder_ == null) {
+        ensureSubjectConditionSetsIsMutable();
+        subjectConditionSets_.set(index, builderForValue.build());
         onChanged();
       } else {
-        subjectSetsBuilder_.setMessage(index, builderForValue.build());
+        subjectConditionSetsBuilder_.setMessage(index, builderForValue.build());
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder addSubjectSets(io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (subjectSetsBuilder_ == null) {
+    public Builder addSubjectConditionSets(io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+      if (subjectConditionSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureSubjectSetsIsMutable();
-        subjectSets_.add(value);
+        ensureSubjectConditionSetsIsMutable();
+        subjectConditionSets_.add(value);
         onChanged();
       } else {
-        subjectSetsBuilder_.addMessage(value);
+        subjectConditionSetsBuilder_.addMessage(value);
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder addSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (subjectSetsBuilder_ == null) {
+    public Builder addSubjectConditionSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+      if (subjectConditionSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureSubjectSetsIsMutable();
-        subjectSets_.add(index, value);
+        ensureSubjectConditionSetsIsMutable();
+        subjectConditionSets_.add(index, value);
         onChanged();
       } else {
-        subjectSetsBuilder_.addMessage(index, value);
+        subjectConditionSetsBuilder_.addMessage(index, value);
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder addSubjectSets(
-        io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
-        subjectSets_.add(builderForValue.build());
+    public Builder addSubjectConditionSets(
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder builderForValue) {
+      if (subjectConditionSetsBuilder_ == null) {
+        ensureSubjectConditionSetsIsMutable();
+        subjectConditionSets_.add(builderForValue.build());
         onChanged();
       } else {
-        subjectSetsBuilder_.addMessage(builderForValue.build());
+        subjectConditionSetsBuilder_.addMessage(builderForValue.build());
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder addSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
-        subjectSets_.add(index, builderForValue.build());
+    public Builder addSubjectConditionSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder builderForValue) {
+      if (subjectConditionSetsBuilder_ == null) {
+        ensureSubjectConditionSetsIsMutable();
+        subjectConditionSets_.add(index, builderForValue.build());
         onChanged();
       } else {
-        subjectSetsBuilder_.addMessage(index, builderForValue.build());
+        subjectConditionSetsBuilder_.addMessage(index, builderForValue.build());
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder addAllSubjectSets(
-        java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectSet> values) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
+    public Builder addAllSubjectConditionSets(
+        java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> values) {
+      if (subjectConditionSetsBuilder_ == null) {
+        ensureSubjectConditionSetsIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, subjectSets_);
+            values, subjectConditionSets_);
         onChanged();
       } else {
-        subjectSetsBuilder_.addAllMessages(values);
+        subjectConditionSetsBuilder_.addAllMessages(values);
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder clearSubjectSets() {
-      if (subjectSetsBuilder_ == null) {
-        subjectSets_ = java.util.Collections.emptyList();
+    public Builder clearSubjectConditionSets() {
+      if (subjectConditionSetsBuilder_ == null) {
+        subjectConditionSets_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000008);
         onChanged();
       } else {
-        subjectSetsBuilder_.clear();
+        subjectConditionSetsBuilder_.clear();
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public Builder removeSubjectSets(int index) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
-        subjectSets_.remove(index);
+    public Builder removeSubjectConditionSets(int index) {
+      if (subjectConditionSetsBuilder_ == null) {
+        ensureSubjectConditionSetsIsMutable();
+        subjectConditionSets_.remove(index);
         onChanged();
       } else {
-        subjectSetsBuilder_.remove(index);
+        subjectConditionSetsBuilder_.remove(index);
       }
       return this;
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder getSubjectSetsBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder getSubjectConditionSetsBuilder(
         int index) {
-      return getSubjectSetsFieldBuilder().getBuilder(index);
+      return getSubjectConditionSetsFieldBuilder().getBuilder(index);
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetsOrBuilder(
         int index) {
-      if (subjectSetsBuilder_ == null) {
-        return subjectSets_.get(index);  } else {
-        return subjectSetsBuilder_.getMessageOrBuilder(index);
+      if (subjectConditionSetsBuilder_ == null) {
+        return subjectConditionSets_.get(index);  } else {
+        return subjectConditionSetsBuilder_.getMessageOrBuilder(index);
       }
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-         getSubjectSetsOrBuilderList() {
-      if (subjectSetsBuilder_ != null) {
-        return subjectSetsBuilder_.getMessageOrBuilderList();
+    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+         getSubjectConditionSetsOrBuilderList() {
+      if (subjectConditionSetsBuilder_ != null) {
+        return subjectConditionSetsBuilder_.getMessageOrBuilderList();
       } else {
-        return java.util.Collections.unmodifiableList(subjectSets_);
+        return java.util.Collections.unmodifiableList(subjectConditionSets_);
       }
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder() {
-      return getSubjectSetsFieldBuilder().addBuilder(
-          io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder addSubjectConditionSetsBuilder() {
+      return getSubjectConditionSetsFieldBuilder().addBuilder(
+          io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance());
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder addSubjectConditionSetsBuilder(
         int index) {
-      return getSubjectSetsFieldBuilder().addBuilder(
-          index, io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
+      return getSubjectConditionSetsFieldBuilder().addBuilder(
+          index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance());
     }
     /**
      * <pre>
-     * the subjects included in this mapping
+     * the reusable SubjectConditionSets mapped to the given Attribute Value
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 4 [json_name = "subjectConditionSets"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder> 
-         getSubjectSetsBuilderList() {
-      return getSubjectSetsFieldBuilder().getBuilderList();
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder> 
+         getSubjectConditionSetsBuilderList() {
+      return getSubjectConditionSetsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-        getSubjectSetsFieldBuilder() {
-      if (subjectSetsBuilder_ == null) {
-        subjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>(
-                subjectSets_,
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+        getSubjectConditionSetsFieldBuilder() {
+      if (subjectConditionSetsBuilder_ == null) {
+        subjectConditionSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder>(
+                subjectConditionSets_,
                 ((bitField0_ & 0x00000008) != 0),
                 getParentForChildren(),
                 isClean());
-        subjectSets_ = null;
+        subjectConditionSets_ = null;
       }
-      return subjectSetsBuilder_;
+      return subjectConditionSetsBuilder_;
     }
 
     private java.util.List<io.opentdf.platform.authorization.Action> actions_ =

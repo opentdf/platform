@@ -5,20 +5,22 @@
 package io.opentdf.platform.policy.subjectmapping;
 
 /**
- * Protobuf type {@code policy.subjectmapping.SubjectMappingCreateUpdate}
+ * Protobuf type {@code policy.subjectmapping.SubjectMappingCreate}
  */
-public final class SubjectMappingCreateUpdate extends
+public final class SubjectMappingCreate extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:policy.subjectmapping.SubjectMappingCreateUpdate)
-    SubjectMappingCreateUpdateOrBuilder {
+    // @@protoc_insertion_point(message_implements:policy.subjectmapping.SubjectMappingCreate)
+    SubjectMappingCreateOrBuilder {
 private static final long serialVersionUID = 0L;
-  // Use SubjectMappingCreateUpdate.newBuilder() to construct.
-  private SubjectMappingCreateUpdate(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+  // Use SubjectMappingCreate.newBuilder() to construct.
+  private SubjectMappingCreate(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-  private SubjectMappingCreateUpdate() {
+  private SubjectMappingCreate() {
     attributeValueId_ = "";
-    subjectSets_ = java.util.Collections.emptyList();
+    existingSubjectConditionSetIds_ =
+        com.google.protobuf.LazyStringArrayList.emptyList();
+    newSubjectConditionSets_ = java.util.Collections.emptyList();
     actions_ = java.util.Collections.emptyList();
   }
 
@@ -26,20 +28,20 @@ private static final long serialVersionUID = 0L;
   @SuppressWarnings({"unused"})
   protected java.lang.Object newInstance(
       UnusedPrivateParameter unused) {
-    return new SubjectMappingCreateUpdate();
+    return new SubjectMappingCreate();
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreateUpdate_descriptor;
+    return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreate_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreateUpdate_fieldAccessorTable
+    return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreate_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.class, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder.class);
+            io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.class, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.Builder.class);
   }
 
   private int bitField0_;
@@ -116,68 +118,121 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int SUBJECT_SETS_FIELD_NUMBER = 3;
+  public static final int EXISTING_SUBJECT_CONDITION_SET_IDS_FIELD_NUMBER = 3;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_;
+  private com.google.protobuf.LazyStringArrayList existingSubjectConditionSetIds_ =
+      com.google.protobuf.LazyStringArrayList.emptyList();
   /**
    * <pre>
-   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+   * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+   * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+   * @return A list containing the existingSubjectConditionSetIds.
    */
-  @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
-    return subjectSets_;
+  public com.google.protobuf.ProtocolStringList
+      getExistingSubjectConditionSetIdsList() {
+    return existingSubjectConditionSetIds_;
   }
   /**
    * <pre>
-   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+   * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+   * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+   * @return The count of existingSubjectConditionSetIds.
    */
-  @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-      getSubjectSetsOrBuilderList() {
-    return subjectSets_;
+  public int getExistingSubjectConditionSetIdsCount() {
+    return existingSubjectConditionSetIds_.size();
   }
   /**
    * <pre>
-   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+   * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+   * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+   * @param index The index of the element to return.
+   * @return The existingSubjectConditionSetIds at the given index.
    */
-  @java.lang.Override
-  public int getSubjectSetsCount() {
-    return subjectSets_.size();
+  public java.lang.String getExistingSubjectConditionSetIds(int index) {
+    return existingSubjectConditionSetIds_.get(index);
   }
   /**
    * <pre>
-   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+   * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+   * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the existingSubjectConditionSetIds at the given index.
    */
-  @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
-    return subjectSets_.get(index);
-  }
-  /**
-   * <pre>
-   * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
-   * </pre>
-   *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
-   */
-  @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
-      int index) {
-    return subjectSets_.get(index);
+  public com.google.protobuf.ByteString
+      getExistingSubjectConditionSetIdsBytes(int index) {
+    return existingSubjectConditionSetIds_.getByteString(index);
   }
 
-  public static final int ACTIONS_FIELD_NUMBER = 4;
+  public static final int NEW_SUBJECT_CONDITION_SETS_FIELD_NUMBER = 4;
+  @SuppressWarnings("serial")
+  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> newSubjectConditionSets_;
+  /**
+   * <pre>
+   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> getNewSubjectConditionSetsList() {
+    return newSubjectConditionSets_;
+  }
+  /**
+   * <pre>
+   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+      getNewSubjectConditionSetsOrBuilderList() {
+    return newSubjectConditionSets_;
+  }
+  /**
+   * <pre>
+   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
+   */
+  @java.lang.Override
+  public int getNewSubjectConditionSetsCount() {
+    return newSubjectConditionSets_.size();
+  }
+  /**
+   * <pre>
+   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getNewSubjectConditionSets(int index) {
+    return newSubjectConditionSets_.get(index);
+  }
+  /**
+   * <pre>
+   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getNewSubjectConditionSetsOrBuilder(
+      int index) {
+    return newSubjectConditionSets_.get(index);
+  }
+
+  public static final int ACTIONS_FIELD_NUMBER = 5;
   @SuppressWarnings("serial")
   private java.util.List<io.opentdf.platform.authorization.Action> actions_;
   /**
@@ -185,7 +240,7 @@ private static final long serialVersionUID = 0L;
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
   @java.lang.Override
   public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
@@ -196,7 +251,7 @@ private static final long serialVersionUID = 0L;
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
   @java.lang.Override
   public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
@@ -208,7 +263,7 @@ private static final long serialVersionUID = 0L;
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
   @java.lang.Override
   public int getActionsCount() {
@@ -219,7 +274,7 @@ private static final long serialVersionUID = 0L;
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
   @java.lang.Override
   public io.opentdf.platform.authorization.Action getActions(int index) {
@@ -230,7 +285,7 @@ private static final long serialVersionUID = 0L;
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
    */
   @java.lang.Override
   public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
@@ -258,11 +313,14 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeValueId_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 2, attributeValueId_);
     }
-    for (int i = 0; i < subjectSets_.size(); i++) {
-      output.writeMessage(3, subjectSets_.get(i));
+    for (int i = 0; i < existingSubjectConditionSetIds_.size(); i++) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, existingSubjectConditionSetIds_.getRaw(i));
+    }
+    for (int i = 0; i < newSubjectConditionSets_.size(); i++) {
+      output.writeMessage(4, newSubjectConditionSets_.get(i));
     }
     for (int i = 0; i < actions_.size(); i++) {
-      output.writeMessage(4, actions_.get(i));
+      output.writeMessage(5, actions_.get(i));
     }
     getUnknownFields().writeTo(output);
   }
@@ -280,13 +338,21 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeValueId_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, attributeValueId_);
     }
-    for (int i = 0; i < subjectSets_.size(); i++) {
+    {
+      int dataSize = 0;
+      for (int i = 0; i < existingSubjectConditionSetIds_.size(); i++) {
+        dataSize += computeStringSizeNoTag(existingSubjectConditionSetIds_.getRaw(i));
+      }
+      size += dataSize;
+      size += 1 * getExistingSubjectConditionSetIdsList().size();
+    }
+    for (int i = 0; i < newSubjectConditionSets_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(3, subjectSets_.get(i));
+        .computeMessageSize(4, newSubjectConditionSets_.get(i));
     }
     for (int i = 0; i < actions_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(4, actions_.get(i));
+        .computeMessageSize(5, actions_.get(i));
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -298,10 +364,10 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate)) {
+    if (!(obj instanceof io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate)) {
       return super.equals(obj);
     }
-    io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate other = (io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate) obj;
+    io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate other = (io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate) obj;
 
     if (hasMetadata() != other.hasMetadata()) return false;
     if (hasMetadata()) {
@@ -310,8 +376,10 @@ private static final long serialVersionUID = 0L;
     }
     if (!getAttributeValueId()
         .equals(other.getAttributeValueId())) return false;
-    if (!getSubjectSetsList()
-        .equals(other.getSubjectSetsList())) return false;
+    if (!getExistingSubjectConditionSetIdsList()
+        .equals(other.getExistingSubjectConditionSetIdsList())) return false;
+    if (!getNewSubjectConditionSetsList()
+        .equals(other.getNewSubjectConditionSetsList())) return false;
     if (!getActionsList()
         .equals(other.getActionsList())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
@@ -331,9 +399,13 @@ private static final long serialVersionUID = 0L;
     }
     hash = (37 * hash) + ATTRIBUTE_VALUE_ID_FIELD_NUMBER;
     hash = (53 * hash) + getAttributeValueId().hashCode();
-    if (getSubjectSetsCount() > 0) {
-      hash = (37 * hash) + SUBJECT_SETS_FIELD_NUMBER;
-      hash = (53 * hash) + getSubjectSetsList().hashCode();
+    if (getExistingSubjectConditionSetIdsCount() > 0) {
+      hash = (37 * hash) + EXISTING_SUBJECT_CONDITION_SET_IDS_FIELD_NUMBER;
+      hash = (53 * hash) + getExistingSubjectConditionSetIdsList().hashCode();
+    }
+    if (getNewSubjectConditionSetsCount() > 0) {
+      hash = (37 * hash) + NEW_SUBJECT_CONDITION_SETS_FIELD_NUMBER;
+      hash = (53 * hash) + getNewSubjectConditionSetsList().hashCode();
     }
     if (getActionsCount() > 0) {
       hash = (37 * hash) + ACTIONS_FIELD_NUMBER;
@@ -344,44 +416,44 @@ private static final long serialVersionUID = 0L;
     return hash;
   }
 
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(byte[] data)
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(java.io.InputStream input)
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -389,26 +461,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseDelimitedFrom(java.io.InputStream input)
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseDelimitedFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -421,7 +493,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate prototype) {
+  public static Builder newBuilder(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -437,26 +509,26 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * Protobuf type {@code policy.subjectmapping.SubjectMappingCreateUpdate}
+   * Protobuf type {@code policy.subjectmapping.SubjectMappingCreate}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:policy.subjectmapping.SubjectMappingCreateUpdate)
-      io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder {
+      // @@protoc_insertion_point(builder_implements:policy.subjectmapping.SubjectMappingCreate)
+      io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreateUpdate_descriptor;
+      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreate_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreateUpdate_fieldAccessorTable
+      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreate_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.class, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder.class);
+              io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.class, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.Builder.class);
     }
 
-    // Construct using io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.newBuilder()
+    // Construct using io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.newBuilder()
     private Builder() {
       maybeForceBuilderInitialization();
     }
@@ -470,7 +542,7 @@ private static final long serialVersionUID = 0L;
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
         getMetadataFieldBuilder();
-        getSubjectSetsFieldBuilder();
+        getNewSubjectConditionSetsFieldBuilder();
         getActionsFieldBuilder();
       }
     }
@@ -484,37 +556,39 @@ private static final long serialVersionUID = 0L;
         metadataBuilder_ = null;
       }
       attributeValueId_ = "";
-      if (subjectSetsBuilder_ == null) {
-        subjectSets_ = java.util.Collections.emptyList();
+      existingSubjectConditionSetIds_ =
+          com.google.protobuf.LazyStringArrayList.emptyList();
+      if (newSubjectConditionSetsBuilder_ == null) {
+        newSubjectConditionSets_ = java.util.Collections.emptyList();
       } else {
-        subjectSets_ = null;
-        subjectSetsBuilder_.clear();
+        newSubjectConditionSets_ = null;
+        newSubjectConditionSetsBuilder_.clear();
       }
-      bitField0_ = (bitField0_ & ~0x00000004);
+      bitField0_ = (bitField0_ & ~0x00000008);
       if (actionsBuilder_ == null) {
         actions_ = java.util.Collections.emptyList();
       } else {
         actions_ = null;
         actionsBuilder_.clear();
       }
-      bitField0_ = (bitField0_ & ~0x00000008);
+      bitField0_ = (bitField0_ & ~0x00000010);
       return this;
     }
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreateUpdate_descriptor;
+      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_SubjectMappingCreate_descriptor;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getDefaultInstanceForType() {
-      return io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance();
+    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate getDefaultInstanceForType() {
+      return io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate build() {
-      io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate result = buildPartial();
+    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate build() {
+      io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -522,28 +596,28 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate buildPartial() {
-      io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate result = new io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate(this);
+    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate buildPartial() {
+      io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate result = new io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate(this);
       buildPartialRepeatedFields(result);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate result) {
-      if (subjectSetsBuilder_ == null) {
-        if (((bitField0_ & 0x00000004) != 0)) {
-          subjectSets_ = java.util.Collections.unmodifiableList(subjectSets_);
-          bitField0_ = (bitField0_ & ~0x00000004);
+    private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate result) {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        if (((bitField0_ & 0x00000008) != 0)) {
+          newSubjectConditionSets_ = java.util.Collections.unmodifiableList(newSubjectConditionSets_);
+          bitField0_ = (bitField0_ & ~0x00000008);
         }
-        result.subjectSets_ = subjectSets_;
+        result.newSubjectConditionSets_ = newSubjectConditionSets_;
       } else {
-        result.subjectSets_ = subjectSetsBuilder_.build();
+        result.newSubjectConditionSets_ = newSubjectConditionSetsBuilder_.build();
       }
       if (actionsBuilder_ == null) {
-        if (((bitField0_ & 0x00000008) != 0)) {
+        if (((bitField0_ & 0x00000010) != 0)) {
           actions_ = java.util.Collections.unmodifiableList(actions_);
-          bitField0_ = (bitField0_ & ~0x00000008);
+          bitField0_ = (bitField0_ & ~0x00000010);
         }
         result.actions_ = actions_;
       } else {
@@ -551,7 +625,7 @@ private static final long serialVersionUID = 0L;
       }
     }
 
-    private void buildPartial0(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate result) {
+    private void buildPartial0(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate result) {
       int from_bitField0_ = bitField0_;
       int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000001) != 0)) {
@@ -562,6 +636,10 @@ private static final long serialVersionUID = 0L;
       }
       if (((from_bitField0_ & 0x00000002) != 0)) {
         result.attributeValueId_ = attributeValueId_;
+      }
+      if (((from_bitField0_ & 0x00000004) != 0)) {
+        existingSubjectConditionSetIds_.makeImmutable();
+        result.existingSubjectConditionSetIds_ = existingSubjectConditionSetIds_;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -600,16 +678,16 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate) {
-        return mergeFrom((io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate)other);
+      if (other instanceof io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate) {
+        return mergeFrom((io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate other) {
-      if (other == io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance()) return this;
+    public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate other) {
+      if (other == io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.getDefaultInstance()) return this;
       if (other.hasMetadata()) {
         mergeMetadata(other.getMetadata());
       }
@@ -618,29 +696,39 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00000002;
         onChanged();
       }
-      if (subjectSetsBuilder_ == null) {
-        if (!other.subjectSets_.isEmpty()) {
-          if (subjectSets_.isEmpty()) {
-            subjectSets_ = other.subjectSets_;
-            bitField0_ = (bitField0_ & ~0x00000004);
+      if (!other.existingSubjectConditionSetIds_.isEmpty()) {
+        if (existingSubjectConditionSetIds_.isEmpty()) {
+          existingSubjectConditionSetIds_ = other.existingSubjectConditionSetIds_;
+          bitField0_ |= 0x00000004;
+        } else {
+          ensureExistingSubjectConditionSetIdsIsMutable();
+          existingSubjectConditionSetIds_.addAll(other.existingSubjectConditionSetIds_);
+        }
+        onChanged();
+      }
+      if (newSubjectConditionSetsBuilder_ == null) {
+        if (!other.newSubjectConditionSets_.isEmpty()) {
+          if (newSubjectConditionSets_.isEmpty()) {
+            newSubjectConditionSets_ = other.newSubjectConditionSets_;
+            bitField0_ = (bitField0_ & ~0x00000008);
           } else {
-            ensureSubjectSetsIsMutable();
-            subjectSets_.addAll(other.subjectSets_);
+            ensureNewSubjectConditionSetsIsMutable();
+            newSubjectConditionSets_.addAll(other.newSubjectConditionSets_);
           }
           onChanged();
         }
       } else {
-        if (!other.subjectSets_.isEmpty()) {
-          if (subjectSetsBuilder_.isEmpty()) {
-            subjectSetsBuilder_.dispose();
-            subjectSetsBuilder_ = null;
-            subjectSets_ = other.subjectSets_;
-            bitField0_ = (bitField0_ & ~0x00000004);
-            subjectSetsBuilder_ = 
+        if (!other.newSubjectConditionSets_.isEmpty()) {
+          if (newSubjectConditionSetsBuilder_.isEmpty()) {
+            newSubjectConditionSetsBuilder_.dispose();
+            newSubjectConditionSetsBuilder_ = null;
+            newSubjectConditionSets_ = other.newSubjectConditionSets_;
+            bitField0_ = (bitField0_ & ~0x00000008);
+            newSubjectConditionSetsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
-                 getSubjectSetsFieldBuilder() : null;
+                 getNewSubjectConditionSetsFieldBuilder() : null;
           } else {
-            subjectSetsBuilder_.addAllMessages(other.subjectSets_);
+            newSubjectConditionSetsBuilder_.addAllMessages(other.newSubjectConditionSets_);
           }
         }
       }
@@ -648,7 +736,7 @@ private static final long serialVersionUID = 0L;
         if (!other.actions_.isEmpty()) {
           if (actions_.isEmpty()) {
             actions_ = other.actions_;
-            bitField0_ = (bitField0_ & ~0x00000008);
+            bitField0_ = (bitField0_ & ~0x00000010);
           } else {
             ensureActionsIsMutable();
             actions_.addAll(other.actions_);
@@ -661,7 +749,7 @@ private static final long serialVersionUID = 0L;
             actionsBuilder_.dispose();
             actionsBuilder_ = null;
             actions_ = other.actions_;
-            bitField0_ = (bitField0_ & ~0x00000008);
+            bitField0_ = (bitField0_ & ~0x00000010);
             actionsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getActionsFieldBuilder() : null;
@@ -709,19 +797,25 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 18
             case 26: {
-              io.opentdf.platform.policy.subjectmapping.SubjectSet m =
-                  input.readMessage(
-                      io.opentdf.platform.policy.subjectmapping.SubjectSet.parser(),
-                      extensionRegistry);
-              if (subjectSetsBuilder_ == null) {
-                ensureSubjectSetsIsMutable();
-                subjectSets_.add(m);
-              } else {
-                subjectSetsBuilder_.addMessage(m);
-              }
+              java.lang.String s = input.readStringRequireUtf8();
+              ensureExistingSubjectConditionSetIdsIsMutable();
+              existingSubjectConditionSetIds_.add(s);
               break;
             } // case 26
             case 34: {
+              io.opentdf.platform.policy.subjectmapping.SubjectConditionSet m =
+                  input.readMessage(
+                      io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.parser(),
+                      extensionRegistry);
+              if (newSubjectConditionSetsBuilder_ == null) {
+                ensureNewSubjectConditionSetsIsMutable();
+                newSubjectConditionSets_.add(m);
+              } else {
+                newSubjectConditionSetsBuilder_.addMessage(m);
+              }
+              break;
+            } // case 34
+            case 42: {
               io.opentdf.platform.authorization.Action m =
                   input.readMessage(
                       io.opentdf.platform.authorization.Action.parser(),
@@ -733,7 +827,7 @@ private static final long serialVersionUID = 0L;
                 actionsBuilder_.addMessage(m);
               }
               break;
-            } // case 34
+            } // case 42
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -964,324 +1058,471 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_ =
+    private com.google.protobuf.LazyStringArrayList existingSubjectConditionSetIds_ =
+        com.google.protobuf.LazyStringArrayList.emptyList();
+    private void ensureExistingSubjectConditionSetIdsIsMutable() {
+      if (!existingSubjectConditionSetIds_.isModifiable()) {
+        existingSubjectConditionSetIds_ = new com.google.protobuf.LazyStringArrayList(existingSubjectConditionSetIds_);
+      }
+      bitField0_ |= 0x00000004;
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @return A list containing the existingSubjectConditionSetIds.
+     */
+    public com.google.protobuf.ProtocolStringList
+        getExistingSubjectConditionSetIdsList() {
+      existingSubjectConditionSetIds_.makeImmutable();
+      return existingSubjectConditionSetIds_;
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @return The count of existingSubjectConditionSetIds.
+     */
+    public int getExistingSubjectConditionSetIdsCount() {
+      return existingSubjectConditionSetIds_.size();
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @param index The index of the element to return.
+     * @return The existingSubjectConditionSetIds at the given index.
+     */
+    public java.lang.String getExistingSubjectConditionSetIds(int index) {
+      return existingSubjectConditionSetIds_.get(index);
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the existingSubjectConditionSetIds at the given index.
+     */
+    public com.google.protobuf.ByteString
+        getExistingSubjectConditionSetIdsBytes(int index) {
+      return existingSubjectConditionSetIds_.getByteString(index);
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The existingSubjectConditionSetIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setExistingSubjectConditionSetIds(
+        int index, java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      ensureExistingSubjectConditionSetIdsIsMutable();
+      existingSubjectConditionSetIds_.set(index, value);
+      bitField0_ |= 0x00000004;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @param value The existingSubjectConditionSetIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addExistingSubjectConditionSetIds(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      ensureExistingSubjectConditionSetIdsIsMutable();
+      existingSubjectConditionSetIds_.add(value);
+      bitField0_ |= 0x00000004;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @param values The existingSubjectConditionSetIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllExistingSubjectConditionSetIds(
+        java.lang.Iterable<java.lang.String> values) {
+      ensureExistingSubjectConditionSetIdsIsMutable();
+      com.google.protobuf.AbstractMessageLite.Builder.addAll(
+          values, existingSubjectConditionSetIds_);
+      bitField0_ |= 0x00000004;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearExistingSubjectConditionSetIds() {
+      existingSubjectConditionSetIds_ =
+        com.google.protobuf.LazyStringArrayList.emptyList();
+      bitField0_ = (bitField0_ & ~0x00000004);;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+     * </pre>
+     *
+     * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
+     * @param value The bytes of the existingSubjectConditionSetIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addExistingSubjectConditionSetIdsBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      ensureExistingSubjectConditionSetIdsIsMutable();
+      existingSubjectConditionSetIds_.add(value);
+      bitField0_ |= 0x00000004;
+      onChanged();
+      return this;
+    }
+
+    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> newSubjectConditionSets_ =
       java.util.Collections.emptyList();
-    private void ensureSubjectSetsIsMutable() {
-      if (!((bitField0_ & 0x00000004) != 0)) {
-        subjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectSet>(subjectSets_);
-        bitField0_ |= 0x00000004;
+    private void ensureNewSubjectConditionSetsIsMutable() {
+      if (!((bitField0_ & 0x00000008) != 0)) {
+        newSubjectConditionSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet>(newSubjectConditionSets_);
+        bitField0_ |= 0x00000008;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> subjectSetsBuilder_;
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> newSubjectConditionSetsBuilder_;
 
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
-      if (subjectSetsBuilder_ == null) {
-        return java.util.Collections.unmodifiableList(subjectSets_);
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> getNewSubjectConditionSetsList() {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(newSubjectConditionSets_);
       } else {
-        return subjectSetsBuilder_.getMessageList();
+        return newSubjectConditionSetsBuilder_.getMessageList();
       }
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public int getSubjectSetsCount() {
-      if (subjectSetsBuilder_ == null) {
-        return subjectSets_.size();
+    public int getNewSubjectConditionSetsCount() {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        return newSubjectConditionSets_.size();
       } else {
-        return subjectSetsBuilder_.getCount();
+        return newSubjectConditionSetsBuilder_.getCount();
       }
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
-      if (subjectSetsBuilder_ == null) {
-        return subjectSets_.get(index);
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getNewSubjectConditionSets(int index) {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        return newSubjectConditionSets_.get(index);
       } else {
-        return subjectSetsBuilder_.getMessage(index);
+        return newSubjectConditionSetsBuilder_.getMessage(index);
       }
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder setSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (subjectSetsBuilder_ == null) {
+    public Builder setNewSubjectConditionSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+      if (newSubjectConditionSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureSubjectSetsIsMutable();
-        subjectSets_.set(index, value);
+        ensureNewSubjectConditionSetsIsMutable();
+        newSubjectConditionSets_.set(index, value);
         onChanged();
       } else {
-        subjectSetsBuilder_.setMessage(index, value);
+        newSubjectConditionSetsBuilder_.setMessage(index, value);
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder setSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
-        subjectSets_.set(index, builderForValue.build());
+    public Builder setNewSubjectConditionSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder builderForValue) {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        ensureNewSubjectConditionSetsIsMutable();
+        newSubjectConditionSets_.set(index, builderForValue.build());
         onChanged();
       } else {
-        subjectSetsBuilder_.setMessage(index, builderForValue.build());
+        newSubjectConditionSetsBuilder_.setMessage(index, builderForValue.build());
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder addSubjectSets(io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (subjectSetsBuilder_ == null) {
+    public Builder addNewSubjectConditionSets(io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+      if (newSubjectConditionSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureSubjectSetsIsMutable();
-        subjectSets_.add(value);
+        ensureNewSubjectConditionSetsIsMutable();
+        newSubjectConditionSets_.add(value);
         onChanged();
       } else {
-        subjectSetsBuilder_.addMessage(value);
+        newSubjectConditionSetsBuilder_.addMessage(value);
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder addSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (subjectSetsBuilder_ == null) {
+    public Builder addNewSubjectConditionSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+      if (newSubjectConditionSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureSubjectSetsIsMutable();
-        subjectSets_.add(index, value);
+        ensureNewSubjectConditionSetsIsMutable();
+        newSubjectConditionSets_.add(index, value);
         onChanged();
       } else {
-        subjectSetsBuilder_.addMessage(index, value);
+        newSubjectConditionSetsBuilder_.addMessage(index, value);
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder addSubjectSets(
-        io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
-        subjectSets_.add(builderForValue.build());
+    public Builder addNewSubjectConditionSets(
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder builderForValue) {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        ensureNewSubjectConditionSetsIsMutable();
+        newSubjectConditionSets_.add(builderForValue.build());
         onChanged();
       } else {
-        subjectSetsBuilder_.addMessage(builderForValue.build());
+        newSubjectConditionSetsBuilder_.addMessage(builderForValue.build());
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder addSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
-        subjectSets_.add(index, builderForValue.build());
+    public Builder addNewSubjectConditionSets(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder builderForValue) {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        ensureNewSubjectConditionSetsIsMutable();
+        newSubjectConditionSets_.add(index, builderForValue.build());
         onChanged();
       } else {
-        subjectSetsBuilder_.addMessage(index, builderForValue.build());
+        newSubjectConditionSetsBuilder_.addMessage(index, builderForValue.build());
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder addAllSubjectSets(
-        java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectSet> values) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
+    public Builder addAllNewSubjectConditionSets(
+        java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> values) {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        ensureNewSubjectConditionSetsIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, subjectSets_);
+            values, newSubjectConditionSets_);
         onChanged();
       } else {
-        subjectSetsBuilder_.addAllMessages(values);
+        newSubjectConditionSetsBuilder_.addAllMessages(values);
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder clearSubjectSets() {
-      if (subjectSetsBuilder_ == null) {
-        subjectSets_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000004);
+    public Builder clearNewSubjectConditionSets() {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        newSubjectConditionSets_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000008);
         onChanged();
       } else {
-        subjectSetsBuilder_.clear();
+        newSubjectConditionSetsBuilder_.clear();
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public Builder removeSubjectSets(int index) {
-      if (subjectSetsBuilder_ == null) {
-        ensureSubjectSetsIsMutable();
-        subjectSets_.remove(index);
+    public Builder removeNewSubjectConditionSets(int index) {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        ensureNewSubjectConditionSetsIsMutable();
+        newSubjectConditionSets_.remove(index);
         onChanged();
       } else {
-        subjectSetsBuilder_.remove(index);
+        newSubjectConditionSetsBuilder_.remove(index);
       }
       return this;
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder getSubjectSetsBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder getNewSubjectConditionSetsBuilder(
         int index) {
-      return getSubjectSetsFieldBuilder().getBuilder(index);
+      return getNewSubjectConditionSetsFieldBuilder().getBuilder(index);
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getNewSubjectConditionSetsOrBuilder(
         int index) {
-      if (subjectSetsBuilder_ == null) {
-        return subjectSets_.get(index);  } else {
-        return subjectSetsBuilder_.getMessageOrBuilder(index);
+      if (newSubjectConditionSetsBuilder_ == null) {
+        return newSubjectConditionSets_.get(index);  } else {
+        return newSubjectConditionSetsBuilder_.getMessageOrBuilder(index);
       }
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-         getSubjectSetsOrBuilderList() {
-      if (subjectSetsBuilder_ != null) {
-        return subjectSetsBuilder_.getMessageOrBuilderList();
+    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+         getNewSubjectConditionSetsOrBuilderList() {
+      if (newSubjectConditionSetsBuilder_ != null) {
+        return newSubjectConditionSetsBuilder_.getMessageOrBuilderList();
       } else {
-        return java.util.Collections.unmodifiableList(subjectSets_);
+        return java.util.Collections.unmodifiableList(newSubjectConditionSets_);
       }
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder() {
-      return getSubjectSetsFieldBuilder().addBuilder(
-          io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder addNewSubjectConditionSetsBuilder() {
+      return getNewSubjectConditionSetsFieldBuilder().addBuilder(
+          io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance());
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder addNewSubjectConditionSetsBuilder(
         int index) {
-      return getSubjectSetsFieldBuilder().addBuilder(
-          index, io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
+      return getNewSubjectConditionSetsFieldBuilder().addBuilder(
+          index, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance());
     }
     /**
      * <pre>
-     * The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements
+     * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder> 
-         getSubjectSetsBuilderList() {
-      return getSubjectSetsFieldBuilder().getBuilderList();
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder> 
+         getNewSubjectConditionSetsBuilderList() {
+      return getNewSubjectConditionSetsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-        getSubjectSetsFieldBuilder() {
-      if (subjectSetsBuilder_ == null) {
-        subjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>(
-                subjectSets_,
-                ((bitField0_ & 0x00000004) != 0),
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+        getNewSubjectConditionSetsFieldBuilder() {
+      if (newSubjectConditionSetsBuilder_ == null) {
+        newSubjectConditionSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder>(
+                newSubjectConditionSets_,
+                ((bitField0_ & 0x00000008) != 0),
                 getParentForChildren(),
                 isClean());
-        subjectSets_ = null;
+        newSubjectConditionSets_ = null;
       }
-      return subjectSetsBuilder_;
+      return newSubjectConditionSetsBuilder_;
     }
 
     private java.util.List<io.opentdf.platform.authorization.Action> actions_ =
       java.util.Collections.emptyList();
     private void ensureActionsIsMutable() {
-      if (!((bitField0_ & 0x00000008) != 0)) {
+      if (!((bitField0_ & 0x00000010) != 0)) {
         actions_ = new java.util.ArrayList<io.opentdf.platform.authorization.Action>(actions_);
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000010;
        }
     }
 
@@ -1293,7 +1534,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
       if (actionsBuilder_ == null) {
@@ -1307,7 +1548,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public int getActionsCount() {
       if (actionsBuilder_ == null) {
@@ -1321,7 +1562,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public io.opentdf.platform.authorization.Action getActions(int index) {
       if (actionsBuilder_ == null) {
@@ -1335,7 +1576,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder setActions(
         int index, io.opentdf.platform.authorization.Action value) {
@@ -1356,7 +1597,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder setActions(
         int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
@@ -1374,7 +1615,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder addActions(io.opentdf.platform.authorization.Action value) {
       if (actionsBuilder_ == null) {
@@ -1394,7 +1635,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder addActions(
         int index, io.opentdf.platform.authorization.Action value) {
@@ -1415,7 +1656,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder addActions(
         io.opentdf.platform.authorization.Action.Builder builderForValue) {
@@ -1433,7 +1674,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder addActions(
         int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
@@ -1451,7 +1692,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder addAllActions(
         java.lang.Iterable<? extends io.opentdf.platform.authorization.Action> values) {
@@ -1470,12 +1711,12 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder clearActions() {
       if (actionsBuilder_ == null) {
         actions_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000008);
+        bitField0_ = (bitField0_ & ~0x00000010);
         onChanged();
       } else {
         actionsBuilder_.clear();
@@ -1487,7 +1728,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public Builder removeActions(int index) {
       if (actionsBuilder_ == null) {
@@ -1504,7 +1745,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public io.opentdf.platform.authorization.Action.Builder getActionsBuilder(
         int index) {
@@ -1515,7 +1756,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
         int index) {
@@ -1529,7 +1770,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
          getActionsOrBuilderList() {
@@ -1544,7 +1785,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public io.opentdf.platform.authorization.Action.Builder addActionsBuilder() {
       return getActionsFieldBuilder().addBuilder(
@@ -1555,7 +1796,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public io.opentdf.platform.authorization.Action.Builder addActionsBuilder(
         int index) {
@@ -1567,7 +1808,7 @@ private static final long serialVersionUID = 0L;
      * The actions permitted by subjects in this mapping
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
+     * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
      */
     public java.util.List<io.opentdf.platform.authorization.Action.Builder> 
          getActionsBuilderList() {
@@ -1580,7 +1821,7 @@ private static final long serialVersionUID = 0L;
         actionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>(
                 actions_,
-                ((bitField0_ & 0x00000008) != 0),
+                ((bitField0_ & 0x00000010) != 0),
                 getParentForChildren(),
                 isClean());
         actions_ = null;
@@ -1600,23 +1841,23 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:policy.subjectmapping.SubjectMappingCreateUpdate)
+    // @@protoc_insertion_point(builder_scope:policy.subjectmapping.SubjectMappingCreate)
   }
 
-  // @@protoc_insertion_point(class_scope:policy.subjectmapping.SubjectMappingCreateUpdate)
-  private static final io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:policy.subjectmapping.SubjectMappingCreate)
+  private static final io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate();
+    DEFAULT_INSTANCE = new io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate();
   }
 
-  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getDefaultInstance() {
+  public static io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static final com.google.protobuf.Parser<SubjectMappingCreateUpdate>
-      PARSER = new com.google.protobuf.AbstractParser<SubjectMappingCreateUpdate>() {
+  private static final com.google.protobuf.Parser<SubjectMappingCreate>
+      PARSER = new com.google.protobuf.AbstractParser<SubjectMappingCreate>() {
     @java.lang.Override
-    public SubjectMappingCreateUpdate parsePartialFrom(
+    public SubjectMappingCreate parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1635,17 +1876,17 @@ private static final long serialVersionUID = 0L;
     }
   };
 
-  public static com.google.protobuf.Parser<SubjectMappingCreateUpdate> parser() {
+  public static com.google.protobuf.Parser<SubjectMappingCreate> parser() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.google.protobuf.Parser<SubjectMappingCreateUpdate> getParserForType() {
+  public com.google.protobuf.Parser<SubjectMappingCreate> getParserForType() {
     return PARSER;
   }
 
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getDefaultInstanceForType() {
+  public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

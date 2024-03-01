@@ -5,18 +5,18 @@
 package io.opentdf.platform.policy.subjectmapping;
 
 /**
- * Protobuf type {@code policy.subjectmapping.UpdateSubjectMappingRequest}
+ * Protobuf type {@code policy.subjectmapping.UpdateSubjectConditionSetRequest}
  */
-public final class UpdateSubjectMappingRequest extends
+public final class UpdateSubjectConditionSetRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:policy.subjectmapping.UpdateSubjectMappingRequest)
-    UpdateSubjectMappingRequestOrBuilder {
+    // @@protoc_insertion_point(message_implements:policy.subjectmapping.UpdateSubjectConditionSetRequest)
+    UpdateSubjectConditionSetRequestOrBuilder {
 private static final long serialVersionUID = 0L;
-  // Use UpdateSubjectMappingRequest.newBuilder() to construct.
-  private UpdateSubjectMappingRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+  // Use UpdateSubjectConditionSetRequest.newBuilder() to construct.
+  private UpdateSubjectConditionSetRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-  private UpdateSubjectMappingRequest() {
+  private UpdateSubjectConditionSetRequest() {
     id_ = "";
   }
 
@@ -24,20 +24,20 @@ private static final long serialVersionUID = 0L;
   @SuppressWarnings({"unused"})
   protected java.lang.Object newInstance(
       UnusedPrivateParameter unused) {
-    return new UpdateSubjectMappingRequest();
+    return new UpdateSubjectConditionSetRequest();
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_descriptor;
+    return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectConditionSetRequest_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_fieldAccessorTable
+    return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectConditionSetRequest_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest.class, io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest.Builder.class);
+            io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.class, io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.Builder.class);
   }
 
   private int bitField0_;
@@ -80,30 +80,30 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int SUBJECT_MAPPING_FIELD_NUMBER = 2;
-  private io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate subjectMapping_;
+  public static final int SUBJECT_CONDITION_SET_FIELD_NUMBER = 2;
+  private io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate subjectConditionSet_;
   /**
-   * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
-   * @return Whether the subjectMapping field is set.
+   * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
+   * @return Whether the subjectConditionSet field is set.
    */
   @java.lang.Override
-  public boolean hasSubjectMapping() {
+  public boolean hasSubjectConditionSet() {
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
-   * @return The subjectMapping.
+   * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
+   * @return The subjectConditionSet.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate getSubjectMapping() {
-    return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.getDefaultInstance() : subjectMapping_;
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate getSubjectConditionSet() {
+    return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.getDefaultInstance() : subjectConditionSet_;
   }
   /**
-   * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
+   * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdateOrBuilder getSubjectMappingOrBuilder() {
-    return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.getDefaultInstance() : subjectMapping_;
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdateOrBuilder getSubjectConditionSetOrBuilder() {
+    return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.getDefaultInstance() : subjectConditionSet_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -124,7 +124,7 @@ private static final long serialVersionUID = 0L;
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
     if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(2, getSubjectMapping());
+      output.writeMessage(2, getSubjectConditionSet());
     }
     getUnknownFields().writeTo(output);
   }
@@ -140,7 +140,7 @@ private static final long serialVersionUID = 0L;
     }
     if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(2, getSubjectMapping());
+        .computeMessageSize(2, getSubjectConditionSet());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -152,17 +152,17 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest)) {
+    if (!(obj instanceof io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest)) {
       return super.equals(obj);
     }
-    io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest other = (io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest) obj;
+    io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest other = (io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest) obj;
 
     if (!getId()
         .equals(other.getId())) return false;
-    if (hasSubjectMapping() != other.hasSubjectMapping()) return false;
-    if (hasSubjectMapping()) {
-      if (!getSubjectMapping()
-          .equals(other.getSubjectMapping())) return false;
+    if (hasSubjectConditionSet() != other.hasSubjectConditionSet()) return false;
+    if (hasSubjectConditionSet()) {
+      if (!getSubjectConditionSet()
+          .equals(other.getSubjectConditionSet())) return false;
     }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
@@ -177,53 +177,53 @@ private static final long serialVersionUID = 0L;
     hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + ID_FIELD_NUMBER;
     hash = (53 * hash) + getId().hashCode();
-    if (hasSubjectMapping()) {
-      hash = (37 * hash) + SUBJECT_MAPPING_FIELD_NUMBER;
-      hash = (53 * hash) + getSubjectMapping().hashCode();
+    if (hasSubjectConditionSet()) {
+      hash = (37 * hash) + SUBJECT_CONDITION_SET_FIELD_NUMBER;
+      hash = (53 * hash) + getSubjectConditionSet().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
   }
 
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(byte[] data)
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(java.io.InputStream input)
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -231,26 +231,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseDelimitedFrom(java.io.InputStream input)
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseDelimitedFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest parseFrom(
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -263,7 +263,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest prototype) {
+  public static Builder newBuilder(io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -279,26 +279,26 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * Protobuf type {@code policy.subjectmapping.UpdateSubjectMappingRequest}
+   * Protobuf type {@code policy.subjectmapping.UpdateSubjectConditionSetRequest}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:policy.subjectmapping.UpdateSubjectMappingRequest)
-      io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequestOrBuilder {
+      // @@protoc_insertion_point(builder_implements:policy.subjectmapping.UpdateSubjectConditionSetRequest)
+      io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequestOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_descriptor;
+      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectConditionSetRequest_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_fieldAccessorTable
+      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectConditionSetRequest_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest.class, io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest.Builder.class);
+              io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.class, io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.Builder.class);
     }
 
-    // Construct using io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest.newBuilder()
+    // Construct using io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.newBuilder()
     private Builder() {
       maybeForceBuilderInitialization();
     }
@@ -311,7 +311,7 @@ private static final long serialVersionUID = 0L;
     private void maybeForceBuilderInitialization() {
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
-        getSubjectMappingFieldBuilder();
+        getSubjectConditionSetFieldBuilder();
       }
     }
     @java.lang.Override
@@ -319,10 +319,10 @@ private static final long serialVersionUID = 0L;
       super.clear();
       bitField0_ = 0;
       id_ = "";
-      subjectMapping_ = null;
-      if (subjectMappingBuilder_ != null) {
-        subjectMappingBuilder_.dispose();
-        subjectMappingBuilder_ = null;
+      subjectConditionSet_ = null;
+      if (subjectConditionSetBuilder_ != null) {
+        subjectConditionSetBuilder_.dispose();
+        subjectConditionSetBuilder_ = null;
       }
       return this;
     }
@@ -330,17 +330,17 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_descriptor;
+      return io.opentdf.platform.policy.subjectmapping.SubjectMappingProto.internal_static_policy_subjectmapping_UpdateSubjectConditionSetRequest_descriptor;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest getDefaultInstanceForType() {
-      return io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest.getDefaultInstance();
+    public io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest getDefaultInstanceForType() {
+      return io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest build() {
-      io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest result = buildPartial();
+    public io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest build() {
+      io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -348,23 +348,23 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest buildPartial() {
-      io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest result = new io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest(this);
+    public io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest buildPartial() {
+      io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest result = new io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest(this);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartial0(io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest result) {
+    private void buildPartial0(io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
         result.id_ = id_;
       }
       int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.subjectMapping_ = subjectMappingBuilder_ == null
-            ? subjectMapping_
-            : subjectMappingBuilder_.build();
+        result.subjectConditionSet_ = subjectConditionSetBuilder_ == null
+            ? subjectConditionSet_
+            : subjectConditionSetBuilder_.build();
         to_bitField0_ |= 0x00000001;
       }
       result.bitField0_ |= to_bitField0_;
@@ -404,23 +404,23 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest) {
-        return mergeFrom((io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest)other);
+      if (other instanceof io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest) {
+        return mergeFrom((io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest other) {
-      if (other == io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest.getDefaultInstance()) return this;
+    public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest other) {
+      if (other == io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.getDefaultInstance()) return this;
       if (!other.getId().isEmpty()) {
         id_ = other.id_;
         bitField0_ |= 0x00000001;
         onChanged();
       }
-      if (other.hasSubjectMapping()) {
-        mergeSubjectMapping(other.getSubjectMapping());
+      if (other.hasSubjectConditionSet()) {
+        mergeSubjectConditionSet(other.getSubjectConditionSet());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -455,7 +455,7 @@ private static final long serialVersionUID = 0L;
             } // case 10
             case 18: {
               input.readMessage(
-                  getSubjectMappingFieldBuilder().getBuilder(),
+                  getSubjectConditionSetFieldBuilder().getBuilder(),
                   extensionRegistry);
               bitField0_ |= 0x00000002;
               break;
@@ -549,125 +549,125 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate subjectMapping_;
+    private io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate subjectConditionSet_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdateOrBuilder> subjectMappingBuilder_;
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdateOrBuilder> subjectConditionSetBuilder_;
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
-     * @return Whether the subjectMapping field is set.
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
+     * @return Whether the subjectConditionSet field is set.
      */
-    public boolean hasSubjectMapping() {
+    public boolean hasSubjectConditionSet() {
       return ((bitField0_ & 0x00000002) != 0);
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
-     * @return The subjectMapping.
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
+     * @return The subjectConditionSet.
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate getSubjectMapping() {
-      if (subjectMappingBuilder_ == null) {
-        return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.getDefaultInstance() : subjectMapping_;
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate getSubjectConditionSet() {
+      if (subjectConditionSetBuilder_ == null) {
+        return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.getDefaultInstance() : subjectConditionSet_;
       } else {
-        return subjectMappingBuilder_.getMessage();
+        return subjectConditionSetBuilder_.getMessage();
       }
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
      */
-    public Builder setSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate value) {
-      if (subjectMappingBuilder_ == null) {
+    public Builder setSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate value) {
+      if (subjectConditionSetBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        subjectMapping_ = value;
+        subjectConditionSet_ = value;
       } else {
-        subjectMappingBuilder_.setMessage(value);
+        subjectConditionSetBuilder_.setMessage(value);
       }
       bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
      */
-    public Builder setSubjectMapping(
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.Builder builderForValue) {
-      if (subjectMappingBuilder_ == null) {
-        subjectMapping_ = builderForValue.build();
+    public Builder setSubjectConditionSet(
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.Builder builderForValue) {
+      if (subjectConditionSetBuilder_ == null) {
+        subjectConditionSet_ = builderForValue.build();
       } else {
-        subjectMappingBuilder_.setMessage(builderForValue.build());
+        subjectConditionSetBuilder_.setMessage(builderForValue.build());
       }
       bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
      */
-    public Builder mergeSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate value) {
-      if (subjectMappingBuilder_ == null) {
+    public Builder mergeSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate value) {
+      if (subjectConditionSetBuilder_ == null) {
         if (((bitField0_ & 0x00000002) != 0) &&
-          subjectMapping_ != null &&
-          subjectMapping_ != io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.getDefaultInstance()) {
-          getSubjectMappingBuilder().mergeFrom(value);
+          subjectConditionSet_ != null &&
+          subjectConditionSet_ != io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.getDefaultInstance()) {
+          getSubjectConditionSetBuilder().mergeFrom(value);
         } else {
-          subjectMapping_ = value;
+          subjectConditionSet_ = value;
         }
       } else {
-        subjectMappingBuilder_.mergeFrom(value);
+        subjectConditionSetBuilder_.mergeFrom(value);
       }
-      if (subjectMapping_ != null) {
+      if (subjectConditionSet_ != null) {
         bitField0_ |= 0x00000002;
         onChanged();
       }
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
      */
-    public Builder clearSubjectMapping() {
+    public Builder clearSubjectConditionSet() {
       bitField0_ = (bitField0_ & ~0x00000002);
-      subjectMapping_ = null;
-      if (subjectMappingBuilder_ != null) {
-        subjectMappingBuilder_.dispose();
-        subjectMappingBuilder_ = null;
+      subjectConditionSet_ = null;
+      if (subjectConditionSetBuilder_ != null) {
+        subjectConditionSetBuilder_.dispose();
+        subjectConditionSetBuilder_ = null;
       }
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.Builder getSubjectMappingBuilder() {
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.Builder getSubjectConditionSetBuilder() {
       bitField0_ |= 0x00000002;
       onChanged();
-      return getSubjectMappingFieldBuilder().getBuilder();
+      return getSubjectConditionSetFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdateOrBuilder getSubjectMappingOrBuilder() {
-      if (subjectMappingBuilder_ != null) {
-        return subjectMappingBuilder_.getMessageOrBuilder();
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdateOrBuilder getSubjectConditionSetOrBuilder() {
+      if (subjectConditionSetBuilder_ != null) {
+        return subjectConditionSetBuilder_.getMessageOrBuilder();
       } else {
-        return subjectMapping_ == null ?
-            io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.getDefaultInstance() : subjectMapping_;
+        return subjectConditionSet_ == null ?
+            io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.getDefaultInstance() : subjectConditionSet_;
       }
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
+     * <code>.policy.subjectmapping.SubjectConditionSetUpdate subject_condition_set = 2 [json_name = "subjectConditionSet"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdateOrBuilder> 
-        getSubjectMappingFieldBuilder() {
-      if (subjectMappingBuilder_ == null) {
-        subjectMappingBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdateOrBuilder>(
-                getSubjectMapping(),
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdateOrBuilder> 
+        getSubjectConditionSetFieldBuilder() {
+      if (subjectConditionSetBuilder_ == null) {
+        subjectConditionSetBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdateOrBuilder>(
+                getSubjectConditionSet(),
                 getParentForChildren(),
                 isClean());
-        subjectMapping_ = null;
+        subjectConditionSet_ = null;
       }
-      return subjectMappingBuilder_;
+      return subjectConditionSetBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(
@@ -682,23 +682,23 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:policy.subjectmapping.UpdateSubjectMappingRequest)
+    // @@protoc_insertion_point(builder_scope:policy.subjectmapping.UpdateSubjectConditionSetRequest)
   }
 
-  // @@protoc_insertion_point(class_scope:policy.subjectmapping.UpdateSubjectMappingRequest)
-  private static final io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:policy.subjectmapping.UpdateSubjectConditionSetRequest)
+  private static final io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest();
+    DEFAULT_INSTANCE = new io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest();
   }
 
-  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest getDefaultInstance() {
+  public static io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static final com.google.protobuf.Parser<UpdateSubjectMappingRequest>
-      PARSER = new com.google.protobuf.AbstractParser<UpdateSubjectMappingRequest>() {
+  private static final com.google.protobuf.Parser<UpdateSubjectConditionSetRequest>
+      PARSER = new com.google.protobuf.AbstractParser<UpdateSubjectConditionSetRequest>() {
     @java.lang.Override
-    public UpdateSubjectMappingRequest parsePartialFrom(
+    public UpdateSubjectConditionSetRequest parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
@@ -717,17 +717,17 @@ private static final long serialVersionUID = 0L;
     }
   };
 
-  public static com.google.protobuf.Parser<UpdateSubjectMappingRequest> parser() {
+  public static com.google.protobuf.Parser<UpdateSubjectConditionSetRequest> parser() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.google.protobuf.Parser<UpdateSubjectMappingRequest> getParserForType() {
+  public com.google.protobuf.Parser<UpdateSubjectConditionSetRequest> getParserForType() {
     return PARSER;
   }
 
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.UpdateSubjectMappingRequest getDefaultInstanceForType() {
+  public io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

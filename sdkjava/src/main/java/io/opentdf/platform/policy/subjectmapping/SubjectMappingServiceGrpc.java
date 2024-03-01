@@ -201,6 +201,161 @@ public final class SubjectMappingServiceGrpc {
     return getDeleteSubjectMappingMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest,
+      io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse> getListSubjectConditionSetsMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "ListSubjectConditionSets",
+      requestType = io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest.class,
+      responseType = io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest,
+      io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse> getListSubjectConditionSetsMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest, io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse> getListSubjectConditionSetsMethod;
+    if ((getListSubjectConditionSetsMethod = SubjectMappingServiceGrpc.getListSubjectConditionSetsMethod) == null) {
+      synchronized (SubjectMappingServiceGrpc.class) {
+        if ((getListSubjectConditionSetsMethod = SubjectMappingServiceGrpc.getListSubjectConditionSetsMethod) == null) {
+          SubjectMappingServiceGrpc.getListSubjectConditionSetsMethod = getListSubjectConditionSetsMethod =
+              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest, io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "ListSubjectConditionSets"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("ListSubjectConditionSets"))
+              .build();
+        }
+      }
+    }
+    return getListSubjectConditionSetsMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest,
+      io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse> getGetSubjectConditionSetMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "GetSubjectConditionSet",
+      requestType = io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest.class,
+      responseType = io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest,
+      io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse> getGetSubjectConditionSetMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest, io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse> getGetSubjectConditionSetMethod;
+    if ((getGetSubjectConditionSetMethod = SubjectMappingServiceGrpc.getGetSubjectConditionSetMethod) == null) {
+      synchronized (SubjectMappingServiceGrpc.class) {
+        if ((getGetSubjectConditionSetMethod = SubjectMappingServiceGrpc.getGetSubjectConditionSetMethod) == null) {
+          SubjectMappingServiceGrpc.getGetSubjectConditionSetMethod = getGetSubjectConditionSetMethod =
+              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest, io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "GetSubjectConditionSet"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("GetSubjectConditionSet"))
+              .build();
+        }
+      }
+    }
+    return getGetSubjectConditionSetMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest,
+      io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse> getCreateSubjectConditionSetMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "CreateSubjectConditionSet",
+      requestType = io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest.class,
+      responseType = io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest,
+      io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse> getCreateSubjectConditionSetMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest, io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse> getCreateSubjectConditionSetMethod;
+    if ((getCreateSubjectConditionSetMethod = SubjectMappingServiceGrpc.getCreateSubjectConditionSetMethod) == null) {
+      synchronized (SubjectMappingServiceGrpc.class) {
+        if ((getCreateSubjectConditionSetMethod = SubjectMappingServiceGrpc.getCreateSubjectConditionSetMethod) == null) {
+          SubjectMappingServiceGrpc.getCreateSubjectConditionSetMethod = getCreateSubjectConditionSetMethod =
+              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest, io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "CreateSubjectConditionSet"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("CreateSubjectConditionSet"))
+              .build();
+        }
+      }
+    }
+    return getCreateSubjectConditionSetMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest,
+      io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse> getUpdateSubjectConditionSetMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "UpdateSubjectConditionSet",
+      requestType = io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.class,
+      responseType = io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest,
+      io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse> getUpdateSubjectConditionSetMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest, io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse> getUpdateSubjectConditionSetMethod;
+    if ((getUpdateSubjectConditionSetMethod = SubjectMappingServiceGrpc.getUpdateSubjectConditionSetMethod) == null) {
+      synchronized (SubjectMappingServiceGrpc.class) {
+        if ((getUpdateSubjectConditionSetMethod = SubjectMappingServiceGrpc.getUpdateSubjectConditionSetMethod) == null) {
+          SubjectMappingServiceGrpc.getUpdateSubjectConditionSetMethod = getUpdateSubjectConditionSetMethod =
+              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest, io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "UpdateSubjectConditionSet"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("UpdateSubjectConditionSet"))
+              .build();
+        }
+      }
+    }
+    return getUpdateSubjectConditionSetMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest,
+      io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse> getDeleteSubjectConditionSetMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "DeleteSubjectConditionSet",
+      requestType = io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest.class,
+      responseType = io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest,
+      io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse> getDeleteSubjectConditionSetMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest, io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse> getDeleteSubjectConditionSetMethod;
+    if ((getDeleteSubjectConditionSetMethod = SubjectMappingServiceGrpc.getDeleteSubjectConditionSetMethod) == null) {
+      synchronized (SubjectMappingServiceGrpc.class) {
+        if ((getDeleteSubjectConditionSetMethod = SubjectMappingServiceGrpc.getDeleteSubjectConditionSetMethod) == null) {
+          SubjectMappingServiceGrpc.getDeleteSubjectConditionSetMethod = getDeleteSubjectConditionSetMethod =
+              io.grpc.MethodDescriptor.<io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest, io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "DeleteSubjectConditionSet"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new SubjectMappingServiceMethodDescriptorSupplier("DeleteSubjectConditionSet"))
+              .build();
+        }
+      }
+    }
+    return getDeleteSubjectConditionSetMethod;
+  }
+
   /**
    * Creates a new async stub that supports all call types for the service
    */
@@ -293,6 +448,41 @@ public final class SubjectMappingServiceGrpc {
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.DeleteSubjectMappingResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getDeleteSubjectMappingMethod(), responseObserver);
     }
+
+    /**
+     */
+    default void listSubjectConditionSets(io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getListSubjectConditionSetsMethod(), responseObserver);
+    }
+
+    /**
+     */
+    default void getSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetSubjectConditionSetMethod(), responseObserver);
+    }
+
+    /**
+     */
+    default void createSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getCreateSubjectConditionSetMethod(), responseObserver);
+    }
+
+    /**
+     */
+    default void updateSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getUpdateSubjectConditionSetMethod(), responseObserver);
+    }
+
+    /**
+     */
+    default void deleteSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getDeleteSubjectConditionSetMethod(), responseObserver);
+    }
   }
 
   /**
@@ -372,6 +562,46 @@ public final class SubjectMappingServiceGrpc {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getDeleteSubjectMappingMethod(), getCallOptions()), request, responseObserver);
     }
+
+    /**
+     */
+    public void listSubjectConditionSets(io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getListSubjectConditionSetsMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void getSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetSubjectConditionSetMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void createSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getCreateSubjectConditionSetMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void updateSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getUpdateSubjectConditionSetMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void deleteSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getDeleteSubjectConditionSetMethod(), getCallOptions()), request, responseObserver);
+    }
   }
 
   /**
@@ -433,6 +663,41 @@ public final class SubjectMappingServiceGrpc {
     public io.opentdf.platform.policy.subjectmapping.DeleteSubjectMappingResponse deleteSubjectMapping(io.opentdf.platform.policy.subjectmapping.DeleteSubjectMappingRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getDeleteSubjectMappingMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse listSubjectConditionSets(io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getListSubjectConditionSetsMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse getSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetSubjectConditionSetMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse createSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getCreateSubjectConditionSetMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse updateSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getUpdateSubjectConditionSetMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse deleteSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getDeleteSubjectConditionSetMethod(), getCallOptions(), request);
     }
   }
 
@@ -502,6 +767,46 @@ public final class SubjectMappingServiceGrpc {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getDeleteSubjectMappingMethod(), getCallOptions()), request);
     }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse> listSubjectConditionSets(
+        io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getListSubjectConditionSetsMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse> getSubjectConditionSet(
+        io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetSubjectConditionSetMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse> createSubjectConditionSet(
+        io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getCreateSubjectConditionSetMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse> updateSubjectConditionSet(
+        io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getUpdateSubjectConditionSetMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse> deleteSubjectConditionSet(
+        io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getDeleteSubjectConditionSetMethod(), getCallOptions()), request);
+    }
   }
 
   private static final int METHODID_MATCH_SUBJECT_MAPPINGS = 0;
@@ -510,6 +815,11 @@ public final class SubjectMappingServiceGrpc {
   private static final int METHODID_CREATE_SUBJECT_MAPPING = 3;
   private static final int METHODID_UPDATE_SUBJECT_MAPPING = 4;
   private static final int METHODID_DELETE_SUBJECT_MAPPING = 5;
+  private static final int METHODID_LIST_SUBJECT_CONDITION_SETS = 6;
+  private static final int METHODID_GET_SUBJECT_CONDITION_SET = 7;
+  private static final int METHODID_CREATE_SUBJECT_CONDITION_SET = 8;
+  private static final int METHODID_UPDATE_SUBJECT_CONDITION_SET = 9;
+  private static final int METHODID_DELETE_SUBJECT_CONDITION_SET = 10;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -551,6 +861,26 @@ public final class SubjectMappingServiceGrpc {
         case METHODID_DELETE_SUBJECT_MAPPING:
           serviceImpl.deleteSubjectMapping((io.opentdf.platform.policy.subjectmapping.DeleteSubjectMappingRequest) request,
               (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.DeleteSubjectMappingResponse>) responseObserver);
+          break;
+        case METHODID_LIST_SUBJECT_CONDITION_SETS:
+          serviceImpl.listSubjectConditionSets((io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse>) responseObserver);
+          break;
+        case METHODID_GET_SUBJECT_CONDITION_SET:
+          serviceImpl.getSubjectConditionSet((io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse>) responseObserver);
+          break;
+        case METHODID_CREATE_SUBJECT_CONDITION_SET:
+          serviceImpl.createSubjectConditionSet((io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse>) responseObserver);
+          break;
+        case METHODID_UPDATE_SUBJECT_CONDITION_SET:
+          serviceImpl.updateSubjectConditionSet((io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse>) responseObserver);
+          break;
+        case METHODID_DELETE_SUBJECT_CONDITION_SET:
+          serviceImpl.deleteSubjectConditionSet((io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse>) responseObserver);
           break;
         default:
           throw new AssertionError();
@@ -612,6 +942,41 @@ public final class SubjectMappingServiceGrpc {
               io.opentdf.platform.policy.subjectmapping.DeleteSubjectMappingRequest,
               io.opentdf.platform.policy.subjectmapping.DeleteSubjectMappingResponse>(
                 service, METHODID_DELETE_SUBJECT_MAPPING)))
+        .addMethod(
+          getListSubjectConditionSetsMethod(),
+          io.grpc.stub.ServerCalls.asyncUnaryCall(
+            new MethodHandlers<
+              io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsRequest,
+              io.opentdf.platform.policy.subjectmapping.ListSubjectConditionSetsResponse>(
+                service, METHODID_LIST_SUBJECT_CONDITION_SETS)))
+        .addMethod(
+          getGetSubjectConditionSetMethod(),
+          io.grpc.stub.ServerCalls.asyncUnaryCall(
+            new MethodHandlers<
+              io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetRequest,
+              io.opentdf.platform.policy.subjectmapping.GetSubjectConditionSetResponse>(
+                service, METHODID_GET_SUBJECT_CONDITION_SET)))
+        .addMethod(
+          getCreateSubjectConditionSetMethod(),
+          io.grpc.stub.ServerCalls.asyncUnaryCall(
+            new MethodHandlers<
+              io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetRequest,
+              io.opentdf.platform.policy.subjectmapping.CreateSubjectConditionSetResponse>(
+                service, METHODID_CREATE_SUBJECT_CONDITION_SET)))
+        .addMethod(
+          getUpdateSubjectConditionSetMethod(),
+          io.grpc.stub.ServerCalls.asyncUnaryCall(
+            new MethodHandlers<
+              io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest,
+              io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetResponse>(
+                service, METHODID_UPDATE_SUBJECT_CONDITION_SET)))
+        .addMethod(
+          getDeleteSubjectConditionSetMethod(),
+          io.grpc.stub.ServerCalls.asyncUnaryCall(
+            new MethodHandlers<
+              io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetRequest,
+              io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse>(
+                service, METHODID_DELETE_SUBJECT_CONDITION_SET)))
         .build();
   }
 
@@ -666,6 +1031,11 @@ public final class SubjectMappingServiceGrpc {
               .addMethod(getCreateSubjectMappingMethod())
               .addMethod(getUpdateSubjectMappingMethod())
               .addMethod(getDeleteSubjectMappingMethod())
+              .addMethod(getListSubjectConditionSetsMethod())
+              .addMethod(getGetSubjectConditionSetMethod())
+              .addMethod(getCreateSubjectConditionSetMethod())
+              .addMethod(getUpdateSubjectConditionSetMethod())
+              .addMethod(getDeleteSubjectConditionSetMethod())
               .build();
         }
       }

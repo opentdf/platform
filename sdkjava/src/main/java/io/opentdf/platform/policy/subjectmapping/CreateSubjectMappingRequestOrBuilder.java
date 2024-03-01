@@ -9,17 +9,17 @@ public interface CreateSubjectMappingRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
    * @return Whether the subjectMapping field is set.
    */
   boolean hasSubjectMapping();
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
    * @return The subjectMapping.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getSubjectMapping();
+  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate getSubjectMapping();
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder getSubjectMappingOrBuilder();
+  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateOrBuilder getSubjectMappingOrBuilder();
 }

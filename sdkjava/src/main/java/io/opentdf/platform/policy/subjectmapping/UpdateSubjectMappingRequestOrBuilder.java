@@ -21,17 +21,17 @@ public interface UpdateSubjectMappingRequestOrBuilder extends
       getIdBytes();
 
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 2 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
    * @return Whether the subjectMapping field is set.
    */
   boolean hasSubjectMapping();
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 2 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
    * @return The subjectMapping.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getSubjectMapping();
+  io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdate getSubjectMapping();
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 2 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingUpdate subject_mapping = 2 [json_name = "subjectMapping"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder getSubjectMappingOrBuilder();
+  io.opentdf.platform.policy.subjectmapping.SubjectMappingUpdateOrBuilder getSubjectMappingOrBuilder();
 }

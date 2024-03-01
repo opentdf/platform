@@ -41,9 +41,9 @@ private static final long serialVersionUID = 0L;
 
   private int bitField0_;
   public static final int SUBJECT_MAPPING_FIELD_NUMBER = 1;
-  private io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate subjectMapping_;
+  private io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate subjectMapping_;
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
    * @return Whether the subjectMapping field is set.
    */
   @java.lang.Override
@@ -51,19 +51,19 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
    * @return The subjectMapping.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getSubjectMapping() {
-    return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance() : subjectMapping_;
+  public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate getSubjectMapping() {
+    return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.getDefaultInstance() : subjectMapping_;
   }
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder getSubjectMappingOrBuilder() {
-    return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance() : subjectMapping_;
+  public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateOrBuilder getSubjectMappingOrBuilder() {
+    return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.getDefaultInstance() : subjectMapping_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -413,31 +413,31 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate subjectMapping_;
+    private io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate subjectMapping_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder> subjectMappingBuilder_;
+        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateOrBuilder> subjectMappingBuilder_;
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      * @return Whether the subjectMapping field is set.
      */
     public boolean hasSubjectMapping() {
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      * @return The subjectMapping.
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getSubjectMapping() {
+    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate getSubjectMapping() {
       if (subjectMappingBuilder_ == null) {
-        return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance() : subjectMapping_;
+        return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.getDefaultInstance() : subjectMapping_;
       } else {
         return subjectMappingBuilder_.getMessage();
       }
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
-    public Builder setSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate value) {
+    public Builder setSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate value) {
       if (subjectMappingBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -451,10 +451,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     public Builder setSubjectMapping(
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder builderForValue) {
+        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.Builder builderForValue) {
       if (subjectMappingBuilder_ == null) {
         subjectMapping_ = builderForValue.build();
       } else {
@@ -465,13 +465,13 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
-    public Builder mergeSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate value) {
+    public Builder mergeSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate value) {
       if (subjectMappingBuilder_ == null) {
         if (((bitField0_ & 0x00000001) != 0) &&
           subjectMapping_ != null &&
-          subjectMapping_ != io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance()) {
+          subjectMapping_ != io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.getDefaultInstance()) {
           getSubjectMappingBuilder().mergeFrom(value);
         } else {
           subjectMapping_ = value;
@@ -486,7 +486,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     public Builder clearSubjectMapping() {
       bitField0_ = (bitField0_ & ~0x00000001);
@@ -499,33 +499,33 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder getSubjectMappingBuilder() {
+    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.Builder getSubjectMappingBuilder() {
       bitField0_ |= 0x00000001;
       onChanged();
       return getSubjectMappingFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder getSubjectMappingOrBuilder() {
+    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateOrBuilder getSubjectMappingOrBuilder() {
       if (subjectMappingBuilder_ != null) {
         return subjectMappingBuilder_.getMessageOrBuilder();
       } else {
         return subjectMapping_ == null ?
-            io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance() : subjectMapping_;
+            io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.getDefaultInstance() : subjectMapping_;
       }
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.SubjectMappingCreate subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder> 
+        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateOrBuilder> 
         getSubjectMappingFieldBuilder() {
       if (subjectMappingBuilder_ == null) {
         subjectMappingBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder>(
+            io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateOrBuilder>(
                 getSubjectMapping(),
                 getParentForChildren(),
                 isClean());

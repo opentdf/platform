@@ -6,7 +6,7 @@ package io.opentdf.platform.policy.subjectmapping;
 
 /**
  * <pre>
- * A Group of conditions with either OR or AND evaluation across the contained conditions
+ * A collection of Conditions evaluated by the boolean_type provided
  * </pre>
  *
  * Protobuf type {@code policy.subjectmapping.ConditionGroup}
@@ -283,7 +283,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * A Group of conditions with either OR or AND evaluation across the contained conditions
+   * A collection of Conditions evaluated by the boolean_type provided
    * </pre>
    *
    * Protobuf type {@code policy.subjectmapping.ConditionGroup}

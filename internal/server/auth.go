@@ -113,6 +113,7 @@ func (a authN) verifyTokenInterceptor(ctx context.Context, req any, info *grpc.U
 	return handler(ctx, req)
 }
 
+// checkToken is a helper function to verify the token.
 func checkToken(ctx context.Context, headers map[string][]string, auth authN) error {
 	var (
 		tokenRaw  string

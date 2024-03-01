@@ -100,7 +100,7 @@ func (c *Client) MigrationDown(ctx context.Context) error {
 	if e != nil {
 		return errors.Join(fmt.Errorf("failed to get current version"), e)
 	}
-	fmt.Printf("Current DB version: %d. Migrating one down to %d.\n", v, v-1)
+	slog.Info("DB Info: ", slog.Any("current version", v), slog.Any("post-migration version", v-1))
 
 	res, err := provider.Down(context.Background())
 	if err != nil {

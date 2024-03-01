@@ -336,8 +336,6 @@ func (f *Fixtures) provisionSubjectConditionSet() int64 {
 			panic("issue with subject condition set JSON")
 		}
 
-		fmt.Println("HERE CONDITION JSON", string(conditionJSON))
-
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
 			f.db.StringWrap(d.Name),

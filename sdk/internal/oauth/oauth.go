@@ -78,7 +78,10 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 	headers := jws.NewHeaders()
 
 	if key.KeyID() != "" {
-		headers.Set("kid", key.KeyID())
+		err = headers.Set("kid", key.KeyID())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	alg := key.Algorithm()
@@ -170,8 +173,15 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 
 	//Protected headers
 	headers := jws.NewHeaders()
-	headers.Set("jwk", publicKey)
-	headers.Set("typ", "dpop+jwt")
+	err = headers.Set("jwk", publicKey)
+	if err != nil {
+		return "", err
+	}
+
+	err = headers.Set("typ", "dpop+jwt")
+	if err != nil {
+		return "", err
+	}
 
 	var alg jwa.SignatureAlgorithm
 	if err := alg.Accept(dpopJWK.Algorithm()); err != nil {

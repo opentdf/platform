@@ -294,29 +294,6 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalNam
 	return ruleResultsByEntity
 }
 
-// the purpose of a GroupBy property on an AttributeDefinition is to indicate which entities should be included in a rule evaluation, and which
-// entities should not be included. This function will check every entity's AttributeInstances, and filter out the entities
-// that lack the GroupBy attributeInstance, returning a new, reduced set of entities that all have the
-// GroupBy attributeInstance.
-func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entityAttributes map[string][]attributeInstance, groupBy *attrs.Attribute) map[string][]attributeInstance {
-	slog.DebugContext(ctx, "Filtering out entities with groupby", "groupby", groupBy)
-
-	filteredEntitySet := make(map[string][]attributeInstance)
-
-	//Go through every entity's attributeInstance set...
-	for entityId, entityAttrs := range entityAttributes {
-		slog.DebugContext(ctx, "Filtering entity with groupby", "entityId", entityId, "groupBy", groupBy)
-		//If this entity has the groupBy attributeInstance within its set of AttributeInstances
-		if findInstanceValueInCluster(groupBy, entityAttrs) {
-			//Then it will be included in the map of filtered entities.
-			filteredEntitySet[entityId] = entityAttrs
-		}
-		//otherwise, it will be left out of consideration.
-	}
-
-	return filteredEntitySet
-}
-
 // It is possible that a data policy may have more than one Hierarchy value for the same data attribute canonical
 // name, e.g.:
 // - "https://authority.org/attr/MyHierarchyAttr/value/Value1"
@@ -352,17 +329,6 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 		}
 	}
 	return highestRankedInstance
-}
-
-// Given a single attributeInstance, and an arbitrary set of AttributeInstances,
-// look through that set of instances for an instance whose value and canonical name matches the single instance
-func findInstanceValueInCluster(instance *attrs.Attribute, cluster []attributeInstance) bool {
-	for i := range cluster {
-		if cluster[i].Value == instance.String() && cluster[i].GetCanonicalName() == GetCanonicalNameADV(instance) {
-			return true
-		}
-	}
-	return false
 }
 
 func findInstanceValueInClusterAI(a *attributeInstance, instances []attributeInstance) bool {

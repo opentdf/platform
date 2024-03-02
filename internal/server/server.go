@@ -30,10 +30,10 @@ const (
 )
 
 type Config struct {
-	Grpc GrpcConfig   `yaml:"grpc"`
-	HTTP HTTPConfig   `yaml:"http"`
-	TLS  TLSConfig    `yaml:"tls"`
-	Auth []AuthConfig `yaml:"auth"`
+	Grpc GrpcConfig `yaml:"grpc"`
+	HTTP HTTPConfig `yaml:"http"`
+	TLS  TLSConfig  `yaml:"tls"`
+	Auth AuthConfig `yaml:"auth"`
 }
 
 type GrpcConfig struct {
@@ -47,6 +47,11 @@ type HTTPConfig struct {
 }
 
 type AuthConfig struct {
+	Enabled   bool `yaml:"enabled" default:"true"`
+	IDPConfig `yaml:"-"`
+}
+
+type IDPConfig struct {
 	Audience string   `yaml:"audience"`
 	Issuer   string   `yaml:"issuer"`
 	Clients  []string `yaml:"clients"`
@@ -100,14 +105,24 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
-	authN, err := newAuthNInterceptor(config.Auth)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authN interceptor: %w", err)
+	// Build interceptor chain
+	var interceptors []grpc.UnaryServerInterceptor
+
+	// Add authN interceptor
+	if config.Auth.Enabled {
+		authN, err := newAuthNInterceptor(config.Auth)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
+		}
+
+		interceptors = append(interceptors, authN.verifyTokenInterceptor)
 	}
 
+	// Add proto validation interceptor
+	interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
+
 	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(
-		authN.verifyTokenInterceptor,
-		protovalidate_middleware.UnaryServerInterceptor(validator),
+		interceptors...,
 	))
 
 	grpcServer := grpc.NewServer(

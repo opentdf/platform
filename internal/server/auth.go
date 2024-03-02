@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -23,12 +24,12 @@ type authN struct {
 }
 
 type openidConfiguraton struct {
-	AuthConfig
-	Jwks_uri string `json:"jwks_uri"`
+	IDPConfig `json:"-"`
+	JwksURI   string `json:"jwks_uri"`
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func newAuthNInterceptor(cfg []AuthConfig) (*authN, error) {
+func newAuthNInterceptor(cfg AuthConfig) (*authN, error) {
 	a := &authN{}
 	a.cfg = make(map[string]openidConfiguraton)
 
@@ -36,28 +37,26 @@ func newAuthNInterceptor(cfg []AuthConfig) (*authN, error) {
 
 	a.cache = jwk.NewCache(ctx)
 
-	// Build new cache for each trusted issuer
-	for _, c := range cfg {
-		// Discover IDP
-		oidc, err := discoverIDP(ctx, c.Issuer)
-		if err != nil {
-			return nil, err
-		}
-		oidc.AuthConfig = c
-
-		// Register the jwks_uri with the cache
-		if err := a.cache.Register(oidc.Jwks_uri, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
-			return nil, err
-		}
-
-		// Need to refresh the cache to verify jwks is available
-		_, err = a.cache.Refresh(ctx, oidc.Jwks_uri)
-		if err != nil {
-			return nil, err
-		}
-
-		a.cfg[c.Issuer] = *oidc
+	// Build new cache
+	// Discover IDP
+	oidc, err := discoverIDP(ctx, cfg.Issuer)
+	if err != nil {
+		return nil, err
 	}
+	oidc.IDPConfig = cfg.IDPConfig
+
+	// Register the jwks_uri with the cache
+	if err := a.cache.Register(oidc.JwksURI, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+		return nil, err
+	}
+
+	// Need to refresh the cache to verify jwks is available
+	_, err = a.cache.Refresh(ctx, oidc.JwksURI)
+	if err != nil {
+		return nil, err
+	}
+
+	a.cfg[cfg.Issuer] = *oidc
 
 	return a, nil
 }
@@ -155,22 +154,28 @@ func checkToken(ctx context.Context, headers map[string][]string, auth authN) er
 	}
 
 	// Get the openid configuration for the issuer
-	oidc, exists := auth.cfg[issuer.(string)]
+	// Because we get an interface we need to cast it to a string
+	// and jwx expects it as a string so we should never hit this error if the token is valid
+	issuerStr, ok := issuer.(string)
+	if !ok {
+		return fmt.Errorf("invalid issuer")
+	}
+	oidc, exists := auth.cfg[issuerStr]
 	if !exists {
 		return fmt.Errorf("invalid issuer")
 	}
 
 	// Get key set from cache that matches the jwks_uri
-	keySet, err := auth.cache.Get(ctx, oidc.Jwks_uri)
+	keySet, err := auth.cache.Get(ctx, oidc.JwksURI)
 	if err != nil {
 		return fmt.Errorf("failed to get jwks from cache")
 	}
-
+	json.NewEncoder(os.Stdout).Encode(keySet)
 	// Now we verify the token signature
 	_, err = jwt.Parse([]byte(tokenRaw),
 		jwt.WithKeySet(keySet),
 		jwt.WithValidate(true),
-		jwt.WithIssuer(issuer.(string)),
+		jwt.WithIssuer(issuerStr),
 		jwt.WithAudience(oidc.Audience),
 		jwt.WithValidator(jwt.ValidatorFunc(auth.claimsValidator)),
 	)
@@ -195,9 +200,15 @@ func (a authN) claimsValidator(ctx context.Context, token jwt.Token) jwt.Validat
 	// Check to see if we have a client id claim
 	switch {
 	case cidExists:
-		clientID = cidClaim.(string)
+		if cid, ok := cidClaim.(string); ok {
+			clientID = cid
+			break
+		}
 	case clientIDExists:
-		clientID = clientIDClaim.(string)
+		if cid, ok := clientIDClaim.(string); ok {
+			clientID = cid
+			break
+		}
 	default:
 		return jwt.NewValidationError(fmt.Errorf("client id required"))
 	}

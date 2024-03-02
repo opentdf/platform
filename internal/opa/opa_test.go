@@ -25,7 +25,7 @@ func TestNewEngine(t *testing.T) {
 		args       args
 		want       *Engine
 		wantLog    string
-		logHandler TestLogHandler
+		logHandler *TestLogHandler
 		wantErr    bool
 	}{
 		{
@@ -39,7 +39,7 @@ func TestNewEngine(t *testing.T) {
 			},
 			want:       &Engine{},
 			wantLog:    "Download starting.",
-			logHandler: tl,
+			logHandler: &tl,
 			wantErr:    false,
 		},
 	}

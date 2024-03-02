@@ -9,38 +9,11 @@ public interface SubjectSetOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The id.
-   */
-  java.lang.String getId();
-  /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The bytes for id.
-   */
-  com.google.protobuf.ByteString
-      getIdBytes();
-
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
-   */
-  boolean hasMetadata();
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return The metadata.
-   */
-  io.opentdf.platform.common.Metadata getMetadata();
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   */
-  io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();
-
-  /**
    * <pre>
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   java.util.List<io.opentdf.platform.policy.subjectmapping.ConditionGroup> 
       getConditionGroupsList();
@@ -49,7 +22,7 @@ public interface SubjectSetOrBuilder extends
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   io.opentdf.platform.policy.subjectmapping.ConditionGroup getConditionGroups(int index);
   /**
@@ -57,7 +30,7 @@ public interface SubjectSetOrBuilder extends
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   int getConditionGroupsCount();
   /**
@@ -65,7 +38,7 @@ public interface SubjectSetOrBuilder extends
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   java.util.List<? extends io.opentdf.platform.policy.subjectmapping.ConditionGroupOrBuilder> 
       getConditionGroupsOrBuilderList();
@@ -74,7 +47,7 @@ public interface SubjectSetOrBuilder extends
    * The conditions groups describing the matching rules for subjects in the set
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 3 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
    */
   io.opentdf.platform.policy.subjectmapping.ConditionGroupOrBuilder getConditionGroupsOrBuilder(
       int index);

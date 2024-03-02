@@ -10,23 +10,23 @@ public interface ConditionOrBuilder extends
 
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * externally known field name (such as from idP/LDAP)
    * </pre>
    *
-   * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
-   * @return The subjectAttribute.
+   * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
+   * @return The subjectExternalField.
    */
-  java.lang.String getSubjectAttribute();
+  java.lang.String getSubjectExternalField();
   /**
    * <pre>
-   * Resource Attribute Key; NOT Attribute Definition Attribute name
+   * externally known field name (such as from idP/LDAP)
    * </pre>
    *
-   * <code>string subject_attribute = 1 [json_name = "subjectAttribute"];</code>
-   * @return The bytes for subjectAttribute.
+   * <code>string subject_external_field = 1 [json_name = "subjectExternalField"];</code>
+   * @return The bytes for subjectExternalField.
    */
   com.google.protobuf.ByteString
-      getSubjectAttributeBytes();
+      getSubjectExternalFieldBytes();
 
   /**
    * <pre>
@@ -49,42 +49,42 @@ public interface ConditionOrBuilder extends
 
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * list of comparison values for the subject_external_field
    * </pre>
    *
-   * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-   * @return A list containing the subjectValues.
+   * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+   * @return A list containing the subjectExternalValues.
    */
   java.util.List<java.lang.String>
-      getSubjectValuesList();
+      getSubjectExternalValuesList();
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * list of comparison values for the subject_external_field
    * </pre>
    *
-   * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
-   * @return The count of subjectValues.
+   * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
+   * @return The count of subjectExternalValues.
    */
-  int getSubjectValuesCount();
+  int getSubjectExternalValuesCount();
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * list of comparison values for the subject_external_field
    * </pre>
    *
-   * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
+   * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
    * @param index The index of the element to return.
-   * @return The subjectValues at the given index.
+   * @return The subjectExternalValues at the given index.
    */
-  java.lang.String getSubjectValues(int index);
+  java.lang.String getSubjectExternalValues(int index);
   /**
    * <pre>
-   * The list of comparison values for a resource's &lt;attribute&gt; value
+   * list of comparison values for the subject_external_field
    * </pre>
    *
-   * <code>repeated string subject_values = 3 [json_name = "subjectValues"];</code>
+   * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
    * @param index The index of the value to return.
-   * @return The bytes of the subjectValues at the given index.
+   * @return The bytes of the subjectExternalValues at the given index.
    */
   com.google.protobuf.ByteString
-      getSubjectValuesBytes(int index);
+      getSubjectExternalValuesBytes(int index);
 }

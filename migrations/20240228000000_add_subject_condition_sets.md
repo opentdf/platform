@@ -30,7 +30,7 @@ all the way back up the tree to an internal Platform-ABAC `Attribute Value`.
 
     A PDP should consider all of the following joined by an AND relationship:
     - more than one SubjectMapping for an Attribute Value
-    - more than one SubjectSet in the JSONB of a SubjectConditionSet 
+    - more than one SubjectSet in the JSONB of a SubjectConditionSet
     - more than one ConditionGroup on a SubjectSet
 
     For now, ConditionGroups are the only place a policy platform administrator has control over the boolean

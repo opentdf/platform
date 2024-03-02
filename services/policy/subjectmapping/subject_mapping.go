@@ -104,26 +104,3 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 
 	return rsp, nil
 }
-
-func (s SubjectMappingService) GetSubjectSet(ctx context.Context, req *sm.GetSubjectSetRequest) (*sm.GetSubjectSetResponse, error) {
-	// TODO replace mock below with database connection, add fixture
-	slog.DebugContext(ctx, "GetSubjectSet", "id", req.Id)
-	ssr := sm.GetSubjectSetResponse{
-		SubjectSet: &sm.SubjectSet{
-			Id:              req.Id,
-			ConditionGroups: make([]*sm.ConditionGroup, 0),
-		},
-	}
-	var cg = sm.ConditionGroup{
-		BooleanType: sm.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-		Conditions: []*sm.Condition{
-			{
-				SubjectAttribute: "https://example.com/attr/attr1/value/value1",
-				Operator:         sm.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-				SubjectValues:    []string{"ec11"},
-			},
-		},
-	}
-	ssr.SubjectSet.ConditionGroups = append(ssr.SubjectSet.ConditionGroups, &cg)
-	return &ssr, nil
-}

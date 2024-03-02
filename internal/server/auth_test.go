@@ -18,6 +18,10 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type AuthSuite struct {
@@ -100,19 +104,31 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "\"exp\" not satisfied", err.Error())
 }
 
-func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Missing_Expect_Error() {
-	err := checkToken(context.Background(), map[string][]string{}, *s.auth)
+func (s *AuthSuite) Test_VerifyTokenHandler_When_Authorization_Header_Missing_Expect_Error() {
+	handler := s.auth.verifyTokenHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(s.T(), http.StatusUnauthorized, rec.Code)
+	assert.Equal(s.T(), "missing authorization header\n", rec.Body.String())
+}
+
+func (s *AuthSuite) Test_VerifyTokenInterceptor_When_Authorization_Header_Missing_Expect_Error() {
+	md := metadata.New(map[string]string{})
+	ctx := metadata.NewIncomingContext(context.Background(), md)
+	_, err := s.auth.verifyTokenInterceptor(ctx, "test", &grpc.UnaryServerInfo{
+		FullMethod: "/test",
+	}, nil)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "missing authorization header", err.Error())
+	assert.ErrorIs(s.T(), err, status.Error(codes.Unauthenticated, "missing authorization header"))
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	err := checkToken(context.Background(), map[string][]string{"authorization": {"BPOP "}}, *s.auth)
+	err := checkToken(context.Background(), []string{"BPOP "}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "not of type bearer or dpop", err.Error())
 }
@@ -126,7 +142,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "missing issuer", err.Error())
 }
@@ -141,7 +157,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "invalid issuer", err.Error())
 }
@@ -156,7 +172,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_INT_Value_Expect_Error()
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "missing issuer", err.Error())
 }
@@ -170,7 +186,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "claim \"aud\" not found", err.Error())
 }
@@ -185,7 +201,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "\"aud\" not satisfied", err.Error())
 }
@@ -200,7 +216,7 @@ func (s *AuthSuite) Test_CheckToken_When_ClientID_Missing_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "client id required", err.Error())
 }
@@ -216,7 +232,7 @@ func (s *AuthSuite) Test_CheckToken_When_ClientID_Invalid_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "invalid client id", err.Error())
 }
@@ -232,7 +248,7 @@ func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "invalid client id", err.Error())
 }
@@ -248,7 +264,7 @@ func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_INT_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "invalid client id", err.Error())
 }
@@ -264,7 +280,7 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_Expect_No_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("Bearer %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
 	assert.Nil(s.T(), err)
 }
 
@@ -279,6 +295,6 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_CID_Expect_No_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), map[string][]string{"authorization": {fmt.Sprintf("DPoP %s", string(signedTok))}}, *s.auth)
+	err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))}, *s.auth)
 	assert.Nil(s.T(), err)
 }

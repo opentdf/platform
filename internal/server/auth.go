@@ -87,6 +87,30 @@ func discoverIDP(ctx context.Context, issuer string) (*openidConfiguraton, error
 	return cfg, nil
 }
 
+// verifyTokenHandler is a http handler that verifies the token
+func (a authN) verifyTokenHandler(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			handler.ServeHTTP(w, r)
+			return
+		}
+		// Verify the token
+		header := r.Header["Authorization"]
+		if len(header) < 1 {
+			http.Error(w, "missing authorization header", http.StatusUnauthorized)
+			return
+		}
+		err := checkToken(r.Context(), header, a)
+		if err != nil {
+			slog.Warn("failed to validate token", slog.String("error", err.Error()))
+			http.Error(w, "unauthenticated", http.StatusUnauthorized)
+			return
+		}
+
+		handler.ServeHTTP(w, r)
+	})
+}
+
 // verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a authN) verifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
@@ -103,26 +127,26 @@ func (a authN) verifyTokenInterceptor(ctx context.Context, req any, info *grpc.U
 	}
 
 	// Verify the token
-	err := checkToken(ctx, md, a)
+	header := md["authorization"]
+	if len(header) < 1 {
+		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
+	}
+
+	err := checkToken(ctx, header, a)
 	if err != nil {
 		slog.Warn("failed to validate token", slog.String("error", err.Error()))
-		return nil, status.Errorf(codes.Unauthenticated, "invalid token")
+		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
 	return handler(ctx, req)
 }
 
 // checkToken is a helper function to verify the token.
-func checkToken(ctx context.Context, headers map[string][]string, auth authN) error {
+func checkToken(ctx context.Context, authHeader []string, auth authN) error {
 	var (
 		tokenRaw  string
 		tokenType string
 	)
-
-	authHeader := headers["authorization"]
-	if len(authHeader) < 1 {
-		return fmt.Errorf("missing authorization header")
-	}
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {

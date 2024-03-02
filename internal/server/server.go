@@ -48,7 +48,7 @@ type HTTPConfig struct {
 
 type AuthConfig struct {
 	Enabled   bool `yaml:"enabled" default:"true"`
-	IDPConfig `yaml:"-"`
+	IDPConfig `mapstructure:",squash"`
 }
 
 type IDPConfig struct {
@@ -105,28 +105,10 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
-	// Build interceptor chain
-	var interceptors []grpc.UnaryServerInterceptor
-
-	// Add authN interceptor
-	if config.Auth.Enabled {
-		authN, err := newAuthNInterceptor(config.Auth)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
-		}
-
-		interceptors = append(interceptors, authN.verifyTokenInterceptor)
-	}
-
-	// Add proto validation interceptor
-	interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
-
-	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(
-		interceptors...,
-	))
-
-	grpcServer := grpc.NewServer(
-		grpcOpts...,
+	// Build interceptor chain and handler chain
+	var (
+		interceptors []grpc.UnaryServerInterceptor
+		handler      http.Handler
 	)
 
 	grpcInprocess := &inProcessServer{
@@ -136,6 +118,39 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 
 	mux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
+	)
+
+	// Add authN interceptor
+	if config.Auth.Enabled {
+		authN, err := newAuthNInterceptor(config.Auth)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
+		}
+
+		interceptors = append(interceptors, authN.verifyTokenInterceptor)
+		handler = authN.verifyTokenHandler(mux)
+	}
+
+	// Add proto validation interceptor
+	interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
+
+	// Add CORS
+	// We need to make cors configurable
+	handler = cors.New(cors.Options{
+		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           maxAge,
+	}).Handler(handler)
+
+	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(
+		interceptors...,
+	))
+
+	grpcServer := grpc.NewServer(
+		grpcOpts...,
 	)
 
 	// Enable grpc reflection
@@ -149,14 +164,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 			WriteTimeout: writeTimeoutSeconds * time.Second,
 			ReadTimeout:  readTimeoutSeconds * time.Second,
 			// We need to make cors configurable
-			Handler: cors.New(cors.Options{
-				AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-				AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-				AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
-				ExposedHeaders:   []string{"Link"},
-				AllowCredentials: true,
-				MaxAge:           maxAge,
-			}).Handler(mux),
+			Handler:   handler,
 			TLSConfig: tlsConfig,
 		}
 	}

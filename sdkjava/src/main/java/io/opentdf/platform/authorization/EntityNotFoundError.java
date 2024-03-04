@@ -2,14 +2,14 @@
 // source: authorization/idp_plugin.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.idpplugin;
+package io.opentdf.platform.authorization;
 
 /**
- * Protobuf type {@code idpplugin.EntityNotFoundError}
+ * Protobuf type {@code authorization.EntityNotFoundError}
  */
 public final class EntityNotFoundError extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:idpplugin.EntityNotFoundError)
+    // @@protoc_insertion_point(message_implements:authorization.EntityNotFoundError)
     EntityNotFoundErrorOrBuilder {
 private static final long serialVersionUID = 0L;
   // Use EntityNotFoundError.newBuilder() to construct.
@@ -31,15 +31,15 @@ private static final long serialVersionUID = 0L;
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_EntityNotFoundError_descriptor;
+    return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_EntityNotFoundError_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_EntityNotFoundError_fieldAccessorTable
+    return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_EntityNotFoundError_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.opentdf.platform.idpplugin.EntityNotFoundError.class, io.opentdf.platform.idpplugin.EntityNotFoundError.Builder.class);
+            io.opentdf.platform.authorization.EntityNotFoundError.class, io.opentdf.platform.authorization.EntityNotFoundError.Builder.class);
   }
 
   public static final int USER_FIELD_NUMBER = 1;
@@ -213,10 +213,10 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.opentdf.platform.idpplugin.EntityNotFoundError)) {
+    if (!(obj instanceof io.opentdf.platform.authorization.EntityNotFoundError)) {
       return super.equals(obj);
     }
-    io.opentdf.platform.idpplugin.EntityNotFoundError other = (io.opentdf.platform.idpplugin.EntityNotFoundError) obj;
+    io.opentdf.platform.authorization.EntityNotFoundError other = (io.opentdf.platform.authorization.EntityNotFoundError) obj;
 
     if (!getUser()
         .equals(other.getUser())) return false;
@@ -248,44 +248,44 @@ private static final long serialVersionUID = 0L;
     return hash;
   }
 
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(byte[] data)
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(java.io.InputStream input)
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -293,26 +293,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseDelimitedFrom(java.io.InputStream input)
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseDelimitedFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError parseFrom(
+  public static io.opentdf.platform.authorization.EntityNotFoundError parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -325,7 +325,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.opentdf.platform.idpplugin.EntityNotFoundError prototype) {
+  public static Builder newBuilder(io.opentdf.platform.authorization.EntityNotFoundError prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -341,26 +341,26 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * Protobuf type {@code idpplugin.EntityNotFoundError}
+   * Protobuf type {@code authorization.EntityNotFoundError}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:idpplugin.EntityNotFoundError)
-      io.opentdf.platform.idpplugin.EntityNotFoundErrorOrBuilder {
+      // @@protoc_insertion_point(builder_implements:authorization.EntityNotFoundError)
+      io.opentdf.platform.authorization.EntityNotFoundErrorOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_EntityNotFoundError_descriptor;
+      return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_EntityNotFoundError_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_EntityNotFoundError_fieldAccessorTable
+      return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_EntityNotFoundError_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.opentdf.platform.idpplugin.EntityNotFoundError.class, io.opentdf.platform.idpplugin.EntityNotFoundError.Builder.class);
+              io.opentdf.platform.authorization.EntityNotFoundError.class, io.opentdf.platform.authorization.EntityNotFoundError.Builder.class);
     }
 
-    // Construct using io.opentdf.platform.idpplugin.EntityNotFoundError.newBuilder()
+    // Construct using io.opentdf.platform.authorization.EntityNotFoundError.newBuilder()
     private Builder() {
 
     }
@@ -389,17 +389,17 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_EntityNotFoundError_descriptor;
+      return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_EntityNotFoundError_descriptor;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.idpplugin.EntityNotFoundError getDefaultInstanceForType() {
-      return io.opentdf.platform.idpplugin.EntityNotFoundError.getDefaultInstance();
+    public io.opentdf.platform.authorization.EntityNotFoundError getDefaultInstanceForType() {
+      return io.opentdf.platform.authorization.EntityNotFoundError.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.opentdf.platform.idpplugin.EntityNotFoundError build() {
-      io.opentdf.platform.idpplugin.EntityNotFoundError result = buildPartial();
+    public io.opentdf.platform.authorization.EntityNotFoundError build() {
+      io.opentdf.platform.authorization.EntityNotFoundError result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -407,15 +407,15 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.idpplugin.EntityNotFoundError buildPartial() {
-      io.opentdf.platform.idpplugin.EntityNotFoundError result = new io.opentdf.platform.idpplugin.EntityNotFoundError(this);
+    public io.opentdf.platform.authorization.EntityNotFoundError buildPartial() {
+      io.opentdf.platform.authorization.EntityNotFoundError result = new io.opentdf.platform.authorization.EntityNotFoundError(this);
       buildPartialRepeatedFields(result);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartialRepeatedFields(io.opentdf.platform.idpplugin.EntityNotFoundError result) {
+    private void buildPartialRepeatedFields(io.opentdf.platform.authorization.EntityNotFoundError result) {
       if (detailsBuilder_ == null) {
         if (((bitField0_ & 0x00000004) != 0)) {
           details_ = java.util.Collections.unmodifiableList(details_);
@@ -427,7 +427,7 @@ private static final long serialVersionUID = 0L;
       }
     }
 
-    private void buildPartial0(io.opentdf.platform.idpplugin.EntityNotFoundError result) {
+    private void buildPartial0(io.opentdf.platform.authorization.EntityNotFoundError result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
         result.user_ = user_;
@@ -471,16 +471,16 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.opentdf.platform.idpplugin.EntityNotFoundError) {
-        return mergeFrom((io.opentdf.platform.idpplugin.EntityNotFoundError)other);
+      if (other instanceof io.opentdf.platform.authorization.EntityNotFoundError) {
+        return mergeFrom((io.opentdf.platform.authorization.EntityNotFoundError)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.opentdf.platform.idpplugin.EntityNotFoundError other) {
-      if (other == io.opentdf.platform.idpplugin.EntityNotFoundError.getDefaultInstance()) return this;
+    public Builder mergeFrom(io.opentdf.platform.authorization.EntityNotFoundError other) {
+      if (other == io.opentdf.platform.authorization.EntityNotFoundError.getDefaultInstance()) return this;
       if (!other.getUser().isEmpty()) {
         user_ = other.user_;
         bitField0_ |= 0x00000001;
@@ -979,16 +979,16 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:idpplugin.EntityNotFoundError)
+    // @@protoc_insertion_point(builder_scope:authorization.EntityNotFoundError)
   }
 
-  // @@protoc_insertion_point(class_scope:idpplugin.EntityNotFoundError)
-  private static final io.opentdf.platform.idpplugin.EntityNotFoundError DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:authorization.EntityNotFoundError)
+  private static final io.opentdf.platform.authorization.EntityNotFoundError DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.opentdf.platform.idpplugin.EntityNotFoundError();
+    DEFAULT_INSTANCE = new io.opentdf.platform.authorization.EntityNotFoundError();
   }
 
-  public static io.opentdf.platform.idpplugin.EntityNotFoundError getDefaultInstance() {
+  public static io.opentdf.platform.authorization.EntityNotFoundError getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
@@ -1024,7 +1024,7 @@ private static final long serialVersionUID = 0L;
   }
 
   @java.lang.Override
-  public io.opentdf.platform.idpplugin.EntityNotFoundError getDefaultInstanceForType() {
+  public io.opentdf.platform.authorization.EntityNotFoundError getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

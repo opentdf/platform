@@ -2,10 +2,10 @@
 // source: authorization/idp_plugin.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.idpplugin;
+package io.opentdf.platform.authorization;
 
 public interface IdpEntityOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:idpplugin.IdpEntity)
+    // @@protoc_insertion_point(interface_extends:authorization.IdpEntity)
     com.google.protobuf.MessageOrBuilder {
 
   /**
@@ -94,5 +94,5 @@ public interface IdpEntityOrBuilder extends
    */
   io.opentdf.platform.authorization.EntityCustomOrBuilder getCustomOrBuilder();
 
-  io.opentdf.platform.idpplugin.IdpEntity.EntityTypeCase getEntityTypeCase();
+  io.opentdf.platform.authorization.IdpEntity.EntityTypeCase getEntityTypeCase();
 }

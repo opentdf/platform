@@ -2,10 +2,10 @@
 // source: authorization/idp_plugin.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.idpplugin;
+package io.opentdf.platform.authorization;
 
 public interface IdpEntityRepresentationOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:idpplugin.IdpEntityRepresentation)
+    // @@protoc_insertion_point(interface_extends:authorization.IdpEntityRepresentation)
     com.google.protobuf.MessageOrBuilder {
 
   /**

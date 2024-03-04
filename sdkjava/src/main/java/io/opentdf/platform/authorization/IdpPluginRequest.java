@@ -2,7 +2,7 @@
 // source: authorization/idp_plugin.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.idpplugin;
+package io.opentdf.platform.authorization;
 
 /**
  * <pre>
@@ -22,11 +22,11 @@ package io.opentdf.platform.idpplugin;
  *}
  * </pre>
  *
- * Protobuf type {@code idpplugin.IdpPluginRequest}
+ * Protobuf type {@code authorization.IdpPluginRequest}
  */
 public final class IdpPluginRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:idpplugin.IdpPluginRequest)
+    // @@protoc_insertion_point(message_implements:authorization.IdpPluginRequest)
     IdpPluginRequestOrBuilder {
 private static final long serialVersionUID = 0L;
   // Use IdpPluginRequest.newBuilder() to construct.
@@ -46,54 +46,54 @@ private static final long serialVersionUID = 0L;
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_IdpPluginRequest_descriptor;
+    return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_IdpPluginRequest_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_IdpPluginRequest_fieldAccessorTable
+    return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_IdpPluginRequest_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.opentdf.platform.idpplugin.IdpPluginRequest.class, io.opentdf.platform.idpplugin.IdpPluginRequest.Builder.class);
+            io.opentdf.platform.authorization.IdpPluginRequest.class, io.opentdf.platform.authorization.IdpPluginRequest.Builder.class);
   }
 
   public static final int ENTITIES_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.idpplugin.IdpEntity> entities_;
+  private java.util.List<io.opentdf.platform.authorization.IdpEntity> entities_;
   /**
-   * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.idpplugin.IdpEntity> getEntitiesList() {
+  public java.util.List<io.opentdf.platform.authorization.IdpEntity> getEntitiesList() {
     return entities_;
   }
   /**
-   * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.idpplugin.IdpEntityOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.authorization.IdpEntityOrBuilder> 
       getEntitiesOrBuilderList() {
     return entities_;
   }
   /**
-   * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
   public int getEntitiesCount() {
     return entities_.size();
   }
   /**
-   * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.idpplugin.IdpEntity getEntities(int index) {
+  public io.opentdf.platform.authorization.IdpEntity getEntities(int index) {
     return entities_.get(index);
   }
   /**
-   * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.idpplugin.IdpEntityOrBuilder getEntitiesOrBuilder(
+  public io.opentdf.platform.authorization.IdpEntityOrBuilder getEntitiesOrBuilder(
       int index) {
     return entities_.get(index);
   }
@@ -138,10 +138,10 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.opentdf.platform.idpplugin.IdpPluginRequest)) {
+    if (!(obj instanceof io.opentdf.platform.authorization.IdpPluginRequest)) {
       return super.equals(obj);
     }
-    io.opentdf.platform.idpplugin.IdpPluginRequest other = (io.opentdf.platform.idpplugin.IdpPluginRequest) obj;
+    io.opentdf.platform.authorization.IdpPluginRequest other = (io.opentdf.platform.authorization.IdpPluginRequest) obj;
 
     if (!getEntitiesList()
         .equals(other.getEntitiesList())) return false;
@@ -165,44 +165,44 @@ private static final long serialVersionUID = 0L;
     return hash;
   }
 
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(byte[] data)
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(java.io.InputStream input)
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -210,26 +210,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseDelimitedFrom(java.io.InputStream input)
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseDelimitedFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest parseFrom(
+  public static io.opentdf.platform.authorization.IdpPluginRequest parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -242,7 +242,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.opentdf.platform.idpplugin.IdpPluginRequest prototype) {
+  public static Builder newBuilder(io.opentdf.platform.authorization.IdpPluginRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -275,26 +275,26 @@ private static final long serialVersionUID = 0L;
    *}
    * </pre>
    *
-   * Protobuf type {@code idpplugin.IdpPluginRequest}
+   * Protobuf type {@code authorization.IdpPluginRequest}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:idpplugin.IdpPluginRequest)
-      io.opentdf.platform.idpplugin.IdpPluginRequestOrBuilder {
+      // @@protoc_insertion_point(builder_implements:authorization.IdpPluginRequest)
+      io.opentdf.platform.authorization.IdpPluginRequestOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_IdpPluginRequest_descriptor;
+      return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_IdpPluginRequest_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_IdpPluginRequest_fieldAccessorTable
+      return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_IdpPluginRequest_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.opentdf.platform.idpplugin.IdpPluginRequest.class, io.opentdf.platform.idpplugin.IdpPluginRequest.Builder.class);
+              io.opentdf.platform.authorization.IdpPluginRequest.class, io.opentdf.platform.authorization.IdpPluginRequest.Builder.class);
     }
 
-    // Construct using io.opentdf.platform.idpplugin.IdpPluginRequest.newBuilder()
+    // Construct using io.opentdf.platform.authorization.IdpPluginRequest.newBuilder()
     private Builder() {
 
     }
@@ -321,17 +321,17 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.opentdf.platform.idpplugin.IdpPluginProto.internal_static_idpplugin_IdpPluginRequest_descriptor;
+      return io.opentdf.platform.authorization.IdpPluginProto.internal_static_authorization_IdpPluginRequest_descriptor;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.idpplugin.IdpPluginRequest getDefaultInstanceForType() {
-      return io.opentdf.platform.idpplugin.IdpPluginRequest.getDefaultInstance();
+    public io.opentdf.platform.authorization.IdpPluginRequest getDefaultInstanceForType() {
+      return io.opentdf.platform.authorization.IdpPluginRequest.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.opentdf.platform.idpplugin.IdpPluginRequest build() {
-      io.opentdf.platform.idpplugin.IdpPluginRequest result = buildPartial();
+    public io.opentdf.platform.authorization.IdpPluginRequest build() {
+      io.opentdf.platform.authorization.IdpPluginRequest result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -339,15 +339,15 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.idpplugin.IdpPluginRequest buildPartial() {
-      io.opentdf.platform.idpplugin.IdpPluginRequest result = new io.opentdf.platform.idpplugin.IdpPluginRequest(this);
+    public io.opentdf.platform.authorization.IdpPluginRequest buildPartial() {
+      io.opentdf.platform.authorization.IdpPluginRequest result = new io.opentdf.platform.authorization.IdpPluginRequest(this);
       buildPartialRepeatedFields(result);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartialRepeatedFields(io.opentdf.platform.idpplugin.IdpPluginRequest result) {
+    private void buildPartialRepeatedFields(io.opentdf.platform.authorization.IdpPluginRequest result) {
       if (entitiesBuilder_ == null) {
         if (((bitField0_ & 0x00000001) != 0)) {
           entities_ = java.util.Collections.unmodifiableList(entities_);
@@ -359,7 +359,7 @@ private static final long serialVersionUID = 0L;
       }
     }
 
-    private void buildPartial0(io.opentdf.platform.idpplugin.IdpPluginRequest result) {
+    private void buildPartial0(io.opentdf.platform.authorization.IdpPluginRequest result) {
       int from_bitField0_ = bitField0_;
     }
 
@@ -397,16 +397,16 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.opentdf.platform.idpplugin.IdpPluginRequest) {
-        return mergeFrom((io.opentdf.platform.idpplugin.IdpPluginRequest)other);
+      if (other instanceof io.opentdf.platform.authorization.IdpPluginRequest) {
+        return mergeFrom((io.opentdf.platform.authorization.IdpPluginRequest)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.opentdf.platform.idpplugin.IdpPluginRequest other) {
-      if (other == io.opentdf.platform.idpplugin.IdpPluginRequest.getDefaultInstance()) return this;
+    public Builder mergeFrom(io.opentdf.platform.authorization.IdpPluginRequest other) {
+      if (other == io.opentdf.platform.authorization.IdpPluginRequest.getDefaultInstance()) return this;
       if (entitiesBuilder_ == null) {
         if (!other.entities_.isEmpty()) {
           if (entities_.isEmpty()) {
@@ -460,9 +460,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.idpplugin.IdpEntity m =
+              io.opentdf.platform.authorization.IdpEntity m =
                   input.readMessage(
-                      io.opentdf.platform.idpplugin.IdpEntity.parser(),
+                      io.opentdf.platform.authorization.IdpEntity.parser(),
                       extensionRegistry);
               if (entitiesBuilder_ == null) {
                 ensureEntitiesIsMutable();
@@ -489,22 +489,22 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.idpplugin.IdpEntity> entities_ =
+    private java.util.List<io.opentdf.platform.authorization.IdpEntity> entities_ =
       java.util.Collections.emptyList();
     private void ensureEntitiesIsMutable() {
       if (!((bitField0_ & 0x00000001) != 0)) {
-        entities_ = new java.util.ArrayList<io.opentdf.platform.idpplugin.IdpEntity>(entities_);
+        entities_ = new java.util.ArrayList<io.opentdf.platform.authorization.IdpEntity>(entities_);
         bitField0_ |= 0x00000001;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.idpplugin.IdpEntity, io.opentdf.platform.idpplugin.IdpEntity.Builder, io.opentdf.platform.idpplugin.IdpEntityOrBuilder> entitiesBuilder_;
+        io.opentdf.platform.authorization.IdpEntity, io.opentdf.platform.authorization.IdpEntity.Builder, io.opentdf.platform.authorization.IdpEntityOrBuilder> entitiesBuilder_;
 
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public java.util.List<io.opentdf.platform.idpplugin.IdpEntity> getEntitiesList() {
+    public java.util.List<io.opentdf.platform.authorization.IdpEntity> getEntitiesList() {
       if (entitiesBuilder_ == null) {
         return java.util.Collections.unmodifiableList(entities_);
       } else {
@@ -512,7 +512,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public int getEntitiesCount() {
       if (entitiesBuilder_ == null) {
@@ -522,9 +522,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.idpplugin.IdpEntity getEntities(int index) {
+    public io.opentdf.platform.authorization.IdpEntity getEntities(int index) {
       if (entitiesBuilder_ == null) {
         return entities_.get(index);
       } else {
@@ -532,10 +532,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public Builder setEntities(
-        int index, io.opentdf.platform.idpplugin.IdpEntity value) {
+        int index, io.opentdf.platform.authorization.IdpEntity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -549,10 +549,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public Builder setEntities(
-        int index, io.opentdf.platform.idpplugin.IdpEntity.Builder builderForValue) {
+        int index, io.opentdf.platform.authorization.IdpEntity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.set(index, builderForValue.build());
@@ -563,9 +563,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public Builder addEntities(io.opentdf.platform.idpplugin.IdpEntity value) {
+    public Builder addEntities(io.opentdf.platform.authorization.IdpEntity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -579,10 +579,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        int index, io.opentdf.platform.idpplugin.IdpEntity value) {
+        int index, io.opentdf.platform.authorization.IdpEntity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -596,10 +596,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        io.opentdf.platform.idpplugin.IdpEntity.Builder builderForValue) {
+        io.opentdf.platform.authorization.IdpEntity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.add(builderForValue.build());
@@ -610,10 +610,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        int index, io.opentdf.platform.idpplugin.IdpEntity.Builder builderForValue) {
+        int index, io.opentdf.platform.authorization.IdpEntity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.add(index, builderForValue.build());
@@ -624,10 +624,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public Builder addAllEntities(
-        java.lang.Iterable<? extends io.opentdf.platform.idpplugin.IdpEntity> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.authorization.IdpEntity> values) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -639,7 +639,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public Builder clearEntities() {
       if (entitiesBuilder_ == null) {
@@ -652,7 +652,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
     public Builder removeEntities(int index) {
       if (entitiesBuilder_ == null) {
@@ -665,16 +665,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.idpplugin.IdpEntity.Builder getEntitiesBuilder(
+    public io.opentdf.platform.authorization.IdpEntity.Builder getEntitiesBuilder(
         int index) {
       return getEntitiesFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.idpplugin.IdpEntityOrBuilder getEntitiesOrBuilder(
+    public io.opentdf.platform.authorization.IdpEntityOrBuilder getEntitiesOrBuilder(
         int index) {
       if (entitiesBuilder_ == null) {
         return entities_.get(index);  } else {
@@ -682,9 +682,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.idpplugin.IdpEntityOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.authorization.IdpEntityOrBuilder> 
          getEntitiesOrBuilderList() {
       if (entitiesBuilder_ != null) {
         return entitiesBuilder_.getMessageOrBuilderList();
@@ -693,33 +693,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.idpplugin.IdpEntity.Builder addEntitiesBuilder() {
+    public io.opentdf.platform.authorization.IdpEntity.Builder addEntitiesBuilder() {
       return getEntitiesFieldBuilder().addBuilder(
-          io.opentdf.platform.idpplugin.IdpEntity.getDefaultInstance());
+          io.opentdf.platform.authorization.IdpEntity.getDefaultInstance());
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.idpplugin.IdpEntity.Builder addEntitiesBuilder(
+    public io.opentdf.platform.authorization.IdpEntity.Builder addEntitiesBuilder(
         int index) {
       return getEntitiesFieldBuilder().addBuilder(
-          index, io.opentdf.platform.idpplugin.IdpEntity.getDefaultInstance());
+          index, io.opentdf.platform.authorization.IdpEntity.getDefaultInstance());
     }
     /**
-     * <code>repeated .idpplugin.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
      */
-    public java.util.List<io.opentdf.platform.idpplugin.IdpEntity.Builder> 
+    public java.util.List<io.opentdf.platform.authorization.IdpEntity.Builder> 
          getEntitiesBuilderList() {
       return getEntitiesFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.idpplugin.IdpEntity, io.opentdf.platform.idpplugin.IdpEntity.Builder, io.opentdf.platform.idpplugin.IdpEntityOrBuilder> 
+        io.opentdf.platform.authorization.IdpEntity, io.opentdf.platform.authorization.IdpEntity.Builder, io.opentdf.platform.authorization.IdpEntityOrBuilder> 
         getEntitiesFieldBuilder() {
       if (entitiesBuilder_ == null) {
         entitiesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.idpplugin.IdpEntity, io.opentdf.platform.idpplugin.IdpEntity.Builder, io.opentdf.platform.idpplugin.IdpEntityOrBuilder>(
+            io.opentdf.platform.authorization.IdpEntity, io.opentdf.platform.authorization.IdpEntity.Builder, io.opentdf.platform.authorization.IdpEntityOrBuilder>(
                 entities_,
                 ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),
@@ -741,16 +741,16 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:idpplugin.IdpPluginRequest)
+    // @@protoc_insertion_point(builder_scope:authorization.IdpPluginRequest)
   }
 
-  // @@protoc_insertion_point(class_scope:idpplugin.IdpPluginRequest)
-  private static final io.opentdf.platform.idpplugin.IdpPluginRequest DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:authorization.IdpPluginRequest)
+  private static final io.opentdf.platform.authorization.IdpPluginRequest DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.opentdf.platform.idpplugin.IdpPluginRequest();
+    DEFAULT_INSTANCE = new io.opentdf.platform.authorization.IdpPluginRequest();
   }
 
-  public static io.opentdf.platform.idpplugin.IdpPluginRequest getDefaultInstance() {
+  public static io.opentdf.platform.authorization.IdpPluginRequest getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
@@ -786,7 +786,7 @@ private static final long serialVersionUID = 0L;
   }
 
   @java.lang.Override
-  public io.opentdf.platform.idpplugin.IdpPluginRequest getDefaultInstanceForType() {
+  public io.opentdf.platform.authorization.IdpPluginRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

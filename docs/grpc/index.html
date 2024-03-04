@@ -297,23 +297,23 @@
             <ul>
               
                 <li>
-                  <a href="#idpplugin.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
+                  <a href="#authorization.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
                 </li>
               
                 <li>
-                  <a href="#idpplugin.IdpEntity"><span class="badge">M</span>IdpEntity</a>
+                  <a href="#authorization.IdpEntity"><span class="badge">M</span>IdpEntity</a>
                 </li>
               
                 <li>
-                  <a href="#idpplugin.IdpEntityRepresentation"><span class="badge">M</span>IdpEntityRepresentation</a>
+                  <a href="#authorization.IdpEntityRepresentation"><span class="badge">M</span>IdpEntityRepresentation</a>
                 </li>
               
                 <li>
-                  <a href="#idpplugin.IdpPluginRequest"><span class="badge">M</span>IdpPluginRequest</a>
+                  <a href="#authorization.IdpPluginRequest"><span class="badge">M</span>IdpPluginRequest</a>
                 </li>
               
                 <li>
-                  <a href="#idpplugin.IdpPluginResponse"><span class="badge">M</span>IdpPluginResponse</a>
+                  <a href="#authorization.IdpPluginResponse"><span class="badge">M</span>IdpPluginResponse</a>
                 </li>
               
               
@@ -1692,7 +1692,7 @@
       <p></p>
 
       
-        <h3 id="idpplugin.EntityNotFoundError">EntityNotFoundError</h3>
+        <h3 id="authorization.EntityNotFoundError">EntityNotFoundError</h3>
         <p></p>
 
         
@@ -1730,7 +1730,7 @@
 
         
       
-        <h3 id="idpplugin.IdpEntity">IdpEntity</h3>
+        <h3 id="authorization.IdpEntity">IdpEntity</h3>
         <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
 
         
@@ -1770,7 +1770,7 @@
               
                 <tr>
                   <td>custom</td>
-                  <td><a href="#authorization.EntityCustom">authorization.EntityCustom</a></td>
+                  <td><a href="#authorization.EntityCustom">EntityCustom</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -1782,7 +1782,7 @@
 
         
       
-        <h3 id="idpplugin.IdpEntityRepresentation">IdpEntityRepresentation</h3>
+        <h3 id="authorization.IdpEntityRepresentation">IdpEntityRepresentation</h3>
         <p></p>
 
         
@@ -1813,7 +1813,7 @@
 
         
       
-        <h3 id="idpplugin.IdpPluginRequest">IdpPluginRequest</h3>
+        <h3 id="authorization.IdpPluginRequest">IdpPluginRequest</h3>
         <p>Example: Get idp attributes for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
 
         
@@ -1825,7 +1825,7 @@
               
                 <tr>
                   <td>entities</td>
-                  <td><a href="#idpplugin.IdpEntity">IdpEntity</a></td>
+                  <td><a href="#authorization.IdpEntity">IdpEntity</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -1837,7 +1837,7 @@
 
         
       
-        <h3 id="idpplugin.IdpPluginResponse">IdpPluginResponse</h3>
+        <h3 id="authorization.IdpPluginResponse">IdpPluginResponse</h3>
         <p>Example: Get idp attributes for bob and alice</p><p>{</p><p>"entity_representations": [</p><p>{</p><p>"idp_entity_id": "e1",</p><p>"additional_props": {"someAttr1":"someValue1"}</p><p>},</p><p>{</p><p>"idp_entity_id": "e2",</p><p>"additional_props": {"someAttr2":"someValue2"}</p><p>}</p><p>]</p><p>}</p>
 
         
@@ -1849,7 +1849,7 @@
               
                 <tr>
                   <td>entity_representations</td>
-                  <td><a href="#idpplugin.IdpEntityRepresentation">IdpEntityRepresentation</a></td>
+                  <td><a href="#authorization.IdpEntityRepresentation">IdpEntityRepresentation</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>

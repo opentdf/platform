@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package idpplugin;
+package authorization;
 
 import "authorization/authorization.proto";
 import "google/protobuf/struct.proto";

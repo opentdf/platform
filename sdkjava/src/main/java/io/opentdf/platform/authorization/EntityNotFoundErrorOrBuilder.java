@@ -2,10 +2,10 @@
 // source: authorization/idp_plugin.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.idpplugin;
+package io.opentdf.platform.authorization;
 
 public interface EntityNotFoundErrorOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:idpplugin.EntityNotFoundError)
+    // @@protoc_insertion_point(interface_extends:authorization.EntityNotFoundError)
     com.google.protobuf.MessageOrBuilder {
 
   /**

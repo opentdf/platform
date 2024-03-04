@@ -42,8 +42,8 @@ message IdpPluginRequest {
 
 
 message IdpEntityRepresentation {
-  google.protobuf.Struct additional_props = 1;
-  string idp_entity_id = 2; // ephemeral entity id from the request
+  repeated google.protobuf.Struct additional_props = 1;
+  string original_id = 2; // ephemeral entity id from the request
 }
 
 

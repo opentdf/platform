@@ -487,25 +487,6 @@
         
           
           <li>
-            <a href="#entity%2fentity.proto">entity/entity.proto</a>
-            <ul>
-              
-                <li>
-                  <a href="#entity.Entity"><span class="badge">M</span>Entity</a>
-                </li>
-              
-                <li>
-                  <a href="#entity.EntityCustom"><span class="badge">M</span>EntityCustom</a>
-                </li>
-              
-              
-              
-              
-            </ul>
-          </li>
-        
-          
-          <li>
             <a href="#authorization%2fauthorization.proto">authorization/authorization.proto</a>
             <ul>
               
@@ -522,7 +503,15 @@
                 </li>
               
                 <li>
+                  <a href="#authorization.Entity"><span class="badge">M</span>Entity</a>
+                </li>
+              
+                <li>
                   <a href="#authorization.EntityChain"><span class="badge">M</span>EntityChain</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.EntityCustom"><span class="badge">M</span>EntityCustom</a>
                 </li>
               
                 <li>
@@ -569,23 +558,27 @@
         
           
           <li>
-            <a href="#authorization%2fidpaddon%2fidp_add_on.proto">authorization/idpaddon/idp_add_on.proto</a>
+            <a href="#authorization%2fidp_plugin.proto">authorization/idp_plugin.proto</a>
             <ul>
               
                 <li>
-                  <a href="#authorization.idpaddon.IdpAddOnRequest"><span class="badge">M</span>IdpAddOnRequest</a>
+                  <a href="#authorization.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
                 </li>
               
                 <li>
-                  <a href="#authorization.idpaddon.IdpAddOnResponse"><span class="badge">M</span>IdpAddOnResponse</a>
+                  <a href="#authorization.IdpEntity"><span class="badge">M</span>IdpEntity</a>
                 </li>
               
                 <li>
-                  <a href="#authorization.idpaddon.IdpEntityRepresentation"><span class="badge">M</span>IdpEntityRepresentation</a>
+                  <a href="#authorization.IdpEntityRepresentation"><span class="badge">M</span>IdpEntityRepresentation</a>
                 </li>
               
                 <li>
-                  <a href="#authorization.idpaddon.IdpEntityRepresentation.AdditionalPropsEntry"><span class="badge">M</span>IdpEntityRepresentation.AdditionalPropsEntry</a>
+                  <a href="#authorization.IdpPluginRequest"><span class="badge">M</span>IdpPluginRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.IdpPluginResponse"><span class="badge">M</span>IdpPluginResponse</a>
                 </li>
               
               
@@ -3439,110 +3432,6 @@ Example Response:
     
       
       <div class="file-heading">
-        <h2 id="entity/entity.proto">entity/entity.proto</h2><a href="#title">Top</a>
-      </div>
-      <p></p>
-
-      
-        <h3 id="entity.Entity">Entity</h3>
-        <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral id for tracking between request and response </p></td>
-                </tr>
-              
-                <tr>
-                  <td>email_address</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>user_name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>remote_claims_url</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>jwt</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>claims</td>
-                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>custom</td>
-                  <td><a href="#entity.EntityCustom">EntityCustom</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entity.EntityCustom">EntityCustom</h3>
-        <p>Entity type for custom entities beyond the standard types</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>extension</td>
-                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-
-      
-
-      
-
-      
-    
-      
-      <div class="file-heading">
         <h2 id="authorization/authorization.proto">authorization/authorization.proto</h2><a href="#title">Top</a>
       </div>
       <p></p>
@@ -3669,6 +3558,72 @@ Example Response:
 
         
       
+        <h3 id="authorization.Entity">Entity</h3>
+        <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>email_address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>user_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>remote_claims_url</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>jwt</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>claims</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>custom</td>
+                  <td><a href="#authorization.EntityCustom">EntityCustom</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="authorization.EntityChain">EntityChain</h3>
         <p>A set of related PE and NPE</p>
 
@@ -3688,8 +3643,32 @@ Example Response:
               
                 <tr>
                   <td>entities</td>
-                  <td><a href="#entity.Entity">entity.Entity</a></td>
+                  <td><a href="#authorization.Entity">Entity</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.EntityCustom">EntityCustom</h3>
+        <p>Entity type for custom entities beyond the standard types</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>extension</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -3791,7 +3770,7 @@ Example Response:
               
                 <tr>
                   <td>entities</td>
-                  <td><a href="#entity.Entity">entity.Entity</a></td>
+                  <td><a href="#authorization.Entity">Entity</a></td>
                   <td>repeated</td>
                   <td><p>list of requested entities </p></td>
                 </tr>
@@ -3996,36 +3975,12 @@ Example Response:
     
       
       <div class="file-heading">
-        <h2 id="authorization/idpaddon/idp_add_on.proto">authorization/idpaddon/idp_add_on.proto</h2><a href="#title">Top</a>
+        <h2 id="authorization/idp_plugin.proto">authorization/idp_plugin.proto</h2><a href="#title">Top</a>
       </div>
       <p></p>
 
       
-        <h3 id="authorization.idpaddon.IdpAddOnRequest">IdpAddOnRequest</h3>
-        <p>Example: Get idp attributes for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>entities</td>
-                  <td><a href="#entity.Entity">entity.Entity</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="authorization.idpaddon.IdpAddOnResponse">IdpAddOnResponse</h3>
+        <h3 id="authorization.EntityNotFoundError">EntityNotFoundError</h3>
         <p></p>
 
         
@@ -4036,8 +3991,22 @@ Example Response:
             <tbody>
               
                 <tr>
-                  <td>entity_representations</td>
-                  <td><a href="#authorization.idpaddon.IdpEntityRepresentation">IdpEntityRepresentation</a></td>
+                  <td>user</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>message</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>details</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -4049,7 +4018,59 @@ Example Response:
 
         
       
-        <h3 id="authorization.idpaddon.IdpEntityRepresentation">IdpEntityRepresentation</h3>
+        <h3 id="authorization.IdpEntity">IdpEntity</h3>
+        <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>email_address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>user_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>jwt</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>custom</td>
+                  <td><a href="#authorization.EntityCustom">EntityCustom</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.IdpEntityRepresentation">IdpEntityRepresentation</h3>
         <p></p>
 
         
@@ -4061,15 +4082,39 @@ Example Response:
               
                 <tr>
                   <td>additional_props</td>
-                  <td><a href="#authorization.idpaddon.IdpEntityRepresentation.AdditionalPropsEntry">IdpEntityRepresentation.AdditionalPropsEntry</a></td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>entity</td>
-                  <td><a href="#entity.Entity">entity.Entity</a></td>
+                  <td>original_id</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
+                  <td><p>ephemeral entity id from the request </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.IdpPluginRequest">IdpPluginRequest</h3>
+        <p>Example: Get idp attributes for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#authorization.IdpEntity">IdpEntity</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -4080,8 +4125,8 @@ Example Response:
 
         
       
-        <h3 id="authorization.idpaddon.IdpEntityRepresentation.AdditionalPropsEntry">IdpEntityRepresentation.AdditionalPropsEntry</h3>
-        <p></p>
+        <h3 id="authorization.IdpPluginResponse">IdpPluginResponse</h3>
+        <p>Example: Get idp attributes for bob and alice</p><p>{</p><p>"entity_representations": [</p><p>{</p><p>"idp_entity_id": "e1",</p><p>"additional_props": {"someAttr1":"someValue1"}</p><p>},</p><p>{</p><p>"idp_entity_id": "e2",</p><p>"additional_props": {"someAttr2":"someValue2"}</p><p>}</p><p>]</p><p>}</p>
 
         
           <table class="field-table">
@@ -4091,16 +4136,9 @@ Example Response:
             <tbody>
               
                 <tr>
-                  <td>key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
+                  <td>entity_representations</td>
+                  <td><a href="#authorization.IdpEntityRepresentation">IdpEntityRepresentation</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               

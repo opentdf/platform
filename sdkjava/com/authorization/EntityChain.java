@@ -94,41 +94,41 @@ private static final long serialVersionUID = 0L;
 
   public static final int ENTITIES_FIELD_NUMBER = 2;
   @SuppressWarnings("serial")
-  private java.util.List<com.entity.Entity> entities_;
+  private java.util.List<com.authorization.Entity> entities_;
   /**
-   * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public java.util.List<com.entity.Entity> getEntitiesList() {
+  public java.util.List<com.authorization.Entity> getEntitiesList() {
     return entities_;
   }
   /**
-   * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends com.entity.EntityOrBuilder> 
+  public java.util.List<? extends com.authorization.EntityOrBuilder> 
       getEntitiesOrBuilderList() {
     return entities_;
   }
   /**
-   * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
    */
   @java.lang.Override
   public int getEntitiesCount() {
     return entities_.size();
   }
   /**
-   * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public com.entity.Entity getEntities(int index) {
+  public com.authorization.Entity getEntities(int index) {
     return entities_.get(index);
   }
   /**
-   * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public com.entity.EntityOrBuilder getEntitiesOrBuilder(
+  public com.authorization.EntityOrBuilder getEntitiesOrBuilder(
       int index) {
     return entities_.get(index);
   }
@@ -506,9 +506,9 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 10
             case 18: {
-              com.entity.Entity m =
+              com.authorization.Entity m =
                   input.readMessage(
-                      com.entity.Entity.parser(),
+                      com.authorization.Entity.parser(),
                       extensionRegistry);
               if (entitiesBuilder_ == null) {
                 ensureEntitiesIsMutable();
@@ -627,22 +627,22 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private java.util.List<com.entity.Entity> entities_ =
+    private java.util.List<com.authorization.Entity> entities_ =
       java.util.Collections.emptyList();
     private void ensureEntitiesIsMutable() {
       if (!((bitField0_ & 0x00000002) != 0)) {
-        entities_ = new java.util.ArrayList<com.entity.Entity>(entities_);
+        entities_ = new java.util.ArrayList<com.authorization.Entity>(entities_);
         bitField0_ |= 0x00000002;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        com.entity.Entity, com.entity.Entity.Builder, com.entity.EntityOrBuilder> entitiesBuilder_;
+        com.authorization.Entity, com.authorization.Entity.Builder, com.authorization.EntityOrBuilder> entitiesBuilder_;
 
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public java.util.List<com.entity.Entity> getEntitiesList() {
+    public java.util.List<com.authorization.Entity> getEntitiesList() {
       if (entitiesBuilder_ == null) {
         return java.util.Collections.unmodifiableList(entities_);
       } else {
@@ -650,7 +650,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public int getEntitiesCount() {
       if (entitiesBuilder_ == null) {
@@ -660,9 +660,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public com.entity.Entity getEntities(int index) {
+    public com.authorization.Entity getEntities(int index) {
       if (entitiesBuilder_ == null) {
         return entities_.get(index);
       } else {
@@ -670,10 +670,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public Builder setEntities(
-        int index, com.entity.Entity value) {
+        int index, com.authorization.Entity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -687,10 +687,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public Builder setEntities(
-        int index, com.entity.Entity.Builder builderForValue) {
+        int index, com.authorization.Entity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.set(index, builderForValue.build());
@@ -701,9 +701,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public Builder addEntities(com.entity.Entity value) {
+    public Builder addEntities(com.authorization.Entity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -717,10 +717,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        int index, com.entity.Entity value) {
+        int index, com.authorization.Entity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -734,10 +734,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        com.entity.Entity.Builder builderForValue) {
+        com.authorization.Entity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.add(builderForValue.build());
@@ -748,10 +748,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        int index, com.entity.Entity.Builder builderForValue) {
+        int index, com.authorization.Entity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.add(index, builderForValue.build());
@@ -762,10 +762,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public Builder addAllEntities(
-        java.lang.Iterable<? extends com.entity.Entity> values) {
+        java.lang.Iterable<? extends com.authorization.Entity> values) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -777,7 +777,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public Builder clearEntities() {
       if (entitiesBuilder_ == null) {
@@ -790,7 +790,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
     public Builder removeEntities(int index) {
       if (entitiesBuilder_ == null) {
@@ -803,16 +803,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public com.entity.Entity.Builder getEntitiesBuilder(
+    public com.authorization.Entity.Builder getEntitiesBuilder(
         int index) {
       return getEntitiesFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public com.entity.EntityOrBuilder getEntitiesOrBuilder(
+    public com.authorization.EntityOrBuilder getEntitiesOrBuilder(
         int index) {
       if (entitiesBuilder_ == null) {
         return entities_.get(index);  } else {
@@ -820,9 +820,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public java.util.List<? extends com.entity.EntityOrBuilder> 
+    public java.util.List<? extends com.authorization.EntityOrBuilder> 
          getEntitiesOrBuilderList() {
       if (entitiesBuilder_ != null) {
         return entitiesBuilder_.getMessageOrBuilderList();
@@ -831,33 +831,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public com.entity.Entity.Builder addEntitiesBuilder() {
+    public com.authorization.Entity.Builder addEntitiesBuilder() {
       return getEntitiesFieldBuilder().addBuilder(
-          com.entity.Entity.getDefaultInstance());
+          com.authorization.Entity.getDefaultInstance());
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public com.entity.Entity.Builder addEntitiesBuilder(
+    public com.authorization.Entity.Builder addEntitiesBuilder(
         int index) {
       return getEntitiesFieldBuilder().addBuilder(
-          index, com.entity.Entity.getDefaultInstance());
+          index, com.authorization.Entity.getDefaultInstance());
     }
     /**
-     * <code>repeated .entity.Entity entities = 2 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 2 [json_name = "entities"];</code>
      */
-    public java.util.List<com.entity.Entity.Builder> 
+    public java.util.List<com.authorization.Entity.Builder> 
          getEntitiesBuilderList() {
       return getEntitiesFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        com.entity.Entity, com.entity.Entity.Builder, com.entity.EntityOrBuilder> 
+        com.authorization.Entity, com.authorization.Entity.Builder, com.authorization.EntityOrBuilder> 
         getEntitiesFieldBuilder() {
       if (entitiesBuilder_ == null) {
         entitiesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            com.entity.Entity, com.entity.Entity.Builder, com.entity.EntityOrBuilder>(
+            com.authorization.Entity, com.authorization.Entity.Builder, com.authorization.EntityOrBuilder>(
                 entities_,
                 ((bitField0_ & 0x00000002) != 0),
                 getParentForChildren(),

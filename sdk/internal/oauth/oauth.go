@@ -126,7 +126,6 @@ func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials Cli
 	}
 
 	return processResponse(resp)
-
 }
 
 func processResponse(resp *http.Response) (*oauth2.Token, error) {
@@ -171,7 +170,7 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 		return "", err
 	}
 
-	//Protected headers
+	// Protected headers
 	headers := jws.NewHeaders()
 	err = headers.Set("jwk", publicKey)
 	if err != nil {

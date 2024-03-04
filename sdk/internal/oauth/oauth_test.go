@@ -44,7 +44,7 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	}
 
 	dpopJWK, err := jwk.FromRaw(dpopKey)
-	assert.NoError(t, err) 
+	assert.NoError(t, err)
 	assert.NoError(t, dpopJWK.Set("use", "sig"))
 	assert.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
@@ -118,7 +118,6 @@ func TestClientSecretNoNonce(t *testing.T) {
 
 		w.Header().Add("content-type", "application/json")
 		w.Write(responseBytes)
-
 	}))
 	defer server.Close()
 
@@ -189,7 +188,6 @@ func TestClientSecretWithNonce(t *testing.T) {
 
 		w.Header().Add("content-type", "application/json")
 		w.Write(responseBytes)
-
 	}))
 	defer server.Close()
 
@@ -277,7 +275,6 @@ func TestSignedJWTWithNonce(t *testing.T) {
 
 		w.Header().Add("content-type", "application/json")
 		w.Write(responseBytes)
-
 	}))
 	defer server.Close()
 

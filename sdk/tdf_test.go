@@ -278,7 +278,7 @@ func init() {
 	}
 }
 
-func TestSimpleTDF(t *testing.T) { //nolint:gocognit
+func TestSimpleTDF(t *testing.T) { 
 	serverURL, closer, sdk := runKas()
 	defer closer()
 

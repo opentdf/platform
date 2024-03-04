@@ -715,6 +715,10 @@
     "subjectmappingSubjectConditionSetUpdate": {
       "type": "object",
       "properties": {
+        "updatedName": {
+          "type": "string",
+          "title": "an optional name for ease of reference"
+        },
         "updatedMetadata": {
           "$ref": "#/definitions/commonMetadataMutable"
         },
@@ -741,13 +745,9 @@
           "$ref": "#/definitions/policyattributesValue",
           "title": "the Attribute Value mapped to; aka: \"The Entity Entitlement Attribute\""
         },
-        "subjectConditionSets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/subjectmappingSubjectConditionSet"
-          },
-          "title": "the reusable SubjectConditionSets mapped to the given Attribute Value"
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet",
+          "title": "the reusable SubjectConditionSet mapped to the given Attribute Value"
         },
         "actions": {
           "type": "array",
@@ -771,20 +771,13 @@
           "type": "string",
           "title": "Attribute Value to be mapped to"
         },
-        "existingSubjectConditionSetIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)"
+        "existingSubjectConditionSetId": {
+          "type": "string",
+          "title": "Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)"
         },
-        "newSubjectConditionSets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/subjectmappingSubjectConditionSet"
-          },
-          "title": "Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)"
+        "newSubjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSetCreate",
+          "title": "Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)"
         },
         "actions": {
           "type": "array",
@@ -809,17 +802,14 @@
     "subjectmappingSubjectMappingUpdate": {
       "type": "object",
       "properties": {
-        "updatedMetadata": {
+        "updateMetadata": {
           "$ref": "#/definitions/commonMetadataMutable"
         },
-        "updatedSubjectConditionSetIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Replaces entire list of existing SubjectConditionSet ids"
+        "updateSubjectConditionSetId": {
+          "type": "string",
+          "title": "Replaces the existing SubjectConditionSet id with a new one"
         },
-        "udpatedActions": {
+        "updateActions": {
           "type": "array",
           "items": {
             "type": "object",
@@ -857,7 +847,8 @@
         "subjectMapping": {
           "$ref": "#/definitions/subjectmappingSubjectMapping"
         }
-      }
+      },
+      "title": "`{\"subject_mapping\":{\"updated_metadata\": {\"labels\": {\"name\": \"new-name\"}}}}`\n'{\"subject_mapping\":{//everything}}'"
     }
   }
 }

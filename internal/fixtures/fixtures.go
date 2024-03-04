@@ -53,18 +53,12 @@ type FixtureDataAttributeValueKeyAccessServer struct {
 }
 
 type FixtureDataSubjectMapping struct {
-	Id                          string   `yaml:"id"`
-	AttributeValueId            string   `yaml:"attribute_value_id"`
-	Actions                     []struct{
+	Id               string `yaml:"id"`
+	AttributeValueId string `yaml:"attribute_value_id"`
+	Actions          []struct {
 		Standard string `yaml:"standard" json:"standard,omitempty"`
 		Custom   string `yaml:"custom" json:"custom,omitempty"`
 	} `yaml:"actions"`
-	SubjectConditionSetPivotIds []string `yaml:"subject_condition_set_pivot_ids"`
-}
-
-type FixtureSubjectMappingConditionSetPivot struct {
-	Id                    string `yaml:"id"`
-	SubjectMappingId      string `yaml:"subject_mapping_id"`
 	SubjectConditionSetId string `yaml:"subject_condition_set_id"`
 }
 
@@ -119,10 +113,6 @@ type FixtureData struct {
 		Metadata FixtureMetadata                      `yaml:"metadata"`
 		Data     map[string]FixtureDataSubjectMapping `yaml:"data"`
 	} `yaml:"subject_mappings"`
-	SubjectMappingConditionSetPivot struct {
-		Metadata FixtureMetadata                                   `yaml:"metadata"`
-		Data     map[string]FixtureSubjectMappingConditionSetPivot `yaml:"data"`
-	} `yaml:"subject_mapping_condition_set_pivot"`
 	SubjectConditionSet struct {
 		Metadata FixtureMetadata                `yaml:"metadata"`
 		Data     map[string]SubjectConditionSet `yaml:"data"`
@@ -222,12 +212,10 @@ func (f *Fixtures) Provision() {
 	a := f.provisionAttribute()
 	slog.Info("📦 provisioning attribute value data")
 	aV := f.provisionAttributeValues()
-	slog.Info("📦 provisioning subject mapping data")
-	sM := f.provisionSubjectMappings()
 	slog.Info("📦 provisioning subject condition set data")
 	sc := f.provisionSubjectConditionSet()
-	slog.Info("📦 provisioning subject mapping condition set pivot data")
-	smPivot := f.provisionSubjectMappingConditionSetPivot()
+	slog.Info("📦 provisioning subject mapping data")
+	sM := f.provisionSubjectMappings()
 	slog.Info("📦 provisioning resource mapping data")
 	rM := f.provisionResourceMappings()
 	slog.Info("📦 provisioning kas registry data")
@@ -242,7 +230,6 @@ func (f *Fixtures) Provision() {
 		slog.Int64("attributes", a),
 		slog.Int64("attribute_values", aV),
 		slog.Int64("subject_mappings", sM),
-		slog.Int64("subject_mapping_condition_set_pivot", smPivot),
 		slog.Int64("subject_condition_set", sc),
 		slog.Int64("resource_mappings", rM),
 		slog.Int64("kas_registry", kas),
@@ -304,38 +291,6 @@ func (f *Fixtures) provisionAttributeValues() int64 {
 	return f.provision(fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionSubjectMappings() int64 {
-	values := make([][]string, 0, len(fixtureData.SubjectMappings.Data))
-	for _, d := range fixtureData.SubjectMappings.Data {
-		var actionsJSON []byte
-		actionsJSON, err := json.Marshal(d.Actions)
-		if err != nil {
-			slog.Error("⛔️ 📦 issue with subject mapping actions JSON - check fixtures.yaml for issues")
-			panic("issue with subject mapping actions JSON")
-		}
-
-		values = append(values, []string{
-			f.db.StringWrap(d.Id),
-			f.db.UUIDWrap(d.AttributeValueId),
-			f.db.StringWrap(string(actionsJSON)),
-			f.db.UUIDArrayWrap(d.SubjectConditionSetPivotIds),
-		})
-	}
-	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
-}
-
-func (f *Fixtures) provisionSubjectMappingConditionSetPivot() int64 {
-	values := make([][]string, 0, len(fixtureData.SubjectMappingConditionSetPivot.Data))
-	for _, d := range fixtureData.SubjectMappingConditionSetPivot.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.SubjectMappingId),
-			f.db.StringWrap(d.SubjectConditionSetId),
-		})
-	}
-	return f.provision(fixtureData.SubjectMappingConditionSetPivot.Metadata.TableName, fixtureData.SubjectMappingConditionSetPivot.Metadata.Columns, values)
-}
-
 func (f *Fixtures) provisionSubjectConditionSet() int64 {
 	values := make([][]string, 0, len(fixtureData.SubjectConditionSet.Data))
 	for _, d := range fixtureData.SubjectConditionSet.Data {
@@ -353,6 +308,26 @@ func (f *Fixtures) provisionSubjectConditionSet() int64 {
 		})
 	}
 	return f.provision(fixtureData.SubjectConditionSet.Metadata.TableName, fixtureData.SubjectConditionSet.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionSubjectMappings() int64 {
+	values := make([][]string, 0, len(fixtureData.SubjectMappings.Data))
+	for _, d := range fixtureData.SubjectMappings.Data {
+		var actionsJSON []byte
+		actionsJSON, err := json.Marshal(d.Actions)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with subject mapping actions JSON - check fixtures.yaml for issues")
+			panic("issue with subject mapping actions JSON")
+		}
+
+		values = append(values, []string{
+			f.db.StringWrap(d.Id),
+			f.db.UUIDWrap(d.AttributeValueId),
+			f.db.UUIDWrap(d.SubjectConditionSetId),
+			f.db.StringWrap(string(actionsJSON)),
+		})
+	}
+	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provisionResourceMappings() int64 {

@@ -45,88 +45,50 @@ public interface SubjectMappingCreateOrBuilder extends
 
   /**
    * <pre>
-   * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+   * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
    * </pre>
    *
-   * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
-   * @return A list containing the existingSubjectConditionSetIds.
+   * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+   * @return The existingSubjectConditionSetId.
    */
-  java.util.List<java.lang.String>
-      getExistingSubjectConditionSetIdsList();
+  java.lang.String getExistingSubjectConditionSetId();
   /**
    * <pre>
-   * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
+   * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
    * </pre>
    *
-   * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
-   * @return The count of existingSubjectConditionSetIds.
-   */
-  int getExistingSubjectConditionSetIdsCount();
-  /**
-   * <pre>
-   * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
-   * </pre>
-   *
-   * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
-   * @param index The index of the element to return.
-   * @return The existingSubjectConditionSetIds at the given index.
-   */
-  java.lang.String getExistingSubjectConditionSetIds(int index);
-  /**
-   * <pre>
-   * Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
-   * </pre>
-   *
-   * <code>repeated string existing_subject_condition_set_ids = 3 [json_name = "existingSubjectConditionSetIds"];</code>
-   * @param index The index of the value to return.
-   * @return The bytes of the existingSubjectConditionSetIds at the given index.
+   * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+   * @return The bytes for existingSubjectConditionSetId.
    */
   com.google.protobuf.ByteString
-      getExistingSubjectConditionSetIdsBytes(int index);
+      getExistingSubjectConditionSetIdBytes();
 
   /**
    * <pre>
-   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+   * @return Whether the newSubjectConditionSet field is set.
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> 
-      getNewSubjectConditionSetsList();
+  boolean hasNewSubjectConditionSet();
   /**
    * <pre>
-   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+   * @return The newSubjectConditionSet.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getNewSubjectConditionSets(int index);
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate getNewSubjectConditionSet();
   /**
    * <pre>
-   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
    */
-  int getNewSubjectConditionSetsCount();
-  /**
-   * <pre>
-   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
-   * </pre>
-   *
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
-   */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
-      getNewSubjectConditionSetsOrBuilderList();
-  /**
-   * <pre>
-   * Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
-   * </pre>
-   *
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet new_subject_condition_sets = 4 [json_name = "newSubjectConditionSets"];</code>
-   */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getNewSubjectConditionSetsOrBuilder(
-      int index);
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreateOrBuilder getNewSubjectConditionSetOrBuilder();
 
   /**
    * <pre>

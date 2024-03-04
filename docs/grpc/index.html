@@ -5786,6 +5786,13 @@ Response Example:
             <tbody>
               
                 <tr>
+                  <td>updated_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>an optional name for ease of reference </p></td>
+                </tr>
+              
+                <tr>
                   <td>updated_metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -5838,10 +5845,10 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>subject_condition_sets</td>
+                  <td>subject_condition_set</td>
                   <td><a href="#policy.subjectmapping.SubjectConditionSet">SubjectConditionSet</a></td>
-                  <td>repeated</td>
-                  <td><p>the reusable SubjectConditionSets mapped to the given Attribute Value </p></td>
+                  <td></td>
+                  <td><p>the reusable SubjectConditionSet mapped to the given Attribute Value </p></td>
                 </tr>
               
                 <tr>
@@ -5883,17 +5890,17 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>existing_subject_condition_set_ids</td>
+                  <td>existing_subject_condition_set_id</td>
                   <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p>Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets) </p></td>
+                  <td></td>
+                  <td><p>Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set) </p></td>
                 </tr>
               
                 <tr>
-                  <td>new_subject_condition_sets</td>
-                  <td><a href="#policy.subjectmapping.SubjectConditionSet">SubjectConditionSet</a></td>
-                  <td>repeated</td>
-                  <td><p>Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided) </p></td>
+                  <td>new_subject_condition_set</td>
+                  <td><a href="#policy.subjectmapping.SubjectConditionSetCreate">SubjectConditionSetCreate</a></td>
+                  <td></td>
+                  <td><p>Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided) </p></td>
                 </tr>
               
                 <tr>
@@ -5921,21 +5928,21 @@ Response Example:
             <tbody>
               
                 <tr>
-                  <td>updated_metadata</td>
+                  <td>update_metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>updated_subject_condition_set_ids</td>
+                  <td>update_subject_condition_set_id</td>
                   <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p>Replaces entire list of existing SubjectConditionSet ids </p></td>
+                  <td></td>
+                  <td><p>Replaces the existing SubjectConditionSet id with a new one </p></td>
                 </tr>
               
                 <tr>
-                  <td>udpated_actions</td>
+                  <td>update_actions</td>
                   <td><a href="#authorization.Action">authorization.Action</a></td>
                   <td>repeated</td>
                   <td><p>Replaces entire list of actions permitted by subjects </p></td>
@@ -6059,7 +6066,7 @@ Response Example:
         
       
         <h3 id="policy.subjectmapping.UpdateSubjectMappingResponse">UpdateSubjectMappingResponse</h3>
-        <p></p>
+        <p>`{"subject_mapping":{"updated_metadata": {"labels": {"name": "new-name"}}}}`</p><p>'{"subject_mapping":{//everything}}'</p>
 
         
           <table class="field-table">

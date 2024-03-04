@@ -17,6 +17,7 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private SubjectConditionSetUpdate() {
+    updatedName_ = "";
     updatedSubjectSets_ = java.util.Collections.emptyList();
   }
 
@@ -41,6 +42,53 @@ private static final long serialVersionUID = 0L;
   }
 
   private int bitField0_;
+  public static final int UPDATED_NAME_FIELD_NUMBER = 1;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object updatedName_ = "";
+  /**
+   * <pre>
+   * an optional name for ease of reference
+   * </pre>
+   *
+   * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+   * @return The updatedName.
+   */
+  @java.lang.Override
+  public java.lang.String getUpdatedName() {
+    java.lang.Object ref = updatedName_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      updatedName_ = s;
+      return s;
+    }
+  }
+  /**
+   * <pre>
+   * an optional name for ease of reference
+   * </pre>
+   *
+   * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+   * @return The bytes for updatedName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getUpdatedNameBytes() {
+    java.lang.Object ref = updatedName_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      updatedName_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
   public static final int UPDATED_METADATA_FIELD_NUMBER = 2;
   private io.opentdf.platform.common.MetadataMutable updatedMetadata_;
   /**
@@ -142,6 +190,9 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(updatedName_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, updatedName_);
+    }
     if (((bitField0_ & 0x00000001) != 0)) {
       output.writeMessage(2, getUpdatedMetadata());
     }
@@ -157,6 +208,9 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(updatedName_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, updatedName_);
+    }
     if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(2, getUpdatedMetadata());
@@ -180,6 +234,8 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate other = (io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate) obj;
 
+    if (!getUpdatedName()
+        .equals(other.getUpdatedName())) return false;
     if (hasUpdatedMetadata() != other.hasUpdatedMetadata()) return false;
     if (hasUpdatedMetadata()) {
       if (!getUpdatedMetadata()
@@ -198,6 +254,8 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
+    hash = (37 * hash) + UPDATED_NAME_FIELD_NUMBER;
+    hash = (53 * hash) + getUpdatedName().hashCode();
     if (hasUpdatedMetadata()) {
       hash = (37 * hash) + UPDATED_METADATA_FIELD_NUMBER;
       hash = (53 * hash) + getUpdatedMetadata().hashCode();
@@ -344,6 +402,7 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
+      updatedName_ = "";
       updatedMetadata_ = null;
       if (updatedMetadataBuilder_ != null) {
         updatedMetadataBuilder_.dispose();
@@ -355,7 +414,7 @@ private static final long serialVersionUID = 0L;
         updatedSubjectSets_ = null;
         updatedSubjectSetsBuilder_.clear();
       }
-      bitField0_ = (bitField0_ & ~0x00000002);
+      bitField0_ = (bitField0_ & ~0x00000004);
       return this;
     }
 
@@ -390,9 +449,9 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate result) {
       if (updatedSubjectSetsBuilder_ == null) {
-        if (((bitField0_ & 0x00000002) != 0)) {
+        if (((bitField0_ & 0x00000004) != 0)) {
           updatedSubjectSets_ = java.util.Collections.unmodifiableList(updatedSubjectSets_);
-          bitField0_ = (bitField0_ & ~0x00000002);
+          bitField0_ = (bitField0_ & ~0x00000004);
         }
         result.updatedSubjectSets_ = updatedSubjectSets_;
       } else {
@@ -402,8 +461,11 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate result) {
       int from_bitField0_ = bitField0_;
-      int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000001) != 0)) {
+        result.updatedName_ = updatedName_;
+      }
+      int to_bitField0_ = 0;
+      if (((from_bitField0_ & 0x00000002) != 0)) {
         result.updatedMetadata_ = updatedMetadataBuilder_ == null
             ? updatedMetadata_
             : updatedMetadataBuilder_.build();
@@ -456,6 +518,11 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate other) {
       if (other == io.opentdf.platform.policy.subjectmapping.SubjectConditionSetUpdate.getDefaultInstance()) return this;
+      if (!other.getUpdatedName().isEmpty()) {
+        updatedName_ = other.updatedName_;
+        bitField0_ |= 0x00000001;
+        onChanged();
+      }
       if (other.hasUpdatedMetadata()) {
         mergeUpdatedMetadata(other.getUpdatedMetadata());
       }
@@ -463,7 +530,7 @@ private static final long serialVersionUID = 0L;
         if (!other.updatedSubjectSets_.isEmpty()) {
           if (updatedSubjectSets_.isEmpty()) {
             updatedSubjectSets_ = other.updatedSubjectSets_;
-            bitField0_ = (bitField0_ & ~0x00000002);
+            bitField0_ = (bitField0_ & ~0x00000004);
           } else {
             ensureUpdatedSubjectSetsIsMutable();
             updatedSubjectSets_.addAll(other.updatedSubjectSets_);
@@ -476,7 +543,7 @@ private static final long serialVersionUID = 0L;
             updatedSubjectSetsBuilder_.dispose();
             updatedSubjectSetsBuilder_ = null;
             updatedSubjectSets_ = other.updatedSubjectSets_;
-            bitField0_ = (bitField0_ & ~0x00000002);
+            bitField0_ = (bitField0_ & ~0x00000004);
             updatedSubjectSetsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getUpdatedSubjectSetsFieldBuilder() : null;
@@ -511,11 +578,16 @@ private static final long serialVersionUID = 0L;
             case 0:
               done = true;
               break;
+            case 10: {
+              updatedName_ = input.readStringRequireUtf8();
+              bitField0_ |= 0x00000001;
+              break;
+            } // case 10
             case 18: {
               input.readMessage(
                   getUpdatedMetadataFieldBuilder().getBuilder(),
                   extensionRegistry);
-              bitField0_ |= 0x00000001;
+              bitField0_ |= 0x00000002;
               break;
             } // case 18
             case 26: {
@@ -548,6 +620,98 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
+    private java.lang.Object updatedName_ = "";
+    /**
+     * <pre>
+     * an optional name for ease of reference
+     * </pre>
+     *
+     * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+     * @return The updatedName.
+     */
+    public java.lang.String getUpdatedName() {
+      java.lang.Object ref = updatedName_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        updatedName_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <pre>
+     * an optional name for ease of reference
+     * </pre>
+     *
+     * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+     * @return The bytes for updatedName.
+     */
+    public com.google.protobuf.ByteString
+        getUpdatedNameBytes() {
+      java.lang.Object ref = updatedName_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        updatedName_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <pre>
+     * an optional name for ease of reference
+     * </pre>
+     *
+     * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+     * @param value The updatedName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUpdatedName(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      updatedName_ = value;
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * an optional name for ease of reference
+     * </pre>
+     *
+     * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUpdatedName() {
+      updatedName_ = getDefaultInstance().getUpdatedName();
+      bitField0_ = (bitField0_ & ~0x00000001);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * an optional name for ease of reference
+     * </pre>
+     *
+     * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+     * @param value The bytes for updatedName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUpdatedNameBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      updatedName_ = value;
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
+
     private io.opentdf.platform.common.MetadataMutable updatedMetadata_;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> updatedMetadataBuilder_;
@@ -556,7 +720,7 @@ private static final long serialVersionUID = 0L;
      * @return Whether the updatedMetadata field is set.
      */
     public boolean hasUpdatedMetadata() {
-      return ((bitField0_ & 0x00000001) != 0);
+      return ((bitField0_ & 0x00000002) != 0);
     }
     /**
      * <code>.common.MetadataMutable updated_metadata = 2 [json_name = "updatedMetadata"];</code>
@@ -581,7 +745,7 @@ private static final long serialVersionUID = 0L;
       } else {
         updatedMetadataBuilder_.setMessage(value);
       }
-      bitField0_ |= 0x00000001;
+      bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
@@ -595,7 +759,7 @@ private static final long serialVersionUID = 0L;
       } else {
         updatedMetadataBuilder_.setMessage(builderForValue.build());
       }
-      bitField0_ |= 0x00000001;
+      bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
@@ -604,7 +768,7 @@ private static final long serialVersionUID = 0L;
      */
     public Builder mergeUpdatedMetadata(io.opentdf.platform.common.MetadataMutable value) {
       if (updatedMetadataBuilder_ == null) {
-        if (((bitField0_ & 0x00000001) != 0) &&
+        if (((bitField0_ & 0x00000002) != 0) &&
           updatedMetadata_ != null &&
           updatedMetadata_ != io.opentdf.platform.common.MetadataMutable.getDefaultInstance()) {
           getUpdatedMetadataBuilder().mergeFrom(value);
@@ -615,7 +779,7 @@ private static final long serialVersionUID = 0L;
         updatedMetadataBuilder_.mergeFrom(value);
       }
       if (updatedMetadata_ != null) {
-        bitField0_ |= 0x00000001;
+        bitField0_ |= 0x00000002;
         onChanged();
       }
       return this;
@@ -624,7 +788,7 @@ private static final long serialVersionUID = 0L;
      * <code>.common.MetadataMutable updated_metadata = 2 [json_name = "updatedMetadata"];</code>
      */
     public Builder clearUpdatedMetadata() {
-      bitField0_ = (bitField0_ & ~0x00000001);
+      bitField0_ = (bitField0_ & ~0x00000002);
       updatedMetadata_ = null;
       if (updatedMetadataBuilder_ != null) {
         updatedMetadataBuilder_.dispose();
@@ -637,7 +801,7 @@ private static final long serialVersionUID = 0L;
      * <code>.common.MetadataMutable updated_metadata = 2 [json_name = "updatedMetadata"];</code>
      */
     public io.opentdf.platform.common.MetadataMutable.Builder getUpdatedMetadataBuilder() {
-      bitField0_ |= 0x00000001;
+      bitField0_ |= 0x00000002;
       onChanged();
       return getUpdatedMetadataFieldBuilder().getBuilder();
     }
@@ -672,9 +836,9 @@ private static final long serialVersionUID = 0L;
     private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> updatedSubjectSets_ =
       java.util.Collections.emptyList();
     private void ensureUpdatedSubjectSetsIsMutable() {
-      if (!((bitField0_ & 0x00000002) != 0)) {
+      if (!((bitField0_ & 0x00000004) != 0)) {
         updatedSubjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectSet>(updatedSubjectSets_);
-        bitField0_ |= 0x00000002;
+        bitField0_ |= 0x00000004;
        }
     }
 
@@ -868,7 +1032,7 @@ private static final long serialVersionUID = 0L;
     public Builder clearUpdatedSubjectSets() {
       if (updatedSubjectSetsBuilder_ == null) {
         updatedSubjectSets_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000004);
         onChanged();
       } else {
         updatedSubjectSetsBuilder_.clear();
@@ -973,7 +1137,7 @@ private static final long serialVersionUID = 0L;
         updatedSubjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>(
                 updatedSubjectSets_,
-                ((bitField0_ & 0x00000002) != 0),
+                ((bitField0_ & 0x00000004) != 0),
                 getParentForChildren(),
                 isClean());
         updatedSubjectSets_ = null;

@@ -63,7 +63,7 @@ erDiagram
     ResourceMapping }o--o{ AttributeValue: relates
 
     SubjectMapping }|--|| AttributeValue: has
-    SubjectMapping }|--|{ SubjectConditionSet: "has by pivot table"
+    SubjectMapping }|--|| SubjectConditionSet: "has"
 
     Namespace {
         uuid        id   PK
@@ -111,8 +111,8 @@ erDiagram
     SubjectMapping {
         uuid           id                          PK
         uuid           attribute_value_id          FK
-        varchar[]      subject_mapping_condition_set_pivot_ids "pivot table (not pictured) constrains many-to-many relationship"
-        varchar[]      actions
+        uuid[]         subject_condition_set_id    FK "subject condition sets are reusable"
+        jsonb          actions
         jsonb          metadata
     }
 

@@ -22,7 +22,6 @@ var (
 	TableAttributeValueKeyAccessGrants   = "attribute_value_key_access_grants"
 	TableResourceMappings                = "resource_mappings"
 	TableSubjectMappings                 = "subject_mappings"
-	TableSubjectMappingConditionSetPivot = "subject_mapping_condition_set_pivot"
 	TableSubjectConditionSet             = "subject_condition_set"
 )
 
@@ -36,7 +35,6 @@ var Tables struct {
 	AttributeValueKeyAccessGrants   Table
 	ResourceMappings                Table
 	SubjectMappings                 Table
-	SubjectMappingConditionSetPivot Table
 	SubjectConditionSet             Table
 }
 
@@ -113,7 +111,6 @@ func NewClient(config Config) (*Client, error) {
 	Tables.AttributeValueKeyAccessGrants = NewTable(TableAttributeValueKeyAccessGrants, config.Schema)
 	Tables.ResourceMappings = NewTable(TableResourceMappings, config.Schema)
 	Tables.SubjectMappings = NewTable(TableSubjectMappings, config.Schema)
-	Tables.SubjectMappingConditionSetPivot = NewTable(TableSubjectMappingConditionSetPivot, config.Schema)
 	Tables.SubjectConditionSet = NewTable(TableSubjectConditionSet, config.Schema)
 
 	return &Client{

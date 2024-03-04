@@ -9,6 +9,26 @@ public interface SubjectConditionSetUpdateOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * an optional name for ease of reference
+   * </pre>
+   *
+   * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+   * @return The updatedName.
+   */
+  java.lang.String getUpdatedName();
+  /**
+   * <pre>
+   * an optional name for ease of reference
+   * </pre>
+   *
+   * <code>string updated_name = 1 [json_name = "updatedName"];</code>
+   * @return The bytes for updatedName.
+   */
+  com.google.protobuf.ByteString
+      getUpdatedNameBytes();
+
+  /**
    * <code>.common.MetadataMutable updated_metadata = 2 [json_name = "updatedMetadata"];</code>
    * @return Whether the updatedMetadata field is set.
    */

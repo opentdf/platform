@@ -9,102 +9,81 @@ public interface SubjectMappingUpdateOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.common.MetadataMutable updated_metadata = 2 [json_name = "updatedMetadata"];</code>
-   * @return Whether the updatedMetadata field is set.
+   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
+   * @return Whether the updateMetadata field is set.
    */
-  boolean hasUpdatedMetadata();
+  boolean hasUpdateMetadata();
   /**
-   * <code>.common.MetadataMutable updated_metadata = 2 [json_name = "updatedMetadata"];</code>
-   * @return The updatedMetadata.
+   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
+   * @return The updateMetadata.
    */
-  io.opentdf.platform.common.MetadataMutable getUpdatedMetadata();
+  io.opentdf.platform.common.MetadataMutable getUpdateMetadata();
   /**
-   * <code>.common.MetadataMutable updated_metadata = 2 [json_name = "updatedMetadata"];</code>
+   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
    */
-  io.opentdf.platform.common.MetadataMutableOrBuilder getUpdatedMetadataOrBuilder();
+  io.opentdf.platform.common.MetadataMutableOrBuilder getUpdateMetadataOrBuilder();
 
   /**
    * <pre>
-   * Replaces entire list of existing SubjectConditionSet ids
+   * Replaces the existing SubjectConditionSet id with a new one
    * </pre>
    *
-   * <code>repeated string updated_subject_condition_set_ids = 3 [json_name = "updatedSubjectConditionSetIds"];</code>
-   * @return A list containing the updatedSubjectConditionSetIds.
+   * <code>string update_subject_condition_set_id = 3 [json_name = "updateSubjectConditionSetId"];</code>
+   * @return The updateSubjectConditionSetId.
    */
-  java.util.List<java.lang.String>
-      getUpdatedSubjectConditionSetIdsList();
+  java.lang.String getUpdateSubjectConditionSetId();
   /**
    * <pre>
-   * Replaces entire list of existing SubjectConditionSet ids
+   * Replaces the existing SubjectConditionSet id with a new one
    * </pre>
    *
-   * <code>repeated string updated_subject_condition_set_ids = 3 [json_name = "updatedSubjectConditionSetIds"];</code>
-   * @return The count of updatedSubjectConditionSetIds.
-   */
-  int getUpdatedSubjectConditionSetIdsCount();
-  /**
-   * <pre>
-   * Replaces entire list of existing SubjectConditionSet ids
-   * </pre>
-   *
-   * <code>repeated string updated_subject_condition_set_ids = 3 [json_name = "updatedSubjectConditionSetIds"];</code>
-   * @param index The index of the element to return.
-   * @return The updatedSubjectConditionSetIds at the given index.
-   */
-  java.lang.String getUpdatedSubjectConditionSetIds(int index);
-  /**
-   * <pre>
-   * Replaces entire list of existing SubjectConditionSet ids
-   * </pre>
-   *
-   * <code>repeated string updated_subject_condition_set_ids = 3 [json_name = "updatedSubjectConditionSetIds"];</code>
-   * @param index The index of the value to return.
-   * @return The bytes of the updatedSubjectConditionSetIds at the given index.
+   * <code>string update_subject_condition_set_id = 3 [json_name = "updateSubjectConditionSetId"];</code>
+   * @return The bytes for updateSubjectConditionSetId.
    */
   com.google.protobuf.ByteString
-      getUpdatedSubjectConditionSetIdsBytes(int index);
+      getUpdateSubjectConditionSetIdBytes();
 
   /**
    * <pre>
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action udpated_actions = 5 [json_name = "udpatedActions"];</code>
+   * <code>repeated .authorization.Action update_actions = 5 [json_name = "updateActions"];</code>
    */
   java.util.List<io.opentdf.platform.authorization.Action> 
-      getUdpatedActionsList();
+      getUpdateActionsList();
   /**
    * <pre>
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action udpated_actions = 5 [json_name = "udpatedActions"];</code>
+   * <code>repeated .authorization.Action update_actions = 5 [json_name = "updateActions"];</code>
    */
-  io.opentdf.platform.authorization.Action getUdpatedActions(int index);
+  io.opentdf.platform.authorization.Action getUpdateActions(int index);
   /**
    * <pre>
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action udpated_actions = 5 [json_name = "udpatedActions"];</code>
+   * <code>repeated .authorization.Action update_actions = 5 [json_name = "updateActions"];</code>
    */
-  int getUdpatedActionsCount();
+  int getUpdateActionsCount();
   /**
    * <pre>
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action udpated_actions = 5 [json_name = "udpatedActions"];</code>
+   * <code>repeated .authorization.Action update_actions = 5 [json_name = "updateActions"];</code>
    */
   java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
-      getUdpatedActionsOrBuilderList();
+      getUpdateActionsOrBuilderList();
   /**
    * <pre>
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action udpated_actions = 5 [json_name = "udpatedActions"];</code>
+   * <code>repeated .authorization.Action update_actions = 5 [json_name = "updateActions"];</code>
    */
-  io.opentdf.platform.authorization.ActionOrBuilder getUdpatedActionsOrBuilder(
+  io.opentdf.platform.authorization.ActionOrBuilder getUpdateActionsOrBuilder(
       int index);
 }

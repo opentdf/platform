@@ -158,8 +158,8 @@ message SubjectMapping {
   // the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
   policy.attributes.Value attribute_value = 3;
 
-  // the reusable SubjectConditionSets mapped to the given Attribute Value
-  repeated SubjectConditionSet subject_condition_sets = 4;
+  // the reusable SubjectConditionSet mapped to the given Attribute Value
+  SubjectConditionSet subject_condition_set = 4;
 
   // The actions permitted by subjects in this mapping
   repeated authorization.Action actions = 5;
@@ -201,11 +201,11 @@ message SubjectMappingCreate{
   // Attribute Value to be mapped to
   string attribute_value_id = 2;
 
-  // Reuse existing SubjectConditionSets (NOTE: prioritized over new_subject_condition_sets)
-  repeated string existing_subject_condition_set_ids = 3;
+  // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+  string existing_subject_condition_set_id = 3;
 
-  // Create new SubjectConditionSets (NOTE: ignored if existing_subject_condition_set_ids is provided)
-  repeated SubjectConditionSet new_subject_condition_sets = 4;
+  // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+  SubjectConditionSetCreate new_subject_condition_set = 4;
 
   // The actions permitted by subjects in this mapping
   repeated authorization.Action actions = 5;
@@ -218,18 +218,20 @@ message CreateSubjectMappingResponse {
 }
 
 message SubjectMappingUpdate {
-  common.MetadataMutable updated_metadata = 2;
+  common.MetadataMutable update_metadata = 2;
 
-  // Replaces entire list of existing SubjectConditionSet ids
-  repeated string updated_subject_condition_set_ids = 3;
+  // Replaces the existing SubjectConditionSet id with a new one
+  string update_subject_condition_set_id = 3;
 
   // Replaces entire list of actions permitted by subjects
-  repeated authorization.Action udpated_actions = 5;
+  repeated authorization.Action update_actions = 5;
 }
 message UpdateSubjectMappingRequest {
   string id = 1 [(buf.validate.field).required = true];
   SubjectMappingUpdate subject_mapping = 2;
 }
+// `{"subject_mapping":{"updated_metadata": {"labels": {"name": "new-name"}}}}`
+// '{"subject_mapping":{//everything}}'
 message UpdateSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
 }
@@ -276,6 +278,9 @@ message CreateSubjectConditionSetResponse {
 }
 
 message SubjectConditionSetUpdate {
+  // an optional name for ease of reference
+  string updated_name = 1;
+
   common.MetadataMutable updated_metadata = 2;
 
   // Replaces entire existing graph relation of Subject Sets, Condition Groups, & Conditions

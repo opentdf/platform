@@ -5,6 +5,11 @@
 package io.opentdf.platform.policy.subjectmapping;
 
 /**
+ * <pre>
+ * `{"subject_mapping":{"updated_metadata": {"labels": {"name": "new-name"}}}}`
+ * '{"subject_mapping":{//everything}}'
+ * </pre>
+ *
  * Protobuf type {@code policy.subjectmapping.UpdateSubjectMappingResponse}
  */
 public final class UpdateSubjectMappingResponse extends
@@ -229,6 +234,11 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
+   * <pre>
+   * `{"subject_mapping":{"updated_metadata": {"labels": {"name": "new-name"}}}}`
+   * '{"subject_mapping":{//everything}}'
+   * </pre>
+   *
    * Protobuf type {@code policy.subjectmapping.UpdateSubjectMappingResponse}
    */
   public static final class Builder extends

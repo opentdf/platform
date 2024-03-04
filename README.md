@@ -18,7 +18,7 @@
 
 ### Prerequisites
 
-Docker [install](https://www.docker.com/get-started/)
+Docker [install instructions](https://www.docker.com/get-started/)
 
 [Air](https://github.com/cosmtrek/air) install with go 1.18 or higher:
 

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	idpPlugin "github.com/opentdf/platform/internal/idpplugin"
-	authorization "github.com/opentdf/platform/sdk/authorization"
+	authorization "github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/stretchr/testify/assert"
 )
 

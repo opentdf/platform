@@ -174,7 +174,6 @@ func TestTDF3Writer_and_Reader(t *testing.T) { // Create tdf files
 }
 
 func writeTDFs(t *testing.T) {
-
 	for index := 0; index < len(writeBuffer); index++ {
 		writeBuffer[index] = 0xFF
 	}
@@ -237,7 +236,6 @@ func writeTDFs(t *testing.T) {
 }
 
 func readTDFs(t *testing.T) {
-
 	for index, tdf3Entry := range TDF3Tests {
 		// tdf3 file name as index
 		tdf3Name := strconv.Itoa(index) + ".zip"

@@ -18,7 +18,10 @@ type TestServiceService interface{}
 type TestService struct{}
 
 func (t TestService) TestHandler(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	w.Write([]byte("hello " + pathParams["name"] + " from test service!"))
+	_, err := w.Write([]byte("hello " + pathParams["name"] + " from test service!"))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func ServiceRegistrationTest() serviceregistry.Registration {
@@ -51,10 +54,11 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 			Port:    43481,
 		},
 	})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Register Test Service
-	serviceregistry.RegisterService(ServiceRegistrationTest())
+	err = serviceregistry.RegisterService(ServiceRegistrationTest())
+	assert.NoError(t, err)
 
 	// Start services with test service
 	err = startServices(config.Config{

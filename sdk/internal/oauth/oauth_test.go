@@ -23,6 +23,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/sdk/internal/oauth"
+	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -31,10 +32,10 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	ctx := context.Background()
 
 	wiremock, wiremockUrl := setupWiremock(t, ctx)
-	defer wiremock.Terminate(ctx)
+	defer func() { assert.NoError(t, wiremock.Terminate(ctx)) }()
 
 	keycloak, idpEndpoint := setupKeycloak(t, wiremockUrl, ctx)
-	defer keycloak.Terminate(ctx)
+	defer func() { assert.NoError(t, keycloak.Terminate(ctx)) }()
 
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -42,9 +43,10 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 		panic(err)
 	}
 
-	dpopJWK, _ := jwk.FromRaw(dpopKey)
-	dpopJWK.Set("use", "sig")
-	dpopJWK.Set("alg", jwa.RS256.String())
+	dpopJWK, err := jwk.FromRaw(dpopKey)
+	assert.NoError(t, err)
+	assert.NoError(t, dpopJWK.Set("use", "sig"))
+	assert.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientCredentials := oauth.ClientCredentials{
 		ClientId:   "testclient",
@@ -116,7 +118,6 @@ func TestClientSecretNoNonce(t *testing.T) {
 
 		w.Header().Add("content-type", "application/json")
 		w.Write(responseBytes)
-
 	}))
 	defer server.Close()
 
@@ -187,7 +188,6 @@ func TestClientSecretWithNonce(t *testing.T) {
 
 		w.Header().Add("content-type", "application/json")
 		w.Write(responseBytes)
-
 	}))
 	defer server.Close()
 
@@ -275,7 +275,6 @@ func TestSignedJWTWithNonce(t *testing.T) {
 
 		w.Header().Add("content-type", "application/json")
 		w.Write(responseBytes)
-
 	}))
 	defer server.Close()
 

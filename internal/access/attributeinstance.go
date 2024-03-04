@@ -62,7 +62,6 @@ func (attr attributeInstance) GetAuthority() string {
 //
 // Strings that are not valid URLs will result in a parsing failure, and return an error.
 func ParseInstanceFromURI(attributeURI string) (attributeInstance, error) {
-
 	parsedAttr, err := url.Parse(attributeURI)
 	if err != nil {
 		return attributeInstance{}, err
@@ -85,7 +84,7 @@ func ParseInstanceFromURI(attributeURI string) (attributeInstance, error) {
 	value := pathParts[3]                                                         // == MyAttrValue
 
 	return attributeInstance{
-		Authority: authority, //Just scheme://host of the attribute - that is, the authority
+		Authority: authority, // Just scheme://host of the attribute - that is, the authority
 		Name:      name,
 		Value:     value,
 	}, nil

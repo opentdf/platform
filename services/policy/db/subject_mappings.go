@@ -2,28 +2,16 @@ package db
 
 import (
 	"context"
-	"strings"
-
-	"github.com/opentdf/platform/protocol/go/authorization"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"google.golang.org/protobuf/encoding/protojson"
 )
-
-var SubjectMappingOperatorEnumPrefix = "SUBJECT_MAPPING_OPERATOR_ENUM_"
-
-func subjectMappingOperatorEnumTransformIn(value string) string {
-	return strings.TrimPrefix(value, SubjectMappingOperatorEnumPrefix)
-}
-
-func subjectMappingOperatorEnumTransformOut(value string) subjectmapping.SubjectMappingOperatorEnum {
-	return subjectmapping.SubjectMappingOperatorEnum(subjectmapping.SubjectMappingOperatorEnum_value[SubjectMappingOperatorEnumPrefix+value])
-}
 
 func subjectMappingSelect() sq.SelectBuilder {
 	t := db.Tables.SubjectMappings

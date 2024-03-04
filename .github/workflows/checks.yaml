@@ -149,6 +149,7 @@ jobs:
       - image
       - buflint
     runs-on: ubuntu-latest
+    if: always()
     steps:
       - if: contains(needs.*.result, 'failure')
         run: exit 1

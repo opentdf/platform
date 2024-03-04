@@ -3,11 +3,12 @@ package idpplugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 
-	gocloak "github.com/Nerzal/gocloak/v11"
-	authorization "github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/Nerzal/gocloak/v11"
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/services"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,13 +34,8 @@ type KeyCloakConnector struct {
 	client gocloak.GoCloak
 }
 
-const (
-	TypeEmail    = "email"
-	TypeUsername = "username"
-)
-
-func NewIdpPlugin(config KeyCloakConfg) (*IdpPlugin, error) {
-	kcConnector, err := getKCClient(config)
+func NewIdpPlugin(config KeyCloakConfg, ctx context.Context) (*IdpPlugin, error) {
+	kcConnector, err := getKCClient(config, ctx)
 	if err != nil {
 		return &IdpPlugin{},
 			status.Error(codes.Internal, services.ErrCreationFailed)
@@ -65,15 +61,15 @@ func (s IdpPlugin) EntityResolution(ctx context.Context,
 
 		exactMatch := true
 		switch ident.EntityType.(type) {
-		case *authorization.IdpEntity_EmailAddress:
+		case *authorization.Entity_EmailAddress:
 			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := payload[i].GetEmailAddress(); return &t }(), Exact: &exactMatch}
-		case *authorization.IdpEntity_UserName:
+		case *authorization.Entity_UserName:
 			getUserParams = gocloak.GetUsersParams{Username: func() *string { t := payload[i].GetUserName(); return &t }(), Exact: &exactMatch}
 		// case "":
 		// 	return &authorization.IdpPluginResponse{},
 		// 		status.Error(codes.InvalidArgument, services.ErrNotFound)
 		default:
-			typeErr := fmt.Errorf("Unknown type for entity %s", ident.String())
+			typeErr := fmt.Errorf("Unsupported/unknown type for entity %s", ident.String())
 			return &authorization.IdpPluginResponse{},
 				status.Error(codes.InvalidArgument, typeErr.Error())
 		}
@@ -106,10 +102,27 @@ func (s IdpPlugin) EntityResolution(ctx context.Context,
 					expandedRepresentations, exErr := expandGroup(*group.ID, &s.connector, &s.config, ctx)
 					if exErr != nil {
 						return &authorization.IdpPluginResponse{},
-							status.Error(codes.Internal, services.ErrGetRetrievalFailed)
+							status.Error(codes.Internal, services.ErrNotFound)
 					} else {
 						keycloakEntities = expandedRepresentations
 					}
+				} else {
+					slog.Error("No group found for", "entity", ident.String())
+					var entityNotFoundErr authorization.EntityNotFoundError
+					switch ident.EntityType.(type) {
+					case *authorization.Entity_EmailAddress:
+						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: services.ErrGetRetrievalFailed, Entity: ident.GetEmailAddress()}
+					case *authorization.Entity_UserName:
+						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: services.ErrGetRetrievalFailed, Entity: ident.GetUserName()}
+					// case "":
+					// 	return &authorization.IdpPluginResponse{},
+					// 		status.Error(codes.InvalidArgument, services.ErrNotFound)
+					default:
+						slog.Error("Unsupported/unknown type for", "entity", ident.String())
+						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: services.ErrGetRetrievalFailed, Entity: ident.String()}
+					}
+					slog.Error(entityNotFoundErr.String())
+					return &authorization.IdpPluginResponse{}, errors.New(entityNotFoundErr.String())
 				}
 			}
 		}
@@ -162,7 +175,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable) (map[string]
 	return genericMap, nil
 }
 
-func getKCClient(kcConfig KeyCloakConfg) (*KeyCloakConnector, error) {
+func getKCClient(kcConfig KeyCloakConfg, ctx context.Context) (*KeyCloakConnector, error) {
 	var client gocloak.GoCloak
 	if kcConfig.LegacyKeycloak {
 		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
@@ -176,8 +189,7 @@ func getKCClient(kcConfig KeyCloakConfg) (*KeyCloakConnector, error) {
 	// restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	// client.SetRestyClient(restyClient)
 
-	ctxb := context.Background()
-	token, err := client.LoginClient(ctxb, kcConfig.ClientId, kcConfig.ClientSecret, kcConfig.Realm)
+	token, err := client.LoginClient(ctx, kcConfig.ClientId, kcConfig.ClientSecret, kcConfig.Realm)
 	if err != nil {
 		slog.Warn("Error connecting to keycloak!", err)
 		return nil, err

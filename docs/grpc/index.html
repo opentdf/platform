@@ -301,10 +301,6 @@
                 </li>
               
                 <li>
-                  <a href="#authorization.IdpEntity"><span class="badge">M</span>IdpEntity</a>
-                </li>
-              
-                <li>
                   <a href="#authorization.IdpEntityRepresentation"><span class="badge">M</span>IdpEntityRepresentation</a>
                 </li>
               
@@ -1703,8 +1699,8 @@
             <tbody>
               
                 <tr>
-                  <td>user</td>
-                  <td><a href="#string">string</a></td>
+                  <td>code</td>
+                  <td><a href="#int32">int32</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -1723,54 +1719,9 @@
                   <td><p> </p></td>
                 </tr>
               
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="authorization.IdpEntity">IdpEntity</h3>
-        <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
                 <tr>
-                  <td>id</td>
+                  <td>entity</td>
                   <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral id for tracking between request and response </p></td>
-                </tr>
-              
-                <tr>
-                  <td>email_address</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>user_name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>jwt</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>custom</td>
-                  <td><a href="#authorization.EntityCustom">EntityCustom</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -1825,7 +1776,7 @@
               
                 <tr>
                   <td>entities</td>
-                  <td><a href="#authorization.IdpEntity">IdpEntity</a></td>
+                  <td><a href="#authorization.Entity">Entity</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>

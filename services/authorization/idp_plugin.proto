@@ -6,20 +6,6 @@ import "authorization/authorization.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/any.proto";
 
-/// IDP will only handle requests for entities providing email, username, or jwt
-
-// PE (Person Entity) or NPE (Non-Person Entity)
-message IdpEntity {
-  string id = 1; // ephemeral id for tracking between request and response
-  // Standard entity types supported by the platform
-  oneof entity_type {
-    string email_address = 2;
-    string user_name = 3;
-    string jwt = 4;
-    authorization.EntityCustom custom = 5;
-  }
-}
-
 /*
    Example: Get idp attributes for bob and alice (both represented using an email address
    {
@@ -37,7 +23,7 @@ message IdpEntity {
 
 */
 message IdpPluginRequest {
-    repeated IdpEntity entities = 1;
+    repeated authorization.Entity entities = 1;
 }
 
 
@@ -68,7 +54,8 @@ message IdpPluginResponse {
 }
 
 message EntityNotFoundError {
-  string user = 1;
+  int32 code = 1;
   string message = 2;
   repeated google.protobuf.Any details = 3;
+  string entity = 4;
 }

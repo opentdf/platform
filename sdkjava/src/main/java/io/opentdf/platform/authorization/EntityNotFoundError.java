@@ -17,9 +17,9 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private EntityNotFoundError() {
-    user_ = "";
     message_ = "";
     details_ = java.util.Collections.emptyList();
+    entity_ = "";
   }
 
   @java.lang.Override
@@ -42,43 +42,15 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.authorization.EntityNotFoundError.class, io.opentdf.platform.authorization.EntityNotFoundError.Builder.class);
   }
 
-  public static final int USER_FIELD_NUMBER = 1;
-  @SuppressWarnings("serial")
-  private volatile java.lang.Object user_ = "";
+  public static final int CODE_FIELD_NUMBER = 1;
+  private int code_ = 0;
   /**
-   * <code>string user = 1 [json_name = "user"];</code>
-   * @return The user.
+   * <code>int32 code = 1 [json_name = "code"];</code>
+   * @return The code.
    */
   @java.lang.Override
-  public java.lang.String getUser() {
-    java.lang.Object ref = user_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      user_ = s;
-      return s;
-    }
-  }
-  /**
-   * <code>string user = 1 [json_name = "user"];</code>
-   * @return The bytes for user.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getUserBytes() {
-    java.lang.Object ref = user_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      user_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
+  public int getCode() {
+    return code_;
   }
 
   public static final int MESSAGE_FIELD_NUMBER = 2;
@@ -161,6 +133,45 @@ private static final long serialVersionUID = 0L;
     return details_.get(index);
   }
 
+  public static final int ENTITY_FIELD_NUMBER = 4;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object entity_ = "";
+  /**
+   * <code>string entity = 4 [json_name = "entity"];</code>
+   * @return The entity.
+   */
+  @java.lang.Override
+  public java.lang.String getEntity() {
+    java.lang.Object ref = entity_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      entity_ = s;
+      return s;
+    }
+  }
+  /**
+   * <code>string entity = 4 [json_name = "entity"];</code>
+   * @return The bytes for entity.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getEntityBytes() {
+    java.lang.Object ref = entity_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      entity_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -175,14 +186,17 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(user_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, user_);
+    if (code_ != 0) {
+      output.writeInt32(1, code_);
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(message_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 2, message_);
     }
     for (int i = 0; i < details_.size(); i++) {
       output.writeMessage(3, details_.get(i));
+    }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(entity_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 4, entity_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -193,8 +207,9 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(user_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, user_);
+    if (code_ != 0) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeInt32Size(1, code_);
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(message_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, message_);
@@ -202,6 +217,9 @@ private static final long serialVersionUID = 0L;
     for (int i = 0; i < details_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(3, details_.get(i));
+    }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(entity_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(4, entity_);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -218,12 +236,14 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.authorization.EntityNotFoundError other = (io.opentdf.platform.authorization.EntityNotFoundError) obj;
 
-    if (!getUser()
-        .equals(other.getUser())) return false;
+    if (getCode()
+        != other.getCode()) return false;
     if (!getMessage()
         .equals(other.getMessage())) return false;
     if (!getDetailsList()
         .equals(other.getDetailsList())) return false;
+    if (!getEntity()
+        .equals(other.getEntity())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -235,14 +255,16 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    hash = (37 * hash) + USER_FIELD_NUMBER;
-    hash = (53 * hash) + getUser().hashCode();
+    hash = (37 * hash) + CODE_FIELD_NUMBER;
+    hash = (53 * hash) + getCode();
     hash = (37 * hash) + MESSAGE_FIELD_NUMBER;
     hash = (53 * hash) + getMessage().hashCode();
     if (getDetailsCount() > 0) {
       hash = (37 * hash) + DETAILS_FIELD_NUMBER;
       hash = (53 * hash) + getDetailsList().hashCode();
     }
+    hash = (37 * hash) + ENTITY_FIELD_NUMBER;
+    hash = (53 * hash) + getEntity().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -374,7 +396,7 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      user_ = "";
+      code_ = 0;
       message_ = "";
       if (detailsBuilder_ == null) {
         details_ = java.util.Collections.emptyList();
@@ -383,6 +405,7 @@ private static final long serialVersionUID = 0L;
         detailsBuilder_.clear();
       }
       bitField0_ = (bitField0_ & ~0x00000004);
+      entity_ = "";
       return this;
     }
 
@@ -430,10 +453,13 @@ private static final long serialVersionUID = 0L;
     private void buildPartial0(io.opentdf.platform.authorization.EntityNotFoundError result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.user_ = user_;
+        result.code_ = code_;
       }
       if (((from_bitField0_ & 0x00000002) != 0)) {
         result.message_ = message_;
+      }
+      if (((from_bitField0_ & 0x00000008) != 0)) {
+        result.entity_ = entity_;
       }
     }
 
@@ -481,10 +507,8 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.authorization.EntityNotFoundError other) {
       if (other == io.opentdf.platform.authorization.EntityNotFoundError.getDefaultInstance()) return this;
-      if (!other.getUser().isEmpty()) {
-        user_ = other.user_;
-        bitField0_ |= 0x00000001;
-        onChanged();
+      if (other.getCode() != 0) {
+        setCode(other.getCode());
       }
       if (!other.getMessage().isEmpty()) {
         message_ = other.message_;
@@ -517,6 +541,11 @@ private static final long serialVersionUID = 0L;
           }
         }
       }
+      if (!other.getEntity().isEmpty()) {
+        entity_ = other.entity_;
+        bitField0_ |= 0x00000008;
+        onChanged();
+      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -543,11 +572,11 @@ private static final long serialVersionUID = 0L;
             case 0:
               done = true;
               break;
-            case 10: {
-              user_ = input.readStringRequireUtf8();
+            case 8: {
+              code_ = input.readInt32();
               bitField0_ |= 0x00000001;
               break;
-            } // case 10
+            } // case 8
             case 18: {
               message_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000002;
@@ -566,6 +595,11 @@ private static final long serialVersionUID = 0L;
               }
               break;
             } // case 26
+            case 34: {
+              entity_ = input.readStringRequireUtf8();
+              bitField0_ |= 0x00000008;
+              break;
+            } // case 34
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -583,74 +617,34 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.lang.Object user_ = "";
+    private int code_ ;
     /**
-     * <code>string user = 1 [json_name = "user"];</code>
-     * @return The user.
+     * <code>int32 code = 1 [json_name = "code"];</code>
+     * @return The code.
      */
-    public java.lang.String getUser() {
-      java.lang.Object ref = user_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        user_ = s;
-        return s;
-      } else {
-        return (java.lang.String) ref;
-      }
+    @java.lang.Override
+    public int getCode() {
+      return code_;
     }
     /**
-     * <code>string user = 1 [json_name = "user"];</code>
-     * @return The bytes for user.
-     */
-    public com.google.protobuf.ByteString
-        getUserBytes() {
-      java.lang.Object ref = user_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        user_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-    /**
-     * <code>string user = 1 [json_name = "user"];</code>
-     * @param value The user to set.
+     * <code>int32 code = 1 [json_name = "code"];</code>
+     * @param value The code to set.
      * @return This builder for chaining.
      */
-    public Builder setUser(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      user_ = value;
+    public Builder setCode(int value) {
+
+      code_ = value;
       bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
-     * <code>string user = 1 [json_name = "user"];</code>
+     * <code>int32 code = 1 [json_name = "code"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearUser() {
-      user_ = getDefaultInstance().getUser();
+    public Builder clearCode() {
       bitField0_ = (bitField0_ & ~0x00000001);
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string user = 1 [json_name = "user"];</code>
-     * @param value The bytes for user to set.
-     * @return This builder for chaining.
-     */
-    public Builder setUserBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      user_ = value;
-      bitField0_ |= 0x00000001;
+      code_ = 0;
       onChanged();
       return this;
     }
@@ -965,6 +959,78 @@ private static final long serialVersionUID = 0L;
         details_ = null;
       }
       return detailsBuilder_;
+    }
+
+    private java.lang.Object entity_ = "";
+    /**
+     * <code>string entity = 4 [json_name = "entity"];</code>
+     * @return The entity.
+     */
+    public java.lang.String getEntity() {
+      java.lang.Object ref = entity_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        entity_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <code>string entity = 4 [json_name = "entity"];</code>
+     * @return The bytes for entity.
+     */
+    public com.google.protobuf.ByteString
+        getEntityBytes() {
+      java.lang.Object ref = entity_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        entity_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>string entity = 4 [json_name = "entity"];</code>
+     * @param value The entity to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEntity(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      entity_ = value;
+      bitField0_ |= 0x00000008;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string entity = 4 [json_name = "entity"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEntity() {
+      entity_ = getDefaultInstance().getEntity();
+      bitField0_ = (bitField0_ & ~0x00000008);
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string entity = 4 [json_name = "entity"];</code>
+     * @param value The bytes for entity to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEntityBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      entity_ = value;
+      bitField0_ |= 0x00000008;
+      onChanged();
+      return this;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

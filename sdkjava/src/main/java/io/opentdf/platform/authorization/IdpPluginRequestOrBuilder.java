@@ -9,26 +9,26 @@ public interface IdpPluginRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
-  java.util.List<io.opentdf.platform.authorization.IdpEntity> 
+  java.util.List<io.opentdf.platform.authorization.Entity> 
       getEntitiesList();
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
-  io.opentdf.platform.authorization.IdpEntity getEntities(int index);
+  io.opentdf.platform.authorization.Entity getEntities(int index);
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
   int getEntitiesCount();
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.authorization.IdpEntityOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.authorization.EntityOrBuilder> 
       getEntitiesOrBuilderList();
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
-  io.opentdf.platform.authorization.IdpEntityOrBuilder getEntitiesOrBuilder(
+  io.opentdf.platform.authorization.EntityOrBuilder getEntitiesOrBuilder(
       int index);
 }

@@ -9,16 +9,10 @@ public interface EntityNotFoundErrorOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>string user = 1 [json_name = "user"];</code>
-   * @return The user.
+   * <code>int32 code = 1 [json_name = "code"];</code>
+   * @return The code.
    */
-  java.lang.String getUser();
-  /**
-   * <code>string user = 1 [json_name = "user"];</code>
-   * @return The bytes for user.
-   */
-  com.google.protobuf.ByteString
-      getUserBytes();
+  int getCode();
 
   /**
    * <code>string message = 2 [json_name = "message"];</code>
@@ -55,4 +49,16 @@ public interface EntityNotFoundErrorOrBuilder extends
    */
   com.google.protobuf.AnyOrBuilder getDetailsOrBuilder(
       int index);
+
+  /**
+   * <code>string entity = 4 [json_name = "entity"];</code>
+   * @return The entity.
+   */
+  java.lang.String getEntity();
+  /**
+   * <code>string entity = 4 [json_name = "entity"];</code>
+   * @return The bytes for entity.
+   */
+  com.google.protobuf.ByteString
+      getEntityBytes();
 }

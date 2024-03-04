@@ -2,15 +2,18 @@ package idpplugin_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	idpPlugin "github.com/opentdf/platform/internal/idpplugin"
-	authorization "github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/internal/idpplugin"
+	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/services"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
 )
 
 //nolint:gosec
@@ -29,6 +32,8 @@ const by_email_alice_resp = `[
 {"id": "aliceid", "username":"alice.smith"}
 ]
 `
+const by_email_non_ext_resp = `[]`
+
 const by_username_bob_resp = `[
 {"id": "bobid", "username":"bob.smith"}
 ]`
@@ -46,8 +51,8 @@ const group_resp = `{
 	"name": "group1"
 }`
 
-func test_keycloakConfig(server *httptest.Server) idpPlugin.KeyCloakConfg {
-	return idpPlugin.KeyCloakConfg{
+func test_keycloakConfig(server *httptest.Server) idpplugin.KeyCloakConfg {
+	return idpplugin.KeyCloakConfg{
 		Url:            server.URL,
 		ClientId:       "c1",
 		ClientSecret:   "cs",
@@ -102,16 +107,16 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	}, nil, nil, nil)
 	defer server.Close()
 
-	var validBody []*authorization.IdpEntity
-	validBody = append(validBody, &authorization.IdpEntity{Id: "1234", EntityType: &authorization.IdpEntity_EmailAddress{EmailAddress: "bob@sample.org"}})
-	validBody = append(validBody, &authorization.IdpEntity{Id: "1235", EntityType: &authorization.IdpEntity_EmailAddress{EmailAddress: "alice@sample.org"}})
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@sample.org"}})
+	validBody = append(validBody, &authorization.Entity{Id: "1235", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "alice@sample.org"}})
 
 	var kcconfig = test_keycloakConfig(server)
 
-	var idp, err = idpPlugin.NewIdpPlugin(kcconfig)
-	assert.Nil(t, err)
+	var ctxb = context.Background()
 
-	ctxb := context.Background()
+	var idp, err = idpplugin.NewIdpPlugin(kcconfig, ctxb)
+	assert.Nil(t, err)
 
 	var req = authorization.IdpPluginRequest{}
 	req.Entities = validBody
@@ -143,16 +148,16 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	defer server.Close()
 
 	// validBody := `{"entity_identifiers": [{"type": "username","identifier": "bob.smith"}]}`
-	var validBody []*authorization.IdpEntity
-	validBody = append(validBody, &authorization.IdpEntity{Id: "1234", EntityType: &authorization.IdpEntity_UserName{UserName: "bob.smith"}})
-	validBody = append(validBody, &authorization.IdpEntity{Id: "1235", EntityType: &authorization.IdpEntity_UserName{UserName: "alice.smith"}})
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}})
+	validBody = append(validBody, &authorization.Entity{Id: "1235", EntityType: &authorization.Entity_UserName{UserName: "alice.smith"}})
 
 	var kcconfig = test_keycloakConfig(server)
 
-	var idp, err = idpPlugin.NewIdpPlugin(kcconfig)
-	assert.Nil(t, err)
+	var ctxb = context.Background()
 
-	ctxb := context.Background()
+	var idp, err = idpplugin.NewIdpPlugin(kcconfig, ctxb)
+	assert.Nil(t, err)
 
 	var req = authorization.IdpPluginRequest{}
 	req.Entities = validBody
@@ -188,15 +193,15 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	})
 	defer server.Close()
 
-	var validBody []*authorization.IdpEntity
-	validBody = append(validBody, &authorization.IdpEntity{Id: "123456", EntityType: &authorization.IdpEntity_EmailAddress{EmailAddress: "group1@sample.org"}})
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "123456", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "group1@sample.org"}})
 
 	var kcconfig = test_keycloakConfig(server)
 
-	var idp, err = idpPlugin.NewIdpPlugin(kcconfig)
-	assert.Nil(t, err)
+	var ctxb = context.Background()
 
-	ctxb := context.Background()
+	var idp, err = idpplugin.NewIdpPlugin(kcconfig, ctxb)
+	assert.Nil(t, err)
 
 	var req = authorization.IdpPluginRequest{}
 	req.Entities = validBody
@@ -215,4 +220,39 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	assert.Equal(t, "bobid", propMap["id"])
 	propMap = entity_representations[0].AdditionalProps[1].AsMap()
 	assert.Equal(t, "aliceid", propMap["id"])
+}
+
+func Test_KCEntityResolutionNotFoundError(t *testing.T) {
+
+	server := test_server(t, map[string]string{
+		"email=random%40sample.org&exact=true": "[]",
+	}, map[string]string{
+		"search=random%40sample.org": "[]",
+	}, map[string]string{
+		"group1-uuid": group_resp,
+	}, map[string]string{
+		"group1-uuid": group_submember_resp,
+	})
+	defer server.Close()
+
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random@sample.org"}})
+
+	var kcconfig = test_keycloakConfig(server)
+
+	var ctxb = context.Background()
+
+	var idp, err = idpplugin.NewIdpPlugin(kcconfig, ctxb)
+	assert.Nil(t, err)
+
+	var req = authorization.IdpPluginRequest{}
+	req.Entities = validBody
+
+	var resp, reserr = idp.EntityResolution(ctxb, &req)
+
+	assert.NotNil(t, reserr)
+	assert.Equal(t, &authorization.IdpPluginResponse{}, resp)
+	var entityNotFound = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: services.ErrGetRetrievalFailed, Entity: "random@sample.org"}
+	var expectedError = errors.New(entityNotFound.String())
+	assert.Equal(t, expectedError, reserr)
 }

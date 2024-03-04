@@ -59,41 +59,41 @@ private static final long serialVersionUID = 0L;
 
   public static final int ENTITIES_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.authorization.IdpEntity> entities_;
+  private java.util.List<io.opentdf.platform.authorization.Entity> entities_;
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.authorization.IdpEntity> getEntitiesList() {
+  public java.util.List<io.opentdf.platform.authorization.Entity> getEntitiesList() {
     return entities_;
   }
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.authorization.IdpEntityOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.authorization.EntityOrBuilder> 
       getEntitiesOrBuilderList() {
     return entities_;
   }
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
   public int getEntitiesCount() {
     return entities_.size();
   }
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.IdpEntity getEntities(int index) {
+  public io.opentdf.platform.authorization.Entity getEntities(int index) {
     return entities_.get(index);
   }
   /**
-   * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+   * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.IdpEntityOrBuilder getEntitiesOrBuilder(
+  public io.opentdf.platform.authorization.EntityOrBuilder getEntitiesOrBuilder(
       int index) {
     return entities_.get(index);
   }
@@ -460,9 +460,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.authorization.IdpEntity m =
+              io.opentdf.platform.authorization.Entity m =
                   input.readMessage(
-                      io.opentdf.platform.authorization.IdpEntity.parser(),
+                      io.opentdf.platform.authorization.Entity.parser(),
                       extensionRegistry);
               if (entitiesBuilder_ == null) {
                 ensureEntitiesIsMutable();
@@ -489,22 +489,22 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.authorization.IdpEntity> entities_ =
+    private java.util.List<io.opentdf.platform.authorization.Entity> entities_ =
       java.util.Collections.emptyList();
     private void ensureEntitiesIsMutable() {
       if (!((bitField0_ & 0x00000001) != 0)) {
-        entities_ = new java.util.ArrayList<io.opentdf.platform.authorization.IdpEntity>(entities_);
+        entities_ = new java.util.ArrayList<io.opentdf.platform.authorization.Entity>(entities_);
         bitField0_ |= 0x00000001;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.IdpEntity, io.opentdf.platform.authorization.IdpEntity.Builder, io.opentdf.platform.authorization.IdpEntityOrBuilder> entitiesBuilder_;
+        io.opentdf.platform.authorization.Entity, io.opentdf.platform.authorization.Entity.Builder, io.opentdf.platform.authorization.EntityOrBuilder> entitiesBuilder_;
 
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public java.util.List<io.opentdf.platform.authorization.IdpEntity> getEntitiesList() {
+    public java.util.List<io.opentdf.platform.authorization.Entity> getEntitiesList() {
       if (entitiesBuilder_ == null) {
         return java.util.Collections.unmodifiableList(entities_);
       } else {
@@ -512,7 +512,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public int getEntitiesCount() {
       if (entitiesBuilder_ == null) {
@@ -522,9 +522,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.authorization.IdpEntity getEntities(int index) {
+    public io.opentdf.platform.authorization.Entity getEntities(int index) {
       if (entitiesBuilder_ == null) {
         return entities_.get(index);
       } else {
@@ -532,10 +532,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public Builder setEntities(
-        int index, io.opentdf.platform.authorization.IdpEntity value) {
+        int index, io.opentdf.platform.authorization.Entity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -549,10 +549,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public Builder setEntities(
-        int index, io.opentdf.platform.authorization.IdpEntity.Builder builderForValue) {
+        int index, io.opentdf.platform.authorization.Entity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.set(index, builderForValue.build());
@@ -563,9 +563,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public Builder addEntities(io.opentdf.platform.authorization.IdpEntity value) {
+    public Builder addEntities(io.opentdf.platform.authorization.Entity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -579,10 +579,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        int index, io.opentdf.platform.authorization.IdpEntity value) {
+        int index, io.opentdf.platform.authorization.Entity value) {
       if (entitiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -596,10 +596,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        io.opentdf.platform.authorization.IdpEntity.Builder builderForValue) {
+        io.opentdf.platform.authorization.Entity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.add(builderForValue.build());
@@ -610,10 +610,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public Builder addEntities(
-        int index, io.opentdf.platform.authorization.IdpEntity.Builder builderForValue) {
+        int index, io.opentdf.platform.authorization.Entity.Builder builderForValue) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         entities_.add(index, builderForValue.build());
@@ -624,10 +624,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public Builder addAllEntities(
-        java.lang.Iterable<? extends io.opentdf.platform.authorization.IdpEntity> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.authorization.Entity> values) {
       if (entitiesBuilder_ == null) {
         ensureEntitiesIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -639,7 +639,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public Builder clearEntities() {
       if (entitiesBuilder_ == null) {
@@ -652,7 +652,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
     public Builder removeEntities(int index) {
       if (entitiesBuilder_ == null) {
@@ -665,16 +665,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.authorization.IdpEntity.Builder getEntitiesBuilder(
+    public io.opentdf.platform.authorization.Entity.Builder getEntitiesBuilder(
         int index) {
       return getEntitiesFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.authorization.IdpEntityOrBuilder getEntitiesOrBuilder(
+    public io.opentdf.platform.authorization.EntityOrBuilder getEntitiesOrBuilder(
         int index) {
       if (entitiesBuilder_ == null) {
         return entities_.get(index);  } else {
@@ -682,9 +682,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.authorization.IdpEntityOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.authorization.EntityOrBuilder> 
          getEntitiesOrBuilderList() {
       if (entitiesBuilder_ != null) {
         return entitiesBuilder_.getMessageOrBuilderList();
@@ -693,33 +693,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.authorization.IdpEntity.Builder addEntitiesBuilder() {
+    public io.opentdf.platform.authorization.Entity.Builder addEntitiesBuilder() {
       return getEntitiesFieldBuilder().addBuilder(
-          io.opentdf.platform.authorization.IdpEntity.getDefaultInstance());
+          io.opentdf.platform.authorization.Entity.getDefaultInstance());
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public io.opentdf.platform.authorization.IdpEntity.Builder addEntitiesBuilder(
+    public io.opentdf.platform.authorization.Entity.Builder addEntitiesBuilder(
         int index) {
       return getEntitiesFieldBuilder().addBuilder(
-          index, io.opentdf.platform.authorization.IdpEntity.getDefaultInstance());
+          index, io.opentdf.platform.authorization.Entity.getDefaultInstance());
     }
     /**
-     * <code>repeated .authorization.IdpEntity entities = 1 [json_name = "entities"];</code>
+     * <code>repeated .authorization.Entity entities = 1 [json_name = "entities"];</code>
      */
-    public java.util.List<io.opentdf.platform.authorization.IdpEntity.Builder> 
+    public java.util.List<io.opentdf.platform.authorization.Entity.Builder> 
          getEntitiesBuilderList() {
       return getEntitiesFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.IdpEntity, io.opentdf.platform.authorization.IdpEntity.Builder, io.opentdf.platform.authorization.IdpEntityOrBuilder> 
+        io.opentdf.platform.authorization.Entity, io.opentdf.platform.authorization.Entity.Builder, io.opentdf.platform.authorization.EntityOrBuilder> 
         getEntitiesFieldBuilder() {
       if (entitiesBuilder_ == null) {
         entitiesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.authorization.IdpEntity, io.opentdf.platform.authorization.IdpEntity.Builder, io.opentdf.platform.authorization.IdpEntityOrBuilder>(
+            io.opentdf.platform.authorization.Entity, io.opentdf.platform.authorization.Entity.Builder, io.opentdf.platform.authorization.EntityOrBuilder>(
                 entities_,
                 ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),

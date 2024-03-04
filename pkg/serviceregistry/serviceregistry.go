@@ -14,10 +14,11 @@ import (
 )
 
 type RegistrationParams struct {
-	Config   config.ServiceConfig
-	OTDF     *server.OpenTDFServer
-	DBClient *db.Client
-	Engine   *opa.Engine
+	Config          config.ServiceConfig
+	OTDF            *server.OpenTDFServer
+	DBClient        *db.Client
+	Engine          *opa.Engine
+	WellKnownConfig func(namespace string, config any) error
 }
 type HandlerServer func(ctx context.Context, mux *runtime.ServeMux, server any) error
 type RegisterFunc func(RegistrationParams) (Impl any, HandlerServer HandlerServer)

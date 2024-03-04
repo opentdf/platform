@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package wellknown_configuration;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+message WellKnownConfig {
+  map<string, google.protobuf.Struct> configuration = 1;
+}
+
+service WellKnownService {
+  rpc GetWellKnownConfiguration(WellKnownConfig) returns (google.protobuf.Struct) {
+    option (google.api.http) = {get: "/.well-known/opentdf-configuration"};
+  }
+}

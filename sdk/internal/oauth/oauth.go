@@ -78,7 +78,10 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 	headers := jws.NewHeaders()
 
 	if key.KeyID() != "" {
-		headers.Set("kid", key.KeyID())
+		err = headers.Set("kid", key.KeyID())
+		if err != nil {
+			return nil, fmt.Errorf("jws field invalid [kid]: %w", err)
+		}
 	}
 
 	alg := key.Algorithm()
@@ -123,7 +126,6 @@ func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials Cli
 	}
 
 	return processResponse(resp)
-
 }
 
 func processResponse(resp *http.Response) (*oauth2.Token, error) {
@@ -168,21 +170,28 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 		return "", err
 	}
 
-	//Protected headers
+	// Protected headers
 	headers := jws.NewHeaders()
-	headers.Set("jwk", publicKey)
-	headers.Set("typ", "dpop+jwt")
+	err = headers.Set("jwk", publicKey)
+	if err != nil {
+		return "", fmt.Errorf("jws field invalid [jwk]: %w", err)
+	}
+
+	err = headers.Set("typ", "dpop+jwt")
+	if err != nil {
+		return "", fmt.Errorf("jws field invalid [typ]: %w", err)
+	}
 
 	var alg jwa.SignatureAlgorithm
 	if err := alg.Accept(dpopJWK.Algorithm()); err != nil {
-		return "", fmt.Errorf("error reading signature algorithm from JWK %s: %v", dpopJWK.Algorithm(), err)
+		return "", fmt.Errorf("error reading signature algorithm from JWK %s: %w", dpopJWK.Algorithm(), err)
 	}
 
 	opts := jwt.WithKey(alg, dpopJWK, jws.WithProtectedHeaders(headers))
 
 	proof, err := jwt.Sign(token, opts)
 	if err != nil {
-		return "", fmt.Errorf("error signing DPoP JWT: %v", err)
+		return "", fmt.Errorf("error signing DPoP JWT: %w", err)
 	}
 
 	return string(proof), nil

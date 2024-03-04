@@ -5,8 +5,10 @@
 
 MODS=protocol/go sdk . examples
 
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 LINT_OPTIONS?=--new
+# LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci-ratchet.yaml
 
 all: toolcheck clean build lint test
 
@@ -36,7 +38,7 @@ proto-lint:
 		fi)
 
 go-lint:
-	for m in $(MODS); do (golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
+	for m in $(MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
 
 proto-generate:
 	rm -rf sdkjava/src protocol/go/[a-fh-z]*

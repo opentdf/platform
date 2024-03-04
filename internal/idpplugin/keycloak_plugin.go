@@ -2,7 +2,6 @@ package idpplugin
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -55,8 +54,6 @@ func NewIdpPlugin(config KeyCloakConfg) (*IdpPlugin, error) {
 func (s IdpPlugin) EntityResolution(ctx context.Context,
 	req *authorization.IdpPluginRequest) (*authorization.IdpPluginResponse, error) {
 	payload := req.GetEntities()
-
-	// var kcConfig KeyCloakConfg = KeyCloakConfg{}
 
 	var resolvedEntities []*authorization.IdpEntityRepresentation
 	slog.Debug("EntityResolution invoked with", "payload", payload)
@@ -131,7 +128,6 @@ func (s IdpPlugin) EntityResolution(ctx context.Context,
 				return &authorization.IdpPluginResponse{},
 					status.Error(codes.Internal, services.ErrCreationFailed)
 			}
-			// var entityRep = authorization.EntityRepresentation{AdditionalProps: mystruct}
 			jsonEntities = append(jsonEntities, mystruct)
 		}
 
@@ -156,17 +152,12 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable) (map[string]
 		return nil, err
 	}
 
-	// var genericER authorization.EntityRepresentation
 	var genericMap map[string]interface{}
-
 	err = json.Unmarshal(tmpDoc, &genericMap)
 	if err != nil {
-		// slog.Error(string(tmpDoc[:]))
 		slog.Error("Could not deserialize generic entitlement context JSON input document!", "error", err)
 		return nil, err
 	}
-	// genericER.AdditionalProps = genericMap
-	// slog.Debug(genericER.String())
 
 	return genericMap, nil
 }
@@ -176,16 +167,14 @@ func getKCClient(kcConfig KeyCloakConfg) (*KeyCloakConnector, error) {
 	if kcConfig.LegacyKeycloak {
 		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
 		client = gocloak.NewClient(kcConfig.Url)
-		restyClient := client.RestyClient()
-		restyClient.SetDebug(true)
-		restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
-		client.SetRestyClient(restyClient)
 	} else {
 		client = gocloak.NewClient(kcConfig.Url, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
 	}
+	// If needed, ability to disable tls checks for testing
 	// restyClient := client.RestyClient()
 	// restyClient.SetDebug(true)
 	// restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	// client.SetRestyClient(restyClient)
 
 	ctxb := context.Background()
 	token, err := client.LoginClient(ctxb, kcConfig.ClientId, kcConfig.ClientSecret, kcConfig.Realm)

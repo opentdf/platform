@@ -102,7 +102,6 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	}, nil, nil, nil)
 	defer server.Close()
 
-	// validBody := `{"entity_identifiers": [{"identifier": "bob@sample.org", "type": "email"},{"identifier": "alice@sample.org", "type": "email"}]}`
 	var validBody []*authorization.IdpEntity
 	validBody = append(validBody, &authorization.IdpEntity{Id: "1234", EntityType: &authorization.IdpEntity_EmailAddress{EmailAddress: "bob@sample.org"}})
 	validBody = append(validBody, &authorization.IdpEntity{Id: "1235", EntityType: &authorization.IdpEntity_EmailAddress{EmailAddress: "alice@sample.org"}})
@@ -136,7 +135,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	assert.Equal(t, "aliceid", propMap["id"])
 }
 
-func Test_ByUsername(t *testing.T) {
+func Test_KCEntityResolutionByUsername(t *testing.T) {
 	server := test_server(t, map[string]string{
 		"exact=true&username=bob.smith":   by_username_bob_resp,
 		"exact=true&username=alice.smith": by_username_alice_resp,
@@ -177,7 +176,7 @@ func Test_ByUsername(t *testing.T) {
 	assert.Equal(t, "aliceid", propMap["id"])
 }
 
-func Test_ByGroupEmail(t *testing.T) {
+func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	server := test_server(t, map[string]string{
 		"email=group1%40sample.org&exact=true": "[]",
 	}, map[string]string{

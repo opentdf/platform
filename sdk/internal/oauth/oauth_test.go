@@ -32,10 +32,10 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	ctx := context.Background()
 
 	wiremock, wiremockUrl := setupWiremock(t, ctx)
-	defer assert.NoError(t, wiremock.Terminate(ctx))
+	defer func() { assert.NoError(t, wiremock.Terminate(ctx)) }()
 
 	keycloak, idpEndpoint := setupKeycloak(t, wiremockUrl, ctx)
-	defer assert.NoError(t, keycloak.Terminate(ctx))
+	defer func() { assert.NoError(t, keycloak.Terminate(ctx)) }()
 
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)

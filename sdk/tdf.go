@@ -2,20 +2,14 @@ package sdk
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"math"
-	"net/http"
-	"net/url"
 	"strings"
-	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/internal/crypto"
@@ -35,39 +29,39 @@ var (
 )
 
 const (
-	maxFileSizeSupported   = 68719476736 // 64gb
-	defaultMimeType        = "application/octet-stream"
-	tdfAsZip               = "zip"
-	gcmIvSize              = 12
-	aesBlockSize           = 16
-	hmacIntegrityAlgorithm = "HS256"
-	gmacIntegrityAlgorithm = "GMAC"
-	tdfZipReference        = "reference"
-	kKeySize               = 32
-	kWrapped               = "wrapped"
-	kKasProtocol           = "kas"
-	kSplitKeyType          = "split"
-	kGCMCipherAlgorithm    = "AES-256-GCM"
-	kGMACPayloadLength     = 16
-	// kClientPublicKey        = "clientPublicKey"
-	kSignedRequestToken = "signedRequestToken"
-	// kKasURL                 = "url"
-	kRewrapV2             = "/v2/rewrap"
-	kAuthorizationKey     = "Authorization"
-	kContentTypeKey       = "Content-Type"
-	kAcceptKey            = "Accept"
-	kContentTypeJSONValue = "application/json"
-	kEntityWrappedKey     = "entityWrappedKey"
-	// kPolicy                 = "policy"
-	// kHmacIntegrityAlgorithm = "HS256"
-	// kGmacIntegrityAlgorithm = "GMAC"
+	maxFileSizeSupported    = 68719476736 // 64gb
+	defaultMimeType         = "application/octet-stream"
+	tdfAsZip                = "zip"
+	gcmIvSize               = 12
+	aesBlockSize            = 16
+	hmacIntegrityAlgorithm  = "HS256"
+	gmacIntegrityAlgorithm  = "GMAC"
+	tdfZipReference         = "reference"
+	kKeySize                = 32
+	kWrapped                = "wrapped"
+	kKasProtocol            = "kas"
+	kSplitKeyType           = "split"
+	kGCMCipherAlgorithm     = "AES-256-GCM"
+	kGMACPayloadLength      = 16
+	kClientPublicKey        = "clientPublicKey"
+	kSignedRequestToken     = "signedRequestToken"
+	kKasURL                 = "url"
+	kRewrapV2               = "/v2/rewrap"
+	kAuthorizationKey       = "Authorization"
+	kContentTypeKey         = "Content-Type"
+	kAcceptKey              = "Accept"
+	kContentTypeJSONValue   = "application/json"
+	kEntityWrappedKey       = "entityWrappedKey"
+	kPolicy                 = "policy"
+	kHmacIntegrityAlgorithm = "HS256"
+	kGmacIntegrityAlgorithm = "GMAC"
 )
 
 type Reader struct {
-	Manifest
+	manifest            Manifest
 	unencryptedMetadata string
 	tdfReader           archive.TDFReader
-	authConfig          AuthConfig
+	unwrapper           Unwrapper
 	cursor              int64
 	aesGcm              crypto.AesGcm
 	payloadSize         int64
@@ -75,25 +69,19 @@ type Reader struct {
 }
 
 type TDFObject struct {
-	Manifest
-	TdfSize    int64
+	manifest   Manifest
+	size       int64
 	aesGcm     crypto.AesGcm
 	payloadKey [kKeySize]byte
 }
 
-type rewrapJWTClaims struct {
-	jwt.RegisteredClaims
-	Body string `json:"requestBody"`
+type Unwrapper interface {
+	unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
+	getPublicKey(kas KASInfo) (string, error)
 }
 
-type RequestBody struct {
-	KeyAccess       `json:"keyAccess"`
-	ClientPublicKey string `json:"clientPublicKey"`
-	Policy          string `json:"policy"`
-}
-
-// CreateTDF tdf
-func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+// CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+func (sdk SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -108,8 +96,18 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
+	tdfConfig, err := NewTDFConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
+	}
+
+	err = fillInPublicKeys(sdk.unwrapper, tdfConfig.kasInfoList)
+	if err != nil {
+		return nil, err
+	}
+
 	tdfObject := &TDFObject{}
-	err = tdfObject.prepareManifest(tdfConfig)
+	err = tdfObject.prepareManifest(*tdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -174,8 +172,8 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 			EncryptedSize: int64(len(cipherData)),
 		}
 
-		tdfObject.Manifest.EncryptionInformation.IntegrityInformation.Segments =
-			append(tdfObject.Manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
+		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments =
+			append(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
 
 		totalSegments--
 		readPos += readSize
@@ -187,33 +185,33 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 	}
 
 	sig := string(crypto.Base64Encode([]byte(rootSignature)))
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
 
 	integrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.integrityAlgorithm == HS256 {
 		integrityAlgStr = hmacIntegrityAlgorithm
 	}
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm = integrityAlgStr
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm = integrityAlgStr
 
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize = segmentSize
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize = encryptedSegmentSize
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize = segmentSize
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize = encryptedSegmentSize
 
 	segIntegrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
 		segIntegrityAlgStr = hmacIntegrityAlgorithm
 	}
 
-	tdfObject.Manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm = segIntegrityAlgStr
-	tdfObject.Manifest.EncryptionInformation.Method.IsStreamable = true
+	tdfObject.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm = segIntegrityAlgStr
+	tdfObject.manifest.EncryptionInformation.Method.IsStreamable = true
 
 	// add payload info
-	tdfObject.Manifest.Payload.MimeType = defaultMimeType
-	tdfObject.Manifest.Payload.Protocol = tdfAsZip
-	tdfObject.Manifest.Payload.Type = tdfZipReference
-	tdfObject.Manifest.Payload.URL = archive.TDFPayloadFileName
-	tdfObject.Manifest.Payload.IsEncrypted = true
+	tdfObject.manifest.Payload.MimeType = defaultMimeType
+	tdfObject.manifest.Payload.Protocol = tdfAsZip
+	tdfObject.manifest.Payload.Type = tdfZipReference
+	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
+	tdfObject.manifest.Payload.IsEncrypted = true
 
-	manifestAsStr, err := json.Marshal(tdfObject.Manifest)
+	manifestAsStr, err := json.Marshal(tdfObject.manifest)
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal failed:%w", err)
 	}
@@ -223,7 +221,7 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 		return nil, fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
 	}
 
-	tdfObject.TdfSize, err = tdfWriter.Finish()
+	tdfObject.size, err = tdfWriter.Finish()
 	if err != nil {
 		return nil, fmt.Errorf("TDFWriter.Finish failed:%w", err)
 	}
@@ -231,8 +229,16 @@ func CreateTDF(tdfConfig TDFConfig, reader io.ReadSeeker, writer io.Writer) (*TD
 	return tdfObject, nil
 }
 
+func (t *TDFObject) Manifest() Manifest {
+	return t.manifest
+}
+
+func (r *Reader) Manifest() Manifest {
+	return r.manifest
+}
+
 // prepare the manifest for TDF
-func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
+func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
 	manifest := Manifest{}
 	if len(tdfConfig.kasInfoList) == 0 {
 		return errInvalidKasInfo
@@ -240,7 +246,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
 
-	policyObj, err := tdfObject.createPolicyObject(tdfConfig.attributes)
+	policyObj, err := t.createPolicyObject(tdfConfig.attributes)
 	if err != nil {
 		return fmt.Errorf("fail to create policy object:%w", err)
 	}
@@ -251,7 +257,7 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 	}
 
 	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
-	symKeys := [][]byte{}
+	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
 	for _, kasInfo := range tdfConfig.kasInfoList {
 		if len(kasInfo.publicKey) == 0 {
 			return errKasPubKeyMissing
@@ -296,8 +302,10 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 			}
 
 			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
-			metadata := EncryptedMetadata{Cipher: string(crypto.Base64Encode(encryptedMetaData)),
-				Iv: string(crypto.Base64Encode(iv))}
+			metadata := EncryptedMetadata{
+				Cipher: string(crypto.Base64Encode(encryptedMetaData)),
+				Iv:     string(crypto.Base64Encode(iv)),
+			}
 
 			metadataJSON, err := json.Marshal(metadata)
 			if err != nil {
@@ -317,22 +325,22 @@ func (tdfObject *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolin
 	// create the payload key by XOR all the keys in key access object.
 	for _, symKey := range symKeys {
 		for keyByteIndex, keyByte := range symKey {
-			tdfObject.payloadKey[keyByteIndex] ^= keyByte
+			t.payloadKey[keyByteIndex] ^= keyByte
 		}
 	}
 
-	gcm, err := crypto.NewAESGcm(tdfObject.payloadKey[:])
+	gcm, err := crypto.NewAESGcm(t.payloadKey[:])
 	if err != nil {
 		return fmt.Errorf(" crypto.NewAESGcm failed:%w", err)
 	}
 
-	tdfObject.Manifest = manifest
-	tdfObject.aesGcm = gcm
+	t.manifest = manifest
+	t.aesGcm = gcm
 	return nil
 }
 
 // create policy object
-func (tdfObject *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error) {
+func (t *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
@@ -352,7 +360,7 @@ func (tdfObject *TDFObject) createPolicyObject(attributes []string) (PolicyObjec
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
+func (sdk SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
@@ -371,42 +379,42 @@ func LoadTDF(authConfig AuthConfig, reader io.ReadSeeker) (*Reader, error) {
 	}
 
 	return &Reader{
-		tdfReader:  tdfReader,
-		Manifest:   *manifestObj,
-		authConfig: authConfig,
+		tdfReader: tdfReader,
+		manifest:  *manifestObj,
+		unwrapper: sdk.unwrapper,
 	}, nil
 }
 
 // Read reads up to len(p) bytes into p. It returns the number of bytes
 // read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
-func (reader *Reader) Read(p []byte) (int, error) {
-	if reader.payloadKey == nil {
-		err := reader.getPayloadKey()
+func (r *Reader) Read(p []byte) (int, error) {
+	if r.payloadKey == nil {
+		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
+			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
-	n, err := reader.ReadAt(p, reader.cursor)
-	reader.cursor += int64(n)
+	n, err := r.ReadAt(p, r.cursor)
+	r.cursor += int64(n)
 	return n, err
 }
 
 // WriteTo writes data to writer until there's no more data to write or
-// when an error occurs.
-func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
-	if reader.payloadKey == nil {
-		err := reader.getPayloadKey()
+// when an error occurs. This implements the io.WriterTo interface.
+func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
+	if r.payloadKey == nil {
+		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
+			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
 	var totalBytes int64
 	var payloadReadOffset int64
-	for _, seg := range reader.Manifest.EncryptionInformation.IntegrityInformation.Segments {
-		readBuf, err := reader.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
 		if err != nil {
 			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
@@ -415,13 +423,13 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, errTDFReaderFailed
 		}
 
-		segHashAlg := reader.Manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
+		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -430,7 +438,7 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, errSegSigValidation
 		}
 
-		writeBuf, err := reader.aesGcm.Decrypt(readBuf)
+		writeBuf, err := r.aesGcm.Decrypt(readBuf)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.decrypt failed: %w", err)
 		}
@@ -456,11 +464,11 @@ func (reader *Reader) WriteTo(writer io.Writer) (int64, error) {
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
-func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
-	if reader.payloadKey == nil {
-		err := reader.getPayloadKey()
+func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
+	if r.payloadKey == nil {
+		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.getPayloadKey failed: %w", err)
+			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
@@ -468,7 +476,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 		return 0, errTDFPayloadInvalidOffset
 	}
 
-	defaultSegmentSize := reader.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
 	var start = math.Floor(float64(offset) / float64(defaultSegmentSize))
 	var end = math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
 
@@ -480,19 +488,19 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 		return 0, errTDFPayloadReadFail
 	}
 
-	if offset > reader.payloadSize {
+	if offset > r.payloadSize {
 		return 0, errTDFPayloadReadFail
 	}
 
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
-	for index, seg := range reader.Manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
 		if firstSegment > int64(index) {
 			payloadReadOffset += seg.EncryptedSize
 			continue
 		}
 
-		readBuf, err := reader.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
 		if err != nil {
 			return 0, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
@@ -501,13 +509,13 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 			return 0, errTDFReaderFailed
 		}
 
-		segHashAlg := reader.Manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, reader.payloadKey, sigAlg)
+		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -516,7 +524,7 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 			return 0, errSegSigValidation
 		}
 
-		writeBuf, err := reader.aesGcm.Decrypt(readBuf)
+		writeBuf, err := r.aesGcm.Decrypt(readBuf)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.decrypt failed: %w", err)
 		}
@@ -540,8 +548,8 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 
 	var err error
 	bufLen := int64(len(buf))
-	if (offset + int64(len(buf))) > reader.payloadSize {
-		bufLen = reader.payloadSize - offset
+	if (offset + int64(len(buf))) > r.payloadSize {
+		bufLen = r.payloadSize - offset
 		err = io.EOF
 	}
 
@@ -550,27 +558,23 @@ func (reader *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:f
 	return int(bufLen), err
 }
 
-// GetManifest return the manifest in TDF.
-func (reader *Reader) GetManifest() Manifest {
-	return reader.Manifest
-}
-
-// GetUnencryptedMetadata return decrypted metadata in manifest.
-func (reader *Reader) GetUnencryptedMetadata() (string, error) {
-	if reader.payloadKey == nil {
-		err := reader.getPayloadKey()
+// UnencryptedMetadata return decrypted metadata in manifest.
+func (r *Reader) UnencryptedMetadata() (string, error) {
+	if r.payloadKey == nil {
+		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return "", fmt.Errorf("reader.getPayloadKey failed: %w", err)
+			return "", fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
-	return reader.unencryptedMetadata, nil
+	return r.unencryptedMetadata, nil
 }
 
-// GetPolicy return policy object in manifest.
-func (reader *Reader) GetPolicy() (PolicyObject, error) {
+// Policy returns a copy of the policy object in manifest, if it is valid.
+// Otherwise, returns an error.
+func (r *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
-	policy, err := crypto.Base64Decode([]byte(reader.Manifest.Policy))
+	policy, err := crypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
 		return policyObj, fmt.Errorf("crypto.Base64Decode failed:%w", err)
 	}
@@ -584,8 +588,8 @@ func (reader *Reader) GetPolicy() (PolicyObject, error) {
 }
 
 // DataAttributes return the data attributes present in tdf.
-func (reader *Reader) DataAttributes() ([]string, error) {
-	policy, err := crypto.Base64Decode([]byte(reader.Manifest.Policy))
+func (r *Reader) DataAttributes() ([]string, error) {
+	policy, err := crypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
 		return nil, fmt.Errorf("crypto.Base64Decode failed:%w", err)
 	}
@@ -605,13 +609,12 @@ func (reader *Reader) DataAttributes() ([]string, error) {
 	return attributes, nil
 }
 
-// Get the payload key th
-func (reader *Reader) getPayloadKey() error { //nolint:gocognit
+// Unwraps the payload key, if possible, using the access service
+func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 	var unencryptedMetadata string
 	var payloadKey [kKeySize]byte
-	for _, keyAccessObj := range reader.Manifest.EncryptionInformation.KeyAccessObjs {
-		requestBody := RequestBody{keyAccessObj, "", reader.Manifest.EncryptionInformation.Policy}
-		wrappedKey, err := rewrap(reader.authConfig, &requestBody)
+	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
+		wrappedKey, err := r.unwrapper.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
 		if err != nil {
 			return fmt.Errorf(" splitKey.rewrap failed:%w", err)
 		}
@@ -648,7 +651,7 @@ func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 		}
 	}
 
-	res, err := validateRootSignature(reader.Manifest, payloadKey[:])
+	res, err := validateRootSignature(r.manifest, payloadKey[:])
 	if err != nil {
 		return fmt.Errorf("splitKey.validateRootSignature failed: %w", err)
 	}
@@ -657,15 +660,15 @@ func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 		return errRootSigValidation
 	}
 
-	segSize := reader.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	encryptedSegSize := reader.Manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
+	segSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	encryptedSegSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
 
 	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
 		return errSegSizeMismatch
 	}
 
 	var payloadSize int64
-	for _, seg := range reader.Manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
 		payloadSize += seg.Size
 	}
 
@@ -674,10 +677,10 @@ func (reader *Reader) getPayloadKey() error { //nolint:gocognit
 		return fmt.Errorf(" crypto.NewAESGcm failed:%w", err)
 	}
 
-	reader.payloadSize = payloadSize
-	reader.unencryptedMetadata = unencryptedMetadata
-	reader.payloadKey = payloadKey[:]
-	reader.aesGcm = gcm
+	r.payloadSize = payloadSize
+	r.unencryptedMetadata = unencryptedMetadata
+	r.payloadKey = payloadKey[:]
+	r.aesGcm = gcm
 
 	return nil
 }
@@ -727,141 +730,18 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	return false, nil
 }
 
-func handleKasRequest(kasPath string, body *RequestBody, authConfig AuthConfig) (*http.Response, error) {
-	kasURL := body.KasURL
-
-	requestBodyData, err := json.Marshal(body)
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %w", err)
-	}
-
-	claims := rewrapJWTClaims{
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)), // Set expiration to be one minute from now
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-		string(requestBodyData),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-
-	signingRSAPrivateKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(authConfig.signingPrivateKey))
-	if err != nil {
-		return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
-	}
-
-	signedToken, err := token.SignedString(signingRSAPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("jwt.SignedString failed: %w", err)
-	}
-
-	signedTokenRequestBody, err := json.Marshal(map[string]string{
-		kSignedRequestToken: signedToken,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %w", err)
-	}
-
-	kasRequestURL, err := url.JoinPath(fmt.Sprintf("%v", kasURL), kasPath)
-	if err != nil {
-		return nil, fmt.Errorf("url.JoinPath failed: %w", err)
-	}
-	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, kasRequestURL,
-		bytes.NewBuffer(signedTokenRequestBody))
-	if err != nil {
-		return nil, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
-	}
-
-	// add required headers
-	request.Header = http.Header{
-		kContentTypeKey:   {kContentTypeJSONValue},
-		kAuthorizationKey: {authConfig.authToken},
-		kAcceptKey:        {kContentTypeJSONValue},
-	}
-
-	client := &http.Client{}
-
-	response, err := client.Do(request)
-	if err != nil {
-		slog.Error("failed http request")
-		return nil, fmt.Errorf("http request failed: %w", err)
-	}
-
-	return response, nil
-}
-
-func rewrap(authConfig AuthConfig, requestBody *RequestBody) ([]byte, error) {
-	clientKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	clientPubKey, err := clientKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
-	}
-	requestBody.ClientPublicKey = clientPubKey
-
-	clientPrivateKey, err := clientKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
-	}
-
-	response, err := handleKasRequest(kRewrapV2, requestBody, authConfig)
-
-	defer func() {
-		err := response.Body.Close()
-		if err != nil {
-			slog.Error("Fail to close HTTP response")
+func fillInPublicKeys(unwrapper Unwrapper, kasInfos []KASInfo) error {
+	for idx, kasInfo := range kasInfos {
+		if kasInfo.publicKey != "" {
+			continue
 		}
-	}()
 
-	if err != nil {
-		slog.Error("failed http request")
-		return nil, fmt.Errorf("http request error: %w", err)
+		publicKey, err := unwrapper.getPublicKey(kasInfo)
+		if err != nil {
+			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.url, err)
+		}
+
+		kasInfos[idx].publicKey = publicKey
 	}
-	if response.StatusCode != kHTTPOk {
-		return nil, fmt.Errorf("http request failed status code:%d", response.StatusCode)
-	}
-
-	rewrapResponseBody, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("io.ReadAll failed: %w", err)
-	}
-
-	key, err := getWrappedKey(rewrapResponseBody, clientPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unwrap the wrapped key:%w", err)
-	}
-
-	return key, nil
-}
-
-func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, error) {
-	var data map[string]interface{}
-	err := json.Unmarshal(rewrapResponseBody, &data)
-	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
-	}
-
-	entityWrappedKey, ok := data[kEntityWrappedKey]
-	if !ok {
-		return nil, fmt.Errorf("entityWrappedKey is missing in key access object")
-	}
-
-	asymDecrypt, err := crypto.NewAsymDecryption(clientPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAsymDecryption failed: %w", err)
-	}
-
-	entityWrappedKeyDecoded, err := crypto.Base64Decode([]byte(fmt.Sprintf("%v", entityWrappedKey)))
-	if err != nil {
-		return nil, fmt.Errorf("crypto.Base64Decode failed: %w", err)
-	}
-
-	key, err := asymDecrypt.Decrypt(entityWrappedKeyDecoded)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.Decrypt failed: %w", err)
-	}
-
-	return key, nil
+	return nil
 }

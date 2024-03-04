@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -35,7 +37,7 @@ type Config struct {
 
 type GrpcConfig struct {
 	Port              int  `yaml:"port" default:"9000"`
-	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"false"`
+	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
 }
 
 type HTTPConfig struct {
@@ -99,7 +101,14 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		grpcOpts...,
 	)
 
-	mux := runtime.NewServeMux()
+	grpcInprocess := &inProcessServer{
+		ln:  fasthttputil.NewInmemoryListener(),
+		srv: grpc.NewServer(),
+	}
+
+	mux := runtime.NewServeMux(
+		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
+	)
 
 	// Enable grpc reflection
 	if config.Grpc.ReflectionEnabled {
@@ -129,10 +138,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		HTTPServer:        httpServer,
 		GrpcServer:        grpcServer,
 		grpcServerAddress: fmt.Sprintf(":%d", config.Grpc.Port),
-		GrpcInProcess: &inProcessServer{
-			ln:  fasthttputil.NewInmemoryListener(),
-			srv: grpc.NewServer(),
-		},
+		GrpcInProcess:     grpcInprocess,
 	}, nil
 }
 
@@ -174,7 +180,7 @@ func (s inProcessServer) GetGrpcServer() *grpc.Server {
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
 	defaultOptions := []grpc.DialOption{
-		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+		grpc.WithContextDialer(func(_ context.Context, addr string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)
@@ -189,7 +195,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 }
 
 func (s OpenTDFServer) startGrpcServer() {
-	slog.Info("starting grpc server")
+	slog.Info("starting grpc server", "address", s.grpcServerAddress)
 	listener, err := net.Listen("tcp", s.grpcServerAddress)
 	if err != nil {
 		slog.Error("failed to create listener", slog.String("error", err.Error()))
@@ -213,14 +219,14 @@ func (s OpenTDFServer) startHTTPServer() {
 	var err error
 
 	if s.HTTPServer.TLSConfig != nil {
-		slog.Info("starting https server")
+		slog.Info("starting https server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServeTLS("", "")
 	} else {
-		slog.Info("starting http server")
+		slog.Info("starting http server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServe()
 	}
 
-	if err != nil && err != http.ErrServerClosed {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("failed to serve http", slog.String("error", err.Error()))
 		return
 	}

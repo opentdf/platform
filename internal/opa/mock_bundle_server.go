@@ -36,6 +36,9 @@ func createMockServer() (*mockBundleServer, error) {
 			"test": {
 				"resource": "/bundles/bundle.tar.gz"
 			}
+		},
+		"decision_logs": {
+  			"console": true
 		}
 	}`, server.URL()))
 

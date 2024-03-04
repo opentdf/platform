@@ -13,25 +13,31 @@ import (
 )
 
 var (
-	TableAttributes                    = "attribute_definitions"
-	TableAttributeValues               = "attribute_values"
-	TableNamespaces                    = "attribute_namespaces"
-	TableKeyAccessServerRegistry       = "key_access_servers"
-	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"
-	TableAttributeValueKeyAccessGrants = "attribute_value_key_access_grants"
-	TableResourceMappings              = "resource_mappings"
-	TableSubjectMappings               = "subject_mappings"
+	TableAttributes                      = "attribute_definitions"
+	TableAttributeValues                 = "attribute_values"
+	TableNamespaces                      = "attribute_namespaces"
+	TableAttrFqn                         = "attribute_fqns"
+	TableKeyAccessServerRegistry         = "key_access_servers"
+	TableAttributeKeyAccessGrants        = "attribute_definition_key_access_grants"
+	TableAttributeValueKeyAccessGrants   = "attribute_value_key_access_grants"
+	TableResourceMappings                = "resource_mappings"
+	TableSubjectMappings                 = "subject_mappings"
+	TableSubjectMappingConditionSetPivot = "subject_mapping_condition_set_pivot"
+	TableSubjectConditionSet             = "subject_condition_set"
 )
 
 var Tables struct {
-	Attributes                    Table
-	AttributeValues               Table
-	Namespaces                    Table
-	KeyAccessServerRegistry       Table
-	AttributeKeyAccessGrants      Table
-	AttributeValueKeyAccessGrants Table
-	ResourceMappings              Table
-	SubjectMappings               Table
+	Attributes                      Table
+	AttributeValues                 Table
+	Namespaces                      Table
+	AttrFqn                         Table
+	KeyAccessServerRegistry         Table
+	AttributeKeyAccessGrants        Table
+	AttributeValueKeyAccessGrants   Table
+	ResourceMappings                Table
+	SubjectMappings                 Table
+	SubjectMappingConditionSetPivot Table
+	SubjectConditionSet             Table
 }
 
 type Table struct {
@@ -65,13 +71,6 @@ func (t Table) Field(field string) string {
 	return t.Name() + "." + field
 }
 
-const (
-	StateInactive    = "INACTIVE"
-	StateActive      = "ACTIVE"
-	StateAny         = "ANY"
-	StateUnspecified = "UNSPECIFIED"
-)
-
 // We can rename this but wanted to get mocks working.
 type PgxIface interface {
 	Acquire(ctx context.Context) (*pgxpool.Conn, error)
@@ -95,18 +94,8 @@ type Config struct {
 }
 
 type Client struct {
-	PgxIface
+	Pgx    PgxIface
 	config Config
-	Tables struct {
-		Attributes                    Table
-		AttributeValues               Table
-		Namespaces                    Table
-		KeyAccessServerRegistry       Table
-		AttributeKeyAccessGrants      Table
-		AttributeValueKeyAccessGrants Table
-		ResourceMappings              Table
-		SubjectMappings               Table
-	}
 }
 
 func NewClient(config Config) (*Client, error) {
@@ -118,16 +107,23 @@ func NewClient(config Config) (*Client, error) {
 	Tables.Attributes = NewTable(TableAttributes, config.Schema)
 	Tables.AttributeValues = NewTable(TableAttributeValues, config.Schema)
 	Tables.Namespaces = NewTable(TableNamespaces, config.Schema)
+	Tables.AttrFqn = NewTable(TableAttrFqn, config.Schema)
 	Tables.KeyAccessServerRegistry = NewTable(TableKeyAccessServerRegistry, config.Schema)
 	Tables.AttributeKeyAccessGrants = NewTable(TableAttributeKeyAccessGrants, config.Schema)
 	Tables.AttributeValueKeyAccessGrants = NewTable(TableAttributeValueKeyAccessGrants, config.Schema)
 	Tables.ResourceMappings = NewTable(TableResourceMappings, config.Schema)
 	Tables.SubjectMappings = NewTable(TableSubjectMappings, config.Schema)
+	Tables.SubjectMappingConditionSetPivot = NewTable(TableSubjectMappingConditionSetPivot, config.Schema)
+	Tables.SubjectConditionSet = NewTable(TableSubjectConditionSet, config.Schema)
 
 	return &Client{
-		PgxIface: pool,
-		config:   config,
+		Pgx:    pool,
+		config: config,
 	}, nil
+}
+
+func (c *Client) Close() {
+	c.Pgx.Close()
 }
 
 func (c Config) buildURL() string {
@@ -141,26 +137,26 @@ func (c Config) buildURL() string {
 }
 
 // Common function for all queryRow calls
-func (c Client) queryRow(ctx context.Context, sql string, args []interface{}, err error) (pgx.Row, error) {
+func (c Client) QueryRow(ctx context.Context, sql string, args []interface{}, err error) (pgx.Row, error) {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 	if err != nil {
 		return nil, err
 	}
-	return c.QueryRow(ctx, sql, args...), nil
+	return c.Pgx.QueryRow(ctx, sql, args...), nil
 }
 
 // Common function for all query calls
-func (c Client) query(ctx context.Context, sql string, args []interface{}, err error) (pgx.Rows, error) {
+func (c Client) Query(ctx context.Context, sql string, args []interface{}, err error) (pgx.Rows, error) {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 	if err != nil {
 		return nil, err
 	}
-	r, e := c.Query(ctx, sql, args...)
+	r, e := c.Pgx.Query(ctx, sql, args...)
 	return r, WrapIfKnownInvalidQueryErr(e)
 }
 
-func (c Client) queryCount(ctx context.Context, sql string, args []interface{}) (int, error) {
-	rows, err := c.query(ctx, sql, args, nil)
+func (c Client) QueryCount(ctx context.Context, sql string, args []interface{}) (int, error) {
+	rows, err := c.Query(ctx, sql, args, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -181,12 +177,12 @@ func (c Client) queryCount(ctx context.Context, sql string, args []interface{}) 
 }
 
 // Common function for all exec calls
-func (c Client) exec(ctx context.Context, sql string, args []interface{}, err error) error {
+func (c Client) Exec(ctx context.Context, sql string, args []interface{}, err error) error {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
 	if err != nil {
 		return err
 	}
-	_, err = c.Exec(ctx, sql, args...)
+	_, err = c.Pgx.Exec(ctx, sql, args...)
 	return WrapIfKnownInvalidQueryErr(err)
 }
 
@@ -195,7 +191,7 @@ func (c Client) exec(ctx context.Context, sql string, args []interface{}, err er
 //
 
 // Postgres uses $1, $2, etc. for placeholders
-func newStatementBuilder() sq.StatementBuilderType {
+func NewStatementBuilder() sq.StatementBuilderType {
 	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 }
 

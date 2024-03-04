@@ -4,19 +4,19 @@ on:
   pull_request:
     branches:
       - main
-  pull_request_target:
-    types:
-      - opened
-      - edited
-      - synchronize
   push:
     branches:
       - main
+  merge_group:
+    branches:
+      - main
+    types: 
+      - checks_requested
 
 jobs:
   pr:
     name: Validate PR title
-    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+    if: ${{ github.event_name != 'merge_group' }}
     runs-on: ubuntu-22.04
     permissions:
       pull-requests: read
@@ -27,7 +27,6 @@ jobs:
 
   go:
     runs-on: ubuntu-22.04
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     permissions:
       checks: write
       contents: read
@@ -40,20 +39,37 @@ jobs:
           - examples
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: ${{github.event_name != 'merge_group' && 1 || 0}}
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.21"
           cache-dependency-path: |
             ./go.sum
-            sdk/go.sum
             examples/go.sum
+            protocol/go/go.sum
+            sdk/go.sum
       - run: make go.work
-      - name: golangci-lint
+      - name: golangci-lint on PR
+        if: github.event_name == 'pull_request'
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
-        continue-on-error: "${{ github.event_name == 'push' }}"
         with:
           version: v1.55
+          working-directory: ${{ matrix.directory }}
           only-new-issues: true
+      - name: golangci-lint on merge_group
+        if: github.event_name == 'merge_group'
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        with:
+          version: v1.55
+          working-directory: ${{ matrix.directory }}
+          args: --new-from-rev=main
+      - name: golangci-lint on push
+        if: github.event_name == 'push'
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        continue-on-error: true
+        with:
+          version: v1.55
           working-directory: ${{ matrix.directory }}
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
@@ -61,7 +77,6 @@ jobs:
   integration:
     name: integration tests
     runs-on: ubuntu-22.04
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
@@ -69,8 +84,9 @@ jobs:
           go-version: "1.21"
           cache-dependency-path: |
             ./go.sum
-            sdk/go.sum
             examples/go.sum
+            protocol/go/go.sum
+            sdk/go.sum
       - run: make go.work
       - run: go test ./integration -race
       - run: docker-compose up -d
@@ -80,11 +96,10 @@ jobs:
       - run: sleep 15
         name: wake me up when github action runner supports docker-compose --wait
       - run: grpcurl -plaintext localhost:9000 list
-      - run: grpcurl -plaintext localhost:9000 list attributes.AttributesService
+      - run: grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
 
   image:
     name: image build
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -97,41 +112,40 @@ jobs:
 
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: bufbuild/buf-setup-action@382440cdb8ec7bc25a68d7b4711163d95f7cc3aa
       - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
         with:
-          input: proto
+          input: services
       - uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01
         # TODO(#212) Block on breaking changes after protos are frozen
         continue-on-error: true
         with:
-          input: proto
-          against: "https://github.com/opentdf/platform.git#branch=main,subdir=proto"
+          input: services
+          against: "https://github.com/opentdf/platform.git#branch=main,subdir=services"
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.21"
           cache-dependency-path: |
             ./go.sum
+            protocol/go/go.sum
             sdk/go.sum
             examples/go.sum
       - run: go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-      - run: make buf-generate
+      - run: rm -rf sdkjava/io sdkjava/src protocol/go/
+      - run: make proto-generate
       - name: Restore go.mod after installing protoc-gen-doc
-        run: git restore go.mod go.sum
+        run: git restore {.,protocol/go}/go.{mod,sum}
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that files have been formatted before PR submission
         run: git diff-files --quiet --ignore-submodules
 
   ci:
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     needs:
-      - pr
       - go
       - integration
       - image
@@ -142,7 +156,6 @@ jobs:
         run: exit 1
 
   license:
-    if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
     name: license check
     runs-on: ubuntu-22.04
     steps:

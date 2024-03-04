@@ -105,7 +105,6 @@ func (writer *Writer) AddHeader(filename string, size int64) error {
 
 // AddData Add data to the zip archive.
 func (writer *Writer) AddData(data []byte) error {
-
 	localFileHeader := LocalFileHeader{}
 	fileTime, fileDate := writer.getTimeDateUnMSDosFormat()
 
@@ -274,7 +273,6 @@ func (writer *Writer) Finish() (int64, error) {
 
 // WriteCentralDirectory write central directory struct into archive.
 func (writer *Writer) writeCentralDirectory() error {
-
 	writer.lastOffsetCDFileHeader = writer.currentOffset
 
 	for i := 0; i < len(writer.fileInfoEntries); i++ {

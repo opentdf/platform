@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
+
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
@@ -278,7 +279,7 @@ func init() {
 	}
 }
 
-func TestSimpleTDF(t *testing.T) { //nolint:gocognit
+func TestSimpleTDF(t *testing.T) {
 	serverURL, closer, sdk := runKas()
 	defer closer()
 

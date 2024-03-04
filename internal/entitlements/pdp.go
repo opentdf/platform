@@ -1,9 +1,10 @@
 package entitlements
 
 import (
+	"strings"
+
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	"strings"
 )
 
 func OpaInput(entity *authorization.Entity, ss *subjectmapping.SubjectSet) (map[string]interface{}, error) {

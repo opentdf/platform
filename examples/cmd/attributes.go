@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/sdk"
@@ -10,7 +12,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
-	"log/slog"
 )
 
 var AttributesExampleCmd = &cobra.Command{
@@ -26,7 +27,6 @@ func init() {
 	ExamplesCmd.AddCommand(AttributesExampleCmd)
 }
 func attributesExample(examplesConfig *ExampleConfig) error {
-
 	s, err := sdk.New(examplesConfig.PlatformEndpoint, sdk.WithInsecureConn())
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))

@@ -17,7 +17,6 @@ func TestCreateArchiveReader(t *testing.T) { // use native library("archive/zip"
 }
 
 func nativeZipFiles(t *testing.T) {
-
 	for index := 0; index < len(writeBuffer); index++ {
 		writeBuffer[index] = 0xFF
 	}

@@ -1,0 +1,17 @@
+# https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
+
+run:
+  timeout: 5m
+  skip-files:
+    - ".*\\.pb\\.go"
+    - ".*\\.pb\\.gw.go"
+linters:
+  disable-all: true
+  enable:
+    # - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    # - staticcheck
+    - typecheck
+    - unused

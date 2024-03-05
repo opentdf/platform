@@ -246,8 +246,6 @@ github.com/opencontainers/runc v1.1.12 h1:BOIssBaW1La0/qbNZHXOOa71dZfZEQOzW7dqQf
 github.com/opencontainers/runc v1.1.12/go.mod h1:S+lQwSfncpBha7XTy/5lBwWgm5+y5Ma/O44Ekby9FK8=
 github.com/opentdf/backend-go v0.1.16 h1:t7OD3ShBCeuAZWUKZNYJJBfC01d4X0EL5a6J1UnIdx4=
 github.com/opentdf/backend-go v0.1.16/go.mod h1:4RAZ3K19YOJkpxSh4jl6vtjOUkK3H/zqA32LeBf3CDQ=
-github.com/opentdf/platform/sdk v0.0.0-20240305125958-7ff29bc0d285 h1:b1vjDgwvAitAev4kzn5lmXZuC7jZxqtzgt19gzvBkQs=
-github.com/opentdf/platform/sdk v0.0.0-20240305125958-7ff29bc0d285/go.mod h1:ugS04emTB9g96A4sqNjOFVn0Ip4B/VVYQ+eAKD7OFxM=
 github.com/ory/dockertest/v3 v3.10.0 h1:4K3z2VMe8Woe++invjaTB7VRyQXQy5UY+loujO4aNE4=
 github.com/ory/dockertest/v3 v3.10.0/go.mod h1:nr57ZbRWMqfsdGdFNLHz5jjNdDb7VVFnzAeW1n5N1Lg=
 github.com/pashagolub/pgxmock/v3 v3.2.0 h1:8l9tPdlGKUfkRMt91PxychjEfIUhoYaxP4OttkH+/Eg=

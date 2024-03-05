@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -385,13 +383,13 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateAttribute(ctx context.Context, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
-	metadataJson, metadata, err := db.MarshalCreateMetadata(attr.Metadata)
+func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*attributes.Attribute, error) {
+	metadataJson, metadata, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := createAttributeSql(attr.NamespaceId, attr.Name, attributesRuleTypeEnumTransformIn(attr.Rule.String()), metadataJson)
+	sql, args, err := createAttributeSql(r.NamespaceId, r.Name, attributesRuleTypeEnumTransformIn(r.Rule.String()), metadataJson)
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
 		return nil, err
@@ -404,50 +402,41 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, attr *attributes.At
 
 	a := &attributes.Attribute{
 		Id:       id,
-		Name:     attr.Name,
-		Rule:     attr.Rule,
+		Name:     r.Name,
+		Rule:     r.Rule,
 		Metadata: metadata,
 		Namespace: &namespaces.Namespace{
-			Id: attr.NamespaceId,
+			Id: r.NamespaceId,
 		},
 		Active: &wrapperspb.BoolValue{Value: true},
 	}
 	return a, nil
 }
 
-func updateAttributeSql(id string, name string, rule string, metadata []byte) (string, []interface{}, error) {
+func updateAttributeSql(id string, metadata []byte) (string, []interface{}, error) {
 	t := db.Tables.Attributes
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
-
-	if name != "" {
-		sb = sb.Set("name", name)
-	}
-	if rule != "" {
-		sb = sb.Set("rule", rule)
-	}
 
 	return sb.Set("metadata", metadata).
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
-func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, attr *attributes.AttributeCreateUpdate) (*attributes.Attribute, error) {
-	// get attribute before updating
-	a, err := c.GetAttribute(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if a.Namespace.Id != attr.NamespaceId {
-		return nil, errors.Join(db.ErrRestrictViolation, fmt.Errorf("cannot change namespaceId"))
-	}
-
-	metadataJson, _, err := db.MarshalUpdateMetadata(a.Metadata, attr.Metadata)
+func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*attributes.Attribute, error) {
+	// if extend we need to merge the metadata
+	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+		a, err := c.GetAttribute(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return a.Metadata, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := updateAttributeSql(id, attr.Name, attributesRuleTypeEnumTransformIn(attr.Rule.String()), metadataJson)
+	sql, args, err := updateAttributeSql(id, metadataJson)
 	if err := c.Exec(ctx, sql, args, err); err != nil {
 		return nil, err
 	}
@@ -455,9 +444,9 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, attr *at
 	// Update the FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeId: id})
 
-	// TODO: see if returning the old is the behavior we should consistently implement throughout services
-	// return the attribute before updating
-	return a, nil
+	return &attributes.Attribute{
+		Id: id,
+	}, nil
 }
 
 func deactivateAttributeSql(id string) (string, []interface{}, error) {

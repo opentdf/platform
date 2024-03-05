@@ -18,7 +18,6 @@ private static final long serialVersionUID = 0L;
   }
   private Value() {
     id_ = "";
-    attributeId_ = "";
     value_ = "";
     members_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
@@ -94,76 +93,37 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int METADATA_FIELD_NUMBER = 2;
-  private io.opentdf.platform.common.Metadata metadata_;
+  public static final int ATTRIBUTE_FIELD_NUMBER = 2;
+  private io.opentdf.platform.policy.attributes.Attribute attribute_;
   /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
+   * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
+   * @return Whether the attribute field is set.
    */
   @java.lang.Override
-  public boolean hasMetadata() {
+  public boolean hasAttribute() {
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return The metadata.
+   * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
+   * @return The attribute.
    */
   @java.lang.Override
-  public io.opentdf.platform.common.Metadata getMetadata() {
-    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+  public io.opentdf.platform.policy.attributes.Attribute getAttribute() {
+    return attribute_ == null ? io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance() : attribute_;
   }
   /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+   * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
-    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+  public io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributeOrBuilder() {
+    return attribute_ == null ? io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance() : attribute_;
   }
 
-  public static final int ATTRIBUTE_ID_FIELD_NUMBER = 3;
-  @SuppressWarnings("serial")
-  private volatile java.lang.Object attributeId_ = "";
-  /**
-   * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-   * @return The attributeId.
-   */
-  @java.lang.Override
-  public java.lang.String getAttributeId() {
-    java.lang.Object ref = attributeId_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      attributeId_ = s;
-      return s;
-    }
-  }
-  /**
-   * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-   * @return The bytes for attributeId.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getAttributeIdBytes() {
-    java.lang.Object ref = attributeId_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      attributeId_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
-  }
-
-  public static final int VALUE_FIELD_NUMBER = 4;
+  public static final int VALUE_FIELD_NUMBER = 3;
   @SuppressWarnings("serial")
   private volatile java.lang.Object value_ = "";
   /**
-   * <code>string value = 4 [json_name = "value"];</code>
+   * <code>string value = 3 [json_name = "value"];</code>
    * @return The value.
    */
   @java.lang.Override
@@ -180,7 +140,7 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
-   * <code>string value = 4 [json_name = "value"];</code>
+   * <code>string value = 3 [json_name = "value"];</code>
    * @return The bytes for value.
    */
   @java.lang.Override
@@ -198,7 +158,7 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int MEMBERS_FIELD_NUMBER = 5;
+  public static final int MEMBERS_FIELD_NUMBER = 4;
   @SuppressWarnings("serial")
   private com.google.protobuf.LazyStringArrayList members_ =
       com.google.protobuf.LazyStringArrayList.emptyList();
@@ -207,7 +167,7 @@ private static final long serialVersionUID = 0L;
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 5 [json_name = "members"];</code>
+   * <code>repeated string members = 4 [json_name = "members"];</code>
    * @return A list containing the members.
    */
   public com.google.protobuf.ProtocolStringList
@@ -219,7 +179,7 @@ private static final long serialVersionUID = 0L;
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 5 [json_name = "members"];</code>
+   * <code>repeated string members = 4 [json_name = "members"];</code>
    * @return The count of members.
    */
   public int getMembersCount() {
@@ -230,7 +190,7 @@ private static final long serialVersionUID = 0L;
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 5 [json_name = "members"];</code>
+   * <code>repeated string members = 4 [json_name = "members"];</code>
    * @param index The index of the element to return.
    * @return The members at the given index.
    */
@@ -242,7 +202,7 @@ private static final long serialVersionUID = 0L;
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 5 [json_name = "members"];</code>
+   * <code>repeated string members = 4 [json_name = "members"];</code>
    * @param index The index of the value to return.
    * @return The bytes of the members at the given index.
    */
@@ -251,7 +211,7 @@ private static final long serialVersionUID = 0L;
     return members_.getByteString(index);
   }
 
-  public static final int GRANTS_FIELD_NUMBER = 6;
+  public static final int GRANTS_FIELD_NUMBER = 5;
   @SuppressWarnings("serial")
   private java.util.List<io.opentdf.platform.kasregistry.KeyAccessServer> grants_;
   /**
@@ -259,7 +219,7 @@ private static final long serialVersionUID = 0L;
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   @java.lang.Override
   public java.util.List<io.opentdf.platform.kasregistry.KeyAccessServer> getGrantsList() {
@@ -270,7 +230,7 @@ private static final long serialVersionUID = 0L;
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   @java.lang.Override
   public java.util.List<? extends io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder> 
@@ -282,7 +242,7 @@ private static final long serialVersionUID = 0L;
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   @java.lang.Override
   public int getGrantsCount() {
@@ -293,7 +253,7 @@ private static final long serialVersionUID = 0L;
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   @java.lang.Override
   public io.opentdf.platform.kasregistry.KeyAccessServer getGrants(int index) {
@@ -304,7 +264,7 @@ private static final long serialVersionUID = 0L;
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   @java.lang.Override
   public io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder getGrantsOrBuilder(
@@ -312,11 +272,11 @@ private static final long serialVersionUID = 0L;
     return grants_.get(index);
   }
 
-  public static final int FQN_FIELD_NUMBER = 7;
+  public static final int FQN_FIELD_NUMBER = 6;
   @SuppressWarnings("serial")
   private volatile java.lang.Object fqn_ = "";
   /**
-   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * <code>string fqn = 6 [json_name = "fqn"];</code>
    * @return The fqn.
    */
   @java.lang.Override
@@ -333,7 +293,7 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
-   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * <code>string fqn = 6 [json_name = "fqn"];</code>
    * @return The bytes for fqn.
    */
   @java.lang.Override
@@ -351,14 +311,14 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int ACTIVE_FIELD_NUMBER = 8;
+  public static final int ACTIVE_FIELD_NUMBER = 7;
   private com.google.protobuf.BoolValue active_;
   /**
    * <pre>
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
    * @return Whether the active field is set.
    */
   @java.lang.Override
@@ -370,7 +330,7 @@ private static final long serialVersionUID = 0L;
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
    * @return The active.
    */
   @java.lang.Override
@@ -382,11 +342,49 @@ private static final long serialVersionUID = 0L;
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
    */
   @java.lang.Override
   public com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder() {
     return active_ == null ? com.google.protobuf.BoolValue.getDefaultInstance() : active_;
+  }
+
+  public static final int METADATA_FIELD_NUMBER = 100;
+  private io.opentdf.platform.common.Metadata metadata_;
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  @java.lang.Override
+  public boolean hasMetadata() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  @java.lang.Override
+  public io.opentdf.platform.common.Metadata getMetadata() {
+    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+  }
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
+    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -407,25 +405,25 @@ private static final long serialVersionUID = 0L;
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
     if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(2, getMetadata());
-    }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeId_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, attributeId_);
+      output.writeMessage(2, getAttribute());
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(value_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 4, value_);
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, value_);
     }
     for (int i = 0; i < members_.size(); i++) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 5, members_.getRaw(i));
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 4, members_.getRaw(i));
     }
     for (int i = 0; i < grants_.size(); i++) {
-      output.writeMessage(6, grants_.get(i));
+      output.writeMessage(5, grants_.get(i));
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(fqn_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 7, fqn_);
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 6, fqn_);
     }
     if (((bitField0_ & 0x00000002) != 0)) {
-      output.writeMessage(8, getActive());
+      output.writeMessage(7, getActive());
+    }
+    if (((bitField0_ & 0x00000004) != 0)) {
+      output.writeMessage(100, getMetadata());
     }
     getUnknownFields().writeTo(output);
   }
@@ -441,13 +439,10 @@ private static final long serialVersionUID = 0L;
     }
     if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(2, getMetadata());
-    }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeId_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, attributeId_);
+        .computeMessageSize(2, getAttribute());
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(value_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(4, value_);
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, value_);
     }
     {
       int dataSize = 0;
@@ -459,14 +454,18 @@ private static final long serialVersionUID = 0L;
     }
     for (int i = 0; i < grants_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(6, grants_.get(i));
+        .computeMessageSize(5, grants_.get(i));
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(fqn_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(7, fqn_);
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(6, fqn_);
     }
     if (((bitField0_ & 0x00000002) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(8, getActive());
+        .computeMessageSize(7, getActive());
+    }
+    if (((bitField0_ & 0x00000004) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(100, getMetadata());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -485,13 +484,11 @@ private static final long serialVersionUID = 0L;
 
     if (!getId()
         .equals(other.getId())) return false;
-    if (hasMetadata() != other.hasMetadata()) return false;
-    if (hasMetadata()) {
-      if (!getMetadata()
-          .equals(other.getMetadata())) return false;
+    if (hasAttribute() != other.hasAttribute()) return false;
+    if (hasAttribute()) {
+      if (!getAttribute()
+          .equals(other.getAttribute())) return false;
     }
-    if (!getAttributeId()
-        .equals(other.getAttributeId())) return false;
     if (!getValue()
         .equals(other.getValue())) return false;
     if (!getMembersList()
@@ -504,6 +501,11 @@ private static final long serialVersionUID = 0L;
     if (hasActive()) {
       if (!getActive()
           .equals(other.getActive())) return false;
+    }
+    if (hasMetadata() != other.hasMetadata()) return false;
+    if (hasMetadata()) {
+      if (!getMetadata()
+          .equals(other.getMetadata())) return false;
     }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
@@ -518,12 +520,10 @@ private static final long serialVersionUID = 0L;
     hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + ID_FIELD_NUMBER;
     hash = (53 * hash) + getId().hashCode();
-    if (hasMetadata()) {
-      hash = (37 * hash) + METADATA_FIELD_NUMBER;
-      hash = (53 * hash) + getMetadata().hashCode();
+    if (hasAttribute()) {
+      hash = (37 * hash) + ATTRIBUTE_FIELD_NUMBER;
+      hash = (53 * hash) + getAttribute().hashCode();
     }
-    hash = (37 * hash) + ATTRIBUTE_ID_FIELD_NUMBER;
-    hash = (53 * hash) + getAttributeId().hashCode();
     hash = (37 * hash) + VALUE_FIELD_NUMBER;
     hash = (53 * hash) + getValue().hashCode();
     if (getMembersCount() > 0) {
@@ -539,6 +539,10 @@ private static final long serialVersionUID = 0L;
     if (hasActive()) {
       hash = (37 * hash) + ACTIVE_FIELD_NUMBER;
       hash = (53 * hash) + getActive().hashCode();
+    }
+    if (hasMetadata()) {
+      hash = (37 * hash) + METADATA_FIELD_NUMBER;
+      hash = (53 * hash) + getMetadata().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -670,9 +674,10 @@ private static final long serialVersionUID = 0L;
     private void maybeForceBuilderInitialization() {
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
-        getMetadataFieldBuilder();
+        getAttributeFieldBuilder();
         getGrantsFieldBuilder();
         getActiveFieldBuilder();
+        getMetadataFieldBuilder();
       }
     }
     @java.lang.Override
@@ -680,12 +685,11 @@ private static final long serialVersionUID = 0L;
       super.clear();
       bitField0_ = 0;
       id_ = "";
-      metadata_ = null;
-      if (metadataBuilder_ != null) {
-        metadataBuilder_.dispose();
-        metadataBuilder_ = null;
+      attribute_ = null;
+      if (attributeBuilder_ != null) {
+        attributeBuilder_.dispose();
+        attributeBuilder_ = null;
       }
-      attributeId_ = "";
       value_ = "";
       members_ =
           com.google.protobuf.LazyStringArrayList.emptyList();
@@ -695,12 +699,17 @@ private static final long serialVersionUID = 0L;
         grants_ = null;
         grantsBuilder_.clear();
       }
-      bitField0_ = (bitField0_ & ~0x00000020);
+      bitField0_ = (bitField0_ & ~0x00000010);
       fqn_ = "";
       active_ = null;
       if (activeBuilder_ != null) {
         activeBuilder_.dispose();
         activeBuilder_ = null;
+      }
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
       }
       return this;
     }
@@ -736,9 +745,9 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartialRepeatedFields(io.opentdf.platform.policy.attributes.Value result) {
       if (grantsBuilder_ == null) {
-        if (((bitField0_ & 0x00000020) != 0)) {
+        if (((bitField0_ & 0x00000010) != 0)) {
           grants_ = java.util.Collections.unmodifiableList(grants_);
-          bitField0_ = (bitField0_ & ~0x00000020);
+          bitField0_ = (bitField0_ & ~0x00000010);
         }
         result.grants_ = grants_;
       } else {
@@ -753,29 +762,32 @@ private static final long serialVersionUID = 0L;
       }
       int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.metadata_ = metadataBuilder_ == null
-            ? metadata_
-            : metadataBuilder_.build();
+        result.attribute_ = attributeBuilder_ == null
+            ? attribute_
+            : attributeBuilder_.build();
         to_bitField0_ |= 0x00000001;
       }
       if (((from_bitField0_ & 0x00000004) != 0)) {
-        result.attributeId_ = attributeId_;
-      }
-      if (((from_bitField0_ & 0x00000008) != 0)) {
         result.value_ = value_;
       }
-      if (((from_bitField0_ & 0x00000010) != 0)) {
+      if (((from_bitField0_ & 0x00000008) != 0)) {
         members_.makeImmutable();
         result.members_ = members_;
       }
-      if (((from_bitField0_ & 0x00000040) != 0)) {
+      if (((from_bitField0_ & 0x00000020) != 0)) {
         result.fqn_ = fqn_;
       }
-      if (((from_bitField0_ & 0x00000080) != 0)) {
+      if (((from_bitField0_ & 0x00000040) != 0)) {
         result.active_ = activeBuilder_ == null
             ? active_
             : activeBuilder_.build();
         to_bitField0_ |= 0x00000002;
+      }
+      if (((from_bitField0_ & 0x00000080) != 0)) {
+        result.metadata_ = metadataBuilder_ == null
+            ? metadata_
+            : metadataBuilder_.build();
+        to_bitField0_ |= 0x00000004;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -829,23 +841,18 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00000001;
         onChanged();
       }
-      if (other.hasMetadata()) {
-        mergeMetadata(other.getMetadata());
-      }
-      if (!other.getAttributeId().isEmpty()) {
-        attributeId_ = other.attributeId_;
-        bitField0_ |= 0x00000004;
-        onChanged();
+      if (other.hasAttribute()) {
+        mergeAttribute(other.getAttribute());
       }
       if (!other.getValue().isEmpty()) {
         value_ = other.value_;
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000004;
         onChanged();
       }
       if (!other.members_.isEmpty()) {
         if (members_.isEmpty()) {
           members_ = other.members_;
-          bitField0_ |= 0x00000010;
+          bitField0_ |= 0x00000008;
         } else {
           ensureMembersIsMutable();
           members_.addAll(other.members_);
@@ -856,7 +863,7 @@ private static final long serialVersionUID = 0L;
         if (!other.grants_.isEmpty()) {
           if (grants_.isEmpty()) {
             grants_ = other.grants_;
-            bitField0_ = (bitField0_ & ~0x00000020);
+            bitField0_ = (bitField0_ & ~0x00000010);
           } else {
             ensureGrantsIsMutable();
             grants_.addAll(other.grants_);
@@ -869,7 +876,7 @@ private static final long serialVersionUID = 0L;
             grantsBuilder_.dispose();
             grantsBuilder_ = null;
             grants_ = other.grants_;
-            bitField0_ = (bitField0_ & ~0x00000020);
+            bitField0_ = (bitField0_ & ~0x00000010);
             grantsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getGrantsFieldBuilder() : null;
@@ -880,11 +887,14 @@ private static final long serialVersionUID = 0L;
       }
       if (!other.getFqn().isEmpty()) {
         fqn_ = other.fqn_;
-        bitField0_ |= 0x00000040;
+        bitField0_ |= 0x00000020;
         onChanged();
       }
       if (other.hasActive()) {
         mergeActive(other.getActive());
+      }
+      if (other.hasMetadata()) {
+        mergeMetadata(other.getMetadata());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -919,28 +929,23 @@ private static final long serialVersionUID = 0L;
             } // case 10
             case 18: {
               input.readMessage(
-                  getMetadataFieldBuilder().getBuilder(),
+                  getAttributeFieldBuilder().getBuilder(),
                   extensionRegistry);
               bitField0_ |= 0x00000002;
               break;
             } // case 18
             case 26: {
-              attributeId_ = input.readStringRequireUtf8();
+              value_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000004;
               break;
             } // case 26
             case 34: {
-              value_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000008;
-              break;
-            } // case 34
-            case 42: {
               java.lang.String s = input.readStringRequireUtf8();
               ensureMembersIsMutable();
               members_.add(s);
               break;
-            } // case 42
-            case 50: {
+            } // case 34
+            case 42: {
               io.opentdf.platform.kasregistry.KeyAccessServer m =
                   input.readMessage(
                       io.opentdf.platform.kasregistry.KeyAccessServer.parser(),
@@ -952,19 +957,26 @@ private static final long serialVersionUID = 0L;
                 grantsBuilder_.addMessage(m);
               }
               break;
+            } // case 42
+            case 50: {
+              fqn_ = input.readStringRequireUtf8();
+              bitField0_ |= 0x00000020;
+              break;
             } // case 50
             case 58: {
-              fqn_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000040;
-              break;
-            } // case 58
-            case 66: {
               input.readMessage(
                   getActiveFieldBuilder().getBuilder(),
                   extensionRegistry);
+              bitField0_ |= 0x00000040;
+              break;
+            } // case 58
+            case 802: {
+              input.readMessage(
+                  getMetadataFieldBuilder().getBuilder(),
+                  extensionRegistry);
               bitField0_ |= 0x00000080;
               break;
-            } // case 66
+            } // case 802
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -1074,202 +1086,130 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private io.opentdf.platform.common.Metadata metadata_;
+    private io.opentdf.platform.policy.attributes.Attribute attribute_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> metadataBuilder_;
+        io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder> attributeBuilder_;
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     * @return Whether the metadata field is set.
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
+     * @return Whether the attribute field is set.
      */
-    public boolean hasMetadata() {
+    public boolean hasAttribute() {
       return ((bitField0_ & 0x00000002) != 0);
     }
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     * @return The metadata.
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
+     * @return The attribute.
      */
-    public io.opentdf.platform.common.Metadata getMetadata() {
-      if (metadataBuilder_ == null) {
-        return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+    public io.opentdf.platform.policy.attributes.Attribute getAttribute() {
+      if (attributeBuilder_ == null) {
+        return attribute_ == null ? io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance() : attribute_;
       } else {
-        return metadataBuilder_.getMessage();
+        return attributeBuilder_.getMessage();
       }
     }
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
      */
-    public Builder setMetadata(io.opentdf.platform.common.Metadata value) {
-      if (metadataBuilder_ == null) {
+    public Builder setAttribute(io.opentdf.platform.policy.attributes.Attribute value) {
+      if (attributeBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        metadata_ = value;
+        attribute_ = value;
       } else {
-        metadataBuilder_.setMessage(value);
+        attributeBuilder_.setMessage(value);
       }
       bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
      */
-    public Builder setMetadata(
-        io.opentdf.platform.common.Metadata.Builder builderForValue) {
-      if (metadataBuilder_ == null) {
-        metadata_ = builderForValue.build();
+    public Builder setAttribute(
+        io.opentdf.platform.policy.attributes.Attribute.Builder builderForValue) {
+      if (attributeBuilder_ == null) {
+        attribute_ = builderForValue.build();
       } else {
-        metadataBuilder_.setMessage(builderForValue.build());
+        attributeBuilder_.setMessage(builderForValue.build());
       }
       bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
      */
-    public Builder mergeMetadata(io.opentdf.platform.common.Metadata value) {
-      if (metadataBuilder_ == null) {
+    public Builder mergeAttribute(io.opentdf.platform.policy.attributes.Attribute value) {
+      if (attributeBuilder_ == null) {
         if (((bitField0_ & 0x00000002) != 0) &&
-          metadata_ != null &&
-          metadata_ != io.opentdf.platform.common.Metadata.getDefaultInstance()) {
-          getMetadataBuilder().mergeFrom(value);
+          attribute_ != null &&
+          attribute_ != io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance()) {
+          getAttributeBuilder().mergeFrom(value);
         } else {
-          metadata_ = value;
+          attribute_ = value;
         }
       } else {
-        metadataBuilder_.mergeFrom(value);
+        attributeBuilder_.mergeFrom(value);
       }
-      if (metadata_ != null) {
+      if (attribute_ != null) {
         bitField0_ |= 0x00000002;
         onChanged();
       }
       return this;
     }
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
      */
-    public Builder clearMetadata() {
+    public Builder clearAttribute() {
       bitField0_ = (bitField0_ & ~0x00000002);
-      metadata_ = null;
-      if (metadataBuilder_ != null) {
-        metadataBuilder_.dispose();
-        metadataBuilder_ = null;
+      attribute_ = null;
+      if (attributeBuilder_ != null) {
+        attributeBuilder_.dispose();
+        attributeBuilder_ = null;
       }
       onChanged();
       return this;
     }
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
      */
-    public io.opentdf.platform.common.Metadata.Builder getMetadataBuilder() {
+    public io.opentdf.platform.policy.attributes.Attribute.Builder getAttributeBuilder() {
       bitField0_ |= 0x00000002;
       onChanged();
-      return getMetadataFieldBuilder().getBuilder();
+      return getAttributeFieldBuilder().getBuilder();
     }
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
      */
-    public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
-      if (metadataBuilder_ != null) {
-        return metadataBuilder_.getMessageOrBuilder();
+    public io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributeOrBuilder() {
+      if (attributeBuilder_ != null) {
+        return attributeBuilder_.getMessageOrBuilder();
       } else {
-        return metadata_ == null ?
-            io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+        return attribute_ == null ?
+            io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance() : attribute_;
       }
     }
     /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+     * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> 
-        getMetadataFieldBuilder() {
-      if (metadataBuilder_ == null) {
-        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder>(
-                getMetadata(),
+        io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
+        getAttributeFieldBuilder() {
+      if (attributeBuilder_ == null) {
+        attributeBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder>(
+                getAttribute(),
                 getParentForChildren(),
                 isClean());
-        metadata_ = null;
+        attribute_ = null;
       }
-      return metadataBuilder_;
-    }
-
-    private java.lang.Object attributeId_ = "";
-    /**
-     * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @return The attributeId.
-     */
-    public java.lang.String getAttributeId() {
-      java.lang.Object ref = attributeId_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        attributeId_ = s;
-        return s;
-      } else {
-        return (java.lang.String) ref;
-      }
-    }
-    /**
-     * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @return The bytes for attributeId.
-     */
-    public com.google.protobuf.ByteString
-        getAttributeIdBytes() {
-      java.lang.Object ref = attributeId_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        attributeId_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-    /**
-     * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @param value The attributeId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAttributeId(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      attributeId_ = value;
-      bitField0_ |= 0x00000004;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearAttributeId() {
-      attributeId_ = getDefaultInstance().getAttributeId();
-      bitField0_ = (bitField0_ & ~0x00000004);
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-     * @param value The bytes for attributeId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAttributeIdBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      attributeId_ = value;
-      bitField0_ |= 0x00000004;
-      onChanged();
-      return this;
+      return attributeBuilder_;
     }
 
     private java.lang.Object value_ = "";
     /**
-     * <code>string value = 4 [json_name = "value"];</code>
+     * <code>string value = 3 [json_name = "value"];</code>
      * @return The value.
      */
     public java.lang.String getValue() {
@@ -1285,7 +1225,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>string value = 4 [json_name = "value"];</code>
+     * <code>string value = 3 [json_name = "value"];</code>
      * @return The bytes for value.
      */
     public com.google.protobuf.ByteString
@@ -1302,7 +1242,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>string value = 4 [json_name = "value"];</code>
+     * <code>string value = 3 [json_name = "value"];</code>
      * @param value The value to set.
      * @return This builder for chaining.
      */
@@ -1310,22 +1250,22 @@ private static final long serialVersionUID = 0L;
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
       value_ = value;
-      bitField0_ |= 0x00000008;
+      bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
-     * <code>string value = 4 [json_name = "value"];</code>
+     * <code>string value = 3 [json_name = "value"];</code>
      * @return This builder for chaining.
      */
     public Builder clearValue() {
       value_ = getDefaultInstance().getValue();
-      bitField0_ = (bitField0_ & ~0x00000008);
+      bitField0_ = (bitField0_ & ~0x00000004);
       onChanged();
       return this;
     }
     /**
-     * <code>string value = 4 [json_name = "value"];</code>
+     * <code>string value = 3 [json_name = "value"];</code>
      * @param value The bytes for value to set.
      * @return This builder for chaining.
      */
@@ -1334,7 +1274,7 @@ private static final long serialVersionUID = 0L;
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
       value_ = value;
-      bitField0_ |= 0x00000008;
+      bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
@@ -1345,14 +1285,14 @@ private static final long serialVersionUID = 0L;
       if (!members_.isModifiable()) {
         members_ = new com.google.protobuf.LazyStringArrayList(members_);
       }
-      bitField0_ |= 0x00000010;
+      bitField0_ |= 0x00000008;
     }
     /**
      * <pre>
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @return A list containing the members.
      */
     public com.google.protobuf.ProtocolStringList
@@ -1365,7 +1305,7 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @return The count of members.
      */
     public int getMembersCount() {
@@ -1376,7 +1316,7 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @param index The index of the element to return.
      * @return The members at the given index.
      */
@@ -1388,7 +1328,7 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @param index The index of the value to return.
      * @return The bytes of the members at the given index.
      */
@@ -1401,7 +1341,7 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @param index The index to set the value at.
      * @param value The members to set.
      * @return This builder for chaining.
@@ -1411,7 +1351,7 @@ private static final long serialVersionUID = 0L;
       if (value == null) { throw new NullPointerException(); }
       ensureMembersIsMutable();
       members_.set(index, value);
-      bitField0_ |= 0x00000010;
+      bitField0_ |= 0x00000008;
       onChanged();
       return this;
     }
@@ -1420,7 +1360,7 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @param value The members to add.
      * @return This builder for chaining.
      */
@@ -1429,7 +1369,7 @@ private static final long serialVersionUID = 0L;
       if (value == null) { throw new NullPointerException(); }
       ensureMembersIsMutable();
       members_.add(value);
-      bitField0_ |= 0x00000010;
+      bitField0_ |= 0x00000008;
       onChanged();
       return this;
     }
@@ -1438,7 +1378,7 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @param values The members to add.
      * @return This builder for chaining.
      */
@@ -1447,7 +1387,7 @@ private static final long serialVersionUID = 0L;
       ensureMembersIsMutable();
       com.google.protobuf.AbstractMessageLite.Builder.addAll(
           values, members_);
-      bitField0_ |= 0x00000010;
+      bitField0_ |= 0x00000008;
       onChanged();
       return this;
     }
@@ -1456,13 +1396,13 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @return This builder for chaining.
      */
     public Builder clearMembers() {
       members_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000010);;
+      bitField0_ = (bitField0_ & ~0x00000008);;
       onChanged();
       return this;
     }
@@ -1471,7 +1411,7 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 5 [json_name = "members"];</code>
+     * <code>repeated string members = 4 [json_name = "members"];</code>
      * @param value The bytes of the members to add.
      * @return This builder for chaining.
      */
@@ -1481,7 +1421,7 @@ private static final long serialVersionUID = 0L;
       checkByteStringIsUtf8(value);
       ensureMembersIsMutable();
       members_.add(value);
-      bitField0_ |= 0x00000010;
+      bitField0_ |= 0x00000008;
       onChanged();
       return this;
     }
@@ -1489,9 +1429,9 @@ private static final long serialVersionUID = 0L;
     private java.util.List<io.opentdf.platform.kasregistry.KeyAccessServer> grants_ =
       java.util.Collections.emptyList();
     private void ensureGrantsIsMutable() {
-      if (!((bitField0_ & 0x00000020) != 0)) {
+      if (!((bitField0_ & 0x00000010) != 0)) {
         grants_ = new java.util.ArrayList<io.opentdf.platform.kasregistry.KeyAccessServer>(grants_);
-        bitField0_ |= 0x00000020;
+        bitField0_ |= 0x00000010;
        }
     }
 
@@ -1503,7 +1443,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public java.util.List<io.opentdf.platform.kasregistry.KeyAccessServer> getGrantsList() {
       if (grantsBuilder_ == null) {
@@ -1517,7 +1457,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public int getGrantsCount() {
       if (grantsBuilder_ == null) {
@@ -1531,7 +1471,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public io.opentdf.platform.kasregistry.KeyAccessServer getGrants(int index) {
       if (grantsBuilder_ == null) {
@@ -1545,7 +1485,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder setGrants(
         int index, io.opentdf.platform.kasregistry.KeyAccessServer value) {
@@ -1566,7 +1506,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder setGrants(
         int index, io.opentdf.platform.kasregistry.KeyAccessServer.Builder builderForValue) {
@@ -1584,7 +1524,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder addGrants(io.opentdf.platform.kasregistry.KeyAccessServer value) {
       if (grantsBuilder_ == null) {
@@ -1604,7 +1544,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder addGrants(
         int index, io.opentdf.platform.kasregistry.KeyAccessServer value) {
@@ -1625,7 +1565,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder addGrants(
         io.opentdf.platform.kasregistry.KeyAccessServer.Builder builderForValue) {
@@ -1643,7 +1583,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder addGrants(
         int index, io.opentdf.platform.kasregistry.KeyAccessServer.Builder builderForValue) {
@@ -1661,7 +1601,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder addAllGrants(
         java.lang.Iterable<? extends io.opentdf.platform.kasregistry.KeyAccessServer> values) {
@@ -1680,12 +1620,12 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder clearGrants() {
       if (grantsBuilder_ == null) {
         grants_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000020);
+        bitField0_ = (bitField0_ & ~0x00000010);
         onChanged();
       } else {
         grantsBuilder_.clear();
@@ -1697,7 +1637,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public Builder removeGrants(int index) {
       if (grantsBuilder_ == null) {
@@ -1714,7 +1654,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public io.opentdf.platform.kasregistry.KeyAccessServer.Builder getGrantsBuilder(
         int index) {
@@ -1725,7 +1665,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder getGrantsOrBuilder(
         int index) {
@@ -1739,7 +1679,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public java.util.List<? extends io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder> 
          getGrantsOrBuilderList() {
@@ -1754,7 +1694,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public io.opentdf.platform.kasregistry.KeyAccessServer.Builder addGrantsBuilder() {
       return getGrantsFieldBuilder().addBuilder(
@@ -1765,7 +1705,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public io.opentdf.platform.kasregistry.KeyAccessServer.Builder addGrantsBuilder(
         int index) {
@@ -1777,7 +1717,7 @@ private static final long serialVersionUID = 0L;
      * list of key access servers
      * </pre>
      *
-     * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+     * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
      */
     public java.util.List<io.opentdf.platform.kasregistry.KeyAccessServer.Builder> 
          getGrantsBuilderList() {
@@ -1790,7 +1730,7 @@ private static final long serialVersionUID = 0L;
         grantsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.opentdf.platform.kasregistry.KeyAccessServer, io.opentdf.platform.kasregistry.KeyAccessServer.Builder, io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder>(
                 grants_,
-                ((bitField0_ & 0x00000020) != 0),
+                ((bitField0_ & 0x00000010) != 0),
                 getParentForChildren(),
                 isClean());
         grants_ = null;
@@ -1800,7 +1740,7 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object fqn_ = "";
     /**
-     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * <code>string fqn = 6 [json_name = "fqn"];</code>
      * @return The fqn.
      */
     public java.lang.String getFqn() {
@@ -1816,7 +1756,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * <code>string fqn = 6 [json_name = "fqn"];</code>
      * @return The bytes for fqn.
      */
     public com.google.protobuf.ByteString
@@ -1833,7 +1773,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * <code>string fqn = 6 [json_name = "fqn"];</code>
      * @param value The fqn to set.
      * @return This builder for chaining.
      */
@@ -1841,22 +1781,22 @@ private static final long serialVersionUID = 0L;
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
       fqn_ = value;
-      bitField0_ |= 0x00000040;
+      bitField0_ |= 0x00000020;
       onChanged();
       return this;
     }
     /**
-     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * <code>string fqn = 6 [json_name = "fqn"];</code>
      * @return This builder for chaining.
      */
     public Builder clearFqn() {
       fqn_ = getDefaultInstance().getFqn();
-      bitField0_ = (bitField0_ & ~0x00000040);
+      bitField0_ = (bitField0_ & ~0x00000020);
       onChanged();
       return this;
     }
     /**
-     * <code>string fqn = 7 [json_name = "fqn"];</code>
+     * <code>string fqn = 6 [json_name = "fqn"];</code>
      * @param value The bytes for fqn to set.
      * @return This builder for chaining.
      */
@@ -1865,7 +1805,7 @@ private static final long serialVersionUID = 0L;
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
       fqn_ = value;
-      bitField0_ |= 0x00000040;
+      bitField0_ |= 0x00000020;
       onChanged();
       return this;
     }
@@ -1878,18 +1818,18 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      * @return Whether the active field is set.
      */
     public boolean hasActive() {
-      return ((bitField0_ & 0x00000080) != 0);
+      return ((bitField0_ & 0x00000040) != 0);
     }
     /**
      * <pre>
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      * @return The active.
      */
     public com.google.protobuf.BoolValue getActive() {
@@ -1904,7 +1844,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      */
     public Builder setActive(com.google.protobuf.BoolValue value) {
       if (activeBuilder_ == null) {
@@ -1915,7 +1855,7 @@ private static final long serialVersionUID = 0L;
       } else {
         activeBuilder_.setMessage(value);
       }
-      bitField0_ |= 0x00000080;
+      bitField0_ |= 0x00000040;
       onChanged();
       return this;
     }
@@ -1924,7 +1864,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      */
     public Builder setActive(
         com.google.protobuf.BoolValue.Builder builderForValue) {
@@ -1933,7 +1873,7 @@ private static final long serialVersionUID = 0L;
       } else {
         activeBuilder_.setMessage(builderForValue.build());
       }
-      bitField0_ |= 0x00000080;
+      bitField0_ |= 0x00000040;
       onChanged();
       return this;
     }
@@ -1942,11 +1882,11 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      */
     public Builder mergeActive(com.google.protobuf.BoolValue value) {
       if (activeBuilder_ == null) {
-        if (((bitField0_ & 0x00000080) != 0) &&
+        if (((bitField0_ & 0x00000040) != 0) &&
           active_ != null &&
           active_ != com.google.protobuf.BoolValue.getDefaultInstance()) {
           getActiveBuilder().mergeFrom(value);
@@ -1957,7 +1897,7 @@ private static final long serialVersionUID = 0L;
         activeBuilder_.mergeFrom(value);
       }
       if (active_ != null) {
-        bitField0_ |= 0x00000080;
+        bitField0_ |= 0x00000040;
         onChanged();
       }
       return this;
@@ -1967,10 +1907,10 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      */
     public Builder clearActive() {
-      bitField0_ = (bitField0_ & ~0x00000080);
+      bitField0_ = (bitField0_ & ~0x00000040);
       active_ = null;
       if (activeBuilder_ != null) {
         activeBuilder_.dispose();
@@ -1984,10 +1924,10 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      */
     public com.google.protobuf.BoolValue.Builder getActiveBuilder() {
-      bitField0_ |= 0x00000080;
+      bitField0_ |= 0x00000040;
       onChanged();
       return getActiveFieldBuilder().getBuilder();
     }
@@ -1996,7 +1936,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      */
     public com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder() {
       if (activeBuilder_ != null) {
@@ -2011,7 +1951,7 @@ private static final long serialVersionUID = 0L;
      * active by default until explicitly deactivated
      * </pre>
      *
-     * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+     * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
         com.google.protobuf.BoolValue, com.google.protobuf.BoolValue.Builder, com.google.protobuf.BoolValueOrBuilder> 
@@ -2025,6 +1965,163 @@ private static final long serialVersionUID = 0L;
         active_ = null;
       }
       return activeBuilder_;
+    }
+
+    private io.opentdf.platform.common.Metadata metadata_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> metadataBuilder_;
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     * @return Whether the metadata field is set.
+     */
+    public boolean hasMetadata() {
+      return ((bitField0_ & 0x00000080) != 0);
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     * @return The metadata.
+     */
+    public io.opentdf.platform.common.Metadata getMetadata() {
+      if (metadataBuilder_ == null) {
+        return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+      } else {
+        return metadataBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(io.opentdf.platform.common.Metadata value) {
+      if (metadataBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        metadata_ = value;
+      } else {
+        metadataBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000080;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(
+        io.opentdf.platform.common.Metadata.Builder builderForValue) {
+      if (metadataBuilder_ == null) {
+        metadata_ = builderForValue.build();
+      } else {
+        metadataBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000080;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder mergeMetadata(io.opentdf.platform.common.Metadata value) {
+      if (metadataBuilder_ == null) {
+        if (((bitField0_ & 0x00000080) != 0) &&
+          metadata_ != null &&
+          metadata_ != io.opentdf.platform.common.Metadata.getDefaultInstance()) {
+          getMetadataBuilder().mergeFrom(value);
+        } else {
+          metadata_ = value;
+        }
+      } else {
+        metadataBuilder_.mergeFrom(value);
+      }
+      if (metadata_ != null) {
+        bitField0_ |= 0x00000080;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder clearMetadata() {
+      bitField0_ = (bitField0_ & ~0x00000080);
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
+      }
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.Metadata.Builder getMetadataBuilder() {
+      bitField0_ |= 0x00000080;
+      onChanged();
+      return getMetadataFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
+      if (metadataBuilder_ != null) {
+        return metadataBuilder_.getMessageOrBuilder();
+      } else {
+        return metadata_ == null ?
+            io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+      }
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> 
+        getMetadataFieldBuilder() {
+      if (metadataBuilder_ == null) {
+        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder>(
+                getMetadata(),
+                getParentForChildren(),
+                isClean());
+        metadata_ = null;
+      }
+      return metadataBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

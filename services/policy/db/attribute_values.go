@@ -54,13 +54,13 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	}
 
 	v := &attributes.Value{
-		Id:          id,
-		Value:       value,
-		Active:      &wrapperspb.BoolValue{Value: active},
-		Members:     members,
-		Metadata:    m,
-		AttributeId: attributeId,
-		Fqn:         fqn.String,
+		Id:       id,
+		Value:    value,
+		Active:   &wrapperspb.BoolValue{Value: active},
+		Members:  members,
+		Metadata: m,
+		// AttributeId: attributeId,
+		Fqn: fqn.String,
 	}
 	return v, nil
 }
@@ -106,7 +106,7 @@ func createAttributeValueSql(
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
+func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.CreateAttributeValueRequest) (*attributes.Value, error) {
 	metadataJson, metadata, err := db.MarshalCreateMetadata(v.Metadata)
 	if err != nil {
 		return nil, err
@@ -133,12 +133,12 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
 
 	rV := &attributes.Value{
-		Id:          id,
-		AttributeId: attributeId,
-		Value:       v.Value,
-		Members:     v.Members,
-		Metadata:    metadata,
-		Active:      &wrapperspb.BoolValue{Value: true},
+		Id:        id,
+		Attribute: &attributes.Attribute{Id: attributeId},
+		Value:     v.Value,
+		Members:   v.Members,
+		Metadata:  metadata,
+		Active:    &wrapperspb.BoolValue{Value: true},
 	}
 	return rV, nil
 }
@@ -272,7 +272,6 @@ func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string
 
 func updateAttributeValueSql(
 	id string,
-	value string,
 	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
@@ -281,9 +280,6 @@ func updateAttributeValueSql(
 		Update(t.Name()).
 		Set("metadata", metadata)
 
-	if value != "" {
-		sb = sb.Set("value", value)
-	}
 	if members != nil {
 		sb = sb.Set("members", members)
 	}
@@ -293,21 +289,21 @@ func updateAttributeValueSql(
 		ToSql()
 }
 
-func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
-	prev, err := c.GetAttributeValue(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	metadataJson, _, err := db.MarshalUpdateMetadata(prev.Metadata, v.Metadata)
+func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *attributes.UpdateAttributeValueRequest) (*attributes.Value, error) {
+	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+		v, err := c.GetAttributeValue(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return v.Metadata, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	sql, args, err := updateAttributeValueSql(
 		id,
-		v.Value,
-		v.Members,
+		r.Members,
 		metadataJson,
 	)
 	if err != nil {
@@ -321,7 +317,9 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, v *
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
 
-	return prev, nil
+	return &attributes.Value{
+		Id: id,
+	}, nil
 }
 
 func deactivateAttributeValueSql(id string) (string, []interface{}, error) {

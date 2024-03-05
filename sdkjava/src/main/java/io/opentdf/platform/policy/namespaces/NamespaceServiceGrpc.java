@@ -219,19 +219,6 @@ public final class NamespaceServiceGrpc {
   public interface AsyncService {
 
     /**
-     * <pre>
-     * 
-     *Request: 
-     *grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace
-     *Response:
-     *{
-     *"namespace": {
-     *"id": "namespace-id",
-     *"name": "namespace-name",
-     *"active": true
-     *}
-     *}
-     * </pre>
      */
     default void getNamespace(io.opentdf.platform.policy.namespaces.GetNamespaceRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.namespaces.GetNamespaceResponse> responseObserver) {
@@ -239,21 +226,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *Request: 
-     *grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
-     *Response:
-     *{
-     *"namespaces": [
-     *{
-     *"id": "namespace-id",
-     *"name": "namespace-name",
-     *"active": true
-     *}
-     *]
-     *}
-     * </pre>
      */
     default void listNamespaces(io.opentdf.platform.policy.namespaces.ListNamespacesRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.namespaces.ListNamespacesResponse> responseObserver) {
@@ -261,12 +233,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request: 
-     *grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
-     *Response:
-     *{ "namespace": { "id": "namespace-id", "active": true } }
-     * </pre>
      */
     default void createNamespace(io.opentdf.platform.policy.namespaces.CreateNamespaceRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.namespaces.CreateNamespaceResponse> responseObserver) {
@@ -316,19 +282,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     * 
-     *Request: 
-     *grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace
-     *Response:
-     *{
-     *"namespace": {
-     *"id": "namespace-id",
-     *"name": "namespace-name",
-     *"active": true
-     *}
-     *}
-     * </pre>
      */
     public void getNamespace(io.opentdf.platform.policy.namespaces.GetNamespaceRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.namespaces.GetNamespaceResponse> responseObserver) {
@@ -337,21 +290,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *Request: 
-     *grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
-     *Response:
-     *{
-     *"namespaces": [
-     *{
-     *"id": "namespace-id",
-     *"name": "namespace-name",
-     *"active": true
-     *}
-     *]
-     *}
-     * </pre>
      */
     public void listNamespaces(io.opentdf.platform.policy.namespaces.ListNamespacesRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.namespaces.ListNamespacesResponse> responseObserver) {
@@ -360,12 +298,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request: 
-     *grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
-     *Response:
-     *{ "namespace": { "id": "namespace-id", "active": true } }
-     * </pre>
      */
     public void createNamespace(io.opentdf.platform.policy.namespaces.CreateNamespaceRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.namespaces.CreateNamespaceResponse> responseObserver) {
@@ -407,19 +339,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     * 
-     *Request: 
-     *grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace
-     *Response:
-     *{
-     *"namespace": {
-     *"id": "namespace-id",
-     *"name": "namespace-name",
-     *"active": true
-     *}
-     *}
-     * </pre>
      */
     public io.opentdf.platform.policy.namespaces.GetNamespaceResponse getNamespace(io.opentdf.platform.policy.namespaces.GetNamespaceRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -427,21 +346,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *Request: 
-     *grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
-     *Response:
-     *{
-     *"namespaces": [
-     *{
-     *"id": "namespace-id",
-     *"name": "namespace-name",
-     *"active": true
-     *}
-     *]
-     *}
-     * </pre>
      */
     public io.opentdf.platform.policy.namespaces.ListNamespacesResponse listNamespaces(io.opentdf.platform.policy.namespaces.ListNamespacesRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -449,12 +353,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request: 
-     *grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
-     *Response:
-     *{ "namespace": { "id": "namespace-id", "active": true } }
-     * </pre>
      */
     public io.opentdf.platform.policy.namespaces.CreateNamespaceResponse createNamespace(io.opentdf.platform.policy.namespaces.CreateNamespaceRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -493,19 +391,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     * 
-     *Request: 
-     *grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace
-     *Response:
-     *{
-     *"namespace": {
-     *"id": "namespace-id",
-     *"name": "namespace-name",
-     *"active": true
-     *}
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.namespaces.GetNamespaceResponse> getNamespace(
         io.opentdf.platform.policy.namespaces.GetNamespaceRequest request) {
@@ -514,21 +399,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *Request: 
-     *grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
-     *Response:
-     *{
-     *"namespaces": [
-     *{
-     *"id": "namespace-id",
-     *"name": "namespace-name",
-     *"active": true
-     *}
-     *]
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.namespaces.ListNamespacesResponse> listNamespaces(
         io.opentdf.platform.policy.namespaces.ListNamespacesRequest request) {
@@ -537,12 +407,6 @@ public final class NamespaceServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request: 
-     *grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
-     *Response:
-     *{ "namespace": { "id": "namespace-id", "active": true } }
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.namespaces.CreateNamespaceResponse> createNamespace(
         io.opentdf.platform.policy.namespaces.CreateNamespaceRequest request) {

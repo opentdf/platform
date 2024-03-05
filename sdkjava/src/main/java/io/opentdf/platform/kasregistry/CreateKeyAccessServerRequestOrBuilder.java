@@ -9,17 +9,64 @@ public interface CreateKeyAccessServerRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.kasregistry.KeyAccessServerCreateUpdate key_access_server = 1 [json_name = "keyAccessServer", (.buf.validate.field) = { ... }</code>
-   * @return Whether the keyAccessServer field is set.
+   * <pre>
+   * Required
+   * </pre>
+   *
+   * <code>string uri = 1 [json_name = "uri", (.buf.validate.field) = { ... }</code>
+   * @return The uri.
    */
-  boolean hasKeyAccessServer();
+  java.lang.String getUri();
   /**
-   * <code>.kasregistry.KeyAccessServerCreateUpdate key_access_server = 1 [json_name = "keyAccessServer", (.buf.validate.field) = { ... }</code>
-   * @return The keyAccessServer.
+   * <pre>
+   * Required
+   * </pre>
+   *
+   * <code>string uri = 1 [json_name = "uri", (.buf.validate.field) = { ... }</code>
+   * @return The bytes for uri.
    */
-  io.opentdf.platform.kasregistry.KeyAccessServerCreateUpdate getKeyAccessServer();
+  com.google.protobuf.ByteString
+      getUriBytes();
+
   /**
-   * <code>.kasregistry.KeyAccessServerCreateUpdate key_access_server = 1 [json_name = "keyAccessServer", (.buf.validate.field) = { ... }</code>
+   * <code>.kasregistry.PublicKey public_key = 2 [json_name = "publicKey", (.buf.validate.field) = { ... }</code>
+   * @return Whether the publicKey field is set.
    */
-  io.opentdf.platform.kasregistry.KeyAccessServerCreateUpdateOrBuilder getKeyAccessServerOrBuilder();
+  boolean hasPublicKey();
+  /**
+   * <code>.kasregistry.PublicKey public_key = 2 [json_name = "publicKey", (.buf.validate.field) = { ... }</code>
+   * @return The publicKey.
+   */
+  io.opentdf.platform.kasregistry.PublicKey getPublicKey();
+  /**
+   * <code>.kasregistry.PublicKey public_key = 2 [json_name = "publicKey", (.buf.validate.field) = { ... }</code>
+   */
+  io.opentdf.platform.kasregistry.PublicKeyOrBuilder getPublicKeyOrBuilder();
+
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.MetadataMutable getMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
 }

@@ -8,6 +8,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -157,43 +158,62 @@ func (c PolicyDbClient) ListNamespaces(ctx context.Context, state string) ([]*na
 	return list, nil
 }
 
-func createNamespaceSql(name string) (string, []interface{}, error) {
+func createNamespaceSql(name string, metadata []byte) (string, []interface{}, error) {
 	t := db.Tables.Namespaces
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
-		Columns("name").
-		Values(name).
+		Columns("name", "metadata").
+		Values(name, metadata).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateNamespace(ctx context.Context, name string) (string, error) {
-	sql, args, err := createNamespaceSql(name)
+func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*namespaces.Namespace, error) {
+	metadataJson, _, err := db.MarshalCreateMetadata(r.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	sql, args, err := createNamespaceSql(r.Name, metadataJson)
 	var id string
 
 	if r, e := c.QueryRow(ctx, sql, args, err); e != nil {
-		return "", e
+		return nil, e
 	} else if e := r.Scan(&id); e != nil {
-		return "", db.WrapIfKnownInvalidQueryErr(e)
+		return nil, db.WrapIfKnownInvalidQueryErr(e)
 	}
 
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
 
-	return id, nil
+	return &namespaces.Namespace{
+		Id: id,
+	}, nil
 }
 
-func updateNamespaceSql(id string, name string) (string, []interface{}, error) {
+func updateNamespaceSql(id string, metadata []byte) (string, []interface{}, error) {
 	t := db.Tables.Namespaces
 	return db.NewStatementBuilder().
 		Update(t.Name()).
-		Set("name", name).
+		Set("metadata", metadata).
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
-func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, name string) (*namespaces.Namespace, error) {
-	sql, args, err := updateNamespaceSql(id, name)
+func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*namespaces.Namespace, error) {
+	// if extend we need to merge the metadata
+	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+		a, err := c.GetAttribute(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return a.Metadata, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sql, args, err := updateNamespaceSql(id, metadataJson)
 
 	if e := c.Exec(ctx, sql, args, err); e != nil {
 		return nil, e
@@ -202,7 +222,9 @@ func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, name str
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
 
-	return c.GetNamespace(ctx, id)
+	return &namespaces.Namespace{
+		Id: id,
+	}, nil
 }
 
 func deactivateNamespaceSql(id string) (string, []interface{}, error) {

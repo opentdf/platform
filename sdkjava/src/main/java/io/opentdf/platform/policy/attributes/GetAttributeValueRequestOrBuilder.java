@@ -19,4 +19,31 @@ public interface GetAttributeValueRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getIdBytes();
+
+  /**
+   * <pre>
+   * Optional expand selector
+   * </pre>
+   *
+   * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
+   * @return Whether the expand field is set.
+   */
+  boolean hasExpand();
+  /**
+   * <pre>
+   * Optional expand selector
+   * </pre>
+   *
+   * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
+   * @return The expand.
+   */
+  io.opentdf.platform.policy.policy_common.AttributeExpandSelector getExpand();
+  /**
+   * <pre>
+   * Optional expand selector
+   * </pre>
+   *
+   * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
+   */
+  io.opentdf.platform.policy.policy_common.AttributeExpandSelectorOrBuilder getExpandOrBuilder();
 }

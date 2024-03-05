@@ -6,7 +6,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/pkg/serviceregistry"
-	namespaces "github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/services"
 	policydb "github.com/opentdf/platform/services/policy/db"
 )
@@ -79,15 +79,15 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 }
 
 func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces.UpdateNamespaceRequest) (*namespaces.UpdateNamespaceResponse, error) {
-	slog.Debug("updating namespace", slog.String("name", req.Name))
+	slog.Debug("updating namespace", slog.String("name", req.Id))
 	rsp := &namespaces.UpdateNamespaceResponse{}
 
-	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req.Name)
+	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("name", req.Name))
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id))
 	}
 
-	slog.Debug("updated namespace", slog.String("name", req.Name))
+	slog.Debug("updated namespace", slog.String("id", req.Id))
 	rsp.Namespace = namespace
 
 	return rsp, nil

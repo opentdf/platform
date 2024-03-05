@@ -6,7 +6,6 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/pkg/serviceregistry"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	policydb "github.com/opentdf/platform/services/policy/db"
 
@@ -21,10 +20,10 @@ type SubjectMappingService struct {
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		Namespace:   "policy",
-		ServiceDesc: &subjectmapping.SubjectMappingService_ServiceDesc,
+		ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &SubjectMappingService{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				return subjectmapping.RegisterSubjectMappingServiceHandlerServer(ctx, mux, s.(subjectmapping.SubjectMappingServiceServer))
+				return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, s.(sm.SubjectMappingServiceServer))
 			}
 		},
 	}
@@ -36,7 +35,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	rsp := &sm.CreateSubjectMappingResponse{}
 	slog.Debug("creating subject mapping")
 
-	mappings, err := s.dbClient.CreateSubjectMapping(context.Background(), req.SubjectMapping)
+	mappings, err := s.dbClient.CreateSubjectMapping(context.Background(), req)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("subjectMapping", req.String()))
 	}
@@ -80,7 +79,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 ) (*sm.UpdateSubjectMappingResponse, error) {
 	rsp := &sm.UpdateSubjectMappingResponse{}
 
-	mapping, err := s.dbClient.UpdateSubjectMapping(ctx, req.Id, req.SubjectMapping)
+	mapping, err := s.dbClient.UpdateSubjectMapping(ctx, req)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("subjectMapping", req.String()))
 	}

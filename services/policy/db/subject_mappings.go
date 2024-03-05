@@ -459,7 +459,7 @@ func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.SubjectMappingCreate) (*subjectmapping.SubjectMapping, error) {
+func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*subjectmapping.SubjectMapping, error) {
 	var (
 		scs *subjectmapping.SubjectConditionSet
 		err error
@@ -599,31 +599,31 @@ func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_s
 		ToSql()
 }
 
-func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, id string, s *subjectmapping.SubjectMappingUpdate) (*subjectmapping.SubjectMapping, error) {
-	prev, err := c.GetSubjectMapping(ctx, id)
+func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (*subjectmapping.SubjectMapping, error) {
+	prev, err := c.GetSubjectMapping(ctx, r.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	metadataJson, m, err := db.MarshalUpdateMetadata(prev.Metadata, s.UpdateMetadata)
+	metadataJson, m, err := db.MarshalUpdateMetadata(prev.Metadata, r.UpdateMetadata)
 	if err != nil {
 		return nil, err
 	}
 	prev.Metadata = m
 
 	var actionsJSON []byte
-	if s.UpdateActions != nil {
-		actionsJSON, err = marshalActionsProto(s.UpdateActions)
+	if r.UpdateActions != nil {
+		actionsJSON, err = marshalActionsProto(r.UpdateActions)
 		if err != nil {
 			return nil, err
 		}
-		prev.Actions = s.UpdateActions
+		prev.Actions = r.UpdateActions
 	}
 
 	sql, args, err := updateSubjectMappingSql(
-		id,
+		r.Id,
 		metadataJson,
-		s.UpdateSubjectConditionSetId,
+		r.UpdateSubjectConditionSetId,
 		actionsJSON,
 	)
 	if err != nil {

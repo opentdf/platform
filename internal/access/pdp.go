@@ -116,34 +116,34 @@ func (pdp *Pdp) DetermineAccess(
 func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
-	//All of the data AttributeInstances in the arg have the same canonical name.
+	// All of the data AttributeInstances in the arg have the same canonical name.
 	slog.DebugContext(ctx, "Evaluating all-of decision", "name", dataAttrsBySingleCanonicalName[0].GetCanonicalName())
 
-	//Go through every entity's attributeInstance set...
+	// Go through every entity's attributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
 		var valueFailures []ValueFailure
-		//Default to DENY
+		// Default to DENY
 		entityPassed := false
-		//Cluster entity AttributeInstances by canonical name...
+		// Cluster entity AttributeInstances by canonical name...
 		entityAttrCluster := ClusterByCanonicalNameAI(entityAttrs)
 
-		//For every unique data attributeInstance (that is, unique data attribute value) in this set of data AttributeInstances sharing the same canonical name...
+		// For every unique data attributeInstance (that is, unique data attribute value) in this set of data AttributeInstances sharing the same canonical name...
 		for dvIndex, dataAttrVal := range dataAttrsBySingleCanonicalName {
 			dvCanonicalName := dataAttrVal.GetCanonicalName()
 			slog.DebugContext(ctx, "Evaluating all-of decision for data attr %s with value %s", dvCanonicalName, dataAttrVal.Value)
-			//See if
+			// See if
 			// 1. there exists an entity attributeInstance in the set of AttributeInstances
 			// with the same canonical name as the data attributeInstance in question
 			// 2. It has the same VALUE as the data attributeInstance in question
 			found := findInstanceValueInClusterAI(&dataAttrsBySingleCanonicalName[dvIndex], entityAttrCluster[dvCanonicalName])
 
 			denialMsg := ""
-			//If we did not find the data attributeInstance canonical name + value in the entity attributeInstance set,
+			// If we did not find the data attributeInstance canonical name + value in the entity attributeInstance set,
 			//then prepare a ValueFailure for that data attributeInstance (that is, attribute value), for this entity
 			if !found {
 				denialMsg = fmt.Sprintf("AllOf not satisfied for canonical data attr+value %s and entity %s", dataAttrVal, entityId)
 				slog.WarnContext(ctx, denialMsg)
-				//Append the ValueFailure to the set of entity value failures
+				// Append the ValueFailure to the set of entity value failures
 				valueFailures = append(valueFailures, ValueFailure{
 					DataAttribute: &dataAttrsBySingleCanonicalName[dvIndex],
 					Message:       denialMsg,
@@ -151,7 +151,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 			}
 		}
 
-		//If we have no value failures, we are good - entity passes this rule
+		// If we have no value failures, we are good - entity passes this rule
 		if len(valueFailures) == 0 {
 			entityPassed = true
 		}
@@ -159,7 +159,6 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 			Passed:        entityPassed,
 			ValueFailures: valueFailures,
 		}
-
 	}
 
 	return ruleResultsByEntity
@@ -180,22 +179,22 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 	// Go through every entity's attributeInstance set...
 	for entityId, entityAttrs := range entityAttributes {
 		var valueFailures []ValueFailure
-		//Default to DENY
+		// Default to DENY
 		entityPassed := false
-		//Cluster entity AttributeInstances by canonical name...
+		// Cluster entity AttributeInstances by canonical name...
 		entityAttrCluster := ClusterByCanonicalNameAI(entityAttrs)
 
-		//For every unique data attributeInstance (that is, value) in this set of data attributeInstance sharing the same canonical name...
+		// For every unique data attributeInstance (that is, value) in this set of data attributeInstance sharing the same canonical name...
 		for dvIndex, dataAttrVal := range dataAttrsBySingleCanonicalName {
 			slog.DebugContext(ctx, "Evaluating anyOf decision", "attr", dvCanonicalName, "value", dataAttrVal.Value)
-			//See if
+			// See if
 			// 1. there exists an entity attributeInstance in the set of AttributeInstances
 			// with the same canonical name as the data attributeInstance in question
 			// 2. It has the same VALUE as the data attributeInstance in question
 			found := findInstanceValueInClusterAI(&dataAttrsBySingleCanonicalName[dvIndex], entityAttrCluster[dvCanonicalName])
 
 			denialMsg := ""
-			//If we did not find the data attributeInstance canonical name + value in the entity attributeInstance set,
+			// If we did not find the data attributeInstance canonical name + value in the entity attributeInstance set,
 			//then prepare a ValueFailure for that data attributeInstance and value, for this entity
 			if !found {
 				denialMsg = fmt.Sprintf("anyOf not satisfied for canonical data attr+value %s and entity %s - anyOf is permissive, so this doesn't mean overall failure", dataAttrVal, entityId)
@@ -207,7 +206,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 			}
 		}
 
-		//AnyOf - IF there were fewer value failures for this entity, for this attributeInstance canonical name,
+		// AnyOf - IF there were fewer value failures for this entity, for this attributeInstance canonical name,
 		//then there are distict data values, for this attributeInstance canonical name, THEN this entity must
 		//possess AT LEAST ONE of the values in its entity attributeInstance cluster,
 		//and we have satisfied AnyOf
@@ -219,7 +218,6 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 			Passed:        entityPassed,
 			ValueFailures: valueFailures,
 		}
-
 	}
 
 	return ruleResultsByEntity
@@ -288,33 +286,9 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalNam
 			Passed:        entityPassed,
 			ValueFailures: valueFailures,
 		}
-
 	}
 
 	return ruleResultsByEntity
-}
-
-// the purpose of a GroupBy property on an AttributeDefinition is to indicate which entities should be included in a rule evaluation, and which
-// entities should not be included. This function will check every entity's AttributeInstances, and filter out the entities
-// that lack the GroupBy attributeInstance, returning a new, reduced set of entities that all have the
-// GroupBy attributeInstance.
-func (pdp *Pdp) groupByFilterEntityAttributeInstances(ctx context.Context, entityAttributes map[string][]attributeInstance, groupBy *attrs.Attribute) map[string][]attributeInstance {
-	slog.DebugContext(ctx, "Filtering out entities with groupby", "groupby", groupBy)
-
-	filteredEntitySet := make(map[string][]attributeInstance)
-
-	//Go through every entity's attributeInstance set...
-	for entityId, entityAttrs := range entityAttributes {
-		slog.DebugContext(ctx, "Filtering entity with groupby", "entityId", entityId, "groupBy", groupBy)
-		//If this entity has the groupBy attributeInstance within its set of AttributeInstances
-		if findInstanceValueInCluster(groupBy, entityAttrs) {
-			//Then it will be included in the map of filtered entities.
-			filteredEntitySet[entityId] = entityAttrs
-		}
-		//otherwise, it will be left out of consideration.
-	}
-
-	return filteredEntitySet
 }
 
 // It is possible that a data policy may have more than one Hierarchy value for the same data attribute canonical
@@ -336,12 +310,12 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 		if foundRank == -1 {
 			msg := fmt.Sprintf("Data value %s is not in %s and is not a valid value for this attribute - ignoring this invalid value and continuing to look for a valid one...", dataAttr.Value, order)
 			slog.WarnContext(ctx, msg)
-			//If this isnt a valid data value, skip this iteration and look at the next one - maybe it is?
+			// If this isnt a valid data value, skip this iteration and look at the next one - maybe it is?
 			//If none of them are valid, we should return a nil instance
 			continue
 		}
 		slog.DebugContext(ctx, "Found data", "rank", foundRank, "value", dataAttr.Value, "maxRank", highestDVIndex)
-		//If this rank is a "higher rank" (that is, a lower index) than the last one,
+		// If this rank is a "higher rank" (that is, a lower index) than the last one,
 		//(or it is the same rank, to handle cases where the lowest is the only)
 		//it becomes the new high watermark rank.
 		if foundRank <= highestDVIndex {
@@ -352,17 +326,6 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 		}
 	}
 	return highestRankedInstance
-}
-
-// Given a single attributeInstance, and an arbitrary set of AttributeInstances,
-// look through that set of instances for an instance whose value and canonical name matches the single instance
-func findInstanceValueInCluster(instance *attrs.Attribute, cluster []attributeInstance) bool {
-	for i := range cluster {
-		if cluster[i].Value == instance.String() && cluster[i].GetCanonicalName() == GetCanonicalNameADV(instance) {
-			return true
-		}
-	}
-	return false
 }
 
 func findInstanceValueInClusterAI(a *attributeInstance, instances []attributeInstance) bool {
@@ -379,7 +342,7 @@ func findInstanceValueInClusterAI(a *attributeInstance, instances []attributeIns
 // the rank of the data attributeInstance value.
 // For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
 func entityRankGreaterThanOrEqualToDataRank(order []*attrs.Value, dataAttribute *attributeInstance, entityAttributeCluster []attributeInstance) bool {
-	//default to least-perm
+	// default to least-perm
 	result := false
 	dvIndex := getOrderOfValue(order, dataAttribute.Value)
 	// Compute the rank of the entity AttributeInstance value against the rank of the data attributeInstance value
@@ -389,18 +352,18 @@ func entityRankGreaterThanOrEqualToDataRank(order []*attrs.Value, dataAttribute 
 	// so if an entity has multiple values that can be compared for the hierarchy rule,
 	// we check all of them and go with the value that has the least-significant index when deciding access
 	for _, entityAttribute := range entityAttributeCluster {
-		//Ideally, the caller will have already ensured all the entity attributeInstance we've been provided
+		// Ideally, the caller will have already ensured all the entity attributeInstance we've been provided
 		//have the same canonical name as the data attributeInstance we're comparing against,
 		// but if they haven't for some reason only consider matching entity attributeInstance
 		if dataAttribute.GetCanonicalName() == entityAttribute.GetCanonicalName() {
 			evIndex := getOrderOfValue(order, entityAttribute.Value)
-			//If the entity value isn't IN the order at all,
+			// If the entity value isn't IN the order at all,
 			//then set it's rank to one below the lowest rank in the current
 			// order so it will always fail
 			if evIndex == -1 {
 				evIndex = len(order) + 1
 			}
-			//If, at any point, we find an entity attributeInstance value that is below the data attributeInstance value in rank,
+			// If, at any point, we find an entity attributeInstance value that is below the data attributeInstance value in rank,
 			// (that is, numerically greater than the data rank)
 			// (or if the data value itself is < 0, indicating it's not actually part of the defined order)
 			//then we must immediately assume failure for this entity
@@ -419,7 +382,7 @@ func entityRankGreaterThanOrEqualToDataRank(order []*attrs.Value, dataAttribute 
 // Given a set of ordered/ranked values and a singular attributeInstance,
 // return the rank #/index of the singular attributeInstance
 func getOrderOfValue(order []*attrs.Value, value string) int {
-	//For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
+	// For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
 	dvIndex := -1 // -1 == Not Found in the set - this should always be a failure.
 	for index := range order {
 		if order[index].Value == value {
@@ -427,18 +390,18 @@ func getOrderOfValue(order []*attrs.Value, value string) int {
 		}
 	}
 
-	//We either found the right index, or we return -1
+	// We either found the right index, or we return -1
 	return dvIndex
 }
 
 // A Decision represents the overall access decision for a specific entity,
 // - that is, the aggregate result of comparing entity AttributeInstances to every data attributeInstance.
 type Decision struct {
-	//The important bit - does this entity Have Access or not, for this set of data attribute values
+	// The important bit - does this entity Have Access or not, for this set of data attribute values
 	//This will be TRUE if, for *every* DataRuleResult in Results, EntityRuleResult.Passed == TRUE
 	//Otherwise, it will be false
 	Access bool `json:"access" example:"false"`
-	//Results will contain at most 1 DataRuleResult for each data attributeInstance.
+	// Results will contain at most 1 DataRuleResult for each data attributeInstance.
 	//e.g. if we compare an entity's AttributeInstances against 5 data AttributeInstances,
 	//then there will be 5 rule results, each indicating whether this entity "passed" validation
 	//for that data attributeInstance or not.
@@ -461,12 +424,12 @@ type Decision struct {
 // There may be multiple "instances" (that is, AttributeInstances) of a single AttributeDefinition on both data and entities,
 // each with a different value.
 type DataRuleResult struct {
-	//Indicates whether, for this specific data AttributeDefinition, an entity satisfied
+	// Indicates whether, for this specific data AttributeDefinition, an entity satisfied
 	//the rule conditions (allof/anyof/hierarchy)
 	Passed bool `json:"passed" example:"false"`
-	//Contains the AttributeDefinition of the data attribute rule this result represents
+	// Contains the AttributeDefinition of the data attribute rule this result represents
 	RuleDefinition *attrs.Attribute `json:"rule_definition"`
-	//May contain 0 or more ValueFailure types, depending on the RuleDefinition and which (if any)
+	// May contain 0 or more ValueFailure types, depending on the RuleDefinition and which (if any)
 	//data AttributeInstances/values the entity failed against
 	//
 	//For an AllOf rule, there should be no value failures if Passed=TRUE
@@ -487,9 +450,9 @@ type DataRuleResult struct {
 // it is purely informational - there will be one value failure, per entity, per rule, per value the entity lacks -
 // it is up to the rule itself (anyof/allof/hierarchy) to translate this into an overall failure or not.
 type ValueFailure struct {
-	//The data attribute w/value that "caused" the denial
+	// The data attribute w/value that "caused" the denial
 	DataAttribute *attributeInstance `json:"data_attribute"`
-	//Optional denial message
+	// Optional denial message
 	Message string `json:"message" example:"Criteria NOT satisfied for entity: {entity_id} - lacked attribute value: {attribute}"`
 }
 

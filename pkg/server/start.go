@@ -89,15 +89,15 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("issue registering services: %w", err)
 	}
 
-	// Create the SDK client
+	// Create the SDK client for services to use
 	var sdkOptions []sdk.Option
 	for name, service := range conf.Services {
-		if service.RemoteEndpoint == "" {
+		if service.Remote.Endpoint == "" && service.Enabled {
 			switch name {
 			case "policy":
-				sdkOptions = append(sdkOptions, sdk.WithPolicyGRPCConnection(otdf.GrpcInProcess.Conn()))
+				sdkOptions = append(sdkOptions, sdk.WithCustomPolicyConnection(otdf.GrpcInProcess.Conn()))
 			case "authorization":
-				sdkOptions = append(sdkOptions, sdk.WithAuthorizationGRPCConnection(otdf.GrpcInProcess.Conn()))
+				sdkOptions = append(sdkOptions, sdk.WithCustomAuthorizationConnection(otdf.GrpcInProcess.Conn()))
 			}
 		}
 	}
@@ -107,6 +107,8 @@ func Start(f ...StartOptions) error {
 		slog.Error("issue creating sdk client", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating sdk client: %w", err)
 	}
+
+	defer client.Close()
 
 	slog.Info("starting services")
 	if err := startServices(*conf, otdf, dbClient, eng, client); err != nil {

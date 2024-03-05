@@ -64,13 +64,13 @@ func WithAuthConfig(authConfig AuthConfig) Option {
 	}
 }
 
-func WithPolicyGRPCConnection(conn *grpc.ClientConn) Option {
+func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.policyConn = conn
 	}
 }
 
-func WithAuthorizationGRPCConnection(conn *grpc.ClientConn) Option {
+func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
 	}

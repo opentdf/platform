@@ -16,9 +16,13 @@ import (
 )
 
 type ServiceConfig struct {
-	Enabled        bool                   `yaml:"enabled"`
-	RemoteEndpoint string                 `yaml:"remote_endpoint"`
-	ExtraProps     map[string]interface{} `json:"-"`
+	Enabled    bool                   `yaml:"enabled"`
+	Remote     RemoteServiceConfig    `yaml:"remote"`
+	ExtraProps map[string]interface{} `json:"-"`
+}
+
+type RemoteServiceConfig struct {
+	Endpoint string `yaml:"endpoint"`
 }
 
 type Config struct {

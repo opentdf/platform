@@ -60,9 +60,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		authorizationConn *grpc.ClientConn
 	)
 
-	defaultConn, err := grpc.Dial(platformEndpoint, cfg.build()...)
-	if err != nil {
-		return nil, errors.Join(ErrGrpcDialFailed, err)
+	if platformEndpoint != "" {
+		var err error
+		defaultConn, err = grpc.Dial(platformEndpoint, cfg.build()...)
+		if err != nil {
+			return nil, errors.Join(ErrGrpcDialFailed, err)
+		}
 	}
 
 	if cfg.policyConn != nil {

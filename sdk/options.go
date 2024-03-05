@@ -16,7 +16,6 @@ type config struct {
 	clientCredentials oauth.ClientCredentials
 	tokenEndpoint     string
 	scopes            []string
-	authConfig        *AuthConfig
 	policyConn        *grpc.ClientConn
 	authorizationConn *grpc.ClientConn
 	kasConn           *grpc.ClientConn

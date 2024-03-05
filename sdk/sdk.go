@@ -52,16 +52,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
-	var unwrapper Unwrapper
-	if cfg.authConfig == nil {
-		uw, err := buildKASClient(cfg)
-		if err != nil {
-			return nil, err
-		}
-		unwrapper = &uw
-	} else {
-		unwrapper = cfg.authConfig
-	}
+	unwrapper := cfg.unwrapper
 
 	conn, err := grpc.Dial(platformEndpoint, cfg.build()...)
 	if err != nil {

@@ -147,6 +147,7 @@ func (c PolicyDbClient) ListNamespaces(ctx context.Context, state string) ([]*na
 		slog.Error("error listing namespaces", slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
+	defer rows.Close()
 
 	list, err := hydrateNamespaceItems(rows, opts)
 	if err != nil {

@@ -46,6 +46,7 @@ func (c KasRegistryDbClient) ListKeyAccessServers(ctx context.Context) ([]*kasr.
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	var keyAccessServers []*kasr.KeyAccessServer
 
 	var (

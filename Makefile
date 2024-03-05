@@ -40,7 +40,9 @@ go-lint:
 
 proto-generate:
 	rm -rf sdkjava/src protocol/go/[a-fh-z]*
-	buf generate services 
+	buf generate services --exclude-path ./services/authorization/idp_plugin.proto
+	buf generate services --path ./services/authorization/idp_plugin.proto --template buf.gen.pb.go.only.yaml
+	buf generate services --template buf.gen.grpc.docs.yaml
 
 test:
 	go test ./... -race

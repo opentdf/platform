@@ -16,7 +16,6 @@ type config struct {
 	clientCredentials oauth.ClientCredentials
 	tokenEndpoint     string
 	scopes            []string
-	authConfig        *AuthConfig
 	unwrapper         Unwrapper
 }
 
@@ -36,7 +35,7 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 	return func(c *config) {
 		c.clientCredentials = oauth.ClientCredentials{ClientId: clientID, ClientAuth: clientSecret}
 		c.scopes = scopes
-		// Build kas client here to unblock sdk initialization
+		// Build kas client here to unblock sdk initialization. This will be refactored in the future.
 		uw, err := buildKASClient(c)
 		if err != nil {
 			slog.Error("failed to build KAS client", slog.String("error", err.Error()))

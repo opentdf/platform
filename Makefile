@@ -5,6 +5,9 @@
 
 MODS=protocol/go sdk . examples
 
+EXCLUDE_OPENAPI=./services/authorization/idp_plugin.proto
+EXCLUDE_JAVA=./services/authorization/idp_plugin.proto
+
 
 LINT_OPTIONS?=--new
 
@@ -40,9 +43,11 @@ go-lint:
 
 proto-generate:
 	rm -rf sdkjava/src protocol/go/[a-fh-z]*
-	buf generate services --exclude-path ./services/authorization/idp_plugin.proto
-	buf generate services --path ./services/authorization/idp_plugin.proto --template buf.gen.pb.go.only.yaml
+	buf generate services
 	buf generate services --template buf.gen.grpc.docs.yaml
+	buf generate services --exclude-path $(EXCLUDE_JAVA) --template buf.gen.java.yaml
+	buf generate services --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
+	
 
 test:
 	go test ./... -race

@@ -106,12 +106,12 @@ message Condition {
   repeated string subject_external_values = 3;
 }
 
-// A collection of Conditions evaluated by the boolean_type provided
+// A collection of Conditions evaluated by the boolean_operator provided
 message ConditionGroup {
   repeated Condition conditions = 1 [(buf.validate.field).repeated.min_items = 1];
 
   // the boolean evaluation type across the conditions
-  ConditionBooleanTypeEnum boolean_type = 2 [
+  ConditionBooleanTypeEnum boolean_operator = 2 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
@@ -195,11 +195,11 @@ message ListSubjectMappingsResponse {
   repeated SubjectMapping subject_mappings = 1;
 }
 
-message SubjectMappingCreate{
+message CreateSubjectMappingRequest{
   common.MetadataMutable metadata = 1;
 
   // Attribute Value to be mapped to
-  string attribute_value_id = 2;
+  string attribute_value_id = 2 [(buf.validate.field).required = true];
 
   // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
   string existing_subject_condition_set_id = 3;
@@ -208,16 +208,15 @@ message SubjectMappingCreate{
   SubjectConditionSetCreate new_subject_condition_set = 4;
 
   // The actions permitted by subjects in this mapping
-  repeated authorization.Action actions = 5;
-}
-message CreateSubjectMappingRequest {
-  SubjectMappingCreate subject_mapping = 1;
+  repeated authorization.Action actions = 5 [(buf.validate.field).repeated.min_items = 1];
 }
 message CreateSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
 }
 
-message SubjectMappingUpdate {
+message UpdateSubjectMappingRequest {
+  string id = 1 [(buf.validate.field).required = true];
+
   common.MetadataMutable update_metadata = 2;
 
   // Replaces the existing SubjectConditionSet id with a new one
@@ -226,12 +225,6 @@ message SubjectMappingUpdate {
   // Replaces entire list of actions permitted by subjects
   repeated authorization.Action update_actions = 5;
 }
-message UpdateSubjectMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
-  SubjectMappingUpdate subject_mapping = 2;
-}
-// `{"subject_mapping":{"updated_metadata": {"labels": {"name": "new-name"}}}}`
-// '{"subject_mapping":{//everything}}'
 message UpdateSubjectMappingResponse {
   SubjectMapping subject_mapping = 1;
 }
@@ -322,14 +315,14 @@ service SubjectMappingService {
   rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {
     option (google.api.http) = {
       post: "/subject-mappings"
-      body: "subject_mapping"
+      body: "*"
     };
   }
 
   rpc UpdateSubjectMapping(UpdateSubjectMappingRequest) returns (UpdateSubjectMappingResponse) {
     option (google.api.http) = {
-      post: "/subject-mappings/{id}"
-      body: "subject_mapping"
+      patch: "/subject-mappings/{id}"
+      body: "*"
     };
   }
 
@@ -348,14 +341,14 @@ service SubjectMappingService {
   rpc CreateSubjectConditionSet(CreateSubjectConditionSetRequest) returns (CreateSubjectConditionSetResponse) {
     option (google.api.http) = {
       post: "/subject-condition-sets"
-      body: "subject_condition_set"
+      body: "*"
     };
   }
 
   rpc UpdateSubjectConditionSet(UpdateSubjectConditionSetRequest) returns (UpdateSubjectConditionSetResponse) {
     option (google.api.http) = {
       patch: "/subject-condition-sets/{id}"
-      body: "subject_condition_set"
+      body: "*"
     };
   }
 

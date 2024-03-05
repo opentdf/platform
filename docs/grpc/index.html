@@ -788,14 +788,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.subjectmapping.SubjectMappingCreate"><span class="badge">M</span>SubjectMappingCreate</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.subjectmapping.SubjectMappingUpdate"><span class="badge">M</span>SubjectMappingUpdate</a>
-                </li>
-              
-                <li>
                   <a href="#policy.subjectmapping.SubjectSet"><span class="badge">M</span>SubjectSet</a>
                 </li>
               
@@ -5233,7 +5225,7 @@ Response Example:
         
       
         <h3 id="policy.subjectmapping.ConditionGroup">ConditionGroup</h3>
-        <p>A collection of Conditions evaluated by the boolean_type provided</p>
+        <p>A collection of Conditions evaluated by the boolean_operator provided</p>
 
         
           <table class="field-table">
@@ -5250,7 +5242,7 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>boolean_type</td>
+                  <td>boolean_operator</td>
                   <td><a href="#policy.subjectmapping.ConditionBooleanTypeEnum">ConditionBooleanTypeEnum</a></td>
                   <td></td>
                   <td><p>the boolean evaluation type across the conditions </p></td>
@@ -5322,10 +5314,38 @@ Response Example:
             <tbody>
               
                 <tr>
-                  <td>subject_mapping</td>
-                  <td><a href="#policy.subjectmapping.SubjectMappingCreate">SubjectMappingCreate</a></td>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Attribute Value to be mapped to </p></td>
+                </tr>
+              
+                <tr>
+                  <td>existing_subject_condition_set_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>new_subject_condition_set</td>
+                  <td><a href="#policy.subjectmapping.SubjectConditionSetCreate">SubjectConditionSetCreate</a></td>
+                  <td></td>
+                  <td><p>Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#authorization.Action">authorization.Action</a></td>
+                  <td>repeated</td>
+                  <td><p>The actions permitted by subjects in this mapping </p></td>
                 </tr>
               
             </tbody>
@@ -5865,96 +5885,6 @@ Response Example:
 
         
       
-        <h3 id="policy.subjectmapping.SubjectMappingCreate">SubjectMappingCreate</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>attribute_value_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Attribute Value to be mapped to </p></td>
-                </tr>
-              
-                <tr>
-                  <td>existing_subject_condition_set_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set) </p></td>
-                </tr>
-              
-                <tr>
-                  <td>new_subject_condition_set</td>
-                  <td><a href="#policy.subjectmapping.SubjectConditionSetCreate">SubjectConditionSetCreate</a></td>
-                  <td></td>
-                  <td><p>Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided) </p></td>
-                </tr>
-              
-                <tr>
-                  <td>actions</td>
-                  <td><a href="#authorization.Action">authorization.Action</a></td>
-                  <td>repeated</td>
-                  <td><p>The actions permitted by subjects in this mapping </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.subjectmapping.SubjectMappingUpdate">SubjectMappingUpdate</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>update_metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>update_subject_condition_set_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Replaces the existing SubjectConditionSet id with a new one </p></td>
-                </tr>
-              
-                <tr>
-                  <td>update_actions</td>
-                  <td><a href="#authorization.Action">authorization.Action</a></td>
-                  <td>repeated</td>
-                  <td><p>Replaces entire list of actions permitted by subjects </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.subjectmapping.SubjectSet">SubjectSet</h3>
         <p>A collection of Condition Groups</p>
 
@@ -6052,10 +5982,24 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>subject_mapping</td>
-                  <td><a href="#policy.subjectmapping.SubjectMappingUpdate">SubjectMappingUpdate</a></td>
+                  <td>update_metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>update_subject_condition_set_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Replaces the existing SubjectConditionSet id with a new one </p></td>
+                </tr>
+              
+                <tr>
+                  <td>update_actions</td>
+                  <td><a href="#authorization.Action">authorization.Action</a></td>
+                  <td>repeated</td>
+                  <td><p>Replaces entire list of actions permitted by subjects </p></td>
                 </tr>
               
             </tbody>
@@ -6066,7 +6010,7 @@ Response Example:
         
       
         <h3 id="policy.subjectmapping.UpdateSubjectMappingResponse">UpdateSubjectMappingResponse</h3>
-        <p>`{"subject_mapping":{"updated_metadata": {"labels": {"name": "new-name"}}}}`</p><p>'{"subject_mapping":{//everything}}'</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -6292,7 +6236,7 @@ Response Example:
                 <td>CreateSubjectMapping</td>
                 <td>POST</td>
                 <td>/subject-mappings</td>
-                <td>subject_mapping</td>
+                <td>*</td>
               </tr>
               
             
@@ -6300,9 +6244,9 @@ Response Example:
               
               <tr>
                 <td>UpdateSubjectMapping</td>
-                <td>POST</td>
+                <td>PATCH</td>
                 <td>/subject-mappings/{id}</td>
-                <td>subject_mapping</td>
+                <td>*</td>
               </tr>
               
             
@@ -6342,7 +6286,7 @@ Response Example:
                 <td>CreateSubjectConditionSet</td>
                 <td>POST</td>
                 <td>/subject-condition-sets</td>
-                <td>subject_condition_set</td>
+                <td>*</td>
               </tr>
               
             
@@ -6352,7 +6296,7 @@ Response Example:
                 <td>UpdateSubjectConditionSet</td>
                 <td>PATCH</td>
                 <td>/subject-condition-sets/{id}</td>
-                <td>subject_condition_set</td>
+                <td>*</td>
               </tr>
               
             

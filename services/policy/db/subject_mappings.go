@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,7 +18,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func MarshalSubjectSetsIntoCondition(subjectSet []*subjectmapping.SubjectSet) ([]byte, error) {
+// Helper to marshal SubjectSets into JSON (stored as JSONB in the database column)
+func marshalSubjectSetsProto(subjectSet []*subjectmapping.SubjectSet) ([]byte, error) {
 	var raw []json.RawMessage
 	for _, ss := range subjectSet {
 		b, err := protojson.Marshal(ss)
@@ -29,24 +31,27 @@ func MarshalSubjectSetsIntoCondition(subjectSet []*subjectmapping.SubjectSet) ([
 	return json.Marshal(raw)
 }
 
-func UnmarshalSubjectSetsFromCondition(condition []byte) ([]*subjectmapping.SubjectSet, error) {
+// Helper to unmarshal SubjectSets from JSON (stored as JSONB in the database column)
+func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*subjectmapping.SubjectSet, error) {
 	var raw []json.RawMessage
-	if err := json.Unmarshal(condition, &raw); err != nil {
+	if err := json.Unmarshal(conditionJSON, &raw); err != nil {
 		return nil, err
 	}
 
-	var subjectSets []*subjectmapping.SubjectSet
+	var ss []*subjectmapping.SubjectSet
 	for _, r := range raw {
-		var ss subjectmapping.SubjectSet
-		if err := protojson.Unmarshal(r, &ss); err != nil {
+		var s subjectmapping.SubjectSet
+		if err := protojson.Unmarshal(r, &s); err != nil {
 			return nil, err
 		}
-		subjectSets = append(subjectSets, &ss)
+		ss = append(ss, &s)
 	}
-	return subjectSets, nil
+
+	return ss, nil
 }
 
-func MarshalActionsProto(actions []*authorization.Action) ([]byte, error) {
+// Helper to marshal Actions into JSON (stored as JSONB in the database column)
+func marshalActionsProto(actions []*authorization.Action) ([]byte, error) {
 	var raw []json.RawMessage
 	for _, a := range actions {
 		b, err := protojson.Marshal(a)
@@ -58,7 +63,7 @@ func MarshalActionsProto(actions []*authorization.Action) ([]byte, error) {
 	return json.Marshal(raw)
 }
 
-func UnmarshalActionsProto(actions []byte) ([]*authorization.Action, error) {
+func unmarshalActionsProto(actions []byte) ([]*authorization.Action, error) {
 	var raw []json.RawMessage
 	if err := json.Unmarshal(actions, &raw); err != nil {
 		return nil, err
@@ -88,7 +93,7 @@ func subjectConditionSetSelect() sq.SelectBuilder {
 func subjectConditionSetHydrateItem(row pgx.Row) (*subjectmapping.SubjectConditionSet, error) {
 	var (
 		id        string
-		name      string
+		name      sql.NullString
 		metadata  []byte
 		condition []byte
 	)
@@ -114,14 +119,14 @@ func subjectConditionSetHydrateItem(row pgx.Row) (*subjectmapping.SubjectConditi
 		}
 	}
 
-	ss, err := UnmarshalSubjectSetsFromCondition(condition)
+	ss, err := unmarshalSubjectSetsProto(condition)
 	if err != nil {
 		return nil, err
 	}
 
 	return &subjectmapping.SubjectConditionSet{
 		Id:          id,
-		Name:        name,
+		Name:        name.String,
 		SubjectSets: ss,
 		Metadata:    m,
 	}, nil
@@ -141,82 +146,90 @@ func subjectConditionSetHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectCon
 
 func subjectMappingSelect() sq.SelectBuilder {
 	t := db.Tables.SubjectMappings
-	aT := db.Tables.AttributeValues
-	ssT := db.Tables.SubjectConditionSet
+	avT := db.Tables.AttributeValues
+	scsT := db.Tables.SubjectConditionSet
 
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("actions"),
 		t.Field("metadata"),
-		ssT.Field("condition"),
 		"JSON_BUILD_OBJECT("+
-			"'id', "+aT.Field("id")+", "+
-			"'value', "+aT.Field("value")+", "+
-			"'members', "+aT.Field("members")+
+			"'id', "+scsT.Field("id")+", "+
+			"'name', "+scsT.Field("name")+", "+
+			"'metadata', "+scsT.Field("metadata")+", "+
+			"'subject_sets', "+scsT.Field("condition")+
+			") AS subject_condition_set",
+		// TODO: verify we don't need more info about the attribute value here on the JOIN here
+		"JSON_BUILD_OBJECT("+
+			"'id', "+avT.Field("id")+", "+
+			"'value', "+avT.Field("value")+", "+
+			"'members', "+avT.Field("members")+
 			") AS attribute_value",
 	).
-		LeftJoin(aT.Name() + " ON " + t.Field("attribute_value_id") + " = " + aT.Field("id")).
-		LeftJoin(ssT.Name() + " ON " + ssT.Field("id") + " = " + t.Field("subject_condition_set_id")).
+		LeftJoin(avT.Name() + " ON " + t.Field("attribute_value_id") + " = " + avT.Field("id")).
+		LeftJoin(scsT.Name() + " ON " + scsT.Field("id") + " = " + t.Field("subject_condition_set_id")).
 		GroupBy(t.Field("id")).
-		GroupBy(aT.Field("id"))
+		GroupBy(avT.Field("id")).
+		GroupBy(scsT.Field("id"))
 }
 
 func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, error) {
 	var (
-		id                  string
-		actions             []byte
-		metadataJson        []byte
-		smConditionSetsJson []byte
-		attributeValueJson  []byte
+		id                 string
+		actions            []byte
+		metadataJSON       []byte
+		scsJSON            []byte
+		attributeValueJSON []byte
 	)
 
 	err := row.Scan(
 		&id,
 		&actions,
-		&metadataJson,
-		&smConditionSetsJson,
-		&attributeValueJson,
+		&metadataJSON,
+		&scsJSON,
+		&attributeValueJSON,
 	)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	m := &common.Metadata{}
-	if metadataJson != nil {
-		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
 			return nil, err
 		}
 	}
 
 	v := &attributes.Value{}
-	if attributeValueJson != nil {
-		if err := protojson.Unmarshal(attributeValueJson, v); err != nil {
+	if attributeValueJSON != nil {
+		if err := protojson.Unmarshal(attributeValueJSON, v); err != nil {
 			return nil, err
 		}
 	}
 
-	a, err := UnmarshalActionsProto(actions)
+	a, err := unmarshalActionsProto(actions)
 	if err != nil {
 		return nil, err
 	}
 
-	s := &subjectmapping.SubjectMapping{
-		Id:             id,
-		Metadata:       m,
-		AttributeValue: v,
-		// FIXME
-		SubjectConditionSet: &subjectmapping.SubjectConditionSet{},
-		Actions:             a,
+	var scs *subjectmapping.SubjectConditionSet
+	var raw json.RawMessage
+	if scsJSON != nil {
+		if err := json.Unmarshal(scsJSON, &raw); err != nil {
+			return nil, err
+		}
+		if err := protojson.Unmarshal(raw, scs); err != nil {
+			return nil, err
+		}
 	}
-	// FIXME
-	// add operator
-	s.Actions = append(s.Actions, &authorization.Action{})
-	// add subjectAttributeValues
-	// s.SubjectSets = append(s.SubjectSets, &subjectmapping.SubjectSet{
-	// 	ConditionGroups: make([]*subjectmapping.ConditionGroup, 0),
-	// })
 
-	return s, nil
+	return &subjectmapping.SubjectMapping{
+		Id:                  id,
+		Metadata:            m,
+		AttributeValue:      v,
+		SubjectConditionSet: scs,
+		Actions:             a,
+	}, nil
 }
 
 func subjectMappingHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectMapping, error) {
@@ -231,9 +244,9 @@ func subjectMappingHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectMapping,
 	return list, nil
 }
 
-func createSubjectConditionSetSql(subSets []*subjectmapping.SubjectSet, metadataJSON []byte, name string) (string, []interface{}, error) {
+func createSubjectConditionSetSql(subjectSets []*subjectmapping.SubjectSet, metadataJSON []byte, name string) (string, []interface{}, error) {
 	t := db.Tables.SubjectConditionSet
-	conditionJSON, err := MarshalSubjectSetsIntoCondition(subSets)
+	conditionJSON, err := marshalSubjectSetsProto(subjectSets)
 	if err != nil {
 		return "", nil, err
 	}
@@ -286,13 +299,12 @@ func getSubjectConditionSetSql(id string, name string) (string, []interface{}, e
 		From(t.Name())
 
 	if id != "" {
-		sb = sb.Where(sq.Eq{t.Field("id"): id})
+		return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 	}
 	if name != "" {
-		sb = sb.Where(sq.Eq{t.Field("name"): name})
+		return sb.Where(sq.Eq{t.Field("name"): name}).ToSql()
 	}
-	return sb.
-		ToSql()
+	return "", nil, errors.Join(db.ErrMissingRequiredValue, errors.New("error: Subject Condition Set id or name must be provided"))
 }
 
 func (c PolicyDbClient) GetSubjectConditionSet(ctx context.Context, id string, name string) (*subjectmapping.SubjectConditionSet, error) {
@@ -326,6 +338,7 @@ func (c PolicyDbClient) ListSubjectConditionSets(ctx context.Context) ([]*subjec
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	return subjectConditionSetHydrateList(rows)
 }
@@ -348,20 +361,18 @@ func updateSubjectConditionSetSql(id string, name string, metadata []byte, condi
 		sb = sb.Set("condition", condition)
 	}
 	return sb.
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
 func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, id string, s *subjectmapping.SubjectConditionSetUpdate) (*subjectmapping.SubjectConditionSet, error) {
 	var (
-		prev         *subjectmapping.SubjectConditionSet
-		err          error
-		metadataJSON []byte
-		subjectSets  []*subjectmapping.SubjectSet
-		condition    []byte
+		subjectSets []*subjectmapping.SubjectSet
+		condition   []byte
 	)
 
-	prev, err = c.GetSubjectConditionSet(ctx, id, "")
+	// While an SCS can be retrieved by 'name', an 'id' is required to update one
+	prev, err := c.GetSubjectConditionSet(ctx, id, "")
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +384,7 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, id string
 
 	if s.UpdatedSubjectSets != nil {
 		subjectSets = s.UpdatedSubjectSets
-		condition, err = MarshalSubjectSetsIntoCondition(subjectSets)
+		condition, err = marshalSubjectSetsProto(subjectSets)
 		if err != nil {
 			return nil, err
 		}
@@ -393,8 +404,8 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, id string
 	return &subjectmapping.SubjectConditionSet{
 		Id:          id,
 		Name:        s.UpdatedName,
-		SubjectSets: subjectSets,
 		Metadata:    metadata,
+		SubjectSets: subjectSets,
 	}, nil
 }
 
@@ -402,7 +413,7 @@ func deleteSubjectConditionSetSql(id string) (string, []interface{}, error) {
 	t := db.Tables.SubjectConditionSet
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
@@ -450,10 +461,8 @@ func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata
 
 func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.SubjectMappingCreate) (*subjectmapping.SubjectMapping, error) {
 	var (
-		scs          *subjectmapping.SubjectConditionSet
-		err          error
-		actionsJSON  []byte
-		metadataJSON []byte
+		scs *subjectmapping.SubjectConditionSet
+		err error
 	)
 
 	// Prefer existing id over new creation per documented proto behavior.
@@ -477,7 +486,10 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	if err != nil {
 		return nil, err
 	}
-	actionsJSON, err = MarshalActionsProto(s.Actions)
+	if s.Actions == nil {
+		return nil, errors.Join(db.ErrMissingRequiredValue)
+	}
+	actionsJSON, err := marshalActionsProto(s.Actions)
 	if err != nil {
 		return nil, err
 	}
@@ -497,7 +509,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	a, err := c.GetAttributeValue(ctx, s.AttributeValueId)
+	av, err := c.GetAttributeValue(ctx, s.AttributeValueId)
 	if err != nil {
 		return nil, err
 	}
@@ -505,7 +517,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	sm := &subjectmapping.SubjectMapping{
 		Id:                  id,
 		Metadata:            metadata,
-		AttributeValue:      a,
+		AttributeValue:      av,
 		SubjectConditionSet: scs,
 		Actions:             s.Actions,
 	}
@@ -522,6 +534,7 @@ func getSubjectMappingSql(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*subjectmapping.SubjectMapping, error) {
 	sql, args, err := getSubjectMappingSql(id)
+	fmt.Println("sql", sql, "args", args, "err", err)
 
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
@@ -563,25 +576,26 @@ func (c PolicyDbClient) ListSubjectMappings(ctx context.Context) ([]*subjectmapp
 	return subjectMappings, nil
 }
 
-func updateSubjectMappingSql(id string, metadata []byte, subject_condition_set_id string, actions []byte) (string, []interface{}, error) {
+// overwrites entire 'actions' JSONB column if updated
+func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_set_id string, actionsJSON []byte) (string, []interface{}, error) {
 	t := db.Tables.SubjectMappings
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
 
-	if metadata != nil {
-		sb = sb.Set("metadata", metadata)
+	if metadataJSON != nil {
+		sb = sb.Set("metadata", metadataJSON)
 	}
 
 	if subject_condition_set_id != "" {
 		sb = sb.Set("subject_condition_set_id", subject_condition_set_id)
 	}
 
-	if actions != nil {
-		sb = sb.Set("actions", actions)
+	if actionsJSON != nil {
+		sb = sb.Set("actions", actionsJSON)
 	}
 
 	return sb.
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
@@ -599,10 +613,11 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, id string, s *
 
 	var actionsJSON []byte
 	if s.UpdateActions != nil {
-		actionsJSON, err = MarshalActionsProto(s.UpdateActions)
+		actionsJSON, err = marshalActionsProto(s.UpdateActions)
 		if err != nil {
 			return nil, err
 		}
+		prev.Actions = s.UpdateActions
 	}
 
 	sql, args, err := updateSubjectMappingSql(
@@ -626,7 +641,7 @@ func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
 	t := db.Tables.SubjectMappings
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 

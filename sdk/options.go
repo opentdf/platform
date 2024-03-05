@@ -15,6 +15,9 @@ type config struct {
 	tokenEndpoint     string
 	scopes            []string
 	authConfig        *AuthConfig
+	policyConn        *grpc.ClientConn
+	authorizationConn *grpc.ClientConn
+	kasConn           *grpc.ClientConn
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -49,5 +52,23 @@ func WithTokenEndpoint(tokenEndpoint string) Option {
 func WithAuthConfig(authConfig AuthConfig) Option {
 	return func(c *config) {
 		c.authConfig = &authConfig
+	}
+}
+
+func WithPolicyGRPCConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.policyConn = conn
+	}
+}
+
+func WithAuthorizationGRPCConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.authorizationConn = conn
+	}
+}
+
+func WithKASGRPCConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.kasConn = conn
 	}
 }

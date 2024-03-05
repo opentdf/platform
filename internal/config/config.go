@@ -16,8 +16,9 @@ import (
 )
 
 type ServiceConfig struct {
-	Enabled    bool                   `yaml:"enabled"`
-	ExtraProps map[string]interface{} `json:"-"`
+	Enabled        bool                   `yaml:"enabled"`
+	RemoteEndpoint string                 `yaml:"remote_endpoint"`
+	ExtraProps     map[string]interface{} `json:"-"`
 }
 
 type Config struct {
@@ -25,7 +26,7 @@ type Config struct {
 	OPA      opa.Config               `yaml:"opa"`
 	Server   server.Config            `yaml:"server"`
 	Logger   logger.Config            `yaml:"logger"`
-	Services map[string]ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}}"`
+	Services map[string]ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}}"`
 }
 
 type Error string

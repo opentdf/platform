@@ -61,7 +61,7 @@ jobs:
         with:
           version: v1.55
           working-directory: ${{ matrix.directory }}
-          args: --new-from-rev=main
+          args: -c ${{ github.workspace }}/.golangci-ratchet.yaml
       - name: golangci-lint on push
         if: github.event_name == 'push'
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
@@ -149,6 +149,7 @@ jobs:
       - image
       - buflint
     runs-on: ubuntu-latest
+    if: always()
     steps:
       - if: contains(needs.*.result, 'failure')
         run: exit 1

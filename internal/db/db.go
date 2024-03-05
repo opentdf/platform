@@ -194,7 +194,3 @@ func (c Client) Exec(ctx context.Context, sql string, args []interface{}, err er
 func NewStatementBuilder() sq.StatementBuilderType {
 	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 }
-
-func tableName(table string) string {
-	return table
-}

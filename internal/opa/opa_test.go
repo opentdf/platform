@@ -25,7 +25,7 @@ func TestNewEngine(t *testing.T) {
 		args       args
 		want       *Engine
 		wantLog    string
-		logHandler TestLogHandler
+		logHandler *TestLogHandler
 		wantErr    bool
 	}{
 		{
@@ -39,7 +39,7 @@ func TestNewEngine(t *testing.T) {
 			},
 			want:       &Engine{},
 			wantLog:    "Download starting.",
-			logHandler: tl,
+			logHandler: &tl,
 			wantErr:    false,
 		},
 	}
@@ -56,7 +56,7 @@ func TestNewEngine(t *testing.T) {
 			if tt.wantLog != "" {
 				found := false
 				for _, log := range tl.Logs() {
-					//t.Log(log)
+					// t.Log(log)
 					found = strings.Contains(log, tt.wantLog)
 					if found {
 						break

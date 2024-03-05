@@ -28,7 +28,8 @@ require (
 
 replace (
 	github.com/opentdf/platform/protocol/go => ./protocol/go
-	github.com/opentdf/platform/sdk => ./sdk
+	// github.com/opentdf/platform/sdk => ./sdk
+	github.com/opentdf/platform/sdk => github.com/opentdf/platform/sdk v0.0.0-20240305125958-7ff29bc0d285
 )
 
 require (

@@ -183,6 +183,14 @@ func (f *Fixtures) GetSubjectMappingKey(key string) FixtureDataSubjectMapping {
 	return fixtureData.SubjectMappings.Data[key]
 }
 
+func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
+	if fixtureData.SubjectConditionSet.Data[key].Id == "" {
+		slog.Error("could not find subject-condition-set", slog.String("id", key))
+		panic("could not find subject-condition-set")
+	}
+	return fixtureData.SubjectConditionSet.Data[key]
+}
+
 func (f *Fixtures) GetResourceMappingKey(key string) FixtureDataResourceMapping {
 	if fixtureData.ResourceMappings.Data[key].Id == "" {
 		slog.Error("could not find resource-mappings", slog.String("id", key))
@@ -295,7 +303,7 @@ func (f *Fixtures) provisionSubjectConditionSet() int64 {
 	values := make([][]string, 0, len(fixtureData.SubjectConditionSet.Data))
 	for _, d := range fixtureData.SubjectConditionSet.Data {
 		var conditionJSON []byte
-		conditionJSON, err := json.Marshal(d.Condition)
+		conditionJSON, err := json.Marshal(d.Condition.SubjectSets)
 		if err != nil {
 			slog.Error("⛔️ 📦 issue with subject condition set JSON - check fixtures.yaml for issues")
 			panic("issue with subject condition set JSON")
@@ -303,7 +311,7 @@ func (f *Fixtures) provisionSubjectConditionSet() int64 {
 
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.Name),
+			f.db.OptionalStringWrap(d.Name),
 			f.db.StringWrap(string(conditionJSON)),
 		})
 	}

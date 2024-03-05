@@ -223,15 +223,15 @@ subject_condition_set:
       condition:
         subject_sets:
           - condition_groups:
-              - boolean_operator: AND
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
                   - subject_external_field: superhero_name
-                    operator: IN
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - thor
                       - captain_america
                   - subject_external_field: superhero_group
-                    operator: IN
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - avengers
     subject_condition_set2:
@@ -240,15 +240,15 @@ subject_condition_set:
       condition:
         subject_sets:
           - condition_groups:
-              - boolean_operator: AND
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
                   - subject_external_field: department
-                    operator: IN
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - marketing
                       - sales
                   - subject_external_field: role
-                    operator: IN
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - senior_vice_president
                       - vice_president
@@ -259,29 +259,40 @@ subject_condition_set:
       condition:
         subject_sets:
           - condition_groups:
-              - boolean_operator: OR
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
                   - subject_external_field: fave_sport
-                    operator: IN
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - futbol
                       - soccer
                   - subject_external_field: face_dessert
-                    operator: NOT_IN
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - ice_cream
-              - boolean_operator: AND
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
                   - subject_external_field: department
-                    operator: IN
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - engineering
                   - subject_external_field: role
-                    operator: NOT_IN
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - manager
                       - director
                       - vice_president
+    subject_condition_omitted_optional_name:
+      id: 3c623ede-df88-4906-8a78-ebdfacadcd57
+      condition:
+        subject_sets:
+          - condition_groups:
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+                conditions:
+                  - subject_external_field: some_field
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subject_external_values:
+                      - some_value
 
 ##
 # Resource Mappings

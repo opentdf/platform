@@ -193,7 +193,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.NotNil(s.T(), err)
 	assert.Zero(s.T(), createdId)
-	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {

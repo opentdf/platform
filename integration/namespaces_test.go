@@ -163,7 +163,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 	// Deletion should succeed when NOT referenced as FK in attribute(s)
 	newNamespaceId, err := s.db.PolicyClient.CreateNamespace(s.ctx, "new-namespace.com")
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", newNamespaceId)
+	assert.NotZero(s.T(), newNamespaceId)
 
 	deleted, err := s.db.PolicyClient.DeleteNamespace(s.ctx, newNamespaceId)
 	assert.Nil(s.T(), err)
@@ -185,7 +185,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	id, err := s.db.PolicyClient.CreateNamespace(s.ctx, "testing-sdeactivate-namespace.com")
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", id)
+	assert.NotZero(s.T(), id)
 
 	inactive, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, id)
 	assert.Nil(s.T(), err)
@@ -212,7 +212,7 @@ func setupCascadeDeactivateNamespace(s *NamespacesSuite) (string, string, string
 	// create a namespace
 	nsId, err := s.db.PolicyClient.CreateNamespace(s.ctx, "cascading-deactivate-namespace.com")
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", nsId)
+	assert.NotZero(s.T(), nsId)
 
 	// add an attribute under that namespaces
 	attr := &attributes.AttributeCreateUpdate{

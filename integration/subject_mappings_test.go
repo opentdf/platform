@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"testing"
 
@@ -89,7 +88,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 
 	smId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", smId)
+	assert.NotZero(s.T(), smId)
 
 	// verify the subject mapping was created
 	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, smId)
@@ -131,8 +130,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 
 	smId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", smId)
-	fmt.Println("outside creation of subject mapping")
+	assert.NotZero(s.T(), smId)
 
 	// verify the new subject condition set created was returned properly
 	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, smId)
@@ -211,7 +209,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 
 	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", createdId)
+	assert.NotZero(s.T(), createdId)
 
 	// update the subject mapping
 	newActions := []*authorization.Action{aTransmit}
@@ -248,7 +246,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 
 	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", createdId)
+	assert.NotZero(s.T(), createdId)
 
 	// update the subject mapping
 	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
@@ -285,7 +283,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 
 	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", createdId)
+	assert.NotZero(s.T(), createdId)
 
 	// update the subject mapping
 	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
@@ -323,7 +321,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentId_Fails() {
 
 	smId, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), smId, "")
+	assert.Zero(s.T(), smId)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
@@ -335,7 +333,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentSubjectCondit
 
 	smId, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), smId, "")
+	assert.Zero(s.T(), smId)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
@@ -422,7 +420,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
 
 	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", createdId)
+	assert.NotZero(s.T(), createdId)
 
 	deletedId, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, createdId)
 	assert.Nil(s.T(), err)
@@ -437,7 +435,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_WithNonExistentId_Fails() {
 	deletedId, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, nonExistentSubjectMappingId)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), deletedId, "")
+	assert.Zero(s.T(), deletedId)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
@@ -472,13 +470,13 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 
 	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", createdId)
+	assert.NotZero(s.T(), createdId)
 
 	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, createdId)
 	assert.Nil(s.T(), err)
 	deletedId, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, sm.Id)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", deletedId)
+	assert.NotZero(s.T(), deletedId)
 
 	scs, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, sm.SubjectConditionSet.Id)
 	assert.Nil(s.T(), err)
@@ -578,7 +576,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 
 	createdId, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", createdId)
+	assert.NotZero(s.T(), createdId)
 
 	deletedId, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, createdId)
 	assert.Nil(s.T(), err)
@@ -593,7 +591,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet_WithNonExistentId_Fails() {
 	deletedId, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, nonExistentSubjectSetId)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), deletedId, "")
+	assert.Zero(s.T(), deletedId)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
@@ -607,9 +605,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 
 	createdId, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
 	assert.Nil(s.T(), err)
-	// TODO: see if this is reusable
 	assert.NotZero(s.T(), createdId)
-	assert.NotEqual(s.T(), "", createdId)
 
 	// update the subject condition set
 	ss := []*subjectmapping.SubjectSet{

@@ -118,7 +118,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 	assert.Equal(s.T(), createdKasRegistry.PublicKey.GetLocal(), "")
 	assert.Equal(s.T(), kasRegistry.Metadata.Description, createdKasRegistry.Metadata.Description)
 	assert.EqualValues(s.T(), kasRegistry.Metadata.Labels, createdKasRegistry.Metadata.Labels)
-	assert.NotEqual(s.T(), "", createdKasRegistry.Id)
+	assert.NotZero(s.T(), createdKasRegistry.Id)
 }
 
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
@@ -148,7 +148,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 	assert.Equal(s.T(), createdKasRegistry.PublicKey.GetRemote(), "")
 	assert.Equal(s.T(), kasRegistry.Metadata.Description, createdKasRegistry.Metadata.Description)
 	assert.EqualValues(s.T(), kasRegistry.Metadata.Labels, createdKasRegistry.Metadata.Labels)
-	assert.NotEqual(s.T(), "", createdKasRegistry.Id)
+	assert.NotZero(s.T(), createdKasRegistry.Id)
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {

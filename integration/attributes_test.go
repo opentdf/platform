@@ -354,7 +354,7 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 	// create a namespace
 	nsId, err := s.db.PolicyClient.CreateNamespace(s.ctx, "cascading-deactivate-attribute.com")
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", nsId)
+	assert.NotZero(s.T(), nsId)
 
 	// add an attribute under that namespaces
 	attr := &attributes.AttributeCreateUpdate{

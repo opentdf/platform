@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -469,7 +468,6 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		scsId,
 	)
 
-	fmt.Println("here")
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
 		return "", err

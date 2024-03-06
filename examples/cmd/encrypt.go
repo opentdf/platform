@@ -11,7 +11,7 @@ import (
 
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
-	Short: "Encrypt string to tdf",
+	Short: "Create encrypted TDF from string",
 	RunE:  encrypt,
 	Args:  cobra.MinimumNArgs(1),
 }
@@ -71,12 +71,12 @@ wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 		return err
 	}
 
-	manifestJson, err := json.MarshalIndent(tdf.Manifest(), "", "  ")
+	manifestJSON, err := json.MarshalIndent(tdf.Manifest(), "", "  ")
 	if err != nil {
 		return err
 	}
 
 	// Print Manifest
-	cmd.Println(string(manifestJson))
+	cmd.Println(string(manifestJSON))
 	return nil
 }

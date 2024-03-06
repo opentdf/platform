@@ -3,7 +3,6 @@
 
 CREATE TABLE IF NOT EXISTS subject_condition_set (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR UNIQUE,
     metadata JSONB,
     condition JSONB NOT NULL
 );

@@ -214,12 +214,10 @@ subject_condition_set:
     table_name: subject_condition_set
     columns:
       - id
-      - name
       - condition
   data:
     subject_condition_set1:
       id: b3903282-06f9-41a4-924a-7b8eb43dffe0
-      name: avenger_hammer_wielders
       condition:
         subject_sets:
           - condition_groups:
@@ -236,7 +234,6 @@ subject_condition_set:
                       - avengers
     subject_condition_set2:
       id: 798aacd2-abaf-4623-975e-3bb8ca43e318
-      name: sales_and_marketing_executives
       condition:
         subject_sets:
           - condition_groups:
@@ -255,7 +252,6 @@ subject_condition_set:
                       - director
     subject_condition_set3:
       id: eaf866c0-327f-4826-846a-5041c3c22f06
-      name: engineering_non_managers_who_like_soccer_or_not_ice_cream
       condition:
         subject_sets:
           - condition_groups:

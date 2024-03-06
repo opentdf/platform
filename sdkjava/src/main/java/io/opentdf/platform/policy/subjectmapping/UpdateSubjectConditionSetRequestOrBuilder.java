@@ -21,80 +21,60 @@ public interface UpdateSubjectConditionSetRequestOrBuilder extends
       getIdBytes();
 
   /**
-   * <pre>
-   * an optional name for ease of reference
-   * </pre>
-   *
-   * <code>string update_name = 2 [json_name = "updateName"];</code>
-   * @return The updateName.
-   */
-  java.lang.String getUpdateName();
-  /**
-   * <pre>
-   * an optional name for ease of reference
-   * </pre>
-   *
-   * <code>string update_name = 2 [json_name = "updateName"];</code>
-   * @return The bytes for updateName.
-   */
-  com.google.protobuf.ByteString
-      getUpdateNameBytes();
-
-  /**
-   * <code>.common.MetadataMutable update_metadata = 3 [json_name = "updateMetadata"];</code>
+   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
    * @return Whether the updateMetadata field is set.
    */
   boolean hasUpdateMetadata();
   /**
-   * <code>.common.MetadataMutable update_metadata = 3 [json_name = "updateMetadata"];</code>
+   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
    * @return The updateMetadata.
    */
   io.opentdf.platform.common.MetadataMutable getUpdateMetadata();
   /**
-   * <code>.common.MetadataMutable update_metadata = 3 [json_name = "updateMetadata"];</code>
+   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
    */
   io.opentdf.platform.common.MetadataMutableOrBuilder getUpdateMetadataOrBuilder();
 
   /**
    * <pre>
-   * if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, &amp; Conditions
+   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 4 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
    */
   java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
       getUpdateSubjectSetsList();
   /**
    * <pre>
-   * if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, &amp; Conditions
+   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 4 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
    */
   io.opentdf.platform.policy.subjectmapping.SubjectSet getUpdateSubjectSets(int index);
   /**
    * <pre>
-   * if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, &amp; Conditions
+   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 4 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
    */
   int getUpdateSubjectSetsCount();
   /**
    * <pre>
-   * if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, &amp; Conditions
+   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 4 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
    */
   java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
       getUpdateSubjectSetsOrBuilderList();
   /**
    * <pre>
-   * if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, &amp; Conditions
+   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 4 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
    */
   io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getUpdateSubjectSetsOrBuilder(
       int index);

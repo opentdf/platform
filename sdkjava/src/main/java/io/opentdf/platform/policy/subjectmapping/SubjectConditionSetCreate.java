@@ -17,7 +17,6 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private SubjectConditionSetCreate() {
-    name_ = "";
     subjectSets_ = java.util.Collections.emptyList();
   }
 
@@ -68,54 +67,7 @@ private static final long serialVersionUID = 0L;
     return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
   }
 
-  public static final int NAME_FIELD_NUMBER = 2;
-  @SuppressWarnings("serial")
-  private volatile java.lang.Object name_ = "";
-  /**
-   * <pre>
-   * an optional name for ease of reference
-   * </pre>
-   *
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @return The name.
-   */
-  @java.lang.Override
-  public java.lang.String getName() {
-    java.lang.Object ref = name_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      name_ = s;
-      return s;
-    }
-  }
-  /**
-   * <pre>
-   * an optional name for ease of reference
-   * </pre>
-   *
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @return The bytes for name.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getNameBytes() {
-    java.lang.Object ref = name_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      name_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
-  }
-
-  public static final int SUBJECT_SETS_FIELD_NUMBER = 3;
+  public static final int SUBJECT_SETS_FIELD_NUMBER = 2;
   @SuppressWarnings("serial")
   private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_;
   /**
@@ -123,7 +75,7 @@ private static final long serialVersionUID = 0L;
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
@@ -134,7 +86,7 @@ private static final long serialVersionUID = 0L;
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
@@ -146,7 +98,7 @@ private static final long serialVersionUID = 0L;
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public int getSubjectSetsCount() {
@@ -157,7 +109,7 @@ private static final long serialVersionUID = 0L;
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
@@ -168,7 +120,7 @@ private static final long serialVersionUID = 0L;
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
@@ -193,11 +145,8 @@ private static final long serialVersionUID = 0L;
     if (((bitField0_ & 0x00000001) != 0)) {
       output.writeMessage(1, getMetadata());
     }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(name_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, name_);
-    }
     for (int i = 0; i < subjectSets_.size(); i++) {
-      output.writeMessage(3, subjectSets_.get(i));
+      output.writeMessage(2, subjectSets_.get(i));
     }
     getUnknownFields().writeTo(output);
   }
@@ -212,12 +161,9 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(1, getMetadata());
     }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(name_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, name_);
-    }
     for (int i = 0; i < subjectSets_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(3, subjectSets_.get(i));
+        .computeMessageSize(2, subjectSets_.get(i));
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -239,8 +185,6 @@ private static final long serialVersionUID = 0L;
       if (!getMetadata()
           .equals(other.getMetadata())) return false;
     }
-    if (!getName()
-        .equals(other.getName())) return false;
     if (!getSubjectSetsList()
         .equals(other.getSubjectSetsList())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
@@ -258,8 +202,6 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + METADATA_FIELD_NUMBER;
       hash = (53 * hash) + getMetadata().hashCode();
     }
-    hash = (37 * hash) + NAME_FIELD_NUMBER;
-    hash = (53 * hash) + getName().hashCode();
     if (getSubjectSetsCount() > 0) {
       hash = (37 * hash) + SUBJECT_SETS_FIELD_NUMBER;
       hash = (53 * hash) + getSubjectSetsList().hashCode();
@@ -407,14 +349,13 @@ private static final long serialVersionUID = 0L;
         metadataBuilder_.dispose();
         metadataBuilder_ = null;
       }
-      name_ = "";
       if (subjectSetsBuilder_ == null) {
         subjectSets_ = java.util.Collections.emptyList();
       } else {
         subjectSets_ = null;
         subjectSetsBuilder_.clear();
       }
-      bitField0_ = (bitField0_ & ~0x00000004);
+      bitField0_ = (bitField0_ & ~0x00000002);
       return this;
     }
 
@@ -449,9 +390,9 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate result) {
       if (subjectSetsBuilder_ == null) {
-        if (((bitField0_ & 0x00000004) != 0)) {
+        if (((bitField0_ & 0x00000002) != 0)) {
           subjectSets_ = java.util.Collections.unmodifiableList(subjectSets_);
-          bitField0_ = (bitField0_ & ~0x00000004);
+          bitField0_ = (bitField0_ & ~0x00000002);
         }
         result.subjectSets_ = subjectSets_;
       } else {
@@ -467,9 +408,6 @@ private static final long serialVersionUID = 0L;
             ? metadata_
             : metadataBuilder_.build();
         to_bitField0_ |= 0x00000001;
-      }
-      if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.name_ = name_;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -521,16 +459,11 @@ private static final long serialVersionUID = 0L;
       if (other.hasMetadata()) {
         mergeMetadata(other.getMetadata());
       }
-      if (!other.getName().isEmpty()) {
-        name_ = other.name_;
-        bitField0_ |= 0x00000002;
-        onChanged();
-      }
       if (subjectSetsBuilder_ == null) {
         if (!other.subjectSets_.isEmpty()) {
           if (subjectSets_.isEmpty()) {
             subjectSets_ = other.subjectSets_;
-            bitField0_ = (bitField0_ & ~0x00000004);
+            bitField0_ = (bitField0_ & ~0x00000002);
           } else {
             ensureSubjectSetsIsMutable();
             subjectSets_.addAll(other.subjectSets_);
@@ -543,7 +476,7 @@ private static final long serialVersionUID = 0L;
             subjectSetsBuilder_.dispose();
             subjectSetsBuilder_ = null;
             subjectSets_ = other.subjectSets_;
-            bitField0_ = (bitField0_ & ~0x00000004);
+            bitField0_ = (bitField0_ & ~0x00000002);
             subjectSetsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getSubjectSetsFieldBuilder() : null;
@@ -586,11 +519,6 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 10
             case 18: {
-              name_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000002;
-              break;
-            } // case 18
-            case 26: {
               io.opentdf.platform.policy.subjectmapping.SubjectSet m =
                   input.readMessage(
                       io.opentdf.platform.policy.subjectmapping.SubjectSet.parser(),
@@ -602,7 +530,7 @@ private static final long serialVersionUID = 0L;
                 subjectSetsBuilder_.addMessage(m);
               }
               break;
-            } // case 26
+            } // case 18
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -741,104 +669,12 @@ private static final long serialVersionUID = 0L;
       return metadataBuilder_;
     }
 
-    private java.lang.Object name_ = "";
-    /**
-     * <pre>
-     * an optional name for ease of reference
-     * </pre>
-     *
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @return The name.
-     */
-    public java.lang.String getName() {
-      java.lang.Object ref = name_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        name_ = s;
-        return s;
-      } else {
-        return (java.lang.String) ref;
-      }
-    }
-    /**
-     * <pre>
-     * an optional name for ease of reference
-     * </pre>
-     *
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @return The bytes for name.
-     */
-    public com.google.protobuf.ByteString
-        getNameBytes() {
-      java.lang.Object ref = name_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        name_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-    /**
-     * <pre>
-     * an optional name for ease of reference
-     * </pre>
-     *
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @param value The name to set.
-     * @return This builder for chaining.
-     */
-    public Builder setName(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      name_ = value;
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * an optional name for ease of reference
-     * </pre>
-     *
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearName() {
-      name_ = getDefaultInstance().getName();
-      bitField0_ = (bitField0_ & ~0x00000002);
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * an optional name for ease of reference
-     * </pre>
-     *
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @param value The bytes for name to set.
-     * @return This builder for chaining.
-     */
-    public Builder setNameBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      name_ = value;
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-
     private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_ =
       java.util.Collections.emptyList();
     private void ensureSubjectSetsIsMutable() {
-      if (!((bitField0_ & 0x00000004) != 0)) {
+      if (!((bitField0_ & 0x00000002) != 0)) {
         subjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectSet>(subjectSets_);
-        bitField0_ |= 0x00000004;
+        bitField0_ |= 0x00000002;
        }
     }
 
@@ -850,7 +686,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
       if (subjectSetsBuilder_ == null) {
@@ -864,7 +700,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public int getSubjectSetsCount() {
       if (subjectSetsBuilder_ == null) {
@@ -878,7 +714,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
       if (subjectSetsBuilder_ == null) {
@@ -892,7 +728,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder setSubjectSets(
         int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
@@ -913,7 +749,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder setSubjectSets(
         int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
@@ -931,7 +767,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addSubjectSets(io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
       if (subjectSetsBuilder_ == null) {
@@ -951,7 +787,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addSubjectSets(
         int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
@@ -972,7 +808,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addSubjectSets(
         io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
@@ -990,7 +826,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addSubjectSets(
         int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
@@ -1008,7 +844,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addAllSubjectSets(
         java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectSet> values) {
@@ -1027,12 +863,12 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder clearSubjectSets() {
       if (subjectSetsBuilder_ == null) {
         subjectSets_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000004);
+        bitField0_ = (bitField0_ & ~0x00000002);
         onChanged();
       } else {
         subjectSetsBuilder_.clear();
@@ -1044,7 +880,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder removeSubjectSets(int index) {
       if (subjectSetsBuilder_ == null) {
@@ -1061,7 +897,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder getSubjectSetsBuilder(
         int index) {
@@ -1072,7 +908,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
         int index) {
@@ -1086,7 +922,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
          getSubjectSetsOrBuilderList() {
@@ -1101,7 +937,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder() {
       return getSubjectSetsFieldBuilder().addBuilder(
@@ -1112,7 +948,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder(
         int index) {
@@ -1124,7 +960,7 @@ private static final long serialVersionUID = 0L;
      * multiple Subject Sets are evaluated with AND logic
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder> 
          getSubjectSetsBuilderList() {
@@ -1137,7 +973,7 @@ private static final long serialVersionUID = 0L;
         subjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>(
                 subjectSets_,
-                ((bitField0_ & 0x00000004) != 0),
+                ((bitField0_ & 0x00000002) != 0),
                 getParentForChildren(),
                 isClean());
         subjectSets_ = null;

@@ -25,30 +25,10 @@ public interface SubjectConditionSetCreateOrBuilder extends
 
   /**
    * <pre>
-   * an optional name for ease of reference
-   * </pre>
-   *
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @return The name.
-   */
-  java.lang.String getName();
-  /**
-   * <pre>
-   * an optional name for ease of reference
-   * </pre>
-   *
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @return The bytes for name.
-   */
-  com.google.protobuf.ByteString
-      getNameBytes();
-
-  /**
-   * <pre>
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
       getSubjectSetsList();
@@ -57,7 +37,7 @@ public interface SubjectConditionSetCreateOrBuilder extends
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
   /**
@@ -65,7 +45,7 @@ public interface SubjectConditionSetCreateOrBuilder extends
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   int getSubjectSetsCount();
   /**
@@ -73,7 +53,7 @@ public interface SubjectConditionSetCreateOrBuilder extends
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
       getSubjectSetsOrBuilderList();
@@ -82,7 +62,7 @@ public interface SubjectConditionSetCreateOrBuilder extends
    * multiple Subject Sets are evaluated with AND logic
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 3 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
       int index);

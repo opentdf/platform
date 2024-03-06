@@ -276,11 +276,8 @@ message ListSubjectConditionSetsResponse {
 message SubjectConditionSetCreate {
   common.MetadataMutable metadata = 1;
 
-  // an optional name for ease of reference
-  string name = 2;
-
   // multiple Subject Sets are evaluated with AND logic
-  repeated SubjectSet subject_sets = 3 [(buf.validate.field).repeated.min_items = 1];
+  repeated SubjectSet subject_sets = 2 [(buf.validate.field).repeated.min_items = 1];
 }
 message CreateSubjectConditionSetRequest {
   SubjectConditionSetCreate subject_condition_set = 1;
@@ -291,14 +288,11 @@ message CreateSubjectConditionSetResponse {
 
 message UpdateSubjectConditionSetRequest {
   string id = 1 [(buf.validate.field).required = true];
-  
-  // an optional name for ease of reference
-  string update_name = 2;
 
-  common.MetadataMutable update_metadata = 3;
+  common.MetadataMutable update_metadata = 2;
 
-  // if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, & Conditions
-  repeated SubjectSet update_subject_sets = 4;
+  // if provided, replaces entire existing structure of Subject Sets, Condition Groups, & Conditions
+  repeated SubjectSet update_subject_sets = 3;
 }
 message UpdateSubjectConditionSetResponse {
   SubjectConditionSet subject_condition_set = 1;

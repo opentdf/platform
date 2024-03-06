@@ -117,7 +117,7 @@ func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
 ) (*sm.GetSubjectConditionSetResponse, error) {
 	rsp := &sm.GetSubjectConditionSetResponse{}
 
-	conditionSet, err := s.dbClient.GetSubjectConditionSet(ctx, req.Id, "")
+	conditionSet, err := s.dbClient.GetSubjectConditionSet(ctx, req.Id)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("id", req.Id))
 	}

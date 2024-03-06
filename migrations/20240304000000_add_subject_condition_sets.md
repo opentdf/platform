@@ -116,7 +116,6 @@ erDiagram
 
     SubjectConditionSet {
         uuid            id                              PK
-        varchar         name                    "optional, but unique if provided"
         jsonb           metadata
         jsonb           condition                "marshaled proto SubjectSets -> ConditionGroups -> Conditions"
     }

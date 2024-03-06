@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -87,7 +86,6 @@ func subjectConditionSetSelect() sq.SelectBuilder {
 	t := db.Tables.SubjectConditionSet
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		t.Field("name"),
 		t.Field("metadata"),
 		t.Field("condition"),
 	)
@@ -96,14 +94,12 @@ func subjectConditionSetSelect() sq.SelectBuilder {
 func subjectConditionSetHydrateItem(row pgx.Row) (*subjectmapping.SubjectConditionSet, error) {
 	var (
 		id        string
-		name      sql.NullString
 		metadata  []byte
 		condition []byte
 	)
 
 	err := row.Scan(
 		&id,
-		&name,
 		&metadata,
 		&condition,
 	)
@@ -125,7 +121,6 @@ func subjectConditionSetHydrateItem(row pgx.Row) (*subjectmapping.SubjectConditi
 
 	return &subjectmapping.SubjectConditionSet{
 		Id:          id,
-		Name:        name.String,
 		SubjectSets: ss,
 		Metadata:    m,
 	}, nil
@@ -154,7 +149,6 @@ func subjectMappingSelect() sq.SelectBuilder {
 		t.Field("metadata"),
 		"JSON_BUILD_OBJECT("+
 			"'id', "+scsT.Field("id")+", "+
-			"'name', "+scsT.Field("name")+", "+
 			"'metadata', "+scsT.Field("metadata")+", "+
 			"'subject_sets', "+scsT.Field("condition")+
 			") AS subject_condition_set",
@@ -245,7 +239,7 @@ func subjectMappingHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectMapping,
 	return list, nil
 }
 
-func createSubjectConditionSetSql(subjectSets []*subjectmapping.SubjectSet, metadataJSON []byte, name string) (string, []interface{}, error) {
+func createSubjectConditionSetSql(subjectSets []*subjectmapping.SubjectSet, metadataJSON []byte) (string, []interface{}, error) {
 	t := db.Tables.SubjectConditionSet
 	conditionJSON, err := marshalSubjectSetsProto(subjectSets)
 	if err != nil {
@@ -254,10 +248,6 @@ func createSubjectConditionSetSql(subjectSets []*subjectmapping.SubjectSet, meta
 
 	columns := []string{"condition", "metadata"}
 	values := []interface{}{conditionJSON, metadataJSON}
-	if name != "" {
-		columns = append(columns, "name")
-		values = append(values, name)
-	}
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns(columns...).
@@ -272,12 +262,11 @@ func (c PolicyDbClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, err
 	}
 	new := &subjectmapping.SubjectConditionSet{
-		Name:        s.Name,
 		SubjectSets: s.SubjectSets,
 		Metadata:    m,
 	}
 
-	sql, args, err := createSubjectConditionSetSql(s.SubjectSets, metadataJSON, s.Name)
+	sql, args, err := createSubjectConditionSetSql(s.SubjectSets, metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -294,22 +283,14 @@ func (c PolicyDbClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 	return new, nil
 }
 
-func getSubjectConditionSetSql(id string, name string) (string, []interface{}, error) {
+func getSubjectConditionSetSql(id string) (string, []interface{}, error) {
 	t := db.Tables.SubjectConditionSet
-	sb := subjectConditionSetSelect().
-		From(t.Name())
-
-	if id != "" {
-		return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
-	}
-	if name != "" {
-		return sb.Where(sq.Eq{t.Field("name"): name}).ToSql()
-	}
-	return "", nil, errors.Join(db.ErrMissingRequiredValue, errors.New("error: Subject Condition Set id or name must be provided"))
+	return subjectConditionSetSelect().
+		From(t.Name()).Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
-func (c PolicyDbClient) GetSubjectConditionSet(ctx context.Context, id string, name string) (*subjectmapping.SubjectConditionSet, error) {
-	sql, args, err := getSubjectConditionSetSql(id, name)
+func (c PolicyDbClient) GetSubjectConditionSet(ctx context.Context, id string) (*subjectmapping.SubjectConditionSet, error) {
+	sql, args, err := getSubjectConditionSetSql(id)
 	if err != nil {
 		return nil, err
 	}
@@ -344,15 +325,11 @@ func (c PolicyDbClient) ListSubjectConditionSets(ctx context.Context) ([]*subjec
 	return subjectConditionSetHydrateList(rows)
 }
 
-func updateSubjectConditionSetSql(id string, name string, metadata []byte, condition []byte) (string, []interface{}, error) {
+func updateSubjectConditionSetSql(id string, metadata []byte, condition []byte) (string, []interface{}, error) {
 	t := db.Tables.SubjectConditionSet
 
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
-
-	if name != "" {
-		sb = sb.Set("name", name)
-	}
 
 	if metadata != nil {
 		sb = sb.Set("metadata", metadata)
@@ -370,11 +347,9 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, s *subjec
 	var (
 		subjectSets []*subjectmapping.SubjectSet
 		condition   []byte
-		name        string
 	)
 
-	// While an SCS can be retrieved by 'name', an 'id' is required to update one
-	prev, err := c.GetSubjectConditionSet(ctx, s.Id, "")
+	prev, err := c.GetSubjectConditionSet(ctx, s.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -394,15 +369,8 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, s *subjec
 		subjectSets = prev.SubjectSets
 	}
 
-	if s.UpdateName != "" {
-		name = s.UpdateName
-	} else {
-		name = prev.Name
-	}
-
 	sql, args, err := updateSubjectConditionSetSql(
 		s.Id,
-		name,
 		metadataJSON,
 		condition,
 	)
@@ -413,7 +381,6 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, s *subjec
 
 	return &subjectmapping.SubjectConditionSet{
 		Id:          s.Id,
-		Name:        name,
 		Metadata:    metadata,
 		SubjectSets: subjectSets,
 	}, nil
@@ -428,7 +395,7 @@ func deleteSubjectConditionSetSql(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDbClient) DeleteSubjectConditionSet(ctx context.Context, id string) (*subjectmapping.SubjectConditionSet, error) {
-	prev, err := c.GetSubjectConditionSet(ctx, id, "")
+	prev, err := c.GetSubjectConditionSet(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -478,7 +445,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	// Prefer existing id over new creation per documented proto behavior.
 	if s.ExistingSubjectConditionSetId != "" {
 		// get the existing subject condition set
-		scs, err = c.GetSubjectConditionSet(ctx, s.ExistingSubjectConditionSetId, "")
+		scs, err = c.GetSubjectConditionSet(ctx, s.ExistingSubjectConditionSetId)
 		if err != nil {
 			return nil, err
 		}
@@ -625,7 +592,7 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 	}
 
 	if r.UpdateSubjectConditionSetId != "" {
-		new, err := c.GetSubjectConditionSet(ctx, r.UpdateSubjectConditionSetId, "")
+		new, err := c.GetSubjectConditionSet(ctx, r.UpdateSubjectConditionSetId)
 		if err != nil {
 			return nil, err
 		}

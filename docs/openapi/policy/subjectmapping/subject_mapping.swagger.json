@@ -155,10 +155,6 @@
             "schema": {
               "type": "object",
               "properties": {
-                "updateName": {
-                  "type": "string",
-                  "title": "an optional name for ease of reference"
-                },
                 "updateMetadata": {
                   "$ref": "#/definitions/commonMetadataMutable"
                 },
@@ -168,7 +164,7 @@
                     "type": "object",
                     "$ref": "#/definitions/subjectmappingSubjectSet"
                   },
-                  "title": "if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, \u0026 Conditions"
+                  "title": "if provided, replaces entire existing structure of Subject Sets, Condition Groups, \u0026 Conditions"
                 }
               }
             }
@@ -767,10 +763,6 @@
       "properties": {
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable"
-        },
-        "name": {
-          "type": "string",
-          "title": "an optional name for ease of reference"
         },
         "subjectSets": {
           "type": "array",

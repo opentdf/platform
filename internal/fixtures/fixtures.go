@@ -64,7 +64,6 @@ type FixtureDataSubjectMapping struct {
 
 type SubjectConditionSet struct {
 	Id        string `yaml:"id"`
-	Name      string `yaml:"name"`
 	Condition struct {
 		SubjectSets []struct {
 			ConditionGroups []struct {
@@ -311,7 +310,6 @@ func (f *Fixtures) provisionSubjectConditionSet() int64 {
 
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
-			f.db.OptionalStringWrap(d.Name),
 			f.db.StringWrap(string(conditionJSON)),
 		})
 	}

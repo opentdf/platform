@@ -175,53 +175,6 @@
         
           
           <li>
-            <a href="#access%2faccess.proto">access/access.proto</a>
-            <ul>
-              
-                <li>
-                  <a href="#access.InfoRequest"><span class="badge">M</span>InfoRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#access.InfoResponse"><span class="badge">M</span>InfoResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#access.LegacyPublicKeyRequest"><span class="badge">M</span>LegacyPublicKeyRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#access.PublicKeyRequest"><span class="badge">M</span>PublicKeyRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#access.PublicKeyResponse"><span class="badge">M</span>PublicKeyResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#access.RewrapRequest"><span class="badge">M</span>RewrapRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#access.RewrapResponse"><span class="badge">M</span>RewrapResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#access.RewrapResponse.MetadataEntry"><span class="badge">M</span>RewrapResponse.MetadataEntry</a>
-                </li>
-              
-              
-              
-              
-                <li>
-                  <a href="#access.AccessService"><span class="badge">S</span>AccessService</a>
-                </li>
-              
-            </ul>
-          </li>
-        
-          
-          <li>
             <a href="#authorization%2fauthorization.proto">authorization/authorization.proto</a>
             <ul>
               
@@ -318,6 +271,53 @@
                 </li>
               
               
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#kas%2fkas.proto">kas/kas.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#kas.InfoRequest"><span class="badge">M</span>InfoRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.InfoResponse"><span class="badge">M</span>InfoResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.LegacyPublicKeyRequest"><span class="badge">M</span>LegacyPublicKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.PublicKeyRequest"><span class="badge">M</span>PublicKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.PublicKeyResponse"><span class="badge">M</span>PublicKeyResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.RewrapRequest"><span class="badge">M</span>RewrapRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.RewrapResponse"><span class="badge">M</span>RewrapResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.RewrapResponse.MetadataEntry"><span class="badge">M</span>RewrapResponse.MetadataEntry</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#kas.AccessService"><span class="badge">S</span>AccessService</a>
+                </li>
               
             </ul>
           </li>
@@ -781,342 +781,6 @@
       </ul>
     </div>
 
-    
-      
-      <div class="file-heading">
-        <h2 id="access/access.proto">access/access.proto</h2><a href="#title">Top</a>
-      </div>
-      <p></p>
-
-      
-        <h3 id="access.InfoRequest">InfoRequest</h3>
-        <p>Intentionally empty. May include features later.</p>
-
-        
-
-        
-      
-        <h3 id="access.InfoResponse">InfoResponse</h3>
-        <p>Service application level metadata</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>version</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="access.LegacyPublicKeyRequest">LegacyPublicKeyRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>algorithm</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="access.PublicKeyRequest">PublicKeyRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>algorithm</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>fmt</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>v</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="access.PublicKeyResponse">PublicKeyResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="access.RewrapRequest">RewrapRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>signed_request_token</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>bearer</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="access.RewrapResponse">RewrapResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#access.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>entity_wrapped_key</td>
-                  <td><a href="#bytes">bytes</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>session_public_key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>schema_version</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="access.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-
-      
-
-      
-
-      
-        <h3 id="access.AccessService">AccessService</h3>
-        <p>Get app info from the root path</p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>Info</td>
-                <td><a href="#access.InfoRequest">InfoRequest</a></td>
-                <td><a href="#access.InfoResponse">InfoResponse</a></td>
-                <td><p>Get the current version of the service</p></td>
-              </tr>
-            
-              <tr>
-                <td>PublicKey</td>
-                <td><a href="#access.PublicKeyRequest">PublicKeyRequest</a></td>
-                <td><a href="#access.PublicKeyResponse">PublicKeyResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>LegacyPublicKey</td>
-                <td><a href="#access.LegacyPublicKeyRequest">LegacyPublicKeyRequest</a></td>
-                <td><a href="#google.protobuf.StringValue">.google.protobuf.StringValue</a></td>
-                <td><p>buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
-              </tr>
-            
-              <tr>
-                <td>Rewrap</td>
-                <td><a href="#access.RewrapRequest">RewrapRequest</a></td>
-                <td><a href="#access.RewrapResponse">RewrapResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>Info</td>
-                <td>GET</td>
-                <td>/</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>PublicKey</td>
-                <td>GET</td>
-                <td>/v2/kas_public_key</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>LegacyPublicKey</td>
-                <td>GET</td>
-                <td>/kas_public_key</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>Rewrap</td>
-                <td>POST</td>
-                <td>/v2/rewrap</td>
-                <td>*</td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
     
       
       <div class="file-heading">
@@ -1840,6 +1504,342 @@
       
 
       
+    
+      
+      <div class="file-heading">
+        <h2 id="kas/kas.proto">kas/kas.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="kas.InfoRequest">InfoRequest</h3>
+        <p>Intentionally empty. May include features later.</p>
+
+        
+
+        
+      
+        <h3 id="kas.InfoResponse">InfoResponse</h3>
+        <p>Service application level metadata</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>version</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.LegacyPublicKeyRequest">LegacyPublicKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.PublicKeyRequest">PublicKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fmt</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>v</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.PublicKeyResponse">PublicKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.RewrapRequest">RewrapRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>signed_request_token</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>bearer</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.RewrapResponse">RewrapResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#kas.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entity_wrapped_key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>session_public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>schema_version</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="kas.AccessService">AccessService</h3>
+        <p>Get app info from the root path</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>Info</td>
+                <td><a href="#kas.InfoRequest">InfoRequest</a></td>
+                <td><a href="#kas.InfoResponse">InfoResponse</a></td>
+                <td><p>Get the current version of the service</p></td>
+              </tr>
+            
+              <tr>
+                <td>PublicKey</td>
+                <td><a href="#kas.PublicKeyRequest">PublicKeyRequest</a></td>
+                <td><a href="#kas.PublicKeyResponse">PublicKeyResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>LegacyPublicKey</td>
+                <td><a href="#kas.LegacyPublicKeyRequest">LegacyPublicKeyRequest</a></td>
+                <td><a href="#google.protobuf.StringValue">.google.protobuf.StringValue</a></td>
+                <td><p>buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
+              </tr>
+            
+              <tr>
+                <td>Rewrap</td>
+                <td><a href="#kas.RewrapRequest">RewrapRequest</a></td>
+                <td><a href="#kas.RewrapResponse">RewrapResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>Info</td>
+                <td>GET</td>
+                <td>/</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>PublicKey</td>
+                <td>GET</td>
+                <td>/v2/kas_public_key</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>LegacyPublicKey</td>
+                <td>GET</td>
+                <td>/kas_public_key</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>Rewrap</td>
+                <td>POST</td>
+                <td>/v2/rewrap</td>
+                <td>*</td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
     
       
       <div class="file-heading">

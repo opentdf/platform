@@ -16,7 +16,7 @@ on:
 jobs:
   pr:
     name: Validate PR title
-    if: ${{ github.event_name != 'merge_group' }}
+    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
     runs-on: ubuntu-22.04
     permissions:
       pull-requests: read
@@ -148,6 +148,7 @@ jobs:
       - integration
       - image
       - buflint
+      - pr
     runs-on: ubuntu-latest
     if: always()
     steps:

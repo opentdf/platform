@@ -158,13 +158,13 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 
 func (k *KASClient) getPublicKey(kasInfo KASInfo) (string, error) {
 	req := kas.PublicKeyRequest{}
-	grpcAddress, err := getGRPCAddress(kasInfo.url)
+	grpcAddress, err := getGRPCAddress(kasInfo.URL)
 	if err != nil {
 		return "", err
 	}
 	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
 	if err != nil {
-		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.url, err)
+		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.URL, err)
 	}
 	defer conn.Close()
 

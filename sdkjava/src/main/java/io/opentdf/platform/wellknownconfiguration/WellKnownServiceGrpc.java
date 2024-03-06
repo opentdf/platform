@@ -6,7 +6,7 @@ import static io.grpc.MethodDescriptor.generateFullMethodName;
  */
 @javax.annotation.Generated(
     value = "by gRPC proto compiler (version 1.61.1)",
-    comments = "Source: wellknownconfiguration/wellknownconfiguration.proto")
+    comments = "Source: wellknownconfiguration/wellknown_configuration.proto")
 @io.grpc.stub.annotations.GrpcGenerated
 public final class WellKnownServiceGrpc {
 
@@ -244,7 +244,7 @@ public final class WellKnownServiceGrpc {
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.FileDescriptor getFileDescriptor() {
-      return io.opentdf.platform.wellknownconfiguration.WellknownconfigurationProto.getDescriptor();
+      return io.opentdf.platform.wellknownconfiguration.WellknownConfigurationProto.getDescriptor();
     }
 
     @java.lang.Override

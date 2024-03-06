@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: wellknownconfiguration/wellknown_configuration.proto
+// source: wellknownconfigurationtemp/wellknown_configuration.proto
 
-package wellknownconfiguration
+package wellknownconfigurationtemp
 
 import (
 	context "context"
@@ -105,5 +105,5 @@ var WellKnownService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "wellknownconfiguration/wellknown_configuration.proto",
+	Metadata: "wellknownconfigurationtemp/wellknown_configuration.proto",
 }

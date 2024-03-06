@@ -179,7 +179,6 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 
 	// Deleted namespace should not be found on Get
 	_, err = s.db.PolicyClient.GetNamespace(s.ctx, newNamespaceId)
-	fmt.Println(err)
 	assert.NotNil(s.T(), err)
 }
 

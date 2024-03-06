@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"testing"
 
@@ -685,7 +684,6 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 	}
 
 	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
-	fmt.Println("here ", err)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
 	assert.Equal(s.T(), scs.Id, updated.Id)

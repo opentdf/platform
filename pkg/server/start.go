@@ -14,7 +14,7 @@ import (
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/internal/server"
 	"github.com/opentdf/platform/pkg/serviceregistry"
-	"github.com/opentdf/platform/services/wellknownConfiguration"
+	wellknown "github.com/opentdf/platform/services/wellknownconfiguration"
 )
 
 type StartOptions func(StartConfig) StartConfig
@@ -148,7 +148,7 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 				OTDF:            otdf,
 				DBClient:        dbClient,
 				Engine:          eng,
-				WellKnownConfig: wellknownConfiguration.RegisterConfiguration,
+				WellKnownConfig: wellknown.RegisterConfiguration,
 			})
 
 			// Register the service with the gRPC server

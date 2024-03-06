@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -18,9 +17,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// authN holds a jwks cache and information about the openid configuration
 type authN struct {
+	// cache holds the jwks cache
 	cache *jwk.Cache
-	cfg   map[string]openidConfiguraton
+	// openidConfigurations holds the openid configuration for each issuer
+	openidConfigurations map[string]openidConfiguraton
 }
 
 type openidConfiguraton struct {
@@ -31,7 +33,7 @@ type openidConfiguraton struct {
 // Creates new authN which is used to verify tokens for a set of given issuers
 func newAuthNInterceptor(cfg AuthConfig) (*authN, error) {
 	a := &authN{}
-	a.cfg = make(map[string]openidConfiguraton)
+	a.openidConfigurations = make(map[string]openidConfiguraton)
 
 	ctx := context.Background()
 
@@ -56,7 +58,7 @@ func newAuthNInterceptor(cfg AuthConfig) (*authN, error) {
 		return nil, err
 	}
 
-	a.cfg[cfg.Issuer] = *oidc
+	a.openidConfigurations[cfg.Issuer] = *oidc
 
 	return a, nil
 }
@@ -184,7 +186,7 @@ func checkToken(ctx context.Context, authHeader []string, auth authN) error {
 	if !ok {
 		return fmt.Errorf("invalid issuer")
 	}
-	oidc, exists := auth.cfg[issuerStr]
+	oidc, exists := auth.openidConfigurations[issuerStr]
 	if !exists {
 		return fmt.Errorf("invalid issuer")
 	}
@@ -194,7 +196,7 @@ func checkToken(ctx context.Context, authHeader []string, auth authN) error {
 	if err != nil {
 		return fmt.Errorf("failed to get jwks from cache")
 	}
-	json.NewEncoder(os.Stdout).Encode(keySet)
+
 	// Now we verify the token signature
 	_, err = jwt.Parse([]byte(tokenRaw),
 		jwt.WithKeySet(keySet),
@@ -239,7 +241,7 @@ func (a authN) claimsValidator(ctx context.Context, token jwt.Token) jwt.Validat
 
 	// Check if the client id is allowed in list of clients
 	foundClientID := false
-	for _, c := range a.cfg[token.Issuer()].Clients {
+	for _, c := range a.openidConfigurations[token.Issuer()].Clients {
 		if c == clientID {
 			foundClientID = true
 			break

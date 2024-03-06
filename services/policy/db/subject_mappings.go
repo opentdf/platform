@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
-
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"

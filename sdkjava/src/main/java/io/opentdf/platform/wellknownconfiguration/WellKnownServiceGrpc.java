@@ -1,4 +1,4 @@
-package io.opentdf.platform.wellknown_configuration;
+package io.opentdf.platform.wellknownconfiguration;
 
 import static io.grpc.MethodDescriptor.generateFullMethodName;
 
@@ -6,38 +6,38 @@ import static io.grpc.MethodDescriptor.generateFullMethodName;
  */
 @javax.annotation.Generated(
     value = "by gRPC proto compiler (version 1.61.1)",
-    comments = "Source: wellknownConfiguration/wellknownConfiguration.proto")
+    comments = "Source: wellknownconfiguration/wellknownconfiguration.proto")
 @io.grpc.stub.annotations.GrpcGenerated
 public final class WellKnownServiceGrpc {
 
   private WellKnownServiceGrpc() {}
 
-  public static final java.lang.String SERVICE_NAME = "wellknown_configuration.WellKnownService";
+  public static final java.lang.String SERVICE_NAME = "wellknownconfiguration.WellKnownService";
 
   // Static method descriptors that strictly reflect the proto.
-  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.wellknown_configuration.WellKnownConfig,
-      com.google.protobuf.Struct> getGetWellKnownConfigurationMethod;
+  private static volatile io.grpc.MethodDescriptor<io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest,
+      io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse> getGetWellKnownConfigurationMethod;
 
   @io.grpc.stub.annotations.RpcMethod(
       fullMethodName = SERVICE_NAME + '/' + "GetWellKnownConfiguration",
-      requestType = io.opentdf.platform.wellknown_configuration.WellKnownConfig.class,
-      responseType = com.google.protobuf.Struct.class,
+      requestType = io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest.class,
+      responseType = io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse.class,
       methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<io.opentdf.platform.wellknown_configuration.WellKnownConfig,
-      com.google.protobuf.Struct> getGetWellKnownConfigurationMethod() {
-    io.grpc.MethodDescriptor<io.opentdf.platform.wellknown_configuration.WellKnownConfig, com.google.protobuf.Struct> getGetWellKnownConfigurationMethod;
+  public static io.grpc.MethodDescriptor<io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest,
+      io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse> getGetWellKnownConfigurationMethod() {
+    io.grpc.MethodDescriptor<io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest, io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse> getGetWellKnownConfigurationMethod;
     if ((getGetWellKnownConfigurationMethod = WellKnownServiceGrpc.getGetWellKnownConfigurationMethod) == null) {
       synchronized (WellKnownServiceGrpc.class) {
         if ((getGetWellKnownConfigurationMethod = WellKnownServiceGrpc.getGetWellKnownConfigurationMethod) == null) {
           WellKnownServiceGrpc.getGetWellKnownConfigurationMethod = getGetWellKnownConfigurationMethod =
-              io.grpc.MethodDescriptor.<io.opentdf.platform.wellknown_configuration.WellKnownConfig, com.google.protobuf.Struct>newBuilder()
+              io.grpc.MethodDescriptor.<io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest, io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse>newBuilder()
               .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
               .setFullMethodName(generateFullMethodName(SERVICE_NAME, "GetWellKnownConfiguration"))
               .setSampledToLocalTracing(true)
               .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  io.opentdf.platform.wellknown_configuration.WellKnownConfig.getDefaultInstance()))
+                  io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest.getDefaultInstance()))
               .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  com.google.protobuf.Struct.getDefaultInstance()))
+                  io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse.getDefaultInstance()))
               .setSchemaDescriptor(new WellKnownServiceMethodDescriptorSupplier("GetWellKnownConfiguration"))
               .build();
         }
@@ -96,8 +96,8 @@ public final class WellKnownServiceGrpc {
 
     /**
      */
-    default void getWellKnownConfiguration(io.opentdf.platform.wellknown_configuration.WellKnownConfig request,
-        io.grpc.stub.StreamObserver<com.google.protobuf.Struct> responseObserver) {
+    default void getWellKnownConfiguration(io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetWellKnownConfigurationMethod(), responseObserver);
     }
   }
@@ -131,8 +131,8 @@ public final class WellKnownServiceGrpc {
 
     /**
      */
-    public void getWellKnownConfiguration(io.opentdf.platform.wellknown_configuration.WellKnownConfig request,
-        io.grpc.stub.StreamObserver<com.google.protobuf.Struct> responseObserver) {
+    public void getWellKnownConfiguration(io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest request,
+        io.grpc.stub.StreamObserver<io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getGetWellKnownConfigurationMethod(), getCallOptions()), request, responseObserver);
     }
@@ -156,7 +156,7 @@ public final class WellKnownServiceGrpc {
 
     /**
      */
-    public com.google.protobuf.Struct getWellKnownConfiguration(io.opentdf.platform.wellknown_configuration.WellKnownConfig request) {
+    public io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse getWellKnownConfiguration(io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getGetWellKnownConfigurationMethod(), getCallOptions(), request);
     }
@@ -180,8 +180,8 @@ public final class WellKnownServiceGrpc {
 
     /**
      */
-    public com.google.common.util.concurrent.ListenableFuture<com.google.protobuf.Struct> getWellKnownConfiguration(
-        io.opentdf.platform.wellknown_configuration.WellKnownConfig request) {
+    public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse> getWellKnownConfiguration(
+        io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getGetWellKnownConfigurationMethod(), getCallOptions()), request);
     }
@@ -207,8 +207,8 @@ public final class WellKnownServiceGrpc {
     public void invoke(Req request, io.grpc.stub.StreamObserver<Resp> responseObserver) {
       switch (methodId) {
         case METHODID_GET_WELL_KNOWN_CONFIGURATION:
-          serviceImpl.getWellKnownConfiguration((io.opentdf.platform.wellknown_configuration.WellKnownConfig) request,
-              (io.grpc.stub.StreamObserver<com.google.protobuf.Struct>) responseObserver);
+          serviceImpl.getWellKnownConfiguration((io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest) request,
+              (io.grpc.stub.StreamObserver<io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse>) responseObserver);
           break;
         default:
           throw new AssertionError();
@@ -232,8 +232,8 @@ public final class WellKnownServiceGrpc {
           getGetWellKnownConfigurationMethod(),
           io.grpc.stub.ServerCalls.asyncUnaryCall(
             new MethodHandlers<
-              io.opentdf.platform.wellknown_configuration.WellKnownConfig,
-              com.google.protobuf.Struct>(
+              io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationRequest,
+              io.opentdf.platform.wellknownconfiguration.GetWellKnownConfigurationResponse>(
                 service, METHODID_GET_WELL_KNOWN_CONFIGURATION)))
         .build();
   }
@@ -244,7 +244,7 @@ public final class WellKnownServiceGrpc {
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.FileDescriptor getFileDescriptor() {
-      return io.opentdf.platform.wellknown_configuration.WellknownConfigurationProto.getDescriptor();
+      return io.opentdf.platform.wellknownconfiguration.WellknownconfigurationProto.getDescriptor();
     }
 
     @java.lang.Override

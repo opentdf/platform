@@ -779,22 +779,30 @@
         
           
           <li>
-            <a href="#wellknownConfiguration%2fwellknownConfiguration.proto">wellknownConfiguration/wellknownConfiguration.proto</a>
+            <a href="#wellknownconfiguration%2fwellknownconfiguration.proto">wellknownconfiguration/wellknownconfiguration.proto</a>
             <ul>
               
                 <li>
-                  <a href="#wellknown_configuration.WellKnownConfig"><span class="badge">M</span>WellKnownConfig</a>
+                  <a href="#wellknownconfiguration.GetWellKnownConfigurationRequest"><span class="badge">M</span>GetWellKnownConfigurationRequest</a>
                 </li>
               
                 <li>
-                  <a href="#wellknown_configuration.WellKnownConfig.ConfigurationEntry"><span class="badge">M</span>WellKnownConfig.ConfigurationEntry</a>
+                  <a href="#wellknownconfiguration.GetWellKnownConfigurationResponse"><span class="badge">M</span>GetWellKnownConfigurationResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#wellknownconfiguration.WellKnownConfig"><span class="badge">M</span>WellKnownConfig</a>
+                </li>
+              
+                <li>
+                  <a href="#wellknownconfiguration.WellKnownConfig.ConfigurationEntry"><span class="badge">M</span>WellKnownConfig.ConfigurationEntry</a>
                 </li>
               
               
               
               
                 <li>
-                  <a href="#wellknown_configuration.WellKnownService"><span class="badge">S</span>WellKnownService</a>
+                  <a href="#wellknownconfiguration.WellKnownService"><span class="badge">S</span>WellKnownService</a>
                 </li>
               
             </ul>
@@ -5852,12 +5860,19 @@ Response Example:
     
       
       <div class="file-heading">
-        <h2 id="wellknownConfiguration/wellknownConfiguration.proto">wellknownConfiguration/wellknownConfiguration.proto</h2><a href="#title">Top</a>
+        <h2 id="wellknownconfiguration/wellknownconfiguration.proto">wellknownconfiguration/wellknownconfiguration.proto</h2><a href="#title">Top</a>
       </div>
       <p></p>
 
       
-        <h3 id="wellknown_configuration.WellKnownConfig">WellKnownConfig</h3>
+        <h3 id="wellknownconfiguration.GetWellKnownConfigurationRequest">GetWellKnownConfigurationRequest</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="wellknownconfiguration.GetWellKnownConfigurationResponse">GetWellKnownConfigurationResponse</h3>
         <p></p>
 
         
@@ -5869,7 +5884,31 @@ Response Example:
               
                 <tr>
                   <td>configuration</td>
-                  <td><a href="#wellknown_configuration.WellKnownConfig.ConfigurationEntry">WellKnownConfig.ConfigurationEntry</a></td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="wellknownconfiguration.WellKnownConfig">WellKnownConfig</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>configuration</td>
+                  <td><a href="#wellknownconfiguration.WellKnownConfig.ConfigurationEntry">WellKnownConfig.ConfigurationEntry</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -5881,7 +5920,7 @@ Response Example:
 
         
       
-        <h3 id="wellknown_configuration.WellKnownConfig.ConfigurationEntry">WellKnownConfig.ConfigurationEntry</h3>
+        <h3 id="wellknownconfiguration.WellKnownConfig.ConfigurationEntry">WellKnownConfig.ConfigurationEntry</h3>
         <p></p>
 
         
@@ -5918,7 +5957,7 @@ Response Example:
       
 
       
-        <h3 id="wellknown_configuration.WellKnownService">WellKnownService</h3>
+        <h3 id="wellknownconfiguration.WellKnownService">WellKnownService</h3>
         <p></p>
         <table class="enum-table">
           <thead>
@@ -5928,8 +5967,8 @@ Response Example:
             
               <tr>
                 <td>GetWellKnownConfiguration</td>
-                <td><a href="#wellknown_configuration.WellKnownConfig">WellKnownConfig</a></td>
-                <td><a href="#google.protobuf.Struct">.google.protobuf.Struct</a></td>
+                <td><a href="#wellknownconfiguration.GetWellKnownConfigurationRequest">GetWellKnownConfigurationRequest</a></td>
+                <td><a href="#wellknownconfiguration.GetWellKnownConfigurationResponse">GetWellKnownConfigurationResponse</a></td>
                 <td><p></p></td>
               </tr>
             

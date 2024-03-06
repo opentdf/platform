@@ -2,16 +2,15 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: wellknownConfiguration/wellknownConfiguration.proto
+// source: wellknownconfiguration/wellknownconfiguration.proto
 
-package wellknownConfiguration
+package wellknownconfiguration
 
 import (
 	context "context"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -20,14 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	WellKnownService_GetWellKnownConfiguration_FullMethodName = "/wellknown_configuration.WellKnownService/GetWellKnownConfiguration"
+	WellKnownService_GetWellKnownConfiguration_FullMethodName = "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration"
 )
 
 // WellKnownServiceClient is the client API for WellKnownService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WellKnownServiceClient interface {
-	GetWellKnownConfiguration(ctx context.Context, in *WellKnownConfig, opts ...grpc.CallOption) (*structpb.Struct, error)
+	GetWellKnownConfiguration(ctx context.Context, in *GetWellKnownConfigurationRequest, opts ...grpc.CallOption) (*GetWellKnownConfigurationResponse, error)
 }
 
 type wellKnownServiceClient struct {
@@ -38,8 +37,8 @@ func NewWellKnownServiceClient(cc grpc.ClientConnInterface) WellKnownServiceClie
 	return &wellKnownServiceClient{cc}
 }
 
-func (c *wellKnownServiceClient) GetWellKnownConfiguration(ctx context.Context, in *WellKnownConfig, opts ...grpc.CallOption) (*structpb.Struct, error) {
-	out := new(structpb.Struct)
+func (c *wellKnownServiceClient) GetWellKnownConfiguration(ctx context.Context, in *GetWellKnownConfigurationRequest, opts ...grpc.CallOption) (*GetWellKnownConfigurationResponse, error) {
+	out := new(GetWellKnownConfigurationResponse)
 	err := c.cc.Invoke(ctx, WellKnownService_GetWellKnownConfiguration_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -51,7 +50,7 @@ func (c *wellKnownServiceClient) GetWellKnownConfiguration(ctx context.Context, 
 // All implementations must embed UnimplementedWellKnownServiceServer
 // for forward compatibility
 type WellKnownServiceServer interface {
-	GetWellKnownConfiguration(context.Context, *WellKnownConfig) (*structpb.Struct, error)
+	GetWellKnownConfiguration(context.Context, *GetWellKnownConfigurationRequest) (*GetWellKnownConfigurationResponse, error)
 	mustEmbedUnimplementedWellKnownServiceServer()
 }
 
@@ -59,7 +58,7 @@ type WellKnownServiceServer interface {
 type UnimplementedWellKnownServiceServer struct {
 }
 
-func (UnimplementedWellKnownServiceServer) GetWellKnownConfiguration(context.Context, *WellKnownConfig) (*structpb.Struct, error) {
+func (UnimplementedWellKnownServiceServer) GetWellKnownConfiguration(context.Context, *GetWellKnownConfigurationRequest) (*GetWellKnownConfigurationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWellKnownConfiguration not implemented")
 }
 func (UnimplementedWellKnownServiceServer) mustEmbedUnimplementedWellKnownServiceServer() {}
@@ -76,7 +75,7 @@ func RegisterWellKnownServiceServer(s grpc.ServiceRegistrar, srv WellKnownServic
 }
 
 func _WellKnownService_GetWellKnownConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WellKnownConfig)
+	in := new(GetWellKnownConfigurationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -88,7 +87,7 @@ func _WellKnownService_GetWellKnownConfiguration_Handler(srv interface{}, ctx co
 		FullMethod: WellKnownService_GetWellKnownConfiguration_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WellKnownServiceServer).GetWellKnownConfiguration(ctx, req.(*WellKnownConfig))
+		return srv.(WellKnownServiceServer).GetWellKnownConfiguration(ctx, req.(*GetWellKnownConfigurationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -97,7 +96,7 @@ func _WellKnownService_GetWellKnownConfiguration_Handler(srv interface{}, ctx co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var WellKnownService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "wellknown_configuration.WellKnownService",
+	ServiceName: "wellknownconfiguration.WellKnownService",
 	HandlerType: (*WellKnownServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -106,5 +105,5 @@ var WellKnownService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "wellknownConfiguration/wellknownConfiguration.proto",
+	Metadata: "wellknownconfiguration/wellknownconfiguration.proto",
 }

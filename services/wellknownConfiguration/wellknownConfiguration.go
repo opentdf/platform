@@ -7,7 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/pkg/serviceregistry"
-	wellknown "github.com/opentdf/platform/protocol/go/wellknownConfiguration"
+	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -44,12 +44,14 @@ func NewRegistration() serviceregistry.Registration {
 	}
 }
 
-func (s WellKnownService) GetWellKnownConfiguration(context.Context, *wellknown.WellKnownConfig) (*structpb.Struct, error) {
+func (s WellKnownService) GetWellKnownConfiguration(context.Context, *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
 	rwMutex.RLock()
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
 	}
-	return cfg, nil
+	return &wellknown.GetWellKnownConfigurationResponse{
+		Configuration: cfg,
+	}, nil
 }

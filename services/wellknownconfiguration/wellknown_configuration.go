@@ -1,4 +1,4 @@
-package wellknownConfiguration
+package wellknownconfiguration
 
 import (
 	"context"

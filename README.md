@@ -18,19 +18,20 @@
 
 ### Prerequisites
 
-[Air](https://github.com/cosmtrek/air)
+Docker [install instructions](https://www.docker.com/get-started/)
 
-With go 1.18 or higher:
+[Air](https://github.com/cosmtrek/air) install with go 1.18 or higher:
 
 `go install github.com/cosmtrek/air@v1.49.0`
 
-[Buf](https://buf.build/docs/ecosystem/cli-overview)
+Install buf, grpcurl and goose:
+- [Buf](https://buf.build/docs/ecosystem/cli-overview)
+- [grpcurl](https://github.com/fullstorydev/grpcurl)
+- [goose](https://github.com/pressly/goose)
+
+On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 `brew install buf grpcurl goose`
-
-[grpcurl](https://github.com/fullstorydev/grpcurl)
-
-`brew install grpcurl`
 
 ### Run
 

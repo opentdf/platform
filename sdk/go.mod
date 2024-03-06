@@ -9,6 +9,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.19
 	github.com/opentdf/backend-go v0.1.16
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
+	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.28.0
 	golang.org/x/oauth2 v0.16.0
 	google.golang.org/grpc v1.61.0
@@ -27,6 +28,7 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.9.0 // indirect
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/docker v25.0.2+incompatible // indirect
@@ -57,6 +59,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
@@ -85,4 +88,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

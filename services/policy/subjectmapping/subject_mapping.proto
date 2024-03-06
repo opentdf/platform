@@ -33,9 +33,28 @@ import "policy/attributes/attributes.proto";
        }
      },
      "attribute_value_id": "12345678-1234-1234-1234-123456789012",
-     "subject_set_ids": [
-       "0000-1111-2222"
-     ],
+     # optional to eitherprovide existing SubjectConditionSet (which takes precedence)
+     "existing_subject_condition_set_id": "0000-1111-2222",
+     # or to create new SubjectConditionSet
+     "new_subject_condition_set": {
+       "name": "sample-subject-condition-set",
+       "subject_sets": [
+         {
+           "condition_groups": [
+             {
+               "conditions": [
+                 {
+                   "subject_external_field": "division",
+                   "operator": "IN",
+                   "subject_external_values": ["Sales", "Marketing"]
+                 }
+               ],
+               "boolean_operator": "AND"
+             }
+           ]
+         }
+       ]
+     },
      "actions": [
        {
          "standard": "STANDARD_ACTION_TRANSMIT"
@@ -45,7 +64,7 @@ import "policy/attributes/attributes.proto";
        }
      ]
    }
-   }' localhost:8080 SubjectMappingService.CreateSubjectMapping
+   }' localhost:8080 policy.subjectmapping.SubjectMappingService.CreateSubjectMapping
     ```
 
    ## Find matching subject mappings for Subject alice:
@@ -146,7 +165,7 @@ message SubjectConditionSet {
    {
     "id": "someid",
     "attribute_value": {example_one_attribute_value...},
-    "subject_condition_sets": [{subject_set_1},{subject_set_2}]
+    "subject_condition_set": {"subject_sets":[{subject_set_1},{subject_set_2}]...},
     "actions": [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard": "STANDARD_ACTION_TRANSMIT"}]
    }
 */

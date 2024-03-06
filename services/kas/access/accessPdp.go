@@ -3,15 +3,17 @@ package access
 import (
 	"context"
 	"errors"
+	"github.com/opentdf/platform/protocol/go/authorization"
+	"google.golang.org/grpc"
 	"log/slog"
 
 	attrs "github.com/virtru/access-pdp/attributes"
-	accessPdp "github.com/virtru/access-pdp/pdp"
 )
 
 const (
-	ErrPolicyDissemInvalid = Error("policy dissem invalid")
-	ErrDecisionUnexpected  = Error("access policy decision unexpected")
+	ErrPolicyDissemInvalid     = Error("policy dissem invalid")
+	ErrDecisionUnexpected      = Error("authorization decision unexpected")
+	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
 
 func canAccess(ctx context.Context, entityID string, policy Policy, claims ClaimsObject, attrDefs []attrs.AttributeDefinition) (bool, error) {
@@ -40,31 +42,49 @@ func checkDissems(dissems []string, entityID string) (bool, error) {
 	return false, nil
 }
 
-func checkAttributes(ctx context.Context, dataAttrs []Attribute, entitlements []Entitlement, attrDefs []attrs.AttributeDefinition) (bool, error) {
-	// convert data and entitty attrs to attrs.AttributeInstance
-	dataAttrInstances, err := convertAttrsToAttrInstances(dataAttrs)
+func checkAttributes(ctx context.Context, dataAttrs []Attribute, entitlements []Entitlement, _ []attrs.AttributeDefinition) (bool, error) {
+	// FIXME use in_process grpc calls, for now dial localhost
+	cc, err := grpc.Dial("localhost:9000", grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
+		slog.ErrorContext(ctx, err.Error())
 		return false, err
 	}
-	entityAttrMap, err := convertEntitlementsToEntityAttrMap(entitlements)
-	if err != nil {
-		return false, err
+	ac := authorization.NewAuthorizationServiceClient(cc)
+	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
+	for _, entitlement := range entitlements {
+		// FIXME pass access token as JWT
+		ec.Entities = append(ec.Entities, &authorization.Entity{Id: entitlement.EntityID})
 	}
-
-	accessPDP := accessPdp.NewAccessPDPWithSlog(slog.Default())
-
-	decisions, err := accessPDP.DetermineAccess(dataAttrInstances, entityAttrMap, attrDefs, &ctx)
+	ras := []*authorization.ResourceAttribute{{
+		AttributeFqns: make([]string, 0),
+	}}
+	for _, attr := range dataAttrs {
+		ras[0].AttributeFqns = append(ras[0].AttributeFqns, attr.URI)
+	}
+	in := authorization.GetDecisionsRequest{
+		DecisionRequests: []*authorization.DecisionRequest{
+			{
+				Actions: []*authorization.Action{
+					{Value: &authorization.Action_Standard{Standard: authorization.Action_STANDARD_ACTION_DECRYPT}},
+				},
+				EntityChains:       []*authorization.EntityChain{&ec},
+				ResourceAttributes: ras,
+			},
+		},
+	}
+	dr, err := ac.GetDecisions(ctx, &in)
 	if err != nil {
-		slog.WarnContext(ctx, "Error recieved from accessPDP", "err", err)
+		slog.ErrorContext(ctx, "Error received from GetDecisions", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)
 	}
-	// check the decisions
-	for _, decision := range decisions {
-		if !decision.Access {
-			return false, nil
-		}
+	if len(dr.DecisionResponses) != 1 {
+		slog.ErrorContext(ctx, ErrDecisionCountUnexpected.Error(), "count", len(dr.DecisionResponses))
+		return false, ErrDecisionCountUnexpected
 	}
-	return true, nil
+	if dr.DecisionResponses[0].Decision == authorization.DecisionResponse_DECISION_PERMIT {
+		return true, nil
+	}
+	return false, nil
 }
 
 func convertAttrsToAttrInstances(attributes []Attribute) ([]attrs.AttributeInstance, error) {

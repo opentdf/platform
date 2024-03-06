@@ -137,7 +137,6 @@ func TestCreateArchiveWriter(t *testing.T) { // use custom implementation of zip
 }
 
 func customZip(t *testing.T) {
-
 	for index := 0; index < len(writeBuffer); index++ {
 		writeBuffer[index] = 0xFF
 	}
@@ -209,7 +208,6 @@ func customZip(t *testing.T) {
 }
 
 func nativeUnzips(t *testing.T) {
-
 	// Read buffer
 	readSize := int64(2 * oneMB)
 	readBuffer := make([]byte, readSize)

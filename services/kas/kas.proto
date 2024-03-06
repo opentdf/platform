@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package access;
+package kas;
 
 import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";

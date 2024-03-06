@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"testing"
 
@@ -749,11 +750,12 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_Name() {
 
 	// update the name alone and verify nothing else changed
 	newName := "subject_condition_set_update_name_updated"
-	update := &subjectmapping.SubjectConditionSetUpdate{
-		UpdatedName: newName,
+	update := &subjectmapping.UpdateSubjectConditionSetRequest{
+		UpdateName: newName,
+		Id:         scs.Id,
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, scs.Id, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
 	assert.Equal(s.T(), scs.Id, updated.Id)
@@ -793,11 +795,12 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 		},
 	}
 
-	update := &subjectmapping.SubjectConditionSetUpdate{
-		UpdatedSubjectSets: ss,
+	update := &subjectmapping.UpdateSubjectConditionSetRequest{
+		UpdateSubjectSets: ss,
+		Id:                scs.Id,
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, scs.Id, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
 	assert.Equal(s.T(), scs.Id, updated.Id)
@@ -839,17 +842,19 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{"key_example": "value_example"},
 	}
-	update := &subjectmapping.SubjectConditionSetUpdate{
-		UpdatedName:        "subject_condition_set_update_all_updated",
-		UpdatedSubjectSets: ss,
-		UpdatedMetadata:    metadata,
+	update := &subjectmapping.UpdateSubjectConditionSetRequest{
+		UpdateName:        "subject_condition_set_update_all_updated",
+		UpdateSubjectSets: ss,
+		UpdateMetadata:    metadata,
+		Id:                scs.Id,
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, scs.Id, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
+	fmt.Println("here ", err)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
 	assert.Equal(s.T(), scs.Id, updated.Id)
-	assert.Equal(s.T(), update.UpdatedName, updated.Name)
+	assert.Equal(s.T(), update.UpdateName, updated.Name)
 	assert.Equal(s.T(), len(ss), len(updated.SubjectSets))
 	assert.Equal(s.T(), ss[0].ConditionGroups[0].Conditions[0].SubjectExternalField, updated.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField)
 	assert.Equal(s.T(), metadata.Labels["somewhere"], updated.Metadata.Labels["somewhere"])

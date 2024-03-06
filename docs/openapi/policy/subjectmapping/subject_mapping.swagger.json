@@ -155,8 +155,20 @@
             "schema": {
               "type": "object",
               "properties": {
-                "subjectConditionSet": {
-                  "$ref": "#/definitions/subjectmappingSubjectConditionSetUpdate"
+                "updateName": {
+                  "type": "string",
+                  "title": "an optional name for ease of reference"
+                },
+                "updateMetadata": {
+                  "$ref": "#/definitions/commonMetadataMutable"
+                },
+                "updateSubjectSets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "$ref": "#/definitions/subjectmappingSubjectSet"
+                  },
+                  "title": "if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, \u0026 Conditions"
                 }
               }
             }
@@ -767,26 +779,6 @@
             "$ref": "#/definitions/subjectmappingSubjectSet"
           },
           "title": "multiple Subject Sets are evaluated with AND logic"
-        }
-      }
-    },
-    "subjectmappingSubjectConditionSetUpdate": {
-      "type": "object",
-      "properties": {
-        "updatedName": {
-          "type": "string",
-          "title": "an optional name for ease of reference"
-        },
-        "updatedMetadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
-        },
-        "updatedSubjectSets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/subjectmappingSubjectSet"
-          },
-          "title": "Replaces entire existing graph relation of Subject Sets, Condition Groups, \u0026 Conditions"
         }
       }
     },

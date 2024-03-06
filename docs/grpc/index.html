@@ -780,10 +780,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.subjectmapping.SubjectConditionSetUpdate"><span class="badge">M</span>SubjectConditionSetUpdate</a>
-                </li>
-              
-                <li>
                   <a href="#policy.subjectmapping.SubjectMapping"><span class="badge">M</span>SubjectMapping</a>
                 </li>
               
@@ -5795,44 +5791,6 @@ Response Example:
 
         
       
-        <h3 id="policy.subjectmapping.SubjectConditionSetUpdate">SubjectConditionSetUpdate</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>updated_name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>an optional name for ease of reference </p></td>
-                </tr>
-              
-                <tr>
-                  <td>updated_metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>updated_subject_sets</td>
-                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
-                  <td>repeated</td>
-                  <td><p>Replaces entire existing graph relation of Subject Sets, Condition Groups, &amp; Conditions </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.subjectmapping.SubjectMapping">SubjectMapping</h3>
         <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination</p><p>Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one</p><p>with permitted actions TRANSMIT and DECRYPT</p><p>{</p><p>"id": "someid",</p><p>"attribute_value": {example_one_attribute_value...},</p><p>"subject_condition_sets": [{subject_set_1},{subject_set_2}]</p><p>"actions": [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard": "STANDARD_ACTION_TRANSMIT"}]</p><p>}</p>
 
@@ -5927,10 +5885,24 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>subject_condition_set</td>
-                  <td><a href="#policy.subjectmapping.SubjectConditionSetUpdate">SubjectConditionSetUpdate</a></td>
+                  <td>update_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>an optional name for ease of reference </p></td>
+                </tr>
+              
+                <tr>
+                  <td>update_metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>update_subject_sets</td>
+                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
+                  <td>repeated</td>
+                  <td><p>if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, &amp; Conditions </p></td>
                 </tr>
               
             </tbody>

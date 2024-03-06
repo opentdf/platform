@@ -372,25 +372,26 @@ func updateSubjectConditionSetSql(id string, name string, metadata []byte, condi
 		ToSql()
 }
 
-func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, id string, s *subjectmapping.SubjectConditionSetUpdate) (*subjectmapping.SubjectConditionSet, error) {
+func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, s *subjectmapping.UpdateSubjectConditionSetRequest) (*subjectmapping.SubjectConditionSet, error) {
 	var (
 		subjectSets []*subjectmapping.SubjectSet
 		condition   []byte
+		name        string
 	)
 
 	// While an SCS can be retrieved by 'name', an 'id' is required to update one
-	prev, err := c.GetSubjectConditionSet(ctx, id, "")
+	prev, err := c.GetSubjectConditionSet(ctx, s.Id, "")
 	if err != nil {
 		return nil, err
 	}
 
-	metadataJSON, metadata, err := db.MarshalUpdateMetadata(prev.Metadata, s.UpdatedMetadata)
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(prev.Metadata, s.UpdateMetadata)
 	if err != nil {
 		return nil, err
 	}
 
-	if s.UpdatedSubjectSets != nil {
-		subjectSets = s.UpdatedSubjectSets
+	if s.UpdateSubjectSets != nil {
+		subjectSets = s.UpdateSubjectSets
 		condition, err = marshalSubjectSetsProto(subjectSets)
 		if err != nil {
 			return nil, err
@@ -399,13 +400,15 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, id string
 		subjectSets = prev.SubjectSets
 	}
 
-	if s.UpdatedName == "" {
-		s.UpdatedName = prev.Name
+	if s.UpdateName != "" {
+		name = s.UpdateName
+	} else {
+		name = prev.Name
 	}
 
 	sql, args, err := updateSubjectConditionSetSql(
-		id,
-		s.UpdatedName,
+		s.Id,
+		name,
 		metadataJSON,
 		condition,
 	)
@@ -415,8 +418,8 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, id string
 	}
 
 	return &subjectmapping.SubjectConditionSet{
-		Id:          id,
-		Name:        s.UpdatedName,
+		Id:          s.Id,
+		Name:        name,
 		Metadata:    metadata,
 		SubjectSets: subjectSets,
 	}, nil
@@ -492,7 +495,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 			return nil, err
 		}
 	} else {
-		return nil, fmt.Errorf("no subject condition set provided")
+		return nil, errors.Join(db.ErrMissingRequiredValue, errors.New("either an existing Subject Condition Set ID or a new one is required when creating a subject mapping"))
 	}
 
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(s.Metadata)
@@ -500,7 +503,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, err
 	}
 	if s.Actions == nil {
-		return nil, errors.Join(db.ErrMissingRequiredValue)
+		return nil, errors.Join(db.ErrMissingRequiredValue, errors.New("actions are required when creating a subject mapping"))
 	}
 	actionsJSON, err := marshalActionsProto(s.Actions)
 	if err != nil {

@@ -270,18 +270,16 @@ message CreateSubjectConditionSetResponse {
   SubjectConditionSet subject_condition_set = 1;
 }
 
-message SubjectConditionSetUpdate {
-  // an optional name for ease of reference
-  string updated_name = 1;
-
-  common.MetadataMutable updated_metadata = 2;
-
-  // Replaces entire existing graph relation of Subject Sets, Condition Groups, & Conditions
-  repeated SubjectSet updated_subject_sets = 3 [(buf.validate.field).repeated.min_items = 1];
-}
 message UpdateSubjectConditionSetRequest {
   string id = 1 [(buf.validate.field).required = true];
-  SubjectConditionSetUpdate subject_condition_set = 2;
+  
+  // an optional name for ease of reference
+  string update_name = 2;
+
+  common.MetadataMutable update_metadata = 3;
+
+  // if provided, replaces entire existing graph relation of Subject Sets, Condition Groups, & Conditions
+  repeated SubjectSet update_subject_sets = 4;
 }
 message UpdateSubjectConditionSetResponse {
   SubjectConditionSet subject_condition_set = 1;

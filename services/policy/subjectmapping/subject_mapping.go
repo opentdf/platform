@@ -29,6 +29,10 @@ func NewRegistration() serviceregistry.Registration {
 	}
 }
 
+/* ---------------------------------------------------
+ * ----------------- SubjectMappings -----------------
+ * --------------------------------------------------*/
+
 func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	req *sm.CreateSubjectMappingRequest,
 ) (*sm.CreateSubjectMappingResponse, error) {
@@ -81,7 +85,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 
 	mapping, err := s.dbClient.UpdateSubjectMapping(ctx, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("subjectMapping", req.String()))
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("subjectMapping fields", req.String()))
 	}
 
 	rsp.SubjectMapping = mapping
@@ -100,6 +104,85 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 	}
 
 	rsp.SubjectMapping = mapping
+
+	return rsp, nil
+}
+
+/* --------------------------------------------------------
+ * ----------------- SubjectConditionSets -----------------
+ * -------------------------------------------------------*/
+
+func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
+	req *sm.GetSubjectConditionSetRequest,
+) (*sm.GetSubjectConditionSetResponse, error) {
+	rsp := &sm.GetSubjectConditionSetResponse{}
+
+	conditionSet, err := s.dbClient.GetSubjectConditionSet(ctx, req.Id, "")
+	if err != nil {
+		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("id", req.Id))
+	}
+
+	rsp.SubjectConditionSet = conditionSet
+
+	return rsp, nil
+}
+
+func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
+	req *sm.ListSubjectConditionSetsRequest,
+) (*sm.ListSubjectConditionSetsResponse, error) {
+	rsp := &sm.ListSubjectConditionSetsResponse{}
+
+	conditionSets, err := s.dbClient.ListSubjectConditionSets(ctx)
+	if err != nil {
+		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
+	}
+
+	rsp.SubjectConditionSets = conditionSets
+
+	return rsp, nil
+}
+
+func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
+	req *sm.CreateSubjectConditionSetRequest,
+) (*sm.CreateSubjectConditionSetResponse, error) {
+	rsp := &sm.CreateSubjectConditionSetResponse{}
+	slog.Debug("creating subject condition set")
+
+	conditionSet, err := s.dbClient.CreateSubjectConditionSet(context.Background(), req.SubjectConditionSet)
+	if err != nil {
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("subjectConditionSet", req.String()))
+	}
+	rsp.SubjectConditionSet = conditionSet
+
+	return rsp, nil
+}
+
+func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
+	req *sm.UpdateSubjectConditionSetRequest,
+) (*sm.UpdateSubjectConditionSetResponse, error) {
+	rsp := &sm.UpdateSubjectConditionSetResponse{}
+
+	conditionSet, err := s.dbClient.UpdateSubjectConditionSet(ctx, req)
+	if err != nil {
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("subjectConditionSet fields", req.String()))
+	}
+
+	rsp.SubjectConditionSet = conditionSet
+
+	return rsp, nil
+}
+
+func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
+	req *sm.DeleteSubjectConditionSetRequest,
+) (*sm.DeleteSubjectConditionSetResponse, error) {
+	rsp := &sm.DeleteSubjectConditionSetResponse{}
+
+	conditionSet, err := s.dbClient.DeleteSubjectConditionSet(ctx, req.Id)
+	if err != nil {
+		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
+	}
+
+	rsp.SubjectConditionSet = conditionSet
 
 	return rsp, nil
 }

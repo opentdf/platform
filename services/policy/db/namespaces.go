@@ -57,8 +57,8 @@ func hydrateNamespaceItems(rows pgx.Rows, opts namespaceSelectOptions) ([]*names
 }
 
 func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
-	fqnT := db.Tables.AttrFqn
+	t := Tables.Namespaces
+	fqnT := Tables.AttrFqn
 	fields := []string{
 		t.Field("id"),
 		t.Field("name"),
@@ -104,8 +104,8 @@ func (c PolicyDbClient) GetNamespace(ctx context.Context, id string) (*namespace
 }
 
 func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
-	fqnT := db.Tables.AttrFqn
+	t := Tables.Namespaces
+	fqnT := Tables.AttrFqn
 
 	fields := []string{
 		t.Field("id"),
@@ -159,7 +159,7 @@ func (c PolicyDbClient) ListNamespaces(ctx context.Context, state string) ([]*na
 }
 
 func createNamespaceSql(name string) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
+	t := Tables.Namespaces
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("name").
@@ -185,7 +185,7 @@ func (c PolicyDbClient) CreateNamespace(ctx context.Context, name string) (strin
 }
 
 func updateNamespaceSql(id string, name string) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
+	t := Tables.Namespaces
 	return db.NewStatementBuilder().
 		Update(t.Name()).
 		Set("name", name).
@@ -207,7 +207,7 @@ func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, name str
 }
 
 func deactivateNamespaceSql(id string) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
+	t := Tables.Namespaces
 	return db.NewStatementBuilder().
 		Update(t.Name()).
 		Set("active", false).
@@ -226,7 +226,7 @@ func (c PolicyDbClient) DeactivateNamespace(ctx context.Context, id string) (*na
 }
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
+	t := Tables.Namespaces
 	// TODO: handle delete cascade, dangerous deletion via special rpc [https://github.com/opentdf/platform/issues/115]
 	return db.NewStatementBuilder().
 		Delete(t.Name()).

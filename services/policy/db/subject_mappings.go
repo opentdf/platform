@@ -83,7 +83,7 @@ func unmarshalActionsProto(actionsJSON []byte) ([]*authorization.Action, error) 
 }
 
 func subjectConditionSetSelect() sq.SelectBuilder {
-	t := db.Tables.SubjectConditionSet
+	t := Tables.SubjectConditionSet
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("metadata"),
@@ -139,9 +139,9 @@ func subjectConditionSetHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectCon
 }
 
 func subjectMappingSelect() sq.SelectBuilder {
-	t := db.Tables.SubjectMappings
-	avT := db.Tables.AttributeValues
-	scsT := db.Tables.SubjectConditionSet
+	t := Tables.SubjectMappings
+	avT := Tables.AttributeValues
+	scsT := Tables.SubjectConditionSet
 
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
@@ -240,7 +240,7 @@ func subjectMappingHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectMapping,
 }
 
 func createSubjectConditionSetSql(subjectSets []*subjectmapping.SubjectSet, metadataJSON []byte) (string, []interface{}, error) {
-	t := db.Tables.SubjectConditionSet
+	t := Tables.SubjectConditionSet
 	conditionJSON, err := marshalSubjectSetsProto(subjectSets)
 	if err != nil {
 		return "", nil, err
@@ -281,7 +281,7 @@ func (c PolicyDbClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 }
 
 func getSubjectConditionSetSql(id string) (string, []interface{}, error) {
-	t := db.Tables.SubjectConditionSet
+	t := Tables.SubjectConditionSet
 	return subjectConditionSetSelect().
 		From(t.Name()).Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
@@ -301,7 +301,7 @@ func (c PolicyDbClient) GetSubjectConditionSet(ctx context.Context, id string) (
 }
 
 func listSubjectConditionSetsSql() (string, []interface{}, error) {
-	t := db.Tables.SubjectConditionSet
+	t := Tables.SubjectConditionSet
 	return subjectConditionSetSelect().
 		From(t.Name()).
 		ToSql()
@@ -323,7 +323,7 @@ func (c PolicyDbClient) ListSubjectConditionSets(ctx context.Context) ([]*subjec
 }
 
 func updateSubjectConditionSetSql(id string, metadata []byte, condition []byte) (string, []interface{}, error) {
-	t := db.Tables.SubjectConditionSet
+	t := Tables.SubjectConditionSet
 
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
@@ -380,7 +380,7 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, s *subjec
 }
 
 func deleteSubjectConditionSetSql(id string) (string, []interface{}, error) {
-	t := db.Tables.SubjectConditionSet
+	t := Tables.SubjectConditionSet
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
@@ -403,7 +403,7 @@ func (c PolicyDbClient) DeleteSubjectConditionSet(ctx context.Context, id string
 }
 
 func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata []byte, subject_condition_set_id string) (string, []interface{}, error) {
-	t := db.Tables.SubjectMappings
+	t := Tables.SubjectMappings
 
 	columns := []string{
 		"attribute_value_id",
@@ -479,7 +479,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 }
 
 func getSubjectMappingSql(id string) (string, []interface{}, error) {
-	t := db.Tables.SubjectMappings
+	t := Tables.SubjectMappings
 	return subjectMappingSelect().
 		From(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
@@ -498,7 +498,7 @@ func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*subj
 }
 
 func listSubjectMappingsSql() (string, []interface{}, error) {
-	t := db.Tables.SubjectMappings
+	t := Tables.SubjectMappings
 	return subjectMappingSelect().
 		From(t.Name()).
 		ToSql()
@@ -525,7 +525,7 @@ func (c PolicyDbClient) ListSubjectMappings(ctx context.Context) ([]*subjectmapp
 }
 
 func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_set_id string, actionsJSON []byte) (string, []interface{}, error) {
-	t := db.Tables.SubjectMappings
+	t := Tables.SubjectMappings
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
 
@@ -594,7 +594,7 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 }
 
 func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
-	t := db.Tables.SubjectMappings
+	t := Tables.SubjectMappings
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).

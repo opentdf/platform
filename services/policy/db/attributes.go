@@ -63,12 +63,12 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		opts.withAttributeValues = true
 	}
 
-	t := db.Tables.Attributes
-	nt := db.Tables.Namespaces
-	avt := db.Tables.AttributeValues
-	fqnt := db.Tables.AttrFqn
-	// akt := db.Tables.AttributeKeyAccessGrants
-	// avkt := db.Tables.AttributeKeyAccessGrants
+	t := Tables.Attributes
+	nt := Tables.Namespaces
+	avt := Tables.AttributeValues
+	fqnt := Tables.AttrFqn
+	// akt := Tables.AttributeKeyAccessGrants
+	// avkt := Tables.AttributeKeyAccessGrants
 	selectFields := []string{
 		t.Field("id"),
 		t.Field("name"),
@@ -103,7 +103,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			")"+
 			") "+
 			"FROM "+db.Tables.KeyAccessServerRegistry.Name()+" kas "+
-			"JOIN "+db.Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
+			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
 			"WHERE avkag.attribute_value_id = "+avt.Field("id")+
 			")"+
 			")) AS grants")
@@ -119,8 +119,8 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		sb = sb.LeftJoin(avt.Name() + " ON " + avt.Field("attribute_definition_id") + " = " + t.Field("id"))
 	}
 	if opts.withKeyAccessGrants {
-		sb = sb.LeftJoin(db.Tables.AttributeKeyAccessGrants.Name() + " ON " + db.Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(db.Tables.KeyAccessServerRegistry.Name() + " ON " + db.Tables.KeyAccessServerRegistry.Name() + ".id = " + db.Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
+		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
+			LeftJoin(db.Tables.KeyAccessServerRegistry.Name() + " ON " + db.Tables.KeyAccessServerRegistry.Name() + ".id = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
 	}
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
@@ -134,7 +134,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	g := []string{t.Field("id"), nt.Field("name")}
 
 	if opts.withFqn {
-		g = append(g, db.Tables.AttrFqn.Field("fqn"))
+		g = append(g, Tables.AttrFqn.Field("fqn"))
 	}
 
 	return sb.GroupBy(g...)
@@ -231,7 +231,7 @@ func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions) ([]*attr
 ///
 
 func listAllAttributesSql(opts attributesSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.Attributes
+	t := Tables.Attributes
 	sb := attributesSelect(opts).
 		From(t.Name())
 
@@ -291,7 +291,7 @@ func (c PolicyDbClient) ListAllAttributesWithout(ctx context.Context, state stri
 }
 
 func getAttributeSql(id string, opts attributesSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.Attributes
+	t := Tables.Attributes
 	return attributesSelect(opts).
 		Where(sq.Eq{t.Field("id"): id}).
 		From(t.Name()).
@@ -320,8 +320,8 @@ func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*attribute
 // / Get attribute by fqn
 func getAttributeByFqnSql(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
 	return attributesSelect(opts).
-		Where(sq.Eq{db.Tables.AttrFqn.Field("fqn"): fqn}).
-		From(db.Tables.Attributes.Name()).
+		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn}).
+		From(Tables.Attributes.Name()).
 		ToSql()
 }
 
@@ -350,7 +350,7 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*att
 }
 
 func getAttributesByNamespaceSql(namespaceId string, opts attributesSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.Attributes
+	t := Tables.Attributes
 	return attributesSelect(opts).
 		Where(sq.Eq{t.Field("namespace_id"): namespaceId}).
 		From(t.Name()).
@@ -376,7 +376,7 @@ func (c PolicyDbClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 }
 
 func createAttributeSql(namespaceId string, name string, rule string, metadata []byte) (string, []interface{}, error) {
-	t := db.Tables.Attributes
+	t := Tables.Attributes
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("namespace_id", "name", "rule", "metadata").
@@ -416,7 +416,7 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, attr *attributes.At
 }
 
 func updateAttributeSql(id string, name string, rule string, metadata []byte) (string, []interface{}, error) {
-	t := db.Tables.Attributes
+	t := Tables.Attributes
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
 
@@ -461,7 +461,7 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, attr *at
 }
 
 func deactivateAttributeSql(id string) (string, []interface{}, error) {
-	t := db.Tables.Attributes
+	t := Tables.Attributes
 	return db.NewStatementBuilder().
 		Update(t.Name()).
 		Set("active", false).
@@ -480,7 +480,7 @@ func (c PolicyDbClient) DeactivateAttribute(ctx context.Context, id string) (*at
 }
 
 func deleteAttributeSql(id string) (string, []interface{}, error) {
-	t := db.Tables.Attributes
+	t := Tables.Attributes
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
@@ -505,7 +505,7 @@ func (c PolicyDbClient) DeleteAttribute(ctx context.Context, id string) (*attrib
 }
 
 func assignKeyAccessServerToAttributeSql(attributeID, keyAccessServerID string) (string, []interface{}, error) {
-	t := db.Tables.AttributeKeyAccessGrants
+	t := Tables.AttributeKeyAccessGrants
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("attribute_definition_id", "key_access_server_id").
@@ -524,7 +524,7 @@ func (c PolicyDbClient) AssignKeyAccessServerToAttribute(ctx context.Context, k 
 }
 
 func removeKeyAccessServerFromAttributeSql(attributeID, keyAccessServerID string) (string, []interface{}, error) {
-	t := db.Tables.AttributeKeyAccessGrants
+	t := Tables.AttributeKeyAccessGrants
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{"attribute_definition_id": attributeID, "key_access_server_id": keyAccessServerID}).

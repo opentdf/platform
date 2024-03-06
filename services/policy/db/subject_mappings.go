@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 
@@ -33,14 +34,16 @@ func marshalSubjectSetsProto(subjectSet []*subjectmapping.SubjectSet) ([]byte, e
 
 // Helper to unmarshal SubjectSets from JSON (stored as JSONB in the database column)
 func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*subjectmapping.SubjectSet, error) {
-	var raw []json.RawMessage
+	var (
+		raw []json.RawMessage
+		ss  []*subjectmapping.SubjectSet
+	)
 	if err := json.Unmarshal(conditionJSON, &raw); err != nil {
 		return nil, err
 	}
 
-	var ss []*subjectmapping.SubjectSet
 	for _, r := range raw {
-		var s subjectmapping.SubjectSet
+		s := subjectmapping.SubjectSet{}
 		if err := protojson.Unmarshal(r, &s); err != nil {
 			return nil, err
 		}
@@ -63,21 +66,23 @@ func marshalActionsProto(actions []*authorization.Action) ([]byte, error) {
 	return json.Marshal(raw)
 }
 
-func unmarshalActionsProto(actions []byte) ([]*authorization.Action, error) {
-	var raw []json.RawMessage
-	if err := json.Unmarshal(actions, &raw); err != nil {
+func unmarshalActionsProto(actionsJSON []byte) ([]*authorization.Action, error) {
+	var (
+		raw     []json.RawMessage
+		actions []*authorization.Action
+	)
+	if err := json.Unmarshal(actionsJSON, &raw); err != nil {
 		return nil, err
 	}
 
-	var actionsProto []*authorization.Action
 	for _, r := range raw {
-		var a authorization.Action
+		a := authorization.Action{}
 		if err := protojson.Unmarshal(r, &a); err != nil {
 			return nil, err
 		}
-		actionsProto = append(actionsProto, &a)
+		actions = append(actions, &a)
 	}
-	return actionsProto, nil
+	return actions, nil
 }
 
 func subjectConditionSetSelect() sq.SelectBuilder {
@@ -167,16 +172,16 @@ func subjectMappingSelect() sq.SelectBuilder {
 			") AS attribute_value",
 	).
 		LeftJoin(avT.Name() + " ON " + t.Field("attribute_value_id") + " = " + avT.Field("id")).
-		LeftJoin(scsT.Name() + " ON " + scsT.Field("id") + " = " + t.Field("subject_condition_set_id")).
 		GroupBy(t.Field("id")).
 		GroupBy(avT.Field("id")).
+		LeftJoin(scsT.Name() + " ON " + scsT.Field("id") + " = " + t.Field("subject_condition_set_id")).
 		GroupBy(scsT.Field("id"))
 }
 
 func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, error) {
 	var (
 		id                 string
-		actions            []byte
+		actionsJSON        []byte
 		metadataJSON       []byte
 		scsJSON            []byte
 		attributeValueJSON []byte
@@ -184,7 +189,7 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 
 	err := row.Scan(
 		&id,
-		&actions,
+		&actionsJSON,
 		&metadataJSON,
 		&scsJSON,
 		&attributeValueJSON,
@@ -196,29 +201,31 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 	m := &common.Metadata{}
 	if metadataJSON != nil {
 		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
 
-	v := &attributes.Value{}
+	av := attributes.Value{}
 	if attributeValueJSON != nil {
-		if err := protojson.Unmarshal(attributeValueJSON, v); err != nil {
+		if err := protojson.Unmarshal(attributeValueJSON, &av); err != nil {
+			slog.Error("could not unmarshal attribute value", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
 
-	a, err := unmarshalActionsProto(actions)
-	if err != nil {
-		return nil, err
+	a := []*authorization.Action{}
+	if actionsJSON != nil {
+		if a, err = unmarshalActionsProto(actionsJSON); err != nil {
+			slog.Error("could not unmarshal actions", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
-	var scs *subjectmapping.SubjectConditionSet
-	var raw json.RawMessage
+	scs := subjectmapping.SubjectConditionSet{}
 	if scsJSON != nil {
-		if err := json.Unmarshal(scsJSON, &raw); err != nil {
-			return nil, err
-		}
-		if err := protojson.Unmarshal(raw, scs); err != nil {
+		if err := protojson.Unmarshal(scsJSON, &scs); err != nil {
+			slog.Error("could not unmarshal subject condition set", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -226,8 +233,8 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 	return &subjectmapping.SubjectMapping{
 		Id:                  id,
 		Metadata:            m,
-		AttributeValue:      v,
-		SubjectConditionSet: scs,
+		AttributeValue:      &av,
+		SubjectConditionSet: &scs,
 		Actions:             a,
 	}, nil
 }
@@ -388,6 +395,12 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, id string
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		subjectSets = prev.SubjectSets
+	}
+
+	if s.UpdatedName == "" {
+		s.UpdatedName = prev.Name
 	}
 
 	sql, args, err := updateSubjectConditionSetSql(
@@ -534,19 +547,13 @@ func getSubjectMappingSql(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*subjectmapping.SubjectMapping, error) {
 	sql, args, err := getSubjectMappingSql(id)
-	fmt.Println("sql", sql, "args", args, "err", err)
 
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := subjectMappingHydrateItem(row)
-	if err != nil {
-		return nil, err
-	}
-
-	return s, nil
+	return subjectMappingHydrateItem(row)
 }
 
 func listSubjectMappingsSql() (string, []interface{}, error) {
@@ -618,6 +625,14 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 			return nil, err
 		}
 		prev.Actions = r.UpdateActions
+	}
+
+	if r.UpdateSubjectConditionSetId != "" {
+		new, err := c.GetSubjectConditionSet(ctx, r.UpdateSubjectConditionSetId, "")
+		if err != nil {
+			return nil, err
+		}
+		prev.SubjectConditionSet = new
 	}
 
 	sql, args, err := updateSubjectMappingSql(

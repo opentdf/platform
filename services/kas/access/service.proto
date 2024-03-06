@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package access;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/opentdf/backend-go/pkg/access";
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "OpenTDF Key Access Service";
+    version: "1.5.0";
+    license: {
+      name: "BSD 3-Clause Clear";
+      url: "https://github.com/opentdf/backend/blob/master/LICENSE";
+    };
+  };
+};
+
+message InfoRequest {
+  // Intentionally empty. May include features later.
+}
+
+// Service application level metadata
+message InfoResponse {
+  string version = 1;
+}
+
+message LegacyPublicKeyRequest {
+  string algorithm = 1;
+}
+
+message PublicKeyRequest {
+  string algorithm = 1;
+  string fmt = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "version"}];
+  string v = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "version"}];
+}
+
+message PublicKeyResponse {
+  string public_key = 1;
+}
+
+message RewrapRequest {
+  string signed_request_token = 1;
+  string bearer = 2;
+}
+
+message RewrapResponse {
+  map<string, google.protobuf.Value> metadata = 1;
+  bytes entity_wrapped_key = 2;
+  string session_public_key = 3;
+  string schema_version = 4;
+}
+
+// Get app info from the root path
+service AccessService {
+  // Get the current version of the service
+  rpc Info(InfoRequest) returns (InfoResponse) {
+    option (google.api.http) = {get: "/"};
+
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      responses: {key: "200"}
+    };
+  }
+
+  rpc PublicKey(PublicKeyRequest) returns (PublicKeyResponse) {
+    option (google.api.http) = {get: "/v2/kas_public_key"};
+
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      responses: {key: "200"}
+    };
+  }
+
+  rpc LegacyPublicKey(LegacyPublicKeyRequest) returns (google.protobuf.StringValue) {
+    option (google.api.http) = {get: "/kas_public_key"};
+
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      responses: {key: "200"}
+    };
+  }
+
+  rpc Rewrap(RewrapRequest) returns (RewrapResponse) {
+    option (google.api.http) = {
+      post: "/v2/rewrap"
+      body: "*";
+    };
+
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      responses: {key: "200"}
+    };
+  }
+}

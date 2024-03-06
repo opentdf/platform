@@ -224,120 +224,109 @@ public final class SubjectMappingProto {
       "cy.subjectmapping.SubjectConditionSetCre" +
       "ateR\026newSubjectConditionSet\0229\n\007actions\030\005" +
       " \003(\0132\025.authorization.ActionB\010\272H\005\222\001\002\010\001R\007a" +
-      "ctions\"n\n\034CreateSubjectMappingResponse\022N" +
-      "\n\017subject_mapping\030\001 \001(\0132%.policy.subject" +
-      "mapping.SubjectMappingR\016subjectMapping\"\373" +
-      "\001\n\033UpdateSubjectMappingRequest\022\026\n\002id\030\001 \001" +
-      "(\tB\006\272H\003\310\001\001R\002id\022@\n\017update_metadata\030\002 \001(\0132" +
-      "\027.common.MetadataMutableR\016updateMetadata" +
-      "\022D\n\037update_subject_condition_set_id\030\003 \001(" +
-      "\tR\033updateSubjectConditionSetId\022<\n\016update" +
-      "_actions\030\005 \003(\0132\025.authorization.ActionR\ru" +
-      "pdateActions\"n\n\034UpdateSubjectMappingResp" +
-      "onse\022N\n\017subject_mapping\030\001 \001(\0132%.policy.s" +
-      "ubjectmapping.SubjectMappingR\016subjectMap" +
-      "ping\"5\n\033DeleteSubjectMappingRequest\022\026\n\002i" +
-      "d\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"n\n\034DeleteSubjectMapp" +
-      "ingResponse\022N\n\017subject_mapping\030\001 \001(\0132%.p" +
-      "olicy.subjectmapping.SubjectMappingR\016sub" +
-      "jectMapping\"7\n\035GetSubjectConditionSetReq" +
-      "uest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"\347\001\n\036GetSubj" +
-      "ectConditionSetResponse\022^\n\025subject_condi" +
-      "tion_set\030\001 \001(\0132*.policy.subjectmapping.S" +
-      "ubjectConditionSetR\023subjectConditionSet\022" +
-      "e\n\033associated_subject_mappings\030\002 \003(\0132%.p" +
-      "olicy.subjectmapping.SubjectMappingR\031ass" +
-      "ociatedSubjectMappings\"!\n\037ListSubjectCon" +
-      "ditionSetsRequest\"\204\001\n ListSubjectConditi" +
-      "onSetsResponse\022`\n\026subject_condition_sets" +
-      "\030\001 \003(\0132*.policy.subjectmapping.SubjectCo" +
-      "nditionSetR\024subjectConditionSets\"\240\001\n\031Sub" +
-      "jectConditionSetCreate\0223\n\010metadata\030\001 \001(\013" +
-      "2\027.common.MetadataMutableR\010metadata\022N\n\014s" +
-      "ubject_sets\030\002 \003(\0132!.policy.subjectmappin" +
-      "g.SubjectSetB\010\272H\005\222\001\002\010\001R\013subjectSets\"\210\001\n " +
-      "CreateSubjectConditionSetRequest\022d\n\025subj" +
-      "ect_condition_set\030\001 \001(\01320.policy.subject" +
-      "mapping.SubjectConditionSetCreateR\023subje" +
-      "ctConditionSet\"\203\001\n!CreateSubjectConditio" +
-      "nSetResponse\022^\n\025subject_condition_set\030\001 " +
-      "\001(\0132*.policy.subjectmapping.SubjectCondi" +
-      "tionSetR\023subjectConditionSet\"\317\001\n UpdateS" +
-      "ubjectConditionSetRequest\022\026\n\002id\030\001 \001(\tB\006\272" +
-      "H\003\310\001\001R\002id\022@\n\017update_metadata\030\002 \001(\0132\027.com" +
-      "mon.MetadataMutableR\016updateMetadata\022Q\n\023u" +
-      "pdate_subject_sets\030\003 \003(\0132!.policy.subjec" +
-      "tmapping.SubjectSetR\021updateSubjectSets\"\203" +
-      "\001\n!UpdateSubjectConditionSetResponse\022^\n\025" +
-      "subject_condition_set\030\001 \001(\0132*.policy.sub" +
-      "jectmapping.SubjectConditionSetR\023subject" +
-      "ConditionSet\":\n DeleteSubjectConditionSe" +
-      "tRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"\203\001\n!Del" +
-      "eteSubjectConditionSetResponse\022^\n\025subjec" +
-      "t_condition_set\030\001 \001(\0132*.policy.subjectma" +
-      "pping.SubjectConditionSetR\023subjectCondit" +
-      "ionSet*\233\001\n\032SubjectMappingOperatorEnum\022-\n" +
-      ")SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFI" +
-      "ED\020\000\022$\n SUBJECT_MAPPING_OPERATOR_ENUM_IN" +
-      "\020\001\022(\n$SUBJECT_MAPPING_OPERATOR_ENUM_NOT_" +
-      "IN\020\002*\220\001\n\030ConditionBooleanTypeEnum\022+\n\'CON" +
-      "DITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED\020\000\022#" +
-      "\n\037CONDITION_BOOLEAN_TYPE_ENUM_AND\020\001\022\"\n\036C" +
-      "ONDITION_BOOLEAN_TYPE_ENUM_OR\020\0022\340\016\n\025Subj" +
-      "ectMappingService\022\251\001\n\024MatchSubjectMappin" +
-      "gs\0222.policy.subjectmapping.MatchSubjectM" +
-      "appingsRequest\0323.policy.subjectmapping.M" +
-      "atchSubjectMappingsResponse\"(\202\323\344\223\002\"\"\027/su" +
-      "bject-mappings/match:\007subject\022\227\001\n\023ListSu" +
-      "bjectMappings\0221.policy.subjectmapping.Li" +
-      "stSubjectMappingsRequest\0322.policy.subjec" +
-      "tmapping.ListSubjectMappingsResponse\"\031\202\323" +
-      "\344\223\002\023\022\021/subject-mappings\022\226\001\n\021GetSubjectMa" +
-      "pping\022/.policy.subjectmapping.GetSubject" +
-      "MappingRequest\0320.policy.subjectmapping.G" +
-      "etSubjectMappingResponse\"\036\202\323\344\223\002\030\022\026/subje" +
-      "ct-mappings/{id}\022\235\001\n\024CreateSubjectMappin" +
-      "g\0222.policy.subjectmapping.CreateSubjectM" +
-      "appingRequest\0323.policy.subjectmapping.Cr" +
-      "eateSubjectMappingResponse\"\034\202\323\344\223\002\026\"\021/sub" +
-      "ject-mappings:\001*\022\242\001\n\024UpdateSubjectMappin" +
-      "g\0222.policy.subjectmapping.UpdateSubjectM" +
-      "appingRequest\0323.policy.subjectmapping.Up" +
-      "dateSubjectMappingResponse\"!\202\323\344\223\002\0332\026/sub" +
-      "ject-mappings/{id}:\001*\022\237\001\n\024DeleteSubjectM" +
-      "apping\0222.policy.subjectmapping.DeleteSub" +
+      "ctions\".\n\034CreateSubjectMappingResponse\022\016" +
+      "\n\002id\030\001 \001(\tR\002id\"\373\001\n\033UpdateSubjectMappingR" +
+      "equest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022@\n\017update" +
+      "_metadata\030\002 \001(\0132\027.common.MetadataMutable" +
+      "R\016updateMetadata\022D\n\037update_subject_condi" +
+      "tion_set_id\030\003 \001(\tR\033updateSubjectConditio" +
+      "nSetId\022<\n\016update_actions\030\005 \003(\0132\025.authori" +
+      "zation.ActionR\rupdateActions\".\n\034UpdateSu" +
+      "bjectMappingResponse\022\016\n\002id\030\001 \001(\tR\002id\"5\n\033" +
+      "DeleteSubjectMappingRequest\022\026\n\002id\030\001 \001(\tB" +
+      "\006\272H\003\310\001\001R\002id\".\n\034DeleteSubjectMappingRespo" +
+      "nse\022\016\n\002id\030\001 \001(\tR\002id\"7\n\035GetSubjectConditi" +
+      "onSetRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"\347\001\n" +
+      "\036GetSubjectConditionSetResponse\022^\n\025subje" +
+      "ct_condition_set\030\001 \001(\0132*.policy.subjectm" +
+      "apping.SubjectConditionSetR\023subjectCondi" +
+      "tionSet\022e\n\033associated_subject_mappings\030\002" +
+      " \003(\0132%.policy.subjectmapping.SubjectMapp" +
+      "ingR\031associatedSubjectMappings\"!\n\037ListSu" +
+      "bjectConditionSetsRequest\"\204\001\n ListSubjec" +
+      "tConditionSetsResponse\022`\n\026subject_condit" +
+      "ion_sets\030\001 \003(\0132*.policy.subjectmapping.S" +
+      "ubjectConditionSetR\024subjectConditionSets" +
+      "\"\240\001\n\031SubjectConditionSetCreate\0223\n\010metada" +
+      "ta\030\001 \001(\0132\027.common.MetadataMutableR\010metad" +
+      "ata\022N\n\014subject_sets\030\002 \003(\0132!.policy.subje" +
+      "ctmapping.SubjectSetB\010\272H\005\222\001\002\010\001R\013subjectS" +
+      "ets\"\210\001\n CreateSubjectConditionSetRequest" +
+      "\022d\n\025subject_condition_set\030\001 \001(\01320.policy" +
+      ".subjectmapping.SubjectConditionSetCreat" +
+      "eR\023subjectConditionSet\"3\n!CreateSubjectC" +
+      "onditionSetResponse\022\016\n\002id\030\001 \001(\tR\002id\"\317\001\n " +
+      "UpdateSubjectConditionSetRequest\022\026\n\002id\030\001" +
+      " \001(\tB\006\272H\003\310\001\001R\002id\022@\n\017update_metadata\030\002 \001(" +
+      "\0132\027.common.MetadataMutableR\016updateMetada" +
+      "ta\022Q\n\023update_subject_sets\030\003 \003(\0132!.policy" +
+      ".subjectmapping.SubjectSetR\021updateSubjec" +
+      "tSets\"3\n!UpdateSubjectConditionSetRespon" +
+      "se\022\016\n\002id\030\001 \001(\tR\002id\":\n DeleteSubjectCondi" +
+      "tionSetRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"3" +
+      "\n!DeleteSubjectConditionSetResponse\022\016\n\002i" +
+      "d\030\001 \001(\tR\002id*\233\001\n\032SubjectMappingOperatorEn" +
+      "um\022-\n)SUBJECT_MAPPING_OPERATOR_ENUM_UNSP" +
+      "ECIFIED\020\000\022$\n SUBJECT_MAPPING_OPERATOR_EN" +
+      "UM_IN\020\001\022(\n$SUBJECT_MAPPING_OPERATOR_ENUM" +
+      "_NOT_IN\020\002*\220\001\n\030ConditionBooleanTypeEnum\022+" +
+      "\n\'CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIE" +
+      "D\020\000\022#\n\037CONDITION_BOOLEAN_TYPE_ENUM_AND\020\001" +
+      "\022\"\n\036CONDITION_BOOLEAN_TYPE_ENUM_OR\020\0022\340\016\n" +
+      "\025SubjectMappingService\022\251\001\n\024MatchSubjectM" +
+      "appings\0222.policy.subjectmapping.MatchSub" +
+      "jectMappingsRequest\0323.policy.subjectmapp" +
+      "ing.MatchSubjectMappingsResponse\"(\202\323\344\223\002\"" +
+      "\"\027/subject-mappings/match:\007subject\022\227\001\n\023L" +
+      "istSubjectMappings\0221.policy.subjectmappi" +
+      "ng.ListSubjectMappingsRequest\0322.policy.s" +
+      "ubjectmapping.ListSubjectMappingsRespons" +
+      "e\"\031\202\323\344\223\002\023\022\021/subject-mappings\022\226\001\n\021GetSubj" +
+      "ectMapping\022/.policy.subjectmapping.GetSu" +
+      "bjectMappingRequest\0320.policy.subjectmapp" +
+      "ing.GetSubjectMappingResponse\"\036\202\323\344\223\002\030\022\026/" +
+      "subject-mappings/{id}\022\235\001\n\024CreateSubjectM" +
+      "apping\0222.policy.subjectmapping.CreateSub" +
       "jectMappingRequest\0323.policy.subjectmappi" +
-      "ng.DeleteSubjectMappingResponse\"\036\202\323\344\223\002\030*" +
-      "\026/subject-mappings/{id}\022\254\001\n\030ListSubjectC" +
-      "onditionSets\0226.policy.subjectmapping.Lis" +
-      "tSubjectConditionSetsRequest\0327.policy.su" +
-      "bjectmapping.ListSubjectConditionSetsRes" +
-      "ponse\"\037\202\323\344\223\002\031\022\027/subject-condition-sets\022\253" +
-      "\001\n\026GetSubjectConditionSet\0224.policy.subje" +
-      "ctmapping.GetSubjectConditionSetRequest\032" +
-      "5.policy.subjectmapping.GetSubjectCondit" +
-      "ionSetResponse\"$\202\323\344\223\002\036\022\034/subject-conditi" +
-      "on-sets/{id}\022\262\001\n\031CreateSubjectConditionS" +
-      "et\0227.policy.subjectmapping.CreateSubject" +
-      "ConditionSetRequest\0328.policy.subjectmapp" +
-      "ing.CreateSubjectConditionSetResponse\"\"\202" +
-      "\323\344\223\002\034\"\027/subject-condition-sets:\001*\022\267\001\n\031Up" +
-      "dateSubjectConditionSet\0227.policy.subject" +
-      "mapping.UpdateSubjectConditionSetRequest" +
-      "\0328.policy.subjectmapping.UpdateSubjectCo" +
-      "nditionSetResponse\"\'\202\323\344\223\002!2\034/subject-con" +
-      "dition-sets/{id}:\001*\022\264\001\n\031DeleteSubjectCon" +
-      "ditionSet\0227.policy.subjectmapping.Delete" +
-      "SubjectConditionSetRequest\0328.policy.subj" +
-      "ectmapping.DeleteSubjectConditionSetResp" +
-      "onse\"$\202\323\344\223\002\036*\034/subject-condition-sets/{i" +
-      "d}B\364\001\n)io.opentdf.platform.policy.subjec" +
-      "tmappingB\023SubjectMappingProtoP\001Z=github." +
-      "com/opentdf/platform/protocol/go/policy/" +
-      "subjectmapping\242\002\003PSX\252\002\025Policy.Subjectmap" +
-      "ping\312\002\025Policy\\Subjectmapping\342\002!Policy\\Su" +
-      "bjectmapping\\GPBMetadata\352\002\026Policy::Subje" +
-      "ctmappingb\006proto3"
+      "ng.CreateSubjectMappingResponse\"\034\202\323\344\223\002\026\"" +
+      "\021/subject-mappings:\001*\022\242\001\n\024UpdateSubjectM" +
+      "apping\0222.policy.subjectmapping.UpdateSub" +
+      "jectMappingRequest\0323.policy.subjectmappi" +
+      "ng.UpdateSubjectMappingResponse\"!\202\323\344\223\002\0332" +
+      "\026/subject-mappings/{id}:\001*\022\237\001\n\024DeleteSub" +
+      "jectMapping\0222.policy.subjectmapping.Dele" +
+      "teSubjectMappingRequest\0323.policy.subject" +
+      "mapping.DeleteSubjectMappingResponse\"\036\202\323" +
+      "\344\223\002\030*\026/subject-mappings/{id}\022\254\001\n\030ListSub" +
+      "jectConditionSets\0226.policy.subjectmappin" +
+      "g.ListSubjectConditionSetsRequest\0327.poli" +
+      "cy.subjectmapping.ListSubjectConditionSe" +
+      "tsResponse\"\037\202\323\344\223\002\031\022\027/subject-condition-s" +
+      "ets\022\253\001\n\026GetSubjectConditionSet\0224.policy." +
+      "subjectmapping.GetSubjectConditionSetReq" +
+      "uest\0325.policy.subjectmapping.GetSubjectC" +
+      "onditionSetResponse\"$\202\323\344\223\002\036\022\034/subject-co" +
+      "ndition-sets/{id}\022\262\001\n\031CreateSubjectCondi" +
+      "tionSet\0227.policy.subjectmapping.CreateSu" +
+      "bjectConditionSetRequest\0328.policy.subjec" +
+      "tmapping.CreateSubjectConditionSetRespon" +
+      "se\"\"\202\323\344\223\002\034\"\027/subject-condition-sets:\001*\022\267" +
+      "\001\n\031UpdateSubjectConditionSet\0227.policy.su" +
+      "bjectmapping.UpdateSubjectConditionSetRe" +
+      "quest\0328.policy.subjectmapping.UpdateSubj" +
+      "ectConditionSetResponse\"\'\202\323\344\223\002!2\034/subjec" +
+      "t-condition-sets/{id}:\001*\022\264\001\n\031DeleteSubje" +
+      "ctConditionSet\0227.policy.subjectmapping.D" +
+      "eleteSubjectConditionSetRequest\0328.policy" +
+      ".subjectmapping.DeleteSubjectConditionSe" +
+      "tResponse\"$\202\323\344\223\002\036*\034/subject-condition-se" +
+      "ts/{id}B\364\001\n)io.opentdf.platform.policy.s" +
+      "ubjectmappingB\023SubjectMappingProtoP\001Z=gi" +
+      "thub.com/opentdf/platform/protocol/go/po" +
+      "licy/subjectmapping\242\002\003PSX\252\002\025Policy.Subje" +
+      "ctmapping\312\002\025Policy\\Subjectmapping\342\002!Poli" +
+      "cy\\Subjectmapping\\GPBMetadata\352\002\026Policy::" +
+      "Subjectmappingb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -432,7 +421,7 @@ public final class SubjectMappingProto {
     internal_static_policy_subjectmapping_CreateSubjectMappingResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_subjectmapping_CreateSubjectMappingResponse_descriptor,
-        new java.lang.String[] { "SubjectMapping", });
+        new java.lang.String[] { "Id", });
     internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_descriptor =
       getDescriptor().getMessageTypes().get(14);
     internal_static_policy_subjectmapping_UpdateSubjectMappingRequest_fieldAccessorTable = new
@@ -444,7 +433,7 @@ public final class SubjectMappingProto {
     internal_static_policy_subjectmapping_UpdateSubjectMappingResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_subjectmapping_UpdateSubjectMappingResponse_descriptor,
-        new java.lang.String[] { "SubjectMapping", });
+        new java.lang.String[] { "Id", });
     internal_static_policy_subjectmapping_DeleteSubjectMappingRequest_descriptor =
       getDescriptor().getMessageTypes().get(16);
     internal_static_policy_subjectmapping_DeleteSubjectMappingRequest_fieldAccessorTable = new
@@ -456,7 +445,7 @@ public final class SubjectMappingProto {
     internal_static_policy_subjectmapping_DeleteSubjectMappingResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_subjectmapping_DeleteSubjectMappingResponse_descriptor,
-        new java.lang.String[] { "SubjectMapping", });
+        new java.lang.String[] { "Id", });
     internal_static_policy_subjectmapping_GetSubjectConditionSetRequest_descriptor =
       getDescriptor().getMessageTypes().get(18);
     internal_static_policy_subjectmapping_GetSubjectConditionSetRequest_fieldAccessorTable = new
@@ -498,7 +487,7 @@ public final class SubjectMappingProto {
     internal_static_policy_subjectmapping_CreateSubjectConditionSetResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_subjectmapping_CreateSubjectConditionSetResponse_descriptor,
-        new java.lang.String[] { "SubjectConditionSet", });
+        new java.lang.String[] { "Id", });
     internal_static_policy_subjectmapping_UpdateSubjectConditionSetRequest_descriptor =
       getDescriptor().getMessageTypes().get(25);
     internal_static_policy_subjectmapping_UpdateSubjectConditionSetRequest_fieldAccessorTable = new
@@ -510,7 +499,7 @@ public final class SubjectMappingProto {
     internal_static_policy_subjectmapping_UpdateSubjectConditionSetResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_subjectmapping_UpdateSubjectConditionSetResponse_descriptor,
-        new java.lang.String[] { "SubjectConditionSet", });
+        new java.lang.String[] { "Id", });
     internal_static_policy_subjectmapping_DeleteSubjectConditionSetRequest_descriptor =
       getDescriptor().getMessageTypes().get(27);
     internal_static_policy_subjectmapping_DeleteSubjectConditionSetRequest_fieldAccessorTable = new
@@ -522,7 +511,7 @@ public final class SubjectMappingProto {
     internal_static_policy_subjectmapping_DeleteSubjectConditionSetResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_subjectmapping_DeleteSubjectConditionSetResponse_descriptor,
-        new java.lang.String[] { "SubjectConditionSet", });
+        new java.lang.String[] { "Id", });
     com.google.protobuf.ExtensionRegistry registry =
         com.google.protobuf.ExtensionRegistry.newInstance();
     registry.add(build.buf.validate.ValidateProto.field);

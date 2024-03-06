@@ -608,8 +608,8 @@
     "subjectmappingCreateSubjectConditionSetResponse": {
       "type": "object",
       "properties": {
-        "subjectConditionSet": {
-          "$ref": "#/definitions/subjectmappingSubjectConditionSet"
+        "id": {
+          "type": "string"
         }
       }
     },
@@ -644,24 +644,24 @@
     "subjectmappingCreateSubjectMappingResponse": {
       "type": "object",
       "properties": {
-        "subjectMapping": {
-          "$ref": "#/definitions/subjectmappingSubjectMapping"
+        "id": {
+          "type": "string"
         }
       }
     },
     "subjectmappingDeleteSubjectConditionSetResponse": {
       "type": "object",
       "properties": {
-        "subjectConditionSet": {
-          "$ref": "#/definitions/subjectmappingSubjectConditionSet"
+        "id": {
+          "type": "string"
         }
       }
     },
     "subjectmappingDeleteSubjectMappingResponse": {
       "type": "object",
       "properties": {
-        "subjectMapping": {
-          "$ref": "#/definitions/subjectmappingSubjectMapping"
+        "id": {
+          "type": "string"
         }
       }
     },
@@ -830,16 +830,16 @@
     "subjectmappingUpdateSubjectConditionSetResponse": {
       "type": "object",
       "properties": {
-        "subjectConditionSet": {
-          "$ref": "#/definitions/subjectmappingSubjectConditionSet"
+        "id": {
+          "type": "string"
         }
       }
     },
     "subjectmappingUpdateSubjectMappingResponse": {
       "type": "object",
       "properties": {
-        "subjectMapping": {
-          "$ref": "#/definitions/subjectmappingSubjectMapping"
+        "id": {
+          "type": "string"
         }
       }
     }

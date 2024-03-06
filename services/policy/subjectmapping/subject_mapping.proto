@@ -230,7 +230,7 @@ message CreateSubjectMappingRequest{
   repeated authorization.Action actions = 5 [(buf.validate.field).repeated.min_items = 1];
 }
 message CreateSubjectMappingResponse {
-  SubjectMapping subject_mapping = 1;
+  string id = 1;
 }
 
 message UpdateSubjectMappingRequest {
@@ -245,14 +245,14 @@ message UpdateSubjectMappingRequest {
   repeated authorization.Action update_actions = 5;
 }
 message UpdateSubjectMappingResponse {
-  SubjectMapping subject_mapping = 1;
+  string id = 1;
 }
 
 message DeleteSubjectMappingRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteSubjectMappingResponse {
-  SubjectMapping subject_mapping = 1;
+  string id = 1;
 }
 
 /**
@@ -283,7 +283,7 @@ message CreateSubjectConditionSetRequest {
   SubjectConditionSetCreate subject_condition_set = 1;
 }
 message CreateSubjectConditionSetResponse {
-  SubjectConditionSet subject_condition_set = 1;
+  string id = 1;
 }
 
 message UpdateSubjectConditionSetRequest {
@@ -295,14 +295,14 @@ message UpdateSubjectConditionSetRequest {
   repeated SubjectSet update_subject_sets = 3;
 }
 message UpdateSubjectConditionSetResponse {
-  SubjectConditionSet subject_condition_set = 1;
+  string id = 1;
 }
 
 message DeleteSubjectConditionSetRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteSubjectConditionSetResponse {
-  SubjectConditionSet subject_condition_set = 1;
+  string id = 1;
 }
 
 

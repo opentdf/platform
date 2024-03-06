@@ -9,17 +9,14 @@ public interface DeleteSubjectMappingResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
-   * @return Whether the subjectMapping field is set.
+   * <code>string id = 1 [json_name = "id"];</code>
+   * @return The id.
    */
-  boolean hasSubjectMapping();
+  java.lang.String getId();
   /**
-   * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
-   * @return The subjectMapping.
+   * <code>string id = 1 [json_name = "id"];</code>
+   * @return The bytes for id.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMapping getSubjectMapping();
-  /**
-   * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
-   */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingOrBuilder getSubjectMappingOrBuilder();
+  com.google.protobuf.ByteString
+      getIdBytes();
 }

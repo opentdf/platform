@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	kasrDb "github.com/opentdf/platform/services/kasregistry/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -102,7 +103,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'public_key', kas.public_key"+
 			")"+
 			") "+
-			"FROM "+db.Tables.KeyAccessServerRegistry.Name()+" kas "+
+			"FROM "+kasrDb.Tables.KeyAccessServerRegistry.Name()+" kas "+
 			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
 			"WHERE avkag.attribute_value_id = "+avt.Field("id")+
 			")"+
@@ -120,7 +121,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(db.Tables.KeyAccessServerRegistry.Name() + " ON " + db.Tables.KeyAccessServerRegistry.Name() + ".id = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
+			LeftJoin(kasrDb.Tables.KeyAccessServerRegistry.Name() + " ON " + kasrDb.Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
 	}
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +

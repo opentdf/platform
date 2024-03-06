@@ -12,23 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	TableKeyAccessServerRegistry       = "key_access_servers"
-	TableAttributes                    = "attribute_definitions"
-	TableAttributeValues               = "attribute_values"
-	TableNamespaces                    = "attribute_namespaces"
-	TableAttrFqn                       = "attribute_fqns"
-	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"
-	TableAttributeValueKeyAccessGrants = "attribute_value_key_access_grants"
-	TableResourceMappings              = "resource_mappings"
-	TableSubjectMappings               = "subject_mappings"
-	TableSubjectConditionSet           = "subject_condition_set"
-)
-
-var Tables struct {
-	KeyAccessServerRegistry Table
-}
-
 type Table struct {
 	name       string
 	schema     string
@@ -45,6 +28,7 @@ func NewTableWithSchema(schema string) func(name string) Table {
 		}
 	}
 }
+
 var NewTable func(name string) Table
 
 func (t Table) WithoutSchema() Table {
@@ -98,7 +82,6 @@ func NewClient(config Config) (*Client, error) {
 	}
 
 	NewTable = NewTableWithSchema(config.Schema)
-	Tables.KeyAccessServerRegistry = NewTable(TableKeyAccessServerRegistry)
 
 	return &Client{
 		Pgx:    pool,

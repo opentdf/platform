@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -112,10 +111,6 @@ func subjectConditionSetHydrateItem(row pgx.Row) (*subjectmapping.SubjectConditi
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	// TODO: do we actually need this check here? Add an integration test for it.
-	if condition == nil {
-		return nil, errors.Join(db.ErrNotNullViolation, fmt.Errorf("condition not found for subject condition set %s", id))
-	}
 	m := &common.Metadata{}
 	if metadata != nil {
 		if err := protojson.Unmarshal(metadata, m); err != nil {

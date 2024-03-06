@@ -35,3 +35,4 @@ go.work
 *.zip
 examples/examples
 sdkjava/target
+sensitive.txt.tdf

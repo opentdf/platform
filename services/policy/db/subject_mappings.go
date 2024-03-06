@@ -163,11 +163,11 @@ func subjectMappingSelect() sq.SelectBuilder {
 			"'metadata', "+scsT.Field("metadata")+", "+
 			"'subject_sets', "+scsT.Field("condition")+
 			") AS subject_condition_set",
-		// TODO: verify we don't need more info about the attribute value here on the JOIN here
 		"JSON_BUILD_OBJECT("+
 			"'id', "+avT.Field("id")+", "+
 			"'value', "+avT.Field("value")+", "+
-			"'members', "+avT.Field("members")+
+			"'members', "+avT.Field("members")+", "+
+			"'active'", avT.Field("active")+
 			") AS attribute_value",
 	).
 		LeftJoin(avT.Name() + " ON " + t.Field("attribute_value_id") + " = " + avT.Field("id")).

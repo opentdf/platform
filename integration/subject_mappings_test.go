@@ -396,6 +396,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 	assert.NotNil(s.T(), sm)
 	assert.Equal(s.T(), fixture.Id, sm.Id)
 	assert.Equal(s.T(), fixture.AttributeValueId, sm.AttributeValue.Id)
+	assert.True(s.T(), sm.AttributeValue.Active.Value)
 	assert.Equal(s.T(), fixture.SubjectConditionSetId, sm.SubjectConditionSet.Id)
 
 	// verify the actions
@@ -433,6 +434,7 @@ func (s *SubjectMappingsSuite) TestListSubjectMappings() {
 
 	assertEqual := func(sm *subjectmapping.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
 		assert.Equal(s.T(), fixture.AttributeValueId, sm.AttributeValue.Id)
+		assert.True(s.T(), sm.AttributeValue.Active.Value)
 		assert.Equal(s.T(), fixture.SubjectConditionSetId, sm.SubjectConditionSet.Id)
 		assert.Equal(s.T(), len(fixture.Actions), len(sm.Actions))
 	}

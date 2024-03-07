@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/opentdf/platform/services/health"
+	"github.com/opentdf/platform/services/kas"
 	"github.com/opentdf/platform/services/kasregistry"
 	"github.com/opentdf/platform/services/policy/attributes"
 	"github.com/opentdf/platform/services/policy/namespaces"
@@ -20,6 +21,7 @@ func registerServices() error {
 		attributes.NewRegistration(),
 		kasregistry.NewRegistration(),
 		health.NewRegistration(),
+		kas.NewRegistration(),
 		wellknown.NewRegistration(),
 	} {
 		if err := serviceregistry.RegisterService(s); err != nil {

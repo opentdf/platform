@@ -75,6 +75,8 @@ func findHSMLibrary() string {
 	if os.IsNotExist(err) {
 		slog.Warn("pkcs11 error: softhsm not installed by brew", "err", err)
 		return ""
+	} else if err == nil {
+		return l
 	}
 	return ""
 }

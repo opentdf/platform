@@ -2,45 +2,81 @@
 // source: kas/access/service.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.access;
+package io.opentdf.platform.kas.access;
 
 /**
- * <pre>
- * Intentionally empty. May include features later.
- * </pre>
- *
- * Protobuf type {@code access.InfoRequest}
+ * Protobuf type {@code kas.access.PublicKeyResponse}
  */
-public final class InfoRequest extends
+public final class PublicKeyResponse extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:access.InfoRequest)
-    InfoRequestOrBuilder {
+    // @@protoc_insertion_point(message_implements:kas.access.PublicKeyResponse)
+    PublicKeyResponseOrBuilder {
 private static final long serialVersionUID = 0L;
-  // Use InfoRequest.newBuilder() to construct.
-  private InfoRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+  // Use PublicKeyResponse.newBuilder() to construct.
+  private PublicKeyResponse(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-  private InfoRequest() {
+  private PublicKeyResponse() {
+    publicKey_ = "";
   }
 
   @java.lang.Override
   @SuppressWarnings({"unused"})
   protected java.lang.Object newInstance(
       UnusedPrivateParameter unused) {
-    return new InfoRequest();
+    return new PublicKeyResponse();
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.opentdf.platform.access.ServiceProto.internal_static_access_InfoRequest_descriptor;
+    return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_PublicKeyResponse_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.opentdf.platform.access.ServiceProto.internal_static_access_InfoRequest_fieldAccessorTable
+    return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_PublicKeyResponse_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.opentdf.platform.access.InfoRequest.class, io.opentdf.platform.access.InfoRequest.Builder.class);
+            io.opentdf.platform.kas.access.PublicKeyResponse.class, io.opentdf.platform.kas.access.PublicKeyResponse.Builder.class);
+  }
+
+  public static final int PUBLIC_KEY_FIELD_NUMBER = 1;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object publicKey_ = "";
+  /**
+   * <code>string public_key = 1 [json_name = "publicKey"];</code>
+   * @return The publicKey.
+   */
+  @java.lang.Override
+  public java.lang.String getPublicKey() {
+    java.lang.Object ref = publicKey_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      publicKey_ = s;
+      return s;
+    }
+  }
+  /**
+   * <code>string public_key = 1 [json_name = "publicKey"];</code>
+   * @return The bytes for publicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPublicKeyBytes() {
+    java.lang.Object ref = publicKey_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      publicKey_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
   }
 
   private byte memoizedIsInitialized = -1;
@@ -57,6 +93,9 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(publicKey_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, publicKey_);
+    }
     getUnknownFields().writeTo(output);
   }
 
@@ -66,6 +105,9 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(publicKey_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, publicKey_);
+    }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
     return size;
@@ -76,11 +118,13 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.opentdf.platform.access.InfoRequest)) {
+    if (!(obj instanceof io.opentdf.platform.kas.access.PublicKeyResponse)) {
       return super.equals(obj);
     }
-    io.opentdf.platform.access.InfoRequest other = (io.opentdf.platform.access.InfoRequest) obj;
+    io.opentdf.platform.kas.access.PublicKeyResponse other = (io.opentdf.platform.kas.access.PublicKeyResponse) obj;
 
+    if (!getPublicKey()
+        .equals(other.getPublicKey())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -92,49 +136,51 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
+    hash = (37 * hash) + PUBLIC_KEY_FIELD_NUMBER;
+    hash = (53 * hash) + getPublicKey().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
   }
 
-  public static io.opentdf.platform.access.InfoRequest parseFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(byte[] data)
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(java.io.InputStream input)
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -142,26 +188,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static io.opentdf.platform.access.InfoRequest parseDelimitedFrom(java.io.InputStream input)
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static io.opentdf.platform.access.InfoRequest parseDelimitedFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.access.InfoRequest parseFrom(
+  public static io.opentdf.platform.kas.access.PublicKeyResponse parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -174,7 +220,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.opentdf.platform.access.InfoRequest prototype) {
+  public static Builder newBuilder(io.opentdf.platform.kas.access.PublicKeyResponse prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -190,30 +236,26 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * <pre>
-   * Intentionally empty. May include features later.
-   * </pre>
-   *
-   * Protobuf type {@code access.InfoRequest}
+   * Protobuf type {@code kas.access.PublicKeyResponse}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:access.InfoRequest)
-      io.opentdf.platform.access.InfoRequestOrBuilder {
+      // @@protoc_insertion_point(builder_implements:kas.access.PublicKeyResponse)
+      io.opentdf.platform.kas.access.PublicKeyResponseOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_InfoRequest_descriptor;
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_PublicKeyResponse_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_InfoRequest_fieldAccessorTable
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_PublicKeyResponse_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.opentdf.platform.access.InfoRequest.class, io.opentdf.platform.access.InfoRequest.Builder.class);
+              io.opentdf.platform.kas.access.PublicKeyResponse.class, io.opentdf.platform.kas.access.PublicKeyResponse.Builder.class);
     }
 
-    // Construct using io.opentdf.platform.access.InfoRequest.newBuilder()
+    // Construct using io.opentdf.platform.kas.access.PublicKeyResponse.newBuilder()
     private Builder() {
 
     }
@@ -226,23 +268,25 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public Builder clear() {
       super.clear();
+      bitField0_ = 0;
+      publicKey_ = "";
       return this;
     }
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_InfoRequest_descriptor;
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_PublicKeyResponse_descriptor;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.InfoRequest getDefaultInstanceForType() {
-      return io.opentdf.platform.access.InfoRequest.getDefaultInstance();
+    public io.opentdf.platform.kas.access.PublicKeyResponse getDefaultInstanceForType() {
+      return io.opentdf.platform.kas.access.PublicKeyResponse.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.InfoRequest build() {
-      io.opentdf.platform.access.InfoRequest result = buildPartial();
+    public io.opentdf.platform.kas.access.PublicKeyResponse build() {
+      io.opentdf.platform.kas.access.PublicKeyResponse result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -250,10 +294,18 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.InfoRequest buildPartial() {
-      io.opentdf.platform.access.InfoRequest result = new io.opentdf.platform.access.InfoRequest(this);
+    public io.opentdf.platform.kas.access.PublicKeyResponse buildPartial() {
+      io.opentdf.platform.kas.access.PublicKeyResponse result = new io.opentdf.platform.kas.access.PublicKeyResponse(this);
+      if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
+    }
+
+    private void buildPartial0(io.opentdf.platform.kas.access.PublicKeyResponse result) {
+      int from_bitField0_ = bitField0_;
+      if (((from_bitField0_ & 0x00000001) != 0)) {
+        result.publicKey_ = publicKey_;
+      }
     }
 
     @java.lang.Override
@@ -290,16 +342,21 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.opentdf.platform.access.InfoRequest) {
-        return mergeFrom((io.opentdf.platform.access.InfoRequest)other);
+      if (other instanceof io.opentdf.platform.kas.access.PublicKeyResponse) {
+        return mergeFrom((io.opentdf.platform.kas.access.PublicKeyResponse)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.opentdf.platform.access.InfoRequest other) {
-      if (other == io.opentdf.platform.access.InfoRequest.getDefaultInstance()) return this;
+    public Builder mergeFrom(io.opentdf.platform.kas.access.PublicKeyResponse other) {
+      if (other == io.opentdf.platform.kas.access.PublicKeyResponse.getDefaultInstance()) return this;
+      if (!other.getPublicKey().isEmpty()) {
+        publicKey_ = other.publicKey_;
+        bitField0_ |= 0x00000001;
+        onChanged();
+      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -326,6 +383,11 @@ private static final long serialVersionUID = 0L;
             case 0:
               done = true;
               break;
+            case 10: {
+              publicKey_ = input.readStringRequireUtf8();
+              bitField0_ |= 0x00000001;
+              break;
+            } // case 10
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -341,6 +403,79 @@ private static final long serialVersionUID = 0L;
       } // finally
       return this;
     }
+    private int bitField0_;
+
+    private java.lang.Object publicKey_ = "";
+    /**
+     * <code>string public_key = 1 [json_name = "publicKey"];</code>
+     * @return The publicKey.
+     */
+    public java.lang.String getPublicKey() {
+      java.lang.Object ref = publicKey_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        publicKey_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <code>string public_key = 1 [json_name = "publicKey"];</code>
+     * @return The bytes for publicKey.
+     */
+    public com.google.protobuf.ByteString
+        getPublicKeyBytes() {
+      java.lang.Object ref = publicKey_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        publicKey_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>string public_key = 1 [json_name = "publicKey"];</code>
+     * @param value The publicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPublicKey(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      publicKey_ = value;
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string public_key = 1 [json_name = "publicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPublicKey() {
+      publicKey_ = getDefaultInstance().getPublicKey();
+      bitField0_ = (bitField0_ & ~0x00000001);
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string public_key = 1 [json_name = "publicKey"];</code>
+     * @param value The bytes for publicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPublicKeyBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      publicKey_ = value;
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
     @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -354,23 +489,23 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:access.InfoRequest)
+    // @@protoc_insertion_point(builder_scope:kas.access.PublicKeyResponse)
   }
 
-  // @@protoc_insertion_point(class_scope:access.InfoRequest)
-  private static final io.opentdf.platform.access.InfoRequest DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:kas.access.PublicKeyResponse)
+  private static final io.opentdf.platform.kas.access.PublicKeyResponse DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.opentdf.platform.access.InfoRequest();
+    DEFAULT_INSTANCE = new io.opentdf.platform.kas.access.PublicKeyResponse();
   }
 
-  public static io.opentdf.platform.access.InfoRequest getDefaultInstance() {
+  public static io.opentdf.platform.kas.access.PublicKeyResponse getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static final com.google.protobuf.Parser<InfoRequest>
-      PARSER = new com.google.protobuf.AbstractParser<InfoRequest>() {
+  private static final com.google.protobuf.Parser<PublicKeyResponse>
+      PARSER = new com.google.protobuf.AbstractParser<PublicKeyResponse>() {
     @java.lang.Override
-    public InfoRequest parsePartialFrom(
+    public PublicKeyResponse parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
@@ -389,17 +524,17 @@ private static final long serialVersionUID = 0L;
     }
   };
 
-  public static com.google.protobuf.Parser<InfoRequest> parser() {
+  public static com.google.protobuf.Parser<PublicKeyResponse> parser() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.google.protobuf.Parser<InfoRequest> getParserForType() {
+  public com.google.protobuf.Parser<PublicKeyResponse> getParserForType() {
     return PARSER;
   }
 
   @java.lang.Override
-  public io.opentdf.platform.access.InfoRequest getDefaultInstanceForType() {
+  public io.opentdf.platform.kas.access.PublicKeyResponse getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

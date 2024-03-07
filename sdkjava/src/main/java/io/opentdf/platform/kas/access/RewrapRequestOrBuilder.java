@@ -2,10 +2,10 @@
 // source: kas/access/service.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.access;
+package io.opentdf.platform.kas.access;
 
 public interface RewrapRequestOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:access.RewrapRequest)
+    // @@protoc_insertion_point(interface_extends:kas.access.RewrapRequest)
     com.google.protobuf.MessageOrBuilder {
 
   /**

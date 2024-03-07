@@ -2,14 +2,14 @@
 // source: kas/access/service.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.access;
+package io.opentdf.platform.kas.access;
 
 /**
- * Protobuf type {@code access.RewrapResponse}
+ * Protobuf type {@code kas.access.RewrapResponse}
  */
 public final class RewrapResponse extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:access.RewrapResponse)
+    // @@protoc_insertion_point(message_implements:kas.access.RewrapResponse)
     RewrapResponseOrBuilder {
 private static final long serialVersionUID = 0L;
   // Use RewrapResponse.newBuilder() to construct.
@@ -31,7 +31,7 @@ private static final long serialVersionUID = 0L;
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapResponse_descriptor;
+    return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_RewrapResponse_descriptor;
   }
 
   @SuppressWarnings({"rawtypes"})
@@ -49,9 +49,9 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapResponse_fieldAccessorTable
+    return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_RewrapResponse_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.opentdf.platform.access.RewrapResponse.class, io.opentdf.platform.access.RewrapResponse.Builder.class);
+            io.opentdf.platform.kas.access.RewrapResponse.class, io.opentdf.platform.kas.access.RewrapResponse.Builder.class);
   }
 
   public static final int METADATA_FIELD_NUMBER = 1;
@@ -60,7 +60,7 @@ private static final long serialVersionUID = 0L;
         java.lang.String, com.google.protobuf.Value> defaultEntry =
             com.google.protobuf.MapEntry
             .<java.lang.String, com.google.protobuf.Value>newDefaultInstance(
-                io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapResponse_MetadataEntry_descriptor, 
+                io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_RewrapResponse_MetadataEntry_descriptor, 
                 com.google.protobuf.WireFormat.FieldType.STRING,
                 "",
                 com.google.protobuf.WireFormat.FieldType.MESSAGE,
@@ -290,10 +290,10 @@ com.google.protobuf.Value defaultValue) {
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.opentdf.platform.access.RewrapResponse)) {
+    if (!(obj instanceof io.opentdf.platform.kas.access.RewrapResponse)) {
       return super.equals(obj);
     }
-    io.opentdf.platform.access.RewrapResponse other = (io.opentdf.platform.access.RewrapResponse) obj;
+    io.opentdf.platform.kas.access.RewrapResponse other = (io.opentdf.platform.kas.access.RewrapResponse) obj;
 
     if (!internalGetMetadata().equals(
         other.internalGetMetadata())) return false;
@@ -329,44 +329,44 @@ com.google.protobuf.Value defaultValue) {
     return hash;
   }
 
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(byte[] data)
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(java.io.InputStream input)
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -374,26 +374,26 @@ com.google.protobuf.Value defaultValue) {
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static io.opentdf.platform.access.RewrapResponse parseDelimitedFrom(java.io.InputStream input)
+  public static io.opentdf.platform.kas.access.RewrapResponse parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static io.opentdf.platform.access.RewrapResponse parseDelimitedFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.access.RewrapResponse parseFrom(
+  public static io.opentdf.platform.kas.access.RewrapResponse parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -406,7 +406,7 @@ com.google.protobuf.Value defaultValue) {
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.opentdf.platform.access.RewrapResponse prototype) {
+  public static Builder newBuilder(io.opentdf.platform.kas.access.RewrapResponse prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -422,15 +422,15 @@ com.google.protobuf.Value defaultValue) {
     return builder;
   }
   /**
-   * Protobuf type {@code access.RewrapResponse}
+   * Protobuf type {@code kas.access.RewrapResponse}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:access.RewrapResponse)
-      io.opentdf.platform.access.RewrapResponseOrBuilder {
+      // @@protoc_insertion_point(builder_implements:kas.access.RewrapResponse)
+      io.opentdf.platform.kas.access.RewrapResponseOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapResponse_descriptor;
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_RewrapResponse_descriptor;
     }
 
     @SuppressWarnings({"rawtypes"})
@@ -458,12 +458,12 @@ com.google.protobuf.Value defaultValue) {
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapResponse_fieldAccessorTable
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_RewrapResponse_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.opentdf.platform.access.RewrapResponse.class, io.opentdf.platform.access.RewrapResponse.Builder.class);
+              io.opentdf.platform.kas.access.RewrapResponse.class, io.opentdf.platform.kas.access.RewrapResponse.Builder.class);
     }
 
-    // Construct using io.opentdf.platform.access.RewrapResponse.newBuilder()
+    // Construct using io.opentdf.platform.kas.access.RewrapResponse.newBuilder()
     private Builder() {
 
     }
@@ -487,17 +487,17 @@ com.google.protobuf.Value defaultValue) {
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapResponse_descriptor;
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_RewrapResponse_descriptor;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.RewrapResponse getDefaultInstanceForType() {
-      return io.opentdf.platform.access.RewrapResponse.getDefaultInstance();
+    public io.opentdf.platform.kas.access.RewrapResponse getDefaultInstanceForType() {
+      return io.opentdf.platform.kas.access.RewrapResponse.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.RewrapResponse build() {
-      io.opentdf.platform.access.RewrapResponse result = buildPartial();
+    public io.opentdf.platform.kas.access.RewrapResponse build() {
+      io.opentdf.platform.kas.access.RewrapResponse result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -505,14 +505,14 @@ com.google.protobuf.Value defaultValue) {
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.RewrapResponse buildPartial() {
-      io.opentdf.platform.access.RewrapResponse result = new io.opentdf.platform.access.RewrapResponse(this);
+    public io.opentdf.platform.kas.access.RewrapResponse buildPartial() {
+      io.opentdf.platform.kas.access.RewrapResponse result = new io.opentdf.platform.kas.access.RewrapResponse(this);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartial0(io.opentdf.platform.access.RewrapResponse result) {
+    private void buildPartial0(io.opentdf.platform.kas.access.RewrapResponse result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
         result.metadata_ = internalGetMetadata().build(MetadataDefaultEntryHolder.defaultEntry);
@@ -562,16 +562,16 @@ com.google.protobuf.Value defaultValue) {
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.opentdf.platform.access.RewrapResponse) {
-        return mergeFrom((io.opentdf.platform.access.RewrapResponse)other);
+      if (other instanceof io.opentdf.platform.kas.access.RewrapResponse) {
+        return mergeFrom((io.opentdf.platform.kas.access.RewrapResponse)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.opentdf.platform.access.RewrapResponse other) {
-      if (other == io.opentdf.platform.access.RewrapResponse.getDefaultInstance()) return this;
+    public Builder mergeFrom(io.opentdf.platform.kas.access.RewrapResponse other) {
+      if (other == io.opentdf.platform.kas.access.RewrapResponse.getDefaultInstance()) return this;
       internalGetMutableMetadata().mergeFrom(
           other.internalGetMetadata());
       bitField0_ |= 0x00000001;
@@ -998,16 +998,16 @@ com.google.protobuf.Value defaultValue) {
     }
 
 
-    // @@protoc_insertion_point(builder_scope:access.RewrapResponse)
+    // @@protoc_insertion_point(builder_scope:kas.access.RewrapResponse)
   }
 
-  // @@protoc_insertion_point(class_scope:access.RewrapResponse)
-  private static final io.opentdf.platform.access.RewrapResponse DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:kas.access.RewrapResponse)
+  private static final io.opentdf.platform.kas.access.RewrapResponse DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.opentdf.platform.access.RewrapResponse();
+    DEFAULT_INSTANCE = new io.opentdf.platform.kas.access.RewrapResponse();
   }
 
-  public static io.opentdf.platform.access.RewrapResponse getDefaultInstance() {
+  public static io.opentdf.platform.kas.access.RewrapResponse getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
@@ -1043,7 +1043,7 @@ com.google.protobuf.Value defaultValue) {
   }
 
   @java.lang.Override
-  public io.opentdf.platform.access.RewrapResponse getDefaultInstanceForType() {
+  public io.opentdf.platform.kas.access.RewrapResponse getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

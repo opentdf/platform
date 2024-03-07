@@ -2,10 +2,10 @@
 // source: kas/access/service.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.access;
+package io.opentdf.platform.kas.access;
 
 public interface PublicKeyRequestOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:access.PublicKeyRequest)
+    // @@protoc_insertion_point(interface_extends:kas.access.PublicKeyRequest)
     com.google.protobuf.MessageOrBuilder {
 
   /**

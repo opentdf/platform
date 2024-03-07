@@ -169,7 +169,7 @@ func RegisterAccessServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/access.AccessService/Info", runtime.WithHTTPPathPattern("/"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/kas.access.AccessService/Info", runtime.WithHTTPPathPattern("/"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -194,7 +194,7 @@ func RegisterAccessServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/access.AccessService/PublicKey", runtime.WithHTTPPathPattern("/v2/kas_public_key"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/kas.access.AccessService/PublicKey", runtime.WithHTTPPathPattern("/v2/kas_public_key"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -219,7 +219,7 @@ func RegisterAccessServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/access.AccessService/LegacyPublicKey", runtime.WithHTTPPathPattern("/kas_public_key"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/kas.access.AccessService/LegacyPublicKey", runtime.WithHTTPPathPattern("/kas_public_key"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -244,7 +244,7 @@ func RegisterAccessServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/access.AccessService/Rewrap", runtime.WithHTTPPathPattern("/v2/rewrap"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/kas.access.AccessService/Rewrap", runtime.WithHTTPPathPattern("/v2/rewrap"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -308,7 +308,7 @@ func RegisterAccessServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/access.AccessService/Info", runtime.WithHTTPPathPattern("/"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/kas.access.AccessService/Info", runtime.WithHTTPPathPattern("/"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -330,7 +330,7 @@ func RegisterAccessServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/access.AccessService/PublicKey", runtime.WithHTTPPathPattern("/v2/kas_public_key"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/kas.access.AccessService/PublicKey", runtime.WithHTTPPathPattern("/v2/kas_public_key"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -352,7 +352,7 @@ func RegisterAccessServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/access.AccessService/LegacyPublicKey", runtime.WithHTTPPathPattern("/kas_public_key"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/kas.access.AccessService/LegacyPublicKey", runtime.WithHTTPPathPattern("/kas_public_key"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -374,7 +374,7 @@ func RegisterAccessServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/access.AccessService/Rewrap", runtime.WithHTTPPathPattern("/v2/rewrap"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/kas.access.AccessService/Rewrap", runtime.WithHTTPPathPattern("/v2/rewrap"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

@@ -2,117 +2,81 @@
 // source: kas/access/service.proto
 
 // Protobuf Java Version: 3.25.3
-package io.opentdf.platform.access;
+package io.opentdf.platform.kas.access;
 
 /**
- * Protobuf type {@code access.RewrapRequest}
+ * <pre>
+ * Service application level metadata
+ * </pre>
+ *
+ * Protobuf type {@code kas.access.InfoResponse}
  */
-public final class RewrapRequest extends
+public final class InfoResponse extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:access.RewrapRequest)
-    RewrapRequestOrBuilder {
+    // @@protoc_insertion_point(message_implements:kas.access.InfoResponse)
+    InfoResponseOrBuilder {
 private static final long serialVersionUID = 0L;
-  // Use RewrapRequest.newBuilder() to construct.
-  private RewrapRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+  // Use InfoResponse.newBuilder() to construct.
+  private InfoResponse(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-  private RewrapRequest() {
-    signedRequestToken_ = "";
-    bearer_ = "";
+  private InfoResponse() {
+    version_ = "";
   }
 
   @java.lang.Override
   @SuppressWarnings({"unused"})
   protected java.lang.Object newInstance(
       UnusedPrivateParameter unused) {
-    return new RewrapRequest();
+    return new InfoResponse();
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapRequest_descriptor;
+    return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_InfoResponse_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapRequest_fieldAccessorTable
+    return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_InfoResponse_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.opentdf.platform.access.RewrapRequest.class, io.opentdf.platform.access.RewrapRequest.Builder.class);
+            io.opentdf.platform.kas.access.InfoResponse.class, io.opentdf.platform.kas.access.InfoResponse.Builder.class);
   }
 
-  public static final int SIGNED_REQUEST_TOKEN_FIELD_NUMBER = 1;
+  public static final int VERSION_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private volatile java.lang.Object signedRequestToken_ = "";
+  private volatile java.lang.Object version_ = "";
   /**
-   * <code>string signed_request_token = 1 [json_name = "signedRequestToken"];</code>
-   * @return The signedRequestToken.
+   * <code>string version = 1 [json_name = "version"];</code>
+   * @return The version.
    */
   @java.lang.Override
-  public java.lang.String getSignedRequestToken() {
-    java.lang.Object ref = signedRequestToken_;
+  public java.lang.String getVersion() {
+    java.lang.Object ref = version_;
     if (ref instanceof java.lang.String) {
       return (java.lang.String) ref;
     } else {
       com.google.protobuf.ByteString bs = 
           (com.google.protobuf.ByteString) ref;
       java.lang.String s = bs.toStringUtf8();
-      signedRequestToken_ = s;
+      version_ = s;
       return s;
     }
   }
   /**
-   * <code>string signed_request_token = 1 [json_name = "signedRequestToken"];</code>
-   * @return The bytes for signedRequestToken.
+   * <code>string version = 1 [json_name = "version"];</code>
+   * @return The bytes for version.
    */
   @java.lang.Override
   public com.google.protobuf.ByteString
-      getSignedRequestTokenBytes() {
-    java.lang.Object ref = signedRequestToken_;
+      getVersionBytes() {
+    java.lang.Object ref = version_;
     if (ref instanceof java.lang.String) {
       com.google.protobuf.ByteString b = 
           com.google.protobuf.ByteString.copyFromUtf8(
               (java.lang.String) ref);
-      signedRequestToken_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
-  }
-
-  public static final int BEARER_FIELD_NUMBER = 2;
-  @SuppressWarnings("serial")
-  private volatile java.lang.Object bearer_ = "";
-  /**
-   * <code>string bearer = 2 [json_name = "bearer"];</code>
-   * @return The bearer.
-   */
-  @java.lang.Override
-  public java.lang.String getBearer() {
-    java.lang.Object ref = bearer_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      bearer_ = s;
-      return s;
-    }
-  }
-  /**
-   * <code>string bearer = 2 [json_name = "bearer"];</code>
-   * @return The bytes for bearer.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getBearerBytes() {
-    java.lang.Object ref = bearer_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      bearer_ = b;
+      version_ = b;
       return b;
     } else {
       return (com.google.protobuf.ByteString) ref;
@@ -133,11 +97,8 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(signedRequestToken_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, signedRequestToken_);
-    }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(bearer_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, bearer_);
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(version_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, version_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -148,11 +109,8 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(signedRequestToken_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, signedRequestToken_);
-    }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(bearer_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, bearer_);
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(version_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, version_);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -164,15 +122,13 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.opentdf.platform.access.RewrapRequest)) {
+    if (!(obj instanceof io.opentdf.platform.kas.access.InfoResponse)) {
       return super.equals(obj);
     }
-    io.opentdf.platform.access.RewrapRequest other = (io.opentdf.platform.access.RewrapRequest) obj;
+    io.opentdf.platform.kas.access.InfoResponse other = (io.opentdf.platform.kas.access.InfoResponse) obj;
 
-    if (!getSignedRequestToken()
-        .equals(other.getSignedRequestToken())) return false;
-    if (!getBearer()
-        .equals(other.getBearer())) return false;
+    if (!getVersion()
+        .equals(other.getVersion())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -184,53 +140,51 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    hash = (37 * hash) + SIGNED_REQUEST_TOKEN_FIELD_NUMBER;
-    hash = (53 * hash) + getSignedRequestToken().hashCode();
-    hash = (37 * hash) + BEARER_FIELD_NUMBER;
-    hash = (53 * hash) + getBearer().hashCode();
+    hash = (37 * hash) + VERSION_FIELD_NUMBER;
+    hash = (53 * hash) + getVersion().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
   }
 
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(byte[] data)
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(java.io.InputStream input)
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -238,26 +192,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static io.opentdf.platform.access.RewrapRequest parseDelimitedFrom(java.io.InputStream input)
+  public static io.opentdf.platform.kas.access.InfoResponse parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static io.opentdf.platform.access.RewrapRequest parseDelimitedFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.access.RewrapRequest parseFrom(
+  public static io.opentdf.platform.kas.access.InfoResponse parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -270,7 +224,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.opentdf.platform.access.RewrapRequest prototype) {
+  public static Builder newBuilder(io.opentdf.platform.kas.access.InfoResponse prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -286,26 +240,30 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * Protobuf type {@code access.RewrapRequest}
+   * <pre>
+   * Service application level metadata
+   * </pre>
+   *
+   * Protobuf type {@code kas.access.InfoResponse}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:access.RewrapRequest)
-      io.opentdf.platform.access.RewrapRequestOrBuilder {
+      // @@protoc_insertion_point(builder_implements:kas.access.InfoResponse)
+      io.opentdf.platform.kas.access.InfoResponseOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapRequest_descriptor;
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_InfoResponse_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapRequest_fieldAccessorTable
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_InfoResponse_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.opentdf.platform.access.RewrapRequest.class, io.opentdf.platform.access.RewrapRequest.Builder.class);
+              io.opentdf.platform.kas.access.InfoResponse.class, io.opentdf.platform.kas.access.InfoResponse.Builder.class);
     }
 
-    // Construct using io.opentdf.platform.access.RewrapRequest.newBuilder()
+    // Construct using io.opentdf.platform.kas.access.InfoResponse.newBuilder()
     private Builder() {
 
     }
@@ -319,25 +277,24 @@ private static final long serialVersionUID = 0L;
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      signedRequestToken_ = "";
-      bearer_ = "";
+      version_ = "";
       return this;
     }
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.opentdf.platform.access.ServiceProto.internal_static_access_RewrapRequest_descriptor;
+      return io.opentdf.platform.kas.access.ServiceProto.internal_static_kas_access_InfoResponse_descriptor;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.RewrapRequest getDefaultInstanceForType() {
-      return io.opentdf.platform.access.RewrapRequest.getDefaultInstance();
+    public io.opentdf.platform.kas.access.InfoResponse getDefaultInstanceForType() {
+      return io.opentdf.platform.kas.access.InfoResponse.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.RewrapRequest build() {
-      io.opentdf.platform.access.RewrapRequest result = buildPartial();
+    public io.opentdf.platform.kas.access.InfoResponse build() {
+      io.opentdf.platform.kas.access.InfoResponse result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -345,20 +302,17 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.access.RewrapRequest buildPartial() {
-      io.opentdf.platform.access.RewrapRequest result = new io.opentdf.platform.access.RewrapRequest(this);
+    public io.opentdf.platform.kas.access.InfoResponse buildPartial() {
+      io.opentdf.platform.kas.access.InfoResponse result = new io.opentdf.platform.kas.access.InfoResponse(this);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartial0(io.opentdf.platform.access.RewrapRequest result) {
+    private void buildPartial0(io.opentdf.platform.kas.access.InfoResponse result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.signedRequestToken_ = signedRequestToken_;
-      }
-      if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.bearer_ = bearer_;
+        result.version_ = version_;
       }
     }
 
@@ -396,24 +350,19 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.opentdf.platform.access.RewrapRequest) {
-        return mergeFrom((io.opentdf.platform.access.RewrapRequest)other);
+      if (other instanceof io.opentdf.platform.kas.access.InfoResponse) {
+        return mergeFrom((io.opentdf.platform.kas.access.InfoResponse)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.opentdf.platform.access.RewrapRequest other) {
-      if (other == io.opentdf.platform.access.RewrapRequest.getDefaultInstance()) return this;
-      if (!other.getSignedRequestToken().isEmpty()) {
-        signedRequestToken_ = other.signedRequestToken_;
+    public Builder mergeFrom(io.opentdf.platform.kas.access.InfoResponse other) {
+      if (other == io.opentdf.platform.kas.access.InfoResponse.getDefaultInstance()) return this;
+      if (!other.getVersion().isEmpty()) {
+        version_ = other.version_;
         bitField0_ |= 0x00000001;
-        onChanged();
-      }
-      if (!other.getBearer().isEmpty()) {
-        bearer_ = other.bearer_;
-        bitField0_ |= 0x00000002;
         onChanged();
       }
       this.mergeUnknownFields(other.getUnknownFields());
@@ -443,15 +392,10 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              signedRequestToken_ = input.readStringRequireUtf8();
+              version_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000001;
               break;
             } // case 10
-            case 18: {
-              bearer_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000002;
-              break;
-            } // case 18
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -469,146 +413,74 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.lang.Object signedRequestToken_ = "";
+    private java.lang.Object version_ = "";
     /**
-     * <code>string signed_request_token = 1 [json_name = "signedRequestToken"];</code>
-     * @return The signedRequestToken.
+     * <code>string version = 1 [json_name = "version"];</code>
+     * @return The version.
      */
-    public java.lang.String getSignedRequestToken() {
-      java.lang.Object ref = signedRequestToken_;
+    public java.lang.String getVersion() {
+      java.lang.Object ref = version_;
       if (!(ref instanceof java.lang.String)) {
         com.google.protobuf.ByteString bs =
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
-        signedRequestToken_ = s;
+        version_ = s;
         return s;
       } else {
         return (java.lang.String) ref;
       }
     }
     /**
-     * <code>string signed_request_token = 1 [json_name = "signedRequestToken"];</code>
-     * @return The bytes for signedRequestToken.
+     * <code>string version = 1 [json_name = "version"];</code>
+     * @return The bytes for version.
      */
     public com.google.protobuf.ByteString
-        getSignedRequestTokenBytes() {
-      java.lang.Object ref = signedRequestToken_;
+        getVersionBytes() {
+      java.lang.Object ref = version_;
       if (ref instanceof String) {
         com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
-        signedRequestToken_ = b;
+        version_ = b;
         return b;
       } else {
         return (com.google.protobuf.ByteString) ref;
       }
     }
     /**
-     * <code>string signed_request_token = 1 [json_name = "signedRequestToken"];</code>
-     * @param value The signedRequestToken to set.
+     * <code>string version = 1 [json_name = "version"];</code>
+     * @param value The version to set.
      * @return This builder for chaining.
      */
-    public Builder setSignedRequestToken(
+    public Builder setVersion(
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
-      signedRequestToken_ = value;
+      version_ = value;
       bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
-     * <code>string signed_request_token = 1 [json_name = "signedRequestToken"];</code>
+     * <code>string version = 1 [json_name = "version"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearSignedRequestToken() {
-      signedRequestToken_ = getDefaultInstance().getSignedRequestToken();
+    public Builder clearVersion() {
+      version_ = getDefaultInstance().getVersion();
       bitField0_ = (bitField0_ & ~0x00000001);
       onChanged();
       return this;
     }
     /**
-     * <code>string signed_request_token = 1 [json_name = "signedRequestToken"];</code>
-     * @param value The bytes for signedRequestToken to set.
+     * <code>string version = 1 [json_name = "version"];</code>
+     * @param value The bytes for version to set.
      * @return This builder for chaining.
      */
-    public Builder setSignedRequestTokenBytes(
+    public Builder setVersionBytes(
         com.google.protobuf.ByteString value) {
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
-      signedRequestToken_ = value;
+      version_ = value;
       bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-
-    private java.lang.Object bearer_ = "";
-    /**
-     * <code>string bearer = 2 [json_name = "bearer"];</code>
-     * @return The bearer.
-     */
-    public java.lang.String getBearer() {
-      java.lang.Object ref = bearer_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        bearer_ = s;
-        return s;
-      } else {
-        return (java.lang.String) ref;
-      }
-    }
-    /**
-     * <code>string bearer = 2 [json_name = "bearer"];</code>
-     * @return The bytes for bearer.
-     */
-    public com.google.protobuf.ByteString
-        getBearerBytes() {
-      java.lang.Object ref = bearer_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        bearer_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-    /**
-     * <code>string bearer = 2 [json_name = "bearer"];</code>
-     * @param value The bearer to set.
-     * @return This builder for chaining.
-     */
-    public Builder setBearer(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      bearer_ = value;
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string bearer = 2 [json_name = "bearer"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearBearer() {
-      bearer_ = getDefaultInstance().getBearer();
-      bitField0_ = (bitField0_ & ~0x00000002);
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>string bearer = 2 [json_name = "bearer"];</code>
-     * @param value The bytes for bearer to set.
-     * @return This builder for chaining.
-     */
-    public Builder setBearerBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      bearer_ = value;
-      bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
@@ -625,23 +497,23 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:access.RewrapRequest)
+    // @@protoc_insertion_point(builder_scope:kas.access.InfoResponse)
   }
 
-  // @@protoc_insertion_point(class_scope:access.RewrapRequest)
-  private static final io.opentdf.platform.access.RewrapRequest DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:kas.access.InfoResponse)
+  private static final io.opentdf.platform.kas.access.InfoResponse DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.opentdf.platform.access.RewrapRequest();
+    DEFAULT_INSTANCE = new io.opentdf.platform.kas.access.InfoResponse();
   }
 
-  public static io.opentdf.platform.access.RewrapRequest getDefaultInstance() {
+  public static io.opentdf.platform.kas.access.InfoResponse getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static final com.google.protobuf.Parser<RewrapRequest>
-      PARSER = new com.google.protobuf.AbstractParser<RewrapRequest>() {
+  private static final com.google.protobuf.Parser<InfoResponse>
+      PARSER = new com.google.protobuf.AbstractParser<InfoResponse>() {
     @java.lang.Override
-    public RewrapRequest parsePartialFrom(
+    public InfoResponse parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
@@ -660,17 +532,17 @@ private static final long serialVersionUID = 0L;
     }
   };
 
-  public static com.google.protobuf.Parser<RewrapRequest> parser() {
+  public static com.google.protobuf.Parser<InfoResponse> parser() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.google.protobuf.Parser<RewrapRequest> getParserForType() {
+  public com.google.protobuf.Parser<InfoResponse> getParserForType() {
     return PARSER;
   }
 
   @java.lang.Override
-  public io.opentdf.platform.access.RewrapRequest getDefaultInstanceForType() {
+  public io.opentdf.platform.kas.access.InfoResponse getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

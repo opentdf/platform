@@ -20,10 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AccessService_Info_FullMethodName            = "/access.AccessService/Info"
-	AccessService_PublicKey_FullMethodName       = "/access.AccessService/PublicKey"
-	AccessService_LegacyPublicKey_FullMethodName = "/access.AccessService/LegacyPublicKey"
-	AccessService_Rewrap_FullMethodName          = "/access.AccessService/Rewrap"
+	AccessService_Info_FullMethodName            = "/kas.access.AccessService/Info"
+	AccessService_PublicKey_FullMethodName       = "/kas.access.AccessService/PublicKey"
+	AccessService_LegacyPublicKey_FullMethodName = "/kas.access.AccessService/LegacyPublicKey"
+	AccessService_Rewrap_FullMethodName          = "/kas.access.AccessService/Rewrap"
 )
 
 // AccessServiceClient is the client API for AccessService service.
@@ -198,7 +198,7 @@ func _AccessService_Rewrap_Handler(srv interface{}, ctx context.Context, dec fun
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AccessService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "access.AccessService",
+	ServiceName: "kas.access.AccessService",
 	HandlerType: (*AccessServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

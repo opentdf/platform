@@ -28,7 +28,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/accessInfoResponse"
+              "$ref": "#/definitions/kasaccessInfoResponse"
             }
           },
           "default": {
@@ -80,7 +80,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/accessPublicKeyResponse"
+              "$ref": "#/definitions/kasaccessPublicKeyResponse"
             }
           },
           "default": {
@@ -124,7 +124,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/accessRewrapResponse"
+              "$ref": "#/definitions/kasaccessRewrapResponse"
             }
           },
           "default": {
@@ -140,7 +140,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/accessRewrapRequest"
+              "$ref": "#/definitions/kasaccessRewrapRequest"
             }
           }
         ],
@@ -151,7 +151,7 @@
     }
   },
   "definitions": {
-    "accessInfoResponse": {
+    "kasaccessInfoResponse": {
       "type": "object",
       "properties": {
         "version": {
@@ -160,7 +160,7 @@
       },
       "title": "Service application level metadata"
     },
-    "accessPublicKeyResponse": {
+    "kasaccessPublicKeyResponse": {
       "type": "object",
       "properties": {
         "publicKey": {
@@ -168,7 +168,7 @@
         }
       }
     },
-    "accessRewrapRequest": {
+    "kasaccessRewrapRequest": {
       "type": "object",
       "properties": {
         "signedRequestToken": {
@@ -179,7 +179,7 @@
         }
       }
     },
-    "accessRewrapResponse": {
+    "kasaccessRewrapResponse": {
       "type": "object",
       "properties": {
         "metadata": {

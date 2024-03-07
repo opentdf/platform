@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/internal/server"
 	"github.com/opentdf/platform/pkg/serviceregistry"
+	"github.com/opentdf/platform/sdk"
 	wellknown "github.com/opentdf/platform/services/wellknownconfiguration"
 )
 
@@ -89,8 +90,29 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("issue registering services: %w", err)
 	}
 
+	// Create the SDK client for services to use
+	var sdkOptions []sdk.Option
+	for name, service := range conf.Services {
+		if service.Remote.Endpoint == "" && service.Enabled {
+			switch name {
+			case "policy":
+				sdkOptions = append(sdkOptions, sdk.WithCustomPolicyConnection(otdf.GrpcInProcess.Conn()))
+			case "authorization":
+				sdkOptions = append(sdkOptions, sdk.WithCustomAuthorizationConnection(otdf.GrpcInProcess.Conn()))
+			}
+		}
+	}
+
+	client, err := sdk.New("", sdkOptions...)
+	if err != nil {
+		slog.Error("issue creating sdk client", slog.String("error", err.Error()))
+		return fmt.Errorf("issue creating sdk client: %w", err)
+	}
+
+	defer client.Close()
+
 	slog.Info("starting services")
-	if err := startServices(*conf, otdf, dbClient, eng); err != nil {
+	if err := startServices(*conf, otdf, dbClient, eng, client); err != nil {
 		slog.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
@@ -132,7 +154,7 @@ func createDatabaseClient(ctx context.Context, conf db.Config) (*db.Client, erro
 	return dbClient, nil
 }
 
-func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine) error {
+func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine, client *sdk.SDK) error {
 	// Iterate through the registered namespaces
 	for ns, registers := range serviceregistry.RegisteredServices {
 		// Check if the service is enabled
@@ -148,11 +170,15 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 				OTDF:            otdf,
 				DBClient:        dbClient,
 				Engine:          eng,
+				SDK:             client,
 				WellKnownConfig: wellknown.RegisterConfiguration,
 			})
 
 			// Register the service with the gRPC server
 			otdf.GrpcServer.RegisterService(r.ServiceDesc, impl)
+
+			// Register the service with in process gRPC server
+			otdf.GrpcInProcess.GetGrpcServer().RegisterService(r.ServiceDesc, impl)
 
 			// Register the service with the gRPC gateway
 			if err := handler(context.Background(), otdf.Mux, impl); err != nil {

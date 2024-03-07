@@ -67,7 +67,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 				Enabled: true,
 			},
 		},
-	}, s, nil, nil)
+	}, s, nil, nil, nil)
 	assert.Nil(t, err)
 
 	s.Start()

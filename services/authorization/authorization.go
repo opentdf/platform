@@ -15,36 +15,34 @@ import (
 	"github.com/open-policy-agent/opa/sdk"
 	"github.com/opentdf/platform/internal/entitlements"
 	"github.com/opentdf/platform/internal/opa"
+	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/services"
-	"google.golang.org/grpc"
 )
 
 type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
 	eng *opa.Engine
-	cc  *grpc.ClientConn
+	sdk *otdf.SDK
 }
 
-func NewAuthorizationServer(g *grpc.Server, cc *grpc.ClientConn, s *runtime.ServeMux, eng *opa.Engine) error {
-	as := &AuthorizationService{
-		eng: eng,
-		cc:  cc,
+func NewRegistration() serviceregistry.Registration {
+	return serviceregistry.Registration{
+		Namespace:   "authorization",
+		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
+			}
+		},
 	}
-	authorization.RegisterAuthorizationServiceServer(g, as)
-	err := authorization.RegisterAuthorizationServiceHandlerServer(context.Background(), s, as)
-	if err != nil {
-		return fmt.Errorf("failed to register authorization service handler: %w", err)
-	}
-	return nil
 }
 
 func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
 	slog.DebugContext(ctx, "getting decisions")
-
-	attrClient := attr.NewAttributesServiceClient(as.cc)
 
 	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos
 	rsp := &authorization.GetDecisionsResponse{
@@ -54,7 +52,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 		for _, ra := range dr.ResourceAttributes {
 			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
 
-			attrs, err := attrClient.GetAttributesByValueFqns(ctx, &attr.GetAttributesByValueFqnsRequest{
+			attrs, err := as.sdk.Attributes.GetAttributesByValueFqns(ctx, &attr.GetAttributesByValueFqnsRequest{
 				Fqns: ra.AttributeFqns,
 			})
 			if err != nil {

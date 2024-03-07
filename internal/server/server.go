@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -128,15 +127,9 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		interceptors = append(interceptors, authN.VerifyTokenInterceptor)
 		handler = authN.VerifyTokenHandler(mux)
 
-		// Try an register oidc configuration to wellknown service but don't return an error if it fails
-		var authNConfigMap map[string]interface{}
-		authNConfigBytes, err := json.Marshal(config.Auth.AuthNConfig)
-		if err == nil {
-			if err := json.Unmarshal(authNConfigBytes, &authNConfigMap); err == nil {
-				if err := config.WellKnownConfigRegister("oidc", authNConfigMap); err != nil {
-					slog.Warn("failed to register oidc configuration", slog.String("error", err.Error()))
-				}
-			}
+		// Try an register oidc issuer to wellknown service but don't return an error if it fails
+		if err := config.WellKnownConfigRegister("platform_issuer", config.Auth.Issuer); err != nil {
+			slog.Warn("failed to register platform issuer", slog.String("error", err.Error()))
 		}
 	}
 

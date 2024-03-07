@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/opentdf/platform/sdk"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/opa"
@@ -14,7 +16,12 @@ import (
 
 type ServiceConfig struct {
 	Enabled    bool                   `yaml:"enabled"`
+	Remote     RemoteServiceConfig    `yaml:"remote"`
 	ExtraProps map[string]interface{} `json:"-"`
+}
+
+type RemoteServiceConfig struct {
+	Endpoint string `yaml:"endpoint"`
 }
 
 type RegistrationParams struct {
@@ -22,6 +29,7 @@ type RegistrationParams struct {
 	OTDF            *server.OpenTDFServer
 	DBClient        *db.Client
 	Engine          *opa.Engine
+	SDK             *sdk.SDK
 	WellKnownConfig func(namespace string, config any) error
 }
 type HandlerServer func(ctx context.Context, mux *runtime.ServeMux, server any) error

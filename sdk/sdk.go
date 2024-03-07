@@ -54,20 +54,41 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	unwrapper := cfg.unwrapper
 
-	conn, err := grpc.Dial(platformEndpoint, cfg.build()...)
-	if err != nil {
-		return nil, errors.Join(ErrGrpcDialFailed, err)
+	var (
+		defaultConn       *grpc.ClientConn
+		policyConn        *grpc.ClientConn
+		authorizationConn *grpc.ClientConn
+	)
+
+	if platformEndpoint != "" {
+		var err error
+		defaultConn, err = grpc.Dial(platformEndpoint, cfg.build()...)
+		if err != nil {
+			return nil, errors.Join(ErrGrpcDialFailed, err)
+		}
+	}
+
+	if cfg.policyConn != nil {
+		policyConn = cfg.policyConn
+	} else {
+		policyConn = defaultConn
+	}
+
+	if cfg.authorizationConn != nil {
+		authorizationConn = cfg.authorizationConn
+	} else {
+		authorizationConn = defaultConn
 	}
 
 	return &SDK{
-		conn:                    conn,
+		conn:                    defaultConn,
 		unwrapper:               unwrapper,
-		Attributes:              attributes.NewAttributesServiceClient(conn),
-		Namespaces:              namespaces.NewNamespaceServiceClient(conn),
-		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(conn),
-		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(conn),
-		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(conn),
-		Authorization:           authorization.NewAuthorizationServiceClient(conn),
+		Attributes:              attributes.NewAttributesServiceClient(policyConn),
+		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
+		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),
+		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(policyConn),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
+		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
 	}, nil
 }
 

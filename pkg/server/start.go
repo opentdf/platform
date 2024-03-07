@@ -120,7 +120,7 @@ func Start(f ...StartOptions) error {
 	// Start the server
 	slog.Info("starting opentdf")
 
-	otdf.Run()
+	otdf.Start()
 
 	if startConfig.WaitForShutdownSignal {
 		waitForShutdownSignal()

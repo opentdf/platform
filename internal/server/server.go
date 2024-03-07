@@ -149,7 +149,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	}, nil
 }
 
-func (s OpenTDFServer) Run() {
+func (s OpenTDFServer) Start() {
 	// Start Grpc Server
 	go s.startGrpcServer()
 
@@ -163,14 +163,8 @@ func (s OpenTDFServer) Run() {
 }
 
 func (s OpenTDFServer) Stop() {
-	slog.Info("shutting down grpc server")
-	s.GrpcServer.GracefulStop()
-
-	slog.Info("shutting down in process grpc server")
-	s.GrpcInProcess.srv.GracefulStop()
-
-	slog.Info("shutting down http server")
 	if s.HTTPServer != nil {
+		slog.Info("shutting down http server")
 		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
 		defer cancel()
 		if err := s.HTTPServer.Shutdown(ctx); err != nil {
@@ -178,6 +172,13 @@ func (s OpenTDFServer) Stop() {
 			return
 		}
 	}
+
+	slog.Info("shutting down grpc server")
+	s.GrpcServer.GracefulStop()
+
+	slog.Info("shutting down in process grpc server")
+	s.GrpcInProcess.srv.GracefulStop()
+
 	slog.Info("shutdown complete")
 }
 

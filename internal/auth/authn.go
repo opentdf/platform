@@ -75,8 +75,6 @@ func NewAuthenticator(cfg AuthNConfig) (*authentication, error) {
 // verifyTokenHandler is a http handler that verifies the token
 func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("verifyTokenInterceptor")
-
 		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
 			handler.ServeHTTP(w, r)
 			return

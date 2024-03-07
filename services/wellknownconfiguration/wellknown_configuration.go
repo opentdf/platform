@@ -2,10 +2,8 @@ package wellknownconfiguration
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -49,7 +47,6 @@ func NewRegistration() serviceregistry.Registration {
 
 func (s WellKnownService) GetWellKnownConfiguration(context.Context, *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
 	rwMutex.RLock()
-	json.NewEncoder(os.Stdout).Encode(wellKnownConfiguration)
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {

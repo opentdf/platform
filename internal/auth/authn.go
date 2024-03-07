@@ -87,7 +87,7 @@ func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 		}
 		err := checkToken(r.Context(), header, a)
 		if err != nil {
-			slog.Warn("failed to validate token", slog.String("error", err.Error()))
+			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}

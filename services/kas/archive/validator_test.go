@@ -2,13 +2,13 @@ package archive
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 )
 
 func TestValid(t *testing.T) {
-	f, err := ioutil.ReadFile("testdata/envoy.yaml.tdf")
+	f, err := os.ReadFile("testdata/envoy.yaml.tdf")
 	if err != nil {
 		t.Fatal(err)
 	}

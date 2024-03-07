@@ -1,12 +1,12 @@
 package manifest
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 )
 
 func TestValid(t *testing.T) {
-	f, err := ioutil.ReadFile("testdata/manifest.json")
+	f, err := os.ReadFile("testdata/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}

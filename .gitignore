@@ -13,26 +13,28 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+*.tmp
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
-# Go workspace file
-#go.work
 
 tmp/
 .DS_Store
 __pycache__
 
-# GoLand IDE
-.idea/
-
+# Userland files
 opentdf.yaml
 .vscode/settings.json
-serviceapp
-go.work.sum
-go.work
+.idea/
+
+# Generated files
+/examples/examples
+/go.work.sum
+/go.work
+/kas-*.pem
+/opentdf
+/sdkjava/target
+/serviceapp
+
 *.zip
-examples/examples
-sdkjava/target
 sensitive.txt.tdf

@@ -259,7 +259,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
 	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
 	for _, kasInfo := range tdfConfig.kasInfoList {
-		if len(kasInfo.publicKey) == 0 {
+		if len(kasInfo.PublicKey) == 0 {
 			return errKasPubKeyMissing
 		}
 
@@ -270,7 +270,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 
 		keyAccess := KeyAccess{}
 		keyAccess.KeyType = kWrapped
-		keyAccess.KasURL = kasInfo.url
+		keyAccess.KasURL = kasInfo.URL
 		keyAccess.Protocol = kKasProtocol
 
 		// add policyBinding
@@ -278,7 +278,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 		keyAccess.PolicyBinding = string(crypto.Base64Encode([]byte(policyBinding)))
 
 		// wrap the key with kas public key
-		asymEncrypt, err := crypto.NewAsymEncryption(kasInfo.publicKey)
+		asymEncrypt, err := crypto.NewAsymEncryption(kasInfo.PublicKey)
 		if err != nil {
 			return fmt.Errorf("crypto.NewAsymEncryption failed:%w", err)
 		}
@@ -732,16 +732,16 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 
 func fillInPublicKeys(unwrapper Unwrapper, kasInfos []KASInfo) error {
 	for idx, kasInfo := range kasInfos {
-		if kasInfo.publicKey != "" {
+		if kasInfo.PublicKey != "" {
 			continue
 		}
 
 		publicKey, err := unwrapper.getPublicKey(kasInfo)
 		if err != nil {
-			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.url, err)
+			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.URL, err)
 		}
 
-		kasInfos[idx].publicKey = publicKey
+		kasInfos[idx].PublicKey = publicKey
 	}
 	return nil
 }

@@ -10,13 +10,13 @@ on:
   merge_group:
     branches:
       - main
-    types: 
+    types:
       - checks_requested
 
 jobs:
   pr:
     name: Validate PR title
-    if: ${{ github.event_name != 'merge_group' }}
+    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
     runs-on: ubuntu-22.04
     permissions:
       pull-requests: read
@@ -69,7 +69,17 @@ jobs:
         with:
           version: v1.55
           working-directory: ${{ matrix.directory }}
-      - run: go test ./... -short
+      - name: Install softHSM
+        if: matrix.directory == '.'
+        run: |-
+          sudo apt-get install -y softhsm opensc openssl
+          sudo chmod +x /etc/softhsm
+          sudo chmod +r /etc/softhsm/softhsm2.conf
+          mkdir -p $(pwd)/.tmp/tokens
+          echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
+          echo "log.level = DEBUG" >> softhsm2.conf
+          export SOFTHSM2_CONF=$(pwd)/softhsm2.conf
+      - run: SOFTHSM2_CONF="$(pwd)/softhsm2.conf" go test ./... -short
         working-directory: ${{ matrix.directory }}
 
   integration:
@@ -89,6 +99,7 @@ jobs:
       - run: go test ./integration -race
       - run: docker-compose up -d
       - run: cp example-opentdf.yaml opentdf.yaml
+      - run: sleep 15
       - run: go run . start &
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - run: sleep 15
@@ -142,12 +153,29 @@ jobs:
       - name: Check that files have been formatted before PR submission
         run: git diff-files --quiet --ignore-submodules
 
+  javasdk:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - buflint
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '20'
+          distribution: 'adopt'
+          server-id: github
+      - name: Compile Java SDK
+        run: |
+          mvn -f sdkjava/pom.xml clean install
   ci:
     needs:
       - go
       - integration
       - image
       - buflint
+      - pr
     runs-on: ubuntu-latest
     if: always()
     steps:

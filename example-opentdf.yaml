@@ -9,6 +9,8 @@ logger:
 #   user: postgres
 #   password: changeme
 services:
+  policy:
+    enabled: true
   entitlements:
     providers:
       # - type: keycloak

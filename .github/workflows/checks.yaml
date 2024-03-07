@@ -100,7 +100,7 @@ jobs:
       - run: docker-compose up -d
       - run: cp example-opentdf.yaml opentdf.yaml
       - run: sleep 15
-      - run: go run . start &
+      - run: go run . start 
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - run: sleep 15
         name: wake me up when github action runner supports docker-compose --wait

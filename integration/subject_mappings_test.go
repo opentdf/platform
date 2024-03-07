@@ -694,6 +694,17 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 	assert.Equal(s.T(), metadata.Labels["key_example"], got.Metadata.Labels["key_example"])
 }
 
+func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails() {
+	update := &subjectmapping.UpdateSubjectConditionSetRequest{
+		Id: nonExistentSubjectSetId,
+	}
+
+	id, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
+	assert.NotNil(s.T(), err)
+	assert.Zero(s.T(), id)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+}
+
 func TestSubjectMappingSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping subject_mappings integration tests")

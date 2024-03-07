@@ -42,7 +42,10 @@ go-lint:
 
 proto-generate:
 	rm -rf sdkjava/src protocol/go/[a-fh-z]*
-	buf generate services 
+	buf generate services
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
+	cp -r tmp-gen/sdkjava/src/main/java/grpc sdkjava/src/main/java/grpc
+	rm -rf tmp-gen
 
 test:
 	go test ./... -race

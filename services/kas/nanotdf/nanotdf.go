@@ -228,7 +228,7 @@ func ReadNanoTDFHeader(reader io.Reader) (*nanoTdf, error) {
 	}
 	nanoTDF.EphemeralPublicKey, err = readEphemeralPublicKey(reader, nanoTDF.binding.bindingBody)
 
-	return &nanoTDF, nil
+	return &nanoTDF, err
 }
 
 type Error string

@@ -74,7 +74,7 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	auth, err := NewAuthenticator(authnConfig{
+	auth, err := NewAuthenticator(AuthNConfig{
 		Issuer:   s.server.URL,
 		Audience: "test",
 		Clients:  []string{"client1", "client2", "client3"},

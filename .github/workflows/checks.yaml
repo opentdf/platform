@@ -10,7 +10,7 @@ on:
   merge_group:
     branches:
       - main
-    types: 
+    types:
       - checks_requested
 
 jobs:
@@ -69,7 +69,17 @@ jobs:
         with:
           version: v1.55
           working-directory: ${{ matrix.directory }}
-      - run: go test ./... -short
+      - name: Install softHSM
+        if: matrix.directory == '.'
+        run: |-
+          sudo apt-get install -y softhsm opensc openssl
+          sudo chmod +x /etc/softhsm
+          sudo chmod +r /etc/softhsm/softhsm2.conf
+          mkdir -p $(pwd)/.tmp/tokens
+          echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
+          echo "log.level = DEBUG" >> softhsm2.conf
+          export SOFTHSM2_CONF=$(pwd)/softhsm2.conf
+      - run: SOFTHSM2_CONF="$(pwd)/softhsm2.conf" go test ./... -short
         working-directory: ${{ matrix.directory }}
 
   integration:
@@ -89,6 +99,7 @@ jobs:
       - run: go test ./integration -race
       - run: docker-compose up -d
       - run: cp example-opentdf.yaml opentdf.yaml
+      - run: sleep 15
       - run: go run . start &
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - run: sleep 15

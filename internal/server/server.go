@@ -31,6 +31,12 @@ const (
 	maxAge              = 300
 )
 
+type Error string
+
+func (e Error) Error() string {
+	return string(e)
+}
+
 type Config struct {
 	Grpc                    GrpcConfig  `yaml:"grpc"`
 	HTTP                    HTTPConfig  `yaml:"http"`
@@ -61,6 +67,7 @@ type OpenTDFServer struct {
 	GrpcServer        *grpc.Server
 	grpcServerAddress string
 	GrpcInProcess     *inProcessServer
+	hsmSession        *hsmSession
 }
 
 /*

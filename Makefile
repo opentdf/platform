@@ -51,12 +51,12 @@ test:
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
-	rm -f serviceapp examples/examples go.work go.work.sum
+	rm -f opentdf examples/examples go.work go.work.sum
 
-build: go.work proto-generate serviceapp sdk/sdk examples/examples
+build: go.work proto-generate opentdf sdk/sdk examples/examples
 
-serviceapp: go.work go.mod go.sum main.go $(shell find cmd internal services)
-	go build -o serviceapp -v ./main.go
+opentdf: go.work go.mod go.sum main.go $(shell find cmd internal services)
+	go build -o opentdf -v ./main.go
 
 sdk/sdk: go.work $(shell find sdk)
 	(cd sdk && go build ./...)

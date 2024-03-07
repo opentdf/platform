@@ -12,6 +12,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.4
 	github.com/lestrrat-go/jwx/v2 v2.0.19
+	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.61.0
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.18.0

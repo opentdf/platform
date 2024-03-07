@@ -16,6 +16,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
+	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/p11"
 	"github.com/opentdf/platform/services/kas/tdf3"
 	"google.golang.org/grpc/codes"
@@ -420,7 +421,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			verified, err := p.verifyBearerAndParseRequestBody(
 				context.Background(),
-				&RewrapRequest{
+				&kaspb.RewrapRequest{
 					Bearer:             tt.tok,
 					SignedRequestToken: tt.body,
 				},
@@ -512,7 +513,7 @@ func TestHandlerAuthFailure0(t *testing.T) {
 	}
 
 	body := `{"mock": "value"}`
-	_, err := kas.Rewrap(context.Background(), &RewrapRequest{SignedRequestToken: body})
+	_, err := kas.Rewrap(context.Background(), &kaspb.RewrapRequest{SignedRequestToken: body})
 	status, ok := status.FromError(err)
 	if !ok || status.Code() != codes.Unauthenticated {
 		t.Errorf("got [%s], but should return expected error, status.message: [%s], status.code: [%s]", err, status.Message(), status.Code())
@@ -537,7 +538,7 @@ func TestHandlerAuthFailure1(t *testing.T) {
 		"Authorization": {"Bearer invalidToken"},
 	}
 	ctx := metadata.NewIncomingContext(context.Background(), md)
-	_, err := kas.Rewrap(ctx, &RewrapRequest{SignedRequestToken: body})
+	_, err := kas.Rewrap(ctx, &kaspb.RewrapRequest{SignedRequestToken: body})
 	status, ok := status.FromError(err)
 	if !ok || status.Code() != codes.PermissionDenied {
 		t.Errorf("got [%s], but should return expected error, status.message: [%s], status.code: [%s]", err, status.Message(), status.Code())
@@ -558,7 +559,7 @@ func TestHandlerAuthFailure2(t *testing.T) {
 	}
 
 	body := `{"mock": "value"}`
-	_, err := kas.Rewrap(context.Background(), &RewrapRequest{SignedRequestToken: body, Bearer: "invalidToken"})
+	_, err := kas.Rewrap(context.Background(), &kaspb.RewrapRequest{SignedRequestToken: body, Bearer: "invalidToken"})
 	status, ok := status.FromError(err)
 	if !ok || status.Code() != codes.PermissionDenied {
 		t.Errorf("got [%s], but should return expected error, status.message: [%s], status.code: [%s]", err, status.Message(), status.Code())

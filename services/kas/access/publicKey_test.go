@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/p11"
 )
 
@@ -145,7 +146,7 @@ func TestCertificateHandler(t *testing.T) {
 		OIDCVerifier: nil,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &PublicKeyRequest{Fmt: "pkcs8"})
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
 	if err != nil {
 		t.Errorf("got %s, but should be nil", err)
 	}
@@ -173,7 +174,7 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 		OIDCVerifier:  nil,
 	}
 
-	result, err := kas.LegacyPublicKey(context.Background(), &LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
+	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
 	if err != nil {
 		t.Errorf("got %s, but should be nil", err)
 	}
@@ -201,7 +202,7 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 		OIDCVerifier: nil,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &PublicKeyRequest{Algorithm: "ec:secp256r1"})
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1"})
 	if err != nil {
 		t.Errorf("got %s, but should be nil", err)
 	}
@@ -234,7 +235,7 @@ func TestPublicKeyHandlerV2(t *testing.T) {
 		OIDCVerifier: nil,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &PublicKeyRequest{Algorithm: "rsa"})
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
 	if err != nil {
 		t.Errorf("got %s, but should be nil", err)
 	}
@@ -262,7 +263,7 @@ func TestPublicKeyHandlerV2Failure(t *testing.T) {
 		OIDCVerifier: nil,
 	}
 
-	_, err = kas.PublicKey(context.Background(), &PublicKeyRequest{Algorithm: "rsa"})
+	_, err = kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
 	if err == nil {
 		t.Errorf("got nil error")
 	}
@@ -291,7 +292,7 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 		OIDCVerifier: nil,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &PublicKeyRequest{Algorithm: "ec:secp256r1",
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1",
 		V: "2"})
 	if err != nil {
 		t.Errorf("got %s, but should be nil", err)
@@ -324,7 +325,7 @@ func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
 		OIDCVerifier: nil,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &PublicKeyRequest{
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
 		Algorithm: "rsa",
 		V:         "2",
 		Fmt:       "jwk",

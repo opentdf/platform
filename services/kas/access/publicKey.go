@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
@@ -22,7 +23,7 @@ const (
 	algorithmEc256       = "ec:secp256r1"
 )
 
-func (p *Provider) LegacyPublicKey(ctx context.Context, in *LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
+func (p *Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
 	algorithm := in.Algorithm
 	var pem string
 	var err error
@@ -40,7 +41,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, in *LegacyPublicKeyReque
 	return &wrapperspb.StringValue{Value: pem}, nil
 }
 
-func (p *Provider) PublicKey(ctx context.Context, in *PublicKeyRequest) (*PublicKeyResponse, error) {
+func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
 	algorithm := in.Algorithm
 	if algorithm == algorithmEc256 {
 		ecPublicKeyPem, err := exportEcPublicKeyAsPemStr(&p.PublicKeyEC)
@@ -49,7 +50,7 @@ func (p *Provider) PublicKey(ctx context.Context, in *PublicKeyRequest) (*Public
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
 		slog.DebugContext(ctx, "EC Public Key Handler found", "cert", ecPublicKeyPem)
-		return &PublicKeyResponse{PublicKey: ecPublicKeyPem}, nil
+		return &kaspb.PublicKeyResponse{PublicKey: ecPublicKeyPem}, nil
 	}
 
 	if in.Fmt == "jwk" {
@@ -65,7 +66,7 @@ func (p *Provider) PublicKey(ctx context.Context, in *PublicKeyRequest) (*Public
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
 		slog.DebugContext(ctx, "JWK Public Key Handler found", "cert", jsonPublicKey)
-		return &PublicKeyResponse{PublicKey: string(jsonPublicKey)}, nil
+		return &kaspb.PublicKeyResponse{PublicKey: string(jsonPublicKey)}, nil
 	}
 
 	if in.Fmt == "pkcs8" {
@@ -75,7 +76,7 @@ func (p *Provider) PublicKey(ctx context.Context, in *PublicKeyRequest) (*Public
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
 		slog.DebugContext(ctx, "RSA Cert Handler found", "cert", certificatePem)
-		return &PublicKeyResponse{PublicKey: certificatePem}, nil
+		return &kaspb.PublicKeyResponse{PublicKey: certificatePem}, nil
 	}
 
 	rsaPublicKeyPem, err := exportRsaPublicKeyAsPemStr(&p.PublicKeyRSA)
@@ -84,7 +85,7 @@ func (p *Provider) PublicKey(ctx context.Context, in *PublicKeyRequest) (*Public
 		return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 	}
 	slog.DebugContext(ctx, "RSA Public Key Handler found", "cert", rsaPublicKeyPem)
-	return &PublicKeyResponse{PublicKey: rsaPublicKeyPem}, nil
+	return &kaspb.PublicKeyResponse{PublicKey: rsaPublicKeyPem}, nil
 }
 
 func exportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {

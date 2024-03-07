@@ -2,6 +2,7 @@ package kas
 
 import (
 	"context"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/pkg/serviceregistry"
@@ -34,7 +35,7 @@ func (s KasService) Info(ctx context.Context, req *kaspb.InfoRequest) (*kaspb.In
 
 func (s KasService) PublicKey(ctx context.Context, req *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
 	provider := access.Provider{}
-	resp, err := provider.PublicKey(ctx, &access.PublicKeyRequest{})
+	resp, err := provider.PublicKey(ctx, &kaspb.PublicKeyRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +46,7 @@ func (s KasService) PublicKey(ctx context.Context, req *kaspb.PublicKeyRequest) 
 
 func (s KasService) Rewrap(ctx context.Context, req *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	provider := access.Provider{}
-	resp, err := provider.Rewrap(ctx, &access.RewrapRequest{})
+	resp, err := provider.Rewrap(ctx, &kaspb.RewrapRequest{})
 	if err != nil {
 		return nil, err
 	}

@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"strings"
 
+	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/nanotdf"
 	"github.com/opentdf/platform/services/kas/p11"
 	"github.com/opentdf/platform/services/kas/tdf3"
@@ -122,7 +123,7 @@ type verifiedRequest struct {
 	cl          *customClaimsHeader
 }
 
-func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *RewrapRequest) (*verifiedRequest, error) {
+func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kaspb.RewrapRequest) (*verifiedRequest, error) {
 	idToken, err := p.OIDCVerifier.Verify(ctx, in.Bearer)
 	if err != nil {
 		slog.WarnContext(ctx, "unable verify bearer token", "err", err, "bearer", in.Bearer, "oidc", p.OIDCVerifier)
@@ -224,7 +225,7 @@ func (p *Provider) verifyAndParsePolicy(ctx context.Context, requestBody *Reques
 	return &policy, nil
 }
 
-func (p *Provider) Rewrap(ctx context.Context, in *RewrapRequest) (*RewrapResponse, error) {
+func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	slog.DebugContext(ctx, "REWRAP")
 
 	bearer, err := legacyBearerToken(ctx, in.Bearer)
@@ -253,7 +254,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *RewrapRequest) (*RewrapRespon
 	return p.tdf3Rewrap(ctx, body)
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*RewrapResponse, error) {
+func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kaspb.RewrapResponse, error) {
 	symmetricKey, err := p11.DecryptOAEP(&p.Session, &p.PrivateKey,
 		body.requestBody.KeyAccess.WrappedKey, crypto.SHA1, nil)
 	if err != nil {
@@ -300,14 +301,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*Rewr
 		return nil, err400("bad key for rewrap")
 	}
 
-	return &RewrapResponse{
+	return &kaspb.RewrapResponse{
 		EntityWrappedKey: rewrappedKey,
 		SessionPublicKey: "",
 		SchemaVersion:    schemaVersion,
 	}, nil
 }
 
-func nanoTDFRewrap(body verifiedRequest, session *p11.Pkcs11Session, key *p11.Pkcs11PrivateKeyEC) (*RewrapResponse, error) {
+func nanoTDFRewrap(body verifiedRequest, session *p11.Pkcs11Session, key *p11.Pkcs11PrivateKeyEC) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
 
 	header, err := nanotdf.ReadNanoTDFHeader(headerReader)
@@ -364,7 +365,7 @@ func nanoTDFRewrap(body verifiedRequest, session *p11.Pkcs11Session, key *p11.Pk
 	}
 	pemString := string(pem.EncodeToMemory(pemBlock))
 
-	return &RewrapResponse{
+	return &kaspb.RewrapResponse{
 		EntityWrappedKey: cipherText,
 		SessionPublicKey: pemString,
 		SchemaVersion:    schemaVersion,

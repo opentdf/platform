@@ -70,17 +70,20 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	}, s, nil, nil)
 	assert.Nil(t, err)
 
-	s.Run()
+	s.Start()
 
 	defer s.Stop()
 
 	// Make request to test service and ensure it registered
 	resp, err := http.Get("http://localhost:43481/testpath/world")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
+	if t.Failed() {
+		return
+	}
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 
 	respBody, err := io.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, "hello world from test service!", string(respBody))
 }

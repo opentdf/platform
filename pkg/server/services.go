@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/services/policy/namespaces"
 	"github.com/opentdf/platform/services/policy/resourcemapping"
 	"github.com/opentdf/platform/services/policy/subjectmapping"
+	wellknown "github.com/opentdf/platform/services/wellknownconfiguration"
 )
 
 func registerServices() error {
@@ -21,6 +22,7 @@ func registerServices() error {
 		kasregistry.NewRegistration(),
 		health.NewRegistration(),
 		kas.NewRegistration(),
+		wellknown.NewRegistration(),
 	} {
 		if err := serviceregistry.RegisterService(s); err != nil {
 			return err //nolint:wrapcheck // We are all friends here

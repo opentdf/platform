@@ -105,7 +105,7 @@ jobs:
       - run: sleep 15
         name: wake me up when github action runner supports docker-compose --wait
       - run: grpcurl -plaintext localhost:9000 list
-      - run: grpcurl -plaintext -d '{"service": "readiness"}' localhost:9000 grpc.health.v1.Health.Check
+      - run: grpcurl -plaintext -d \'{\"service": \"readiness\"}\' localhost:9000 grpc.health.v1.Health.Check
 
   image:
     name: image build

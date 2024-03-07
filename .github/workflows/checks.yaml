@@ -153,6 +153,22 @@ jobs:
       - name: Check that files have been formatted before PR submission
         run: git diff-files --quiet --ignore-submodules
 
+  javasdk:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - buflint
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '20'
+          distribution: 'adopt'
+          server-id: github
+      - name: Compile Java SDK
+        run: |
+          mvn -f sdkjava/pom.xml clean install
   ci:
     needs:
       - go

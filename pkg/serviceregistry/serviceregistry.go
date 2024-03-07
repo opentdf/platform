@@ -6,15 +6,19 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/internal/server"
 	"google.golang.org/grpc"
 )
 
+type ServiceConfig struct {
+	Enabled    bool                   `yaml:"enabled"`
+	ExtraProps map[string]interface{} `json:"-"`
+}
+
 type RegistrationParams struct {
-	Config          config.ServiceConfig
+	Config          ServiceConfig
 	OTDF            *server.OpenTDFServer
 	DBClient        *db.Client
 	Engine          *opa.Engine

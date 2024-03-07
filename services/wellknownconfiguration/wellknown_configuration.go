@@ -2,7 +2,10 @@ package wellknownconfiguration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
+	"os"
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -27,7 +30,7 @@ func RegisterConfiguration(namespace string, config any) error {
 	if _, ok := wellKnownConfiguration[namespace]; ok {
 		return fmt.Errorf("namespace %s configuration already registered", namespace)
 	}
-	wellKnownConfiguration[namespace] = config
+	wellKnownConfiguration[namespace] = config.(interface{})
 	rwMutex.Unlock()
 	return nil
 }
@@ -46,9 +49,11 @@ func NewRegistration() serviceregistry.Registration {
 
 func (s WellKnownService) GetWellKnownConfiguration(context.Context, *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
 	rwMutex.RLock()
+	json.NewEncoder(os.Stdout).Encode(wellKnownConfiguration)
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {
+		slog.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
 	}
 	return &wellknown.GetWellKnownConfigurationResponse{

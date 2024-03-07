@@ -1,4 +1,4 @@
-package server
+package auth
 
 import (
 	"context"
@@ -28,7 +28,7 @@ type AuthSuite struct {
 	suite.Suite
 	server *httptest.Server
 	key    jwk.Key
-	auth   *authN
+	auth   *authentication
 }
 
 func (s *AuthSuite) SetupTest() {
@@ -74,15 +74,13 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	auth, err := newAuthNInterceptor(AuthConfig{
-		Enabled: true,
-		IDPConfig: IDPConfig{
-			Issuer:   s.server.URL,
-			Audience: "test",
-			Clients:  []string{"client1", "client2", "client3"},
-		},
-	},
-	)
+	auth, err := NewAuthenticator(authnConfig{
+		Issuer:   s.server.URL,
+		Audience: "test",
+		Clients:  []string{"client1", "client2", "client3"},
+	})
+
+	assert.Nil(s.T(), err)
 
 	s.auth = auth
 }
@@ -110,7 +108,7 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 }
 
 func (s *AuthSuite) Test_VerifyTokenHandler_When_Authorization_Header_Missing_Expect_Error() {
-	handler := s.auth.verifyTokenHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	handler := s.auth.VerifyTokenHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	assert.Equal(s.T(), http.StatusUnauthorized, rec.Code)
@@ -120,7 +118,7 @@ func (s *AuthSuite) Test_VerifyTokenHandler_When_Authorization_Header_Missing_Ex
 func (s *AuthSuite) Test_VerifyTokenInterceptor_When_Authorization_Header_Missing_Expect_Error() {
 	md := metadata.New(map[string]string{})
 	ctx := metadata.NewIncomingContext(context.Background(), md)
-	_, err := s.auth.verifyTokenInterceptor(ctx, "test", &grpc.UnaryServerInfo{
+	_, err := s.auth.VerifyTokenInterceptor(ctx, "test", &grpc.UnaryServerInfo{
 		FullMethod: "/test",
 	}, nil)
 	assert.NotNil(s.T(), err)

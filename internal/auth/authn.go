@@ -1,11 +1,11 @@
-package server
+package auth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,82 +17,67 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// authN holds a jwks cache and information about the openid configuration
-type authN struct {
+var (
+	// Set of allowed gRPC endpoints that do not require authentication
+	allowedGRPCEndpoints = [...]string{
+		"/grpc.health.v1.Health/Check",
+		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
+	}
+	// Set of allowed HTTP endpoints that do not require authentication
+	allowedHTTPEndpoints = [...]string{
+		"/healthz",
+		"/.well-known/opentdf-configuration",
+	}
+)
+
+// Authentication holds a jwks cache and information about the openid configuration
+type authentication struct {
 	// cache holds the jwks cache
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
-	openidConfigurations map[string]openidConfiguraton
-}
-
-type openidConfiguraton struct {
-	IDPConfig `json:"-"`
-	JwksURI   string `json:"jwks_uri"`
+	oidcConfigurations map[string]AuthNConfig
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func newAuthNInterceptor(cfg AuthConfig) (*authN, error) {
-	a := &authN{}
-	a.openidConfigurations = make(map[string]openidConfiguraton)
+func NewAuthenticator(cfg AuthNConfig) (*authentication, error) {
+	a := &authentication{}
+	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	ctx := context.Background()
 
 	a.cache = jwk.NewCache(ctx)
 
 	// Build new cache
-	// Discover IDP
-	oidc, err := discoverIDP(ctx, cfg.Issuer)
+	// Discover OIDC Configuration
+	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer)
 	if err != nil {
 		return nil, err
 	}
-	oidc.IDPConfig = cfg.IDPConfig
+
+	cfg.OIDCConfiguration = *oidcConfig
 
 	// Register the jwks_uri with the cache
-	if err := a.cache.Register(oidc.JwksURI, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
 		return nil, err
 	}
 
 	// Need to refresh the cache to verify jwks is available
-	_, err = a.cache.Refresh(ctx, oidc.JwksURI)
+	_, err = a.cache.Refresh(ctx, cfg.JwksURI)
 	if err != nil {
 		return nil, err
 	}
 
-	a.openidConfigurations[cfg.Issuer] = *oidc
+	a.oidcConfigurations[cfg.Issuer] = cfg
 
 	return a, nil
 }
 
-// Discovers the openid configuration for the issuer provided
-func discoverIDP(ctx context.Context, issuer string) (*openidConfiguraton, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/.well-known/openid-configuration", issuer), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("failed to discover idp: %s", resp.Status)
-	}
-	defer resp.Body.Close()
-
-	cfg := &openidConfiguraton{}
-	err = json.NewDecoder(resp.Body).Decode(&cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
 // verifyTokenHandler is a http handler that verifies the token
-func (a authN) verifyTokenHandler(handler http.Handler) http.Handler {
+func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" {
+		fmt.Println("verifyTokenInterceptor")
+
+		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -114,9 +99,9 @@ func (a authN) verifyTokenHandler(handler http.Handler) http.Handler {
 }
 
 // verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a authN) verifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
-	if info.FullMethod == "/grpc.health.v1.Health/Check" {
+	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
 		return handler(ctx, req)
 	}
 
@@ -144,7 +129,7 @@ func (a authN) verifyTokenInterceptor(ctx context.Context, req any, info *grpc.U
 }
 
 // checkToken is a helper function to verify the token.
-func checkToken(ctx context.Context, authHeader []string, auth authN) error {
+func checkToken(ctx context.Context, authHeader []string, auth authentication) error {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -186,7 +171,7 @@ func checkToken(ctx context.Context, authHeader []string, auth authN) error {
 	if !ok {
 		return fmt.Errorf("invalid issuer")
 	}
-	oidc, exists := auth.openidConfigurations[issuerStr]
+	oidc, exists := auth.oidcConfigurations[issuerStr]
 	if !exists {
 		return fmt.Errorf("invalid issuer")
 	}
@@ -214,7 +199,7 @@ func checkToken(ctx context.Context, authHeader []string, auth authN) error {
 
 // claimsValidator is a custom validator to check extra claims in the token.
 // right now it only checks for client_id
-func (a authN) claimsValidator(ctx context.Context, token jwt.Token) jwt.ValidationError {
+func (a authentication) claimsValidator(ctx context.Context, token jwt.Token) jwt.ValidationError {
 	var (
 		clientID string
 	)
@@ -241,7 +226,7 @@ func (a authN) claimsValidator(ctx context.Context, token jwt.Token) jwt.Validat
 
 	// Check if the client id is allowed in list of clients
 	foundClientID := false
-	for _, c := range a.openidConfigurations[token.Issuer()].Clients {
+	for _, c := range a.oidcConfigurations[token.Issuer()].Clients {
 		if c == clientID {
 			foundClientID = true
 			break

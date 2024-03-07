@@ -62,7 +62,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 
 	// Start services with test service
 	err = startServices(config.Config{
-		Services: map[string]config.ServiceConfig{
+		Services: map[string]serviceregistry.ServiceConfig{
 			"test": {
 				Enabled: true,
 			},

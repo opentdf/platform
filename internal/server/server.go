@@ -117,6 +117,9 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	mux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
 	)
+
+	handler = mux
+
 	// Add authN interceptor
 	if config.Auth.Enabled {
 		authN, err := auth.NewAuthenticator(config.Auth.AuthNConfig)
@@ -131,10 +134,10 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		if err := config.WellKnownConfigRegister("platform_issuer", config.Auth.Issuer); err != nil {
 			slog.Warn("failed to register platform issuer", slog.String("error", err.Error()))
 		}
-
-		// Add proto validation interceptor
-		interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
 	}
+
+	// Add proto validation interceptor
+	interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
 
 	// Add CORS
 	// We need to make cors configurable

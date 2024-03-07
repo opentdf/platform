@@ -18,7 +18,6 @@ type config struct {
 	scopes            []string
 	policyConn        *grpc.ClientConn
 	authorizationConn *grpc.ClientConn
-	kasConn           *grpc.ClientConn
 	unwrapper         Unwrapper
 }
 
@@ -72,11 +71,5 @@ func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
-	}
-}
-
-func WithKASGRPCConnection(conn *grpc.ClientConn) Option {
-	return func(c *config) {
-		c.kasConn = conn
 	}
 }

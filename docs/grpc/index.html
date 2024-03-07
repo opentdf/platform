@@ -777,6 +777,37 @@
             </ul>
           </li>
         
+          
+          <li>
+            <a href="#wellknownconfiguration%2fwellknown_configuration.proto">wellknownconfiguration/wellknown_configuration.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#wellknownconfiguration.GetWellKnownConfigurationRequest"><span class="badge">M</span>GetWellKnownConfigurationRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#wellknownconfiguration.GetWellKnownConfigurationResponse"><span class="badge">M</span>GetWellKnownConfigurationResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#wellknownconfiguration.WellKnownConfig"><span class="badge">M</span>WellKnownConfig</a>
+                </li>
+              
+                <li>
+                  <a href="#wellknownconfiguration.WellKnownConfig.ConfigurationEntry"><span class="badge">M</span>WellKnownConfig.ConfigurationEntry</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#wellknownconfiguration.WellKnownService"><span class="badge">S</span>WellKnownService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
         <li><a href="#scalar-value-types">Scalar Value Types</a></li>
       </ul>
     </div>
@@ -5818,6 +5849,153 @@ Response Example:
                 <td>DeleteSubjectMapping</td>
                 <td>DELETE</td>
                 <td>/subject-mappings/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="wellknownconfiguration/wellknown_configuration.proto">wellknownconfiguration/wellknown_configuration.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="wellknownconfiguration.GetWellKnownConfigurationRequest">GetWellKnownConfigurationRequest</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="wellknownconfiguration.GetWellKnownConfigurationResponse">GetWellKnownConfigurationResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>configuration</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="wellknownconfiguration.WellKnownConfig">WellKnownConfig</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>configuration</td>
+                  <td><a href="#wellknownconfiguration.WellKnownConfig.ConfigurationEntry">WellKnownConfig.ConfigurationEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="wellknownconfiguration.WellKnownConfig.ConfigurationEntry">WellKnownConfig.ConfigurationEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="wellknownconfiguration.WellKnownService">WellKnownService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>GetWellKnownConfiguration</td>
+                <td><a href="#wellknownconfiguration.GetWellKnownConfigurationRequest">GetWellKnownConfigurationRequest</a></td>
+                <td><a href="#wellknownconfiguration.GetWellKnownConfigurationResponse">GetWellKnownConfigurationResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>GetWellKnownConfiguration</td>
+                <td>GET</td>
+                <td>/.well-known/opentdf-configuration</td>
                 <td></td>
               </tr>
               

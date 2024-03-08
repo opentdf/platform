@@ -242,7 +242,7 @@ func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *names
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	// Update FQN
@@ -296,8 +296,8 @@ func (c PolicyDbClient) DeleteNamespace(ctx context.Context, id string) (*namesp
 		return nil, err
 	}
 
-	if e := c.Exec(ctx, sql, args); e != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(e)
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
 	}
 
 	// return the namespace before it was deleted

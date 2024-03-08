@@ -413,7 +413,7 @@ func (c PolicyDbClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	return k, nil

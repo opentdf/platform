@@ -270,7 +270,7 @@ func (c PolicyDbClient) DeleteResourceMapping(ctx context.Context, id string) (*
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	return prev, nil

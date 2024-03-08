@@ -448,7 +448,7 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attri
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	// Update the FQN
@@ -476,7 +476,7 @@ func (c PolicyDbClient) DeactivateAttribute(ctx context.Context, id string) (*at
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 	return c.GetAttribute(ctx, id)
 }
@@ -502,7 +502,7 @@ func (c PolicyDbClient) DeleteAttribute(ctx context.Context, id string) (*attrib
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	// return the attribute before deleting
@@ -525,7 +525,7 @@ func (c PolicyDbClient) AssignKeyAccessServerToAttribute(ctx context.Context, k 
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	return k, nil
@@ -547,7 +547,7 @@ func (c PolicyDbClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, 
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	return k, nil

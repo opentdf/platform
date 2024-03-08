@@ -51,6 +51,14 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	}
 }
 
+func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
+	// When
+	sdk, err := sdk.New(goodPlatformEndpoint)
+	// Then
+	assert.Nil(t, err)
+	assert.NotNil(t, sdk)
+}
+
 func TestNew_ShouldCloseConnections(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithClientCredentials("myid", "mysecret", nil),

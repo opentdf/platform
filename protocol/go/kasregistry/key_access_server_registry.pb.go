@@ -477,8 +477,7 @@ type UpdateKeyAccessServerRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// Optional
+	Id        string     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Uri       string     `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
 	PublicKey *PublicKey `protobuf:"bytes,3,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	// Common metadata

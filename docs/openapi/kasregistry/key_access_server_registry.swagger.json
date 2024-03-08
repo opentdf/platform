@@ -157,8 +157,7 @@
               "type": "object",
               "properties": {
                 "uri": {
-                  "type": "string",
-                  "title": "Optional"
+                  "type": "string"
                 },
                 "publicKey": {
                   "$ref": "#/definitions/kasregistryPublicKey"

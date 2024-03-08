@@ -60,8 +60,6 @@ message CreateKeyAccessServerResponse {
 message UpdateKeyAccessServerRequest {
   // Required
   string id = 1 [(buf.validate.field).required = true];
-
-  // Optional
   string uri = 2 [(buf.validate.field).required = true];
   PublicKey public_key = 3 [(buf.validate.field).required = true];
 

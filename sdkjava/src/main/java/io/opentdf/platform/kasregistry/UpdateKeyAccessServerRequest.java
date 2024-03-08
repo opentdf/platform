@@ -94,10 +94,6 @@ private static final long serialVersionUID = 0L;
   @SuppressWarnings("serial")
   private volatile java.lang.Object uri_ = "";
   /**
-   * <pre>
-   * Optional
-   * </pre>
-   *
    * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
    * @return The uri.
    */
@@ -115,10 +111,6 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
-   * <pre>
-   * Optional
-   * </pre>
-   *
    * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
    * @return The bytes for uri.
    */
@@ -768,10 +760,6 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object uri_ = "";
     /**
-     * <pre>
-     * Optional
-     * </pre>
-     *
      * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
      * @return The uri.
      */
@@ -788,10 +776,6 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <pre>
-     * Optional
-     * </pre>
-     *
      * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
      * @return The bytes for uri.
      */
@@ -809,10 +793,6 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <pre>
-     * Optional
-     * </pre>
-     *
      * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
      * @param value The uri to set.
      * @return This builder for chaining.
@@ -826,10 +806,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     * Optional
-     * </pre>
-     *
      * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
@@ -840,10 +816,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     * Optional
-     * </pre>
-     *
      * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
      * @param value The bytes for uri to set.
      * @return This builder for chaining.

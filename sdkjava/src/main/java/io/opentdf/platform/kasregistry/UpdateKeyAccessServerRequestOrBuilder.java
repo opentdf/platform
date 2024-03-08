@@ -29,19 +29,11 @@ public interface UpdateKeyAccessServerRequestOrBuilder extends
       getIdBytes();
 
   /**
-   * <pre>
-   * Optional
-   * </pre>
-   *
    * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
    * @return The uri.
    */
   java.lang.String getUri();
   /**
-   * <pre>
-   * Optional
-   * </pre>
-   *
    * <code>string uri = 2 [json_name = "uri", (.buf.validate.field) = { ... }</code>
    * @return The bytes for uri.
    */

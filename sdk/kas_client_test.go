@@ -3,7 +3,6 @@ package sdk
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -24,12 +23,8 @@ func (fake FakeAccessTokenSource) GetAccessToken() (AccessToken, error) {
 func (fake FakeAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
 	return fake.asymDecryption
 }
-func (fake FakeAccessTokenSource) SignToken(tok jwt.Token) ([]byte, error) {
-	signed, err := jwt.Sign(tok, jwt.WithKey(fake.dPOPKey.Algorithm(), fake.dPOPKey))
-	if err != nil {
-		return nil, fmt.Errorf("error signing DPOP token: %w", err)
-	}
-	return signed, nil
+func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
+	return tokenMaker(fake.dPOPKey)
 }
 func (fake FakeAccessTokenSource) GetDPoPPublicKeyPEM() string {
 	return "this is the PEM"

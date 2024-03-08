@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	kas "github.com/opentdf/backend-go/pkg/access"
 	"github.com/opentdf/platform/sdk/internal/crypto"
@@ -31,7 +32,7 @@ type AccessTokenSource interface {
 	// probably better to use `crypto.AsymDecryption` here than roll our own since this should be
 	// more closely linked to what happens in KAS in terms of crypto params
 	GetAsymDecryption() crypto.AsymDecryption
-	SignToken(jwt.Token) ([]byte, error)
+	MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error)
 	GetDPoPPublicKeyPEM() string
 	RefreshAccessToken() error
 }
@@ -139,7 +140,15 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		return nil, fmt.Errorf("failed to create jwt: %w", err)
 	}
 
-	signedToken, err := k.accessTokenSource.SignToken(tok)
+	signedToken, err := k.accessTokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
+		signed, err := jwt.Sign(tok, jwt.WithKey(key.Algorithm(), key))
+		if err != nil {
+			return nil, fmt.Errorf("error signing DPOP token: %w", err)
+		}
+
+		return signed, nil
+	})
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}

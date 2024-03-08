@@ -28,12 +28,12 @@ type KASClient struct {
 type AccessToken string
 
 type AccessTokenSource interface {
-	GetAccessToken() (AccessToken, error)
+	AccessToken() (AccessToken, error)
 	// probably better to use `crypto.AsymDecryption` here than roll our own since this should be
 	// more closely linked to what happens in KAS in terms of crypto params
-	GetAsymDecryption() crypto.AsymDecryption
+	AsymDecryption() crypto.AsymDecryption
 	MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error)
-	GetDPoPPublicKeyPEM() string
+	DPOPPublicKeyPEM() string
 	RefreshAccessToken() error
 }
 
@@ -94,7 +94,7 @@ func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 		}
 	}
 
-	key, err := k.accessTokenSource.GetAsymDecryption().Decrypt(response.EntityWrappedKey)
+	key, err := k.accessTokenSource.AsymDecryption().Decrypt(response.EntityWrappedKey)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}
@@ -122,7 +122,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	requestBody := rewrapRequestBody{
 		Policy:          policy,
 		KeyAccess:       keyAccess,
-		ClientPublicKey: k.accessTokenSource.GetDPoPPublicKeyPEM(),
+		ClientPublicKey: k.accessTokenSource.DPOPPublicKeyPEM(),
 	}
 
 	requestBodyJSON, err := json.Marshal(requestBody)
@@ -153,7 +153,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
 
-	accessToken, err := k.accessTokenSource.GetAccessToken()
+	accessToken, err := k.accessTokenSource.AccessToken()
 	if err != nil {
 		return nil, fmt.Errorf("error getting access token: %w", err)
 	}

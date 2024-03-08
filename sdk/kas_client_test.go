@@ -17,16 +17,16 @@ type FakeAccessTokenSource struct {
 	accessToken    string
 }
 
-func (fake FakeAccessTokenSource) GetAccessToken() (AccessToken, error) {
+func (fake FakeAccessTokenSource) AccessToken() (AccessToken, error) {
 	return AccessToken(fake.accessToken), nil
 }
-func (fake FakeAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
+func (fake FakeAccessTokenSource) AsymDecryption() crypto.AsymDecryption {
 	return fake.asymDecryption
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(fake.dPOPKey)
 }
-func (fake FakeAccessTokenSource) GetDPoPPublicKeyPEM() string {
+func (fake FakeAccessTokenSource) DPOPPublicKeyPEM() string {
 	return "this is the PEM"
 }
 func (fake FakeAccessTokenSource) RefreshAccessToken() error {

@@ -115,7 +115,7 @@ func NewIDPAccessTokenSource(
 }
 
 // use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) GetAccessToken() (AccessToken, error) {
+func (t *IDPAccessTokenSource) AccessToken() (AccessToken, error) {
 	if t.token == nil {
 		err := t.RefreshAccessToken()
 		if err != nil {
@@ -126,7 +126,7 @@ func (t *IDPAccessTokenSource) GetAccessToken() (AccessToken, error) {
 	return AccessToken(t.token.AccessToken), nil
 }
 
-func (t *IDPAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
+func (t *IDPAccessTokenSource) AsymDecryption() crypto.AsymDecryption {
 	return t.asymDecryption
 }
 
@@ -147,6 +147,6 @@ func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error
 	return tokenMaker(t.dpopKey)
 }
 
-func (t *IDPAccessTokenSource) GetDPoPPublicKeyPEM() string {
+func (t *IDPAccessTokenSource) DPOPPublicKeyPEM() string {
 	return t.dpopPEM
 }

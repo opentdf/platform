@@ -140,7 +140,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
 
 	// Add CORS
-	// We need to make cors configurable
+	// TODO(#305) We need to make cors configurable
 	handler = cors.New(cors.Options{
 		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},

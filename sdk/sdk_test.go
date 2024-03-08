@@ -53,6 +53,18 @@ func Test_ShouldCreateNewSDK(t *testing.T) {
 	}
 }
 
+func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
+	// When
+	sdk, err := sdk.New(goodPlatformEndpoint)
+	// Then
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if sdk == nil {
+		t.Errorf("Expected sdk, got nil")
+	}
+}
+
 func Test_ShouldCloseSDKConnection(t *testing.T) {
 	t.Skip("Skipping test since close is broken")
 	// Given

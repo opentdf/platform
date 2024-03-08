@@ -91,7 +91,7 @@ func buildKASClient(c *config) (KASClient, error) {
 
 	// at this point we have either both client credentials and a token endpoint or none of the above
 	if c.clientCredentials.ClientId == "" {
-		return KASClient{}, errors.New("cannot create an SDK with no client credentials")
+		return KASClient{}, nil
 	}
 
 	ts, err := NewIDPAccessTokenSource(

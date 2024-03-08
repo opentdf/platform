@@ -1,6 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
 
+-- NOTE: pre-1.0 not crucial to migrate existing timestamps stored in the metadata JSONB column into the new columns.
+
 -- Create update function
 CREATE OR REPLACE FUNCTION update_updated_at() RETURNS TRIGGER 
 LANGUAGE plpgsql

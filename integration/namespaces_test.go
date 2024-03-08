@@ -121,22 +121,54 @@ func (s *NamespacesSuite) Test_ListNamespaces() {
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace() {
-	id := s.f.GetNamespaceKey("example.com").Id
-	if n, err := s.db.PolicyClient.GetNamespace(s.ctx, id); err != nil {
-		assert.Nil(s.T(), err)
-	} else {
-		assert.NotNil(s.T(), n)
-		assert.Equal(s.T(), id, n.Id)
+	fixedLabel := "fixed label"
+	updateLabel := "update label"
+	updatedLabel := "true"
+	newLabel := "new label"
+
+	labels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updateLabel,
 	}
-	n, err := s.db.PolicyClient.UpdateNamespace(s.ctx, id, &namespaces.UpdateNamespaceRequest{
+	updateLabels := map[string]string{
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+	expectedLabels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+
+	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "updating-namespace.com",
 		Metadata: &common.MetadataMutable{
-			Labels: map[string]string{"updated": "true"},
+			Labels: labels,
+		},
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), created)
+
+	updatedWithoutChange, err := s.db.PolicyClient.UpdateNamespace(s.ctx, created.Id, &namespaces.UpdateNamespaceRequest{})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updatedWithoutChange)
+	assert.Equal(s.T(), created.Id, updatedWithoutChange.Id)
+
+	updatedWithChange, err := s.db.PolicyClient.UpdateNamespace(s.ctx, created.Id, &namespaces.UpdateNamespaceRequest{
+		Metadata: &common.MetadataMutable{
+			Labels: updateLabels,
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), n)
-	assert.Equal(s.T(), id, n.Id)
+	assert.NotNil(s.T(), updatedWithChange)
+	assert.Equal(s.T(), created.Id, updatedWithChange.Id)
+
+	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), created.Id, got.Id)
+	assert.EqualValues(s.T(), expectedLabels, got.Metadata.GetLabels())
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {

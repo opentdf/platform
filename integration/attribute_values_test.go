@@ -178,56 +178,71 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
+	fixedLabel := "fixed label"
+	updateLabel := "update label"
+	updatedLabel := "true"
+	newLabel := "new label"
+
+	labels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updateLabel,
+	}
+	updateLabels := map[string]string{
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+	expectedLabels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+
 	// create a value
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
-	metadata := &common.MetadataMutable{
-		Labels: map[string]string{
-			"name": "created attribute value",
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, &attributes.CreateAttributeValueRequest{
+		Value: "created value testing update",
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
 		},
-	}
-
-	value := &attributes.CreateAttributeValueRequest{
-		Value:    "created value testing update",
-		Metadata: metadata,
-	}
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdValue)
+	assert.NotNil(s.T(), created)
 
 	// update with no changes
-	updatedNoChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, createdValue.Id, &attributes.UpdateAttributeValueRequest{})
+	updatedWithoutChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, created.Id, &attributes.UpdateAttributeValueRequest{})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), updatedNoChange)
-	assert.Equal(s.T(), createdValue.Id, updatedNoChange.Id)
+	assert.NotNil(s.T(), updatedWithoutChange)
+	assert.Equal(s.T(), created.Id, updatedWithoutChange.Id)
 
 	// update with changes
-	labelName := "updated attribute value"
-	labelUpdated := "true"
-	updatedWithChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, createdValue.Id, &attributes.UpdateAttributeValueRequest{
+	updatedWithChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, created.Id, &attributes.UpdateAttributeValueRequest{
 		Metadata: &common.MetadataMutable{
-			Labels: map[string]string{
-				"name":    labelName,
-				"updated": labelUpdated,
-			},
+			Labels: updateLabels,
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	})
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updatedWithChange)
-	assert.Equal(s.T(), createdValue.Id, updatedWithChange.Id)
+	assert.Equal(s.T(), created.Id, updatedWithChange.Id)
 
 	// get it again to verify it was updated
-	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.Id)
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
-	assert.Equal(s.T(), labelName, got.Metadata.Labels["name"])
-	assert.Equal(s.T(), labelUpdated, got.Metadata.Labels["updated"])
+	assert.Equal(s.T(), created.Id, got.Id)
+	assert.EqualValues(s.T(), expectedLabels, got.Metadata.GetLabels())
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
-	s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
-	updatedValue := &attributes.UpdateAttributeValueRequest{}
-	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, nonExistentAttributeValueUuid, updatedValue)
+	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, nonExistentAttributeValueUuid, &attributes.UpdateAttributeValueRequest{
+		// some data is required to ensure the request reaches the db
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"update": "true",
+			},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
@@ -238,17 +253,17 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute() {
 	value := &attributes.CreateAttributeValueRequest{
 		Value: "created value testing delete",
 	}
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, s.f.GetAttributeKey("example.net/attr/attr1").Id, value)
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, s.f.GetAttributeKey("example.net/attr/attr1").Id, value)
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdValue)
+	assert.NotNil(s.T(), created)
 
 	// delete it
-	resp, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, createdValue.Id)
+	resp, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), resp)
 
 	// get it again to verify it no longer exists
-	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.Id)
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, created.Id)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), got)
 }

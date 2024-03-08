@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -20,13 +21,14 @@ type namespaceSelectOptions struct {
 
 func hydrateNamespaceItem(row pgx.Row, opts namespaceSelectOptions) (*namespaces.Namespace, error) {
 	var (
-		id     string
-		name   string
-		active bool
-		fqn    sql.NullString
+		id           string
+		name         string
+		active       bool
+		metadataJson []byte
+		fqn          sql.NullString
 	)
 
-	fields := []interface{}{&id, &name, &active}
+	fields := []interface{}{&id, &name, &active, &metadataJson}
 	if opts.withFqn {
 		fields = append(fields, &fqn)
 	}
@@ -35,11 +37,20 @@ func hydrateNamespaceItem(row pgx.Row, opts namespaceSelectOptions) (*namespaces
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	m := &common.Metadata{}
+	if metadataJson != nil {
+		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	return &namespaces.Namespace{
-		Id:     id,
-		Name:   name,
-		Active: &wrapperspb.BoolValue{Value: active},
-		Fqn:    fqn.String,
+		Id:       id,
+		Name:     name,
+		Active:   &wrapperspb.BoolValue{Value: active},
+		Metadata: m,
+		Fqn:      fqn.String,
 	}, nil
 }
 
@@ -64,6 +75,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
+		t.Field("metadata"),
 	}
 
 	if opts.withFqn {
@@ -112,6 +124,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
+		t.Field("metadata"),
 	}
 
 	if opts.withFqn {
@@ -216,10 +229,6 @@ func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *names
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if metadataJson == nil {
-		return nil, db.ErrMissingValue
 	}
 
 	sql, args, err := updateNamespaceSql(id, metadataJson)

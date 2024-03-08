@@ -154,27 +154,38 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
-	metadata := &common.MetadataMutable{
-		Labels: map[string]string{
-			"name": "some test resource mapping name",
-		},
+	fixedLabel := "fixed label"
+	updateLabel := "update label"
+	updatedLabel := "true"
+	newLabel := "new label"
+
+	labels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updateLabel,
 	}
+	updateLabels := map[string]string{
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+	expectedLabels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+
+	terms := []string{"some term", "other term"}
+	updateTerms := []string{"updated term1", "updated term 2"}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
-	mapping := &resourcemapping.CreateResourceMappingRequest{
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
-		Metadata:         metadata,
-		Terms:            []string{"some term", "other term"},
-	}
-	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
+		},
+		Terms: terms,
+	})
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
-
-	updatedMetadata := &common.MetadataMutable{
-		Labels: map[string]string{
-			"name": "new name",
-		},
-	}
 
 	if v, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.Id); err != nil {
 		assert.Nil(s.T(), err)
@@ -185,16 +196,23 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		assert.Equal(s.T(), createdMapping.Terms, v.Terms)
 	}
 
-	// update the created with new metadata and terms
-	updatedMapping := &resourcemapping.UpdateResourceMappingRequest{
-		AttributeValueId:       createdMapping.AttributeValue.Id,
-		Metadata:               updatedMetadata,
-		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
-		Terms:                  []string{"updated term1", "updated term 2"},
-	}
-	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.Id, updatedMapping)
+	updateWithoutChange, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.Id, &resourcemapping.UpdateResourceMappingRequest{})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), updated)
+	assert.NotNil(s.T(), updateWithoutChange)
+	assert.Equal(s.T(), createdMapping.Id, updateWithoutChange.Id)
+
+	// update the created with new metadata and terms
+	updateWithChange, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.Id, &resourcemapping.UpdateResourceMappingRequest{
+		AttributeValueId: createdMapping.AttributeValue.Id,
+		Terms:            updateTerms,
+		Metadata: &common.MetadataMutable{
+			Labels: updateLabels,
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updateWithChange)
+	assert.Equal(s.T(), createdMapping.Id, updateWithChange.Id)
 
 	// get after update to verify db reflects changes made
 	got, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.Id)
@@ -202,8 +220,8 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), createdMapping.Id, got.Id)
 	assert.Equal(s.T(), createdMapping.AttributeValue.Id, got.AttributeValue.Id)
-	assert.Equal(s.T(), updatedMapping.Terms, got.Terms)
-	assert.EqualValues(s.T(), updatedMetadata.Labels, got.Metadata.Labels)
+	assert.Equal(s.T(), updateTerms, got.Terms)
+	assert.EqualValues(s.T(), expectedLabels, got.Metadata.GetLabels())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {

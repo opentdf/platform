@@ -228,30 +228,64 @@ func (s *AttributesSuite) Test_ListAttribute() {
 }
 
 func (s *AttributesSuite) Test_UpdateAttribute() {
-	s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
+	fixedLabel := "fixed label"
+	updateLabel := "update label"
+	updatedLabel := "true"
+	newLabel := "new label"
+
+	labels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updateLabel,
+	}
+	updateLabels := map[string]string{
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+	expectedLabels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__update_attribute",
 		NamespaceId: fixtureNamespaceId,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
+		},
 	}
-	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdAttr)
+	assert.NotNil(s.T(), created)
 
-	// change name and rule
-	update := &attributes.UpdateAttributeRequest{}
-	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, createdAttr.Id, update)
+	// update with no changes
+	updatedWithoutChange, err := s.db.PolicyClient.UpdateAttribute(s.ctx, created.Id, &attributes.UpdateAttributeRequest{})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), resp)
+	assert.NotNil(s.T(), updatedWithoutChange)
+	assert.Equal(s.T(), created.Id, updatedWithoutChange.Id)
 
-	updated, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.Id)
+	// update with metadata
+	updatedWithChange, err := s.db.PolicyClient.UpdateAttribute(s.ctx, created.Id, &attributes.UpdateAttributeRequest{
+		Metadata: &common.MetadataMutable{
+			Labels: updateLabels,
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), updated)
+	assert.NotNil(s.T(), updatedWithChange)
+	assert.Equal(s.T(), created.Id, updatedWithChange.Id)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), created.Id, got.Id)
+	assert.EqualValues(s.T(), expectedLabels, got.Metadata.GetLabels())
 }
 
 func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
-	// s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
 	update := &attributes.UpdateAttributeRequest{
+		// Metadata is required otherwise there will be no database request
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{
 				"origin": "Some info about origin",

@@ -25,7 +25,7 @@ func MarshalCreateMetadata(metadata *common.MetadataMutable) ([]byte, *common.Me
 	return marshalMetadata(metadata)
 }
 
-func MarshalUpdateMetadata(m *common.MetadataMutable, b common.MetadataUpdateEnum, upstreamFunc func() (*common.Metadata, error)) ([]byte, *common.Metadata, error) {
+func MarshalUpdateMetadata(m *common.MetadataMutable, b common.MetadataUpdateEnum, getExtendableMetadata func() (*common.Metadata, error)) ([]byte, *common.Metadata, error) {
 	// No metadata update
 	if m == nil {
 		return nil, nil, nil
@@ -36,29 +36,28 @@ func MarshalUpdateMetadata(m *common.MetadataMutable, b common.MetadataUpdateEnu
 	}
 
 	if b == *common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND.Enum() {
-		if upstreamFunc == nil {
-			return nil, nil, fmt.Errorf("upstreamFunc is required for extend metadata update")
+		if getExtendableMetadata == nil {
+			return nil, nil, fmt.Errorf("getExtendableMetadata is required for extend metadata update")
 		}
-		um, err := upstreamFunc()
+
+		existing, err := getExtendableMetadata()
 		if err != nil {
 			return nil, nil, err
 		}
-		if um == nil {
+		if existing == nil {
 			return marshalMetadata(m)
 		}
 
 		// merge labels
-		for k, _ := range m.GetLabels() {
-			v, ok := m.Labels[k]
-			uv, uok := um.Labels[k]
-			if ok {
-				m.Labels[k] = v
-			} else if uok {
-				m.Labels[k] = uv
+		next := &common.MetadataMutable{
+			Labels: existing.Labels,
+		}
+		for k := range m.GetLabels() {
+			if v, ok := m.Labels[k]; ok {
+				next.Labels[k] = v
 			}
 		}
-
-		return marshalMetadata(m)
+		return marshalMetadata(next)
 	}
 
 	return nil, nil, fmt.Errorf("unknown metadata update type: %s", b.String())

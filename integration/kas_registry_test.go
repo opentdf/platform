@@ -140,44 +140,63 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
+	fixedLabel := "fixed label"
+	updateLabel := "update label"
+	updatedLabel := "true"
+	newLabel := "new label"
+
+	uri := "testingUpdateWithRemoteKey.com"
+	pubKeyRemote := "https://remote.com/key"
+	updatedUri := "updatedUri.com"
+	updatedPubKeyRemote := "https://remote2.com/key"
+
 	// create a test KAS
-	pubKey := &kasr.PublicKey{
-		PublicKey: &kasr.PublicKey_Remote{
-			Remote: "https://remote.com/key",
+	created, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
+		Uri: uri,
+		PublicKey: &kasr.PublicKey{
+			PublicKey: &kasr.PublicKey_Remote{
+				Remote: pubKeyRemote,
+			},
 		},
-	}
-	testKas := &kasr.CreateKeyAccessServerRequest{
-		Uri:       "testingUpdateWithRemoteKey.com",
-		PublicKey: pubKey,
-	}
-	createdKas, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, testKas)
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"fixed":  fixedLabel,
+				"update": updateLabel,
+			},
+		},
+	})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdKas)
+	assert.NotNil(s.T(), created)
 
 	// update it with new values and metadata
-	updatedMetadata := &common.MetadataMutable{
-		Labels: map[string]string{
-			"name": "updated name",
+	updated, err := s.db.KASRClient.UpdateKeyAccessServer(s.ctx, created.Id, &kasr.UpdateKeyAccessServerRequest{
+		Uri: updatedUri,
+		PublicKey: &kasr.PublicKey{
+			PublicKey: &kasr.PublicKey_Remote{
+				Remote: updatedPubKeyRemote,
+			},
 		},
-	}
-	updatedKas := &kasr.UpdateKeyAccessServerRequest{
-		Uri:                    "updatedUri.com",
-		PublicKey:              pubKey,
-		Metadata:               updatedMetadata,
-		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
-	}
-	updated, err := s.db.KASRClient.UpdateKeyAccessServer(s.ctx, createdKas.Id, updatedKas)
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"update": updatedLabel,
+				"new":    newLabel,
+			},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
 
 	// get after update to validate changes were successful
-	got, err := s.db.KASRClient.GetKeyAccessServer(s.ctx, createdKas.Id)
+	got, err := s.db.KASRClient.GetKeyAccessServer(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
-	assert.Equal(s.T(), createdKas.Id, got.Id)
-	assert.Equal(s.T(), updatedKas.Uri, got.Uri)
-	assert.Equal(s.T(), updatedKas.PublicKey.GetRemote(), got.PublicKey.GetRemote())
-	assert.EqualValues(s.T(), updatedMetadata.Labels, got.Metadata.Labels)
+	assert.Equal(s.T(), created.Id, got.Id)
+	assert.Equal(s.T(), updatedUri, got.Uri)
+	assert.Equal(s.T(), updatedPubKeyRemote, got.PublicKey.GetRemote())
+	assert.Equal(s.T(), fixedLabel, got.Metadata.Labels["fixed"])
+	assert.Equal(s.T(), updatedLabel, got.Metadata.Labels["update"])
+	assert.Equal(s.T(), newLabel, got.Metadata.Labels["new"])
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {

@@ -59,7 +59,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		Active:   &wrapperspb.BoolValue{Value: active},
 		Members:  members,
 		Metadata: m,
-		// AttributeId: attributeId,
+		// TODO: get & hydrate full attribute
 		Fqn: fqn.String,
 	}
 	return v, nil

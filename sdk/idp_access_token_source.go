@@ -12,7 +12,6 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"golang.org/x/oauth2"
@@ -116,7 +115,7 @@ func NewIDPAccessTokenSource(
 }
 
 // use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) GetAccessToken() (AccessToken, error) {
+func (t *IDPAccessTokenSource) AccessToken() (AccessToken, error) {
 	if t.token == nil {
 		err := t.RefreshAccessToken()
 		if err != nil {
@@ -127,7 +126,7 @@ func (t *IDPAccessTokenSource) GetAccessToken() (AccessToken, error) {
 	return AccessToken(t.token.AccessToken), nil
 }
 
-func (t *IDPAccessTokenSource) GetAsymDecryption() crypto.AsymDecryption {
+func (t *IDPAccessTokenSource) AsymDecryption() crypto.AsymDecryption {
 	return t.asymDecryption
 }
 
@@ -144,15 +143,10 @@ func (t *IDPAccessTokenSource) RefreshAccessToken() error {
 	return nil
 }
 
-func (t *IDPAccessTokenSource) SignToken(tok jwt.Token) ([]byte, error) {
-	signed, err := jwt.Sign(tok, jwt.WithKey(t.dpopKey.Algorithm(), t.dpopKey))
-	if err != nil {
-		return nil, fmt.Errorf("error signing DPOP token: %w", err)
-	}
-
-	return signed, nil
+func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
+	return tokenMaker(t.dpopKey)
 }
 
-func (t *IDPAccessTokenSource) GetDPoPPublicKeyPEM() string {
+func (t *IDPAccessTokenSource) DPOPPublicKeyPEM() string {
 	return t.dpopPEM
 }

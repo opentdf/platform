@@ -12,6 +12,6 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    # - staticcheck
+    - staticcheck
     - typecheck
     - unused

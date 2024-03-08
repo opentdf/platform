@@ -40,7 +40,6 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.namespaces.GetNamespaceRequest.class, io.opentdf.platform.policy.namespaces.GetNamespaceRequest.Builder.class);
   }
 
-  private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
   private volatile java.lang.Object id_ = "";
@@ -80,44 +79,6 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int EXPAND_FIELD_NUMBER = 2;
-  private io.opentdf.platform.policy.policy_common.AttributeExpandSelector expand_;
-  /**
-   * <pre>
-   * Optional expand selector
-   * </pre>
-   *
-   * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-   * @return Whether the expand field is set.
-   */
-  @java.lang.Override
-  public boolean hasExpand() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <pre>
-   * Optional expand selector
-   * </pre>
-   *
-   * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-   * @return The expand.
-   */
-  @java.lang.Override
-  public io.opentdf.platform.policy.policy_common.AttributeExpandSelector getExpand() {
-    return expand_ == null ? io.opentdf.platform.policy.policy_common.AttributeExpandSelector.getDefaultInstance() : expand_;
-  }
-  /**
-   * <pre>
-   * Optional expand selector
-   * </pre>
-   *
-   * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-   */
-  @java.lang.Override
-  public io.opentdf.platform.policy.policy_common.AttributeExpandSelectorOrBuilder getExpandOrBuilder() {
-    return expand_ == null ? io.opentdf.platform.policy.policy_common.AttributeExpandSelector.getDefaultInstance() : expand_;
-  }
-
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -135,9 +96,6 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
-    if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(2, getExpand());
-    }
     getUnknownFields().writeTo(output);
   }
 
@@ -149,10 +107,6 @@ private static final long serialVersionUID = 0L;
     size = 0;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
-    }
-    if (((bitField0_ & 0x00000001) != 0)) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(2, getExpand());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -171,11 +125,6 @@ private static final long serialVersionUID = 0L;
 
     if (!getId()
         .equals(other.getId())) return false;
-    if (hasExpand() != other.hasExpand()) return false;
-    if (hasExpand()) {
-      if (!getExpand()
-          .equals(other.getExpand())) return false;
-    }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -189,10 +138,6 @@ private static final long serialVersionUID = 0L;
     hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + ID_FIELD_NUMBER;
     hash = (53 * hash) + getId().hashCode();
-    if (hasExpand()) {
-      hash = (37 * hash) + EXPAND_FIELD_NUMBER;
-      hash = (53 * hash) + getExpand().hashCode();
-    }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -312,30 +257,19 @@ private static final long serialVersionUID = 0L;
 
     // Construct using io.opentdf.platform.policy.namespaces.GetNamespaceRequest.newBuilder()
     private Builder() {
-      maybeForceBuilderInitialization();
+
     }
 
     private Builder(
         com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
       super(parent);
-      maybeForceBuilderInitialization();
-    }
-    private void maybeForceBuilderInitialization() {
-      if (com.google.protobuf.GeneratedMessageV3
-              .alwaysUseFieldBuilders) {
-        getExpandFieldBuilder();
-      }
+
     }
     @java.lang.Override
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
       id_ = "";
-      expand_ = null;
-      if (expandBuilder_ != null) {
-        expandBuilder_.dispose();
-        expandBuilder_ = null;
-      }
       return this;
     }
 
@@ -372,14 +306,6 @@ private static final long serialVersionUID = 0L;
       if (((from_bitField0_ & 0x00000001) != 0)) {
         result.id_ = id_;
       }
-      int to_bitField0_ = 0;
-      if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.expand_ = expandBuilder_ == null
-            ? expand_
-            : expandBuilder_.build();
-        to_bitField0_ |= 0x00000001;
-      }
-      result.bitField0_ |= to_bitField0_;
     }
 
     @java.lang.Override
@@ -431,9 +357,6 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00000001;
         onChanged();
       }
-      if (other.hasExpand()) {
-        mergeExpand(other.getExpand());
-      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -465,13 +388,6 @@ private static final long serialVersionUID = 0L;
               bitField0_ |= 0x00000001;
               break;
             } // case 10
-            case 18: {
-              input.readMessage(
-                  getExpandFieldBuilder().getBuilder(),
-                  extensionRegistry);
-              bitField0_ |= 0x00000002;
-              break;
-            } // case 18
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -559,163 +475,6 @@ private static final long serialVersionUID = 0L;
       bitField0_ |= 0x00000001;
       onChanged();
       return this;
-    }
-
-    private io.opentdf.platform.policy.policy_common.AttributeExpandSelector expand_;
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.policy_common.AttributeExpandSelector, io.opentdf.platform.policy.policy_common.AttributeExpandSelector.Builder, io.opentdf.platform.policy.policy_common.AttributeExpandSelectorOrBuilder> expandBuilder_;
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     * @return Whether the expand field is set.
-     */
-    public boolean hasExpand() {
-      return ((bitField0_ & 0x00000002) != 0);
-    }
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     * @return The expand.
-     */
-    public io.opentdf.platform.policy.policy_common.AttributeExpandSelector getExpand() {
-      if (expandBuilder_ == null) {
-        return expand_ == null ? io.opentdf.platform.policy.policy_common.AttributeExpandSelector.getDefaultInstance() : expand_;
-      } else {
-        return expandBuilder_.getMessage();
-      }
-    }
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     */
-    public Builder setExpand(io.opentdf.platform.policy.policy_common.AttributeExpandSelector value) {
-      if (expandBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        expand_ = value;
-      } else {
-        expandBuilder_.setMessage(value);
-      }
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     */
-    public Builder setExpand(
-        io.opentdf.platform.policy.policy_common.AttributeExpandSelector.Builder builderForValue) {
-      if (expandBuilder_ == null) {
-        expand_ = builderForValue.build();
-      } else {
-        expandBuilder_.setMessage(builderForValue.build());
-      }
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     */
-    public Builder mergeExpand(io.opentdf.platform.policy.policy_common.AttributeExpandSelector value) {
-      if (expandBuilder_ == null) {
-        if (((bitField0_ & 0x00000002) != 0) &&
-          expand_ != null &&
-          expand_ != io.opentdf.platform.policy.policy_common.AttributeExpandSelector.getDefaultInstance()) {
-          getExpandBuilder().mergeFrom(value);
-        } else {
-          expand_ = value;
-        }
-      } else {
-        expandBuilder_.mergeFrom(value);
-      }
-      if (expand_ != null) {
-        bitField0_ |= 0x00000002;
-        onChanged();
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     */
-    public Builder clearExpand() {
-      bitField0_ = (bitField0_ & ~0x00000002);
-      expand_ = null;
-      if (expandBuilder_ != null) {
-        expandBuilder_.dispose();
-        expandBuilder_ = null;
-      }
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     */
-    public io.opentdf.platform.policy.policy_common.AttributeExpandSelector.Builder getExpandBuilder() {
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return getExpandFieldBuilder().getBuilder();
-    }
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     */
-    public io.opentdf.platform.policy.policy_common.AttributeExpandSelectorOrBuilder getExpandOrBuilder() {
-      if (expandBuilder_ != null) {
-        return expandBuilder_.getMessageOrBuilder();
-      } else {
-        return expand_ == null ?
-            io.opentdf.platform.policy.policy_common.AttributeExpandSelector.getDefaultInstance() : expand_;
-      }
-    }
-    /**
-     * <pre>
-     * Optional expand selector
-     * </pre>
-     *
-     * <code>.policy.policy_common.AttributeExpandSelector expand = 2 [json_name = "expand"];</code>
-     */
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.policy_common.AttributeExpandSelector, io.opentdf.platform.policy.policy_common.AttributeExpandSelector.Builder, io.opentdf.platform.policy.policy_common.AttributeExpandSelectorOrBuilder> 
-        getExpandFieldBuilder() {
-      if (expandBuilder_ == null) {
-        expandBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.policy_common.AttributeExpandSelector, io.opentdf.platform.policy.policy_common.AttributeExpandSelector.Builder, io.opentdf.platform.policy.policy_common.AttributeExpandSelectorOrBuilder>(
-                getExpand(),
-                getParentForChildren(),
-                isClean());
-        expand_ = null;
-      }
-      return expandBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

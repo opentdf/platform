@@ -30,9 +30,6 @@ message Namespace {
 
 message GetNamespaceRequest {
   string id = 1 [(buf.validate.field).required = true];
-
-  // Optional expand selector
-  policy_common.AttributeExpandSelector expand = 2;
 }
 message GetNamespaceResponse {
   Namespace namespace = 1;
@@ -41,9 +38,6 @@ message GetNamespaceResponse {
 message ListNamespacesRequest {
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;
-
-  // Optional expand selector
-  policy_common.AttributeExpandSelector expand = 2;
 }
 message ListNamespacesResponse {
   repeated Namespace namespaces = 1;

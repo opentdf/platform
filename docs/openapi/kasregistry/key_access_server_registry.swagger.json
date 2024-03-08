@@ -224,7 +224,7 @@
         "METADATA_UPDATE_ENUM_REPLACE"
       ],
       "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
-      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are set\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the new metadata"
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "kasregistryCreateKeyAccessServerRequest": {
       "type": "object",

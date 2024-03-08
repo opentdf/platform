@@ -95,9 +95,6 @@ message ValueKeyAccessServer {
 message ListAttributesRequest {
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;
-
-  // Optional expand selector
-  policy_common.AttributeExpandSelector expand = 2;
 }
 message ListAttributesResponse {
   repeated Attribute attributes = 1;
@@ -105,9 +102,6 @@ message ListAttributesResponse {
 
 message GetAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
-
-  // Optional expand selector
-  policy_common.AttributeExpandSelector expand = 2;
 }
 message GetAttributeResponse {
   Attribute attribute = 1;
@@ -115,9 +109,6 @@ message GetAttributeResponse {
 
 message GetAttributesByValueFqnsRequest {
   repeated string fqns = 1 [(buf.validate.field).required = true];
-
-  // Optional expand selector
-  policy_common.AttributeExpandSelector expand = 2;
 }
 message GetAttributesByValueFqnsResponse {
   // map of fqns to complete attributes and the one selected value
@@ -164,9 +155,6 @@ message DeactivateAttributeResponse {
 ///
 message GetAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
-
-  // Optional expand selector
-  policy_common.AttributeExpandSelector expand = 2;
 }
 message GetAttributeValueResponse {
   Value value = 1;
@@ -176,9 +164,6 @@ message ListAttributeValuesRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 2;
-
-  // Optional expand selector
-  policy_common.AttributeExpandSelector expand = 3;
 }
 message ListAttributeValuesResponse {
   repeated Value values = 1;

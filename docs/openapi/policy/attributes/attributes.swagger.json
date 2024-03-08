@@ -75,36 +75,6 @@
               "type": "string"
             },
             "collectionFormat": "multi"
-          },
-          {
-            "name": "expand.withAncestors",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withChildren",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withSubjectMappings",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withResourceMappings",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withKeyAccessGrants",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
           }
         ],
         "tags": [
@@ -136,36 +106,6 @@
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "expand.withAncestors",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withChildren",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withSubjectMappings",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withResourceMappings",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withKeyAccessGrants",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
           }
         ],
         "tags": [
@@ -460,36 +400,6 @@
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "expand.withAncestors",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withChildren",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withSubjectMappings",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withResourceMappings",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "expand.withKeyAccessGrants",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
           }
         ],
         "tags": [
@@ -867,7 +777,7 @@
         "METADATA_UPDATE_ENUM_REPLACE"
       ],
       "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
-      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are set\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the new metadata"
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "kasregistryKeyAccessServer": {
       "type": "object",
@@ -922,26 +832,6 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
-        }
-      }
-    },
-    "policy_commonAttributeExpandSelector": {
-      "type": "object",
-      "properties": {
-        "withAncestors": {
-          "type": "boolean"
-        },
-        "withChildren": {
-          "type": "boolean"
-        },
-        "withSubjectMappings": {
-          "type": "boolean"
-        },
-        "withResourceMappings": {
-          "type": "boolean"
-        },
-        "withKeyAccessGrants": {
-          "type": "boolean"
         }
       }
     },

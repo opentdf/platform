@@ -3,14 +3,3 @@ syntax = "proto3";
 package policy.policy_common;
 
 import "google/protobuf/wrappers.proto";
-
-message AttributeExpandSelector {
-  google.protobuf.BoolValue with_ancestors = 1;
-  google.protobuf.BoolValue with_children = 2;
-
-  google.protobuf.BoolValue with_subject_mappings = 3;
-
-  google.protobuf.BoolValue with_resource_mappings = 4;
-
-  google.protobuf.BoolValue with_key_access_grants = 5;
-}

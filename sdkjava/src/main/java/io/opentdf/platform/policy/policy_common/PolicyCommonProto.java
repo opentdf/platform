@@ -15,11 +15,6 @@ public final class PolicyCommonProto {
     registerAllExtensions(
         (com.google.protobuf.ExtensionRegistryLite) registry);
   }
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_policy_policy_common_AttributeExpandSelector_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_policy_policy_common_AttributeExpandSelector_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -31,34 +26,18 @@ public final class PolicyCommonProto {
     java.lang.String[] descriptorData = {
       "\n\032policy/policy_common.proto\022\024policy.pol" +
       "icy_common\032\036google/protobuf/wrappers.pro" +
-      "to\"\220\003\n\027AttributeExpandSelector\022A\n\016with_a" +
-      "ncestors\030\001 \001(\0132\032.google.protobuf.BoolVal" +
-      "ueR\rwithAncestors\022?\n\rwith_children\030\002 \001(\013" +
-      "2\032.google.protobuf.BoolValueR\014withChildr" +
-      "en\022N\n\025with_subject_mappings\030\003 \001(\0132\032.goog" +
-      "le.protobuf.BoolValueR\023withSubjectMappin" +
-      "gs\022P\n\026with_resource_mappings\030\004 \001(\0132\032.goo" +
-      "gle.protobuf.BoolValueR\024withResourceMapp" +
-      "ings\022O\n\026with_key_access_grants\030\005 \001(\0132\032.g" +
-      "oogle.protobuf.BoolValueR\023withKeyAccessG" +
-      "rantsB\332\001\n(io.opentdf.platform.policy.pol" +
-      "icy_commonB\021PolicyCommonProtoP\001Z.github." +
-      "com/opentdf/platform/protocol/go/policy\242" +
-      "\002\003PPX\252\002\023Policy.PolicyCommon\312\002\023Policy\\Pol" +
-      "icyCommon\342\002\037Policy\\PolicyCommon\\GPBMetad" +
-      "ata\352\002\024Policy::PolicyCommonb\006proto3"
+      "toB\332\001\n(io.opentdf.platform.policy.policy" +
+      "_commonB\021PolicyCommonProtoP\001Z.github.com" +
+      "/opentdf/platform/protocol/go/policy\242\002\003P" +
+      "PX\252\002\023Policy.PolicyCommon\312\002\023Policy\\Policy" +
+      "Common\342\002\037Policy\\PolicyCommon\\GPBMetadata" +
+      "\352\002\024Policy::PolicyCommonb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
           com.google.protobuf.WrappersProto.getDescriptor(),
         });
-    internal_static_policy_policy_common_AttributeExpandSelector_descriptor =
-      getDescriptor().getMessageTypes().get(0);
-    internal_static_policy_policy_common_AttributeExpandSelector_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_policy_policy_common_AttributeExpandSelector_descriptor,
-        new java.lang.String[] { "WithAncestors", "WithChildren", "WithSubjectMappings", "WithResourceMappings", "WithKeyAccessGrants", });
     com.google.protobuf.WrappersProto.getDescriptor();
   }
 

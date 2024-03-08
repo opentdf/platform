@@ -394,10 +394,6 @@
             <a href="#policy%2fpolicy_common.proto">policy/policy_common.proto</a>
             <ul>
               
-                <li>
-                  <a href="#policy.policy_common.AttributeExpandSelector"><span class="badge">M</span>AttributeExpandSelector</a>
-                </li>
-              
               
               
               
@@ -1842,13 +1838,13 @@
               <tr>
                 <td>METADATA_UPDATE_ENUM_EXTEND</td>
                 <td>1</td>
-                <td><p>only update the fields that are set</p></td>
+                <td><p>only update the fields that are provided</p></td>
               </tr>
             
               <tr>
                 <td>METADATA_UPDATE_ENUM_REPLACE</td>
                 <td>2</td>
-                <td><p>replace the entire metadata with the new metadata</p></td>
+                <td><p>replace the entire metadata with the provided metadata</p></td>
               </tr>
             
           </tbody>
@@ -2336,58 +2332,6 @@
       <p></p>
 
       
-        <h3 id="policy.policy_common.AttributeExpandSelector">AttributeExpandSelector</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>with_ancestors</td>
-                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_children</td>
-                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_subject_mappings</td>
-                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_resource_mappings</td>
-                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_key_access_grants</td>
-                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
 
       
 
@@ -2505,13 +2449,6 @@
                   <td><p> </p></td>
                 </tr>
               
-                <tr>
-                  <td>expand</td>
-                  <td><a href="#policy.policy_common.AttributeExpandSelector">policy.policy_common.AttributeExpandSelector</a></td>
-                  <td></td>
-                  <td><p>Optional expand selector </p></td>
-                </tr>
-              
             </tbody>
           </table>
 
@@ -2558,13 +2495,6 @@
                   <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
                   <td></td>
                   <td><p>ACTIVE by default when not specified </p></td>
-                </tr>
-              
-                <tr>
-                  <td>expand</td>
-                  <td><a href="#policy.policy_common.AttributeExpandSelector">policy.policy_common.AttributeExpandSelector</a></td>
-                  <td></td>
-                  <td><p>Optional expand selector </p></td>
                 </tr>
               
             </tbody>
@@ -3330,13 +3260,6 @@
                   <td><p> </p></td>
                 </tr>
               
-                <tr>
-                  <td>expand</td>
-                  <td><a href="#policy.policy_common.AttributeExpandSelector">policy.policy_common.AttributeExpandSelector</a></td>
-                  <td></td>
-                  <td><p>Optional expand selector </p></td>
-                </tr>
-              
             </tbody>
           </table>
 
@@ -3385,13 +3308,6 @@
                   <td><p> </p></td>
                 </tr>
               
-                <tr>
-                  <td>expand</td>
-                  <td><a href="#policy.policy_common.AttributeExpandSelector">policy.policy_common.AttributeExpandSelector</a></td>
-                  <td></td>
-                  <td><p>Optional expand selector </p></td>
-                </tr>
-              
             </tbody>
           </table>
 
@@ -3438,13 +3354,6 @@
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>expand</td>
-                  <td><a href="#policy.policy_common.AttributeExpandSelector">policy.policy_common.AttributeExpandSelector</a></td>
-                  <td></td>
-                  <td><p>Optional expand selector </p></td>
                 </tr>
               
             </tbody>
@@ -3533,13 +3442,6 @@
                   <td><p>ACTIVE by default when not specified </p></td>
                 </tr>
               
-                <tr>
-                  <td>expand</td>
-                  <td><a href="#policy.policy_common.AttributeExpandSelector">policy.policy_common.AttributeExpandSelector</a></td>
-                  <td></td>
-                  <td><p>Optional expand selector </p></td>
-                </tr>
-              
             </tbody>
           </table>
 
@@ -3586,13 +3488,6 @@
                   <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
                   <td></td>
                   <td><p>ACTIVE by default when not specified </p></td>
-                </tr>
-              
-                <tr>
-                  <td>expand</td>
-                  <td><a href="#policy.policy_common.AttributeExpandSelector">policy.policy_common.AttributeExpandSelector</a></td>
-                  <td></td>
-                  <td><p>Optional expand selector </p></td>
                 </tr>
               
             </tbody>

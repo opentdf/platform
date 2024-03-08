@@ -26,9 +26,9 @@ type MetadataUpdateEnum int32
 const (
 	// unspecified update type
 	MetadataUpdateEnum_METADATA_UPDATE_ENUM_UNSPECIFIED MetadataUpdateEnum = 0
-	// only update the fields that are set
+	// only update the fields that are provided
 	MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND MetadataUpdateEnum = 1
-	// replace the entire metadata with the new metadata
+	// replace the entire metadata with the provided metadata
 	MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE MetadataUpdateEnum = 2
 )
 

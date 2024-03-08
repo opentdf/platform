@@ -19,7 +19,7 @@ public enum MetadataUpdateEnum
   METADATA_UPDATE_ENUM_UNSPECIFIED(0),
   /**
    * <pre>
-   * only update the fields that are set
+   * only update the fields that are provided
    * </pre>
    *
    * <code>METADATA_UPDATE_ENUM_EXTEND = 1;</code>
@@ -27,7 +27,7 @@ public enum MetadataUpdateEnum
   METADATA_UPDATE_ENUM_EXTEND(1),
   /**
    * <pre>
-   * replace the entire metadata with the new metadata
+   * replace the entire metadata with the provided metadata
    * </pre>
    *
    * <code>METADATA_UPDATE_ENUM_REPLACE = 2;</code>
@@ -46,7 +46,7 @@ public enum MetadataUpdateEnum
   public static final int METADATA_UPDATE_ENUM_UNSPECIFIED_VALUE = 0;
   /**
    * <pre>
-   * only update the fields that are set
+   * only update the fields that are provided
    * </pre>
    *
    * <code>METADATA_UPDATE_ENUM_EXTEND = 1;</code>
@@ -54,7 +54,7 @@ public enum MetadataUpdateEnum
   public static final int METADATA_UPDATE_ENUM_EXTEND_VALUE = 1;
   /**
    * <pre>
-   * replace the entire metadata with the new metadata
+   * replace the entire metadata with the provided metadata
    * </pre>
    *
    * <code>METADATA_UPDATE_ENUM_REPLACE = 2;</code>

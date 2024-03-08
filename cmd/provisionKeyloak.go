@@ -88,11 +88,12 @@ var (
 			opentdfSdkClientId := "opentdf-sdk"
 			// Create OpenTDF Client
 			_, err = createClient(&kcConnectParams, gocloak.Client{
-				ClientID:               gocloak.StringP(opentdfClientId),
-				Enabled:                gocloak.BoolP(true),
-				Name:                   gocloak.StringP(opentdfClientId),
-				ServiceAccountsEnabled: gocloak.BoolP(true),
-				Secret:                 gocloak.StringP("secret"),
+				ClientID:                gocloak.StringP(opentdfClientId),
+				Enabled:                 gocloak.BoolP(true),
+				Name:                    gocloak.StringP(opentdfClientId),
+				ServiceAccountsEnabled:  gocloak.BoolP(true),
+				ClientAuthenticatorType: gocloak.StringP("client-secret"),
+				Secret:                  gocloak.StringP("secret"),
 			})
 			if err != nil {
 				return err
@@ -100,11 +101,12 @@ var (
 
 			// Create TDF SDK Client
 			_, err = createClient(&kcConnectParams, gocloak.Client{
-				ClientID:               gocloak.StringP(opentdfSdkClientId),
-				Enabled:                gocloak.BoolP(true),
-				Name:                   gocloak.StringP(opentdfSdkClientId),
-				ServiceAccountsEnabled: gocloak.BoolP(true),
-				Secret:                 gocloak.StringP("secret"),
+				ClientID:                gocloak.StringP(opentdfSdkClientId),
+				Enabled:                 gocloak.BoolP(true),
+				Name:                    gocloak.StringP(opentdfSdkClientId),
+				ServiceAccountsEnabled:  gocloak.BoolP(true),
+				ClientAuthenticatorType: gocloak.StringP("client-secret"),
+				Secret:                  gocloak.StringP("secret"),
 			})
 			if err != nil {
 				return err

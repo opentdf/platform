@@ -67,7 +67,7 @@ message UpdateKeyAccessServerRequest {
 
   // Common metadata
   common.MetadataMutable metadata = 100;
-  common.MetadataUpdateEnum metadata_update_options = 101;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;

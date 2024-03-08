@@ -91,13 +91,13 @@ public interface UpdateKeyAccessServerRequestOrBuilder extends
   io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
 
   /**
-   * <code>.common.MetadataUpdateEnum metadata_update_options = 101 [json_name = "metadataUpdateOptions"];</code>
-   * @return The enum numeric value on the wire for metadataUpdateOptions.
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
    */
-  int getMetadataUpdateOptionsValue();
+  int getMetadataUpdateBehaviorValue();
   /**
-   * <code>.common.MetadataUpdateEnum metadata_update_options = 101 [json_name = "metadataUpdateOptions"];</code>
-   * @return The metadataUpdateOptions.
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
    */
-  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateOptions();
+  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior();
 }

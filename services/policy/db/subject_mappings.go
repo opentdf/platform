@@ -248,12 +248,14 @@ func updateSubjectMappingSql(id string, attribute_value_id string, operator stri
 }
 
 func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, id string, s *subjectmapping.SubjectMappingCreateUpdate) (*subjectmapping.SubjectMapping, error) {
-	prev, err := c.GetSubjectMapping(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	metadataJson, _, err := db.MarshalUpdateMetadata(prev.Metadata, s.Metadata)
+	// if extend we need to merge the metadata
+	metadataJson, _, err := db.MarshalUpdateMetadata(s.Metadata, common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND, func() (*common.Metadata, error) {
+		a, err := c.GetSubjectMapping(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return a.Metadata, nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -270,11 +272,13 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, id string, s *
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
-	return prev, nil
+	return &subjectmapping.SubjectMapping{
+		Id: id,
+	}, nil
 }
 
 func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
@@ -296,7 +300,7 @@ func (c PolicyDbClient) DeleteSubjectMapping(ctx context.Context, id string) (*s
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 

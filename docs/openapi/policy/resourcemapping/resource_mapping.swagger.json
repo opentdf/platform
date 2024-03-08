@@ -180,7 +180,7 @@
                   "$ref": "#/definitions/commonMetadataMutable",
                   "title": "Common Metadata"
                 },
-                "metadataUpdate": {
+                "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
                 }
               }

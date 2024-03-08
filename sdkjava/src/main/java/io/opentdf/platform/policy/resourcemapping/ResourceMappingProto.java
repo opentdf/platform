@@ -103,48 +103,48 @@ public final class ResourceMappingProto {
       "leR\010metadata\"s\n\035CreateResourceMappingRes" +
       "ponse\022R\n\020resource_mapping\030\001 \001(\0132\'.policy" +
       ".resourcemapping.ResourceMappingR\017resour" +
-      "ceMapping\"\364\001\n\034UpdateResourceMappingReque" +
+      "ceMapping\"\205\002\n\034UpdateResourceMappingReque" +
       "st\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022,\n\022attribute_" +
       "value_id\030\004 \001(\tR\020attributeValueId\022\024\n\005term" +
       "s\030\005 \003(\tR\005terms\0223\n\010metadata\030d \001(\0132\027.commo" +
-      "n.MetadataMutableR\010metadata\022C\n\017metadata_" +
-      "update\030e \001(\0162\032.common.MetadataUpdateEnum" +
-      "R\016metadataUpdate\"s\n\035UpdateResourceMappin" +
-      "gResponse\022R\n\020resource_mapping\030\001 \001(\0132\'.po" +
-      "licy.resourcemapping.ResourceMappingR\017re" +
-      "sourceMapping\"6\n\034DeleteResourceMappingRe" +
-      "quest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"s\n\035DeleteR" +
-      "esourceMappingResponse\022R\n\020resource_mappi" +
-      "ng\030\001 \001(\0132\'.policy.resourcemapping.Resour" +
-      "ceMappingR\017resourceMapping2\320\006\n\026ResourceM" +
-      "appingService\022\235\001\n\024ListResourceMappings\0223" +
-      ".policy.resourcemapping.ListResourceMapp" +
-      "ingsRequest\0324.policy.resourcemapping.Lis" +
-      "tResourceMappingsResponse\"\032\202\323\344\223\002\024\022\022/reso" +
-      "urce-mappings\022\234\001\n\022GetResourceMapping\0221.p" +
-      "olicy.resourcemapping.GetResourceMapping" +
-      "Request\0322.policy.resourcemapping.GetReso" +
-      "urceMappingResponse\"\037\202\323\344\223\002\031\022\027/resource-m" +
-      "appings/{id}\022\243\001\n\025CreateResourceMapping\0224" +
-      ".policy.resourcemapping.CreateResourceMa" +
-      "ppingRequest\0325.policy.resourcemapping.Cr" +
-      "eateResourceMappingResponse\"\035\202\323\344\223\002\027\"\022/re" +
-      "source-mappings:\001*\022\250\001\n\025UpdateResourceMap" +
-      "ping\0224.policy.resourcemapping.UpdateReso" +
-      "urceMappingRequest\0325.policy.resourcemapp" +
-      "ing.UpdateResourceMappingResponse\"\"\202\323\344\223\002" +
-      "\034\"\027/resource-mappings/{id}:\001*\022\245\001\n\025Delete" +
+      "n.MetadataMutableR\010metadata\022T\n\030metadata_" +
+      "update_behavior\030e \001(\0162\032.common.MetadataU" +
+      "pdateEnumR\026metadataUpdateBehavior\"s\n\035Upd" +
+      "ateResourceMappingResponse\022R\n\020resource_m" +
+      "apping\030\001 \001(\0132\'.policy.resourcemapping.Re" +
+      "sourceMappingR\017resourceMapping\"6\n\034Delete" +
+      "ResourceMappingRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310" +
+      "\001\001R\002id\"s\n\035DeleteResourceMappingResponse\022" +
+      "R\n\020resource_mapping\030\001 \001(\0132\'.policy.resou" +
+      "rcemapping.ResourceMappingR\017resourceMapp" +
+      "ing2\320\006\n\026ResourceMappingService\022\235\001\n\024ListR" +
+      "esourceMappings\0223.policy.resourcemapping" +
+      ".ListResourceMappingsRequest\0324.policy.re" +
+      "sourcemapping.ListResourceMappingsRespon" +
+      "se\"\032\202\323\344\223\002\024\022\022/resource-mappings\022\234\001\n\022GetRe" +
+      "sourceMapping\0221.policy.resourcemapping.G" +
+      "etResourceMappingRequest\0322.policy.resour" +
+      "cemapping.GetResourceMappingResponse\"\037\202\323" +
+      "\344\223\002\031\022\027/resource-mappings/{id}\022\243\001\n\025Create" +
       "ResourceMapping\0224.policy.resourcemapping" +
-      ".DeleteResourceMappingRequest\0325.policy.r" +
-      "esourcemapping.DeleteResourceMappingResp" +
-      "onse\"\037\202\323\344\223\002\031*\027/resource-mappings/{id}B\373\001" +
-      "\n*io.opentdf.platform.policy.resourcemap" +
-      "pingB\024ResourceMappingProtoP\001Z>github.com" +
-      "/opentdf/platform/protocol/go/policy/res" +
-      "ourcemapping\242\002\003PRX\252\002\026Policy.Resourcemapp" +
-      "ing\312\002\026Policy\\Resourcemapping\342\002\"Policy\\Re" +
-      "sourcemapping\\GPBMetadata\352\002\027Policy::Reso" +
-      "urcemappingb\006proto3"
+      ".CreateResourceMappingRequest\0325.policy.r" +
+      "esourcemapping.CreateResourceMappingResp" +
+      "onse\"\035\202\323\344\223\002\027\"\022/resource-mappings:\001*\022\250\001\n\025" +
+      "UpdateResourceMapping\0224.policy.resourcem" +
+      "apping.UpdateResourceMappingRequest\0325.po" +
+      "licy.resourcemapping.UpdateResourceMappi" +
+      "ngResponse\"\"\202\323\344\223\002\034\"\027/resource-mappings/{" +
+      "id}:\001*\022\245\001\n\025DeleteResourceMapping\0224.polic" +
+      "y.resourcemapping.DeleteResourceMappingR" +
+      "equest\0325.policy.resourcemapping.DeleteRe" +
+      "sourceMappingResponse\"\037\202\323\344\223\002\031*\027/resource" +
+      "-mappings/{id}B\373\001\n*io.opentdf.platform.p" +
+      "olicy.resourcemappingB\024ResourceMappingPr" +
+      "otoP\001Z>github.com/opentdf/platform/proto" +
+      "col/go/policy/resourcemapping\242\002\003PRX\252\002\026Po" +
+      "licy.Resourcemapping\312\002\026Policy\\Resourcema" +
+      "pping\342\002\"Policy\\Resourcemapping\\GPBMetada" +
+      "ta\352\002\027Policy::Resourcemappingb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -201,7 +201,7 @@ public final class ResourceMappingProto {
     internal_static_policy_resourcemapping_UpdateResourceMappingRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_resourcemapping_UpdateResourceMappingRequest_descriptor,
-        new java.lang.String[] { "Id", "AttributeValueId", "Terms", "Metadata", "MetadataUpdate", });
+        new java.lang.String[] { "Id", "AttributeValueId", "Terms", "Metadata", "MetadataUpdateBehavior", });
     internal_static_policy_resourcemapping_UpdateResourceMappingResponse_descriptor =
       getDescriptor().getMessageTypes().get(8);
     internal_static_policy_resourcemapping_UpdateResourceMappingResponse_fieldAccessorTable = new

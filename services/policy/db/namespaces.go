@@ -193,30 +193,42 @@ func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 
 func updateNamespaceSql(id string, metadata []byte) (string, []interface{}, error) {
 	t := db.Tables.Namespaces
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("metadata", metadata).
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
+	sb := db.NewStatementBuilder().Update(t.Name())
+
+	if metadata != nil {
+		sb = sb.Set("metadata", metadata)
+	}
+
+	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
 func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*namespaces.Namespace, error) {
 	// if extend we need to merge the metadata
 	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
-		a, err := c.GetAttribute(ctx, id)
+		n, err := c.GetNamespace(ctx, id)
 		if err != nil {
 			return nil, err
 		}
-		return a.Metadata, nil
+		if n.Metadata == nil {
+			return nil, nil
+		}
+		return n.Metadata, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := updateNamespaceSql(id, metadataJson)
+	if metadataJson == nil {
+		return nil, db.ErrMissingValue
+	}
 
-	if e := c.Exec(ctx, sql, args, err); e != nil {
-		return nil, e
+	sql, args, err := updateNamespaceSql(id, metadataJson)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	// Update FQN
@@ -239,8 +251,11 @@ func deactivateNamespaceSql(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) DeactivateNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
 	sql, args, err := deactivateNamespaceSql(id)
+	if err != nil {
+		return nil, err
+	}
 
-	if e := c.Exec(ctx, sql, args, err); e != nil {
+	if e := c.Exec(ctx, sql, args); e != nil {
 		return nil, e
 	}
 	return c.GetNamespace(ctx, id)
@@ -263,8 +278,11 @@ func (c PolicyDbClient) DeleteNamespace(ctx context.Context, id string) (*namesp
 		return nil, err
 	}
 	sql, args, err := deleteNamespaceSql(id)
+	if err != nil {
+		return nil, err
+	}
 
-	if e := c.Exec(ctx, sql, args, err); e != nil {
+	if e := c.Exec(ctx, sql, args); e != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(e)
 	}
 

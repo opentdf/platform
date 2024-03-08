@@ -26,17 +26,25 @@ func MarshalCreateMetadata(metadata *common.MetadataMutable) ([]byte, *common.Me
 }
 
 func MarshalUpdateMetadata(m *common.MetadataMutable, b common.MetadataUpdateEnum, upstreamFunc func() (*common.Metadata, error)) ([]byte, *common.Metadata, error) {
+	// No metadata update
+	if m == nil {
+		return nil, nil, nil
+	}
+
 	if b == *common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE.Enum() {
 		return marshalMetadata(m)
 	}
 
 	if b == *common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND.Enum() {
 		if upstreamFunc == nil {
-			return nil, nil, nil
+			return nil, nil, fmt.Errorf("upstreamFunc is required for extend metadata update")
 		}
 		um, err := upstreamFunc()
 		if err != nil {
 			return nil, nil, err
+		}
+		if um == nil {
+			return marshalMetadata(m)
 		}
 
 		// merge labels

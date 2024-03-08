@@ -63,17 +63,13 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 	slog.Debug("creating new namespace", slog.String("name", req.Name))
 	rsp := &namespaces.CreateNamespaceResponse{}
 
-	id, err := ns.dbClient.CreateNamespace(ctx, req.Name)
+	n, err := ns.dbClient.CreateNamespace(ctx, req)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("name", req.Name))
 	}
 
 	slog.Debug("created new namespace", slog.String("name", req.Name))
-	rsp.Namespace = &namespaces.Namespace{
-		Id: id,
-		// TODO: are we responding with id only or the entire new namespace?
-		// Name: req.Namespace.Name,
-	}
+	rsp.Namespace = n
 
 	return rsp, nil
 }

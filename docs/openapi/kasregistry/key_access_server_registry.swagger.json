@@ -167,7 +167,7 @@
                   "$ref": "#/definitions/commonMetadataMutable",
                   "title": "Common metadata"
                 },
-                "metadataUpdateOptions": {
+                "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
                 }
               }

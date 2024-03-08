@@ -101,13 +101,13 @@ public interface UpdateResourceMappingRequestOrBuilder extends
   io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
 
   /**
-   * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
-   * @return The enum numeric value on the wire for metadataUpdate.
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
    */
-  int getMetadataUpdateValue();
+  int getMetadataUpdateBehaviorValue();
   /**
-   * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
-   * @return The metadataUpdate.
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
    */
-  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdate();
+  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior();
 }

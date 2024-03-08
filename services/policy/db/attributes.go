@@ -251,14 +251,14 @@ func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]
 	slog.Info("list all attributes", slog.String("sql", sql), slog.Any("args", args))
 	rows, err := c.Query(ctx, sql, args, err)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	defer rows.Close()
 
 	list, err := attributesHydrateList(rows, opts)
 	if err != nil {
 		slog.Error("could not hydrate list", slog.String("error", err.Error()))
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return list, nil
@@ -275,13 +275,13 @@ func (c PolicyDbClient) ListAllAttributesWithout(ctx context.Context, state stri
 	sql, args, err := listAllAttributesSql(opts)
 	rows, err := c.Query(ctx, sql, args, err)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	defer rows.Close()
 
 	list, err := attributesHydrateList(rows, opts)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	slog.Info("list", slog.Any("list", list))
 
@@ -303,13 +303,13 @@ func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*attribute
 	sql, args, err := getAttributeSql(id, opts)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	attribute, err := attributesHydrateItem(row, opts)
 	if err != nil {
 		slog.Error("could not hydrate item", slog.String("attributeId", id), slog.String("error", err.Error()))
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return attribute, nil
@@ -336,13 +336,13 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*att
 	sql, args, err := getAttributeByFqnSql(fqn, opts)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	attribute, err := attributesHydrateItem(row, opts)
 	if err != nil {
 		slog.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	return attribute, nil
 }
@@ -361,13 +361,13 @@ func (c PolicyDbClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 
 	rows, err := c.Query(ctx, sql, args, err)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	defer rows.Close()
 
 	list, err := attributesHydrateList(rows, opts)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return list, nil
@@ -386,7 +386,7 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*attributes.Attribute, error) {
 	metadataJson, metadata, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	sql, args, err := createAttributeSql(r.NamespaceId, r.Name, attributesRuleTypeEnumTransformIn(r.Rule.String()), metadataJson)
@@ -415,12 +415,13 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 func updateAttributeSql(id string, metadata []byte) (string, []interface{}, error) {
 	t := db.Tables.Attributes
-	sb := db.NewStatementBuilder().
-		Update(t.Name())
+	sb := db.NewStatementBuilder().Update(t.Name())
 
-	return sb.Set("metadata", metadata).
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
+	if metadata != nil {
+		sb = sb.Set("metadata", metadata)
+	}
+
+	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
 func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*attributes.Attribute, error) {
@@ -436,9 +437,17 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
+	if metadataJson == nil {
+		return nil, db.ErrMissingValue
+	}
+
 	sql, args, err := updateAttributeSql(id, metadataJson)
-	if err := c.Exec(ctx, sql, args, err); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	// Update the FQN
@@ -461,9 +470,12 @@ func deactivateAttributeSql(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) DeactivateAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
 	sql, args, err := deactivateAttributeSql(id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
-		return nil, err
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	return c.GetAttribute(ctx, id)
 }
@@ -480,13 +492,16 @@ func (c PolicyDbClient) DeleteAttribute(ctx context.Context, id string) (*attrib
 	// get attribute before deleting
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	sql, args, err := deleteAttributeSql(id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
-		return nil, err
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	// return the attribute before deleting
@@ -504,9 +519,12 @@ func assignKeyAccessServerToAttributeSql(attributeID, keyAccessServerID string) 
 
 func (c PolicyDbClient) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
 	sql, args, err := assignKeyAccessServerToAttributeSql(k.AttributeId, k.KeyAccessServerId)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
-		return nil, err
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return k, nil
@@ -524,10 +542,10 @@ func removeKeyAccessServerFromAttributeSql(attributeID, keyAccessServerID string
 func (c PolicyDbClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
 	sql, args, err := removeKeyAccessServerFromAttributeSql(k.AttributeId, k.KeyAccessServerId)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if _, err := c.QueryCount(ctx, sql, args); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 

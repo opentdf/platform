@@ -276,17 +276,17 @@ func updateAttributeValueSql(
 	metadata []byte,
 ) (string, []interface{}, error) {
 	t := db.Tables.AttributeValues
-	sb := db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("metadata", metadata)
+	sb := db.NewStatementBuilder().Update(t.Name())
+
+	if metadata != nil {
+		sb = sb.Set("metadata", metadata)
+	}
 
 	if members != nil {
 		sb = sb.Set("members", members)
 	}
 
-	return sb.
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
+	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
 func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *attributes.UpdateAttributeValueRequest) (*attributes.Value, error) {
@@ -310,7 +310,7 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -334,7 +334,11 @@ func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) DeactivateAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	sql, args, err := deactivateAttributeValueSql(id)
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 	return c.GetAttributeValue(ctx, id)
@@ -355,7 +359,11 @@ func (c PolicyDbClient) DeleteAttributeValue(ctx context.Context, id string) (*a
 	}
 
 	sql, args, err := deleteAttributeValueSql(id)
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -377,7 +385,7 @@ func (c PolicyDbClient) AssignKeyAccessServerToValue(ctx context.Context, k *att
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -399,7 +407,7 @@ func (c PolicyDbClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 		return nil, err
 	}
 
-	if _, err := c.QueryCount(ctx, sql, args); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 

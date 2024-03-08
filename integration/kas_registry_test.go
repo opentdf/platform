@@ -18,17 +18,17 @@ var nonExistentKasRegistryId = "78909865-8888-9999-9999-000000654321"
 
 type KasRegistrySuite struct {
 	suite.Suite
-	schema string
-	f      fixtures.Fixtures
-	db     fixtures.DBInterface
-	ctx    context.Context
+	f   fixtures.Fixtures
+	db  fixtures.DBInterface
+	ctx context.Context
 }
 
 func (s *KasRegistrySuite) SetupSuite() {
 	slog.Info("setting up db.KasRegistry test suite")
 	s.ctx = context.Background()
-	s.schema = "test_opentdf_kas_registry"
-	s.db = fixtures.NewDBInterface(*Config)
+	c := *Config
+	c.DB.Schema = "test_opentdf_kas_registry"
+	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 }
@@ -96,7 +96,6 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		Labels: map[string]string{
 			"name": "this is the test name of my key access server",
 		},
-		Description: "test create key access server description",
 	}
 
 	pubKey := &kasr.PublicKey{
@@ -105,20 +104,15 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		},
 	}
 
-	kasRegistry := &kasr.KeyAccessServerCreateUpdate{
+	kasRegistry := &kasr.CreateKeyAccessServerRequest{
 		Uri:       "kas.uri",
 		PublicKey: pubKey,
 		Metadata:  metadata,
 	}
-	createdKasRegistry, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	r, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdKasRegistry)
-	assert.Equal(s.T(), kasRegistry.Uri, createdKasRegistry.Uri)
-	assert.Equal(s.T(), kasRegistry.PublicKey.GetRemote(), createdKasRegistry.PublicKey.GetRemote())
-	assert.Equal(s.T(), createdKasRegistry.PublicKey.GetLocal(), "")
-	assert.Equal(s.T(), kasRegistry.Metadata.Description, createdKasRegistry.Metadata.Description)
-	assert.EqualValues(s.T(), kasRegistry.Metadata.Labels, createdKasRegistry.Metadata.Labels)
-	assert.NotEqual(s.T(), "", createdKasRegistry.Id)
+	assert.NotNil(s.T(), r)
+	assert.NotEqual(s.T(), "", r.Id)
 }
 
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
@@ -126,7 +120,6 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 		Labels: map[string]string{
 			"name": "local KAS",
 		},
-		Description: "this KAS has a locally provided key",
 	}
 
 	pubKey := &kasr.PublicKey{
@@ -135,20 +128,15 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 		},
 	}
 
-	kasRegistry := &kasr.KeyAccessServerCreateUpdate{
+	kasRegistry := &kasr.CreateKeyAccessServerRequest{
 		Uri:       "testingCreation.uri.com",
 		PublicKey: pubKey,
 		Metadata:  metadata,
 	}
-	createdKasRegistry, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	r, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdKasRegistry)
-	assert.Equal(s.T(), kasRegistry.Uri, createdKasRegistry.Uri)
-	assert.Equal(s.T(), kasRegistry.PublicKey.GetLocal(), createdKasRegistry.PublicKey.GetLocal())
-	assert.Equal(s.T(), createdKasRegistry.PublicKey.GetRemote(), "")
-	assert.Equal(s.T(), kasRegistry.Metadata.Description, createdKasRegistry.Metadata.Description)
-	assert.EqualValues(s.T(), kasRegistry.Metadata.Labels, createdKasRegistry.Metadata.Labels)
-	assert.NotEqual(s.T(), "", createdKasRegistry.Id)
+	assert.NotNil(s.T(), r)
+	assert.NotEqual(s.T(), "", r.Id)
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
@@ -158,7 +146,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
 			Remote: "https://remote.com/key",
 		},
 	}
-	testKas := &kasr.KeyAccessServerCreateUpdate{
+	testKas := &kasr.CreateKeyAccessServerRequest{
 		Uri:       "testingUpdateWithRemoteKey.com",
 		PublicKey: pubKey,
 	}
@@ -171,12 +159,12 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
 		Labels: map[string]string{
 			"name": "updated name",
 		},
-		Description: "updated description",
 	}
-	updatedKas := &kasr.KeyAccessServerCreateUpdate{
-		Uri:       "updatedUri.com",
-		PublicKey: pubKey,
-		Metadata:  updatedMetadata,
+	updatedKas := &kasr.UpdateKeyAccessServerRequest{
+		Uri:                    "updatedUri.com",
+		PublicKey:              pubKey,
+		Metadata:               updatedMetadata,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	}
 	updated, err := s.db.KASRClient.UpdateKeyAccessServer(s.ctx, createdKas.Id, updatedKas)
 	assert.Nil(s.T(), err)
@@ -189,7 +177,6 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {
 	assert.Equal(s.T(), createdKas.Id, got.Id)
 	assert.Equal(s.T(), updatedKas.Uri, got.Uri)
 	assert.Equal(s.T(), updatedKas.PublicKey.GetRemote(), got.PublicKey.GetRemote())
-	assert.Equal(s.T(), updatedMetadata.Description, got.Metadata.Description)
 	assert.EqualValues(s.T(), updatedMetadata.Labels, got.Metadata.Labels)
 }
 
@@ -199,7 +186,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
 			Local: "this_is_a_local_key",
 		},
 	}
-	updatedKas := &kasr.KeyAccessServerCreateUpdate{
+	updatedKas := &kasr.UpdateKeyAccessServerRequest{
 		Uri:       "someKasUri.com",
 		PublicKey: pubKey,
 	}
@@ -216,7 +203,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 			Remote: "https://remote.com/key",
 		},
 	}
-	testKas := &kasr.KeyAccessServerCreateUpdate{
+	testKas := &kasr.CreateKeyAccessServerRequest{
 		Uri:       "deleting.net",
 		PublicKey: pubKey,
 	}

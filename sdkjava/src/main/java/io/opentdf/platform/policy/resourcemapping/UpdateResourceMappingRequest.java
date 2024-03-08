@@ -21,7 +21,7 @@ private static final long serialVersionUID = 0L;
     attributeValueId_ = "";
     terms_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
-    metadataUpdate_ = 0;
+    metadataUpdateBehavior_ = 0;
   }
 
   @java.lang.Override
@@ -214,21 +214,21 @@ private static final long serialVersionUID = 0L;
     return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
   }
 
-  public static final int METADATA_UPDATE_FIELD_NUMBER = 101;
-  private int metadataUpdate_ = 0;
+  public static final int METADATA_UPDATE_BEHAVIOR_FIELD_NUMBER = 101;
+  private int metadataUpdateBehavior_ = 0;
   /**
-   * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
-   * @return The enum numeric value on the wire for metadataUpdate.
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
    */
-  @java.lang.Override public int getMetadataUpdateValue() {
-    return metadataUpdate_;
+  @java.lang.Override public int getMetadataUpdateBehaviorValue() {
+    return metadataUpdateBehavior_;
   }
   /**
-   * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
-   * @return The metadataUpdate.
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
    */
-  @java.lang.Override public io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdate() {
-    io.opentdf.platform.common.MetadataUpdateEnum result = io.opentdf.platform.common.MetadataUpdateEnum.forNumber(metadataUpdate_);
+  @java.lang.Override public io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior() {
+    io.opentdf.platform.common.MetadataUpdateEnum result = io.opentdf.platform.common.MetadataUpdateEnum.forNumber(metadataUpdateBehavior_);
     return result == null ? io.opentdf.platform.common.MetadataUpdateEnum.UNRECOGNIZED : result;
   }
 
@@ -258,8 +258,8 @@ private static final long serialVersionUID = 0L;
     if (((bitField0_ & 0x00000001) != 0)) {
       output.writeMessage(100, getMetadata());
     }
-    if (metadataUpdate_ != io.opentdf.platform.common.MetadataUpdateEnum.METADATA_UPDATE_ENUM_UNSPECIFIED.getNumber()) {
-      output.writeEnum(101, metadataUpdate_);
+    if (metadataUpdateBehavior_ != io.opentdf.platform.common.MetadataUpdateEnum.METADATA_UPDATE_ENUM_UNSPECIFIED.getNumber()) {
+      output.writeEnum(101, metadataUpdateBehavior_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -288,9 +288,9 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(100, getMetadata());
     }
-    if (metadataUpdate_ != io.opentdf.platform.common.MetadataUpdateEnum.METADATA_UPDATE_ENUM_UNSPECIFIED.getNumber()) {
+    if (metadataUpdateBehavior_ != io.opentdf.platform.common.MetadataUpdateEnum.METADATA_UPDATE_ENUM_UNSPECIFIED.getNumber()) {
       size += com.google.protobuf.CodedOutputStream
-        .computeEnumSize(101, metadataUpdate_);
+        .computeEnumSize(101, metadataUpdateBehavior_);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -318,7 +318,7 @@ private static final long serialVersionUID = 0L;
       if (!getMetadata()
           .equals(other.getMetadata())) return false;
     }
-    if (metadataUpdate_ != other.metadataUpdate_) return false;
+    if (metadataUpdateBehavior_ != other.metadataUpdateBehavior_) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -342,8 +342,8 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + METADATA_FIELD_NUMBER;
       hash = (53 * hash) + getMetadata().hashCode();
     }
-    hash = (37 * hash) + METADATA_UPDATE_FIELD_NUMBER;
-    hash = (53 * hash) + metadataUpdate_;
+    hash = (37 * hash) + METADATA_UPDATE_BEHAVIOR_FIELD_NUMBER;
+    hash = (53 * hash) + metadataUpdateBehavior_;
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -490,7 +490,7 @@ private static final long serialVersionUID = 0L;
         metadataBuilder_.dispose();
         metadataBuilder_ = null;
       }
-      metadataUpdate_ = 0;
+      metadataUpdateBehavior_ = 0;
       return this;
     }
 
@@ -542,7 +542,7 @@ private static final long serialVersionUID = 0L;
         to_bitField0_ |= 0x00000001;
       }
       if (((from_bitField0_ & 0x00000010) != 0)) {
-        result.metadataUpdate_ = metadataUpdate_;
+        result.metadataUpdateBehavior_ = metadataUpdateBehavior_;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -614,8 +614,8 @@ private static final long serialVersionUID = 0L;
       if (other.hasMetadata()) {
         mergeMetadata(other.getMetadata());
       }
-      if (other.metadataUpdate_ != 0) {
-        setMetadataUpdateValue(other.getMetadataUpdateValue());
+      if (other.metadataUpdateBehavior_ != 0) {
+        setMetadataUpdateBehaviorValue(other.getMetadataUpdateBehaviorValue());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -667,7 +667,7 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 802
             case 808: {
-              metadataUpdate_ = input.readEnum();
+              metadataUpdateBehavior_ = input.readEnum();
               bitField0_ |= 0x00000010;
               break;
             } // case 808
@@ -1140,55 +1140,55 @@ private static final long serialVersionUID = 0L;
       return metadataBuilder_;
     }
 
-    private int metadataUpdate_ = 0;
+    private int metadataUpdateBehavior_ = 0;
     /**
-     * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
-     * @return The enum numeric value on the wire for metadataUpdate.
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @return The enum numeric value on the wire for metadataUpdateBehavior.
      */
-    @java.lang.Override public int getMetadataUpdateValue() {
-      return metadataUpdate_;
+    @java.lang.Override public int getMetadataUpdateBehaviorValue() {
+      return metadataUpdateBehavior_;
     }
     /**
-     * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
-     * @param value The enum numeric value on the wire for metadataUpdate to set.
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @param value The enum numeric value on the wire for metadataUpdateBehavior to set.
      * @return This builder for chaining.
      */
-    public Builder setMetadataUpdateValue(int value) {
-      metadataUpdate_ = value;
+    public Builder setMetadataUpdateBehaviorValue(int value) {
+      metadataUpdateBehavior_ = value;
       bitField0_ |= 0x00000010;
       onChanged();
       return this;
     }
     /**
-     * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
-     * @return The metadataUpdate.
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @return The metadataUpdateBehavior.
      */
     @java.lang.Override
-    public io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdate() {
-      io.opentdf.platform.common.MetadataUpdateEnum result = io.opentdf.platform.common.MetadataUpdateEnum.forNumber(metadataUpdate_);
+    public io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior() {
+      io.opentdf.platform.common.MetadataUpdateEnum result = io.opentdf.platform.common.MetadataUpdateEnum.forNumber(metadataUpdateBehavior_);
       return result == null ? io.opentdf.platform.common.MetadataUpdateEnum.UNRECOGNIZED : result;
     }
     /**
-     * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
-     * @param value The metadataUpdate to set.
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @param value The metadataUpdateBehavior to set.
      * @return This builder for chaining.
      */
-    public Builder setMetadataUpdate(io.opentdf.platform.common.MetadataUpdateEnum value) {
+    public Builder setMetadataUpdateBehavior(io.opentdf.platform.common.MetadataUpdateEnum value) {
       if (value == null) {
         throw new NullPointerException();
       }
       bitField0_ |= 0x00000010;
-      metadataUpdate_ = value.getNumber();
+      metadataUpdateBehavior_ = value.getNumber();
       onChanged();
       return this;
     }
     /**
-     * <code>.common.MetadataUpdateEnum metadata_update = 101 [json_name = "metadataUpdate"];</code>
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearMetadataUpdate() {
+    public Builder clearMetadataUpdateBehavior() {
       bitField0_ = (bitField0_ & ~0x00000010);
-      metadataUpdate_ = 0;
+      metadataUpdateBehavior_ = 0;
       onChanged();
       return this;
     }

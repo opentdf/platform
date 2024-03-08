@@ -99,7 +99,7 @@ message UpdateResourceMappingRequest {
 
   // Common Metadata
   common.MetadataMutable metadata = 100;
-  common.MetadataUpdateEnum metadata_update = 101;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateResourceMappingResponse {
   ResourceMapping resource_mapping = 1;

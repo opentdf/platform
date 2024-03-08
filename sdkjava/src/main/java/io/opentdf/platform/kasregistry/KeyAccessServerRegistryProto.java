@@ -117,44 +117,44 @@ public final class KeyAccessServerRegistryProto {
       "utableR\010metadata\"i\n\035CreateKeyAccessServe" +
       "rResponse\022H\n\021key_access_server\030\001 \001(\0132\034.k" +
       "asregistry.KeyAccessServerR\017keyAccessSer" +
-      "ver\"\230\002\n\034UpdateKeyAccessServerRequest\022\026\n\002" +
+      "ver\"\232\002\n\034UpdateKeyAccessServerRequest\022\026\n\002" +
       "id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022\030\n\003uri\030\002 \001(\tB\006\272H\003\310\001" +
       "\001R\003uri\022=\n\npublic_key\030\003 \001(\0132\026.kasregistry" +
       ".PublicKeyB\006\272H\003\310\001\001R\tpublicKey\0223\n\010metadat" +
       "a\030d \001(\0132\027.common.MetadataMutableR\010metada" +
-      "ta\022R\n\027metadata_update_options\030e \001(\0162\032.co" +
-      "mmon.MetadataUpdateEnumR\025metadataUpdateO" +
-      "ptions\"i\n\035UpdateKeyAccessServerResponse\022" +
-      "H\n\021key_access_server\030\001 \001(\0132\034.kasregistry" +
-      ".KeyAccessServerR\017keyAccessServer\"6\n\034Del" +
-      "eteKeyAccessServerRequest\022\026\n\002id\030\001 \001(\tB\006\272" +
-      "H\003\310\001\001R\002id\"i\n\035DeleteKeyAccessServerRespon" +
-      "se\022H\n\021key_access_server\030\001 \001(\0132\034.kasregis" +
-      "try.KeyAccessServerR\017keyAccessServer2\357\005\n" +
-      "\036KeyAccessServerRegistryService\022\210\001\n\024List" +
-      "KeyAccessServers\022(.kasregistry.ListKeyAc" +
-      "cessServersRequest\032).kasregistry.ListKey" +
-      "AccessServersResponse\"\033\202\323\344\223\002\025\022\023/key-acce" +
-      "ss-servers\022\207\001\n\022GetKeyAccessServer\022&.kasr" +
-      "egistry.GetKeyAccessServerRequest\032\'.kasr" +
-      "egistry.GetKeyAccessServerResponse\" \202\323\344\223" +
-      "\002\032\022\030/key-access-servers/{id}\022\216\001\n\025CreateK" +
-      "eyAccessServer\022).kasregistry.CreateKeyAc" +
-      "cessServerRequest\032*.kasregistry.CreateKe" +
-      "yAccessServerResponse\"\036\202\323\344\223\002\030\"\023/key-acce" +
-      "ss-servers:\001*\022\223\001\n\025UpdateKeyAccessServer\022" +
-      ").kasregistry.UpdateKeyAccessServerReque" +
-      "st\032*.kasregistry.UpdateKeyAccessServerRe" +
-      "sponse\"#\202\323\344\223\002\035\032\030/key-access-servers/{id}" +
-      ":\001*\022\220\001\n\025DeleteKeyAccessServer\022).kasregis" +
-      "try.DeleteKeyAccessServerRequest\032*.kasre" +
-      "gistry.DeleteKeyAccessServerResponse\" \202\323" +
-      "\344\223\002\032*\030/key-access-servers/{id}B\300\001\n\037io.op" +
-      "entdf.platform.kasregistryB\034KeyAccessSer" +
-      "verRegistryProtoP\001Z3github.com/opentdf/p" +
-      "latform/protocol/go/kasregistry\242\002\003KXX\252\002\013" +
-      "Kasregistry\312\002\013Kasregistry\342\002\027Kasregistry\\" +
-      "GPBMetadata\352\002\013Kasregistryb\006proto3"
+      "ta\022T\n\030metadata_update_behavior\030e \001(\0162\032.c" +
+      "ommon.MetadataUpdateEnumR\026metadataUpdate" +
+      "Behavior\"i\n\035UpdateKeyAccessServerRespons" +
+      "e\022H\n\021key_access_server\030\001 \001(\0132\034.kasregist" +
+      "ry.KeyAccessServerR\017keyAccessServer\"6\n\034D" +
+      "eleteKeyAccessServerRequest\022\026\n\002id\030\001 \001(\tB" +
+      "\006\272H\003\310\001\001R\002id\"i\n\035DeleteKeyAccessServerResp" +
+      "onse\022H\n\021key_access_server\030\001 \001(\0132\034.kasreg" +
+      "istry.KeyAccessServerR\017keyAccessServer2\357" +
+      "\005\n\036KeyAccessServerRegistryService\022\210\001\n\024Li" +
+      "stKeyAccessServers\022(.kasregistry.ListKey" +
+      "AccessServersRequest\032).kasregistry.ListK" +
+      "eyAccessServersResponse\"\033\202\323\344\223\002\025\022\023/key-ac" +
+      "cess-servers\022\207\001\n\022GetKeyAccessServer\022&.ka" +
+      "sregistry.GetKeyAccessServerRequest\032\'.ka" +
+      "sregistry.GetKeyAccessServerResponse\" \202\323" +
+      "\344\223\002\032\022\030/key-access-servers/{id}\022\216\001\n\025Creat" +
+      "eKeyAccessServer\022).kasregistry.CreateKey" +
+      "AccessServerRequest\032*.kasregistry.Create" +
+      "KeyAccessServerResponse\"\036\202\323\344\223\002\030\"\023/key-ac" +
+      "cess-servers:\001*\022\223\001\n\025UpdateKeyAccessServe" +
+      "r\022).kasregistry.UpdateKeyAccessServerReq" +
+      "uest\032*.kasregistry.UpdateKeyAccessServer" +
+      "Response\"#\202\323\344\223\002\035\032\030/key-access-servers/{i" +
+      "d}:\001*\022\220\001\n\025DeleteKeyAccessServer\022).kasreg" +
+      "istry.DeleteKeyAccessServerRequest\032*.kas" +
+      "registry.DeleteKeyAccessServerResponse\" " +
+      "\202\323\344\223\002\032*\030/key-access-servers/{id}B\300\001\n\037io." +
+      "opentdf.platform.kasregistryB\034KeyAccessS" +
+      "erverRegistryProtoP\001Z3github.com/opentdf" +
+      "/platform/protocol/go/kasregistry\242\002\003KXX\252" +
+      "\002\013Kasregistry\312\002\013Kasregistry\342\002\027Kasregistr" +
+      "y\\GPBMetadata\352\002\013Kasregistryb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -216,7 +216,7 @@ public final class KeyAccessServerRegistryProto {
     internal_static_kasregistry_UpdateKeyAccessServerRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_UpdateKeyAccessServerRequest_descriptor,
-        new java.lang.String[] { "Id", "Uri", "PublicKey", "Metadata", "MetadataUpdateOptions", });
+        new java.lang.String[] { "Id", "Uri", "PublicKey", "Metadata", "MetadataUpdateBehavior", });
     internal_static_kasregistry_UpdateKeyAccessServerResponse_descriptor =
       getDescriptor().getMessageTypes().get(9);
     internal_static_kasregistry_UpdateKeyAccessServerResponse_fieldAccessorTable = new

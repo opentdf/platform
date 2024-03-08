@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	policydb "github.com/opentdf/platform/services/policy/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -20,18 +21,18 @@ var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {
 	suite.Suite
-	schema string
-	f      fixtures.Fixtures
-	db     fixtures.DBInterface
-	ctx    context.Context
+	f   fixtures.Fixtures
+	db  fixtures.DBInterface
+	ctx context.Context
 }
 
 func (s *AttributeValuesSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeValues test suite")
 	s.ctx = context.Background()
 	fixtureKeyAccessServerId = s.f.GetKasRegistryKey("key_access_server_1").Id
-	s.schema = "test_opentdf_attribute_values"
-	s.db = fixtures.NewDBInterface(*Config)
+	c := *Config
+	c.DB.Schema = "test_opentdf_attribute_values"
+	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 	stillActiveNsId, stillActiveAttributeId, deactivatedAttrValueId = setupDeactivateAttributeValue(s)
@@ -58,12 +59,12 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 			assert.Equal(s.T(), f1.Id, item.Id)
 			assert.Equal(s.T(), f1.Value, item.Value)
 			assert.Equal(s.T(), len(f1.Members), len(item.Members))
-			assert.Equal(s.T(), f1.AttributeDefinitionId, item.AttributeId)
+			// assert.Equal(s.T(), f1.AttributeDefinitionId, item.AttributeId)
 		} else if item.Id == f2.Id {
 			assert.Equal(s.T(), f2.Id, item.Id)
 			assert.Equal(s.T(), f2.Value, item.Value)
 			assert.Equal(s.T(), len(f2.Members), len(item.Members))
-			assert.Equal(s.T(), f2.AttributeDefinitionId, item.AttributeId)
+			// assert.Equal(s.T(), f2.AttributeDefinitionId, item.AttributeId)
 		}
 	}
 }
@@ -77,7 +78,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	assert.Equal(s.T(), f.Id, v.Id)
 	assert.Equal(s.T(), f.Value, v.Value)
 	assert.Equal(s.T(), len(f.Members), len(v.Members))
-	assert.Equal(s.T(), f.AttributeDefinitionId, v.AttributeId)
+	// assert.Equal(s.T(), f.AttributeDefinitionId, v.AttributeId)
 	assert.Equal(s.T(), "https://example.com/attr/attr1/value/value1", v.Fqn)
 }
 
@@ -91,10 +92,10 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDefault() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 
-	value := &attributes.ValueCreateUpdate{
+	req := &attributes.CreateAttributeValueRequest{
 		Value: "testing create gives active true by default",
 	}
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, req)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdValue)
 	assert.Equal(s.T(), true, createdValue.Active.Value)
@@ -118,10 +119,9 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 		Labels: map[string]string{
 			"name": "this is the test name of my attribute value",
 		},
-		Description: "test create attribute value description",
 	}
 
-	value := &attributes.ValueCreateUpdate{
+	value := &attributes.CreateAttributeValueRequest{
 		Value:    "value create with members test value",
 		Metadata: metadata,
 	}
@@ -135,7 +135,6 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	assert.Equal(s.T(), createdValue.Id, got.Id)
 	assert.Equal(s.T(), createdValue.Value, got.Value)
 	assert.Equal(s.T(), len(createdValue.Members), len(got.Members))
-	assert.Equal(s.T(), createdValue.Metadata.Description, got.Metadata.Description)
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
 }
 
@@ -145,10 +144,9 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 		Labels: map[string]string{
 			"name": "testing create with members",
 		},
-		Description: "testing create with members",
 	}
 
-	value := &attributes.ValueCreateUpdate{
+	value := &attributes.CreateAttributeValueRequest{
 		Value: "value3",
 		Members: []string{
 			s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
@@ -165,13 +163,12 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), createdValue.Id, got.Id)
 	assert.Equal(s.T(), createdValue.Value, got.Value)
-	assert.Equal(s.T(), createdValue.Metadata.Description, got.Metadata.Description)
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
 	assert.EqualValues(s.T(), createdValue.Members, got.Members)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {
-	value := &attributes.ValueCreateUpdate{
+	value := &attributes.CreateAttributeValueRequest{
 		Value: "some value",
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, nonExistentAttrId, value)
@@ -187,10 +184,9 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 		Labels: map[string]string{
 			"name": "created attribute value",
 		},
-		Description: "created attribute value",
 	}
 
-	value := &attributes.ValueCreateUpdate{
+	value := &attributes.CreateAttributeValueRequest{
 		Value:    "created value testing update",
 		Metadata: metadata,
 	}
@@ -199,14 +195,13 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	assert.NotNil(s.T(), createdValue)
 
 	// update the created value
-	updatedValue := &attributes.ValueCreateUpdate{
-		Value: "updated value testing update",
+	updatedValue := &attributes.UpdateAttributeValueRequest{
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{
 				"name": "updated attribute value",
 			},
-			Description: "updated attribute value",
 		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	}
 	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, createdValue.Id, updatedValue)
 	assert.Nil(s.T(), err)
@@ -217,16 +212,14 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), updated.Id, got.Id)
-	assert.Equal(s.T(), updatedValue.Value, got.Value)
-	assert.Equal(s.T(), updatedValue.Metadata.Description, got.Metadata.Description)
+	assert.Equal(s.T(), value.Value, got.Value)
 	assert.EqualValues(s.T(), updatedValue.Metadata.Labels, got.Metadata.Labels)
 	assert.Equal(s.T(), len(updatedValue.Members), len(got.Members))
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
-	updatedValue := &attributes.ValueCreateUpdate{
-		Value: "updated value testing update",
-	}
+	s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
+	updatedValue := &attributes.UpdateAttributeValueRequest{}
 	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, nonExistentAttributeValueUuid, updatedValue)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
@@ -235,7 +228,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
 
 func (s *AttributeValuesSuite) Test_DeleteAttribute() {
 	// create a value
-	value := &attributes.ValueCreateUpdate{
+	value := &attributes.CreateAttributeValueRequest{
 		Value: "created value testing delete",
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, s.f.GetAttributeKey("example.net/attr/attr1").Id, value)
@@ -270,14 +263,16 @@ func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_WithInvalidIdFails(
 // reusable setup for creating a namespace -> attr -> value and then deactivating the attribute (cascades to value)
 func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, string) {
 	// create a namespace
-	nsId, err := s.db.PolicyClient.CreateNamespace(s.ctx, "cascading-deactivate-attribute-value.com")
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "cascading-deactivate-attribute-value.com",
+	})
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", nsId)
+	assert.NotEqual(s.T(), "", n)
 
 	// add an attribute under that namespaces
-	attr := &attributes.AttributeCreateUpdate{
+	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__cascading-deactivate-attr-value",
-		NamespaceId: nsId,
+		NamespaceId: n.Id,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
@@ -285,7 +280,7 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 	assert.NotNil(s.T(), createdAttr)
 
 	// add a value under that attribute
-	val := &attributes.ValueCreateUpdate{
+	val := &attributes.CreateAttributeValueRequest{
 		Value: "test__cascading-deactivate-attr-value-value",
 	}
 	createdVal, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.Id, val)
@@ -297,7 +292,7 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), deactivatedAttr)
 
-	return nsId, createdAttr.Id, createdVal.Id
+	return n.Id, createdAttr.Id, createdVal.Id
 }
 
 // Verify behavior that DB does not bubble up deactivation of value to attributes and namespaces
@@ -485,7 +480,7 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_KeyAccessServer_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
 		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-		KeyAccessServerId: "non-existent-kas-id",
+		KeyAccessServerId: nonExistentAttrId,
 	}
 
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)

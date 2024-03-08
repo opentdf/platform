@@ -629,8 +629,10 @@ func (c PolicyDbClient) DeleteSubjectMapping(ctx context.Context, id string) (st
 	return id, nil
 }
 
-// This function generates a SQL select statement for SubjectMappings that based on external Subject property fields & values. There is
-// some complexity in the SQL generation due to the external fields/values being stored in a JSONB column on the subject_condition_set table
+// This function generates a SQL select statement for SubjectMappings that based on external Subject property fields & values. This relationship
+// is sometimes called Entitlements or Subject Entitlements.
+//
+// There is complexity in the SQL generation due to the external fields/values being stored in a JSONB column on the subject_condition_set table
 // and the JSON structure being SubjectSets -> ConditionGroups -> Conditions.
 //
 // Unfortunately we must do some slight filtering at the SQL level to avoid extreme and potentially non-rare edge cases. Subject Mappings will
@@ -642,7 +644,7 @@ func (c PolicyDbClient) DeleteSubjectMapping(ctx context.Context, id string) (st
 // in some way or another. This could theoretically be every attribute in the DB if a policy admin has relied heavily on that field.
 //
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
-func selectSubjectEntitlementsSql(subjectProperties []*subjectmapping.SubjectProperty) (string, []interface{}, error) {
+func selectMatchedSubjectMappingsSql(subjectProperties []*subjectmapping.SubjectProperty) (string, []interface{}, error) {
 	var err error
 	if len(subjectProperties) == 0 {
 		err = errors.Join(db.ErrMissingRequiredValue, errors.New("one or more subject properties is required"))
@@ -695,7 +697,7 @@ func selectSubjectEntitlementsSql(subjectProperties []*subjectmapping.SubjectPro
 		ToSql()
 }
 
-// GetSubjectEntitlements liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
+// GetMatchedSubjectMappings liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
 // if there is any single condition found among the structures that matches:
 // 1. The external field, external value, and an IN operator
 // 2. The external field, _no_ external value, and a NOT_IN operator
@@ -705,9 +707,10 @@ func selectSubjectEntitlementsSql(subjectProperties []*subjectmapping.SubjectPro
 // logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
 // initial filter.
 //
+// NOTE: This relationship is sometimes called Entitlements or Subject Entitlements.
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
-func (c PolicyDbClient) GetSubjectEntitlements(ctx context.Context, properties []*subjectmapping.SubjectProperty) ([]*subjectmapping.SubjectMapping, error) {
-	sql, args, err := selectSubjectEntitlementsSql(properties)
+func (c PolicyDbClient) GetMatchedSubjectMappings(ctx context.Context, properties []*subjectmapping.SubjectProperty) ([]*subjectmapping.SubjectMapping, error) {
+	sql, args, err := selectMatchedSubjectMappingsSql(properties)
 	slog.Debug("generated SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args))
 	if err != nil {
 		return nil, err

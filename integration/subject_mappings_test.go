@@ -705,7 +705,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_InOne() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
 	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
@@ -717,13 +717,13 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_InOne() {
 		},
 	}
 
-	sm, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.Nil(s.T(), err)
 	assert.NotZero(s.T(), sm)
 	assert.Equal(s.T(), fixtureScs.Id, sm[0].SubjectConditionSet.Id)
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_DoesNotReturnNotInWhenMatches() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInWhenMatches() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
 	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
@@ -735,13 +735,13 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_DoesNotReturnNotInWhen
 		},
 	}
 
-	smList, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.Nil(s.T(), err)
 	assert.NotZero(s.T(), smList)
 	assert.Equal(s.T(), 0, len(smList))
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_NotInOneMatch() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
 	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 
@@ -754,7 +754,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_NotInOneMatch() {
 		},
 	}
 
-	smList, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.Nil(s.T(), err)
 	assert.NotZero(s.T(), smList)
 	assert.Equal(s.T(), 1, len(smList))
@@ -762,39 +762,39 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_NotInOneMatch() {
 	assert.Equal(s.T(), expectedMappedFixture.Id, smList[0].Id)
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_MissingFieldInProperty_Fails() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInProperty_Fails() {
 	props := []*subjectmapping.SubjectProperty{
 		{
 			ExternalValue: "some_value",
 		},
 	}
 
-	sm, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.ErrorIs(s.T(), err, db.ErrMissingRequiredValue)
 	assert.Zero(s.T(), sm)
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_MissingValueInProperty_Fails() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInProperty_Fails() {
 	props := []*subjectmapping.SubjectProperty{
 		{
 			ExternalField: "some_field",
 		},
 	}
 
-	sm, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.ErrorIs(s.T(), err, db.ErrMissingRequiredValue)
 	assert.Zero(s.T(), sm)
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_NoPropertiesProvided_Fails() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NoPropertiesProvided_Fails() {
 	props := []*subjectmapping.SubjectProperty{}
 
-	sm, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.ErrorIs(s.T(), err, db.ErrMissingRequiredValue)
 	assert.Zero(s.T(), sm)
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_InMultiple() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	simpleScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
 	simpleExternalField := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	simpleExternalValues := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
@@ -814,7 +814,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_InMultiple() {
 		},
 	}
 
-	gotEntitlements, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	gotEntitlements, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.Nil(s.T(), err)
 	assert.NotZero(s.T(), gotEntitlements)
 	assert.GreaterOrEqual(s.T(), len(gotEntitlements), 2)
@@ -835,7 +835,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_InMultiple() {
 	assert.True(s.T(), foundMappedSubjectConditionSet1)
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_NotInMultiple() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
 	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
@@ -855,7 +855,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_NotInMultiple() {
 		},
 	}
 
-	smList, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.Nil(s.T(), err)
 	assert.NotZero(s.T(), smList)
 	assert.Equal(s.T(), 2, len(smList))
@@ -868,7 +868,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_NotInMultiple() {
 	}
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_InOneAndNotInASecond() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOneAndNotInASecond() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
 	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
@@ -889,7 +889,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_InOneAndNotInASecond()
 		},
 	}
 
-	smList, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.Nil(s.T(), err)
 	assert.NotZero(s.T(), smList)
 	for _, sm := range smList {
@@ -901,14 +901,14 @@ func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_InOneAndNotInASecond()
 	}
 }
 
-func (s *SubjectMappingsSuite) TestGetSubjectEntitlements_NonExistentField_ReturnsNoMappings() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NonExistentField_ReturnsNoMappings() {
 	props := []*subjectmapping.SubjectProperty{
 		{
 			ExternalField: "non_existent_field",
 			ExternalValue: "non_existent_value",
 		},
 	}
-	sm, err := s.db.PolicyClient.GetSubjectEntitlements(s.ctx, props)
+	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.Nil(s.T(), err)
 	assert.NotZero(s.T(), sm)
 	assert.Equal(s.T(), 0, len(sm))

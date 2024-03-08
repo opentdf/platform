@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/opentdf/platform/sdk"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/db"
@@ -18,6 +20,7 @@ type RegistrationParams struct {
 	OTDF            *server.OpenTDFServer
 	DBClient        *db.Client
 	Engine          *opa.Engine
+	SDK             *sdk.SDK
 	WellKnownConfig func(namespace string, config any) error
 }
 type HandlerServer func(ctx context.Context, mux *runtime.ServeMux, server any) error

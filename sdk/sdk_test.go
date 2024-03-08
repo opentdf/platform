@@ -55,12 +55,8 @@ func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	// When
 	sdk, err := sdk.New(goodPlatformEndpoint)
 	// Then
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if sdk == nil {
-		t.Errorf("Expected sdk, got nil")
-	}
+	assert.Nil(t, err)
+	assert.NotNil(t, sdk)
 }
 
 func TestNew_ShouldCloseConnections(t *testing.T) {

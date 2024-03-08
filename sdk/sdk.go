@@ -110,7 +110,8 @@ func buildKASClient(c *config) (KASClient, error) {
 		return KASClient{}, errors.New("either both or neither of client credentials and token endpoint must be specified")
 	}
 
-	// at this point we have either both client credentials and a token endpoint or none of the above
+	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
+	// any just return a KAS client that can only get public keys
 	if c.clientCredentials.ClientId == "" {
 		return KASClient{}, nil
 	}

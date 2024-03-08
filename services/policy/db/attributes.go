@@ -442,6 +442,11 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attri
 	}
 
 	sql, args, err := updateAttributeSql(id, metadataJson)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &attributes.Attribute{
+			Id: id,
+		}, nil
+	}
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

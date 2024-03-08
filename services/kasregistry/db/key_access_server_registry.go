@@ -210,6 +210,11 @@ func (c KasRegistryDbClient) UpdateKeyAccessServer(ctx context.Context, id strin
 	}
 
 	sql, args, err := updateKeyAccessServerSQL(id, r.Uri, publicKeyJSON, metadataJson)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &kasr.KeyAccessServer{
+			Id: id,
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}

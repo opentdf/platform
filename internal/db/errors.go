@@ -77,6 +77,10 @@ func isPgError(err error) *pgconn.PgError {
 	return nil
 }
 
+func IsQueryBuilderSetClauseError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "at least one Set clause")
+}
+
 func NewUniqueAlreadyExistsError(value string) error {
 	return errors.Join(fmt.Errorf("value [%s] already exists and must be unique", value), ErrUniqueConstraintViolation)
 }

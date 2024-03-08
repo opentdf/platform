@@ -231,6 +231,11 @@ func (c PolicyDbClient) UpdateResourceMapping(ctx context.Context, id string, r 
 		metadataJSON,
 		r.Terms,
 	)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &resourcemapping.ResourceMapping{
+			Id: id,
+		}, nil
+	}
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

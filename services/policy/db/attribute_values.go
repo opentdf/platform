@@ -306,6 +306,11 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *
 		r.Members,
 		metadataJson,
 	)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &attributes.Value{
+			Id: id,
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}

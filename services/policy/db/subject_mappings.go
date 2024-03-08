@@ -268,6 +268,11 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, id string, s *
 		[]string{"s.SubjectValues"},
 		metadataJson,
 	)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &subjectmapping.SubjectMapping{
+			Id: id,
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}

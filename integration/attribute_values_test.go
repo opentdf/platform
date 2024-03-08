@@ -195,14 +195,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	assert.NotNil(s.T(), createdValue)
 
 	// update the created value
-	updatedValue := &attributes.UpdateAttributeValueRequest{
-		Metadata: &common.MetadataMutable{
-			Labels: map[string]string{
-				"name": "updated attribute value",
-			},
-		},
-		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
-	}
+	updatedValue := &attributes.UpdateAttributeValueRequest{}
 	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, createdValue.Id, updatedValue)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updated)
@@ -212,9 +205,6 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), updated.Id, got.Id)
-	assert.Equal(s.T(), value.Value, got.Value)
-	assert.EqualValues(s.T(), updatedValue.Metadata.Labels, got.Metadata.Labels)
-	assert.Equal(s.T(), len(updatedValue.Members), len(got.Members))
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {

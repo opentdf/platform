@@ -223,6 +223,11 @@ func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *names
 	}
 
 	sql, args, err := updateNamespaceSql(id, metadataJson)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &namespaces.Namespace{
+			Id: id,
+		}, nil
+	}
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

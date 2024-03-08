@@ -194,17 +194,34 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdValue)
 
-	// update the created value
-	updatedValue := &attributes.UpdateAttributeValueRequest{}
-	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, createdValue.Id, updatedValue)
+	// update with no changes
+	updatedNoChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, createdValue.Id, &attributes.UpdateAttributeValueRequest{})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), updated)
+	assert.NotNil(s.T(), updatedNoChange)
+	assert.Equal(s.T(), createdValue.Id, updatedNoChange.Id)
 
-	// get it again and compare
+	// update with changes
+	labelName := "updated attribute value"
+	labelUpdated := "true"
+	updatedWithChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, createdValue.Id, &attributes.UpdateAttributeValueRequest{
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"name":    labelName,
+				"updated": labelUpdated,
+			},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updatedWithChange)
+	assert.Equal(s.T(), createdValue.Id, updatedWithChange.Id)
+
+	// get it again to verify it was updated
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
-	assert.Equal(s.T(), updated.Id, got.Id)
+	assert.Equal(s.T(), labelName, got.Metadata.Labels["name"])
+	assert.Equal(s.T(), labelUpdated, got.Metadata.Labels["updated"])
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {

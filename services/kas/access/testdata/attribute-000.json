@@ -1,0 +1,8 @@
+{
+  "attribute": "https://example.com/attr/classification/value/topsecret",
+  "isDefault": true,
+  "displayName": "classification",
+  "pubKey": "pem encoded public key of the attribute",
+  "kasUrl": "https://kas.example.com/",
+  "schemaVersion:": "x.y.z"
+}

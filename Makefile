@@ -5,8 +5,10 @@
 
 MODS=protocol/go sdk . examples
 
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 LINT_OPTIONS?=--new
+# LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci-ratchet.yaml
 
 all: toolcheck clean build lint test
 
@@ -36,11 +38,14 @@ proto-lint:
 		fi)
 
 go-lint:
-	for m in $(MODS); do (golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
+	for m in $(MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
 
 proto-generate:
 	rm -rf sdkjava/src protocol/go/[a-fh-z]*
-	buf generate services 
+	buf generate services
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
+	cp -r tmp-gen/sdkjava/src/main/java/grpc sdkjava/src/main/java/grpc
+	rm -rf tmp-gen
 
 test:
 	go test ./... -race
@@ -49,12 +54,12 @@ test:
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
-	rm -f serviceapp examples/examples go.work go.work.sum
+	rm -f opentdf examples/examples go.work go.work.sum
 
-build: go.work proto-generate serviceapp sdk/sdk examples/examples
+build: go.work proto-generate opentdf sdk/sdk examples/examples
 
-serviceapp: go.work go.mod go.sum main.go $(shell find cmd internal services)
-	go build -o serviceapp -v ./main.go
+opentdf: go.work go.mod go.sum main.go $(shell find cmd internal services)
+	go build -o opentdf -v ./main.go
 
 sdk/sdk: go.work $(shell find sdk)
 	(cd sdk && go build ./...)

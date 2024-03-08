@@ -28,13 +28,12 @@ const (
 
 const kHTTPOk = 200
 
+// KASInfo contains Key Access Server information.
 type KASInfo struct {
-	url       string
-	publicKey string // Public key can be empty.
-}
-
-func NewKasInfo(url string) KASInfo {
-	return KASInfo{url: url}
+	// URL of the KAS server``
+	URL string
+	// Public key can be empty. If it is empty, the public key will be fetched from the KAS server.
+	PublicKey string
 }
 
 type TDFOption func(*TDFConfig) error
@@ -101,7 +100,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 
 // WithKasInformation adds all the kas urls and their corresponding public keys
 // that is required to create and read the tdf.
-func WithKasInformation(kasInfoList ...KASInfo) TDFOption { //nolint:gocognit
+func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 	return func(c *TDFConfig) error {
 		newKasInfos := make([]KASInfo, 0)
 		newKasInfos = append(newKasInfos, kasInfoList...)

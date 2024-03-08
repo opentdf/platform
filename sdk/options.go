@@ -16,6 +16,8 @@ type config struct {
 	clientCredentials oauth.ClientCredentials
 	tokenEndpoint     string
 	scopes            []string
+	policyConn        *grpc.ClientConn
+	authorizationConn *grpc.ClientConn
 	unwrapper         Unwrapper
 }
 
@@ -57,5 +59,17 @@ func WithTokenEndpoint(tokenEndpoint string) Option {
 func WithAuthConfig(authConfig AuthConfig) Option {
 	return func(c *config) {
 		c.unwrapper = &authConfig
+	}
+}
+
+func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.policyConn = conn
+	}
+}
+
+func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.authorizationConn = conn
 	}
 }

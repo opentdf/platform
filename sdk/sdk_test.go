@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -24,18 +25,15 @@ func GetMethods(i interface{}) (m []string) {
 	return m
 }
 
-func Test_ShouldCreateNewSDK(t *testing.T) {
-	// When
+func TestNew_ShouldCreateSDK(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
-	// Then
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if sdk == nil {
-		t.Errorf("Expected sdk, got nil")
+	assert.NoError(t, err)
+	assert.NotNil(t, sdk)
+	if t.Failed() {
+		return
 	}
 
 	// check if the clients are available
@@ -53,25 +51,18 @@ func Test_ShouldCreateNewSDK(t *testing.T) {
 	}
 }
 
-func Test_ShouldCloseSDKConnection(t *testing.T) {
-	t.Skip("Skipping test since close is broken")
-	// Given
+func TestNew_ShouldCloseConnections(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	// When
-	err = sdk.Close()
-	// Then
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+	assert.NoError(t, err)
+	if !t.Failed() {
+		assert.NoError(t, sdk.Close())
 	}
 }
 
-func Test_ShouldHaveSameMethods(t *testing.T) {
+func TestNew_ShouldHaveSameMethods(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),

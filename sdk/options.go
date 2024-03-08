@@ -1,8 +1,6 @@
 package sdk
 
 import (
-	"log/slog"
-
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,7 +14,7 @@ type config struct {
 	clientCredentials oauth.ClientCredentials
 	tokenEndpoint     string
 	scopes            []string
-	unwrapper         Unwrapper
+	authConfig        *AuthConfig
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -35,12 +33,6 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 	return func(c *config) {
 		c.clientCredentials = oauth.ClientCredentials{ClientId: clientID, ClientAuth: clientSecret}
 		c.scopes = scopes
-		// Build kas client here to unblock sdk initialization. This will be refactored in the future.
-		uw, err := buildKASClient(c)
-		if err != nil {
-			slog.Error("failed to build KAS client", slog.String("error", err.Error()))
-		}
-		c.unwrapper = &uw
 	}
 }
 
@@ -56,6 +48,6 @@ func WithTokenEndpoint(tokenEndpoint string) Option {
 // make these options more robust
 func WithAuthConfig(authConfig AuthConfig) Option {
 	return func(c *config) {
-		c.unwrapper = &authConfig
+		c.authConfig = &authConfig
 	}
 }

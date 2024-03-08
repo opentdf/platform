@@ -42,7 +42,10 @@ go-lint:
 
 proto-generate:
 	rm -rf sdkjava/src protocol/go/[a-fh-z]*
-	buf generate services 
+	buf generate services
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
+	cp -r tmp-gen/sdkjava/src/main/java/grpc sdkjava/src/main/java/grpc
+	rm -rf tmp-gen
 
 test:
 	go test ./... -race
@@ -51,12 +54,12 @@ test:
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
-	rm -f serviceapp examples/examples go.work go.work.sum
+	rm -f opentdf examples/examples go.work go.work.sum
 
-build: go.work proto-generate serviceapp sdk/sdk examples/examples
+build: go.work proto-generate opentdf sdk/sdk examples/examples
 
-serviceapp: go.work go.mod go.sum main.go $(shell find cmd internal services)
-	go build -o serviceapp -v ./main.go
+opentdf: go.work go.mod go.sum main.go $(shell find cmd internal services)
+	go build -o opentdf -v ./main.go
 
 sdk/sdk: go.work $(shell find sdk)
 	(cd sdk && go build ./...)

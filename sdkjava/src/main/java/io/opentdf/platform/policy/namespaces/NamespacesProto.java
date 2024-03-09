@@ -83,69 +83,68 @@ public final class NamespacesProto {
       "licy.namespaces\032\033buf/validate/validate.p" +
       "roto\032\023common/common.proto\032\034google/api/an" +
       "notations.proto\032\036google/protobuf/wrapper" +
-      "s.proto\032\032policy/policy_common.proto\"\243\001\n\t" +
-      "Namespace\022\016\n\002id\030\001 \001(\tR\002id\022\022\n\004name\030\002 \001(\tR" +
-      "\004name\022\020\n\003fqn\030\003 \001(\tR\003fqn\0222\n\006active\030\004 \001(\0132" +
-      "\032.google.protobuf.BoolValueR\006active\022,\n\010m" +
-      "etadata\030\005 \001(\0132\020.common.MetadataR\010metadat" +
-      "a\"-\n\023GetNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H" +
-      "\003\310\001\001R\002id\"R\n\024GetNamespaceResponse\022:\n\tname" +
-      "space\030\001 \001(\0132\034.policy.namespaces.Namespac" +
-      "eR\tnamespace\"F\n\025ListNamespacesRequest\022-\n" +
-      "\005state\030\001 \001(\0162\027.common.ActiveStateEnumR\005s" +
-      "tate\"V\n\026ListNamespacesResponse\022<\n\nnamesp" +
-      "aces\030\001 \003(\0132\034.policy.namespaces.Namespace" +
-      "R\nnamespaces\"\307\004\n\026CreateNamespaceRequest\022" +
-      "\367\003\n\004name\030\001 \001(\tB\342\003\272H\336\003r\003\030\375\001\272\001\322\003\n\020namespac" +
-      "e_format\022\352\002Namespace must be a valid hos" +
-      "tname. It should include at least one do" +
-      "t, with each segment (label) starting an" +
-      "d ending with an alphanumeric character." +
-      " Each label must be 1 to 63 characters l" +
-      "ong, allowing hyphens but not as the fir" +
-      "st or last character. The top-level doma" +
-      "in (the last segment after the final dot" +
-      ") must consist of at least two alphabeti" +
-      "c characters.\032Qthis.matches(\'^([a-zA-Z0-" +
-      "9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)" +
-      "+[a-zA-Z]{2,}$\')\310\001\001R\004name\0223\n\010metadata\030d " +
-      "\001(\0132\027.common.MetadataMutableR\010metadata\"U" +
-      "\n\027CreateNamespaceResponse\022:\n\tnamespace\030\001" +
-      " \001(\0132\034.policy.namespaces.NamespaceR\tname" +
-      "space\"\273\001\n\026UpdateNamespaceRequest\022\026\n\002id\030\001" +
-      " \001(\tB\006\272H\003\310\001\001R\002id\0223\n\010metadata\030d \001(\0132\027.com" +
-      "mon.MetadataMutableR\010metadata\022T\n\030metadat" +
-      "a_update_behavior\030e \001(\0162\032.common.Metadat" +
-      "aUpdateEnumR\026metadataUpdateBehavior\"U\n\027U" +
-      "pdateNamespaceResponse\022:\n\tnamespace\030\001 \001(" +
-      "\0132\034.policy.namespaces.NamespaceR\tnamespa" +
-      "ce\"4\n\032DeactivateNamespaceRequest\022\026\n\002id\030\001" +
-      " \001(\tB\006\272H\003\310\001\001R\002id\"\035\n\033DeactivateNamespaceR" +
-      "esponse2\336\005\n\020NamespaceService\022\204\001\n\014GetName" +
-      "space\022&.policy.namespaces.GetNamespaceRe" +
-      "quest\032\'.policy.namespaces.GetNamespaceRe" +
-      "sponse\"#\202\323\344\223\002\035\022\033/attributes/namespaces/{" +
-      "id}\022\205\001\n\016ListNamespaces\022(.policy.namespac" +
-      "es.ListNamespacesRequest\032).policy.namesp" +
-      "aces.ListNamespacesResponse\"\036\202\323\344\223\002\030\022\026/at" +
-      "tributes/namespaces\022\213\001\n\017CreateNamespace\022" +
-      ").policy.namespaces.CreateNamespaceReque" +
-      "st\032*.policy.namespaces.CreateNamespaceRe" +
-      "sponse\"!\202\323\344\223\002\033\"\026/attributes/namespaces:\001" +
-      "*\022\220\001\n\017UpdateNamespace\022).policy.namespace" +
-      "s.UpdateNamespaceRequest\032*.policy.namesp" +
-      "aces.UpdateNamespaceResponse\"&\202\323\344\223\002 2\033/a" +
-      "ttributes/namespaces/{id}:\001*\022\231\001\n\023Deactiv" +
-      "ateNamespace\022-.policy.namespaces.Deactiv" +
-      "ateNamespaceRequest\032..policy.namespaces." +
-      "DeactivateNamespaceResponse\"#\202\323\344\223\002\035*\033/at" +
-      "tributes/namespaces/{id}B\330\001\n%io.opentdf." +
-      "platform.policy.namespacesB\017NamespacesPr" +
-      "otoP\001Z9github.com/opentdf/platform/proto" +
-      "col/go/policy/namespaces\242\002\003PNX\252\002\021Policy." +
-      "Namespaces\312\002\021Policy\\Namespaces\342\002\035Policy\\" +
-      "Namespaces\\GPBMetadata\352\002\022Policy::Namespa" +
-      "cesb\006proto3"
+      "s.proto\"\243\001\n\tNamespace\022\016\n\002id\030\001 \001(\tR\002id\022\022\n" +
+      "\004name\030\002 \001(\tR\004name\022\020\n\003fqn\030\003 \001(\tR\003fqn\0222\n\006a" +
+      "ctive\030\004 \001(\0132\032.google.protobuf.BoolValueR" +
+      "\006active\022,\n\010metadata\030\005 \001(\0132\020.common.Metad" +
+      "ataR\010metadata\"-\n\023GetNamespaceRequest\022\026\n\002" +
+      "id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"R\n\024GetNamespaceResp" +
+      "onse\022:\n\tnamespace\030\001 \001(\0132\034.policy.namespa" +
+      "ces.NamespaceR\tnamespace\"F\n\025ListNamespac" +
+      "esRequest\022-\n\005state\030\001 \001(\0162\027.common.Active" +
+      "StateEnumR\005state\"V\n\026ListNamespacesRespon" +
+      "se\022<\n\nnamespaces\030\001 \003(\0132\034.policy.namespac" +
+      "es.NamespaceR\nnamespaces\"\307\004\n\026CreateNames" +
+      "paceRequest\022\367\003\n\004name\030\001 \001(\tB\342\003\272H\336\003r\003\030\375\001\272\001" +
+      "\322\003\n\020namespace_format\022\352\002Namespace must be" +
+      " a valid hostname. It should include at " +
+      "least one dot, with each segment (label)" +
+      " starting and ending with an alphanumeri" +
+      "c character. Each label must be 1 to 63 " +
+      "characters long, allowing hyphens but no" +
+      "t as the first or last character. The to" +
+      "p-level domain (the last segment after t" +
+      "he final dot) must consist of at least t" +
+      "wo alphabetic characters.\032Qthis.matches(" +
+      "\'^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA" +
+      "-Z0-9])?\\\\.)+[a-zA-Z]{2,}$\')\310\001\001R\004name\0223\n" +
+      "\010metadata\030d \001(\0132\027.common.MetadataMutable" +
+      "R\010metadata\"U\n\027CreateNamespaceResponse\022:\n" +
+      "\tnamespace\030\001 \001(\0132\034.policy.namespaces.Nam" +
+      "espaceR\tnamespace\"\273\001\n\026UpdateNamespaceReq" +
+      "uest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\0223\n\010metadata" +
+      "\030d \001(\0132\027.common.MetadataMutableR\010metadat" +
+      "a\022T\n\030metadata_update_behavior\030e \001(\0162\032.co" +
+      "mmon.MetadataUpdateEnumR\026metadataUpdateB" +
+      "ehavior\"U\n\027UpdateNamespaceResponse\022:\n\tna" +
+      "mespace\030\001 \001(\0132\034.policy.namespaces.Namesp" +
+      "aceR\tnamespace\"4\n\032DeactivateNamespaceReq" +
+      "uest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"\035\n\033Deactiva" +
+      "teNamespaceResponse2\336\005\n\020NamespaceService" +
+      "\022\204\001\n\014GetNamespace\022&.policy.namespaces.Ge" +
+      "tNamespaceRequest\032\'.policy.namespaces.Ge" +
+      "tNamespaceResponse\"#\202\323\344\223\002\035\022\033/attributes/" +
+      "namespaces/{id}\022\205\001\n\016ListNamespaces\022(.pol" +
+      "icy.namespaces.ListNamespacesRequest\032).p" +
+      "olicy.namespaces.ListNamespacesResponse\"" +
+      "\036\202\323\344\223\002\030\022\026/attributes/namespaces\022\213\001\n\017Crea" +
+      "teNamespace\022).policy.namespaces.CreateNa" +
+      "mespaceRequest\032*.policy.namespaces.Creat" +
+      "eNamespaceResponse\"!\202\323\344\223\002\033\"\026/attributes/" +
+      "namespaces:\001*\022\220\001\n\017UpdateNamespace\022).poli" +
+      "cy.namespaces.UpdateNamespaceRequest\032*.p" +
+      "olicy.namespaces.UpdateNamespaceResponse" +
+      "\"&\202\323\344\223\002 2\033/attributes/namespaces/{id}:\001*" +
+      "\022\231\001\n\023DeactivateNamespace\022-.policy.namesp" +
+      "aces.DeactivateNamespaceRequest\032..policy" +
+      ".namespaces.DeactivateNamespaceResponse\"" +
+      "#\202\323\344\223\002\035*\033/attributes/namespaces/{id}B\330\001\n" +
+      "%io.opentdf.platform.policy.namespacesB\017" +
+      "NamespacesProtoP\001Z9github.com/opentdf/pl" +
+      "atform/protocol/go/policy/namespaces\242\002\003P" +
+      "NX\252\002\021Policy.Namespaces\312\002\021Policy\\Namespac" +
+      "es\342\002\035Policy\\Namespaces\\GPBMetadata\352\002\022Pol" +
+      "icy::Namespacesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -154,7 +153,6 @@ public final class NamespacesProto {
           io.opentdf.platform.common.CommonProto.getDescriptor(),
           com.google.api.AnnotationsProto.getDescriptor(),
           com.google.protobuf.WrappersProto.getDescriptor(),
-          io.opentdf.platform.policy.policy_common.PolicyCommonProto.getDescriptor(),
         });
     internal_static_policy_namespaces_Namespace_descriptor =
       getDescriptor().getMessageTypes().get(0);
@@ -232,7 +230,6 @@ public final class NamespacesProto {
     io.opentdf.platform.common.CommonProto.getDescriptor();
     com.google.api.AnnotationsProto.getDescriptor();
     com.google.protobuf.WrappersProto.getDescriptor();
-    io.opentdf.platform.policy.policy_common.PolicyCommonProto.getDescriptor();
   }
 
   // @@protoc_insertion_point(outer_class_scope)

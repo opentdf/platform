@@ -8,7 +8,6 @@ import "google/api/annotations.proto";
 import "google/protobuf/wrappers.proto";
 import "kasregistry/key_access_server_registry.proto";
 import "policy/namespaces/namespaces.proto";
-import "policy/policy_common.proto";
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
 enum AttributeRuleTypeEnum {

@@ -6,7 +6,6 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/wrappers.proto";
-import "policy/policy_common.proto";
 
 message Namespace {
   // generated uuid in database

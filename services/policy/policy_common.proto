@@ -1,5 +1,0 @@
-syntax = "proto3";
-
-package policy.policy_common;
-
-import "google/protobuf/wrappers.proto";

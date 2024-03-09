@@ -30,7 +30,7 @@ require (
 	github.com/virtru/access-pdp v1.11.0
 	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.32.0
-	gopkg.in/go-jose/go-jose.v2 v2.6.2
+	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.5.0
 )

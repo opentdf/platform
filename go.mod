@@ -4,6 +4,7 @@ go 1.21.7
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
+	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bufbuild/protovalidate-go v0.4.3
 	github.com/coreos/go-oidc/v3 v3.9.0
 	github.com/creasty/defaults v1.7.0
@@ -69,10 +70,12 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/google/cel-go v0.18.2 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
@@ -99,6 +102,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc5 // indirect
 	github.com/opencontainers/runc v1.1.12 // indirect
+	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -112,6 +116,7 @@ require (
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
+	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect

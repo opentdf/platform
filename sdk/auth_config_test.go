@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewOIDCAuthConfig(t *testing.T) {
-	expectedAccessToken := "Bearer fail"
+	expectedAccessToken := "fail"
 	clientId := "idk"
 	clientSecret := "secret password"
 	subjectToken := "token"

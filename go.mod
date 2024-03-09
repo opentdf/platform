@@ -15,7 +15,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.4
 	github.com/jarcoal/httpmock v1.3.1
-	github.com/lestrrat-go/jwx/v2 v2.0.20
+	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.61.0
 	github.com/opentdf/backend-go v0.1.17
@@ -24,7 +24,7 @@ require (
 	github.com/pressly/goose/v3 v3.18.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
 	github.com/valyala/fasthttp v1.51.0
 	github.com/virtru/access-pdp v1.11.0
@@ -85,7 +85,7 @@ require (
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
-	github.com/lestrrat-go/httprc v1.0.4 // indirect
+	github.com/lestrrat-go/httprc v1.0.5 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
@@ -161,10 +161,10 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/pashagolub/pgxmock/v3 v3.2.0
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/crypto v0.19.0
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/crypto v0.21.0
+	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect

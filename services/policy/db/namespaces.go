@@ -8,7 +8,9 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -19,13 +21,14 @@ type namespaceSelectOptions struct {
 
 func hydrateNamespaceItem(row pgx.Row, opts namespaceSelectOptions) (*namespaces.Namespace, error) {
 	var (
-		id     string
-		name   string
-		active bool
-		fqn    sql.NullString
+		id           string
+		name         string
+		active       bool
+		metadataJson []byte
+		fqn          sql.NullString
 	)
 
-	fields := []interface{}{&id, &name, &active}
+	fields := []interface{}{&id, &name, &active, &metadataJson}
 	if opts.withFqn {
 		fields = append(fields, &fqn)
 	}
@@ -34,11 +37,20 @@ func hydrateNamespaceItem(row pgx.Row, opts namespaceSelectOptions) (*namespaces
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	m := &common.Metadata{}
+	if metadataJson != nil {
+		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	return &namespaces.Namespace{
-		Id:     id,
-		Name:   name,
-		Active: &wrapperspb.BoolValue{Value: active},
-		Fqn:    fqn.String,
+		Id:       id,
+		Name:     name,
+		Active:   &wrapperspb.BoolValue{Value: active},
+		Metadata: m,
+		Fqn:      fqn.String,
 	}, nil
 }
 
@@ -63,6 +75,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
+		t.Field("metadata"),
 	}
 
 	if opts.withFqn {
@@ -111,6 +124,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
+		t.Field("metadata"),
 	}
 
 	if opts.withFqn {
@@ -157,52 +171,86 @@ func (c PolicyDbClient) ListNamespaces(ctx context.Context, state string) ([]*na
 	return list, nil
 }
 
-func createNamespaceSql(name string) (string, []interface{}, error) {
+func createNamespaceSql(name string, metadata []byte) (string, []interface{}, error) {
 	t := db.Tables.Namespaces
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
-		Columns("name").
-		Values(name).
+		Columns("name", "metadata").
+		Values(name, metadata).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateNamespace(ctx context.Context, name string) (string, error) {
-	sql, args, err := createNamespaceSql(name)
+func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*namespaces.Namespace, error) {
+	metadataJson, _, err := db.MarshalCreateMetadata(r.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	sql, args, err := createNamespaceSql(r.Name, metadataJson)
 	var id string
 
 	if r, e := c.QueryRow(ctx, sql, args, err); e != nil {
-		return "", e
-	} else if e := r.Scan(&id); e != nil {
-		return "", db.WrapIfKnownInvalidQueryErr(e)
-	}
-
-	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
-
-	return id, nil
-}
-
-func updateNamespaceSql(id string, name string) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("name", name).
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
-}
-
-func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, name string) (*namespaces.Namespace, error) {
-	sql, args, err := updateNamespaceSql(id, name)
-
-	if e := c.Exec(ctx, sql, args, err); e != nil {
 		return nil, e
+	} else if e := r.Scan(&id); e != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(e)
 	}
 
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
 
-	return c.GetNamespace(ctx, id)
+	return &namespaces.Namespace{
+		Id: id,
+	}, nil
+}
+
+func updateNamespaceSql(id string, metadata []byte) (string, []interface{}, error) {
+	t := db.Tables.Namespaces
+	sb := db.NewStatementBuilder().Update(t.Name())
+
+	if metadata != nil {
+		sb = sb.Set("metadata", metadata)
+	}
+
+	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
+}
+
+func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*namespaces.Namespace, error) {
+	// if extend we need to merge the metadata
+	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+		n, err := c.GetNamespace(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if n.Metadata == nil {
+			return nil, nil
+		}
+		return n.Metadata, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sql, args, err := updateNamespaceSql(id, metadataJson)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &namespaces.Namespace{
+			Id: id,
+		}, nil
+	}
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
+	}
+
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
+
+	return &namespaces.Namespace{
+		Id: id,
+	}, nil
 }
 
 func deactivateNamespaceSql(id string) (string, []interface{}, error) {
@@ -217,8 +265,11 @@ func deactivateNamespaceSql(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) DeactivateNamespace(ctx context.Context, id string) (*namespaces.Namespace, error) {
 	sql, args, err := deactivateNamespaceSql(id)
+	if err != nil {
+		return nil, err
+	}
 
-	if e := c.Exec(ctx, sql, args, err); e != nil {
+	if e := c.Exec(ctx, sql, args); e != nil {
 		return nil, e
 	}
 	return c.GetNamespace(ctx, id)
@@ -241,9 +292,12 @@ func (c PolicyDbClient) DeleteNamespace(ctx context.Context, id string) (*namesp
 		return nil, err
 	}
 	sql, args, err := deleteNamespaceSql(id)
+	if err != nil {
+		return nil, err
+	}
 
-	if e := c.Exec(ctx, sql, args, err); e != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(e)
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
 	}
 
 	// return the namespace before it was deleted

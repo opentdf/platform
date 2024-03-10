@@ -9,7 +9,7 @@ import (
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
-	resourcemapping "github.com/opentdf/platform/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,17 +18,17 @@ var nonExistentResourceMappingUUID = "45674556-8888-9999-9999-000001230000"
 
 type ResourceMappingsSuite struct {
 	suite.Suite
-	schema string
-	f      fixtures.Fixtures
-	db     fixtures.DBInterface
-	ctx    context.Context
+	f   fixtures.Fixtures
+	db  fixtures.DBInterface
+	ctx context.Context
 }
 
 func (s *ResourceMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.ResourceMappings test suite")
 	s.ctx = context.Background()
-	s.schema = "test_opentdf_resource_mappings"
-	s.db = fixtures.NewDBInterface(*Config)
+	c := *Config
+	c.DB.Schema = "test_opentdf_resource_mappings"
+	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 }
@@ -51,11 +51,10 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 		Labels: map[string]string{
 			"name": "this is the test name of my resource mapping",
 		},
-		Description: "test create resource mapping description",
 	}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	mapping := &resourcemapping.ResourceMappingCreateUpdate{
+	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
@@ -68,7 +67,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeValueFails() {
 	metadata := &common.MetadataMutable{}
 
-	mapping := &resourcemapping.ResourceMappingCreateUpdate{
+	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: nonExistentAttributeValueUuid,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
@@ -83,7 +82,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 	metadata := &common.MetadataMutable{}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
-	mapping := &resourcemapping.ResourceMappingCreateUpdate{
+	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
 		Terms:            []string{},
@@ -137,7 +136,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 	metadata := &common.MetadataMutable{}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
-	mapping := &resourcemapping.ResourceMappingCreateUpdate{
+	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
@@ -155,39 +154,65 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
-	metadata := &common.MetadataMutable{
-		Labels: map[string]string{
-			"name": "some test resource mapping name",
-		},
-		Description: "some description",
+	fixedLabel := "fixed label"
+	updateLabel := "update label"
+	updatedLabel := "true"
+	newLabel := "new label"
+
+	labels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updateLabel,
+	}
+	updateLabels := map[string]string{
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+	expectedLabels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updatedLabel,
+		"new":    newLabel,
 	}
 
+	terms := []string{"some term", "other term"}
+	updateTerms := []string{"updated term1", "updated term 2"}
+
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
-	mapping := &resourcemapping.ResourceMappingCreateUpdate{
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
-		Metadata:         metadata,
-		Terms:            []string{"some term", "other term"},
-	}
-	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
+		},
+		Terms: terms,
+	})
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 
-	updatedMetadata := &common.MetadataMutable{
-		Labels: map[string]string{
-			"name": "new name",
-		},
-		Description: "new description",
+	if v, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.Id); err != nil {
+		assert.Nil(s.T(), err)
+	} else {
+		assert.NotNil(s.T(), v)
+		assert.Equal(s.T(), createdMapping.Id, v.Id)
+		assert.Equal(s.T(), createdMapping.AttributeValue.Id, v.AttributeValue.Id)
+		assert.Equal(s.T(), createdMapping.Terms, v.Terms)
 	}
 
-	// update the created with new metadata and terms
-	updatedMapping := &resourcemapping.ResourceMappingCreateUpdate{
-		AttributeValueId: createdMapping.AttributeValue.Id,
-		Metadata:         updatedMetadata,
-		Terms:            []string{"updated term1", "updated term 2"},
-	}
-	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.Id, updatedMapping)
+	updateWithoutChange, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.Id, &resourcemapping.UpdateResourceMappingRequest{})
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), updated)
+	assert.NotNil(s.T(), updateWithoutChange)
+	assert.Equal(s.T(), createdMapping.Id, updateWithoutChange.Id)
+
+	// update the created with new metadata and terms
+	updateWithChange, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.Id, &resourcemapping.UpdateResourceMappingRequest{
+		AttributeValueId: createdMapping.AttributeValue.Id,
+		Terms:            updateTerms,
+		Metadata: &common.MetadataMutable{
+			Labels: updateLabels,
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updateWithChange)
+	assert.Equal(s.T(), createdMapping.Id, updateWithChange.Id)
 
 	// get after update to verify db reflects changes made
 	got, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.Id)
@@ -195,14 +220,13 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), createdMapping.Id, got.Id)
 	assert.Equal(s.T(), createdMapping.AttributeValue.Id, got.AttributeValue.Id)
-	assert.Equal(s.T(), updatedMapping.Terms, got.Terms)
-	assert.Equal(s.T(), updatedMetadata.Description, got.Metadata.Description)
-	assert.EqualValues(s.T(), updatedMetadata.Labels, got.Metadata.Labels)
+	assert.Equal(s.T(), updateTerms, got.Terms)
+	assert.EqualValues(s.T(), expectedLabels, got.Metadata.GetLabels())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
-	mapping := &resourcemapping.ResourceMappingCreateUpdate{
+	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"asdf qwerty"},
 	}
@@ -211,7 +235,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 	assert.NotNil(s.T(), createdMapping)
 
 	// update the created with new metadata and terms
-	updatedMapping := &resourcemapping.ResourceMappingCreateUpdate{
+	updatedMapping := &resourcemapping.UpdateResourceMappingRequest{
 		AttributeValueId: createdMapping.AttributeValue.Id,
 		Terms:            []string{"asdf updated term1"},
 	}
@@ -223,7 +247,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeValueIdFails() {
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
-	mapping := &resourcemapping.ResourceMappingCreateUpdate{
+	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"testing"},
 	}
@@ -231,8 +255,13 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdMapping)
 
+	m, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), m)
+	assert.Equal(s.T(), createdMapping.Id, m.Id)
+
 	// update the created with new metadata and terms
-	updatedMapping := &resourcemapping.ResourceMappingCreateUpdate{
+	updatedMapping := &resourcemapping.UpdateResourceMappingRequest{
 		AttributeValueId: nonExistentAttributeValueUuid,
 		Terms:            []string{"testing-2"},
 	}
@@ -244,7 +273,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 	attrValue := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1")
-	mapping := &resourcemapping.ResourceMappingCreateUpdate{
+	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Terms:            []string{"term1", "term2"},
 	}

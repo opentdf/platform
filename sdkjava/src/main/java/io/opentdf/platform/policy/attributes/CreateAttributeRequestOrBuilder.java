@@ -9,17 +9,72 @@ public interface CreateAttributeRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.attributes.AttributeCreateUpdate attribute = 1 [json_name = "attribute", (.buf.validate.field) = { ... }</code>
-   * @return Whether the attribute field is set.
+   * <pre>
+   * Required
+   * </pre>
+   *
+   * <code>string namespace_id = 1 [json_name = "namespaceId", (.buf.validate.field) = { ... }</code>
+   * @return The namespaceId.
    */
-  boolean hasAttribute();
+  java.lang.String getNamespaceId();
   /**
-   * <code>.policy.attributes.AttributeCreateUpdate attribute = 1 [json_name = "attribute", (.buf.validate.field) = { ... }</code>
-   * @return The attribute.
+   * <pre>
+   * Required
+   * </pre>
+   *
+   * <code>string namespace_id = 1 [json_name = "namespaceId", (.buf.validate.field) = { ... }</code>
+   * @return The bytes for namespaceId.
    */
-  io.opentdf.platform.policy.attributes.AttributeCreateUpdate getAttribute();
+  com.google.protobuf.ByteString
+      getNamespaceIdBytes();
+
   /**
-   * <code>.policy.attributes.AttributeCreateUpdate attribute = 1 [json_name = "attribute", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * @return The name.
    */
-  io.opentdf.platform.policy.attributes.AttributeCreateUpdateOrBuilder getAttributeOrBuilder();
+  java.lang.String getName();
+  /**
+   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * @return The bytes for name.
+   */
+  com.google.protobuf.ByteString
+      getNameBytes();
+
+  /**
+   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+   * @return The enum numeric value on the wire for rule.
+   */
+  int getRuleValue();
+  /**
+   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+   * @return The rule.
+   */
+  io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum getRule();
+
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.MetadataMutable getMetadata();
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
 }

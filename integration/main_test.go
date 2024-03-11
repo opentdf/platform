@@ -86,10 +86,10 @@ func TestMain(m *testing.M) {
 
 	slog.Info("📀 starting postgres container")
 	postgres, err := tc.GenericContainer(context.Background(), req)
-	if err != nil {
-		slog.Error("could not start postgres container", slog.String("error", err.Error()))
-		panic(err)
-	}
+	// if err != nil {
+	// slog.Error("could not start postgres container", slog.String("error", err.Error()))
+	panic("test panic failure")
+	// }
 
 	// Cleanup the container
 	defer func() {

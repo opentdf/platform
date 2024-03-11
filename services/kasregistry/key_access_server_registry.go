@@ -33,9 +33,9 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 ) (*kasr.CreateKeyAccessServerResponse, error) {
 	slog.Debug("creating key access server")
 
-	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req.KeyAccessServer)
+	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("keyAccessServer", req.KeyAccessServer.String()))
+		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("keyAccessServer", req.String()))
 	}
 
 	return &kasr.CreateKeyAccessServerResponse{
@@ -72,9 +72,9 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 	req *kasr.UpdateKeyAccessServerRequest,
 ) (*kasr.UpdateKeyAccessServerResponse, error) {
-	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.Id, req.KeyAccessServer)
+	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.Id, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("keyAccessServer", req.KeyAccessServer.String()))
+		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("keyAccessServer", req.String()))
 	}
 	return &kasr.UpdateKeyAccessServerResponse{
 		KeyAccessServer: k,

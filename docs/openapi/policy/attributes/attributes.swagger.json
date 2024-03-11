@@ -18,7 +18,6 @@
   "paths": {
     "/attributes": {
       "post": {
-        "summary": "Create Attribute\nRequest:\ngrpcurl -plaintext -d '{\"attribute\": {\"namespace_id\": \"namespace_id\", \"name\": \"attribute_name\", \"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute\nResponse\n{\n\"attribute\": {\n\"id\": \"e06f067b-d158-44bc-a814-1aa3f968dcf0\",\n\"metadata\": {\n\"createdAt\": \"2024-02-14T20:24:23.057404Z\",\n\"updatedAt\": \"2024-02-14T20:24:23.057404Z\"\n},\n\"namespace\": {\n\"id\": \"namespace_id\"\n},\n\"name\": \"attribute_name\",\n\"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\",\n\"active\": true\n}\n}",
         "operationId": "AttributesService_CreateAttribute",
         "responses": {
           "200": {
@@ -36,11 +35,11 @@
         },
         "parameters": [
           {
-            "name": "attribute",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/attributesAttributeCreateUpdate"
+              "$ref": "#/definitions/attributesCreateAttributeRequest"
             }
           }
         ],
@@ -49,7 +48,7 @@
         ]
       }
     },
-    "/attributes/_/fqn": {
+    "/attributes/*/fqn": {
       "get": {
         "operationId": "AttributesService_GetAttributesByValueFqns",
         "responses": {
@@ -83,9 +82,9 @@
         ]
       }
     },
-    "/attributes/_/values/{id}": {
+    "/attributes/*/values/{id}": {
       "get": {
-        "summary": "* Attribute Value *",
+        "summary": "--------------------------------------*\nValue RPCs\n---------------------------------------",
         "operationId": "AttributesService_GetAttributeValue",
         "responses": {
           "200": {
@@ -140,12 +139,63 @@
         "tags": [
           "AttributesService"
         ]
+      },
+      "patch": {
+        "operationId": "AttributesService_UpdateAttributeValue",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesUpdateAttributeValueResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "members": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Optional"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
       }
     },
     "/attributes/keyaccessserver/assign": {
       "post": {
-        "summary": "Assign Key Access Server to Attribute",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
+        "summary": "--------------------------------------*\nAttribute \u003c\u003e Key Access Server RPCs\n---------------------------------------",
         "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
         "responses": {
           "200": {
@@ -178,8 +228,6 @@
     },
     "/attributes/keyaccessserver/remove": {
       "post": {
-        "summary": "Remove Key Access Server to Attribute",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
         "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
         "responses": {
           "200": {
@@ -212,8 +260,6 @@
     },
     "/attributes/values/keyaccessserver/assign": {
       "post": {
-        "summary": "Assign Key Access Server to Value",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
         "operationId": "AttributesService_AssignKeyAccessServerToValue",
         "responses": {
           "200": {
@@ -246,8 +292,6 @@
     },
     "/attributes/values/keyaccessserver/remove": {
       "post": {
-        "summary": "Remove Key Access Server to Value\ngrpcurl -plaintext -d '{\"value_key_access_server\": {\"value_id\": \"value_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue",
-        "description": "Example Request:\n{\n\"value_key_access_server\": {\n\"value_id\": \"value_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"value_key_access_server\": {\n\"value_id\": \"value_id\",\n\"key_access_server_id",
         "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
         "responses": {
           "200": {
@@ -280,7 +324,6 @@
     },
     "/attributes/{attributeId}/values": {
       "post": {
-        "summary": "Create Attribute Value\nExample:\n grpcurl -plaintext -d '{\"attribute_id\": \"attribute_id\", \"value\": {\"value\": \"value\"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue",
         "operationId": "AttributesService_CreateAttributeValue",
         "responses": {
           "200": {
@@ -299,60 +342,33 @@
         "parameters": [
           {
             "name": "attributeId",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "value",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/attributesValueCreateUpdate"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/{attributeId}/values/{id}": {
-      "post": {
-        "operationId": "AttributesService_UpdateAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesUpdateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeId",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "value",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesValueCreateUpdate"
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "members": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Optional"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                }
+              }
             }
           }
         ],
@@ -418,7 +434,7 @@
           "AttributesService"
         ]
       },
-      "post": {
+      "patch": {
         "operationId": "AttributesService_UpdateAttribute",
         "responses": {
           "200": {
@@ -437,16 +453,26 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "attribute",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/attributesAttributeCreateUpdate"
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Optional"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
             }
           }
         ],
@@ -478,10 +504,6 @@
       "properties": {
         "id": {
           "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Optional metadata for the attribute definition"
         },
         "namespace": {
           "$ref": "#/definitions/namespacesNamespace",
@@ -515,6 +537,10 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       }
     },
@@ -526,35 +552,6 @@
         },
         "value": {
           "$ref": "#/definitions/policyattributesValue"
-        }
-      }
-    },
-    "attributesAttributeCreateUpdate": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Optional metadata for the attribute definition"
-        },
-        "namespaceId": {
-          "type": "string",
-          "title": "namespace of the attribute"
-        },
-        "name": {
-          "type": "string",
-          "title": "attribute name"
-        },
-        "rule": {
-          "$ref": "#/definitions/attributesAttributeRuleTypeEnum",
-          "title": "attribute rule enum"
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/attributesValueCreateUpdate"
-          },
-          "title": "optional"
         }
       }
     },
@@ -579,6 +576,25 @@
       ],
       "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
       "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "attributesCreateAttributeRequest": {
+      "type": "object",
+      "properties": {
+        "namespaceId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rule": {
+          "$ref": "#/definitions/attributesAttributeRuleTypeEnum"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
+        }
+      }
     },
     "attributesCreateAttributeResponse": {
       "type": "object",
@@ -696,24 +712,6 @@
         }
       }
     },
-    "attributesValueCreateUpdate": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
-        },
-        "value": {
-          "type": "string"
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "list of attribute values that this value is related to (attribute group)"
-        }
-      }
-    },
     "attributesValueKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -755,10 +753,6 @@
             "type": "string"
           },
           "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
@@ -771,13 +765,19 @@
           "additionalProperties": {
             "type": "string"
           },
-          "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
+          "title": "optional labels"
         }
       }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "kasregistryKeyAccessServer": {
       "type": "object",
@@ -785,15 +785,16 @@
         "id": {
           "type": "string"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
         "uri": {
           "type": "string",
           "title": "Address of a KAS instance"
         },
         "publicKey": {
           "$ref": "#/definitions/kasregistryPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       },
       "title": "Descriptor for a KAS"
@@ -828,6 +829,9 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
         }
       }
     },
@@ -838,11 +842,8 @@
           "type": "string",
           "title": "generated uuid in database"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
-        "attributeId": {
-          "type": "string"
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
         },
         "value": {
           "type": "string"
@@ -868,6 +869,10 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       }
     },

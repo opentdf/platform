@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package policy.resourcemapping;
 
-import "policy/attributes/attributes.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
+import "policy/attributes/attributes.proto";
 
 /*
    # Resource Mappings (aka Access Control Resource Encodings aka ACRE):  Structures supporting Resources and Attributes mappings
@@ -57,14 +57,6 @@ message ResourceMapping {
   repeated string terms = 4;
 }
 
-message ResourceMappingCreateUpdate {
-  common.MetadataMutable metadata = 1;
-
-  string attribute_value_id = 2;
-
-  repeated string terms = 3;
-}
-
 /*
    Resource Mappings
 */
@@ -84,15 +76,30 @@ message GetResourceMappingResponse {
 }
 
 message CreateResourceMappingRequest {
-  ResourceMappingCreateUpdate resource_mapping = 1 [(buf.validate.field).required = true];
+  // Required
+  string attribute_value_id = 1 [(buf.validate.field).required = true];
+
+  repeated string terms = 2 [(buf.validate.field).required = true];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
 }
 message CreateResourceMappingResponse {
   ResourceMapping resource_mapping = 1;
 }
 
 message UpdateResourceMappingRequest {
+  // Required
   string id = 1 [(buf.validate.field).required = true];
-  ResourceMappingCreateUpdate resource_mapping = 2 [(buf.validate.field).required = true];
+
+  // Optional
+  string attribute_value_id = 4;
+
+  repeated string terms = 5;
+
+  // Common Metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateResourceMappingResponse {
   ResourceMapping resource_mapping = 1;
@@ -234,7 +241,7 @@ service ResourceMappingService {
   rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {
     option (google.api.http) = {
       post: "/resource-mappings"
-      body: "resource_mapping"
+      body: "*"
     };
   }
 
@@ -285,7 +292,7 @@ service ResourceMappingService {
   rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
     option (google.api.http) = {
       post: "/resource-mappings/{id}"
-      body: "resource_mapping"
+      body: "*"
     };
   }
 

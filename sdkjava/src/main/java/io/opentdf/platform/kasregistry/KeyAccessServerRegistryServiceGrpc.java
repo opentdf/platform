@@ -219,53 +219,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
   public interface AsyncService {
 
     /**
-     * <pre>
-     *Request Examples:
-     *{}
-     *Response Examples:
-     *{
-     *"key_access_servers": [
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *},
-     *{
-     *"id": "cad1fc87-1193-456b-a217-d5cdae1fa67a",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971990",
-     *"nanos": 303386000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971990",
-     *"nanos": 303386000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas3",
-     *"public_key": {
-     *"local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
-     *}
-     *}
-     *]
-     *}
-     * </pre>
      */
     default void listKeyAccessServers(io.opentdf.platform.kasregistry.ListKeyAccessServersRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.ListKeyAccessServersResponse> responseObserver) {
@@ -273,34 +226,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732"
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     default void getKeyAccessServer(io.opentdf.platform.kasregistry.GetKeyAccessServerRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.GetKeyAccessServerResponse> responseObserver) {
@@ -308,39 +233,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"key_access_server": {
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     default void createKeyAccessServer(io.opentdf.platform.kasregistry.CreateKeyAccessServerRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.CreateKeyAccessServerResponse> responseObserver) {
@@ -348,40 +240,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"key_access_server": {
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     default void updateKeyAccessServer(io.opentdf.platform.kasregistry.UpdateKeyAccessServerRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.UpdateKeyAccessServerResponse> responseObserver) {
@@ -389,34 +247,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732"
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     default void deleteKeyAccessServer(io.opentdf.platform.kasregistry.DeleteKeyAccessServerRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.DeleteKeyAccessServerResponse> responseObserver) {
@@ -452,53 +282,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{}
-     *Response Examples:
-     *{
-     *"key_access_servers": [
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *},
-     *{
-     *"id": "cad1fc87-1193-456b-a217-d5cdae1fa67a",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971990",
-     *"nanos": 303386000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971990",
-     *"nanos": 303386000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas3",
-     *"public_key": {
-     *"local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
-     *}
-     *}
-     *]
-     *}
-     * </pre>
      */
     public void listKeyAccessServers(io.opentdf.platform.kasregistry.ListKeyAccessServersRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.ListKeyAccessServersResponse> responseObserver) {
@@ -507,34 +290,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732"
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public void getKeyAccessServer(io.opentdf.platform.kasregistry.GetKeyAccessServerRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.GetKeyAccessServerResponse> responseObserver) {
@@ -543,39 +298,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"key_access_server": {
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public void createKeyAccessServer(io.opentdf.platform.kasregistry.CreateKeyAccessServerRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.CreateKeyAccessServerResponse> responseObserver) {
@@ -584,40 +306,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"key_access_server": {
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public void updateKeyAccessServer(io.opentdf.platform.kasregistry.UpdateKeyAccessServerRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.UpdateKeyAccessServerResponse> responseObserver) {
@@ -626,34 +314,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732"
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public void deleteKeyAccessServer(io.opentdf.platform.kasregistry.DeleteKeyAccessServerRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.kasregistry.DeleteKeyAccessServerResponse> responseObserver) {
@@ -679,53 +339,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{}
-     *Response Examples:
-     *{
-     *"key_access_servers": [
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *},
-     *{
-     *"id": "cad1fc87-1193-456b-a217-d5cdae1fa67a",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971990",
-     *"nanos": 303386000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971990",
-     *"nanos": 303386000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas3",
-     *"public_key": {
-     *"local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
-     *}
-     *}
-     *]
-     *}
-     * </pre>
      */
     public io.opentdf.platform.kasregistry.ListKeyAccessServersResponse listKeyAccessServers(io.opentdf.platform.kasregistry.ListKeyAccessServersRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -733,34 +346,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732"
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public io.opentdf.platform.kasregistry.GetKeyAccessServerResponse getKeyAccessServer(io.opentdf.platform.kasregistry.GetKeyAccessServerRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -768,39 +353,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"key_access_server": {
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public io.opentdf.platform.kasregistry.CreateKeyAccessServerResponse createKeyAccessServer(io.opentdf.platform.kasregistry.CreateKeyAccessServerRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -808,40 +360,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"key_access_server": {
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public io.opentdf.platform.kasregistry.UpdateKeyAccessServerResponse updateKeyAccessServer(io.opentdf.platform.kasregistry.UpdateKeyAccessServerRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -849,34 +367,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732"
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public io.opentdf.platform.kasregistry.DeleteKeyAccessServerResponse deleteKeyAccessServer(io.opentdf.platform.kasregistry.DeleteKeyAccessServerRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -901,53 +391,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{}
-     *Response Examples:
-     *{
-     *"key_access_servers": [
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *},
-     *{
-     *"id": "cad1fc87-1193-456b-a217-d5cdae1fa67a",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971990",
-     *"nanos": 303386000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971990",
-     *"nanos": 303386000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas3",
-     *"public_key": {
-     *"local": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
-     *}
-     *}
-     *]
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.kasregistry.ListKeyAccessServersResponse> listKeyAccessServers(
         io.opentdf.platform.kasregistry.ListKeyAccessServersRequest request) {
@@ -956,34 +399,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732"
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.kasregistry.GetKeyAccessServerResponse> getKeyAccessServer(
         io.opentdf.platform.kasregistry.GetKeyAccessServerRequest request) {
@@ -992,39 +407,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"key_access_server": {
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.kasregistry.CreateKeyAccessServerResponse> createKeyAccessServer(
         io.opentdf.platform.kasregistry.CreateKeyAccessServerRequest request) {
@@ -1033,40 +415,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"key_access_server": {
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.kasregistry.UpdateKeyAccessServerResponse> updateKeyAccessServer(
         io.opentdf.platform.kasregistry.UpdateKeyAccessServerRequest request) {
@@ -1075,34 +423,6 @@ public final class KeyAccessServerRegistryServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Request Examples:
-     *{
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732"
-     *}
-     *Response Examples:
-     *{
-     *"key_access_server": {
-     *"id": "71eae02f-6837-4980-8a2c-70abf6b68732",
-     *"metadata": {
-     *"labels": [],
-     *"created_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"updated_at": {
-     *"seconds": "1705971719",
-     *"nanos": 534029000
-     *},
-     *"description": "test kas instance"
-     *},
-     *"uri": "kas2",
-     *"public_key": {
-     *"remote": "https://platform.virtru.com/kas1"
-     *}
-     *}
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.kasregistry.DeleteKeyAccessServerResponse> deleteKeyAccessServer(
         io.opentdf.platform.kasregistry.DeleteKeyAccessServerRequest request) {

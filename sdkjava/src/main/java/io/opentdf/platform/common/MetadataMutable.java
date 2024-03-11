@@ -17,7 +17,6 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private MetadataMutable() {
-    description_ = "";
   }
 
   @java.lang.Override
@@ -80,7 +79,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -101,7 +100,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -112,7 +111,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -130,7 +129,7 @@ java.lang.String defaultValue) {
   }
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -145,53 +144,6 @@ java.lang.String defaultValue) {
       throw new java.lang.IllegalArgumentException();
     }
     return map.get(key);
-  }
-
-  public static final int DESCRIPTION_FIELD_NUMBER = 4;
-  @SuppressWarnings("serial")
-  private volatile java.lang.Object description_ = "";
-  /**
-   * <pre>
-   * optional long description
-   * </pre>
-   *
-   * <code>string description = 4 [json_name = "description"];</code>
-   * @return The description.
-   */
-  @java.lang.Override
-  public java.lang.String getDescription() {
-    java.lang.Object ref = description_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      description_ = s;
-      return s;
-    }
-  }
-  /**
-   * <pre>
-   * optional long description
-   * </pre>
-   *
-   * <code>string description = 4 [json_name = "description"];</code>
-   * @return The bytes for description.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getDescriptionBytes() {
-    java.lang.Object ref = description_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      description_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
   }
 
   private byte memoizedIsInitialized = -1;
@@ -214,9 +166,6 @@ java.lang.String defaultValue) {
         internalGetLabels(),
         LabelsDefaultEntryHolder.defaultEntry,
         3);
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(description_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 4, description_);
-    }
     getUnknownFields().writeTo(output);
   }
 
@@ -236,9 +185,6 @@ java.lang.String defaultValue) {
       size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(3, labels__);
     }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(description_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(4, description_);
-    }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
     return size;
@@ -256,8 +202,6 @@ java.lang.String defaultValue) {
 
     if (!internalGetLabels().equals(
         other.internalGetLabels())) return false;
-    if (!getDescription()
-        .equals(other.getDescription())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -273,8 +217,6 @@ java.lang.String defaultValue) {
       hash = (37 * hash) + LABELS_FIELD_NUMBER;
       hash = (53 * hash) + internalGetLabels().hashCode();
     }
-    hash = (37 * hash) + DESCRIPTION_FIELD_NUMBER;
-    hash = (53 * hash) + getDescription().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -429,7 +371,6 @@ java.lang.String defaultValue) {
       super.clear();
       bitField0_ = 0;
       internalGetMutableLabels().clear();
-      description_ = "";
       return this;
     }
 
@@ -466,9 +407,6 @@ java.lang.String defaultValue) {
       if (((from_bitField0_ & 0x00000001) != 0)) {
         result.labels_ = internalGetLabels();
         result.labels_.makeImmutable();
-      }
-      if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.description_ = description_;
       }
     }
 
@@ -519,11 +457,6 @@ java.lang.String defaultValue) {
       internalGetMutableLabels().mergeFrom(
           other.internalGetLabels());
       bitField0_ |= 0x00000001;
-      if (!other.getDescription().isEmpty()) {
-        description_ = other.description_;
-        bitField0_ |= 0x00000002;
-        onChanged();
-      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -559,11 +492,6 @@ java.lang.String defaultValue) {
               bitField0_ |= 0x00000001;
               break;
             } // case 26
-            case 34: {
-              description_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000002;
-              break;
-            } // case 34
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -609,7 +537,7 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * optional short description
+     * optional labels
      * </pre>
      *
      * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -630,7 +558,7 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * optional short description
+     * optional labels
      * </pre>
      *
      * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -641,7 +569,7 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * optional short description
+     * optional labels
      * </pre>
      *
      * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -659,7 +587,7 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * optional short description
+     * optional labels
      * </pre>
      *
      * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -683,7 +611,7 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * optional short description
+     * optional labels
      * </pre>
      *
      * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -706,7 +634,7 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * optional short description
+     * optional labels
      * </pre>
      *
      * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -723,7 +651,7 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * optional short description
+     * optional labels
      * </pre>
      *
      * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -733,98 +661,6 @@ java.lang.String defaultValue) {
       internalGetMutableLabels().getMutableMap()
           .putAll(values);
       bitField0_ |= 0x00000001;
-      return this;
-    }
-
-    private java.lang.Object description_ = "";
-    /**
-     * <pre>
-     * optional long description
-     * </pre>
-     *
-     * <code>string description = 4 [json_name = "description"];</code>
-     * @return The description.
-     */
-    public java.lang.String getDescription() {
-      java.lang.Object ref = description_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        description_ = s;
-        return s;
-      } else {
-        return (java.lang.String) ref;
-      }
-    }
-    /**
-     * <pre>
-     * optional long description
-     * </pre>
-     *
-     * <code>string description = 4 [json_name = "description"];</code>
-     * @return The bytes for description.
-     */
-    public com.google.protobuf.ByteString
-        getDescriptionBytes() {
-      java.lang.Object ref = description_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        description_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-    /**
-     * <pre>
-     * optional long description
-     * </pre>
-     *
-     * <code>string description = 4 [json_name = "description"];</code>
-     * @param value The description to set.
-     * @return This builder for chaining.
-     */
-    public Builder setDescription(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      description_ = value;
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * optional long description
-     * </pre>
-     *
-     * <code>string description = 4 [json_name = "description"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearDescription() {
-      description_ = getDefaultInstance().getDescription();
-      bitField0_ = (bitField0_ & ~0x00000002);
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * optional long description
-     * </pre>
-     *
-     * <code>string description = 4 [json_name = "description"];</code>
-     * @param value The bytes for description to set.
-     * @return This builder for chaining.
-     */
-    public Builder setDescriptionBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      description_ = value;
-      bitField0_ |= 0x00000002;
-      onChanged();
       return this;
     }
     @java.lang.Override

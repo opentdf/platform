@@ -9,41 +9,93 @@ public interface UpdateAttributeValueRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-   * @return The attributeId.
-   */
-  java.lang.String getAttributeId();
-  /**
-   * <code>string attribute_id = 1 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-   * @return The bytes for attributeId.
-   */
-  com.google.protobuf.ByteString
-      getAttributeIdBytes();
-
-  /**
-   * <code>string id = 2 [json_name = "id", (.buf.validate.field) = { ... }</code>
+   * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The id.
    */
   java.lang.String getId();
   /**
-   * <code>string id = 2 [json_name = "id", (.buf.validate.field) = { ... }</code>
+   * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The bytes for id.
    */
   com.google.protobuf.ByteString
       getIdBytes();
 
   /**
-   * <code>.policy.attributes.ValueCreateUpdate value = 3 [json_name = "value", (.buf.validate.field) = { ... }</code>
-   * @return Whether the value field is set.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>repeated string members = 4 [json_name = "members"];</code>
+   * @return A list containing the members.
    */
-  boolean hasValue();
+  java.util.List<java.lang.String>
+      getMembersList();
   /**
-   * <code>.policy.attributes.ValueCreateUpdate value = 3 [json_name = "value", (.buf.validate.field) = { ... }</code>
-   * @return The value.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>repeated string members = 4 [json_name = "members"];</code>
+   * @return The count of members.
    */
-  io.opentdf.platform.policy.attributes.ValueCreateUpdate getValue();
+  int getMembersCount();
   /**
-   * <code>.policy.attributes.ValueCreateUpdate value = 3 [json_name = "value", (.buf.validate.field) = { ... }</code>
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>repeated string members = 4 [json_name = "members"];</code>
+   * @param index The index of the element to return.
+   * @return The members at the given index.
    */
-  io.opentdf.platform.policy.attributes.ValueCreateUpdateOrBuilder getValueOrBuilder();
+  java.lang.String getMembers(int index);
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>repeated string members = 4 [json_name = "members"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the members at the given index.
+   */
+  com.google.protobuf.ByteString
+      getMembersBytes(int index);
+
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.MetadataMutable getMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
+
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
+   */
+  int getMetadataUpdateBehaviorValue();
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
+   */
+  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior();
 }

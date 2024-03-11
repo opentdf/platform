@@ -26,6 +26,7 @@ const (
 	ErrEnumValueInvalid          DbError = "ErrEnumValueInvalid: not a valid enum value"
 	ErrUuidInvalid               DbError = "ErrUuidInvalid: value not a valid UUID"
 	ErrFqnMissingValue           DbError = "ErrFqnMissingValue: FQN must include a value"
+	ErrMissingValue              DbError = "ErrMissingValue: value must be included"
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -49,6 +50,7 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 			}
 			return errors.Join(ErrEnumValueInvalid, e)
 		default:
+			fmt.Println("Unknown error code", e.Code)
 			return e
 		}
 	}
@@ -73,6 +75,10 @@ func isPgError(err error) *pgconn.PgError {
 		}
 	}
 	return nil
+}
+
+func IsQueryBuilderSetClauseError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "at least one Set clause")
 }
 
 func NewUniqueAlreadyExistsError(value string) error {

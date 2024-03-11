@@ -270,6 +270,10 @@
                   <a href="#common.ActiveStateEnum"><span class="badge">E</span>ActiveStateEnum</a>
                 </li>
               
+                <li>
+                  <a href="#common.MetadataUpdateEnum"><span class="badge">E</span>MetadataUpdateEnum</a>
+                </li>
+              
               
               
             </ul>
@@ -353,10 +357,6 @@
               
                 <li>
                   <a href="#kasregistry.KeyAccessServer"><span class="badge">M</span>KeyAccessServer</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.KeyAccessServerCreateUpdate"><span class="badge">M</span>KeyAccessServerCreateUpdate</a>
                 </li>
               
                 <li>
@@ -478,10 +478,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.AttributeCreateUpdate"><span class="badge">M</span>AttributeCreateUpdate</a>
-                </li>
-              
-                <li>
                   <a href="#policy.attributes.AttributeKeyAccessServer"><span class="badge">M</span>AttributeKeyAccessServer</a>
                 </li>
               
@@ -598,10 +594,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.ValueCreateUpdate"><span class="badge">M</span>ValueCreateUpdate</a>
-                </li>
-              
-                <li>
                   <a href="#policy.attributes.ValueKeyAccessServer"><span class="badge">M</span>ValueKeyAccessServer</a>
                 </li>
               
@@ -658,10 +650,6 @@
               
                 <li>
                   <a href="#policy.resourcemapping.ResourceMapping"><span class="badge">M</span>ResourceMapping</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.resourcemapping.ResourceMappingCreateUpdate"><span class="badge">M</span>ResourceMappingCreateUpdate</a>
                 </li>
               
                 <li>
@@ -1387,13 +1375,6 @@
                   <td><p>optional short description </p></td>
                 </tr>
               
-                <tr>
-                  <td>description</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>optional long description </p></td>
-                </tr>
-              
             </tbody>
           </table>
 
@@ -1446,14 +1427,7 @@
                   <td>labels</td>
                   <td><a href="#common.MetadataMutable.LabelsEntry">MetadataMutable.LabelsEntry</a></td>
                   <td>repeated</td>
-                  <td><p>optional short description </p></td>
-                </tr>
-              
-                <tr>
-                  <td>description</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>optional long description </p></td>
+                  <td><p>optional labels </p></td>
                 </tr>
               
             </tbody>
@@ -1526,6 +1500,35 @@
                 <td>ACTIVE_STATE_ENUM_ANY</td>
                 <td>3</td>
                 <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="common.MetadataUpdateEnum">MetadataUpdateEnum</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>METADATA_UPDATE_ENUM_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>unspecified update type</p></td>
+              </tr>
+            
+              <tr>
+                <td>METADATA_UPDATE_ENUM_EXTEND</td>
+                <td>1</td>
+                <td><p>only update the fields that are provided</p></td>
+              </tr>
+            
+              <tr>
+                <td>METADATA_UPDATE_ENUM_REPLACE</td>
+                <td>2</td>
+                <td><p>replace the entire metadata with the provided metadata</p></td>
               </tr>
             
           </tbody>
@@ -1890,10 +1893,24 @@
             <tbody>
               
                 <tr>
-                  <td>key_access_server</td>
-                  <td><a href="#kasregistry.KeyAccessServerCreateUpdate">KeyAccessServerCreateUpdate</a></td>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#kasregistry.PublicKey">PublicKey</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -2041,62 +2058,24 @@
                 </tr>
               
                 <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Address of a KAS instance </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#kasregistry.PublicKey">PublicKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Address of a KAS instance </p></td>
-                </tr>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#kasregistry.PublicKey">PublicKey</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.KeyAccessServerCreateUpdate">KeyAccessServerCreateUpdate</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p>Optional metadata for the attribute definition </p></td>
-                </tr>
-              
-                <tr>
-                  <td>uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Address of a KAS instance </p></td>
-                </tr>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#kasregistry.PublicKey">PublicKey</a></td>
-                  <td></td>
-                  <td><p> </p></td>
+                  <td><p>Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -2182,12 +2161,33 @@
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>key_access_server</td>
-                  <td><a href="#kasregistry.KeyAccessServerCreateUpdate">KeyAccessServerCreateUpdate</a></td>
+                  <td>public_key</td>
+                  <td><a href="#kasregistry.PublicKey">PublicKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -2241,195 +2241,35 @@
                 <td>ListKeyAccessServers</td>
                 <td><a href="#kasregistry.ListKeyAccessServersRequest">ListKeyAccessServersRequest</a></td>
                 <td><a href="#kasregistry.ListKeyAccessServersResponse">ListKeyAccessServersResponse</a></td>
-                <td><p>Request Examples:
-{}
-
-Response Examples:
-{
-&#34;key_access_servers&#34;: [
-{
-&#34;id&#34;: &#34;71eae02f-6837-4980-8a2c-70abf6b68732&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;description&#34;: &#34;test kas instance&#34;
-},
-&#34;uri&#34;: &#34;kas2&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://platform.virtru.com/kas1&#34;
-}
-},
-{
-&#34;id&#34;: &#34;cad1fc87-1193-456b-a217-d5cdae1fa67a&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1705971990&#34;,
-&#34;nanos&#34;: 303386000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1705971990&#34;,
-&#34;nanos&#34;: 303386000
-},
-&#34;description&#34;: &#34;test kas instance&#34;
-},
-&#34;uri&#34;: &#34;kas3&#34;,
-&#34;public_key&#34;: {
-&#34;local&#34;: &#34;LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==&#34;
-}
-}
-]
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>GetKeyAccessServer</td>
                 <td><a href="#kasregistry.GetKeyAccessServerRequest">GetKeyAccessServerRequest</a></td>
                 <td><a href="#kasregistry.GetKeyAccessServerResponse">GetKeyAccessServerResponse</a></td>
-                <td><p>Request Examples:
-{
-&#34;id&#34;: &#34;71eae02f-6837-4980-8a2c-70abf6b68732&#34;
-}
-
-Response Examples:
-{
-&#34;key_access_server&#34;: {
-&#34;id&#34;: &#34;71eae02f-6837-4980-8a2c-70abf6b68732&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;description&#34;: &#34;test kas instance&#34;
-},
-&#34;uri&#34;: &#34;kas2&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://platform.virtru.com/kas1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>CreateKeyAccessServer</td>
                 <td><a href="#kasregistry.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</a></td>
                 <td><a href="#kasregistry.CreateKeyAccessServerResponse">CreateKeyAccessServerResponse</a></td>
-                <td><p>Request Examples:
-{
-&#34;key_access_server&#34;: {
-&#34;uri&#34;: &#34;kas2&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://platform.virtru.com/kas1&#34;
-}
-}
-}
-
-Response Examples:
-{
-&#34;key_access_server&#34;: {
-&#34;id&#34;: &#34;71eae02f-6837-4980-8a2c-70abf6b68732&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;description&#34;: &#34;test kas instance&#34;
-},
-&#34;uri&#34;: &#34;kas2&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://platform.virtru.com/kas1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>UpdateKeyAccessServer</td>
                 <td><a href="#kasregistry.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</a></td>
                 <td><a href="#kasregistry.UpdateKeyAccessServerResponse">UpdateKeyAccessServerResponse</a></td>
-                <td><p>Request Examples:
-{
-&#34;id&#34;: &#34;71eae02f-6837-4980-8a2c-70abf6b68732&#34;,
-&#34;key_access_server&#34;: {
-&#34;uri&#34;: &#34;kas2&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://platform.virtru.com/kas1&#34;
-}
-}
-}
-
-Response Examples:
-{
-&#34;key_access_server&#34;: {
-&#34;id&#34;: &#34;71eae02f-6837-4980-8a2c-70abf6b68732&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;description&#34;: &#34;test kas instance&#34;
-},
-&#34;uri&#34;: &#34;kas2&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://platform.virtru.com/kas1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>DeleteKeyAccessServer</td>
                 <td><a href="#kasregistry.DeleteKeyAccessServerRequest">DeleteKeyAccessServerRequest</a></td>
                 <td><a href="#kasregistry.DeleteKeyAccessServerResponse">DeleteKeyAccessServerResponse</a></td>
-                <td><p>Request Examples:
-{
-&#34;id&#34;: &#34;71eae02f-6837-4980-8a2c-70abf6b68732&#34;
-}
-
-Response Examples:
-{
-&#34;key_access_server&#34;: {
-&#34;id&#34;: &#34;71eae02f-6837-4980-8a2c-70abf6b68732&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1705971719&#34;,
-&#34;nanos&#34;: 534029000
-},
-&#34;description&#34;: &#34;test kas instance&#34;
-},
-&#34;uri&#34;: &#34;kas2&#34;,
-&#34;public_key&#34;: {
-&#34;remote&#34;: &#34;https://platform.virtru.com/kas1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>
@@ -2476,7 +2316,7 @@ Response Examples:
                 <td>CreateKeyAccessServer</td>
                 <td>POST</td>
                 <td>/key-access-servers</td>
-                <td>key_access_server</td>
+                <td>*</td>
               </tr>
               
             
@@ -2486,7 +2326,7 @@ Response Examples:
                 <td>UpdateKeyAccessServer</td>
                 <td>PUT</td>
                 <td>/key-access-servers/{id}</td>
-                <td>key_access_server</td>
+                <td>*</td>
               </tr>
               
             
@@ -2526,7 +2366,14 @@ Response Examples:
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -2725,6 +2572,13 @@ Response Examples:
                   <td><p>active by default until explicitly deactivated </p></td>
                 </tr>
               
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -2746,12 +2600,19 @@ Response Examples:
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -2805,45 +2666,21 @@ Response Examples:
                 <td>GetNamespace</td>
                 <td><a href="#policy.namespaces.GetNamespaceRequest">GetNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.GetNamespaceResponse">GetNamespaceResponse</a></td>
-                <td><p>Request: 
-grpcurl -plaintext -d &#39;{&#34;id&#34;: &#34;namespace-id&#34;}&#39; localhost:9000 policy.namespaces.NamespaceService/GetNamespace
-Response:
-{
-&#34;namespace&#34;: {
-&#34;id&#34;: &#34;namespace-id&#34;,
-&#34;name&#34;: &#34;namespace-name&#34;,
-&#34;active&#34;: true
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>ListNamespaces</td>
                 <td><a href="#policy.namespaces.ListNamespacesRequest">ListNamespacesRequest</a></td>
                 <td><a href="#policy.namespaces.ListNamespacesResponse">ListNamespacesResponse</a></td>
-                <td><p>NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-Request: 
-grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
-Response:
-{
-&#34;namespaces&#34;: [
-{
-&#34;id&#34;: &#34;namespace-id&#34;,
-&#34;name&#34;: &#34;namespace-name&#34;,
-&#34;active&#34;: true
-}
-]
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>CreateNamespace</td>
                 <td><a href="#policy.namespaces.CreateNamespaceRequest">CreateNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.CreateNamespaceResponse">CreateNamespaceResponse</a></td>
-                <td><p>Request: 
-grpcurl -plaintext -d &#39;{&#34;name&#34;: &#34;namespace-name&#34;}&#39; localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
-Response:
-{ &#34;namespace&#34;: { &#34;id&#34;: &#34;namespace-id&#34;, &#34;active&#34;: true } }</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
@@ -2904,7 +2741,7 @@ Response:
                 <td>CreateNamespace</td>
                 <td>POST</td>
                 <td>/attributes/namespaces</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -2912,9 +2749,9 @@ Response:
               
               <tr>
                 <td>UpdateNamespace</td>
-                <td>PUT</td>
+                <td>PATCH</td>
                 <td>/attributes/namespaces/{id}</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -3054,13 +2891,6 @@ Response:
                 </tr>
               
                 <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p>Optional metadata for the attribute definition </p></td>
-                </tr>
-              
-                <tr>
                   <td>namespace</td>
                   <td><a href="#policy.namespaces.Namespace">policy.namespaces.Namespace</a></td>
                   <td></td>
@@ -3109,6 +2939,13 @@ Response:
                   <td><p>active by default until explicitly deactivated </p></td>
                 </tr>
               
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -3138,58 +2975,6 @@ Response:
                   <td><a href="#policy.attributes.Value">Value</a></td>
                   <td></td>
                   <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.attributes.AttributeCreateUpdate">AttributeCreateUpdate</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p>Optional metadata for the attribute definition </p></td>
-                </tr>
-              
-                <tr>
-                  <td>namespace_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>namespace of the attribute </p></td>
-                </tr>
-              
-                <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>attribute name </p></td>
-                </tr>
-              
-                <tr>
-                  <td>rule</td>
-                  <td><a href="#policy.attributes.AttributeRuleTypeEnum">AttributeRuleTypeEnum</a></td>
-                  <td></td>
-                  <td><p>attribute rule enum </p></td>
-                </tr>
-              
-                <tr>
-                  <td>values</td>
-                  <td><a href="#policy.attributes.ValueCreateUpdate">ValueCreateUpdate</a></td>
-                  <td>repeated</td>
-                  <td><p>optional </p></td>
                 </tr>
               
             </tbody>
@@ -3241,10 +3026,31 @@ Response:
             <tbody>
               
                 <tr>
-                  <td>attribute</td>
-                  <td><a href="#policy.attributes.AttributeCreateUpdate">AttributeCreateUpdate</a></td>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>rule</td>
+                  <td><a href="#policy.attributes.AttributeRuleTypeEnum">AttributeRuleTypeEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -3292,14 +3098,28 @@ Response:
                   <td>attribute_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>value</td>
-                  <td><a href="#policy.attributes.ValueCreateUpdate">ValueCreateUpdate</a></td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>members</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -3817,12 +3637,19 @@ Response:
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>attribute</td>
-                  <td><a href="#policy.attributes.AttributeCreateUpdate">AttributeCreateUpdate</a></td>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3869,13 +3696,6 @@ Response:
             <tbody>
               
                 <tr>
-                  <td>attribute_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
@@ -3883,8 +3703,22 @@ Response:
                 </tr>
               
                 <tr>
-                  <td>value</td>
-                  <td><a href="#policy.attributes.ValueCreateUpdate">ValueCreateUpdate</a></td>
+                  <td>members</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3938,15 +3772,8 @@ Response:
                 </tr>
               
                 <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>attribute_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>attribute</td>
+                  <td><a href="#policy.attributes.Attribute">Attribute</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3986,42 +3813,11 @@ Response:
                   <td><p>active by default until explicitly deactivated </p></td>
                 </tr>
               
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.attributes.ValueCreateUpdate">ValueCreateUpdate</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
                 <tr>
                   <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>members</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p>list of attribute values that this value is related to (attribute group) </p></td>
+                  <td><p>Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -4115,104 +3911,16 @@ Response:
                 <td>ListAttributes</td>
                 <td><a href="#policy.attributes.ListAttributesRequest">ListAttributesRequest</a></td>
                 <td><a href="#policy.attributes.ListAttributesResponse">ListAttributesResponse</a></td>
-                <td><p>NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-Request:
-grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
-OR (for inactive)
-grpcurl -plaintext -d &#39;{&#34;state&#34;: &#34;STATE_TYPE_ENUM_INACTIVE&#34;}&#39; localhost:9000 policy.attributes.AttributesService/ListAttributes
-Response:
-{
-&#34;attributes&#34;: [
-{
-&#34;id&#34;: &#34;attribute_id&#34;,
-&#34;metadata&#34;: {
-&#34;created_at&#34;: &#34;2021-01-01T00:00:00Z&#34;,
-&#34;updated_at&#34;: &#34;2021-01-01T00:00:00Z&#34;
-},
-&#34;namespace&#34;: {
-&#34;id&#34;: &#34;namespace_id&#34;,
-&#34;name&#34;: &#34;namespace_name&#34;
-},
-&#34;name&#34;: &#34;attribute_name&#34;,
-&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;,
-&#34;values&#34;: [
-{
-&#34;id&#34;: &#34;value_id&#34;,
-&#34;metadata&#34;: {
-&#34;created_at&#34;: &#34;2021-01-01T00:00:00Z&#34;,
-&#34;updated_at&#34;: &#34;2021-01-01T00:00:00Z&#34;
-},
-&#34;attribute_id&#34;: &#34;attribute_id&#34;,
-&#34;value&#34;: &#34;value&#34;,
-&#34;members&#34;: [&#34;value_id&#34;],
-&#34;grants&#34;: [
-{
-&#34;id&#34;: &#34;key_access_server_id&#34;,
-&#34;metadata&#34;: {
-&#34;created_at&#34;: &#34;2021-01-01T00:00:00Z&#34;,
-&#34;updated_at&#34;: &#34;2021-01-01T00:00:00Z&#34;
-},
-&#34;name&#34;: &#34;key_access_server_name&#34;,
-&#34;description&#34;: &#34;key_access_server_description&#34;,
-}
-],
-}
-],
-&#34;grants&#34;: [
-{
-&#34;id&#34;: &#34;key_access_server_id&#34;,
-&#34;metadata&#34;: {
-&#34;created_at&#34;: &#34;2021-01-01T00:00:00Z&#34;,
-&#34;updated_at&#34;: &#34;2021-01-01T00:00:00Z&#34;
-},
-&#34;name&#34;: &#34;key_access_server_name&#34;,
-&#34;description&#34;: &#34;key_access_server_description&#34;,
-}
-],
-&#34;active&#34;: true
-}
-]
-}</p></td>
+                <td><p>--------------------------------------*
+Attribute RPCs
+---------------------------------------</p></td>
               </tr>
             
               <tr>
                 <td>ListAttributeValues</td>
                 <td><a href="#policy.attributes.ListAttributeValuesRequest">ListAttributeValuesRequest</a></td>
                 <td><a href="#policy.attributes.ListAttributeValuesResponse">ListAttributeValuesResponse</a></td>
-                <td><p>List Values
-
-Request:
-NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-grpcurl -plaintext -d &#39;{&#34;state&#34;: &#34;STATE_TYPE_ENUM_INACTIVE&#34;}&#39; localhost:9000 policy.attributes.AttributesService/ListAttributes
-Response:
-{
-&#34;attributes&#34;: [
-{
-&#34;id&#34;: &#34;attribute_id&#34;,
-&#34;metadata&#34;: {
-&#34;createdAt&#34;: &#34;2024-02-14T20:24:23.057404Z&#34;,
-&#34;updatedAt&#34;: &#34;2024-02-14T20:24:23.057404Z&#34;
-},
-&#34;namespace&#34;: {
-&#34;id&#34;: &#34;namespace_id&#34;,
-&#34;name&#34;: &#34;namespace_name&#34;
-},
-&#34;name&#34;: &#34;attribute_name&#34;,
-&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;,
-&#34;values&#34;: [
-{
-... VALUES ...
-}
-],
-&#34;grants&#34;: [
-{
-... GRANTS ...
-}
-],
-&#34;active&#34;: true
-}
-]
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
@@ -4233,25 +3941,7 @@ Response:
                 <td>CreateAttribute</td>
                 <td><a href="#policy.attributes.CreateAttributeRequest">CreateAttributeRequest</a></td>
                 <td><a href="#policy.attributes.CreateAttributeResponse">CreateAttributeResponse</a></td>
-                <td><p>Create Attribute
-Request:
-grpcurl -plaintext -d &#39;{&#34;attribute&#34;: {&#34;namespace_id&#34;: &#34;namespace_id&#34;, &#34;name&#34;: &#34;attribute_name&#34;, &#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;}}&#39; localhost:9000 policy.attributes.AttributesService/CreateAttribute
-Response
-{
-&#34;attribute&#34;: {
-&#34;id&#34;: &#34;e06f067b-d158-44bc-a814-1aa3f968dcf0&#34;,
-&#34;metadata&#34;: {
-&#34;createdAt&#34;: &#34;2024-02-14T20:24:23.057404Z&#34;,
-&#34;updatedAt&#34;: &#34;2024-02-14T20:24:23.057404Z&#34;
-},
-&#34;namespace&#34;: {
-&#34;id&#34;: &#34;namespace_id&#34;
-},
-&#34;name&#34;: &#34;attribute_name&#34;,
-&#34;rule&#34;: &#34;ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF&#34;,
-&#34;active&#34;: true
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
@@ -4272,16 +3962,16 @@ Response
                 <td>GetAttributeValue</td>
                 <td><a href="#policy.attributes.GetAttributeValueRequest">GetAttributeValueRequest</a></td>
                 <td><a href="#policy.attributes.GetAttributeValueResponse">GetAttributeValueResponse</a></td>
-                <td><p>Attribute Value *</p></td>
+                <td><p>--------------------------------------*
+Value RPCs
+---------------------------------------</p></td>
               </tr>
             
               <tr>
                 <td>CreateAttributeValue</td>
                 <td><a href="#policy.attributes.CreateAttributeValueRequest">CreateAttributeValueRequest</a></td>
                 <td><a href="#policy.attributes.CreateAttributeValueResponse">CreateAttributeValueResponse</a></td>
-                <td><p>Create Attribute Value
-Example:
- grpcurl -plaintext -d &#39;{&#34;attribute_id&#34;: &#34;attribute_id&#34;, &#34;value&#34;: {&#34;value&#34;: &#34;value&#34;}}&#39; localhost:9000 policy.attributes.AttributesService/CreateAttributeValue</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
@@ -4302,90 +3992,30 @@ Example:
                 <td>AssignKeyAccessServerToAttribute</td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToAttributeRequest">AssignKeyAccessServerToAttributeRequest</a></td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToAttributeResponse">AssignKeyAccessServerToAttributeResponse</a></td>
-                <td><p>Assign Key Access Server to Attribute
-
-grpcurl -plaintext -d &#39;{&#34;attribute_key_access_server&#34;: {&#34;attribute_id&#34;: &#34;attribute_id&#34;, &#34;key_access_server_id&#34;: &#34;key_access_server_id&#34;}}&#39; localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
-
-Example Request:
-{
-&#34;attribute_key_access_server&#34;: {
-&#34;attribute_id&#34;: &#34;attribute_id&#34;,
-&#34;key_access_server_id
-}
-
-Example Response:
-{
-&#34;attribute_key_access_server&#34;: {
-&#34;attribute_id&#34;: &#34;attribute_id&#34;,
-&#34;key_access_server_id: &#34;key_access_server_id&#34;
-}</p></td>
+                <td><p>--------------------------------------*
+Attribute &lt;&gt; Key Access Server RPCs
+---------------------------------------</p></td>
               </tr>
             
               <tr>
                 <td>RemoveKeyAccessServerFromAttribute</td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromAttributeRequest">RemoveKeyAccessServerFromAttributeRequest</a></td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromAttributeResponse">RemoveKeyAccessServerFromAttributeResponse</a></td>
-                <td><p>Remove Key Access Server to Attribute
-
-grpcurl -plaintext -d &#39;{&#34;attribute_key_access_server&#34;: {&#34;attribute_id&#34;: &#34;attribute_id&#34;, &#34;key_access_server_id&#34;: &#34;key_access_server_id&#34;}}&#39; localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
-
-Example Request:
-{
-&#34;attribute_key_access_server&#34;: {
-&#34;attribute_id&#34;: &#34;attribute_id&#34;,
-&#34;key_access_server_id
-}
-
-Example Response:
-{
-&#34;attribute_key_access_server&#34;: {
-&#34;attribute_id&#34;: &#34;attribute_id&#34;,
-&#34;key_access_server_id: &#34;key_access_server_id&#34;
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>AssignKeyAccessServerToValue</td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToValueRequest">AssignKeyAccessServerToValueRequest</a></td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToValueResponse">AssignKeyAccessServerToValueResponse</a></td>
-                <td><p>Assign Key Access Server to Value
-
-grpcurl -plaintext -d &#39;{&#34;attribute_key_access_server&#34;: {&#34;attribute_id&#34;: &#34;attribute_id&#34;, &#34;key_access_server_id&#34;: &#34;key_access_server_id&#34;}}&#39; localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
-
-Example Request:
-{
-&#34;attribute_key_access_server&#34;: {
-&#34;value_id&#34;: &#34;attribute_id&#34;,
-&#34;key_access_server_id
-}
-
-Example Response:
-{
-&#34;attribute_key_access_server&#34;: {
-&#34;value_id&#34;: &#34;attribute_id&#34;,
-&#34;key_access_server_id: &#34;key_access_server_id&#34;
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>RemoveKeyAccessServerFromValue</td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromValueRequest">RemoveKeyAccessServerFromValueRequest</a></td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromValueResponse">RemoveKeyAccessServerFromValueResponse</a></td>
-                <td><p>Remove Key Access Server to Value
-grpcurl -plaintext -d &#39;{&#34;value_key_access_server&#34;: {&#34;value_id&#34;: &#34;value_id&#34;, &#34;key_access_server_id&#34;: &#34;key_access_server_id&#34;}}&#39; localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
-
-Example Request:
-{
-&#34;value_key_access_server&#34;: {
-&#34;value_id&#34;: &#34;value_id&#34;,
-&#34;key_access_server_id
-}
-
-Example Response:
-{
-&#34;value_key_access_server&#34;: {
-&#34;value_id&#34;: &#34;value_id&#34;,
-&#34;key_access_server_id</p></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>
@@ -4421,7 +4051,7 @@ Example Response:
               <tr>
                 <td>GetAttributesByValueFqns</td>
                 <td>GET</td>
-                <td>/attributes/_/fqn</td>
+                <td>/attributes/*/fqn</td>
                 <td></td>
               </tr>
               
@@ -4432,7 +4062,7 @@ Example Response:
                 <td>CreateAttribute</td>
                 <td>POST</td>
                 <td>/attributes</td>
-                <td>attribute</td>
+                <td>*</td>
               </tr>
               
             
@@ -4440,9 +4070,9 @@ Example Response:
               
               <tr>
                 <td>UpdateAttribute</td>
-                <td>POST</td>
+                <td>PATCH</td>
                 <td>/attributes/{id}</td>
-                <td>attribute</td>
+                <td>*</td>
               </tr>
               
             
@@ -4461,7 +4091,7 @@ Example Response:
               <tr>
                 <td>GetAttributeValue</td>
                 <td>GET</td>
-                <td>/attributes/_/values/{id}</td>
+                <td>/attributes/*/values/{id}</td>
                 <td></td>
               </tr>
               
@@ -4472,7 +4102,7 @@ Example Response:
                 <td>CreateAttributeValue</td>
                 <td>POST</td>
                 <td>/attributes/{attribute_id}/values</td>
-                <td>value</td>
+                <td>*</td>
               </tr>
               
             
@@ -4480,9 +4110,9 @@ Example Response:
               
               <tr>
                 <td>UpdateAttributeValue</td>
-                <td>POST</td>
-                <td>/attributes/{attribute_id}/values/{id}</td>
-                <td>value</td>
+                <td>PATCH</td>
+                <td>/attributes/*/values/{id}</td>
+                <td>*</td>
               </tr>
               
             
@@ -4491,7 +4121,7 @@ Example Response:
               <tr>
                 <td>DeactivateAttributeValue</td>
                 <td>DELETE</td>
-                <td>/attributes/_/values/{id}</td>
+                <td>/attributes/*/values/{id}</td>
                 <td></td>
               </tr>
               
@@ -4559,10 +4189,24 @@ Example Response:
             <tbody>
               
                 <tr>
-                  <td>resource_mapping</td>
-                  <td><a href="#policy.resourcemapping.ResourceMappingCreateUpdate">ResourceMappingCreateUpdate</a></td>
+                  <td>attribute_value_id</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>terms</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -4768,44 +4412,6 @@ Example Response:
 
         
       
-        <h3 id="policy.resourcemapping.ResourceMappingCreateUpdate">ResourceMappingCreateUpdate</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>attribute_value_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>terms</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.resourcemapping.UpdateResourceMappingRequest">UpdateResourceMappingRequest</h3>
         <p></p>
 
@@ -4820,12 +4426,33 @@ Example Response:
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>terms</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>resource_mapping</td>
-                  <td><a href="#policy.resourcemapping.ResourceMappingCreateUpdate">ResourceMappingCreateUpdate</a></td>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common Metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -5133,7 +4760,7 @@ Response Example:
                 <td>CreateResourceMapping</td>
                 <td>POST</td>
                 <td>/resource-mappings</td>
-                <td>resource_mapping</td>
+                <td>*</td>
               </tr>
               
             
@@ -5143,7 +4770,7 @@ Response Example:
                 <td>UpdateResourceMapping</td>
                 <td>POST</td>
                 <td>/resource-mappings/{id}</td>
-                <td>resource_mapping</td>
+                <td>*</td>
               </tr>
               
             

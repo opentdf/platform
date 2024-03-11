@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -16,10 +17,9 @@ import (
 
 type AttributeFqnSuite struct {
 	suite.Suite
-	schema string
-	f      fixtures.Fixtures
-	db     fixtures.DBInterface
-	ctx    context.Context
+	f   fixtures.Fixtures
+	db  fixtures.DBInterface
+	ctx context.Context
 }
 
 func fqnBuilder(n string, a string, v string) string {
@@ -45,8 +45,9 @@ func TestAttributeFqnSuite(t *testing.T) {
 func (s *AttributeFqnSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeFqn test suite")
 	s.ctx = context.Background()
-	s.schema = "test_opentdf_attribute_fqn"
-	s.db = fixtures.NewDBInterface(*Config)
+	c := *Config
+	c.DB.Schema = "test_opentdf_attribute_fqn"
+	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 }
@@ -59,10 +60,12 @@ func (s *AttributeFqnSuite) TearDownSuite() {
 // Test Create Namespace
 func (s *AttributeFqnSuite) TestCreateNamespace() {
 	name := "test_namespace"
-	id, err := s.db.PolicyClient.CreateNamespace(s.ctx, name)
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: name,
+	})
 	s.NoError(err)
 	// Verify FQN
-	fqn, err := s.db.PolicyClient.GetNamespace(s.ctx, id)
+	fqn, err := s.db.PolicyClient.GetNamespace(s.ctx, n.Id)
 	s.NoError(err)
 	s.NotEmpty(fqn.Fqn)
 	s.Equal(fqnBuilder(name, "", ""), fqn.Fqn)
@@ -72,7 +75,7 @@ func (s *AttributeFqnSuite) TestCreateNamespace() {
 func (s *AttributeFqnSuite) TestCreateAttribute() {
 	n := s.f.GetNamespaceKey("example.com")
 	name := "test_namespace"
-	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.AttributeCreateUpdate{
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
 		NamespaceId: n.Id,
 		Name:        name,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
@@ -90,7 +93,7 @@ func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 	a := s.f.GetAttributeKey("example.com/attr/attr1")
 	n := s.f.GetNamespaceKey("example.com")
 	name := "test_namespace"
-	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
+	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.CreateAttributeValueRequest{
 		Value: name,
 	})
 	s.NoError(err)
@@ -149,19 +152,21 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	fqn2 := fqnBuilder(namespace, attr, value2)
 
 	// Create namespace
-	nsId, err := s.db.PolicyClient.CreateNamespace(s.ctx, namespace)
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: namespace,
+	})
 	assert.NoError(s.T(), err)
 
 	// Create attribute
-	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.AttributeCreateUpdate{
-		NamespaceId: nsId,
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: n.Id,
 		Name:        attr,
 		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	})
 	assert.NoError(s.T(), err)
 
 	// Create attribute value1
-	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
+	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.CreateAttributeValueRequest{
 		Value: value1,
 	})
 	assert.NoError(s.T(), err)
@@ -184,7 +189,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	assert.Equal(s.T(), v1.Id, val.Value.Id)
 
 	// Create attribute value2
-	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.ValueCreateUpdate{
+	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.CreateAttributeValueRequest{
 		Value: value2,
 	})
 	assert.NoError(s.T(), err)

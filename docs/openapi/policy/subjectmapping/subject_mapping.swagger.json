@@ -207,6 +207,62 @@
       "default": "STANDARD_ACTION_UNSPECIFIED",
       "title": "Standard actions supported by the platform"
     },
+    "attributesAttribute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespace": {
+          "$ref": "#/definitions/namespacesNamespace",
+          "title": "namespace of the attribute"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/attributesAttributeRuleTypeEnum",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyattributesValue"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          }
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "attributesAttributeRuleTypeEnum": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
     "authorizationAction": {
       "type": "object",
       "properties": {
@@ -238,10 +294,6 @@
             "type": "string"
           },
           "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
@@ -254,11 +306,7 @@
           "additionalProperties": {
             "type": "string"
           },
-          "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
+          "title": "optional labels"
         }
       }
     },
@@ -268,15 +316,16 @@
         "id": {
           "type": "string"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
         "uri": {
           "type": "string",
           "title": "Address of a KAS instance"
         },
         "publicKey": {
           "$ref": "#/definitions/kasregistryPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       },
       "title": "Descriptor for a KAS"
@@ -294,6 +343,29 @@
         }
       }
     },
+    "namespacesNamespace": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
+        },
+        "name": {
+          "type": "string",
+          "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      }
+    },
     "policyattributesValue": {
       "type": "object",
       "properties": {
@@ -301,11 +373,8 @@
           "type": "string",
           "title": "generated uuid in database"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
-        "attributeId": {
-          "type": "string"
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
         },
         "value": {
           "type": "string"
@@ -331,6 +400,10 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       }
     },

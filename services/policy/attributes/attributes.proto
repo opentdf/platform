@@ -5,9 +5,7 @@ package policy.attributes;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
-import "google/protobuf/wrappers.proto";
 
-import "kasregistry/key_access_server_registry.proto";
 import "policy/types.proto";
 
 /*

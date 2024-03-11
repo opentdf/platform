@@ -681,8 +681,9 @@
     "subjectmappingCreateSubjectConditionSetResponse": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet",
+          "title": "Only ID of created Subject Condition Set provided"
         }
       }
     },
@@ -726,8 +727,9 @@
     "subjectmappingDeleteSubjectConditionSetResponse": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet",
+          "title": "Only ID of created Subject Condition Set provided"
         }
       }
     },
@@ -905,8 +907,9 @@
     "subjectmappingUpdateSubjectConditionSetResponse": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet",
+          "title": "Only ID of created Subject Condition Set provided"
         }
       }
     },

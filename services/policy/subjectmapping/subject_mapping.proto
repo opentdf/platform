@@ -286,7 +286,8 @@ message CreateSubjectConditionSetRequest {
   SubjectConditionSetCreate subject_condition_set = 1;
 }
 message CreateSubjectConditionSetResponse {
-  string id = 1;
+  // Only ID of created Subject Condition Set provided
+  SubjectConditionSet subject_condition_set = 1;
 }
 
 message UpdateSubjectConditionSetRequest {
@@ -298,14 +299,16 @@ message UpdateSubjectConditionSetRequest {
   repeated SubjectSet update_subject_sets = 3;
 }
 message UpdateSubjectConditionSetResponse {
-  string id = 1;
+  // Only ID of created Subject Condition Set provided
+  SubjectConditionSet subject_condition_set = 1;
 }
 
 message DeleteSubjectConditionSetRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteSubjectConditionSetResponse {
-  string id = 1;
+  // Only ID of created Subject Condition Set provided
+  SubjectConditionSet subject_condition_set = 1;
 }
 
 

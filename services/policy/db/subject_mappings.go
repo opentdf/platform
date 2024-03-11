@@ -171,7 +171,7 @@ func subjectMappingSelect() sq.SelectBuilder {
 		GroupBy(scsT.Field("id"))
 }
 
-func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, error) {
+func subjectMappingHydrateItem(c PolicyDbClient, row pgx.Row) (*subjectmapping.SubjectMapping, error) {
 	var (
 		id                 string
 		actionsJSON        []byte
@@ -208,9 +208,9 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 		}
 	}
 
-	av := attributes.Value{}
+	av := &attributes.Value{}
 	if attributeValueJSON != nil {
-		if err := protojson.Unmarshal(attributeValueJSON, &av); err != nil {
+		if av, err = convertJSONToAttrVal(c, attributeValueJSON); err != nil {
 			slog.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
 			return nil, err
 		}
@@ -235,16 +235,16 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 	return &subjectmapping.SubjectMapping{
 		Id:                  id,
 		Metadata:            m,
-		AttributeValue:      &av,
+		AttributeValue:      av,
 		SubjectConditionSet: &scs,
 		Actions:             a,
 	}, nil
 }
 
-func subjectMappingHydrateList(rows pgx.Rows) ([]*subjectmapping.SubjectMapping, error) {
+func subjectMappingHydrateList(c PolicyDbClient, rows pgx.Rows) ([]*subjectmapping.SubjectMapping, error) {
 	list := make([]*subjectmapping.SubjectMapping, 0)
 	for rows.Next() {
-		s, err := subjectMappingHydrateItem(rows)
+		s, err := subjectMappingHydrateItem(c, rows)
 		if err != nil {
 			return nil, err
 		}
@@ -532,7 +532,7 @@ func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*subj
 		return nil, err
 	}
 
-	return subjectMappingHydrateItem(row)
+	return subjectMappingHydrateItem(c, row)
 }
 
 func listSubjectMappingsSql() (string, []interface{}, error) {
@@ -554,7 +554,7 @@ func (c PolicyDbClient) ListSubjectMappings(ctx context.Context) ([]*subjectmapp
 	}
 	defer rows.Close()
 
-	subjectMappings, err := subjectMappingHydrateList(rows)
+	subjectMappings, err := subjectMappingHydrateList(c, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -749,5 +749,5 @@ func (c PolicyDbClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 	}
 	defer rows.Close()
 
-	return subjectMappingHydrateList(rows)
+	return subjectMappingHydrateList(c, rows)
 }

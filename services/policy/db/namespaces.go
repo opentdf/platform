@@ -183,7 +183,7 @@ func createNamespaceSql(name string, metadata []byte) (string, []interface{}, er
 }
 
 func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*namespaces.Namespace, error) {
-	metadataJson, _, err := db.MarshalCreateMetadata(r.Metadata)
+	metadataJson, m, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +202,9 @@ func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 
 	return &namespaces.Namespace{
 		Id: id,
+		Name: r.Name,
+		Active: &wrapperspb.BoolValue{Value: true},
+		Metadata: m,
 	}, nil
 }
 

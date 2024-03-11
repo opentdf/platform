@@ -44,7 +44,7 @@ private static final long serialVersionUID = 0L;
   private io.opentdf.platform.policy.subjectmapping.SubjectConditionSet subjectConditionSet_;
   /**
    * <pre>
-   * Only ID of created Subject Condition Set provided
+   * Only ID of updated Subject Condition Set provided
    * </pre>
    *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -56,7 +56,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * Only ID of created Subject Condition Set provided
+   * Only ID of updated Subject Condition Set provided
    * </pre>
    *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -68,7 +68,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * Only ID of created Subject Condition Set provided
+   * Only ID of updated Subject Condition Set provided
    * </pre>
    *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -430,7 +430,7 @@ private static final long serialVersionUID = 0L;
         io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> subjectConditionSetBuilder_;
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -441,7 +441,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -456,7 +456,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -476,7 +476,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -494,7 +494,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -519,7 +519,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -536,7 +536,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -548,7 +548,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -563,7 +563,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * Only ID of created Subject Condition Set provided
+     * Only ID of updated Subject Condition Set provided
      * </pre>
      *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>

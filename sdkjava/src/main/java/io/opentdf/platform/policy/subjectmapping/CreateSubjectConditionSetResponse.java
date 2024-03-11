@@ -43,10 +43,6 @@ private static final long serialVersionUID = 0L;
   public static final int SUBJECT_CONDITION_SET_FIELD_NUMBER = 1;
   private io.opentdf.platform.policy.subjectmapping.SubjectConditionSet subjectConditionSet_;
   /**
-   * <pre>
-   * Only ID of created Subject Condition Set provided
-   * </pre>
-   *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return Whether the subjectConditionSet field is set.
    */
@@ -55,10 +51,6 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <pre>
-   * Only ID of created Subject Condition Set provided
-   * </pre>
-   *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return The subjectConditionSet.
    */
@@ -67,10 +59,6 @@ private static final long serialVersionUID = 0L;
     return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
   }
   /**
-   * <pre>
-   * Only ID of created Subject Condition Set provided
-   * </pre>
-   *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    */
   @java.lang.Override
@@ -429,10 +417,6 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> subjectConditionSetBuilder_;
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      * @return Whether the subjectConditionSet field is set.
      */
@@ -440,10 +424,6 @@ private static final long serialVersionUID = 0L;
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      * @return The subjectConditionSet.
      */
@@ -455,10 +435,6 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     public Builder setSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
@@ -475,10 +451,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     public Builder setSubjectConditionSet(
@@ -493,10 +465,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     public Builder mergeSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
@@ -518,10 +486,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     public Builder clearSubjectConditionSet() {
@@ -535,10 +499,6 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder getSubjectConditionSetBuilder() {
@@ -547,10 +507,6 @@ private static final long serialVersionUID = 0L;
       return getSubjectConditionSetFieldBuilder().getBuilder();
     }
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder() {
@@ -562,10 +518,6 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <pre>
-     * Only ID of created Subject Condition Set provided
-     * </pre>
-     *
      * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<

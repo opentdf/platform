@@ -18,7 +18,7 @@ private static final long serialVersionUID = 0L;
   }
   private UpdateSubjectConditionSetRequest() {
     id_ = "";
-    updateSubjectSets_ = java.util.Collections.emptyList();
+    subjectSets_ = java.util.Collections.emptyList();
     metadataUpdateBehavior_ = 0;
   }
 
@@ -90,20 +90,20 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int UPDATE_SUBJECT_SETS_FIELD_NUMBER = 2;
+  public static final int SUBJECT_SETS_FIELD_NUMBER = 2;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> updateSubjectSets_;
+  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_;
   /**
    * <pre>
    * Optional
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getUpdateSubjectSetsList() {
-    return updateSubjectSets_;
+  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
+    return subjectSets_;
   }
   /**
    * <pre>
@@ -111,12 +111,12 @@ private static final long serialVersionUID = 0L;
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
   @java.lang.Override
   public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-      getUpdateSubjectSetsOrBuilderList() {
-    return updateSubjectSets_;
+      getSubjectSetsOrBuilderList() {
+    return subjectSets_;
   }
   /**
    * <pre>
@@ -124,11 +124,11 @@ private static final long serialVersionUID = 0L;
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
   @java.lang.Override
-  public int getUpdateSubjectSetsCount() {
-    return updateSubjectSets_.size();
+  public int getSubjectSetsCount() {
+    return subjectSets_.size();
   }
   /**
    * <pre>
@@ -136,11 +136,11 @@ private static final long serialVersionUID = 0L;
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectSet getUpdateSubjectSets(int index) {
-    return updateSubjectSets_.get(index);
+  public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
+    return subjectSets_.get(index);
   }
   /**
    * <pre>
@@ -148,12 +148,12 @@ private static final long serialVersionUID = 0L;
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getUpdateSubjectSetsOrBuilder(
+  public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
       int index) {
-    return updateSubjectSets_.get(index);
+    return subjectSets_.get(index);
   }
 
   public static final int METADATA_FIELD_NUMBER = 100;
@@ -229,8 +229,8 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
-    for (int i = 0; i < updateSubjectSets_.size(); i++) {
-      output.writeMessage(2, updateSubjectSets_.get(i));
+    for (int i = 0; i < subjectSets_.size(); i++) {
+      output.writeMessage(2, subjectSets_.get(i));
     }
     if (((bitField0_ & 0x00000001) != 0)) {
       output.writeMessage(100, getMetadata());
@@ -250,9 +250,9 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
     }
-    for (int i = 0; i < updateSubjectSets_.size(); i++) {
+    for (int i = 0; i < subjectSets_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(2, updateSubjectSets_.get(i));
+        .computeMessageSize(2, subjectSets_.get(i));
     }
     if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
@@ -279,8 +279,8 @@ private static final long serialVersionUID = 0L;
 
     if (!getId()
         .equals(other.getId())) return false;
-    if (!getUpdateSubjectSetsList()
-        .equals(other.getUpdateSubjectSetsList())) return false;
+    if (!getSubjectSetsList()
+        .equals(other.getSubjectSetsList())) return false;
     if (hasMetadata() != other.hasMetadata()) return false;
     if (hasMetadata()) {
       if (!getMetadata()
@@ -300,9 +300,9 @@ private static final long serialVersionUID = 0L;
     hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + ID_FIELD_NUMBER;
     hash = (53 * hash) + getId().hashCode();
-    if (getUpdateSubjectSetsCount() > 0) {
-      hash = (37 * hash) + UPDATE_SUBJECT_SETS_FIELD_NUMBER;
-      hash = (53 * hash) + getUpdateSubjectSetsList().hashCode();
+    if (getSubjectSetsCount() > 0) {
+      hash = (37 * hash) + SUBJECT_SETS_FIELD_NUMBER;
+      hash = (53 * hash) + getSubjectSetsList().hashCode();
     }
     if (hasMetadata()) {
       hash = (37 * hash) + METADATA_FIELD_NUMBER;
@@ -440,7 +440,7 @@ private static final long serialVersionUID = 0L;
     private void maybeForceBuilderInitialization() {
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
-        getUpdateSubjectSetsFieldBuilder();
+        getSubjectSetsFieldBuilder();
         getMetadataFieldBuilder();
       }
     }
@@ -449,11 +449,11 @@ private static final long serialVersionUID = 0L;
       super.clear();
       bitField0_ = 0;
       id_ = "";
-      if (updateSubjectSetsBuilder_ == null) {
-        updateSubjectSets_ = java.util.Collections.emptyList();
+      if (subjectSetsBuilder_ == null) {
+        subjectSets_ = java.util.Collections.emptyList();
       } else {
-        updateSubjectSets_ = null;
-        updateSubjectSetsBuilder_.clear();
+        subjectSets_ = null;
+        subjectSetsBuilder_.clear();
       }
       bitField0_ = (bitField0_ & ~0x00000002);
       metadata_ = null;
@@ -495,14 +495,14 @@ private static final long serialVersionUID = 0L;
     }
 
     private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.UpdateSubjectConditionSetRequest result) {
-      if (updateSubjectSetsBuilder_ == null) {
+      if (subjectSetsBuilder_ == null) {
         if (((bitField0_ & 0x00000002) != 0)) {
-          updateSubjectSets_ = java.util.Collections.unmodifiableList(updateSubjectSets_);
+          subjectSets_ = java.util.Collections.unmodifiableList(subjectSets_);
           bitField0_ = (bitField0_ & ~0x00000002);
         }
-        result.updateSubjectSets_ = updateSubjectSets_;
+        result.subjectSets_ = subjectSets_;
       } else {
-        result.updateSubjectSets_ = updateSubjectSetsBuilder_.build();
+        result.subjectSets_ = subjectSetsBuilder_.build();
       }
     }
 
@@ -573,29 +573,29 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00000001;
         onChanged();
       }
-      if (updateSubjectSetsBuilder_ == null) {
-        if (!other.updateSubjectSets_.isEmpty()) {
-          if (updateSubjectSets_.isEmpty()) {
-            updateSubjectSets_ = other.updateSubjectSets_;
+      if (subjectSetsBuilder_ == null) {
+        if (!other.subjectSets_.isEmpty()) {
+          if (subjectSets_.isEmpty()) {
+            subjectSets_ = other.subjectSets_;
             bitField0_ = (bitField0_ & ~0x00000002);
           } else {
-            ensureUpdateSubjectSetsIsMutable();
-            updateSubjectSets_.addAll(other.updateSubjectSets_);
+            ensureSubjectSetsIsMutable();
+            subjectSets_.addAll(other.subjectSets_);
           }
           onChanged();
         }
       } else {
-        if (!other.updateSubjectSets_.isEmpty()) {
-          if (updateSubjectSetsBuilder_.isEmpty()) {
-            updateSubjectSetsBuilder_.dispose();
-            updateSubjectSetsBuilder_ = null;
-            updateSubjectSets_ = other.updateSubjectSets_;
+        if (!other.subjectSets_.isEmpty()) {
+          if (subjectSetsBuilder_.isEmpty()) {
+            subjectSetsBuilder_.dispose();
+            subjectSetsBuilder_ = null;
+            subjectSets_ = other.subjectSets_;
             bitField0_ = (bitField0_ & ~0x00000002);
-            updateSubjectSetsBuilder_ = 
+            subjectSetsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
-                 getUpdateSubjectSetsFieldBuilder() : null;
+                 getSubjectSetsFieldBuilder() : null;
           } else {
-            updateSubjectSetsBuilder_.addAllMessages(other.updateSubjectSets_);
+            subjectSetsBuilder_.addAllMessages(other.subjectSets_);
           }
         }
       }
@@ -641,11 +641,11 @@ private static final long serialVersionUID = 0L;
                   input.readMessage(
                       io.opentdf.platform.policy.subjectmapping.SubjectSet.parser(),
                       extensionRegistry);
-              if (updateSubjectSetsBuilder_ == null) {
-                ensureUpdateSubjectSetsIsMutable();
-                updateSubjectSets_.add(m);
+              if (subjectSetsBuilder_ == null) {
+                ensureSubjectSetsIsMutable();
+                subjectSets_.add(m);
               } else {
-                updateSubjectSetsBuilder_.addMessage(m);
+                subjectSetsBuilder_.addMessage(m);
               }
               break;
             } // case 18
@@ -770,17 +770,17 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> updateSubjectSets_ =
+    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_ =
       java.util.Collections.emptyList();
-    private void ensureUpdateSubjectSetsIsMutable() {
+    private void ensureSubjectSetsIsMutable() {
       if (!((bitField0_ & 0x00000002) != 0)) {
-        updateSubjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectSet>(updateSubjectSets_);
+        subjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectSet>(subjectSets_);
         bitField0_ |= 0x00000002;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> updateSubjectSetsBuilder_;
+        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> subjectSetsBuilder_;
 
     /**
      * <pre>
@@ -788,13 +788,13 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getUpdateSubjectSetsList() {
-      if (updateSubjectSetsBuilder_ == null) {
-        return java.util.Collections.unmodifiableList(updateSubjectSets_);
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
+      if (subjectSetsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(subjectSets_);
       } else {
-        return updateSubjectSetsBuilder_.getMessageList();
+        return subjectSetsBuilder_.getMessageList();
       }
     }
     /**
@@ -803,13 +803,13 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public int getUpdateSubjectSetsCount() {
-      if (updateSubjectSetsBuilder_ == null) {
-        return updateSubjectSets_.size();
+    public int getSubjectSetsCount() {
+      if (subjectSetsBuilder_ == null) {
+        return subjectSets_.size();
       } else {
-        return updateSubjectSetsBuilder_.getCount();
+        return subjectSetsBuilder_.getCount();
       }
     }
     /**
@@ -818,13 +818,13 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet getUpdateSubjectSets(int index) {
-      if (updateSubjectSetsBuilder_ == null) {
-        return updateSubjectSets_.get(index);
+    public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
+      if (subjectSetsBuilder_ == null) {
+        return subjectSets_.get(index);
       } else {
-        return updateSubjectSetsBuilder_.getMessage(index);
+        return subjectSetsBuilder_.getMessage(index);
       }
     }
     /**
@@ -833,19 +833,19 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder setUpdateSubjectSets(
+    public Builder setSubjectSets(
         int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (updateSubjectSetsBuilder_ == null) {
+      if (subjectSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureUpdateSubjectSetsIsMutable();
-        updateSubjectSets_.set(index, value);
+        ensureSubjectSetsIsMutable();
+        subjectSets_.set(index, value);
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.setMessage(index, value);
+        subjectSetsBuilder_.setMessage(index, value);
       }
       return this;
     }
@@ -855,16 +855,16 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder setUpdateSubjectSets(
+    public Builder setSubjectSets(
         int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (updateSubjectSetsBuilder_ == null) {
-        ensureUpdateSubjectSetsIsMutable();
-        updateSubjectSets_.set(index, builderForValue.build());
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        subjectSets_.set(index, builderForValue.build());
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.setMessage(index, builderForValue.build());
+        subjectSetsBuilder_.setMessage(index, builderForValue.build());
       }
       return this;
     }
@@ -874,18 +874,18 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder addUpdateSubjectSets(io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (updateSubjectSetsBuilder_ == null) {
+    public Builder addSubjectSets(io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
+      if (subjectSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureUpdateSubjectSetsIsMutable();
-        updateSubjectSets_.add(value);
+        ensureSubjectSetsIsMutable();
+        subjectSets_.add(value);
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.addMessage(value);
+        subjectSetsBuilder_.addMessage(value);
       }
       return this;
     }
@@ -895,19 +895,19 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder addUpdateSubjectSets(
+    public Builder addSubjectSets(
         int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
-      if (updateSubjectSetsBuilder_ == null) {
+      if (subjectSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        ensureUpdateSubjectSetsIsMutable();
-        updateSubjectSets_.add(index, value);
+        ensureSubjectSetsIsMutable();
+        subjectSets_.add(index, value);
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.addMessage(index, value);
+        subjectSetsBuilder_.addMessage(index, value);
       }
       return this;
     }
@@ -917,16 +917,16 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder addUpdateSubjectSets(
+    public Builder addSubjectSets(
         io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (updateSubjectSetsBuilder_ == null) {
-        ensureUpdateSubjectSetsIsMutable();
-        updateSubjectSets_.add(builderForValue.build());
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        subjectSets_.add(builderForValue.build());
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.addMessage(builderForValue.build());
+        subjectSetsBuilder_.addMessage(builderForValue.build());
       }
       return this;
     }
@@ -936,16 +936,16 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder addUpdateSubjectSets(
+    public Builder addSubjectSets(
         int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
-      if (updateSubjectSetsBuilder_ == null) {
-        ensureUpdateSubjectSetsIsMutable();
-        updateSubjectSets_.add(index, builderForValue.build());
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        subjectSets_.add(index, builderForValue.build());
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.addMessage(index, builderForValue.build());
+        subjectSetsBuilder_.addMessage(index, builderForValue.build());
       }
       return this;
     }
@@ -955,17 +955,17 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder addAllUpdateSubjectSets(
+    public Builder addAllSubjectSets(
         java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectSet> values) {
-      if (updateSubjectSetsBuilder_ == null) {
-        ensureUpdateSubjectSetsIsMutable();
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, updateSubjectSets_);
+            values, subjectSets_);
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.addAllMessages(values);
+        subjectSetsBuilder_.addAllMessages(values);
       }
       return this;
     }
@@ -975,15 +975,15 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder clearUpdateSubjectSets() {
-      if (updateSubjectSetsBuilder_ == null) {
-        updateSubjectSets_ = java.util.Collections.emptyList();
+    public Builder clearSubjectSets() {
+      if (subjectSetsBuilder_ == null) {
+        subjectSets_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000002);
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.clear();
+        subjectSetsBuilder_.clear();
       }
       return this;
     }
@@ -993,15 +993,15 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public Builder removeUpdateSubjectSets(int index) {
-      if (updateSubjectSetsBuilder_ == null) {
-        ensureUpdateSubjectSetsIsMutable();
-        updateSubjectSets_.remove(index);
+    public Builder removeSubjectSets(int index) {
+      if (subjectSetsBuilder_ == null) {
+        ensureSubjectSetsIsMutable();
+        subjectSets_.remove(index);
         onChanged();
       } else {
-        updateSubjectSetsBuilder_.remove(index);
+        subjectSetsBuilder_.remove(index);
       }
       return this;
     }
@@ -1011,11 +1011,11 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder getUpdateSubjectSetsBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder getSubjectSetsBuilder(
         int index) {
-      return getUpdateSubjectSetsFieldBuilder().getBuilder(index);
+      return getSubjectSetsFieldBuilder().getBuilder(index);
     }
     /**
      * <pre>
@@ -1023,13 +1023,13 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getUpdateSubjectSetsOrBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
         int index) {
-      if (updateSubjectSetsBuilder_ == null) {
-        return updateSubjectSets_.get(index);  } else {
-        return updateSubjectSetsBuilder_.getMessageOrBuilder(index);
+      if (subjectSetsBuilder_ == null) {
+        return subjectSets_.get(index);  } else {
+        return subjectSetsBuilder_.getMessageOrBuilder(index);
       }
     }
     /**
@@ -1038,14 +1038,14 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
     public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-         getUpdateSubjectSetsOrBuilderList() {
-      if (updateSubjectSetsBuilder_ != null) {
-        return updateSubjectSetsBuilder_.getMessageOrBuilderList();
+         getSubjectSetsOrBuilderList() {
+      if (subjectSetsBuilder_ != null) {
+        return subjectSetsBuilder_.getMessageOrBuilderList();
       } else {
-        return java.util.Collections.unmodifiableList(updateSubjectSets_);
+        return java.util.Collections.unmodifiableList(subjectSets_);
       }
     }
     /**
@@ -1054,10 +1054,10 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addUpdateSubjectSetsBuilder() {
-      return getUpdateSubjectSetsFieldBuilder().addBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder() {
+      return getSubjectSetsFieldBuilder().addBuilder(
           io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
     }
     /**
@@ -1066,11 +1066,11 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addUpdateSubjectSetsBuilder(
+    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder(
         int index) {
-      return getUpdateSubjectSetsFieldBuilder().addBuilder(
+      return getSubjectSetsFieldBuilder().addBuilder(
           index, io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
     }
     /**
@@ -1079,25 +1079,25 @@ private static final long serialVersionUID = 0L;
      * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 2 [json_name = "updateSubjectSets"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
      */
     public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder> 
-         getUpdateSubjectSetsBuilderList() {
-      return getUpdateSubjectSetsFieldBuilder().getBuilderList();
+         getSubjectSetsBuilderList() {
+      return getSubjectSetsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
         io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-        getUpdateSubjectSetsFieldBuilder() {
-      if (updateSubjectSetsBuilder_ == null) {
-        updateSubjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+        getSubjectSetsFieldBuilder() {
+      if (subjectSetsBuilder_ == null) {
+        subjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>(
-                updateSubjectSets_,
+                subjectSets_,
                 ((bitField0_ & 0x00000002) != 0),
                 getParentForChildren(),
                 isClean());
-        updateSubjectSets_ = null;
+        subjectSets_ = null;
       }
-      return updateSubjectSetsBuilder_;
+      return subjectSetsBuilder_;
     }
 
     private io.opentdf.platform.common.MetadataMutable metadata_;

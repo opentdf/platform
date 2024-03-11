@@ -10,7 +10,7 @@ public interface UpdateSubjectConditionSetResponseOrBuilder extends
 
   /**
    * <pre>
-   * Only ID of created Subject Condition Set provided
+   * Only ID of updated Subject Condition Set provided
    * </pre>
    *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -19,7 +19,7 @@ public interface UpdateSubjectConditionSetResponseOrBuilder extends
   boolean hasSubjectConditionSet();
   /**
    * <pre>
-   * Only ID of created Subject Condition Set provided
+   * Only ID of updated Subject Condition Set provided
    * </pre>
    *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
@@ -28,7 +28,7 @@ public interface UpdateSubjectConditionSetResponseOrBuilder extends
   io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet();
   /**
    * <pre>
-   * Only ID of created Subject Condition Set provided
+   * Only ID of updated Subject Condition Set provided
    * </pre>
    *
    * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>

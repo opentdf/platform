@@ -165,7 +165,6 @@ message CreateSubjectMappingRequest{
   common.MetadataMutable metadata = 100;
 }
 message CreateSubjectMappingResponse {
-  // Only ID of the updated Subject Mapping provided
   SubjectMapping subject_mapping = 1;
 }
 
@@ -226,7 +225,6 @@ message CreateSubjectConditionSetRequest {
   SubjectConditionSetCreate subject_condition_set = 1;
 }
 message CreateSubjectConditionSetResponse {
-  // Only ID of created Subject Condition Set provided
   SubjectConditionSet subject_condition_set = 1;
 }
 
@@ -236,14 +234,14 @@ message UpdateSubjectConditionSetRequest {
 
   // Optional
   // If provided, replaces entire existing structure of Subject Sets, Condition Groups, & Conditions
-  repeated SubjectSet update_subject_sets = 2;
+  repeated SubjectSet subject_sets = 2;
 
   // Common metadata
   common.MetadataMutable metadata = 100;
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateSubjectConditionSetResponse {
-  // Only ID of created Subject Condition Set provided
+  // Only ID of updated Subject Condition Set provided
   SubjectConditionSet subject_condition_set = 1;
 }
 
@@ -251,7 +249,7 @@ message DeleteSubjectConditionSetRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteSubjectConditionSetResponse {
-  // Only ID of created Subject Condition Set provided
+  // Only ID of deleted Subject Condition Set provided
   SubjectConditionSet subject_condition_set = 1;
 }
 

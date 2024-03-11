@@ -91,7 +91,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	}
 }
 
-func Test_ErrorsCredentials_StillSendMessage(t *testing.T) {
+func Test_InvalidCredentials_StillSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil}
 	server := FakeAccessServiceServer{}
 	oo := newOutgoingInterceptor(&ts)

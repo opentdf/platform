@@ -97,7 +97,7 @@ jobs:
             sdk/go.sum
       - run: make go.work
       - run: go test ./integration -race
-      - run: docker-compose up -d --wait
+      - run: docker compose up -d --wait --wait-timeout 240
       - run: cp example-opentdf.yaml opentdf.yaml
       - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
         name: start server in background

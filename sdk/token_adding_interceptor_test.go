@@ -2,6 +2,8 @@ package sdk
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"net"
 	"slices"
@@ -42,8 +44,8 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		t.Fatalf("error making call: %v", err)
 	}
 
-	if len(server.accessToken) != 1 || server.accessToken[0] != "Bearer thisisafakeaccesstoken" {
-		t.Fatalf("Got incorrect access token: %v", server.accessToken)
+	if len(server.accessToken) != 1 || server.accessToken[0] != "DPoP thisisafakeaccesstoken" {
+		t.Fatalf("got incorrect access token: %v", server.accessToken)
 	}
 
 	if len(server.dpopToken) != 1 {
@@ -88,6 +90,14 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 
 	if path, _ := parsedToken.Get("htu"); path.(string) != "/access.AccessService/Info" {
 		t.Fatalf("we got a bad method: %v", path)
+	}
+
+	h := sha256.New()
+	h.Write([]byte("thisisafakeaccesstoken"))
+	expectedHash := base64.URLEncoding.EncodeToString(h.Sum(nil))
+
+	if ath, _ := parsedToken.Get("ath"); ath.(string) != expectedHash {
+		t.Fatalf("got invalid ath claim in token: %v", ath)
 	}
 }
 

@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -33,12 +34,12 @@ func (i tokenAddingInterceptor) addCredentials(ctx context.Context,
 	newMetadata := make([]string, 0)
 	accessToken, err := i.tokenSource.AccessToken()
 	if err == nil {
-		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("Bearer %s", accessToken))
+		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {
 		slog.Error("error getting access token: %w. Request will be unauthenticated", err)
 	}
 
-	dpopTok, err := i.getDPOPToken(method)
+	dpopTok, err := i.getDPOPToken(method, string(accessToken))
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
@@ -54,7 +55,7 @@ func (i tokenAddingInterceptor) addCredentials(ctx context.Context,
 	return err
 }
 
-func (i tokenAddingInterceptor) getDPOPToken(method string) (string, error) {
+func (i tokenAddingInterceptor) getDPOPToken(method, accessToken string) (string, error) {
 	tok, err := i.tokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
 		jtiBytes := make([]byte, JTILength)
 		_, err := rand.Read(jtiBytes)
@@ -80,14 +81,16 @@ func (i tokenAddingInterceptor) getDPOPToken(method string) (string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error setting the algorithm on the DPOP token: %w", err)
 		}
-		err = headers.Set("jti", base64.StdEncoding.EncodeToString(jtiBytes))
-		if err != nil {
-			return nil, fmt.Errorf("error setting the jti on the DPOP token: %w", err)
-		}
+
+		h := sha256.New()
+		h.Write([]byte(accessToken))
+		ath := h.Sum(nil)
 
 		dpopTok, err := jwt.NewBuilder().
 			Claim("htu", method).
 			Claim("htm", "POST").
+			Claim("ath", base64.StdEncoding.EncodeToString(ath)).
+			Claim("jti", base64.StdEncoding.EncodeToString(jtiBytes)).
 			IssuedAt(time.Now()).
 			Expiration(time.Now().Add(time.Minute * JWTExpirationMinutes)).
 			Build()

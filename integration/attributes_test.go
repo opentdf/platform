@@ -384,7 +384,7 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 		Name: "test__cascading-deactivate-ns",
 	})
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), nsId)
+	assert.NotZero(s.T(), n.Id)
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{

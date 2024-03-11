@@ -151,59 +151,66 @@ func NewFixture(db DBInterface) Fixtures {
 }
 
 func (f *Fixtures) GetNamespaceKey(key string) FixtureDataNamespace {
-	if fixtureData.Namespaces.Data[key].Id == "" {
+	ns, ok := fixtureData.Namespaces.Data[key]
+	if !ok || ns.Id == "" {
 		slog.Error("could not find namespace", slog.String("id", key))
-		panic("could not find namespace")
+		panic("could not find namespace fixture: " + key)
 	}
-	return fixtureData.Namespaces.Data[key]
+	return ns
 }
 
 func (f *Fixtures) GetAttributeKey(key string) FixtureDataAttribute {
-	if fixtureData.Attributes.Data[key].Id == "" {
+	a, ok := fixtureData.Attributes.Data[key]
+	if !ok || a.Id == "" {
 		slog.Error("could not find attributes", slog.String("id", key))
-		panic("could not find attributes")
+		panic("could not find attribute fixture: " + key)
 	}
-	return fixtureData.Attributes.Data[key]
+	return a
 }
 
 func (f *Fixtures) GetAttributeValueKey(key string) FixtureDataAttributeValue {
-	if fixtureData.AttributeValues.Data[key].Id == "" {
+	av, ok := fixtureData.AttributeValues.Data[key]
+	if !ok || av.Id == "" {
 		slog.Error("could not find attribute-values", slog.String("id", key))
-		panic("could not find attribute-values")
+		panic("could not find attribute-value fixture: " + key)
 	}
-	return fixtureData.AttributeValues.Data[key]
+	return av
 }
 
 func (f *Fixtures) GetSubjectMappingKey(key string) FixtureDataSubjectMapping {
-	if fixtureData.SubjectMappings.Data[key].Id == "" {
+	sm, ok := fixtureData.SubjectMappings.Data[key]
+	if !ok || sm.Id == "" {
 		slog.Error("could not find subject-mappings", slog.String("id", key))
-		panic("could not find subject-mappings")
+		panic("could not find subject-mapping fixture: " + key)
 	}
-	return fixtureData.SubjectMappings.Data[key]
+	return sm
 }
 
 func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
-	if fixtureData.SubjectConditionSet.Data[key].Id == "" {
+	scs, ok := fixtureData.SubjectConditionSet.Data[key]
+	if !ok || scs.Id == "" {
 		slog.Error("could not find subject-condition-set", slog.String("id", key))
-		panic("could not find subject-condition-set")
+		panic("could not find subject-condition-set fixture: " + key)
 	}
-	return fixtureData.SubjectConditionSet.Data[key]
+	return scs
 }
 
 func (f *Fixtures) GetResourceMappingKey(key string) FixtureDataResourceMapping {
-	if fixtureData.ResourceMappings.Data[key].Id == "" {
+	rm, ok := fixtureData.ResourceMappings.Data[key]
+	if !ok || rm.Id == "" {
 		slog.Error("could not find resource-mappings", slog.String("id", key))
-		panic("could not find resource-mappings")
+		panic("could not find resource-mapping fixture: " + key)
 	}
-	return fixtureData.ResourceMappings.Data[key]
+	return rm
 }
 
 func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
-	if fixtureData.KasRegistries.Data[key].Id == "" {
+	kasr, ok := fixtureData.KasRegistries.Data[key]
+	if !ok || kasr.Id == "" {
 		slog.Error("could not find kas-registry", slog.String("id", key))
-		panic("could not find kas-registry")
+		panic("could not find kas-registry fixture: " + key)
 	}
-	return fixtureData.KasRegistries.Data[key]
+	return kasr
 }
 
 func (f *Fixtures) Provision() {

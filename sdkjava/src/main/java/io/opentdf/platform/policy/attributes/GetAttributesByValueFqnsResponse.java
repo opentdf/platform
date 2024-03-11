@@ -51,22 +51,834 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.class, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.Builder.class);
   }
 
+  public interface AttributeAndValueOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * @return Whether the attribute field is set.
+     */
+    boolean hasAttribute();
+    /**
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * @return The attribute.
+     */
+    io.opentdf.platform.policy.Attribute getAttribute();
+    /**
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+     */
+    io.opentdf.platform.policy.AttributeOrBuilder getAttributeOrBuilder();
+
+    /**
+     * <code>.policy.Value value = 2 [json_name = "value"];</code>
+     * @return Whether the value field is set.
+     */
+    boolean hasValue();
+    /**
+     * <code>.policy.Value value = 2 [json_name = "value"];</code>
+     * @return The value.
+     */
+    io.opentdf.platform.policy.Value getValue();
+    /**
+     * <code>.policy.Value value = 2 [json_name = "value"];</code>
+     */
+    io.opentdf.platform.policy.ValueOrBuilder getValueOrBuilder();
+  }
+  /**
+   * Protobuf type {@code policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue}
+   */
+  public static final class AttributeAndValue extends
+      com.google.protobuf.GeneratedMessageV3 implements
+      // @@protoc_insertion_point(message_implements:policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue)
+      AttributeAndValueOrBuilder {
+  private static final long serialVersionUID = 0L;
+    // Use AttributeAndValue.newBuilder() to construct.
+    private AttributeAndValue(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+      super(builder);
+    }
+    private AttributeAndValue() {
+    }
+
+    @java.lang.Override
+    @SuppressWarnings({"unused"})
+    protected java.lang.Object newInstance(
+        UnusedPrivateParameter unused) {
+      return new AttributeAndValue();
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsResponse_AttributeAndValue_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsResponse_AttributeAndValue_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.class, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.Builder.class);
+    }
+
+    private int bitField0_;
+    public static final int ATTRIBUTE_FIELD_NUMBER = 1;
+    private io.opentdf.platform.policy.Attribute attribute_;
+    /**
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * @return Whether the attribute field is set.
+     */
+    @java.lang.Override
+    public boolean hasAttribute() {
+      return ((bitField0_ & 0x00000001) != 0);
+    }
+    /**
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * @return The attribute.
+     */
+    @java.lang.Override
+    public io.opentdf.platform.policy.Attribute getAttribute() {
+      return attribute_ == null ? io.opentdf.platform.policy.Attribute.getDefaultInstance() : attribute_;
+    }
+    /**
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+     */
+    @java.lang.Override
+    public io.opentdf.platform.policy.AttributeOrBuilder getAttributeOrBuilder() {
+      return attribute_ == null ? io.opentdf.platform.policy.Attribute.getDefaultInstance() : attribute_;
+    }
+
+    public static final int VALUE_FIELD_NUMBER = 2;
+    private io.opentdf.platform.policy.Value value_;
+    /**
+     * <code>.policy.Value value = 2 [json_name = "value"];</code>
+     * @return Whether the value field is set.
+     */
+    @java.lang.Override
+    public boolean hasValue() {
+      return ((bitField0_ & 0x00000002) != 0);
+    }
+    /**
+     * <code>.policy.Value value = 2 [json_name = "value"];</code>
+     * @return The value.
+     */
+    @java.lang.Override
+    public io.opentdf.platform.policy.Value getValue() {
+      return value_ == null ? io.opentdf.platform.policy.Value.getDefaultInstance() : value_;
+    }
+    /**
+     * <code>.policy.Value value = 2 [json_name = "value"];</code>
+     */
+    @java.lang.Override
+    public io.opentdf.platform.policy.ValueOrBuilder getValueOrBuilder() {
+      return value_ == null ? io.opentdf.platform.policy.Value.getDefaultInstance() : value_;
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (((bitField0_ & 0x00000001) != 0)) {
+        output.writeMessage(1, getAttribute());
+      }
+      if (((bitField0_ & 0x00000002) != 0)) {
+        output.writeMessage(2, getValue());
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) != 0)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, getAttribute());
+      }
+      if (((bitField0_ & 0x00000002) != 0)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(2, getValue());
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue)) {
+        return super.equals(obj);
+      }
+      io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue other = (io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue) obj;
+
+      if (hasAttribute() != other.hasAttribute()) return false;
+      if (hasAttribute()) {
+        if (!getAttribute()
+            .equals(other.getAttribute())) return false;
+      }
+      if (hasValue() != other.hasValue()) return false;
+      if (hasValue()) {
+        if (!getValue()
+            .equals(other.getValue())) return false;
+      }
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      if (hasAttribute()) {
+        hash = (37 * hash) + ATTRIBUTE_FIELD_NUMBER;
+        hash = (53 * hash) + getAttribute().hashCode();
+      }
+      if (hasValue()) {
+        hash = (37 * hash) + VALUE_FIELD_NUMBER;
+        hash = (53 * hash) + getValue().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3
+          .parseWithIOException(PARSER, input);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3
+          .parseWithIOException(PARSER, input);
+    }
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue)
+        io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsResponse_AttributeAndValue_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsResponse_AttributeAndValue_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.class, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.Builder.class);
+      }
+
+      // Construct using io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessageV3
+                .alwaysUseFieldBuilders) {
+          getAttributeFieldBuilder();
+          getValueFieldBuilder();
+        }
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        attribute_ = null;
+        if (attributeBuilder_ != null) {
+          attributeBuilder_.dispose();
+          attributeBuilder_ = null;
+        }
+        value_ = null;
+        if (valueBuilder_ != null) {
+          valueBuilder_.dispose();
+          valueBuilder_ = null;
+        }
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsResponse_AttributeAndValue_descriptor;
+      }
+
+      @java.lang.Override
+      public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue getDefaultInstanceForType() {
+        return io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue build() {
+        io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue buildPartial() {
+        io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue result = new io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue result) {
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.attribute_ = attributeBuilder_ == null
+              ? attribute_
+              : attributeBuilder_.build();
+          to_bitField0_ |= 0x00000001;
+        }
+        if (((from_bitField0_ & 0x00000002) != 0)) {
+          result.value_ = valueBuilder_ == null
+              ? value_
+              : valueBuilder_.build();
+          to_bitField0_ |= 0x00000002;
+        }
+        result.bitField0_ |= to_bitField0_;
+      }
+
+      @java.lang.Override
+      public Builder clone() {
+        return super.clone();
+      }
+      @java.lang.Override
+      public Builder setField(
+          com.google.protobuf.Descriptors.FieldDescriptor field,
+          java.lang.Object value) {
+        return super.setField(field, value);
+      }
+      @java.lang.Override
+      public Builder clearField(
+          com.google.protobuf.Descriptors.FieldDescriptor field) {
+        return super.clearField(field);
+      }
+      @java.lang.Override
+      public Builder clearOneof(
+          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+        return super.clearOneof(oneof);
+      }
+      @java.lang.Override
+      public Builder setRepeatedField(
+          com.google.protobuf.Descriptors.FieldDescriptor field,
+          int index, java.lang.Object value) {
+        return super.setRepeatedField(field, index, value);
+      }
+      @java.lang.Override
+      public Builder addRepeatedField(
+          com.google.protobuf.Descriptors.FieldDescriptor field,
+          java.lang.Object value) {
+        return super.addRepeatedField(field, value);
+      }
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue) {
+          return mergeFrom((io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue other) {
+        if (other == io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.getDefaultInstance()) return this;
+        if (other.hasAttribute()) {
+          mergeAttribute(other.getAttribute());
+        }
+        if (other.hasValue()) {
+          mergeValue(other.getValue());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                input.readMessage(
+                    getAttributeFieldBuilder().getBuilder(),
+                    extensionRegistry);
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              case 18: {
+                input.readMessage(
+                    getValueFieldBuilder().getBuilder(),
+                    extensionRegistry);
+                bitField0_ |= 0x00000002;
+                break;
+              } // case 18
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private io.opentdf.platform.policy.Attribute attribute_;
+      private com.google.protobuf.SingleFieldBuilderV3<
+          io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder> attributeBuilder_;
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       * @return Whether the attribute field is set.
+       */
+      public boolean hasAttribute() {
+        return ((bitField0_ & 0x00000001) != 0);
+      }
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       * @return The attribute.
+       */
+      public io.opentdf.platform.policy.Attribute getAttribute() {
+        if (attributeBuilder_ == null) {
+          return attribute_ == null ? io.opentdf.platform.policy.Attribute.getDefaultInstance() : attribute_;
+        } else {
+          return attributeBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       */
+      public Builder setAttribute(io.opentdf.platform.policy.Attribute value) {
+        if (attributeBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          attribute_ = value;
+        } else {
+          attributeBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       */
+      public Builder setAttribute(
+          io.opentdf.platform.policy.Attribute.Builder builderForValue) {
+        if (attributeBuilder_ == null) {
+          attribute_ = builderForValue.build();
+        } else {
+          attributeBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       */
+      public Builder mergeAttribute(io.opentdf.platform.policy.Attribute value) {
+        if (attributeBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) != 0) &&
+            attribute_ != null &&
+            attribute_ != io.opentdf.platform.policy.Attribute.getDefaultInstance()) {
+            getAttributeBuilder().mergeFrom(value);
+          } else {
+            attribute_ = value;
+          }
+        } else {
+          attributeBuilder_.mergeFrom(value);
+        }
+        if (attribute_ != null) {
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        return this;
+      }
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       */
+      public Builder clearAttribute() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        attribute_ = null;
+        if (attributeBuilder_ != null) {
+          attributeBuilder_.dispose();
+          attributeBuilder_ = null;
+        }
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       */
+      public io.opentdf.platform.policy.Attribute.Builder getAttributeBuilder() {
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return getAttributeFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       */
+      public io.opentdf.platform.policy.AttributeOrBuilder getAttributeOrBuilder() {
+        if (attributeBuilder_ != null) {
+          return attributeBuilder_.getMessageOrBuilder();
+        } else {
+          return attribute_ == null ?
+              io.opentdf.platform.policy.Attribute.getDefaultInstance() : attribute_;
+        }
+      }
+      /**
+       * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
+       */
+      private com.google.protobuf.SingleFieldBuilderV3<
+          io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder> 
+          getAttributeFieldBuilder() {
+        if (attributeBuilder_ == null) {
+          attributeBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+              io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder>(
+                  getAttribute(),
+                  getParentForChildren(),
+                  isClean());
+          attribute_ = null;
+        }
+        return attributeBuilder_;
+      }
+
+      private io.opentdf.platform.policy.Value value_;
+      private com.google.protobuf.SingleFieldBuilderV3<
+          io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder> valueBuilder_;
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       * @return Whether the value field is set.
+       */
+      public boolean hasValue() {
+        return ((bitField0_ & 0x00000002) != 0);
+      }
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       * @return The value.
+       */
+      public io.opentdf.platform.policy.Value getValue() {
+        if (valueBuilder_ == null) {
+          return value_ == null ? io.opentdf.platform.policy.Value.getDefaultInstance() : value_;
+        } else {
+          return valueBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       */
+      public Builder setValue(io.opentdf.platform.policy.Value value) {
+        if (valueBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          value_ = value;
+        } else {
+          valueBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       */
+      public Builder setValue(
+          io.opentdf.platform.policy.Value.Builder builderForValue) {
+        if (valueBuilder_ == null) {
+          value_ = builderForValue.build();
+        } else {
+          valueBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       */
+      public Builder mergeValue(io.opentdf.platform.policy.Value value) {
+        if (valueBuilder_ == null) {
+          if (((bitField0_ & 0x00000002) != 0) &&
+            value_ != null &&
+            value_ != io.opentdf.platform.policy.Value.getDefaultInstance()) {
+            getValueBuilder().mergeFrom(value);
+          } else {
+            value_ = value;
+          }
+        } else {
+          valueBuilder_.mergeFrom(value);
+        }
+        if (value_ != null) {
+          bitField0_ |= 0x00000002;
+          onChanged();
+        }
+        return this;
+      }
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       */
+      public Builder clearValue() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        value_ = null;
+        if (valueBuilder_ != null) {
+          valueBuilder_.dispose();
+          valueBuilder_ = null;
+        }
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       */
+      public io.opentdf.platform.policy.Value.Builder getValueBuilder() {
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return getValueFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       */
+      public io.opentdf.platform.policy.ValueOrBuilder getValueOrBuilder() {
+        if (valueBuilder_ != null) {
+          return valueBuilder_.getMessageOrBuilder();
+        } else {
+          return value_ == null ?
+              io.opentdf.platform.policy.Value.getDefaultInstance() : value_;
+        }
+      }
+      /**
+       * <code>.policy.Value value = 2 [json_name = "value"];</code>
+       */
+      private com.google.protobuf.SingleFieldBuilderV3<
+          io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder> 
+          getValueFieldBuilder() {
+        if (valueBuilder_ == null) {
+          valueBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+              io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder>(
+                  getValue(),
+                  getParentForChildren(),
+                  isClean());
+          value_ = null;
+        }
+        return valueBuilder_;
+      }
+      @java.lang.Override
+      public final Builder setUnknownFields(
+          final com.google.protobuf.UnknownFieldSet unknownFields) {
+        return super.setUnknownFields(unknownFields);
+      }
+
+      @java.lang.Override
+      public final Builder mergeUnknownFields(
+          final com.google.protobuf.UnknownFieldSet unknownFields) {
+        return super.mergeUnknownFields(unknownFields);
+      }
+
+
+      // @@protoc_insertion_point(builder_scope:policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue)
+    }
+
+    // @@protoc_insertion_point(class_scope:policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue)
+    private static final io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue();
+    }
+
+    public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<AttributeAndValue>
+        PARSER = new com.google.protobuf.AbstractParser<AttributeAndValue>() {
+      @java.lang.Override
+      public AttributeAndValue parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<AttributeAndValue> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<AttributeAndValue> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
   public static final int FQN_ATTRIBUTE_VALUES_FIELD_NUMBER = 1;
   private static final class FqnAttributeValuesDefaultEntryHolder {
     static final com.google.protobuf.MapEntry<
-        java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> defaultEntry =
+        java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> defaultEntry =
             com.google.protobuf.MapEntry
-            .<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>newDefaultInstance(
+            .<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue>newDefaultInstance(
                 io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsResponse_FqnAttributeValuesEntry_descriptor, 
                 com.google.protobuf.WireFormat.FieldType.STRING,
                 "",
                 com.google.protobuf.WireFormat.FieldType.MESSAGE,
-                io.opentdf.platform.policy.attributes.AttributeAndValue.getDefaultInstance());
+                io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.getDefaultInstance());
   }
   @SuppressWarnings("serial")
   private com.google.protobuf.MapField<
-      java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> fqnAttributeValues_;
-  private com.google.protobuf.MapField<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+      java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> fqnAttributeValues_;
+  private com.google.protobuf.MapField<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue>
   internalGetFqnAttributeValues() {
     if (fqnAttributeValues_ == null) {
       return com.google.protobuf.MapField.emptyMapField(
@@ -82,7 +894,7 @@ private static final long serialVersionUID = 0L;
    * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+   * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   @java.lang.Override
   public boolean containsFqnAttributeValues(
@@ -95,7 +907,7 @@ private static final long serialVersionUID = 0L;
    */
   @java.lang.Override
   @java.lang.Deprecated
-  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> getFqnAttributeValues() {
+  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> getFqnAttributeValues() {
     return getFqnAttributeValuesMap();
   }
   /**
@@ -103,10 +915,10 @@ private static final long serialVersionUID = 0L;
    * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+   * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   @java.lang.Override
-  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> getFqnAttributeValuesMap() {
+  public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> getFqnAttributeValuesMap() {
     return internalGetFqnAttributeValues().getMap();
   }
   /**
@@ -114,16 +926,16 @@ private static final long serialVersionUID = 0L;
    * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+   * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   @java.lang.Override
   public /* nullable */
-io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrDefault(
+io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue getFqnAttributeValuesOrDefault(
       java.lang.String key,
       /* nullable */
-io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
+io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue defaultValue) {
     if (key == null) { throw new NullPointerException("map key"); }
-    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> map =
+    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> map =
         internalGetFqnAttributeValues().getMap();
     return map.containsKey(key) ? map.get(key) : defaultValue;
   }
@@ -132,13 +944,13 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
    * map of fqns to complete attributes and the one selected value
    * </pre>
    *
-   * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+   * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrThrow(
+  public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue getFqnAttributeValuesOrThrow(
       java.lang.String key) {
     if (key == null) { throw new NullPointerException("map key"); }
-    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> map =
+    java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> map =
         internalGetFqnAttributeValues().getMap();
     if (!map.containsKey(key)) {
       throw new java.lang.IllegalArgumentException();
@@ -175,9 +987,9 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
     if (size != -1) return size;
 
     size = 0;
-    for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> entry
+    for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> entry
          : internalGetFqnAttributeValues().getMap().entrySet()) {
-      com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+      com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue>
       fqnAttributeValues__ = FqnAttributeValuesDefaultEntryHolder.defaultEntry.newBuilderForType()
           .setKey(entry.getKey())
           .setValue(entry.getValue())
@@ -483,7 +1295,7 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
               done = true;
               break;
             case 10: {
-              com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+              com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue>
               fqnAttributeValues__ = input.readMessage(
                   FqnAttributeValuesDefaultEntryHolder.defaultEntry.getParserForType(), extensionRegistry);
               internalGetMutableFqnAttributeValues().ensureBuilderMap().put(
@@ -508,30 +1320,30 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
     }
     private int bitField0_;
 
-    private static final class FqnAttributeValuesConverter implements com.google.protobuf.MapFieldBuilder.Converter<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.AttributeAndValue> {
+    private static final class FqnAttributeValuesConverter implements com.google.protobuf.MapFieldBuilder.Converter<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> {
       @java.lang.Override
-      public io.opentdf.platform.policy.attributes.AttributeAndValue build(io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder val) {
-        if (val instanceof io.opentdf.platform.policy.attributes.AttributeAndValue) { return (io.opentdf.platform.policy.attributes.AttributeAndValue) val; }
-        return ((io.opentdf.platform.policy.attributes.AttributeAndValue.Builder) val).build();
+      public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue build(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder val) {
+        if (val instanceof io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue) { return (io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue) val; }
+        return ((io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.Builder) val).build();
       }
 
       @java.lang.Override
-      public com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> defaultEntry() {
+      public com.google.protobuf.MapEntry<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> defaultEntry() {
         return FqnAttributeValuesDefaultEntryHolder.defaultEntry;
       }
     };
     private static final FqnAttributeValuesConverter fqnAttributeValuesConverter = new FqnAttributeValuesConverter();
 
     private com.google.protobuf.MapFieldBuilder<
-        java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.AttributeAndValue, io.opentdf.platform.policy.attributes.AttributeAndValue.Builder> fqnAttributeValues_;
-    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.AttributeAndValue, io.opentdf.platform.policy.attributes.AttributeAndValue.Builder>
+        java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.Builder> fqnAttributeValues_;
+    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.Builder>
         internalGetFqnAttributeValues() {
       if (fqnAttributeValues_ == null) {
         return new com.google.protobuf.MapFieldBuilder<>(fqnAttributeValuesConverter);
       }
       return fqnAttributeValues_;
     }
-    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.AttributeAndValue, io.opentdf.platform.policy.attributes.AttributeAndValue.Builder>
+    private com.google.protobuf.MapFieldBuilder<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.Builder>
         internalGetMutableFqnAttributeValues() {
       if (fqnAttributeValues_ == null) {
         fqnAttributeValues_ = new com.google.protobuf.MapFieldBuilder<>(fqnAttributeValuesConverter);
@@ -548,7 +1360,7 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+     * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     @java.lang.Override
     public boolean containsFqnAttributeValues(
@@ -561,7 +1373,7 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      */
     @java.lang.Override
     @java.lang.Deprecated
-    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> getFqnAttributeValues() {
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> getFqnAttributeValues() {
       return getFqnAttributeValuesMap();
     }
     /**
@@ -569,10 +1381,10 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+     * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     @java.lang.Override
-    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> getFqnAttributeValuesMap() {
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> getFqnAttributeValuesMap() {
       return internalGetFqnAttributeValues().getImmutableMap();
     }
     /**
@@ -580,16 +1392,16 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+     * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     @java.lang.Override
     public /* nullable */
-io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrDefault(
+io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue getFqnAttributeValuesOrDefault(
         java.lang.String key,
         /* nullable */
-io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
+io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue defaultValue) {
       if (key == null) { throw new NullPointerException("map key"); }
-      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder> map = internalGetMutableFqnAttributeValues().ensureBuilderMap();
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder> map = internalGetMutableFqnAttributeValues().ensureBuilderMap();
       return map.containsKey(key) ? fqnAttributeValuesConverter.build(map.get(key)) : defaultValue;
     }
     /**
@@ -597,13 +1409,13 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+     * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     @java.lang.Override
-    public io.opentdf.platform.policy.attributes.AttributeAndValue getFqnAttributeValuesOrThrow(
+    public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue getFqnAttributeValuesOrThrow(
         java.lang.String key) {
       if (key == null) { throw new NullPointerException("map key"); }
-      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder> map = internalGetMutableFqnAttributeValues().ensureBuilderMap();
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder> map = internalGetMutableFqnAttributeValues().ensureBuilderMap();
       if (!map.containsKey(key)) {
         throw new java.lang.IllegalArgumentException();
       }
@@ -619,7 +1431,7 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+     * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     public Builder removeFqnAttributeValues(
         java.lang.String key) {
@@ -632,7 +1444,7 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * Use alternate mutation accessors instead.
      */
     @java.lang.Deprecated
-    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue>
+    public java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue>
         getMutableFqnAttributeValues() {
       bitField0_ |= 0x00000001;
       return internalGetMutableFqnAttributeValues().ensureMessageMap();
@@ -642,11 +1454,11 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+     * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     public Builder putFqnAttributeValues(
         java.lang.String key,
-        io.opentdf.platform.policy.attributes.AttributeAndValue value) {
+        io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue value) {
       if (key == null) { throw new NullPointerException("map key"); }
       if (value == null) { throw new NullPointerException("map value"); }
       internalGetMutableFqnAttributeValues().ensureBuilderMap()
@@ -659,11 +1471,11 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+     * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
     public Builder putAllFqnAttributeValues(
-        java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> values) {
-      for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValue> e : values.entrySet()) {
+        java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> values) {
+      for (java.util.Map.Entry<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue> e : values.entrySet()) {
         if (e.getKey() == null || e.getValue() == null) {
           throw new NullPointerException();
         }
@@ -678,21 +1490,21 @@ io.opentdf.platform.policy.attributes.AttributeAndValue defaultValue) {
      * map of fqns to complete attributes and the one selected value
      * </pre>
      *
-     * <code>map&lt;string, .policy.attributes.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
+     * <code>map&lt;string, .policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue&gt; fqn_attribute_values = 1 [json_name = "fqnAttributeValues"];</code>
      */
-    public io.opentdf.platform.policy.attributes.AttributeAndValue.Builder putFqnAttributeValuesBuilderIfAbsent(
+    public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.Builder putFqnAttributeValuesBuilderIfAbsent(
         java.lang.String key) {
-      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder> builderMap = internalGetMutableFqnAttributeValues().ensureBuilderMap();
-      io.opentdf.platform.policy.attributes.AttributeAndValueOrBuilder entry = builderMap.get(key);
+      java.util.Map<java.lang.String, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder> builderMap = internalGetMutableFqnAttributeValues().ensureBuilderMap();
+      io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValueOrBuilder entry = builderMap.get(key);
       if (entry == null) {
-        entry = io.opentdf.platform.policy.attributes.AttributeAndValue.newBuilder();
+        entry = io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.newBuilder();
         builderMap.put(key, entry);
       }
-      if (entry instanceof io.opentdf.platform.policy.attributes.AttributeAndValue) {
-        entry = ((io.opentdf.platform.policy.attributes.AttributeAndValue) entry).toBuilder();
+      if (entry instanceof io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue) {
+        entry = ((io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue) entry).toBuilder();
         builderMap.put(key, entry);
       }
-      return (io.opentdf.platform.policy.attributes.AttributeAndValue.Builder) entry;
+      return (io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsResponse.AttributeAndValue.Builder) entry;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

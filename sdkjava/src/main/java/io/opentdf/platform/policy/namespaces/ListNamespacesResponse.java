@@ -42,41 +42,41 @@ private static final long serialVersionUID = 0L;
 
   public static final int NAMESPACES_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.namespaces.Namespace> namespaces_;
+  private java.util.List<io.opentdf.platform.policy.Namespace> namespaces_;
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.namespaces.Namespace> getNamespacesList() {
+  public java.util.List<io.opentdf.platform.policy.Namespace> getNamespacesList() {
     return namespaces_;
   }
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.namespaces.NamespaceOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.policy.NamespaceOrBuilder> 
       getNamespacesOrBuilderList() {
     return namespaces_;
   }
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
   @java.lang.Override
   public int getNamespacesCount() {
     return namespaces_.size();
   }
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.namespaces.Namespace getNamespaces(int index) {
+  public io.opentdf.platform.policy.Namespace getNamespaces(int index) {
     return namespaces_.get(index);
   }
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.namespaces.NamespaceOrBuilder getNamespacesOrBuilder(
+  public io.opentdf.platform.policy.NamespaceOrBuilder getNamespacesOrBuilder(
       int index) {
     return namespaces_.get(index);
   }
@@ -426,9 +426,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.policy.namespaces.Namespace m =
+              io.opentdf.platform.policy.Namespace m =
                   input.readMessage(
-                      io.opentdf.platform.policy.namespaces.Namespace.parser(),
+                      io.opentdf.platform.policy.Namespace.parser(),
                       extensionRegistry);
               if (namespacesBuilder_ == null) {
                 ensureNamespacesIsMutable();
@@ -455,22 +455,22 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.policy.namespaces.Namespace> namespaces_ =
+    private java.util.List<io.opentdf.platform.policy.Namespace> namespaces_ =
       java.util.Collections.emptyList();
     private void ensureNamespacesIsMutable() {
       if (!((bitField0_ & 0x00000001) != 0)) {
-        namespaces_ = new java.util.ArrayList<io.opentdf.platform.policy.namespaces.Namespace>(namespaces_);
+        namespaces_ = new java.util.ArrayList<io.opentdf.platform.policy.Namespace>(namespaces_);
         bitField0_ |= 0x00000001;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.namespaces.Namespace, io.opentdf.platform.policy.namespaces.Namespace.Builder, io.opentdf.platform.policy.namespaces.NamespaceOrBuilder> namespacesBuilder_;
+        io.opentdf.platform.policy.Namespace, io.opentdf.platform.policy.Namespace.Builder, io.opentdf.platform.policy.NamespaceOrBuilder> namespacesBuilder_;
 
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.namespaces.Namespace> getNamespacesList() {
+    public java.util.List<io.opentdf.platform.policy.Namespace> getNamespacesList() {
       if (namespacesBuilder_ == null) {
         return java.util.Collections.unmodifiableList(namespaces_);
       } else {
@@ -478,7 +478,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public int getNamespacesCount() {
       if (namespacesBuilder_ == null) {
@@ -488,9 +488,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public io.opentdf.platform.policy.namespaces.Namespace getNamespaces(int index) {
+    public io.opentdf.platform.policy.Namespace getNamespaces(int index) {
       if (namespacesBuilder_ == null) {
         return namespaces_.get(index);
       } else {
@@ -498,10 +498,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public Builder setNamespaces(
-        int index, io.opentdf.platform.policy.namespaces.Namespace value) {
+        int index, io.opentdf.platform.policy.Namespace value) {
       if (namespacesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -515,10 +515,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public Builder setNamespaces(
-        int index, io.opentdf.platform.policy.namespaces.Namespace.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.Namespace.Builder builderForValue) {
       if (namespacesBuilder_ == null) {
         ensureNamespacesIsMutable();
         namespaces_.set(index, builderForValue.build());
@@ -529,9 +529,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public Builder addNamespaces(io.opentdf.platform.policy.namespaces.Namespace value) {
+    public Builder addNamespaces(io.opentdf.platform.policy.Namespace value) {
       if (namespacesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -545,10 +545,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public Builder addNamespaces(
-        int index, io.opentdf.platform.policy.namespaces.Namespace value) {
+        int index, io.opentdf.platform.policy.Namespace value) {
       if (namespacesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -562,10 +562,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public Builder addNamespaces(
-        io.opentdf.platform.policy.namespaces.Namespace.Builder builderForValue) {
+        io.opentdf.platform.policy.Namespace.Builder builderForValue) {
       if (namespacesBuilder_ == null) {
         ensureNamespacesIsMutable();
         namespaces_.add(builderForValue.build());
@@ -576,10 +576,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public Builder addNamespaces(
-        int index, io.opentdf.platform.policy.namespaces.Namespace.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.Namespace.Builder builderForValue) {
       if (namespacesBuilder_ == null) {
         ensureNamespacesIsMutable();
         namespaces_.add(index, builderForValue.build());
@@ -590,10 +590,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public Builder addAllNamespaces(
-        java.lang.Iterable<? extends io.opentdf.platform.policy.namespaces.Namespace> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.policy.Namespace> values) {
       if (namespacesBuilder_ == null) {
         ensureNamespacesIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -605,7 +605,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public Builder clearNamespaces() {
       if (namespacesBuilder_ == null) {
@@ -618,7 +618,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
     public Builder removeNamespaces(int index) {
       if (namespacesBuilder_ == null) {
@@ -631,16 +631,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public io.opentdf.platform.policy.namespaces.Namespace.Builder getNamespacesBuilder(
+    public io.opentdf.platform.policy.Namespace.Builder getNamespacesBuilder(
         int index) {
       return getNamespacesFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public io.opentdf.platform.policy.namespaces.NamespaceOrBuilder getNamespacesOrBuilder(
+    public io.opentdf.platform.policy.NamespaceOrBuilder getNamespacesOrBuilder(
         int index) {
       if (namespacesBuilder_ == null) {
         return namespaces_.get(index);  } else {
@@ -648,9 +648,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.namespaces.NamespaceOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.policy.NamespaceOrBuilder> 
          getNamespacesOrBuilderList() {
       if (namespacesBuilder_ != null) {
         return namespacesBuilder_.getMessageOrBuilderList();
@@ -659,33 +659,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public io.opentdf.platform.policy.namespaces.Namespace.Builder addNamespacesBuilder() {
+    public io.opentdf.platform.policy.Namespace.Builder addNamespacesBuilder() {
       return getNamespacesFieldBuilder().addBuilder(
-          io.opentdf.platform.policy.namespaces.Namespace.getDefaultInstance());
+          io.opentdf.platform.policy.Namespace.getDefaultInstance());
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public io.opentdf.platform.policy.namespaces.Namespace.Builder addNamespacesBuilder(
+    public io.opentdf.platform.policy.Namespace.Builder addNamespacesBuilder(
         int index) {
       return getNamespacesFieldBuilder().addBuilder(
-          index, io.opentdf.platform.policy.namespaces.Namespace.getDefaultInstance());
+          index, io.opentdf.platform.policy.Namespace.getDefaultInstance());
     }
     /**
-     * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+     * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.namespaces.Namespace.Builder> 
+    public java.util.List<io.opentdf.platform.policy.Namespace.Builder> 
          getNamespacesBuilderList() {
       return getNamespacesFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.namespaces.Namespace, io.opentdf.platform.policy.namespaces.Namespace.Builder, io.opentdf.platform.policy.namespaces.NamespaceOrBuilder> 
+        io.opentdf.platform.policy.Namespace, io.opentdf.platform.policy.Namespace.Builder, io.opentdf.platform.policy.NamespaceOrBuilder> 
         getNamespacesFieldBuilder() {
       if (namespacesBuilder_ == null) {
         namespacesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.policy.namespaces.Namespace, io.opentdf.platform.policy.namespaces.Namespace.Builder, io.opentdf.platform.policy.namespaces.NamespaceOrBuilder>(
+            io.opentdf.platform.policy.Namespace, io.opentdf.platform.policy.Namespace.Builder, io.opentdf.platform.policy.NamespaceOrBuilder>(
                 namespaces_,
                 ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),

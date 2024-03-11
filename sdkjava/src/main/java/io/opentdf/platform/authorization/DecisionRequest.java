@@ -90,41 +90,41 @@ private static final long serialVersionUID = 0L;
 
   public static final int ACTIONS_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.authorization.Action> actions_;
+  private java.util.List<io.opentdf.platform.policy.Action> actions_;
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
+  public java.util.List<io.opentdf.platform.policy.Action> getActionsList() {
     return actions_;
   }
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.policy.ActionOrBuilder> 
       getActionsOrBuilderList() {
     return actions_;
   }
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
   @java.lang.Override
   public int getActionsCount() {
     return actions_.size();
   }
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.Action getActions(int index) {
+  public io.opentdf.platform.policy.Action getActions(int index) {
     return actions_.get(index);
   }
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+  public io.opentdf.platform.policy.ActionOrBuilder getActionsOrBuilder(
       int index) {
     return actions_.get(index);
   }
@@ -712,9 +712,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.authorization.Action m =
+              io.opentdf.platform.policy.Action m =
                   input.readMessage(
-                      io.opentdf.platform.authorization.Action.parser(),
+                      io.opentdf.platform.policy.Action.parser(),
                       extensionRegistry);
               if (actionsBuilder_ == null) {
                 ensureActionsIsMutable();
@@ -767,22 +767,22 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.authorization.Action> actions_ =
+    private java.util.List<io.opentdf.platform.policy.Action> actions_ =
       java.util.Collections.emptyList();
     private void ensureActionsIsMutable() {
       if (!((bitField0_ & 0x00000001) != 0)) {
-        actions_ = new java.util.ArrayList<io.opentdf.platform.authorization.Action>(actions_);
+        actions_ = new java.util.ArrayList<io.opentdf.platform.policy.Action>(actions_);
         bitField0_ |= 0x00000001;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> actionsBuilder_;
+        io.opentdf.platform.policy.Action, io.opentdf.platform.policy.Action.Builder, io.opentdf.platform.policy.ActionOrBuilder> actionsBuilder_;
 
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
+    public java.util.List<io.opentdf.platform.policy.Action> getActionsList() {
       if (actionsBuilder_ == null) {
         return java.util.Collections.unmodifiableList(actions_);
       } else {
@@ -790,7 +790,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public int getActionsCount() {
       if (actionsBuilder_ == null) {
@@ -800,9 +800,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public io.opentdf.platform.authorization.Action getActions(int index) {
+    public io.opentdf.platform.policy.Action getActions(int index) {
       if (actionsBuilder_ == null) {
         return actions_.get(index);
       } else {
@@ -810,10 +810,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public Builder setActions(
-        int index, io.opentdf.platform.authorization.Action value) {
+        int index, io.opentdf.platform.policy.Action value) {
       if (actionsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -827,10 +827,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public Builder setActions(
-        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.Action.Builder builderForValue) {
       if (actionsBuilder_ == null) {
         ensureActionsIsMutable();
         actions_.set(index, builderForValue.build());
@@ -841,9 +841,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public Builder addActions(io.opentdf.platform.authorization.Action value) {
+    public Builder addActions(io.opentdf.platform.policy.Action value) {
       if (actionsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -857,10 +857,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public Builder addActions(
-        int index, io.opentdf.platform.authorization.Action value) {
+        int index, io.opentdf.platform.policy.Action value) {
       if (actionsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -874,10 +874,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public Builder addActions(
-        io.opentdf.platform.authorization.Action.Builder builderForValue) {
+        io.opentdf.platform.policy.Action.Builder builderForValue) {
       if (actionsBuilder_ == null) {
         ensureActionsIsMutable();
         actions_.add(builderForValue.build());
@@ -888,10 +888,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public Builder addActions(
-        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.Action.Builder builderForValue) {
       if (actionsBuilder_ == null) {
         ensureActionsIsMutable();
         actions_.add(index, builderForValue.build());
@@ -902,10 +902,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public Builder addAllActions(
-        java.lang.Iterable<? extends io.opentdf.platform.authorization.Action> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.policy.Action> values) {
       if (actionsBuilder_ == null) {
         ensureActionsIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -917,7 +917,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public Builder clearActions() {
       if (actionsBuilder_ == null) {
@@ -930,7 +930,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
     public Builder removeActions(int index) {
       if (actionsBuilder_ == null) {
@@ -943,16 +943,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public io.opentdf.platform.authorization.Action.Builder getActionsBuilder(
+    public io.opentdf.platform.policy.Action.Builder getActionsBuilder(
         int index) {
       return getActionsFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+    public io.opentdf.platform.policy.ActionOrBuilder getActionsOrBuilder(
         int index) {
       if (actionsBuilder_ == null) {
         return actions_.get(index);  } else {
@@ -960,9 +960,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.policy.ActionOrBuilder> 
          getActionsOrBuilderList() {
       if (actionsBuilder_ != null) {
         return actionsBuilder_.getMessageOrBuilderList();
@@ -971,33 +971,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder() {
+    public io.opentdf.platform.policy.Action.Builder addActionsBuilder() {
       return getActionsFieldBuilder().addBuilder(
-          io.opentdf.platform.authorization.Action.getDefaultInstance());
+          io.opentdf.platform.policy.Action.getDefaultInstance());
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder(
+    public io.opentdf.platform.policy.Action.Builder addActionsBuilder(
         int index) {
       return getActionsFieldBuilder().addBuilder(
-          index, io.opentdf.platform.authorization.Action.getDefaultInstance());
+          index, io.opentdf.platform.policy.Action.getDefaultInstance());
     }
     /**
-     * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+     * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
      */
-    public java.util.List<io.opentdf.platform.authorization.Action.Builder> 
+    public java.util.List<io.opentdf.platform.policy.Action.Builder> 
          getActionsBuilderList() {
       return getActionsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> 
+        io.opentdf.platform.policy.Action, io.opentdf.platform.policy.Action.Builder, io.opentdf.platform.policy.ActionOrBuilder> 
         getActionsFieldBuilder() {
       if (actionsBuilder_ == null) {
         actionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>(
+            io.opentdf.platform.policy.Action, io.opentdf.platform.policy.Action.Builder, io.opentdf.platform.policy.ActionOrBuilder>(
                 actions_,
                 ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),

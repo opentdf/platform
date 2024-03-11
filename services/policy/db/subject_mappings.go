@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -161,6 +160,7 @@ func subjectMappingSelect() sq.SelectBuilder {
 			"'id', "+avT.Field("id")+", "+
 			"'value', "+avT.Field("value")+", "+
 			"'members', "+avT.Field("members")+", "+
+			"'attribute_definition_id', "+avT.Field("attribute_definition_id")+", "+
 			"'active'", avT.Field("active")+
 			") AS attribute_value",
 	).
@@ -208,9 +208,9 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 		}
 	}
 
-	av := attributes.Value{}
+	sm := subjectmapping.SubjectMapping{}
 	if attributeValueJSON != nil {
-		if err := protojson.Unmarshal(attributeValueJSON, &av); err != nil {
+		if err := protojson.Unmarshal(attributeValueJSON, sm.AttributeValue); err != nil {
 			slog.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
 			return nil, err
 		}
@@ -235,7 +235,7 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 	return &subjectmapping.SubjectMapping{
 		Id:                  id,
 		Metadata:            m,
-		AttributeValue:      &av,
+		AttributeValue:      sm.AttributeValue,
 		SubjectConditionSet: &scs,
 		Actions:             a,
 	}, nil
@@ -507,7 +507,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 
 	return &subjectmapping.SubjectMapping{
 		Id: id,
-		AttributeValue: &attributes.Value{
+		AttributeValue: &subjectmapping.SubjectMapping_Value{
 			Id: s.AttributeValueId,
 		},
 		SubjectConditionSet: scs,

@@ -9,43 +9,43 @@ public interface GetSubjectConditionSetResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return Whether the subjectConditionSet field is set.
    */
   boolean hasSubjectConditionSet();
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return The subjectConditionSet.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet();
+  io.opentdf.platform.policy.SubjectConditionSet getSubjectConditionSet();
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder();
+  io.opentdf.platform.policy.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder();
 
   /**
    * <pre>
    * contextualized Subject Mappings associated with this SubjectConditionSet
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectMapping> 
+  java.util.List<io.opentdf.platform.policy.SubjectMapping> 
       getAssociatedSubjectMappingsList();
   /**
    * <pre>
    * contextualized Subject Mappings associated with this SubjectConditionSet
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMapping getAssociatedSubjectMappings(int index);
+  io.opentdf.platform.policy.SubjectMapping getAssociatedSubjectMappings(int index);
   /**
    * <pre>
    * contextualized Subject Mappings associated with this SubjectConditionSet
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
    */
   int getAssociatedSubjectMappingsCount();
   /**
@@ -53,17 +53,17 @@ public interface GetSubjectConditionSetResponseOrBuilder extends
    * contextualized Subject Mappings associated with this SubjectConditionSet
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectMappingOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.SubjectMappingOrBuilder> 
       getAssociatedSubjectMappingsOrBuilderList();
   /**
    * <pre>
    * contextualized Subject Mappings associated with this SubjectConditionSet
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping associated_subject_mappings = 2 [json_name = "associatedSubjectMappings"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingOrBuilder getAssociatedSubjectMappingsOrBuilder(
+  io.opentdf.platform.policy.SubjectMappingOrBuilder getAssociatedSubjectMappingsOrBuilder(
       int index);
 }

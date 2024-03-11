@@ -159,8 +159,8 @@ func filterValues(values []*attributes.Value, fqn string) *attributes.Value {
 	return nil
 }
 
-func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []string) (map[string]*attributes.AttributeAndValue, error) {
-	list := make(map[string]*attributes.AttributeAndValue, len(fqns))
+func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []string) (map[string]*attributes.GetAttributesByValueFqnsResponse_AttributeAndValue, error) {
+	list := make(map[string]*attributes.GetAttributesByValueFqnsResponse_AttributeAndValue, len(fqns))
 	for _, fqn := range fqns {
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
 		if !strings.Contains(fqn, "/value/") {
@@ -176,7 +176,7 @@ func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []st
 			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN: %s", fqn)
 		}
-		list[fqn] = &attributes.AttributeAndValue{
+		list[fqn] = &attributes.GetAttributesByValueFqnsResponse_AttributeAndValue{
 			Attribute: attr,
 			Value:     filterValues(attr.Values, fqn),
 		}

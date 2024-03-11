@@ -41,9 +41,9 @@ private static final long serialVersionUID = 0L;
 
   private int bitField0_;
   public static final int ATTRIBUTE_FIELD_NUMBER = 1;
-  private io.opentdf.platform.policy.attributes.Attribute attribute_;
+  private io.opentdf.platform.policy.Attribute attribute_;
   /**
-   * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+   * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
    * @return Whether the attribute field is set.
    */
   @java.lang.Override
@@ -51,19 +51,19 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+   * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
    * @return The attribute.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.Attribute getAttribute() {
-    return attribute_ == null ? io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance() : attribute_;
+  public io.opentdf.platform.policy.Attribute getAttribute() {
+    return attribute_ == null ? io.opentdf.platform.policy.Attribute.getDefaultInstance() : attribute_;
   }
   /**
-   * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+   * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributeOrBuilder() {
-    return attribute_ == null ? io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance() : attribute_;
+  public io.opentdf.platform.policy.AttributeOrBuilder getAttributeOrBuilder() {
+    return attribute_ == null ? io.opentdf.platform.policy.Attribute.getDefaultInstance() : attribute_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -413,31 +413,31 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.policy.attributes.Attribute attribute_;
+    private io.opentdf.platform.policy.Attribute attribute_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder> attributeBuilder_;
+        io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder> attributeBuilder_;
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      * @return Whether the attribute field is set.
      */
     public boolean hasAttribute() {
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      * @return The attribute.
      */
-    public io.opentdf.platform.policy.attributes.Attribute getAttribute() {
+    public io.opentdf.platform.policy.Attribute getAttribute() {
       if (attributeBuilder_ == null) {
-        return attribute_ == null ? io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance() : attribute_;
+        return attribute_ == null ? io.opentdf.platform.policy.Attribute.getDefaultInstance() : attribute_;
       } else {
         return attributeBuilder_.getMessage();
       }
     }
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      */
-    public Builder setAttribute(io.opentdf.platform.policy.attributes.Attribute value) {
+    public Builder setAttribute(io.opentdf.platform.policy.Attribute value) {
       if (attributeBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -451,10 +451,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      */
     public Builder setAttribute(
-        io.opentdf.platform.policy.attributes.Attribute.Builder builderForValue) {
+        io.opentdf.platform.policy.Attribute.Builder builderForValue) {
       if (attributeBuilder_ == null) {
         attribute_ = builderForValue.build();
       } else {
@@ -465,13 +465,13 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      */
-    public Builder mergeAttribute(io.opentdf.platform.policy.attributes.Attribute value) {
+    public Builder mergeAttribute(io.opentdf.platform.policy.Attribute value) {
       if (attributeBuilder_ == null) {
         if (((bitField0_ & 0x00000001) != 0) &&
           attribute_ != null &&
-          attribute_ != io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance()) {
+          attribute_ != io.opentdf.platform.policy.Attribute.getDefaultInstance()) {
           getAttributeBuilder().mergeFrom(value);
         } else {
           attribute_ = value;
@@ -486,7 +486,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      */
     public Builder clearAttribute() {
       bitField0_ = (bitField0_ & ~0x00000001);
@@ -499,33 +499,33 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Attribute.Builder getAttributeBuilder() {
+    public io.opentdf.platform.policy.Attribute.Builder getAttributeBuilder() {
       bitField0_ |= 0x00000001;
       onChanged();
       return getAttributeFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      */
-    public io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributeOrBuilder() {
+    public io.opentdf.platform.policy.AttributeOrBuilder getAttributeOrBuilder() {
       if (attributeBuilder_ != null) {
         return attributeBuilder_.getMessageOrBuilder();
       } else {
         return attribute_ == null ?
-            io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance() : attribute_;
+            io.opentdf.platform.policy.Attribute.getDefaultInstance() : attribute_;
       }
     }
     /**
-     * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+     * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
+        io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder> 
         getAttributeFieldBuilder() {
       if (attributeBuilder_ == null) {
         attributeBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder>(
+            io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder>(
                 getAttribute(),
                 getParentForChildren(),
                 isClean());

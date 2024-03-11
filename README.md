@@ -25,6 +25,7 @@ Docker [install instructions](https://www.docker.com/get-started/)
 `go install github.com/cosmtrek/air@v1.49.0`
 
 Install buf, grpcurl and goose:
+
 - [Buf](https://buf.build/docs/ecosystem/cli-overview)
 - [grpcurl](https://github.com/fullstorydev/grpcurl)
 - [goose](https://github.com/pressly/goose)
@@ -32,6 +33,11 @@ Install buf, grpcurl and goose:
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 `brew install buf grpcurl goose`
+
+#### Logging into Github Container Registry
+
+Please configure `docker login ghcr.io` [with a Personal Access Token as decribed in
+the GitHub Packages documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-with-a-personal-access-token-classic).
 
 ### Run
 

@@ -597,14 +597,6 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		}
 	}
 
-	// TODO: integration test for this failure
-	// if r.SubjectConditionSetId != "" {
-	// 	new, err := c.GetSubjectConditionSet(ctx, r.SubjectConditionSetId)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	sql, args, err := updateSubjectMappingSql(
 		r.Id,
 		metadataJson,

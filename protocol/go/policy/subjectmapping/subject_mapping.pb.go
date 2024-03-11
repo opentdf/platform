@@ -892,7 +892,8 @@ type CreateSubjectMappingResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Only ID of the updated Subject Mapping provided
+	SubjectMapping *SubjectMapping `protobuf:"bytes,1,opt,name=subject_mapping,json=subjectMapping,proto3" json:"subject_mapping,omitempty"`
 }
 
 func (x *CreateSubjectMappingResponse) Reset() {
@@ -927,11 +928,11 @@ func (*CreateSubjectMappingResponse) Descriptor() ([]byte, []int) {
 	return file_policy_subjectmapping_subject_mapping_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *CreateSubjectMappingResponse) GetId() string {
+func (x *CreateSubjectMappingResponse) GetSubjectMapping() *SubjectMapping {
 	if x != nil {
-		return x.Id
+		return x.SubjectMapping
 	}
-	return ""
+	return nil
 }
 
 type UpdateSubjectMappingRequest struct {
@@ -1012,7 +1013,8 @@ type UpdateSubjectMappingResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Only ID of the updated Subject Mapping provided
+	SubjectMapping *SubjectMapping `protobuf:"bytes,1,opt,name=subject_mapping,json=subjectMapping,proto3" json:"subject_mapping,omitempty"`
 }
 
 func (x *UpdateSubjectMappingResponse) Reset() {
@@ -1047,11 +1049,11 @@ func (*UpdateSubjectMappingResponse) Descriptor() ([]byte, []int) {
 	return file_policy_subjectmapping_subject_mapping_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *UpdateSubjectMappingResponse) GetId() string {
+func (x *UpdateSubjectMappingResponse) GetSubjectMapping() *SubjectMapping {
 	if x != nil {
-		return x.Id
+		return x.SubjectMapping
 	}
-	return ""
+	return nil
 }
 
 type DeleteSubjectMappingRequest struct {
@@ -1106,7 +1108,8 @@ type DeleteSubjectMappingResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Only ID of the updated Subject Mapping provided
+	SubjectMapping *SubjectMapping `protobuf:"bytes,1,opt,name=subject_mapping,json=subjectMapping,proto3" json:"subject_mapping,omitempty"`
 }
 
 func (x *DeleteSubjectMappingResponse) Reset() {
@@ -1141,11 +1144,11 @@ func (*DeleteSubjectMappingResponse) Descriptor() ([]byte, []int) {
 	return file_policy_subjectmapping_subject_mapping_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *DeleteSubjectMappingResponse) GetId() string {
+func (x *DeleteSubjectMappingResponse) GetSubjectMapping() *SubjectMapping {
 	if x != nil {
-		return x.Id
+		return x.SubjectMapping
 	}
-	return ""
+	return nil
 }
 
 type GetSubjectConditionSetRequest struct {
@@ -1831,10 +1834,14 @@ var file_policy_subjectmapping_subject_mapping_proto_rawDesc = []byte{
 	0x53, 0x65, 0x74, 0x12, 0x39, 0x0a, 0x07, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x05,
 	0x20, 0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x61,
 	0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x08, 0xba, 0x48, 0x05,
-	0x92, 0x01, 0x02, 0x08, 0x01, 0x52, 0x07, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x2e,
+	0x92, 0x01, 0x02, 0x08, 0x01, 0x52, 0x07, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x6e,
 	0x0a, 0x1c, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d,
-	0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x0e,
-	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0xfb,
+	0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x4e,
+	0x0a, 0x0f, 0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x6d, 0x61, 0x70, 0x70, 0x69, 0x6e,
+	0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x25, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79,
+	0x2e, 0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x6d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x2e,
+	0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x0e,
+	0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x22, 0xfb,
 	0x01, 0x0a, 0x1b, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74,
 	0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16,
 	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x06, 0xba, 0x48, 0x03, 0xc8,
@@ -1850,17 +1857,25 @@ var file_policy_subjectmapping_subject_mapping_proto_rawDesc = []byte{
 	0x0a, 0x0e, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x5f, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73,
 	0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69,
 	0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0d, 0x75,
-	0x70, 0x64, 0x61, 0x74, 0x65, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x2e, 0x0a, 0x1c,
+	0x70, 0x64, 0x61, 0x74, 0x65, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x6e, 0x0a, 0x1c,
 	0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70,
-	0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x0e, 0x0a, 0x02,
-	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x35, 0x0a, 0x1b,
+	0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x4e, 0x0a, 0x0f,
+	0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x6d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x25, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x73,
+	0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x6d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x2e, 0x53, 0x75,
+	0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x0e, 0x73, 0x75,
+	0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x22, 0x35, 0x0a, 0x1b,
 	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70,
 	0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x02, 0x69,
 	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x06, 0xba, 0x48, 0x03, 0xc8, 0x01, 0x01, 0x52,
-	0x02, 0x69, 0x64, 0x22, 0x2e, 0x0a, 0x1c, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x75, 0x62,
+	0x02, 0x69, 0x64, 0x22, 0x6e, 0x0a, 0x1c, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x75, 0x62,
 	0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x02, 0x69, 0x64, 0x22, 0x37, 0x0a, 0x1d, 0x47, 0x65, 0x74, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63,
+	0x6e, 0x73, 0x65, 0x12, 0x4e, 0x0a, 0x0f, 0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x6d,
+	0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x25, 0x2e, 0x70,
+	0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x6d, 0x61, 0x70,
+	0x70, 0x69, 0x6e, 0x67, 0x2e, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70,
+	0x69, 0x6e, 0x67, 0x52, 0x0e, 0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x70, 0x70,
+	0x69, 0x6e, 0x67, 0x22, 0x37, 0x0a, 0x1d, 0x47, 0x65, 0x74, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63,
 	0x74, 0x43, 0x6f, 0x6e, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x74, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
 	0x42, 0x06, 0xba, 0x48, 0x03, 0xc8, 0x01, 0x01, 0x52, 0x02, 0x69, 0x64, 0x22, 0xe7, 0x01, 0x0a,
@@ -2161,43 +2176,46 @@ var file_policy_subjectmapping_subject_mapping_proto_depIdxs = []int32{
 	35, // 15: policy.subjectmapping.CreateSubjectMappingRequest.metadata:type_name -> common.MetadataMutable
 	24, // 16: policy.subjectmapping.CreateSubjectMappingRequest.new_subject_condition_set:type_name -> policy.subjectmapping.SubjectConditionSetCreate
 	33, // 17: policy.subjectmapping.CreateSubjectMappingRequest.actions:type_name -> authorization.Action
-	35, // 18: policy.subjectmapping.UpdateSubjectMappingRequest.update_metadata:type_name -> common.MetadataMutable
-	33, // 19: policy.subjectmapping.UpdateSubjectMappingRequest.update_actions:type_name -> authorization.Action
-	5,  // 20: policy.subjectmapping.GetSubjectConditionSetResponse.subject_condition_set:type_name -> policy.subjectmapping.SubjectConditionSet
-	6,  // 21: policy.subjectmapping.GetSubjectConditionSetResponse.associated_subject_mappings:type_name -> policy.subjectmapping.SubjectMapping
-	5,  // 22: policy.subjectmapping.ListSubjectConditionSetsResponse.subject_condition_sets:type_name -> policy.subjectmapping.SubjectConditionSet
-	35, // 23: policy.subjectmapping.SubjectConditionSetCreate.metadata:type_name -> common.MetadataMutable
-	4,  // 24: policy.subjectmapping.SubjectConditionSetCreate.subject_sets:type_name -> policy.subjectmapping.SubjectSet
-	24, // 25: policy.subjectmapping.CreateSubjectConditionSetRequest.subject_condition_set:type_name -> policy.subjectmapping.SubjectConditionSetCreate
-	35, // 26: policy.subjectmapping.UpdateSubjectConditionSetRequest.update_metadata:type_name -> common.MetadataMutable
-	4,  // 27: policy.subjectmapping.UpdateSubjectConditionSetRequest.update_subject_sets:type_name -> policy.subjectmapping.SubjectSet
-	8,  // 28: policy.subjectmapping.SubjectMappingService.MatchSubjectMappings:input_type -> policy.subjectmapping.MatchSubjectMappingsRequest
-	12, // 29: policy.subjectmapping.SubjectMappingService.ListSubjectMappings:input_type -> policy.subjectmapping.ListSubjectMappingsRequest
-	10, // 30: policy.subjectmapping.SubjectMappingService.GetSubjectMapping:input_type -> policy.subjectmapping.GetSubjectMappingRequest
-	14, // 31: policy.subjectmapping.SubjectMappingService.CreateSubjectMapping:input_type -> policy.subjectmapping.CreateSubjectMappingRequest
-	16, // 32: policy.subjectmapping.SubjectMappingService.UpdateSubjectMapping:input_type -> policy.subjectmapping.UpdateSubjectMappingRequest
-	18, // 33: policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping:input_type -> policy.subjectmapping.DeleteSubjectMappingRequest
-	22, // 34: policy.subjectmapping.SubjectMappingService.ListSubjectConditionSets:input_type -> policy.subjectmapping.ListSubjectConditionSetsRequest
-	20, // 35: policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet:input_type -> policy.subjectmapping.GetSubjectConditionSetRequest
-	25, // 36: policy.subjectmapping.SubjectMappingService.CreateSubjectConditionSet:input_type -> policy.subjectmapping.CreateSubjectConditionSetRequest
-	27, // 37: policy.subjectmapping.SubjectMappingService.UpdateSubjectConditionSet:input_type -> policy.subjectmapping.UpdateSubjectConditionSetRequest
-	29, // 38: policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet:input_type -> policy.subjectmapping.DeleteSubjectConditionSetRequest
-	9,  // 39: policy.subjectmapping.SubjectMappingService.MatchSubjectMappings:output_type -> policy.subjectmapping.MatchSubjectMappingsResponse
-	13, // 40: policy.subjectmapping.SubjectMappingService.ListSubjectMappings:output_type -> policy.subjectmapping.ListSubjectMappingsResponse
-	11, // 41: policy.subjectmapping.SubjectMappingService.GetSubjectMapping:output_type -> policy.subjectmapping.GetSubjectMappingResponse
-	15, // 42: policy.subjectmapping.SubjectMappingService.CreateSubjectMapping:output_type -> policy.subjectmapping.CreateSubjectMappingResponse
-	17, // 43: policy.subjectmapping.SubjectMappingService.UpdateSubjectMapping:output_type -> policy.subjectmapping.UpdateSubjectMappingResponse
-	19, // 44: policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping:output_type -> policy.subjectmapping.DeleteSubjectMappingResponse
-	23, // 45: policy.subjectmapping.SubjectMappingService.ListSubjectConditionSets:output_type -> policy.subjectmapping.ListSubjectConditionSetsResponse
-	21, // 46: policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet:output_type -> policy.subjectmapping.GetSubjectConditionSetResponse
-	26, // 47: policy.subjectmapping.SubjectMappingService.CreateSubjectConditionSet:output_type -> policy.subjectmapping.CreateSubjectConditionSetResponse
-	28, // 48: policy.subjectmapping.SubjectMappingService.UpdateSubjectConditionSet:output_type -> policy.subjectmapping.UpdateSubjectConditionSetResponse
-	30, // 49: policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet:output_type -> policy.subjectmapping.DeleteSubjectConditionSetResponse
-	39, // [39:50] is the sub-list for method output_type
-	28, // [28:39] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	6,  // 18: policy.subjectmapping.CreateSubjectMappingResponse.subject_mapping:type_name -> policy.subjectmapping.SubjectMapping
+	35, // 19: policy.subjectmapping.UpdateSubjectMappingRequest.update_metadata:type_name -> common.MetadataMutable
+	33, // 20: policy.subjectmapping.UpdateSubjectMappingRequest.update_actions:type_name -> authorization.Action
+	6,  // 21: policy.subjectmapping.UpdateSubjectMappingResponse.subject_mapping:type_name -> policy.subjectmapping.SubjectMapping
+	6,  // 22: policy.subjectmapping.DeleteSubjectMappingResponse.subject_mapping:type_name -> policy.subjectmapping.SubjectMapping
+	5,  // 23: policy.subjectmapping.GetSubjectConditionSetResponse.subject_condition_set:type_name -> policy.subjectmapping.SubjectConditionSet
+	6,  // 24: policy.subjectmapping.GetSubjectConditionSetResponse.associated_subject_mappings:type_name -> policy.subjectmapping.SubjectMapping
+	5,  // 25: policy.subjectmapping.ListSubjectConditionSetsResponse.subject_condition_sets:type_name -> policy.subjectmapping.SubjectConditionSet
+	35, // 26: policy.subjectmapping.SubjectConditionSetCreate.metadata:type_name -> common.MetadataMutable
+	4,  // 27: policy.subjectmapping.SubjectConditionSetCreate.subject_sets:type_name -> policy.subjectmapping.SubjectSet
+	24, // 28: policy.subjectmapping.CreateSubjectConditionSetRequest.subject_condition_set:type_name -> policy.subjectmapping.SubjectConditionSetCreate
+	35, // 29: policy.subjectmapping.UpdateSubjectConditionSetRequest.update_metadata:type_name -> common.MetadataMutable
+	4,  // 30: policy.subjectmapping.UpdateSubjectConditionSetRequest.update_subject_sets:type_name -> policy.subjectmapping.SubjectSet
+	8,  // 31: policy.subjectmapping.SubjectMappingService.MatchSubjectMappings:input_type -> policy.subjectmapping.MatchSubjectMappingsRequest
+	12, // 32: policy.subjectmapping.SubjectMappingService.ListSubjectMappings:input_type -> policy.subjectmapping.ListSubjectMappingsRequest
+	10, // 33: policy.subjectmapping.SubjectMappingService.GetSubjectMapping:input_type -> policy.subjectmapping.GetSubjectMappingRequest
+	14, // 34: policy.subjectmapping.SubjectMappingService.CreateSubjectMapping:input_type -> policy.subjectmapping.CreateSubjectMappingRequest
+	16, // 35: policy.subjectmapping.SubjectMappingService.UpdateSubjectMapping:input_type -> policy.subjectmapping.UpdateSubjectMappingRequest
+	18, // 36: policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping:input_type -> policy.subjectmapping.DeleteSubjectMappingRequest
+	22, // 37: policy.subjectmapping.SubjectMappingService.ListSubjectConditionSets:input_type -> policy.subjectmapping.ListSubjectConditionSetsRequest
+	20, // 38: policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet:input_type -> policy.subjectmapping.GetSubjectConditionSetRequest
+	25, // 39: policy.subjectmapping.SubjectMappingService.CreateSubjectConditionSet:input_type -> policy.subjectmapping.CreateSubjectConditionSetRequest
+	27, // 40: policy.subjectmapping.SubjectMappingService.UpdateSubjectConditionSet:input_type -> policy.subjectmapping.UpdateSubjectConditionSetRequest
+	29, // 41: policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet:input_type -> policy.subjectmapping.DeleteSubjectConditionSetRequest
+	9,  // 42: policy.subjectmapping.SubjectMappingService.MatchSubjectMappings:output_type -> policy.subjectmapping.MatchSubjectMappingsResponse
+	13, // 43: policy.subjectmapping.SubjectMappingService.ListSubjectMappings:output_type -> policy.subjectmapping.ListSubjectMappingsResponse
+	11, // 44: policy.subjectmapping.SubjectMappingService.GetSubjectMapping:output_type -> policy.subjectmapping.GetSubjectMappingResponse
+	15, // 45: policy.subjectmapping.SubjectMappingService.CreateSubjectMapping:output_type -> policy.subjectmapping.CreateSubjectMappingResponse
+	17, // 46: policy.subjectmapping.SubjectMappingService.UpdateSubjectMapping:output_type -> policy.subjectmapping.UpdateSubjectMappingResponse
+	19, // 47: policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping:output_type -> policy.subjectmapping.DeleteSubjectMappingResponse
+	23, // 48: policy.subjectmapping.SubjectMappingService.ListSubjectConditionSets:output_type -> policy.subjectmapping.ListSubjectConditionSetsResponse
+	21, // 49: policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet:output_type -> policy.subjectmapping.GetSubjectConditionSetResponse
+	26, // 50: policy.subjectmapping.SubjectMappingService.CreateSubjectConditionSet:output_type -> policy.subjectmapping.CreateSubjectConditionSetResponse
+	28, // 51: policy.subjectmapping.SubjectMappingService.UpdateSubjectConditionSet:output_type -> policy.subjectmapping.UpdateSubjectConditionSetResponse
+	30, // 52: policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet:output_type -> policy.subjectmapping.DeleteSubjectConditionSetResponse
+	42, // [42:53] is the sub-list for method output_type
+	31, // [31:42] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_policy_subjectmapping_subject_mapping_proto_init() }

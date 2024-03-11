@@ -717,8 +717,9 @@
     "subjectmappingCreateSubjectMappingResponse": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
+        "subjectMapping": {
+          "$ref": "#/definitions/subjectmappingSubjectMapping",
+          "title": "Only ID of the updated Subject Mapping provided"
         }
       }
     },
@@ -733,8 +734,9 @@
     "subjectmappingDeleteSubjectMappingResponse": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
+        "subjectMapping": {
+          "$ref": "#/definitions/subjectmappingSubjectMapping",
+          "title": "Only ID of the updated Subject Mapping provided"
         }
       }
     },
@@ -911,8 +913,9 @@
     "subjectmappingUpdateSubjectMappingResponse": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
+        "subjectMapping": {
+          "$ref": "#/definitions/subjectmappingSubjectMapping",
+          "title": "Only ID of the updated Subject Mapping provided"
         }
       }
     }

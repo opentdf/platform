@@ -230,7 +230,8 @@ message CreateSubjectMappingRequest{
   repeated authorization.Action actions = 5 [(buf.validate.field).repeated.min_items = 1];
 }
 message CreateSubjectMappingResponse {
-  string id = 1;
+  // Only ID of the updated Subject Mapping provided
+  SubjectMapping subject_mapping = 1;
 }
 
 message UpdateSubjectMappingRequest {
@@ -245,14 +246,16 @@ message UpdateSubjectMappingRequest {
   repeated authorization.Action update_actions = 5;
 }
 message UpdateSubjectMappingResponse {
-  string id = 1;
+  // Only ID of the updated Subject Mapping provided
+  SubjectMapping subject_mapping = 1;
 }
 
 message DeleteSubjectMappingRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteSubjectMappingResponse {
-  string id = 1;
+  // Only ID of the updated Subject Mapping provided
+  SubjectMapping subject_mapping = 1;
 }
 
 /**

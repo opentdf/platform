@@ -4,7 +4,6 @@ package policy.namespaces;
 
 import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
-import "google/protobuf/wrappers.proto";
 
 import "common/common.proto";
 import "policy/types.proto";

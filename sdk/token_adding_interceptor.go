@@ -15,6 +15,11 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const (
+	JTILength            = 14
+	JWTExpirationMinutes = 10
+)
+
 func newOutgoingInterceptor(t AccessTokenSource) tokenAddingInterceptor {
 	return tokenAddingInterceptor{tokenSource: t}
 }
@@ -23,7 +28,8 @@ type tokenAddingInterceptor struct {
 	tokenSource AccessTokenSource
 }
 
-func (i tokenAddingInterceptor) addCredentials(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func (i tokenAddingInterceptor) addCredentials(ctx context.Context,
+	method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	newMetadata := make([]string, 0)
 	accessToken, err := i.tokenSource.AccessToken()
 	if err == nil {
@@ -50,7 +56,7 @@ func (i tokenAddingInterceptor) addCredentials(ctx context.Context, method strin
 
 func (i tokenAddingInterceptor) getDPOPToken(method string) (string, error) {
 	tok, err := i.tokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
-		jtiBytes := make([]byte, 14)
+		jtiBytes := make([]byte, JTILength)
 		_, err := rand.Read(jtiBytes)
 		if err != nil {
 			return nil, fmt.Errorf("error creating jti for dpop jwt: %w", err)
@@ -62,16 +68,28 @@ func (i tokenAddingInterceptor) getDPOPToken(method string) (string, error) {
 		}
 
 		headers := jws.NewHeaders()
-		headers.Set(jws.JWKKey, publicKey)
-		headers.Set(jws.TypeKey, "dpop+jwt")
-		headers.Set(jws.AlgorithmKey, key.Algorithm())
-		headers.Set("jti", base64.StdEncoding.EncodeToString(jtiBytes))
+		err = headers.Set(jws.JWKKey, publicKey)
+		if err != nil {
+			return nil, fmt.Errorf("error setting the key on the DPOP token: %w", err)
+		}
+		err = headers.Set(jws.TypeKey, "dpop+jwt")
+		if err != nil {
+			return nil, fmt.Errorf("error setting the type on the DPOP token: %w", err)
+		}
+		err = headers.Set(jws.AlgorithmKey, key.Algorithm())
+		if err != nil {
+			return nil, fmt.Errorf("error setting the algorithm on the DPOP token: %w", err)
+		}
+		err = headers.Set("jti", base64.StdEncoding.EncodeToString(jtiBytes))
+		if err != nil {
+			return nil, fmt.Errorf("error setting the jti on the DPOP token: %w", err)
+		}
 
 		dpopTok, err := jwt.NewBuilder().
 			Claim("htu", method).
 			Claim("htm", "POST").
 			IssuedAt(time.Now()).
-			Expiration(time.Now().Add(time.Minute * 10)).
+			Expiration(time.Now().Add(time.Minute * JWTExpirationMinutes)).
 			Build()
 
 		if err != nil {
@@ -87,7 +105,7 @@ func (i tokenAddingInterceptor) getDPOPToken(method string) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error creating DPOP token in interceptor: %w", err)
 	}
 
 	return string(tok), nil

@@ -26,7 +26,6 @@ import (
 )
 
 func TestAddingTokensToOutgoingRequest(t *testing.T) {
-
 	_, key, _, _ := getNewDPoPKey()
 	ts := FakeTokenSource{
 		key:         key,
@@ -38,7 +37,10 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
 
-	client.Info(context.Background(), &kas.InfoRequest{})
+	_, err := client.Info(context.Background(), &kas.InfoRequest{})
+	if err != nil {
+		t.Fatalf("error making call: %v", err)
+	}
 
 	if len(server.accessToken) != 1 || server.accessToken[0] != "Bearer thisisafakeaccesstoken" {
 		t.Fatalf("Got incorrect access token: %v", server.accessToken)
@@ -50,9 +52,12 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 
 	dpopToken := server.dpopToken[0]
 
-	alg := key.Algorithm().(jwa.SignatureAlgorithm)
+	alg, ok := key.Algorithm().(jwa.SignatureAlgorithm)
+	if !ok {
+		t.Fatalf("got a bad signing algorithm")
+	}
 
-	_, err := jws.Verify([]byte(dpopToken), jws.WithKey(alg, key))
+	_, err = jws.Verify([]byte(dpopToken), jws.WithKey(alg, key))
 	if err != nil {
 		t.Fatalf("error verifying signature: %v", err)
 	}
@@ -77,11 +82,11 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 
 	parsedToken, _ := jwt.Parse([]byte(dpopToken), jwt.WithVerify(false))
 
-	if method, ok := parsedToken.Get("htm"); !ok || method.(string) != "POST" {
+	if method, _ := parsedToken.Get("htm"); method.(string) != "POST" {
 		t.Fatalf("we got a bad method: %v", method)
 	}
 
-	if path, ok := parsedToken.Get("htu"); !ok || path.(string) != "/access.AccessService/Info" {
+	if path, _ := parsedToken.Get("htu"); path.(string) != "/access.AccessService/Info" {
 		t.Fatalf("we got a bad method: %v", path)
 	}
 }
@@ -149,7 +154,8 @@ func (*FakeTokenSource) RefreshAccessToken() error {
 	return nil
 }
 
-func runServer(ctx context.Context, f *FakeAccessServiceServer, oo tokenAddingInterceptor) (kas.AccessServiceClient, func()) {
+func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
+	f *FakeAccessServiceServer, oo tokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024
 	listener := bufconn.Listen(buffer)
 

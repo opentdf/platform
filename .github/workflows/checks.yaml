@@ -170,7 +170,6 @@ jobs:
         run: |
           mvn -f sdkjava/pom.xml clean install
   ci:
-    name: "Verify required job ran successfully"
     needs:
       - go
       - integration

@@ -168,7 +168,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("subjectConditionSet", req.String()))
 	}
 
-	rsp.Id = scs.Id
+	rsp.SubjectConditionSet.Id = scs.Id
 	return rsp, nil
 }
 

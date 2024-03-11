@@ -26,29 +26,19 @@ func GetMethods(i interface{}) (m []string) {
 }
 
 func TestNew_ShouldCreateSDK(t *testing.T) {
-	sdk, err := sdk.New(goodPlatformEndpoint,
+	client, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	assert.NoError(t, err)
-	assert.NotNil(t, sdk)
+	assert.NotNil(t, client)
 	if t.Failed() {
 		return
 	}
 
 	// check if the clients are available
-	if sdk.Attributes == nil {
-		t.Errorf("Expected Attributes client, got nil")
-	}
-	if sdk.ResourceMapping == nil {
-		t.Errorf("Expected ResourceEncoding client, got nil")
-	}
-	if sdk.SubjectMapping == nil {
-		t.Errorf("Expected SubjectEncoding client, got nil")
-	}
-	if sdk.KeyAccessServerRegistry == nil {
-		t.Errorf("Expected KeyAccessGrants client, got nil")
-	}
+	assert.NotEqual(t, client.Policy, sdk.Policy{})
+	assert.NotNil(t, client.KeyAccessServerRegistry)
 }
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
@@ -87,17 +77,17 @@ func TestNew_ShouldHaveSameMethods(t *testing.T) {
 		{
 			name:     "Attributes",
 			expected: GetMethods(reflect.TypeOf(attributes.NewAttributesServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.Attributes)),
+			actual:   GetMethods(reflect.TypeOf(sdk.Policy.AttributesServiceClient)),
 		},
 		{
 			name:     "ResourceEncoding",
 			expected: GetMethods(reflect.TypeOf(resourcemapping.NewResourceMappingServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.ResourceMapping)),
+			actual:   GetMethods(reflect.TypeOf(sdk.Policy.ResourceMappingServiceClient)),
 		},
 		{
 			name:     "SubjectEncoding",
 			expected: GetMethods(reflect.TypeOf(subjectmapping.NewSubjectMappingServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.SubjectMapping)),
+			actual:   GetMethods(reflect.TypeOf(sdk.Policy.SubjectMappingServiceClient)),
 		},
 		{
 			name:     "KeyAccessGrants",

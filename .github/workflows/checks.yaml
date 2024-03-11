@@ -178,9 +178,10 @@ jobs:
       - buflint
       - pr
     runs-on: ubuntu-latest
-    if: always() && contains(needs.*.result, 'failure')
+    if: always()
     steps:
-      - run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
+      - if: contains(needs.*.result, 'failure')
+      	run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
 
   license:
     name: license check

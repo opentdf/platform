@@ -18,8 +18,8 @@ private static final long serialVersionUID = 0L;
   }
   private CreateSubjectMappingRequest() {
     attributeValueId_ = "";
-    existingSubjectConditionSetId_ = "";
     actions_ = java.util.Collections.emptyList();
+    existingSubjectConditionSetId_ = "";
   }
 
   @java.lang.Override
@@ -43,41 +43,16 @@ private static final long serialVersionUID = 0L;
   }
 
   private int bitField0_;
-  public static final int METADATA_FIELD_NUMBER = 1;
-  private io.opentdf.platform.common.MetadataMutable metadata_;
-  /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
-   */
-  @java.lang.Override
-  public boolean hasMetadata() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   * @return The metadata.
-   */
-  @java.lang.Override
-  public io.opentdf.platform.common.MetadataMutable getMetadata() {
-    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
-  }
-  /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   */
-  @java.lang.Override
-  public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
-    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
-  }
-
-  public static final int ATTRIBUTE_VALUE_ID_FIELD_NUMBER = 2;
+  public static final int ATTRIBUTE_VALUE_ID_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
   private volatile java.lang.Object attributeValueId_ = "";
   /**
    * <pre>
+   * Required
    * Attribute Value to be mapped to
    * </pre>
    *
-   * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
    * @return The attributeValueId.
    */
   @java.lang.Override
@@ -95,10 +70,11 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
+   * Required
    * Attribute Value to be mapped to
    * </pre>
    *
-   * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
    * @return The bytes for attributeValueId.
    */
   @java.lang.Override
@@ -116,11 +92,73 @@ private static final long serialVersionUID = 0L;
     }
   }
 
+  public static final int ACTIONS_FIELD_NUMBER = 2;
+  @SuppressWarnings("serial")
+  private java.util.List<io.opentdf.platform.authorization.Action> actions_;
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
+    return actions_;
+  }
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+      getActionsOrBuilderList() {
+    return actions_;
+  }
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public int getActionsCount() {
+    return actions_.size();
+  }
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.authorization.Action getActions(int index) {
+    return actions_.get(index);
+  }
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+      int index) {
+    return actions_.get(index);
+  }
+
   public static final int EXISTING_SUBJECT_CONDITION_SET_ID_FIELD_NUMBER = 3;
   @SuppressWarnings("serial")
   private volatile java.lang.Object existingSubjectConditionSetId_ = "";
   /**
    * <pre>
+   * Either of the following:
    * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
    * </pre>
    *
@@ -142,6 +180,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
+   * Either of the following:
    * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
    * </pre>
    *
@@ -175,7 +214,7 @@ private static final long serialVersionUID = 0L;
    */
   @java.lang.Override
   public boolean hasNewSubjectConditionSet() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <pre>
@@ -201,65 +240,42 @@ private static final long serialVersionUID = 0L;
     return newSubjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.getDefaultInstance() : newSubjectConditionSet_;
   }
 
-  public static final int ACTIONS_FIELD_NUMBER = 5;
-  @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.authorization.Action> actions_;
+  public static final int METADATA_FIELD_NUMBER = 100;
+  private io.opentdf.platform.common.MetadataMutable metadata_;
   /**
    * <pre>
-   * The actions permitted by subjects in this mapping
+   * Optional
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
-    return actions_;
+  public boolean hasMetadata() {
+    return ((bitField0_ & 0x00000002) != 0);
   }
   /**
    * <pre>
-   * The actions permitted by subjects in this mapping
+   * Optional
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
-      getActionsOrBuilderList() {
-    return actions_;
+  public io.opentdf.platform.common.MetadataMutable getMetadata() {
+    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
   }
   /**
    * <pre>
-   * The actions permitted by subjects in this mapping
+   * Optional
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
    */
   @java.lang.Override
-  public int getActionsCount() {
-    return actions_.size();
-  }
-  /**
-   * <pre>
-   * The actions permitted by subjects in this mapping
-   * </pre>
-   *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-   */
-  @java.lang.Override
-  public io.opentdf.platform.authorization.Action getActions(int index) {
-    return actions_.get(index);
-  }
-  /**
-   * <pre>
-   * The actions permitted by subjects in this mapping
-   * </pre>
-   *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-   */
-  @java.lang.Override
-  public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
-      int index) {
-    return actions_.get(index);
+  public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
+    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -276,20 +292,20 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(1, getMetadata());
-    }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeValueId_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, attributeValueId_);
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, attributeValueId_);
+    }
+    for (int i = 0; i < actions_.size(); i++) {
+      output.writeMessage(2, actions_.get(i));
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(existingSubjectConditionSetId_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 3, existingSubjectConditionSetId_);
     }
-    if (((bitField0_ & 0x00000002) != 0)) {
+    if (((bitField0_ & 0x00000001) != 0)) {
       output.writeMessage(4, getNewSubjectConditionSet());
     }
-    for (int i = 0; i < actions_.size(); i++) {
-      output.writeMessage(5, actions_.get(i));
+    if (((bitField0_ & 0x00000002) != 0)) {
+      output.writeMessage(100, getMetadata());
     }
     getUnknownFields().writeTo(output);
   }
@@ -300,23 +316,23 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (((bitField0_ & 0x00000001) != 0)) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(1, getMetadata());
-    }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeValueId_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, attributeValueId_);
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, attributeValueId_);
+    }
+    for (int i = 0; i < actions_.size(); i++) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(2, actions_.get(i));
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(existingSubjectConditionSetId_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, existingSubjectConditionSetId_);
     }
-    if (((bitField0_ & 0x00000002) != 0)) {
+    if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(4, getNewSubjectConditionSet());
     }
-    for (int i = 0; i < actions_.size(); i++) {
+    if (((bitField0_ & 0x00000002) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(5, actions_.get(i));
+        .computeMessageSize(100, getMetadata());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -333,13 +349,10 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest other = (io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest) obj;
 
-    if (hasMetadata() != other.hasMetadata()) return false;
-    if (hasMetadata()) {
-      if (!getMetadata()
-          .equals(other.getMetadata())) return false;
-    }
     if (!getAttributeValueId()
         .equals(other.getAttributeValueId())) return false;
+    if (!getActionsList()
+        .equals(other.getActionsList())) return false;
     if (!getExistingSubjectConditionSetId()
         .equals(other.getExistingSubjectConditionSetId())) return false;
     if (hasNewSubjectConditionSet() != other.hasNewSubjectConditionSet()) return false;
@@ -347,8 +360,11 @@ private static final long serialVersionUID = 0L;
       if (!getNewSubjectConditionSet()
           .equals(other.getNewSubjectConditionSet())) return false;
     }
-    if (!getActionsList()
-        .equals(other.getActionsList())) return false;
+    if (hasMetadata() != other.hasMetadata()) return false;
+    if (hasMetadata()) {
+      if (!getMetadata()
+          .equals(other.getMetadata())) return false;
+    }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -360,21 +376,21 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    if (hasMetadata()) {
-      hash = (37 * hash) + METADATA_FIELD_NUMBER;
-      hash = (53 * hash) + getMetadata().hashCode();
-    }
     hash = (37 * hash) + ATTRIBUTE_VALUE_ID_FIELD_NUMBER;
     hash = (53 * hash) + getAttributeValueId().hashCode();
+    if (getActionsCount() > 0) {
+      hash = (37 * hash) + ACTIONS_FIELD_NUMBER;
+      hash = (53 * hash) + getActionsList().hashCode();
+    }
     hash = (37 * hash) + EXISTING_SUBJECT_CONDITION_SET_ID_FIELD_NUMBER;
     hash = (53 * hash) + getExistingSubjectConditionSetId().hashCode();
     if (hasNewSubjectConditionSet()) {
       hash = (37 * hash) + NEW_SUBJECT_CONDITION_SET_FIELD_NUMBER;
       hash = (53 * hash) + getNewSubjectConditionSet().hashCode();
     }
-    if (getActionsCount() > 0) {
-      hash = (37 * hash) + ACTIONS_FIELD_NUMBER;
-      hash = (53 * hash) + getActionsList().hashCode();
+    if (hasMetadata()) {
+      hash = (37 * hash) + METADATA_FIELD_NUMBER;
+      hash = (53 * hash) + getMetadata().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -506,34 +522,34 @@ private static final long serialVersionUID = 0L;
     private void maybeForceBuilderInitialization() {
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
-        getMetadataFieldBuilder();
-        getNewSubjectConditionSetFieldBuilder();
         getActionsFieldBuilder();
+        getNewSubjectConditionSetFieldBuilder();
+        getMetadataFieldBuilder();
       }
     }
     @java.lang.Override
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      metadata_ = null;
-      if (metadataBuilder_ != null) {
-        metadataBuilder_.dispose();
-        metadataBuilder_ = null;
-      }
       attributeValueId_ = "";
-      existingSubjectConditionSetId_ = "";
-      newSubjectConditionSet_ = null;
-      if (newSubjectConditionSetBuilder_ != null) {
-        newSubjectConditionSetBuilder_.dispose();
-        newSubjectConditionSetBuilder_ = null;
-      }
       if (actionsBuilder_ == null) {
         actions_ = java.util.Collections.emptyList();
       } else {
         actions_ = null;
         actionsBuilder_.clear();
       }
-      bitField0_ = (bitField0_ & ~0x00000010);
+      bitField0_ = (bitField0_ & ~0x00000002);
+      existingSubjectConditionSetId_ = "";
+      newSubjectConditionSet_ = null;
+      if (newSubjectConditionSetBuilder_ != null) {
+        newSubjectConditionSetBuilder_.dispose();
+        newSubjectConditionSetBuilder_ = null;
+      }
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
+      }
       return this;
     }
 
@@ -568,9 +584,9 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest result) {
       if (actionsBuilder_ == null) {
-        if (((bitField0_ & 0x00000010) != 0)) {
+        if (((bitField0_ & 0x00000002) != 0)) {
           actions_ = java.util.Collections.unmodifiableList(actions_);
-          bitField0_ = (bitField0_ & ~0x00000010);
+          bitField0_ = (bitField0_ & ~0x00000002);
         }
         result.actions_ = actions_;
       } else {
@@ -580,23 +596,23 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest result) {
       int from_bitField0_ = bitField0_;
-      int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.metadata_ = metadataBuilder_ == null
-            ? metadata_
-            : metadataBuilder_.build();
-        to_bitField0_ |= 0x00000001;
-      }
-      if (((from_bitField0_ & 0x00000002) != 0)) {
         result.attributeValueId_ = attributeValueId_;
       }
       if (((from_bitField0_ & 0x00000004) != 0)) {
         result.existingSubjectConditionSetId_ = existingSubjectConditionSetId_;
       }
+      int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000008) != 0)) {
         result.newSubjectConditionSet_ = newSubjectConditionSetBuilder_ == null
             ? newSubjectConditionSet_
             : newSubjectConditionSetBuilder_.build();
+        to_bitField0_ |= 0x00000001;
+      }
+      if (((from_bitField0_ & 0x00000010) != 0)) {
+        result.metadata_ = metadataBuilder_ == null
+            ? metadata_
+            : metadataBuilder_.build();
         to_bitField0_ |= 0x00000002;
       }
       result.bitField0_ |= to_bitField0_;
@@ -646,27 +662,16 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest other) {
       if (other == io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest.getDefaultInstance()) return this;
-      if (other.hasMetadata()) {
-        mergeMetadata(other.getMetadata());
-      }
       if (!other.getAttributeValueId().isEmpty()) {
         attributeValueId_ = other.attributeValueId_;
-        bitField0_ |= 0x00000002;
+        bitField0_ |= 0x00000001;
         onChanged();
-      }
-      if (!other.getExistingSubjectConditionSetId().isEmpty()) {
-        existingSubjectConditionSetId_ = other.existingSubjectConditionSetId_;
-        bitField0_ |= 0x00000004;
-        onChanged();
-      }
-      if (other.hasNewSubjectConditionSet()) {
-        mergeNewSubjectConditionSet(other.getNewSubjectConditionSet());
       }
       if (actionsBuilder_ == null) {
         if (!other.actions_.isEmpty()) {
           if (actions_.isEmpty()) {
             actions_ = other.actions_;
-            bitField0_ = (bitField0_ & ~0x00000010);
+            bitField0_ = (bitField0_ & ~0x00000002);
           } else {
             ensureActionsIsMutable();
             actions_.addAll(other.actions_);
@@ -679,7 +684,7 @@ private static final long serialVersionUID = 0L;
             actionsBuilder_.dispose();
             actionsBuilder_ = null;
             actions_ = other.actions_;
-            bitField0_ = (bitField0_ & ~0x00000010);
+            bitField0_ = (bitField0_ & ~0x00000002);
             actionsBuilder_ = 
               com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
                  getActionsFieldBuilder() : null;
@@ -687,6 +692,17 @@ private static final long serialVersionUID = 0L;
             actionsBuilder_.addAllMessages(other.actions_);
           }
         }
+      }
+      if (!other.getExistingSubjectConditionSetId().isEmpty()) {
+        existingSubjectConditionSetId_ = other.existingSubjectConditionSetId_;
+        bitField0_ |= 0x00000004;
+        onChanged();
+      }
+      if (other.hasNewSubjectConditionSet()) {
+        mergeNewSubjectConditionSet(other.getNewSubjectConditionSet());
+      }
+      if (other.hasMetadata()) {
+        mergeMetadata(other.getMetadata());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -715,15 +731,21 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              input.readMessage(
-                  getMetadataFieldBuilder().getBuilder(),
-                  extensionRegistry);
+              attributeValueId_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000001;
               break;
             } // case 10
             case 18: {
-              attributeValueId_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000002;
+              io.opentdf.platform.authorization.Action m =
+                  input.readMessage(
+                      io.opentdf.platform.authorization.Action.parser(),
+                      extensionRegistry);
+              if (actionsBuilder_ == null) {
+                ensureActionsIsMutable();
+                actions_.add(m);
+              } else {
+                actionsBuilder_.addMessage(m);
+              }
               break;
             } // case 18
             case 26: {
@@ -738,19 +760,13 @@ private static final long serialVersionUID = 0L;
               bitField0_ |= 0x00000008;
               break;
             } // case 34
-            case 42: {
-              io.opentdf.platform.authorization.Action m =
-                  input.readMessage(
-                      io.opentdf.platform.authorization.Action.parser(),
-                      extensionRegistry);
-              if (actionsBuilder_ == null) {
-                ensureActionsIsMutable();
-                actions_.add(m);
-              } else {
-                actionsBuilder_.addMessage(m);
-              }
+            case 802: {
+              input.readMessage(
+                  getMetadataFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000010;
               break;
-            } // case 42
+            } // case 802
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -768,134 +784,14 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.common.MetadataMutable metadata_;
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> metadataBuilder_;
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     * @return Whether the metadata field is set.
-     */
-    public boolean hasMetadata() {
-      return ((bitField0_ & 0x00000001) != 0);
-    }
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     * @return The metadata.
-     */
-    public io.opentdf.platform.common.MetadataMutable getMetadata() {
-      if (metadataBuilder_ == null) {
-        return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
-      } else {
-        return metadataBuilder_.getMessage();
-      }
-    }
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     */
-    public Builder setMetadata(io.opentdf.platform.common.MetadataMutable value) {
-      if (metadataBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        metadata_ = value;
-      } else {
-        metadataBuilder_.setMessage(value);
-      }
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     */
-    public Builder setMetadata(
-        io.opentdf.platform.common.MetadataMutable.Builder builderForValue) {
-      if (metadataBuilder_ == null) {
-        metadata_ = builderForValue.build();
-      } else {
-        metadataBuilder_.setMessage(builderForValue.build());
-      }
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     */
-    public Builder mergeMetadata(io.opentdf.platform.common.MetadataMutable value) {
-      if (metadataBuilder_ == null) {
-        if (((bitField0_ & 0x00000001) != 0) &&
-          metadata_ != null &&
-          metadata_ != io.opentdf.platform.common.MetadataMutable.getDefaultInstance()) {
-          getMetadataBuilder().mergeFrom(value);
-        } else {
-          metadata_ = value;
-        }
-      } else {
-        metadataBuilder_.mergeFrom(value);
-      }
-      if (metadata_ != null) {
-        bitField0_ |= 0x00000001;
-        onChanged();
-      }
-      return this;
-    }
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     */
-    public Builder clearMetadata() {
-      bitField0_ = (bitField0_ & ~0x00000001);
-      metadata_ = null;
-      if (metadataBuilder_ != null) {
-        metadataBuilder_.dispose();
-        metadataBuilder_ = null;
-      }
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     */
-    public io.opentdf.platform.common.MetadataMutable.Builder getMetadataBuilder() {
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return getMetadataFieldBuilder().getBuilder();
-    }
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     */
-    public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
-      if (metadataBuilder_ != null) {
-        return metadataBuilder_.getMessageOrBuilder();
-      } else {
-        return metadata_ == null ?
-            io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
-      }
-    }
-    /**
-     * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-     */
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> 
-        getMetadataFieldBuilder() {
-      if (metadataBuilder_ == null) {
-        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder>(
-                getMetadata(),
-                getParentForChildren(),
-                isClean());
-        metadata_ = null;
-      }
-      return metadataBuilder_;
-    }
-
     private java.lang.Object attributeValueId_ = "";
     /**
      * <pre>
+     * Required
      * Attribute Value to be mapped to
      * </pre>
      *
-     * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
      * @return The attributeValueId.
      */
     public java.lang.String getAttributeValueId() {
@@ -912,10 +808,11 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
+     * Required
      * Attribute Value to be mapped to
      * </pre>
      *
-     * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
      * @return The bytes for attributeValueId.
      */
     public com.google.protobuf.ByteString
@@ -933,10 +830,11 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
+     * Required
      * Attribute Value to be mapped to
      * </pre>
      *
-     * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
      * @param value The attributeValueId to set.
      * @return This builder for chaining.
      */
@@ -944,30 +842,32 @@ private static final long serialVersionUID = 0L;
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
       attributeValueId_ = value;
-      bitField0_ |= 0x00000002;
+      bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
      * <pre>
+     * Required
      * Attribute Value to be mapped to
      * </pre>
      *
-     * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
     public Builder clearAttributeValueId() {
       attributeValueId_ = getDefaultInstance().getAttributeValueId();
-      bitField0_ = (bitField0_ & ~0x00000002);
+      bitField0_ = (bitField0_ & ~0x00000001);
       onChanged();
       return this;
     }
     /**
      * <pre>
+     * Required
      * Attribute Value to be mapped to
      * </pre>
      *
-     * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
      * @param value The bytes for attributeValueId to set.
      * @return This builder for chaining.
      */
@@ -976,14 +876,327 @@ private static final long serialVersionUID = 0L;
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
       attributeValueId_ = value;
-      bitField0_ |= 0x00000002;
+      bitField0_ |= 0x00000001;
       onChanged();
       return this;
+    }
+
+    private java.util.List<io.opentdf.platform.authorization.Action> actions_ =
+      java.util.Collections.emptyList();
+    private void ensureActionsIsMutable() {
+      if (!((bitField0_ & 0x00000002) != 0)) {
+        actions_ = new java.util.ArrayList<io.opentdf.platform.authorization.Action>(actions_);
+        bitField0_ |= 0x00000002;
+       }
+    }
+
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> actionsBuilder_;
+
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
+      if (actionsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(actions_);
+      } else {
+        return actionsBuilder_.getMessageList();
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public int getActionsCount() {
+      if (actionsBuilder_ == null) {
+        return actions_.size();
+      } else {
+        return actionsBuilder_.getCount();
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.Action getActions(int index) {
+      if (actionsBuilder_ == null) {
+        return actions_.get(index);
+      } else {
+        return actionsBuilder_.getMessage(index);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder setActions(
+        int index, io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureActionsIsMutable();
+        actions_.set(index, value);
+        onChanged();
+      } else {
+        actionsBuilder_.setMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder setActions(
+        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.set(index, builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.setMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addActions(io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureActionsIsMutable();
+        actions_.add(value);
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addActions(
+        int index, io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureActionsIsMutable();
+        actions_.add(index, value);
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addActions(
+        io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.add(builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addActions(
+        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.add(index, builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addAllActions(
+        java.lang.Iterable<? extends io.opentdf.platform.authorization.Action> values) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, actions_);
+        onChanged();
+      } else {
+        actionsBuilder_.addAllMessages(values);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder clearActions() {
+      if (actionsBuilder_ == null) {
+        actions_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000002);
+        onChanged();
+      } else {
+        actionsBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder removeActions(int index) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.remove(index);
+        onChanged();
+      } else {
+        actionsBuilder_.remove(index);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder getActionsBuilder(
+        int index) {
+      return getActionsFieldBuilder().getBuilder(index);
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+        int index) {
+      if (actionsBuilder_ == null) {
+        return actions_.get(index);  } else {
+        return actionsBuilder_.getMessageOrBuilder(index);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+         getActionsOrBuilderList() {
+      if (actionsBuilder_ != null) {
+        return actionsBuilder_.getMessageOrBuilderList();
+      } else {
+        return java.util.Collections.unmodifiableList(actions_);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder() {
+      return getActionsFieldBuilder().addBuilder(
+          io.opentdf.platform.authorization.Action.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder(
+        int index) {
+      return getActionsFieldBuilder().addBuilder(
+          index, io.opentdf.platform.authorization.Action.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public java.util.List<io.opentdf.platform.authorization.Action.Builder> 
+         getActionsBuilderList() {
+      return getActionsFieldBuilder().getBuilderList();
+    }
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> 
+        getActionsFieldBuilder() {
+      if (actionsBuilder_ == null) {
+        actionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>(
+                actions_,
+                ((bitField0_ & 0x00000002) != 0),
+                getParentForChildren(),
+                isClean());
+        actions_ = null;
+      }
+      return actionsBuilder_;
     }
 
     private java.lang.Object existingSubjectConditionSetId_ = "";
     /**
      * <pre>
+     * Either of the following:
      * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
      * </pre>
      *
@@ -1004,6 +1217,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
+     * Either of the following:
      * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
      * </pre>
      *
@@ -1025,6 +1239,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
+     * Either of the following:
      * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
      * </pre>
      *
@@ -1042,6 +1257,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
+     * Either of the following:
      * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
      * </pre>
      *
@@ -1056,6 +1272,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
+     * Either of the following:
      * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
      * </pre>
      *
@@ -1230,316 +1447,161 @@ private static final long serialVersionUID = 0L;
       return newSubjectConditionSetBuilder_;
     }
 
-    private java.util.List<io.opentdf.platform.authorization.Action> actions_ =
-      java.util.Collections.emptyList();
-    private void ensureActionsIsMutable() {
-      if (!((bitField0_ & 0x00000010) != 0)) {
-        actions_ = new java.util.ArrayList<io.opentdf.platform.authorization.Action>(actions_);
+    private io.opentdf.platform.common.MetadataMutable metadata_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> metadataBuilder_;
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     * @return Whether the metadata field is set.
+     */
+    public boolean hasMetadata() {
+      return ((bitField0_ & 0x00000010) != 0);
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     * @return The metadata.
+     */
+    public io.opentdf.platform.common.MetadataMutable getMetadata() {
+      if (metadataBuilder_ == null) {
+        return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
+      } else {
+        return metadataBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(io.opentdf.platform.common.MetadataMutable value) {
+      if (metadataBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        metadata_ = value;
+      } else {
+        metadataBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000010;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(
+        io.opentdf.platform.common.MetadataMutable.Builder builderForValue) {
+      if (metadataBuilder_ == null) {
+        metadata_ = builderForValue.build();
+      } else {
+        metadataBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000010;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder mergeMetadata(io.opentdf.platform.common.MetadataMutable value) {
+      if (metadataBuilder_ == null) {
+        if (((bitField0_ & 0x00000010) != 0) &&
+          metadata_ != null &&
+          metadata_ != io.opentdf.platform.common.MetadataMutable.getDefaultInstance()) {
+          getMetadataBuilder().mergeFrom(value);
+        } else {
+          metadata_ = value;
+        }
+      } else {
+        metadataBuilder_.mergeFrom(value);
+      }
+      if (metadata_ != null) {
         bitField0_ |= 0x00000010;
-       }
-    }
-
-    private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> actionsBuilder_;
-
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
-      if (actionsBuilder_ == null) {
-        return java.util.Collections.unmodifiableList(actions_);
-      } else {
-        return actionsBuilder_.getMessageList();
-      }
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public int getActionsCount() {
-      if (actionsBuilder_ == null) {
-        return actions_.size();
-      } else {
-        return actionsBuilder_.getCount();
-      }
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public io.opentdf.platform.authorization.Action getActions(int index) {
-      if (actionsBuilder_ == null) {
-        return actions_.get(index);
-      } else {
-        return actionsBuilder_.getMessage(index);
-      }
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public Builder setActions(
-        int index, io.opentdf.platform.authorization.Action value) {
-      if (actionsBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        ensureActionsIsMutable();
-        actions_.set(index, value);
         onChanged();
-      } else {
-        actionsBuilder_.setMessage(index, value);
       }
       return this;
     }
     /**
      * <pre>
-     * The actions permitted by subjects in this mapping
+     * Optional
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public Builder setActions(
-        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
-      if (actionsBuilder_ == null) {
-        ensureActionsIsMutable();
-        actions_.set(index, builderForValue.build());
-        onChanged();
-      } else {
-        actionsBuilder_.setMessage(index, builderForValue.build());
+    public Builder clearMetadata() {
+      bitField0_ = (bitField0_ & ~0x00000010);
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
       }
+      onChanged();
       return this;
     }
     /**
      * <pre>
-     * The actions permitted by subjects in this mapping
+     * Optional
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public Builder addActions(io.opentdf.platform.authorization.Action value) {
-      if (actionsBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        ensureActionsIsMutable();
-        actions_.add(value);
-        onChanged();
+    public io.opentdf.platform.common.MetadataMutable.Builder getMetadataBuilder() {
+      bitField0_ |= 0x00000010;
+      onChanged();
+      return getMetadataFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
+      if (metadataBuilder_ != null) {
+        return metadataBuilder_.getMessageOrBuilder();
       } else {
-        actionsBuilder_.addMessage(value);
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public Builder addActions(
-        int index, io.opentdf.platform.authorization.Action value) {
-      if (actionsBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        ensureActionsIsMutable();
-        actions_.add(index, value);
-        onChanged();
-      } else {
-        actionsBuilder_.addMessage(index, value);
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public Builder addActions(
-        io.opentdf.platform.authorization.Action.Builder builderForValue) {
-      if (actionsBuilder_ == null) {
-        ensureActionsIsMutable();
-        actions_.add(builderForValue.build());
-        onChanged();
-      } else {
-        actionsBuilder_.addMessage(builderForValue.build());
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public Builder addActions(
-        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
-      if (actionsBuilder_ == null) {
-        ensureActionsIsMutable();
-        actions_.add(index, builderForValue.build());
-        onChanged();
-      } else {
-        actionsBuilder_.addMessage(index, builderForValue.build());
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public Builder addAllActions(
-        java.lang.Iterable<? extends io.opentdf.platform.authorization.Action> values) {
-      if (actionsBuilder_ == null) {
-        ensureActionsIsMutable();
-        com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, actions_);
-        onChanged();
-      } else {
-        actionsBuilder_.addAllMessages(values);
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public Builder clearActions() {
-      if (actionsBuilder_ == null) {
-        actions_ = java.util.Collections.emptyList();
-        bitField0_ = (bitField0_ & ~0x00000010);
-        onChanged();
-      } else {
-        actionsBuilder_.clear();
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public Builder removeActions(int index) {
-      if (actionsBuilder_ == null) {
-        ensureActionsIsMutable();
-        actions_.remove(index);
-        onChanged();
-      } else {
-        actionsBuilder_.remove(index);
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public io.opentdf.platform.authorization.Action.Builder getActionsBuilder(
-        int index) {
-      return getActionsFieldBuilder().getBuilder(index);
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
-        int index) {
-      if (actionsBuilder_ == null) {
-        return actions_.get(index);  } else {
-        return actionsBuilder_.getMessageOrBuilder(index);
+        return metadata_ == null ?
+            io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
       }
     }
     /**
      * <pre>
-     * The actions permitted by subjects in this mapping
+     * Optional
      * </pre>
      *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
-         getActionsOrBuilderList() {
-      if (actionsBuilder_ != null) {
-        return actionsBuilder_.getMessageOrBuilderList();
-      } else {
-        return java.util.Collections.unmodifiableList(actions_);
-      }
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder() {
-      return getActionsFieldBuilder().addBuilder(
-          io.opentdf.platform.authorization.Action.getDefaultInstance());
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder(
-        int index) {
-      return getActionsFieldBuilder().addBuilder(
-          index, io.opentdf.platform.authorization.Action.getDefaultInstance());
-    }
-    /**
-     * <pre>
-     * The actions permitted by subjects in this mapping
-     * </pre>
-     *
-     * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-     */
-    public java.util.List<io.opentdf.platform.authorization.Action.Builder> 
-         getActionsBuilderList() {
-      return getActionsFieldBuilder().getBuilderList();
-    }
-    private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> 
-        getActionsFieldBuilder() {
-      if (actionsBuilder_ == null) {
-        actionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>(
-                actions_,
-                ((bitField0_ & 0x00000010) != 0),
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> 
+        getMetadataFieldBuilder() {
+      if (metadataBuilder_ == null) {
+        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder>(
+                getMetadata(),
                 getParentForChildren(),
                 isClean());
-        actions_ = null;
+        metadata_ = null;
       }
-      return actionsBuilder_;
+      return metadataBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

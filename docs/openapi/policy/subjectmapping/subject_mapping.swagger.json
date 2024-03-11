@@ -144,6 +144,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -155,16 +156,20 @@
             "schema": {
               "type": "object",
               "properties": {
-                "updateMetadata": {
-                  "$ref": "#/definitions/commonMetadataMutable"
-                },
                 "updateSubjectSets": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "$ref": "#/definitions/subjectmappingSubjectSet"
                   },
-                  "title": "if provided, replaces entire existing structure of Subject Sets, Condition Groups, \u0026 Conditions"
+                  "title": "Optional\nIf provided, replaces entire existing structure of Subject Sets, Condition Groups, \u0026 Conditions"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
                 }
               }
             }
@@ -248,6 +253,7 @@
         "parameters": [
           {
             "name": "subject",
+            "description": "Required",
             "in": "body",
             "required": true,
             "schema": {
@@ -336,6 +342,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -347,20 +354,24 @@
             "schema": {
               "type": "object",
               "properties": {
-                "updateMetadata": {
-                  "$ref": "#/definitions/commonMetadataMutable"
-                },
-                "updateSubjectConditionSetId": {
+                "subjectConditionSetId": {
                   "type": "string",
-                  "title": "Replaces the existing SubjectConditionSet id with a new one"
+                  "title": "Optional\nReplaces the existing SubjectConditionSet id with a new one"
                 },
-                "updateActions": {
+                "actions": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "$ref": "#/definitions/authorizationAction"
                   },
                   "title": "Replaces entire list of actions permitted by subjects"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
                 }
               }
             }
@@ -485,6 +496,16 @@
           "title": "optional labels"
         }
       }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "kasregistryKeyAccessServer": {
       "type": "object",
@@ -640,7 +661,7 @@
           "title": "list of comparison values for the subject_external_field, evaluated by the operator"
         }
       },
-      "description": "Example:  Match Subjects with field \"division\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_field\": \"division\",\n\"operator\": \"IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Match a subject by ensuring they are not part of the Fantastic Four:\n{\n\"subject_external_field\": \"superhero_name\",\n\"operator\": \"NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
+      "description": "Example:  Subjects with field \"division\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_field\": \"division\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four:\n{\n\"subject_external_field\": \"superhero_name\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
       "title": "*\nA Condition defines a rule of \u003csubject external field name\u003e \u003coperator\u003e \u003csubject external values\u003e"
     },
     "subjectmappingConditionBooleanTypeEnum": {
@@ -690,20 +711,9 @@
     "subjectmappingCreateSubjectMappingRequest": {
       "type": "object",
       "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
-        },
         "attributeValueId": {
           "type": "string",
-          "title": "Attribute Value to be mapped to"
-        },
-        "existingSubjectConditionSetId": {
-          "type": "string",
-          "title": "Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)"
-        },
-        "newSubjectConditionSet": {
-          "$ref": "#/definitions/subjectmappingSubjectConditionSetCreate",
-          "title": "Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)"
+          "title": "Required\nAttribute Value to be mapped to"
         },
         "actions": {
           "type": "array",
@@ -712,6 +722,18 @@
             "$ref": "#/definitions/authorizationAction"
           },
           "title": "The actions permitted by subjects in this mapping"
+        },
+        "existingSubjectConditionSetId": {
+          "type": "string",
+          "title": "Either of the following:\nReuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)"
+        },
+        "newSubjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSetCreate",
+          "title": "Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
         }
       }
     },
@@ -817,20 +839,15 @@
         "id": {
           "type": "string"
         },
-        "name": {
-          "type": "string",
-          "title": "an optional name for ease of reference"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
         "subjectSets": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/subjectmappingSubjectSet"
-          },
-          "title": "multiple Subject Sets are evaluated with AND logic"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
         }
       },
       "description": "A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet\nare evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple\nSubject Mappings / Attribute Values and is an independent unit."
@@ -838,16 +855,17 @@
     "subjectmappingSubjectConditionSetCreate": {
       "type": "object",
       "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
-        },
         "subjectSets": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/subjectmappingSubjectSet"
           },
-          "title": "multiple Subject Sets are evaluated with AND logic"
+          "title": "Required"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional\nCommon metadata"
         }
       }
     },
@@ -856,9 +874,6 @@
       "properties": {
         "id": {
           "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
         },
         "attributeValue": {
           "$ref": "#/definitions/policyattributesValue",
@@ -875,6 +890,9 @@
             "$ref": "#/definitions/authorizationAction"
           },
           "title": "The actions permitted by subjects in this mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
         }
       },
       "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\": {\"subject_sets\":[{subject_set_1},{subject_set_2}]...},\n\"actions\": [{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\": \"STANDARD_ACTION_TRANSMIT\"}]\n}",

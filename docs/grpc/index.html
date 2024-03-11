@@ -4841,7 +4841,7 @@ Response Example:
 
       
         <h3 id="policy.subjectmapping.Condition">Condition</h3>
-        <p>A Condition defines a rule of <subject external field name> <operator> <subject external values></p><p>Example:  Match Subjects with field "division" and a value of "Accounting" or "Marketing":</p><p>{</p><p>"subject_external_field": "division",</p><p>"operator": "IN",</p><p>"subject_external_values" : ["Accounting", "Marketing"]</p><p>}</p><p>Example: Match a subject by ensuring they are not part of the Fantastic Four:</p><p>{</p><p>"subject_external_field": "superhero_name",</p><p>"operator": "NOT_IN",</p><p>"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]</p><p>}</p>
+        <p>A Condition defines a rule of <subject external field name> <operator> <subject external values></p><p>Example:  Subjects with field "division" and a value of "Accounting" or "Marketing":</p><p>{</p><p>"subject_external_field": "division",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",</p><p>"subject_external_values" : ["Accounting", "Marketing"]</p><p>}</p><p>Example: Subjects that are not part of the Fantastic Four:</p><p>{</p><p>"subject_external_field": "superhero_name",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",</p><p>"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]</p><p>}</p>
 
         
           <table class="field-table">
@@ -4968,24 +4968,26 @@ Response Example:
             <tbody>
               
                 <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
                   <td>attribute_value_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Attribute Value to be mapped to </p></td>
+                  <td><p>Required
+Attribute Value to be mapped to </p></td>
+                </tr>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#authorization.Action">authorization.Action</a></td>
+                  <td>repeated</td>
+                  <td><p>The actions permitted by subjects in this mapping </p></td>
                 </tr>
               
                 <tr>
                   <td>existing_subject_condition_set_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set) </p></td>
+                  <td><p>Either of the following:
+Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set) </p></td>
                 </tr>
               
                 <tr>
@@ -4996,10 +4998,10 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>actions</td>
-                  <td><a href="#authorization.Action">authorization.Action</a></td>
-                  <td>repeated</td>
-                  <td><p>The actions permitted by subjects in this mapping </p></td>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -5308,7 +5310,7 @@ Response Example:
                   <td>subject</td>
                   <td><a href="#policy.subjectmapping.Subject">Subject</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5384,10 +5386,10 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>an optional name for ease of reference </p></td>
+                  <td>subject_sets</td>
+                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -5395,13 +5397,6 @@ Response Example:
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
                   <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>subject_sets</td>
-                  <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
-                  <td>repeated</td>
-                  <td><p>multiple Subject Sets are evaluated with AND logic </p></td>
                 </tr>
               
             </tbody>
@@ -5422,17 +5417,18 @@ Response Example:
             <tbody>
               
                 <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
                   <td>subject_sets</td>
                   <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
                   <td>repeated</td>
-                  <td><p>multiple Subject Sets are evaluated with AND logic </p></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -5460,13 +5456,6 @@ Response Example:
                 </tr>
               
                 <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
                   <td>attribute_value</td>
                   <td><a href="#policy.attributes.Value">policy.attributes.Value</a></td>
                   <td></td>
@@ -5485,6 +5474,13 @@ Response Example:
                   <td><a href="#authorization.Action">authorization.Action</a></td>
                   <td>repeated</td>
                   <td><p>The actions permitted by subjects in this mapping </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -5532,21 +5528,29 @@ Response Example:
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>update_metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>update_subject_sets</td>
                   <td><a href="#policy.subjectmapping.SubjectSet">SubjectSet</a></td>
                   <td>repeated</td>
-                  <td><p>if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions </p></td>
+                  <td><p>Optional
+If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -5594,28 +5598,36 @@ Response Example:
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>update_metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>update_subject_condition_set_id</td>
+                  <td>subject_condition_set_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Replaces the existing SubjectConditionSet id with a new one </p></td>
+                  <td><p>Optional
+Replaces the existing SubjectConditionSet id with a new one </p></td>
                 </tr>
               
                 <tr>
-                  <td>update_actions</td>
+                  <td>actions</td>
                   <td><a href="#authorization.Action">authorization.Action</a></td>
                   <td>repeated</td>
                   <td><p>Replaces entire list of actions permitted by subjects </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>

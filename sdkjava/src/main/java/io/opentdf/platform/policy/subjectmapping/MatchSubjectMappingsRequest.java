@@ -43,6 +43,10 @@ private static final long serialVersionUID = 0L;
   public static final int SUBJECT_FIELD_NUMBER = 1;
   private io.opentdf.platform.policy.subjectmapping.Subject subject_;
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
    * @return Whether the subject field is set.
    */
@@ -51,6 +55,10 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
    * @return The subject.
    */
@@ -59,6 +67,10 @@ private static final long serialVersionUID = 0L;
     return subject_ == null ? io.opentdf.platform.policy.subjectmapping.Subject.getDefaultInstance() : subject_;
   }
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
    */
   @java.lang.Override
@@ -417,6 +429,10 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.policy.subjectmapping.Subject, io.opentdf.platform.policy.subjectmapping.Subject.Builder, io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder> subjectBuilder_;
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      * @return Whether the subject field is set.
      */
@@ -424,6 +440,10 @@ private static final long serialVersionUID = 0L;
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      * @return The subject.
      */
@@ -435,6 +455,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      */
     public Builder setSubject(io.opentdf.platform.policy.subjectmapping.Subject value) {
@@ -451,6 +475,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      */
     public Builder setSubject(
@@ -465,6 +493,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      */
     public Builder mergeSubject(io.opentdf.platform.policy.subjectmapping.Subject value) {
@@ -486,6 +518,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      */
     public Builder clearSubject() {
@@ -499,6 +535,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      */
     public io.opentdf.platform.policy.subjectmapping.Subject.Builder getSubjectBuilder() {
@@ -507,6 +547,10 @@ private static final long serialVersionUID = 0L;
       return getSubjectFieldBuilder().getBuilder();
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder getSubjectOrBuilder() {
@@ -518,6 +562,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<

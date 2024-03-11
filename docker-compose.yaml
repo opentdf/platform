@@ -21,8 +21,14 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: changeme
       KC_FEATURES: "preview,token-exchange"
+      KC_HEALTH_ENABLED: "true"
     ports:
       - "8888:8888"
+    healthcheck:
+      test: ["CMD", "curl", "--head","fsS", "http://localhost:8080/health/ready"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
   keycloakdb:
     image: postgres
     restart: always
@@ -33,7 +39,7 @@ services:
       POSTGRES_DB: keycloak
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
-      interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 10
   opentdfdb:
@@ -46,7 +52,7 @@ services:
       POSTGRES_DB: opentdf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
-      interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 10
     ports:

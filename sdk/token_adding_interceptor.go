@@ -39,7 +39,7 @@ func (i tokenAddingInterceptor) addCredentials(ctx context.Context,
 		slog.Error("error getting access token: %w. Request will be unauthenticated", err)
 	}
 
-	dpopTok, err := i.getDPOPToken(method, string(accessToken))
+	dpopTok, err := i.getDPoPToken(method, string(accessToken))
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
@@ -55,7 +55,7 @@ func (i tokenAddingInterceptor) addCredentials(ctx context.Context,
 	return err
 }
 
-func (i tokenAddingInterceptor) getDPOPToken(method, accessToken string) (string, error) {
+func (i tokenAddingInterceptor) getDPoPToken(method, accessToken string) (string, error) {
 	tok, err := i.tokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
 		jtiBytes := make([]byte, JTILength)
 		_, err := rand.Read(jtiBytes)

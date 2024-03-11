@@ -16,6 +16,170 @@
     "application/json"
   ],
   "paths": {
+    "/subject-condition-sets": {
+      "get": {
+        "operationId": "SubjectMappingService_ListSubjectConditionSets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingListSubjectConditionSetsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "post": {
+        "operationId": "SubjectMappingService_CreateSubjectConditionSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingCreateSubjectConditionSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/subjectmappingCreateSubjectConditionSetRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
+    "/subject-condition-sets/{id}": {
+      "get": {
+        "operationId": "SubjectMappingService_GetSubjectConditionSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingGetSubjectConditionSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "delete": {
+        "operationId": "SubjectMappingService_DeleteSubjectConditionSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingDeleteSubjectConditionSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "patch": {
+        "operationId": "SubjectMappingService_UpdateSubjectConditionSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingUpdateSubjectConditionSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "subjectSets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "$ref": "#/definitions/subjectmappingSubjectSet"
+                  },
+                  "title": "Optional\nIf provided, replaces entire existing structure of Subject Sets, Condition Groups, \u0026 Conditions"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
     "/subject-mappings": {
       "get": {
         "operationId": "SubjectMappingService_ListSubjectMappings",
@@ -55,11 +219,11 @@
         },
         "parameters": [
           {
-            "name": "subjectMapping",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/subjectmappingSubjectMappingCreateUpdate"
+              "$ref": "#/definitions/subjectmappingCreateSubjectMappingRequest"
             }
           }
         ],
@@ -89,6 +253,7 @@
         "parameters": [
           {
             "name": "subject",
+            "description": "Required",
             "in": "body",
             "required": true,
             "schema": {
@@ -158,7 +323,7 @@
           "SubjectMappingService"
         ]
       },
-      "post": {
+      "patch": {
         "operationId": "SubjectMappingService_UpdateSubjectMapping",
         "responses": {
           "200": {
@@ -177,16 +342,38 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "subjectMapping",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/subjectmappingSubjectMappingCreateUpdate"
+              "type": "object",
+              "properties": {
+                "subjectConditionSetId": {
+                  "type": "string",
+                  "title": "Optional\nReplaces the existing SubjectConditionSet id with a new one"
+                },
+                "actions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "$ref": "#/definitions/authorizationAction"
+                  },
+                  "title": "Replaces entire list of actions permitted by subjects"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
             }
           }
         ],
@@ -309,6 +496,16 @@
           "title": "optional labels"
         }
       }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "kasregistryKeyAccessServer": {
       "type": "object",
@@ -454,17 +651,17 @@
         },
         "operator": {
           "$ref": "#/definitions/subjectmappingSubjectMappingOperatorEnum",
-          "title": "the operator"
+          "title": "the evaluation operator of relation"
         },
         "subjectExternalValues": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "title": "list of comparison values for the subject_external_field"
+          "title": "list of comparison values for the subject_external_field, evaluated by the operator"
         }
       },
-      "description": "Example:  Match Subjects with field \"division\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_field\": \"division\",\n\"operator\": \"IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Match a subject by ensuring they are not part of the Fantastic Four:\n{\n\"subject_external_field\": \"superhero_name\",\n\"operator\": \"NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
+      "description": "Example:  Subjects with field \"division\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_field\": \"division\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four:\n{\n\"subject_external_field\": \"superhero_name\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
       "title": "*\nA Condition defines a rule of \u003csubject external field name\u003e \u003coperator\u003e \u003csubject external values\u003e"
     },
     "subjectmappingConditionBooleanTypeEnum": {
@@ -487,12 +684,57 @@
             "$ref": "#/definitions/subjectmappingCondition"
           }
         },
-        "booleanType": {
+        "booleanOperator": {
           "$ref": "#/definitions/subjectmappingConditionBooleanTypeEnum",
           "title": "the boolean evaluation type across the conditions"
         }
       },
-      "title": "A Group of conditions with either OR or AND evaluation across the contained conditions"
+      "title": "A collection of Conditions evaluated by the boolean_operator provided"
+    },
+    "subjectmappingCreateSubjectConditionSetRequest": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSetCreate"
+        }
+      }
+    },
+    "subjectmappingCreateSubjectConditionSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet"
+        }
+      }
+    },
+    "subjectmappingCreateSubjectMappingRequest": {
+      "type": "object",
+      "properties": {
+        "attributeValueId": {
+          "type": "string",
+          "title": "Required\nAttribute Value to be mapped to"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationAction"
+          },
+          "title": "The actions permitted by subjects in this mapping"
+        },
+        "existingSubjectConditionSetId": {
+          "type": "string",
+          "title": "Either of the following:\nReuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)"
+        },
+        "newSubjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSetCreate",
+          "title": "Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
+        }
+      }
     },
     "subjectmappingCreateSubjectMappingResponse": {
       "type": "object",
@@ -502,11 +744,37 @@
         }
       }
     },
+    "subjectmappingDeleteSubjectConditionSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet",
+          "title": "Only ID of deleted Subject Condition Set provided"
+        }
+      }
+    },
     "subjectmappingDeleteSubjectMappingResponse": {
       "type": "object",
       "properties": {
         "subjectMapping": {
-          "$ref": "#/definitions/subjectmappingSubjectMapping"
+          "$ref": "#/definitions/subjectmappingSubjectMapping",
+          "title": "Only ID of the updated Subject Mapping provided"
+        }
+      }
+    },
+    "subjectmappingGetSubjectConditionSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet"
+        },
+        "associatedSubjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingSubjectMapping"
+          },
+          "title": "contextualized Subject Mappings associated with this SubjectConditionSet"
         }
       }
     },
@@ -515,6 +783,18 @@
       "properties": {
         "subjectMapping": {
           "$ref": "#/definitions/subjectmappingSubjectMapping"
+        }
+      }
+    },
+    "subjectmappingListSubjectConditionSetsResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingSubjectConditionSet"
+          }
         }
       }
     },
@@ -551,26 +831,55 @@
       },
       "description": "A Representation of a subject as attribute-\u003evalue pairs.  This would mirror user attributes retrieved\nfrom an authoritative source such as an IDP (Identity Provider) or User Store.  Examples include such ADFS/LDAP, OKTA, etc."
     },
+    "subjectmappingSubjectConditionSet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "subjectSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingSubjectSet"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet\nare evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple\nSubject Mappings / Attribute Values and is an independent unit."
+    },
+    "subjectmappingSubjectConditionSetCreate": {
+      "type": "object",
+      "properties": {
+        "subjectSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/subjectmappingSubjectSet"
+          },
+          "title": "Required"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional\nCommon metadata"
+        }
+      }
+    },
     "subjectmappingSubjectMapping": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
         "attributeValue": {
           "$ref": "#/definitions/policyattributesValue",
-          "title": "Attribute Value to be mapped to; aka: \"The Entity Entitlement Attribute\""
+          "title": "the Attribute Value mapped to; aka: \"The Entity Entitlement Attribute\""
         },
-        "subjectSets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/subjectmappingSubjectSet"
-          },
-          "title": "the subjects included in this mapping"
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet",
+          "title": "the reusable SubjectConditionSet mapped to the given Attribute Value"
         },
         "actions": {
           "type": "array",
@@ -579,38 +888,13 @@
             "$ref": "#/definitions/authorizationAction"
           },
           "title": "The actions permitted by subjects in this mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
         }
       },
-      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_sets\": [{subject_set_1},{subject_set_2}]\n\"actions\": [\"STANDARD_ACTION_TRANSMIT\", \"STANDARD_ACTION_DECRYPT\"]\n}",
+      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\": {\"subject_sets\":[{subject_set_1},{subject_set_2}]...},\n\"actions\": [{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\": \"STANDARD_ACTION_TRANSMIT\"}]\n}",
       "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination"
-    },
-    "subjectmappingSubjectMappingCreateUpdate": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
-        },
-        "attributeValueId": {
-          "type": "string",
-          "title": "Attribute Value to be mapped to"
-        },
-        "subjectSets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/subjectmappingSubjectSet"
-          },
-          "title": "The subjects sets stored as a single marshaled JSON blob, meaning updates are complete replacements"
-        },
-        "actions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationAction"
-          },
-          "title": "The actions permitted by subjects in this mapping"
-        }
-      }
     },
     "subjectmappingSubjectMappingOperatorEnum": {
       "type": "string",
@@ -631,16 +915,26 @@
             "type": "object",
             "$ref": "#/definitions/subjectmappingConditionGroup"
           },
-          "title": "The conditions groups describing the matching rules for subjects in the set"
+          "title": "multiple Condition Groups are evaluated with AND logic"
         }
       },
-      "title": "A Set of subjects described by matching criteria via a list of condition groups.\nA Subject Set can be used by multiple Subject Mappings"
+      "title": "A collection of Condition Groups"
+    },
+    "subjectmappingUpdateSubjectConditionSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSet",
+          "title": "Only ID of updated Subject Condition Set provided"
+        }
+      }
     },
     "subjectmappingUpdateSubjectMappingResponse": {
       "type": "object",
       "properties": {
         "subjectMapping": {
-          "$ref": "#/definitions/subjectmappingSubjectMapping"
+          "$ref": "#/definitions/subjectmappingSubjectMapping",
+          "title": "Only ID of the updated Subject Mapping provided"
         }
       }
     }

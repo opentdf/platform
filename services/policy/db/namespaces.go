@@ -69,8 +69,8 @@ func hydrateNamespaceItems(rows pgx.Rows, opts namespaceSelectOptions) ([]*names
 }
 
 func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
-	fqnT := db.Tables.AttrFqn
+	t := Tables.Namespaces
+	fqnT := Tables.AttrFqn
 	fields := []string{
 		t.Field("id"),
 		t.Field("name"),
@@ -117,8 +117,8 @@ func (c PolicyDbClient) GetNamespace(ctx context.Context, id string) (*namespace
 }
 
 func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
-	fqnT := db.Tables.AttrFqn
+	t := Tables.Namespaces
+	fqnT := Tables.AttrFqn
 
 	fields := []string{
 		t.Field("id"),
@@ -161,6 +161,7 @@ func (c PolicyDbClient) ListNamespaces(ctx context.Context, state string) ([]*na
 		slog.Error("error listing namespaces", slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
+	defer rows.Close()
 
 	list, err := hydrateNamespaceItems(rows, opts)
 	if err != nil {
@@ -172,7 +173,7 @@ func (c PolicyDbClient) ListNamespaces(ctx context.Context, state string) ([]*na
 }
 
 func createNamespaceSql(name string, metadata []byte) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
+	t := Tables.Namespaces
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("name", "metadata").
@@ -182,7 +183,7 @@ func createNamespaceSql(name string, metadata []byte) (string, []interface{}, er
 }
 
 func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*namespaces.Namespace, error) {
-	metadataJson, _, err := db.MarshalCreateMetadata(r.Metadata)
+	metadataJson, m, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -201,11 +202,14 @@ func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 
 	return &namespaces.Namespace{
 		Id: id,
+		Name: r.Name,
+		Active: &wrapperspb.BoolValue{Value: true},
+		Metadata: m,
 	}, nil
 }
 
 func updateNamespaceSql(id string, metadata []byte) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
+	t := Tables.Namespaces
 	sb := db.NewStatementBuilder().Update(t.Name())
 
 	if metadata != nil {
@@ -254,7 +258,7 @@ func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *names
 }
 
 func deactivateNamespaceSql(id string) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
+	t := Tables.Namespaces
 	return db.NewStatementBuilder().
 		Update(t.Name()).
 		Set("active", false).
@@ -276,7 +280,7 @@ func (c PolicyDbClient) DeactivateNamespace(ctx context.Context, id string) (*na
 }
 
 func deleteNamespaceSql(id string) (string, []interface{}, error) {
-	t := db.Tables.Namespaces
+	t := Tables.Namespaces
 	// TODO: handle delete cascade, dangerous deletion via special rpc [https://github.com/opentdf/platform/issues/115]
 	return db.NewStatementBuilder().
 		Delete(t.Name()).

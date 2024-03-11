@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
+	"gotest.tools/v3/assert"
 
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
@@ -283,7 +284,7 @@ func TestSimpleTDF(t *testing.T) {
 	serverURL, closer, sdk := runKas()
 	defer closer()
 
-	metaDataStr := `{"displayName" : "openTDF go sdk"}`
+	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
 
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",
@@ -317,7 +318,7 @@ func TestSimpleTDF(t *testing.T) {
 
 		tdfObj, err := sdk.CreateTDF(fileWriter, bufReader,
 			WithKasInformation(kasURLs...),
-			WithMetaData(metaDataStr),
+			WithMetaData(string(metaData)),
 			WithDataAttributes(attributes...))
 		if err != nil {
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
@@ -352,9 +353,7 @@ func TestSimpleTDF(t *testing.T) {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
 
-		if metaDataStr != unencryptedMetaData {
-			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, unencryptedMetaData)
-		}
+		assert.DeepEqual(t, metaData, unencryptedMetaData)
 
 		dataAttributes, err := r.DataAttributes()
 		if err != nil {

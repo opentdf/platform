@@ -13,50 +13,27 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	TableAttributes                      = "attribute_definitions"
-	TableAttributeValues                 = "attribute_values"
-	TableNamespaces                      = "attribute_namespaces"
-	TableAttrFqn                         = "attribute_fqns"
-	TableKeyAccessServerRegistry         = "key_access_servers"
-	TableAttributeKeyAccessGrants        = "attribute_definition_key_access_grants"
-	TableAttributeValueKeyAccessGrants   = "attribute_value_key_access_grants"
-	TableResourceMappings                = "resource_mappings"
-	TableSubjectMappings                 = "subject_mappings"
-	TableSubjectMappingConditionSetPivot = "subject_mapping_condition_set_pivot"
-	TableSubjectConditionSet             = "subject_condition_set"
-)
-
-var Tables struct {
-	Attributes                      Table
-	AttributeValues                 Table
-	Namespaces                      Table
-	AttrFqn                         Table
-	KeyAccessServerRegistry         Table
-	AttributeKeyAccessGrants        Table
-	AttributeValueKeyAccessGrants   Table
-	ResourceMappings                Table
-	SubjectMappings                 Table
-	SubjectMappingConditionSetPivot Table
-	SubjectConditionSet             Table
-}
-
 type Table struct {
 	name       string
 	schema     string
 	withSchema bool
 }
 
-func NewTable(name string, schema string) Table {
-	return Table{
-		name:       name,
-		schema:     schema,
-		withSchema: true,
+func NewTableWithSchema(schema string) func(name string) Table {
+	s := schema
+	return func(name string) Table {
+		return Table{
+			name:       name,
+			schema:     s,
+			withSchema: true,
+		}
 	}
 }
 
+var NewTable func(name string) Table
+
 func (t Table) WithoutSchema() Table {
-	nT := NewTable(t.name, t.schema)
+	nT := NewTableWithSchema(t.schema)(t.name)
 	nT.withSchema = false
 	return nT
 }
@@ -105,17 +82,7 @@ func NewClient(config Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
 
-	Tables.Attributes = NewTable(TableAttributes, config.Schema)
-	Tables.AttributeValues = NewTable(TableAttributeValues, config.Schema)
-	Tables.Namespaces = NewTable(TableNamespaces, config.Schema)
-	Tables.AttrFqn = NewTable(TableAttrFqn, config.Schema)
-	Tables.KeyAccessServerRegistry = NewTable(TableKeyAccessServerRegistry, config.Schema)
-	Tables.AttributeKeyAccessGrants = NewTable(TableAttributeKeyAccessGrants, config.Schema)
-	Tables.AttributeValueKeyAccessGrants = NewTable(TableAttributeValueKeyAccessGrants, config.Schema)
-	Tables.ResourceMappings = NewTable(TableResourceMappings, config.Schema)
-	Tables.SubjectMappings = NewTable(TableSubjectMappings, config.Schema)
-	Tables.SubjectMappingConditionSetPivot = NewTable(TableSubjectMappingConditionSetPivot, config.Schema)
-	Tables.SubjectConditionSet = NewTable(TableSubjectConditionSet, config.Schema)
+	NewTable = NewTableWithSchema(config.Schema)
 
 	return &Client{
 		Pgx:    pool,

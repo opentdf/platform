@@ -1,4 +1,4 @@
-name: "Checks"
+name: 'Checks'
 
 on:
   pull_request:
@@ -34,14 +34,14 @@ jobs:
     strategy:
       matrix:
         directory:
-          - "."
+          - '.'
           - sdk
           - examples
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: '1.21'
           cache-dependency-path: |
             ./go.sum
             examples/go.sum
@@ -89,7 +89,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: '1.21'
           cache-dependency-path: |
             ./go.sum
             examples/go.sum
@@ -133,10 +133,10 @@ jobs:
         continue-on-error: true
         with:
           input: services
-          against: "https://github.com/opentdf/platform.git#branch=main,subdir=services"
+          against: 'https://github.com/opentdf/platform.git#branch=main,subdir=services'
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: '1.21'
           cache-dependency-path: |
             ./go.sum
             protocol/go/go.sum
@@ -180,10 +180,19 @@ jobs:
     if: always()
     steps:
       - if: contains(needs.*.result, 'failure')
-      # TODO: see which job failed
-        run: | 
-          echo "One or more jobs failed"
-          exit 1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Looks like the CI pipeline failed. Check the run logs for more information.'
+            })
+
+            console.log('CI pipeline failed')
+            process.exit(1)
 
   license:
     name: license check
@@ -192,7 +201,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: '1.21'
           cache: false
       - name: install go-licenses
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e

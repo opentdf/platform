@@ -30,35 +30,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NamespaceServiceClient interface {
-	// Request:
-	// grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace
-	// Response:
-	// {
-	// "namespace": {
-	// "id": "namespace-id",
-	// "name": "namespace-name",
-	// "active": true
-	// }
-	// }
 	GetNamespace(ctx context.Context, in *GetNamespaceRequest, opts ...grpc.CallOption) (*GetNamespaceResponse, error)
-	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-	// Request:
-	// grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
-	// Response:
-	// {
-	// "namespaces": [
-	// {
-	// "id": "namespace-id",
-	// "name": "namespace-name",
-	// "active": true
-	// }
-	// ]
-	// }
 	ListNamespaces(ctx context.Context, in *ListNamespacesRequest, opts ...grpc.CallOption) (*ListNamespacesResponse, error)
-	// Request:
-	// grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
-	// Response:
-	// { "namespace": { "id": "namespace-id", "active": true } }
 	CreateNamespace(ctx context.Context, in *CreateNamespaceRequest, opts ...grpc.CallOption) (*CreateNamespaceResponse, error)
 	UpdateNamespace(ctx context.Context, in *UpdateNamespaceRequest, opts ...grpc.CallOption) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(ctx context.Context, in *DeactivateNamespaceRequest, opts ...grpc.CallOption) (*DeactivateNamespaceResponse, error)
@@ -121,35 +94,8 @@ func (c *namespaceServiceClient) DeactivateNamespace(ctx context.Context, in *De
 // All implementations must embed UnimplementedNamespaceServiceServer
 // for forward compatibility
 type NamespaceServiceServer interface {
-	// Request:
-	// grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace
-	// Response:
-	// {
-	// "namespace": {
-	// "id": "namespace-id",
-	// "name": "namespace-name",
-	// "active": true
-	// }
-	// }
 	GetNamespace(context.Context, *GetNamespaceRequest) (*GetNamespaceResponse, error)
-	// NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-	// Request:
-	// grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
-	// Response:
-	// {
-	// "namespaces": [
-	// {
-	// "id": "namespace-id",
-	// "name": "namespace-name",
-	// "active": true
-	// }
-	// ]
-	// }
 	ListNamespaces(context.Context, *ListNamespacesRequest) (*ListNamespacesResponse, error)
-	// Request:
-	// grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
-	// Response:
-	// { "namespace": { "id": "namespace-id", "active": true } }
 	CreateNamespace(context.Context, *CreateNamespaceRequest) (*CreateNamespaceResponse, error)
 	UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(context.Context, *DeactivateNamespaceRequest) (*DeactivateNamespaceResponse, error)

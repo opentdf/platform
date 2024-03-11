@@ -9,11 +9,19 @@ public interface UpdateNamespaceRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The id.
    */
   java.lang.String getId();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The bytes for id.
    */
@@ -21,14 +29,40 @@ public interface UpdateNamespaceRequestOrBuilder extends
       getIdBytes();
 
   /**
-   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-   * @return The name.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
    */
-  java.lang.String getName();
+  boolean hasMetadata();
   /**
-   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-   * @return The bytes for name.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
    */
-  com.google.protobuf.ByteString
-      getNameBytes();
+  io.opentdf.platform.common.MetadataMutable getMetadata();
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
+
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
+   */
+  int getMetadataUpdateBehaviorValue();
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
+   */
+  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior();
 }

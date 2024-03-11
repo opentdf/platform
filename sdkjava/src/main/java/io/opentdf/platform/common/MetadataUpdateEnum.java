@@ -5,49 +5,61 @@
 package io.opentdf.platform.common;
 
 /**
- * <pre>
- * buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
- * </pre>
- *
- * Protobuf enum {@code common.ActiveStateEnum}
+ * Protobuf enum {@code common.MetadataUpdateEnum}
  */
-public enum ActiveStateEnum
+public enum MetadataUpdateEnum
     implements com.google.protobuf.ProtocolMessageEnum {
   /**
-   * <code>ACTIVE_STATE_ENUM_UNSPECIFIED = 0;</code>
+   * <pre>
+   * unspecified update type
+   * </pre>
+   *
+   * <code>METADATA_UPDATE_ENUM_UNSPECIFIED = 0;</code>
    */
-  ACTIVE_STATE_ENUM_UNSPECIFIED(0),
+  METADATA_UPDATE_ENUM_UNSPECIFIED(0),
   /**
-   * <code>ACTIVE_STATE_ENUM_ACTIVE = 1;</code>
+   * <pre>
+   * only update the fields that are provided
+   * </pre>
+   *
+   * <code>METADATA_UPDATE_ENUM_EXTEND = 1;</code>
    */
-  ACTIVE_STATE_ENUM_ACTIVE(1),
+  METADATA_UPDATE_ENUM_EXTEND(1),
   /**
-   * <code>ACTIVE_STATE_ENUM_INACTIVE = 2;</code>
+   * <pre>
+   * replace the entire metadata with the provided metadata
+   * </pre>
+   *
+   * <code>METADATA_UPDATE_ENUM_REPLACE = 2;</code>
    */
-  ACTIVE_STATE_ENUM_INACTIVE(2),
-  /**
-   * <code>ACTIVE_STATE_ENUM_ANY = 3;</code>
-   */
-  ACTIVE_STATE_ENUM_ANY(3),
+  METADATA_UPDATE_ENUM_REPLACE(2),
   UNRECOGNIZED(-1),
   ;
 
   /**
-   * <code>ACTIVE_STATE_ENUM_UNSPECIFIED = 0;</code>
+   * <pre>
+   * unspecified update type
+   * </pre>
+   *
+   * <code>METADATA_UPDATE_ENUM_UNSPECIFIED = 0;</code>
    */
-  public static final int ACTIVE_STATE_ENUM_UNSPECIFIED_VALUE = 0;
+  public static final int METADATA_UPDATE_ENUM_UNSPECIFIED_VALUE = 0;
   /**
-   * <code>ACTIVE_STATE_ENUM_ACTIVE = 1;</code>
+   * <pre>
+   * only update the fields that are provided
+   * </pre>
+   *
+   * <code>METADATA_UPDATE_ENUM_EXTEND = 1;</code>
    */
-  public static final int ACTIVE_STATE_ENUM_ACTIVE_VALUE = 1;
+  public static final int METADATA_UPDATE_ENUM_EXTEND_VALUE = 1;
   /**
-   * <code>ACTIVE_STATE_ENUM_INACTIVE = 2;</code>
+   * <pre>
+   * replace the entire metadata with the provided metadata
+   * </pre>
+   *
+   * <code>METADATA_UPDATE_ENUM_REPLACE = 2;</code>
    */
-  public static final int ACTIVE_STATE_ENUM_INACTIVE_VALUE = 2;
-  /**
-   * <code>ACTIVE_STATE_ENUM_ANY = 3;</code>
-   */
-  public static final int ACTIVE_STATE_ENUM_ANY_VALUE = 3;
+  public static final int METADATA_UPDATE_ENUM_REPLACE_VALUE = 2;
 
 
   public final int getNumber() {
@@ -64,7 +76,7 @@ public enum ActiveStateEnum
    * @deprecated Use {@link #forNumber(int)} instead.
    */
   @java.lang.Deprecated
-  public static ActiveStateEnum valueOf(int value) {
+  public static MetadataUpdateEnum valueOf(int value) {
     return forNumber(value);
   }
 
@@ -72,25 +84,24 @@ public enum ActiveStateEnum
    * @param value The numeric wire value of the corresponding enum entry.
    * @return The enum associated with the given numeric wire value.
    */
-  public static ActiveStateEnum forNumber(int value) {
+  public static MetadataUpdateEnum forNumber(int value) {
     switch (value) {
-      case 0: return ACTIVE_STATE_ENUM_UNSPECIFIED;
-      case 1: return ACTIVE_STATE_ENUM_ACTIVE;
-      case 2: return ACTIVE_STATE_ENUM_INACTIVE;
-      case 3: return ACTIVE_STATE_ENUM_ANY;
+      case 0: return METADATA_UPDATE_ENUM_UNSPECIFIED;
+      case 1: return METADATA_UPDATE_ENUM_EXTEND;
+      case 2: return METADATA_UPDATE_ENUM_REPLACE;
       default: return null;
     }
   }
 
-  public static com.google.protobuf.Internal.EnumLiteMap<ActiveStateEnum>
+  public static com.google.protobuf.Internal.EnumLiteMap<MetadataUpdateEnum>
       internalGetValueMap() {
     return internalValueMap;
   }
   private static final com.google.protobuf.Internal.EnumLiteMap<
-      ActiveStateEnum> internalValueMap =
-        new com.google.protobuf.Internal.EnumLiteMap<ActiveStateEnum>() {
-          public ActiveStateEnum findValueByNumber(int number) {
-            return ActiveStateEnum.forNumber(number);
+      MetadataUpdateEnum> internalValueMap =
+        new com.google.protobuf.Internal.EnumLiteMap<MetadataUpdateEnum>() {
+          public MetadataUpdateEnum findValueByNumber(int number) {
+            return MetadataUpdateEnum.forNumber(number);
           }
         };
 
@@ -108,12 +119,12 @@ public enum ActiveStateEnum
   }
   public static final com.google.protobuf.Descriptors.EnumDescriptor
       getDescriptor() {
-    return io.opentdf.platform.common.CommonProto.getDescriptor().getEnumTypes().get(1);
+    return io.opentdf.platform.common.CommonProto.getDescriptor().getEnumTypes().get(0);
   }
 
-  private static final ActiveStateEnum[] VALUES = values();
+  private static final MetadataUpdateEnum[] VALUES = values();
 
-  public static ActiveStateEnum valueOf(
+  public static MetadataUpdateEnum valueOf(
       com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
     if (desc.getType() != getDescriptor()) {
       throw new java.lang.IllegalArgumentException(
@@ -127,10 +138,10 @@ public enum ActiveStateEnum
 
   private final int value;
 
-  private ActiveStateEnum(int value) {
+  private MetadataUpdateEnum(int value) {
     this.value = value;
   }
 
-  // @@protoc_insertion_point(enum_scope:common.ActiveStateEnum)
+  // @@protoc_insertion_point(enum_scope:common.MetadataUpdateEnum)
 }
 

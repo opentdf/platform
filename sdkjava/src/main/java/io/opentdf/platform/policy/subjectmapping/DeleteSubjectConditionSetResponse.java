@@ -17,7 +17,6 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private DeleteSubjectConditionSetResponse() {
-    id_ = "";
   }
 
   @java.lang.Override
@@ -40,43 +39,43 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse.class, io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse.Builder.class);
   }
 
-  public static final int ID_FIELD_NUMBER = 1;
-  @SuppressWarnings("serial")
-  private volatile java.lang.Object id_ = "";
+  private int bitField0_;
+  public static final int SUBJECT_CONDITION_SET_FIELD_NUMBER = 1;
+  private io.opentdf.platform.policy.subjectmapping.SubjectConditionSet subjectConditionSet_;
   /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The id.
+   * <pre>
+   * Only ID of deleted Subject Condition Set provided
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * @return Whether the subjectConditionSet field is set.
    */
   @java.lang.Override
-  public java.lang.String getId() {
-    java.lang.Object ref = id_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      id_ = s;
-      return s;
-    }
+  public boolean hasSubjectConditionSet() {
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The bytes for id.
+   * <pre>
+   * Only ID of deleted Subject Condition Set provided
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * @return The subjectConditionSet.
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString
-      getIdBytes() {
-    java.lang.Object ref = id_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      id_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet() {
+    return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
+  }
+  /**
+   * <pre>
+   * Only ID of deleted Subject Condition Set provided
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder() {
+    return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -93,8 +92,8 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
+    if (((bitField0_ & 0x00000001) != 0)) {
+      output.writeMessage(1, getSubjectConditionSet());
     }
     getUnknownFields().writeTo(output);
   }
@@ -105,8 +104,9 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
+    if (((bitField0_ & 0x00000001) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(1, getSubjectConditionSet());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -123,8 +123,11 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse other = (io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse) obj;
 
-    if (!getId()
-        .equals(other.getId())) return false;
+    if (hasSubjectConditionSet() != other.hasSubjectConditionSet()) return false;
+    if (hasSubjectConditionSet()) {
+      if (!getSubjectConditionSet()
+          .equals(other.getSubjectConditionSet())) return false;
+    }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -136,8 +139,10 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    hash = (37 * hash) + ID_FIELD_NUMBER;
-    hash = (53 * hash) + getId().hashCode();
+    if (hasSubjectConditionSet()) {
+      hash = (37 * hash) + SUBJECT_CONDITION_SET_FIELD_NUMBER;
+      hash = (53 * hash) + getSubjectConditionSet().hashCode();
+    }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -257,19 +262,29 @@ private static final long serialVersionUID = 0L;
 
     // Construct using io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse.newBuilder()
     private Builder() {
-
+      maybeForceBuilderInitialization();
     }
 
     private Builder(
         com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
       super(parent);
-
+      maybeForceBuilderInitialization();
+    }
+    private void maybeForceBuilderInitialization() {
+      if (com.google.protobuf.GeneratedMessageV3
+              .alwaysUseFieldBuilders) {
+        getSubjectConditionSetFieldBuilder();
+      }
     }
     @java.lang.Override
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      id_ = "";
+      subjectConditionSet_ = null;
+      if (subjectConditionSetBuilder_ != null) {
+        subjectConditionSetBuilder_.dispose();
+        subjectConditionSetBuilder_ = null;
+      }
       return this;
     }
 
@@ -303,9 +318,14 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse result) {
       int from_bitField0_ = bitField0_;
+      int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.id_ = id_;
+        result.subjectConditionSet_ = subjectConditionSetBuilder_ == null
+            ? subjectConditionSet_
+            : subjectConditionSetBuilder_.build();
+        to_bitField0_ |= 0x00000001;
       }
+      result.bitField0_ |= to_bitField0_;
     }
 
     @java.lang.Override
@@ -352,10 +372,8 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse other) {
       if (other == io.opentdf.platform.policy.subjectmapping.DeleteSubjectConditionSetResponse.getDefaultInstance()) return this;
-      if (!other.getId().isEmpty()) {
-        id_ = other.id_;
-        bitField0_ |= 0x00000001;
-        onChanged();
+      if (other.hasSubjectConditionSet()) {
+        mergeSubjectConditionSet(other.getSubjectConditionSet());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -384,7 +402,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              id_ = input.readStringRequireUtf8();
+              input.readMessage(
+                  getSubjectConditionSetFieldBuilder().getBuilder(),
+                  extensionRegistry);
               bitField0_ |= 0x00000001;
               break;
             } // case 10
@@ -405,76 +425,161 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.lang.Object id_ = "";
+    private io.opentdf.platform.policy.subjectmapping.SubjectConditionSet subjectConditionSet_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> subjectConditionSetBuilder_;
     /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return The id.
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * @return Whether the subjectConditionSet field is set.
      */
-    public java.lang.String getId() {
-      java.lang.Object ref = id_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        id_ = s;
-        return s;
+    public boolean hasSubjectConditionSet() {
+      return ((bitField0_ & 0x00000001) != 0);
+    }
+    /**
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * @return The subjectConditionSet.
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet() {
+      if (subjectConditionSetBuilder_ == null) {
+        return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
       } else {
-        return (java.lang.String) ref;
+        return subjectConditionSetBuilder_.getMessage();
       }
     }
     /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return The bytes for id.
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
-    public com.google.protobuf.ByteString
-        getIdBytes() {
-      java.lang.Object ref = id_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        id_ = b;
-        return b;
+    public Builder setSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+      if (subjectConditionSetBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        subjectConditionSet_ = value;
       } else {
-        return (com.google.protobuf.ByteString) ref;
+        subjectConditionSetBuilder_.setMessage(value);
       }
-    }
-    /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @param value The id to set.
-     * @return This builder for chaining.
-     */
-    public Builder setId(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      id_ = value;
       bitField0_ |= 0x00000001;
       onChanged();
       return this;
     }
     /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @return This builder for chaining.
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
-    public Builder clearId() {
-      id_ = getDefaultInstance().getId();
+    public Builder setSubjectConditionSet(
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder builderForValue) {
+      if (subjectConditionSetBuilder_ == null) {
+        subjectConditionSet_ = builderForValue.build();
+      } else {
+        subjectConditionSetBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     */
+    public Builder mergeSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+      if (subjectConditionSetBuilder_ == null) {
+        if (((bitField0_ & 0x00000001) != 0) &&
+          subjectConditionSet_ != null &&
+          subjectConditionSet_ != io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance()) {
+          getSubjectConditionSetBuilder().mergeFrom(value);
+        } else {
+          subjectConditionSet_ = value;
+        }
+      } else {
+        subjectConditionSetBuilder_.mergeFrom(value);
+      }
+      if (subjectConditionSet_ != null) {
+        bitField0_ |= 0x00000001;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     */
+    public Builder clearSubjectConditionSet() {
       bitField0_ = (bitField0_ & ~0x00000001);
+      subjectConditionSet_ = null;
+      if (subjectConditionSetBuilder_ != null) {
+        subjectConditionSetBuilder_.dispose();
+        subjectConditionSetBuilder_ = null;
+      }
       onChanged();
       return this;
     }
     /**
-     * <code>string id = 1 [json_name = "id"];</code>
-     * @param value The bytes for id to set.
-     * @return This builder for chaining.
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
-    public Builder setIdBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      id_ = value;
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder getSubjectConditionSetBuilder() {
       bitField0_ |= 0x00000001;
       onChanged();
-      return this;
+      return getSubjectConditionSetFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder() {
+      if (subjectConditionSetBuilder_ != null) {
+        return subjectConditionSetBuilder_.getMessageOrBuilder();
+      } else {
+        return subjectConditionSet_ == null ?
+            io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
+      }
+    }
+    /**
+     * <pre>
+     * Only ID of deleted Subject Condition Set provided
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+        getSubjectConditionSetFieldBuilder() {
+      if (subjectConditionSetBuilder_ == null) {
+        subjectConditionSetBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder>(
+                getSubjectConditionSet(),
+                getParentForChildren(),
+                isClean());
+        subjectConditionSet_ = null;
+      }
+      return subjectConditionSetBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

@@ -9,11 +9,19 @@ public interface UpdateAttributeRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The id.
    */
   java.lang.String getId();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The bytes for id.
    */
@@ -21,17 +29,40 @@ public interface UpdateAttributeRequestOrBuilder extends
       getIdBytes();
 
   /**
-   * <code>.policy.attributes.AttributeCreateUpdate attribute = 2 [json_name = "attribute", (.buf.validate.field) = { ... }</code>
-   * @return Whether the attribute field is set.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
    */
-  boolean hasAttribute();
+  boolean hasMetadata();
   /**
-   * <code>.policy.attributes.AttributeCreateUpdate attribute = 2 [json_name = "attribute", (.buf.validate.field) = { ... }</code>
-   * @return The attribute.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
    */
-  io.opentdf.platform.policy.attributes.AttributeCreateUpdate getAttribute();
+  io.opentdf.platform.common.MetadataMutable getMetadata();
   /**
-   * <code>.policy.attributes.AttributeCreateUpdate attribute = 2 [json_name = "attribute", (.buf.validate.field) = { ... }</code>
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
    */
-  io.opentdf.platform.policy.attributes.AttributeCreateUpdateOrBuilder getAttributeOrBuilder();
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
+
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
+   */
+  int getMetadataUpdateBehaviorValue();
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
+   */
+  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior();
 }

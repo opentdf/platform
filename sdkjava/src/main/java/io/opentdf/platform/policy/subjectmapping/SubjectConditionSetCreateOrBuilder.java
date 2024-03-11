@@ -9,61 +9,76 @@ public interface SubjectConditionSetCreateOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
-   */
-  boolean hasMetadata();
-  /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   * @return The metadata.
-   */
-  io.opentdf.platform.common.MetadataMutable getMetadata();
-  /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   */
-  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
-
-  /**
    * <pre>
-   * multiple Subject Sets are evaluated with AND logic
+   * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
       getSubjectSetsList();
   /**
    * <pre>
-   * multiple Subject Sets are evaluated with AND logic
+   * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
   /**
    * <pre>
-   * multiple Subject Sets are evaluated with AND logic
+   * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   int getSubjectSetsCount();
   /**
    * <pre>
-   * multiple Subject Sets are evaluated with AND logic
+   * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
       getSubjectSetsOrBuilderList();
   /**
    * <pre>
-   * multiple Subject Sets are evaluated with AND logic
+   * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
       int index);
+
+  /**
+   * <pre>
+   * Optional
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Optional
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.MetadataMutable getMetadata();
+  /**
+   * <pre>
+   * Optional
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
 }

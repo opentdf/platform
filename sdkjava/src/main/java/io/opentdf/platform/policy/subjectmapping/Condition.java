@@ -9,17 +9,17 @@ package io.opentdf.platform.policy.subjectmapping;
  **
  *A Condition defines a rule of &lt;subject external field name&gt; &lt;operator&gt; &lt;subject external values&gt;
  *
- *Example:  Match Subjects with field "division" and a value of "Accounting" or "Marketing":
+ *Example:  Subjects with field "division" and a value of "Accounting" or "Marketing":
  *{
  *"subject_external_field": "division",
- *"operator": "IN",
+ *"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
  *"subject_external_values" : ["Accounting", "Marketing"]
  *}
  *
- *Example: Match a subject by ensuring they are not part of the Fantastic Four:
+ *Example: Subjects that are not part of the Fantastic Four:
  *{
  *"subject_external_field": "superhero_name",
- *"operator": "NOT_IN",
+ *"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
  *"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
  *}
  * </pre>
@@ -376,17 +376,17 @@ private static final long serialVersionUID = 0L;
    **
    *A Condition defines a rule of &lt;subject external field name&gt; &lt;operator&gt; &lt;subject external values&gt;
    *
-   *Example:  Match Subjects with field "division" and a value of "Accounting" or "Marketing":
+   *Example:  Subjects with field "division" and a value of "Accounting" or "Marketing":
    *{
    *"subject_external_field": "division",
-   *"operator": "IN",
+   *"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
    *"subject_external_values" : ["Accounting", "Marketing"]
    *}
    *
-   *Example: Match a subject by ensuring they are not part of the Fantastic Four:
+   *Example: Subjects that are not part of the Fantastic Four:
    *{
    *"subject_external_field": "superhero_name",
-   *"operator": "NOT_IN",
+   *"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
    *"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
    *}
    * </pre>

@@ -9,14 +9,17 @@ public interface CreateSubjectConditionSetResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The id.
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * @return Whether the subjectConditionSet field is set.
    */
-  java.lang.String getId();
+  boolean hasSubjectConditionSet();
   /**
-   * <code>string id = 1 [json_name = "id"];</code>
-   * @return The bytes for id.
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * @return The subjectConditionSet.
    */
-  com.google.protobuf.ByteString
-      getIdBytes();
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet();
+  /**
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   */
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder();
 }

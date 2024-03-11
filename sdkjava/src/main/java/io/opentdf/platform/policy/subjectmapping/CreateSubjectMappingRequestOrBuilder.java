@@ -9,35 +9,22 @@ public interface CreateSubjectMappingRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
-   */
-  boolean hasMetadata();
-  /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   * @return The metadata.
-   */
-  io.opentdf.platform.common.MetadataMutable getMetadata();
-  /**
-   * <code>.common.MetadataMutable metadata = 1 [json_name = "metadata"];</code>
-   */
-  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
-
-  /**
    * <pre>
+   * Required
    * Attribute Value to be mapped to
    * </pre>
    *
-   * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
    * @return The attributeValueId.
    */
   java.lang.String getAttributeValueId();
   /**
    * <pre>
+   * Required
    * Attribute Value to be mapped to
    * </pre>
    *
-   * <code>string attribute_value_id = 2 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
    * @return The bytes for attributeValueId.
    */
   com.google.protobuf.ByteString
@@ -45,6 +32,51 @@ public interface CreateSubjectMappingRequestOrBuilder extends
 
   /**
    * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  java.util.List<io.opentdf.platform.authorization.Action> 
+      getActionsList();
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  io.opentdf.platform.authorization.Action getActions(int index);
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  int getActionsCount();
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+      getActionsOrBuilderList();
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+      int index);
+
+  /**
+   * <pre>
+   * Either of the following:
    * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
    * </pre>
    *
@@ -54,6 +86,7 @@ public interface CreateSubjectMappingRequestOrBuilder extends
   java.lang.String getExistingSubjectConditionSetId();
   /**
    * <pre>
+   * Either of the following:
    * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
    * </pre>
    *
@@ -92,45 +125,28 @@ public interface CreateSubjectMappingRequestOrBuilder extends
 
   /**
    * <pre>
-   * The actions permitted by subjects in this mapping
+   * Optional
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
    */
-  java.util.List<io.opentdf.platform.authorization.Action> 
-      getActionsList();
+  boolean hasMetadata();
   /**
    * <pre>
-   * The actions permitted by subjects in this mapping
+   * Optional
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
    */
-  io.opentdf.platform.authorization.Action getActions(int index);
+  io.opentdf.platform.common.MetadataMutable getMetadata();
   /**
    * <pre>
-   * The actions permitted by subjects in this mapping
+   * Optional
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
    */
-  int getActionsCount();
-  /**
-   * <pre>
-   * The actions permitted by subjects in this mapping
-   * </pre>
-   *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-   */
-  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
-      getActionsOrBuilderList();
-  /**
-   * <pre>
-   * The actions permitted by subjects in this mapping
-   * </pre>
-   *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions", (.buf.validate.field) = { ... }</code>
-   */
-  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
-      int index);
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
 }

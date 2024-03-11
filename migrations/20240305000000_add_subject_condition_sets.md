@@ -66,6 +66,8 @@ erDiagram
     Namespace {
         uuid        id   PK
         varchar     name UK
+        timestamp   created_at
+        timestamp   updated_at
         bool        active
     }
 
@@ -75,6 +77,8 @@ erDiagram
         varchar      name
         enum         rule
         jsonb        metadata
+        timestamp    created_at
+        timestamp    updated_at
         compIdx      comp_key     UK "ns_id + name"
         bool         active
     }
@@ -90,6 +94,8 @@ erDiagram
         varchar      value
         uuid[]       members                 FK "Optional grouping of values"
         jsonb        metadata
+        timestamp    created_at
+        timestamp    updated_at
         compIdx      comp_key                UK "ns_id + ad_id + value"
         bool         active
     }
@@ -104,6 +110,8 @@ erDiagram
         uuid         attribute_value_id FK
         varchar[]    terms
         jsonb        metadata
+        timestamp    created_at
+        timestamp    updated_at
     }
 
     SubjectMapping {
@@ -112,12 +120,16 @@ erDiagram
         uuid[]         subject_condition_set_id    FK "subject condition sets are reusable"
         jsonb          actions
         jsonb          metadata
+        timestamp      created_at
+        timestamp      updated_at
     }
 
     SubjectConditionSet {
         uuid            id                              PK
-        jsonb           metadata
         jsonb           condition                "marshaled proto SubjectSets -> ConditionGroups -> Conditions"
+        jsonb           metadata
+        timestamp       created_at
+        timestamp       updated_at
     }
 
     SubjectMapping }|--|| AttributeValue: has

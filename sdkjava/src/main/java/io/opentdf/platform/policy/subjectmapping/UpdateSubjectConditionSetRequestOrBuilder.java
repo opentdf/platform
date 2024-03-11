@@ -9,11 +9,19 @@ public interface UpdateSubjectConditionSetRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The id.
    */
   java.lang.String getId();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The bytes for id.
    */
@@ -21,61 +29,89 @@ public interface UpdateSubjectConditionSetRequestOrBuilder extends
       getIdBytes();
 
   /**
-   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
-   * @return Whether the updateMetadata field is set.
+   * <pre>
+   * Optional
+   * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
-  boolean hasUpdateMetadata();
+  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
+      getSubjectSetsList();
   /**
-   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
-   * @return The updateMetadata.
+   * <pre>
+   * Optional
+   * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
-  io.opentdf.platform.common.MetadataMutable getUpdateMetadata();
+  io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
   /**
-   * <code>.common.MetadataMutable update_metadata = 2 [json_name = "updateMetadata"];</code>
+   * <pre>
+   * Optional
+   * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
-  io.opentdf.platform.common.MetadataMutableOrBuilder getUpdateMetadataOrBuilder();
+  int getSubjectSetsCount();
+  /**
+   * <pre>
+   * Optional
+   * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
+   */
+  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+      getSubjectSetsOrBuilderList();
+  /**
+   * <pre>
+   * Optional
+   * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
+   * </pre>
+   *
+   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
+   */
+  io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+      int index);
 
   /**
    * <pre>
-   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
+   * Common metadata
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
-      getUpdateSubjectSetsList();
+  boolean hasMetadata();
   /**
    * <pre>
-   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
+   * Common metadata
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSet getUpdateSubjectSets(int index);
+  io.opentdf.platform.common.MetadataMutable getMetadata();
   /**
    * <pre>
-   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
+   * Common metadata
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
    */
-  int getUpdateSubjectSetsCount();
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
+
   /**
-   * <pre>
-   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
-   * </pre>
-   *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-      getUpdateSubjectSetsOrBuilderList();
+  int getMetadataUpdateBehaviorValue();
   /**
-   * <pre>
-   * if provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
-   * </pre>
-   *
-   * <code>repeated .policy.subjectmapping.SubjectSet update_subject_sets = 3 [json_name = "updateSubjectSets"];</code>
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getUpdateSubjectSetsOrBuilder(
-      int index);
+  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior();
 }

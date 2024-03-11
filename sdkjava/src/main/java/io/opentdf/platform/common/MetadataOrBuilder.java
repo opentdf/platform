@@ -115,24 +115,4 @@ java.lang.String defaultValue);
    */
   java.lang.String getLabelsOrThrow(
       java.lang.String key);
-
-  /**
-   * <pre>
-   * optional long description
-   * </pre>
-   *
-   * <code>string description = 4 [json_name = "description"];</code>
-   * @return The description.
-   */
-  java.lang.String getDescription();
-  /**
-   * <pre>
-   * optional long description
-   * </pre>
-   *
-   * <code>string description = 4 [json_name = "description"];</code>
-   * @return The bytes for description.
-   */
-  com.google.protobuf.ByteString
-      getDescriptionBytes();
 }

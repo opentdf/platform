@@ -3,9 +3,16 @@
 
 CREATE TABLE IF NOT EXISTS subject_condition_set (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    condition JSONB NOT NULL,
     metadata JSONB,
-    condition JSONB NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TRIGGER subject_condition_set_updated_at
+  BEFORE UPDATE ON subject_condition_set
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
 
 ALTER TABLE IF EXISTS subject_mappings ADD COLUMN subject_condition_set_id UUID, ADD COLUMN actions JSONB;
 
@@ -107,6 +114,7 @@ WHERE subject_mappings.subject_condition_set_id = subject_mappings_migration_dat
 
 ALTER TABLE IF EXISTS subject_mappings DROP COLUMN subject_condition_set_id, DROP COLUMN actions;
 
+DROP TRIGGER subject_condition_set_updated_at;
 DROP TABLE subject_condition_set;
 CREATE TYPE subject_mappings_operator AS ENUM ('UNSPECIFIED', 'IN', 'NOT_IN');
 

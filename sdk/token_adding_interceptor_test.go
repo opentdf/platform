@@ -25,75 +25,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-type FakeAccessServiceServer struct {
-	accessToken []string
-	dpopToken   []string
-	kas.UnimplementedAccessServiceServer
-}
-
-func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		f.accessToken = md.Get("authorization")
-		f.dpopToken = md.Get("dpop")
-	}
-
-	return &kas.InfoResponse{}, nil
-}
-func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
-	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
-}
-func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
-	return &wrapperspb.StringValue{}, nil
-}
-func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
-	return &kas.RewrapResponse{}, nil
-}
-
-type FakeTokenSource struct {
-	key         jwk.Key
-	accessToken string
-}
-
-func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
-	return AccessToken(fts.accessToken), nil
-}
-func (*FakeTokenSource) AsymDecryption() crypto.AsymDecryption {
-	return crypto.AsymDecryption{}
-}
-func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
-	if fts.key == nil {
-		return nil, errors.New("no such key")
-	}
-	return f(fts.key)
-}
-func (*FakeTokenSource) DPOPPublicKeyPEM() string {
-	return ""
-}
-func (*FakeTokenSource) RefreshAccessToken() error {
-	return nil
-}
-
-func runServer(ctx context.Context, f *FakeAccessServiceServer, oo tokenAddingInterceptor) (kas.AccessServiceClient, func()) {
-	buffer := 1024 * 1024
-	listener := bufconn.Listen(buffer)
-
-	s := grpc.NewServer()
-	kas.RegisterAccessServiceServer(s, f)
-	go func() {
-		if err := s.Serve(listener); err != nil {
-			panic(err)
-		}
-	}()
-
-	conn, _ := grpc.DialContext(ctx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-		return listener.Dial()
-	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(oo.addCredentials))
-
-	client := kas.NewAccessServiceClient(conn)
-
-	return client, s.Stop
-}
-
 func TestAddingTokensToOutgoingRequest(t *testing.T) {
 
 	_, key, _, _ := getNewDPoPKey()
@@ -168,4 +99,73 @@ func Test_ErrorsCredentials_StillSendMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got an error when sending the message")
 	}
+}
+
+type FakeAccessServiceServer struct {
+	accessToken []string
+	dpopToken   []string
+	kas.UnimplementedAccessServiceServer
+}
+
+func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		f.accessToken = md.Get("authorization")
+		f.dpopToken = md.Get("dpop")
+	}
+
+	return &kas.InfoResponse{}, nil
+}
+func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
+	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
+}
+func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
+	return &wrapperspb.StringValue{}, nil
+}
+func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
+	return &kas.RewrapResponse{}, nil
+}
+
+type FakeTokenSource struct {
+	key         jwk.Key
+	accessToken string
+}
+
+func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
+	return AccessToken(fts.accessToken), nil
+}
+func (*FakeTokenSource) AsymDecryption() crypto.AsymDecryption {
+	return crypto.AsymDecryption{}
+}
+func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
+	if fts.key == nil {
+		return nil, errors.New("no such key")
+	}
+	return f(fts.key)
+}
+func (*FakeTokenSource) DPOPPublicKeyPEM() string {
+	return ""
+}
+func (*FakeTokenSource) RefreshAccessToken() error {
+	return nil
+}
+
+func runServer(ctx context.Context, f *FakeAccessServiceServer, oo tokenAddingInterceptor) (kas.AccessServiceClient, func()) {
+	buffer := 1024 * 1024
+	listener := bufconn.Listen(buffer)
+
+	s := grpc.NewServer()
+	kas.RegisterAccessServiceServer(s, f)
+	go func() {
+		if err := s.Serve(listener); err != nil {
+			panic(err)
+		}
+	}()
+
+	conn, _ := grpc.DialContext(ctx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+		return listener.Dial()
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(oo.addCredentials))
+
+	client := kas.NewAccessServiceClient(conn)
+
+	return client, s.Stop
 }

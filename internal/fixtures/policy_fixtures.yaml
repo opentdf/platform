@@ -21,12 +21,15 @@ attribute_namespaces:
       id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: example.org
       active: true
+    scenario.com:
+      id: 87ba60e1-da12-4889-95fd-267968bf0896
+      name: scenario.com
+      active: true
     # deactivated state
     deactivated_ns:
       id: 40790395-88b1-4adc-8bf5-1900491a79ba
       name: deactivated.io
       active: false
-
 ##
 # Attributes
 #
@@ -91,6 +94,13 @@ attributes:
       namespace_id: 0d94e00a-7bd3-4482-afe3-f1e4b03c1353
       name: attr3
       rule: HIERARCHY
+      active: true
+
+    scenario.com/attr/working_group:
+      id: 6181b7f3-c7ed-4050-b654-315016a65563
+      namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
+      name: working_group
+      rule: ALL_OF
       active: true
 
     # deactivated state
@@ -158,6 +168,12 @@ attribute_values:
       value: value2
       active: true
 
+    scenario.com/attr/working_group/value/blue:
+      id: c2140825-0969-44c9-8dd6-5d7e0a856b9c
+      attribute_definition_id: 6181b7f3-c7ed-4050-b654-315016a65563
+      value: blue
+      active: true
+
     # deactivated state
     deactivated.io/attr/attr1/value/deactivated_value:
       id: 06fa035b-8205-4000-86ad-2439cc1325ec
@@ -208,6 +224,30 @@ subject_mappings:
       actions:
         - standard: STANDARD_ACTION_TRANSMIT
         - custom: custom_action_1
+
+    subject_mapping_subject_simple_in:
+      id: 3c623ede-df88-4906-8a78-ebdfacadcd57
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      # subject_condition_simple_in
+      subject_condition_set_id: 3c623ede-df88-4906-8a78-ebdfacadcd57
+      actions:
+        - standard: STANDARD_ACTION_DECRYPT
+
+    subject_mapping_subject_simple_not_in:
+      id: 1b9508a7-746a-4705-a1f1-4b6e676377ce
+      attribute_value_id: 532e5957-28f7-466d-91e2-493e9431cd83
+      # subject_condition_simple_not_in
+      subject_condition_set_id: cf17ec4c-d206-4b74-b3db-5ce07d6995cc
+      actions:
+        - standard: STANDARD_ACTION_DECRYPT
+
+    subject_mapping_scenario_blue:
+      id: 1748761a-bd8c-4b23-8560-16ba7a181f19
+      attribute_value_id: c2140825-0969-44c9-8dd6-5d7e0a856b9c
+      # subject_condition_working_group_blue_scenario
+      subject_condition_set_id: 10d03422-7eae-43b9-ac3b-d10400171858
+      actions:
+        - standard: STANDARD_ACTION_DECRYPT
 
 subject_condition_set:
   metadata:
@@ -278,7 +318,7 @@ subject_condition_set:
                       - manager
                       - director
                       - vice_president
-    subject_condition_omitted_optional_name:
+    subject_condition_simple_in:
       id: 3c623ede-df88-4906-8a78-ebdfacadcd57
       condition:
         subject_sets:
@@ -289,6 +329,34 @@ subject_condition_set:
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - some_value
+    subject_condition_simple_not_in:
+      id: cf17ec4c-d206-4b74-b3db-5ce07d6995cc
+      condition:
+        subject_sets:
+          - condition_groups:
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+                conditions:
+                  - subject_external_field: some_other_field123
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
+                    subject_external_values:
+                      - some_other_value_123
+    subject_condition_working_group_blue_scenario:
+      id: 10d03422-7eae-43b9-ac3b-d10400171858
+      condition:
+        subject_sets:
+          - condition_groups:
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subject_external_field: team_name
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subject_external_values:
+                      - CoolTool
+                      - RadService
+                      - ShinyThing
+                  - subject_external_field: org_name
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subject_external_values:
+                      - marketing
 
 ##
 # Resource Mappings

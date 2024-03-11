@@ -9,29 +9,26 @@ public interface MatchSubjectMappingsRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <pre>
-   * Required
-   * </pre>
-   *
-   * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-   * @return Whether the subject field is set.
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
-  boolean hasSubject();
+  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectProperty> 
+      getSubjectPropertiesList();
   /**
-   * <pre>
-   * Required
-   * </pre>
-   *
-   * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-   * @return The subject.
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.Subject getSubject();
+  io.opentdf.platform.policy.subjectmapping.SubjectProperty getSubjectProperties(int index);
   /**
-   * <pre>
-   * Required
-   * </pre>
-   *
-   * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder getSubjectOrBuilder();
+  int getSubjectPropertiesCount();
+  /**
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   */
+  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder> 
+      getSubjectPropertiesOrBuilderList();
+  /**
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   */
+  io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder getSubjectPropertiesOrBuilder(
+      int index);
 }

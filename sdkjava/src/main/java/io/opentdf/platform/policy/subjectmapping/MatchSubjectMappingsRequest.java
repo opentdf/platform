@@ -5,6 +5,20 @@
 package io.opentdf.platform.policy.subjectmapping;
 
 /**
+ * <pre>
+ * MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
+ * if there is any single condition found among the structures that matches for one of the provided properties:
+ * 1. The external field, external value, and an IN operator
+ * 2. The external field, _no_ external value, and a NOT_IN operator
+ *
+ * Without this filtering, if a field was something like 'emailAddress' or 'username', every Subject is probably going to relate to that mapping
+ * in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no
+ * logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
+ * initial filter.
+ *
+ * NOTE: if you have any issues, debug logs are available within the service to help identify why a mapping was or was not returned.
+ * </pre>
+ *
  * Protobuf type {@code policy.subjectmapping.MatchSubjectMappingsRequest}
  */
 public final class MatchSubjectMappingsRequest extends
@@ -17,6 +31,7 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private MatchSubjectMappingsRequest() {
+    subjectProperties_ = java.util.Collections.emptyList();
   }
 
   @java.lang.Override
@@ -39,43 +54,45 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest.class, io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest.Builder.class);
   }
 
-  private int bitField0_;
-  public static final int SUBJECT_FIELD_NUMBER = 1;
-  private io.opentdf.platform.policy.subjectmapping.Subject subject_;
+  public static final int SUBJECT_PROPERTIES_FIELD_NUMBER = 1;
+  @SuppressWarnings("serial")
+  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectProperty> subjectProperties_;
   /**
-   * <pre>
-   * Required
-   * </pre>
-   *
-   * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-   * @return Whether the subject field is set.
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
   @java.lang.Override
-  public boolean hasSubject() {
-    return ((bitField0_ & 0x00000001) != 0);
+  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectProperty> getSubjectPropertiesList() {
+    return subjectProperties_;
   }
   /**
-   * <pre>
-   * Required
-   * </pre>
-   *
-   * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-   * @return The subject.
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.Subject getSubject() {
-    return subject_ == null ? io.opentdf.platform.policy.subjectmapping.Subject.getDefaultInstance() : subject_;
+  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder> 
+      getSubjectPropertiesOrBuilderList() {
+    return subjectProperties_;
   }
   /**
-   * <pre>
-   * Required
-   * </pre>
-   *
-   * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder getSubjectOrBuilder() {
-    return subject_ == null ? io.opentdf.platform.policy.subjectmapping.Subject.getDefaultInstance() : subject_;
+  public int getSubjectPropertiesCount() {
+    return subjectProperties_.size();
+  }
+  /**
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.subjectmapping.SubjectProperty getSubjectProperties(int index) {
+    return subjectProperties_.get(index);
+  }
+  /**
+   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder getSubjectPropertiesOrBuilder(
+      int index) {
+    return subjectProperties_.get(index);
   }
 
   private byte memoizedIsInitialized = -1;
@@ -92,8 +109,8 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(1, getSubject());
+    for (int i = 0; i < subjectProperties_.size(); i++) {
+      output.writeMessage(1, subjectProperties_.get(i));
     }
     getUnknownFields().writeTo(output);
   }
@@ -104,9 +121,9 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (((bitField0_ & 0x00000001) != 0)) {
+    for (int i = 0; i < subjectProperties_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(1, getSubject());
+        .computeMessageSize(1, subjectProperties_.get(i));
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -123,11 +140,8 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest other = (io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest) obj;
 
-    if (hasSubject() != other.hasSubject()) return false;
-    if (hasSubject()) {
-      if (!getSubject()
-          .equals(other.getSubject())) return false;
-    }
+    if (!getSubjectPropertiesList()
+        .equals(other.getSubjectPropertiesList())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -139,9 +153,9 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    if (hasSubject()) {
-      hash = (37 * hash) + SUBJECT_FIELD_NUMBER;
-      hash = (53 * hash) + getSubject().hashCode();
+    if (getSubjectPropertiesCount() > 0) {
+      hash = (37 * hash) + SUBJECT_PROPERTIES_FIELD_NUMBER;
+      hash = (53 * hash) + getSubjectPropertiesList().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -241,6 +255,20 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
+   * <pre>
+   * MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
+   * if there is any single condition found among the structures that matches for one of the provided properties:
+   * 1. The external field, external value, and an IN operator
+   * 2. The external field, _no_ external value, and a NOT_IN operator
+   *
+   * Without this filtering, if a field was something like 'emailAddress' or 'username', every Subject is probably going to relate to that mapping
+   * in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no
+   * logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
+   * initial filter.
+   *
+   * NOTE: if you have any issues, debug logs are available within the service to help identify why a mapping was or was not returned.
+   * </pre>
+   *
    * Protobuf type {@code policy.subjectmapping.MatchSubjectMappingsRequest}
    */
   public static final class Builder extends
@@ -262,29 +290,25 @@ private static final long serialVersionUID = 0L;
 
     // Construct using io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest.newBuilder()
     private Builder() {
-      maybeForceBuilderInitialization();
+
     }
 
     private Builder(
         com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
       super(parent);
-      maybeForceBuilderInitialization();
-    }
-    private void maybeForceBuilderInitialization() {
-      if (com.google.protobuf.GeneratedMessageV3
-              .alwaysUseFieldBuilders) {
-        getSubjectFieldBuilder();
-      }
+
     }
     @java.lang.Override
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      subject_ = null;
-      if (subjectBuilder_ != null) {
-        subjectBuilder_.dispose();
-        subjectBuilder_ = null;
+      if (subjectPropertiesBuilder_ == null) {
+        subjectProperties_ = java.util.Collections.emptyList();
+      } else {
+        subjectProperties_ = null;
+        subjectPropertiesBuilder_.clear();
       }
+      bitField0_ = (bitField0_ & ~0x00000001);
       return this;
     }
 
@@ -311,21 +335,26 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest buildPartial() {
       io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest result = new io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest(this);
+      buildPartialRepeatedFields(result);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
+    private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest result) {
+      if (subjectPropertiesBuilder_ == null) {
+        if (((bitField0_ & 0x00000001) != 0)) {
+          subjectProperties_ = java.util.Collections.unmodifiableList(subjectProperties_);
+          bitField0_ = (bitField0_ & ~0x00000001);
+        }
+        result.subjectProperties_ = subjectProperties_;
+      } else {
+        result.subjectProperties_ = subjectPropertiesBuilder_.build();
+      }
+    }
+
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest result) {
       int from_bitField0_ = bitField0_;
-      int to_bitField0_ = 0;
-      if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.subject_ = subjectBuilder_ == null
-            ? subject_
-            : subjectBuilder_.build();
-        to_bitField0_ |= 0x00000001;
-      }
-      result.bitField0_ |= to_bitField0_;
     }
 
     @java.lang.Override
@@ -372,8 +401,31 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest other) {
       if (other == io.opentdf.platform.policy.subjectmapping.MatchSubjectMappingsRequest.getDefaultInstance()) return this;
-      if (other.hasSubject()) {
-        mergeSubject(other.getSubject());
+      if (subjectPropertiesBuilder_ == null) {
+        if (!other.subjectProperties_.isEmpty()) {
+          if (subjectProperties_.isEmpty()) {
+            subjectProperties_ = other.subjectProperties_;
+            bitField0_ = (bitField0_ & ~0x00000001);
+          } else {
+            ensureSubjectPropertiesIsMutable();
+            subjectProperties_.addAll(other.subjectProperties_);
+          }
+          onChanged();
+        }
+      } else {
+        if (!other.subjectProperties_.isEmpty()) {
+          if (subjectPropertiesBuilder_.isEmpty()) {
+            subjectPropertiesBuilder_.dispose();
+            subjectPropertiesBuilder_ = null;
+            subjectProperties_ = other.subjectProperties_;
+            bitField0_ = (bitField0_ & ~0x00000001);
+            subjectPropertiesBuilder_ = 
+              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
+                 getSubjectPropertiesFieldBuilder() : null;
+          } else {
+            subjectPropertiesBuilder_.addAllMessages(other.subjectProperties_);
+          }
+        }
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -402,10 +454,16 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              input.readMessage(
-                  getSubjectFieldBuilder().getBuilder(),
-                  extensionRegistry);
-              bitField0_ |= 0x00000001;
+              io.opentdf.platform.policy.subjectmapping.SubjectProperty m =
+                  input.readMessage(
+                      io.opentdf.platform.policy.subjectmapping.SubjectProperty.parser(),
+                      extensionRegistry);
+              if (subjectPropertiesBuilder_ == null) {
+                ensureSubjectPropertiesIsMutable();
+                subjectProperties_.add(m);
+              } else {
+                subjectPropertiesBuilder_.addMessage(m);
+              }
               break;
             } // case 10
             default: {
@@ -425,161 +483,244 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.policy.subjectmapping.Subject subject_;
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.Subject, io.opentdf.platform.policy.subjectmapping.Subject.Builder, io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder> subjectBuilder_;
-    /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-     * @return Whether the subject field is set.
-     */
-    public boolean hasSubject() {
-      return ((bitField0_ & 0x00000001) != 0);
+    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectProperty> subjectProperties_ =
+      java.util.Collections.emptyList();
+    private void ensureSubjectPropertiesIsMutable() {
+      if (!((bitField0_ & 0x00000001) != 0)) {
+        subjectProperties_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectProperty>(subjectProperties_);
+        bitField0_ |= 0x00000001;
+       }
     }
+
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.policy.subjectmapping.SubjectProperty, io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder, io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder> subjectPropertiesBuilder_;
+
     /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-     * @return The subject.
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.Subject getSubject() {
-      if (subjectBuilder_ == null) {
-        return subject_ == null ? io.opentdf.platform.policy.subjectmapping.Subject.getDefaultInstance() : subject_;
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectProperty> getSubjectPropertiesList() {
+      if (subjectPropertiesBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(subjectProperties_);
       } else {
-        return subjectBuilder_.getMessage();
+        return subjectPropertiesBuilder_.getMessageList();
       }
     }
     /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
      */
-    public Builder setSubject(io.opentdf.platform.policy.subjectmapping.Subject value) {
-      if (subjectBuilder_ == null) {
+    public int getSubjectPropertiesCount() {
+      if (subjectPropertiesBuilder_ == null) {
+        return subjectProperties_.size();
+      } else {
+        return subjectPropertiesBuilder_.getCount();
+      }
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectProperty getSubjectProperties(int index) {
+      if (subjectPropertiesBuilder_ == null) {
+        return subjectProperties_.get(index);
+      } else {
+        return subjectPropertiesBuilder_.getMessage(index);
+      }
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder setSubjectProperties(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectProperty value) {
+      if (subjectPropertiesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        subject_ = value;
-      } else {
-        subjectBuilder_.setMessage(value);
-      }
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-     */
-    public Builder setSubject(
-        io.opentdf.platform.policy.subjectmapping.Subject.Builder builderForValue) {
-      if (subjectBuilder_ == null) {
-        subject_ = builderForValue.build();
-      } else {
-        subjectBuilder_.setMessage(builderForValue.build());
-      }
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-     */
-    public Builder mergeSubject(io.opentdf.platform.policy.subjectmapping.Subject value) {
-      if (subjectBuilder_ == null) {
-        if (((bitField0_ & 0x00000001) != 0) &&
-          subject_ != null &&
-          subject_ != io.opentdf.platform.policy.subjectmapping.Subject.getDefaultInstance()) {
-          getSubjectBuilder().mergeFrom(value);
-        } else {
-          subject_ = value;
-        }
-      } else {
-        subjectBuilder_.mergeFrom(value);
-      }
-      if (subject_ != null) {
-        bitField0_ |= 0x00000001;
+        ensureSubjectPropertiesIsMutable();
+        subjectProperties_.set(index, value);
         onChanged();
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-     */
-    public Builder clearSubject() {
-      bitField0_ = (bitField0_ & ~0x00000001);
-      subject_ = null;
-      if (subjectBuilder_ != null) {
-        subjectBuilder_.dispose();
-        subjectBuilder_ = null;
-      }
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-     */
-    public io.opentdf.platform.policy.subjectmapping.Subject.Builder getSubjectBuilder() {
-      bitField0_ |= 0x00000001;
-      onChanged();
-      return getSubjectFieldBuilder().getBuilder();
-    }
-    /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
-     */
-    public io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder getSubjectOrBuilder() {
-      if (subjectBuilder_ != null) {
-        return subjectBuilder_.getMessageOrBuilder();
       } else {
-        return subject_ == null ?
-            io.opentdf.platform.policy.subjectmapping.Subject.getDefaultInstance() : subject_;
+        subjectPropertiesBuilder_.setMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder setSubjectProperties(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder builderForValue) {
+      if (subjectPropertiesBuilder_ == null) {
+        ensureSubjectPropertiesIsMutable();
+        subjectProperties_.set(index, builderForValue.build());
+        onChanged();
+      } else {
+        subjectPropertiesBuilder_.setMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder addSubjectProperties(io.opentdf.platform.policy.subjectmapping.SubjectProperty value) {
+      if (subjectPropertiesBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSubjectPropertiesIsMutable();
+        subjectProperties_.add(value);
+        onChanged();
+      } else {
+        subjectPropertiesBuilder_.addMessage(value);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder addSubjectProperties(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectProperty value) {
+      if (subjectPropertiesBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSubjectPropertiesIsMutable();
+        subjectProperties_.add(index, value);
+        onChanged();
+      } else {
+        subjectPropertiesBuilder_.addMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder addSubjectProperties(
+        io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder builderForValue) {
+      if (subjectPropertiesBuilder_ == null) {
+        ensureSubjectPropertiesIsMutable();
+        subjectProperties_.add(builderForValue.build());
+        onChanged();
+      } else {
+        subjectPropertiesBuilder_.addMessage(builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder addSubjectProperties(
+        int index, io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder builderForValue) {
+      if (subjectPropertiesBuilder_ == null) {
+        ensureSubjectPropertiesIsMutable();
+        subjectProperties_.add(index, builderForValue.build());
+        onChanged();
+      } else {
+        subjectPropertiesBuilder_.addMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder addAllSubjectProperties(
+        java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectProperty> values) {
+      if (subjectPropertiesBuilder_ == null) {
+        ensureSubjectPropertiesIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, subjectProperties_);
+        onChanged();
+      } else {
+        subjectPropertiesBuilder_.addAllMessages(values);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder clearSubjectProperties() {
+      if (subjectPropertiesBuilder_ == null) {
+        subjectProperties_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+      } else {
+        subjectPropertiesBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public Builder removeSubjectProperties(int index) {
+      if (subjectPropertiesBuilder_ == null) {
+        ensureSubjectPropertiesIsMutable();
+        subjectProperties_.remove(index);
+        onChanged();
+      } else {
+        subjectPropertiesBuilder_.remove(index);
+      }
+      return this;
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder getSubjectPropertiesBuilder(
+        int index) {
+      return getSubjectPropertiesFieldBuilder().getBuilder(index);
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder getSubjectPropertiesOrBuilder(
+        int index) {
+      if (subjectPropertiesBuilder_ == null) {
+        return subjectProperties_.get(index);  } else {
+        return subjectPropertiesBuilder_.getMessageOrBuilder(index);
       }
     }
     /**
-     * <pre>
-     * Required
-     * </pre>
-     *
-     * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
      */
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.Subject, io.opentdf.platform.policy.subjectmapping.Subject.Builder, io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder> 
-        getSubjectFieldBuilder() {
-      if (subjectBuilder_ == null) {
-        subjectBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.subjectmapping.Subject, io.opentdf.platform.policy.subjectmapping.Subject.Builder, io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder>(
-                getSubject(),
+    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder> 
+         getSubjectPropertiesOrBuilderList() {
+      if (subjectPropertiesBuilder_ != null) {
+        return subjectPropertiesBuilder_.getMessageOrBuilderList();
+      } else {
+        return java.util.Collections.unmodifiableList(subjectProperties_);
+      }
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder addSubjectPropertiesBuilder() {
+      return getSubjectPropertiesFieldBuilder().addBuilder(
+          io.opentdf.platform.policy.subjectmapping.SubjectProperty.getDefaultInstance());
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder addSubjectPropertiesBuilder(
+        int index) {
+      return getSubjectPropertiesFieldBuilder().addBuilder(
+          index, io.opentdf.platform.policy.subjectmapping.SubjectProperty.getDefaultInstance());
+    }
+    /**
+     * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+     */
+    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder> 
+         getSubjectPropertiesBuilderList() {
+      return getSubjectPropertiesFieldBuilder().getBuilderList();
+    }
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.policy.subjectmapping.SubjectProperty, io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder, io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder> 
+        getSubjectPropertiesFieldBuilder() {
+      if (subjectPropertiesBuilder_ == null) {
+        subjectPropertiesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.opentdf.platform.policy.subjectmapping.SubjectProperty, io.opentdf.platform.policy.subjectmapping.SubjectProperty.Builder, io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder>(
+                subjectProperties_,
+                ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),
                 isClean());
-        subject_ = null;
+        subjectProperties_ = null;
       }
-      return subjectBuilder_;
+      return subjectPropertiesBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

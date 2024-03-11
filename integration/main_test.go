@@ -122,7 +122,7 @@ func TestMain(m *testing.M) {
 	slog.Info("🚚 applied migrations", slog.Int("count", applied))
 
 	slog.Info("🏠 loading fixtures")
-	fixtures.LoadFixtureData("../internal/fixtures/fixtures.yaml")
+	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
 
 	slog.Info("📚 indexing FQNs for test fixtures")
 	db.PolicyClient.AttrFqnReindex()

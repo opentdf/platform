@@ -187,6 +187,15 @@ func subjectMappingHydrateItem(row pgx.Row) (*subjectmapping.SubjectMapping, err
 		&scsJSON,
 		&attributeValueJSON,
 	)
+	slog.Debug(
+		"subjectMappingHydrateItem",
+		slog.Any("row", row),
+		slog.String("id", id),
+		slog.String("actionsJSON", string(actionsJSON)),
+		slog.String("metadataJSON", string(metadataJSON)),
+		slog.String("scsJSON", string(scsJSON)),
+		slog.String("attributeValueJSON", string(attributeValueJSON)),
+	)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -644,4 +653,101 @@ func (c PolicyDbClient) DeleteSubjectMapping(ctx context.Context, id string) (*s
 	return &subjectmapping.SubjectMapping{
 		Id: id,
 	}, nil
+}
+
+// This function generates a SQL select statement for SubjectMappings that based on external Subject property fields & values. This relationship
+// is sometimes called Entitlements or Subject Entitlements.
+//
+// There is complexity in the SQL generation due to the external fields/values being stored in a JSONB column on the subject_condition_set table
+// and the JSON structure being SubjectSets -> ConditionGroups -> Conditions.
+//
+// Unfortunately we must do some slight filtering at the SQL level to avoid extreme and potentially non-rare edge cases. Subject Mappings will
+// be returned if there is any condition found among the structures that matches:
+// 1. The external field, external value, and an IN operator
+// 2. The external field, _no_ external value, and a NOT_IN operator
+//
+// Without this filtering, if a field was something like 'emailAddress' or 'username', every Subject is probably going to relate to that mapping
+// in some way or another. This could theoretically be every attribute in the DB if a policy admin has relied heavily on that field.
+//
+// NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
+func selectMatchedSubjectMappingsSql(subjectProperties []*subjectmapping.SubjectProperty) (string, []interface{}, error) {
+	var err error
+	if len(subjectProperties) == 0 {
+		err = errors.Join(db.ErrMissingValue, errors.New("one or more subject properties is required"))
+		slog.Error("subject property missing required value", slog.Any("properties provided", subjectProperties), slog.String("error", err.Error()))
+		return "", nil, err
+	}
+	where := "("
+	for i, sp := range subjectProperties {
+		if sp.ExternalField == "" || sp.ExternalValue == "" {
+			err = errors.Join(db.ErrMissingValue, errors.New("all subject properties must include defined external field and value"))
+			slog.Error("subject property missing required value", slog.Any("properties provided", subjectProperties), slog.String("error", err.Error()))
+			return "", nil, err
+		}
+		if i > 0 {
+			where += " OR "
+		}
+
+		hasField := "each_condition->>'subject_external_field' = '" + sp.ExternalField + "'"
+		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.ExternalValue + "\"]'::jsonb"
+		hasInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_IN'"
+		hasNotInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN'"
+		// Parses the json and matches the row if either of the following conditions are met:
+		where += "((" + hasField + " AND " + hasValue + " AND " + hasInOperator + ")" +
+			" OR " +
+			"(" + hasField + " AND NOT " + hasValue + " AND " + hasNotInOperator + "))"
+		slog.Debug("current condition filter WHERE clause", slog.String("subject_external_field", sp.ExternalField), slog.String("subject_external_value", sp.ExternalValue), slog.String("where", where))
+	}
+	where += ")"
+
+	t := Tables.SubjectConditionSet
+	smT := Tables.SubjectMappings
+
+	whereSubQ, _, err := db.NewStatementBuilder().
+		// SELECT 1 is consumed by EXISTS clause, not true selection of data
+		Select("1").
+		From("jsonb_array_elements(" + t.Field("condition") + ") AS ss" +
+			", jsonb_array_elements(ss->'condition_groups') AS cg" +
+			", jsonb_array_elements(cg->'conditions') AS each_condition").
+		Where(where).
+		ToSql()
+	if err != nil {
+		slog.Error("could not generate SQL for subject entitlements", slog.String("error", err.Error()))
+		return "", nil, err
+	}
+	slog.Debug("checking for existence of any condition in the SubjectSets > ConditionGroups > Conditions that matches the provided subject properties", slog.String("where", whereSubQ))
+
+	return subjectMappingSelect().
+		From(smT.Name()).
+		Where("EXISTS (" + whereSubQ + ")").
+		ToSql()
+}
+
+// GetMatchedSubjectMappings liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
+// if there is any single condition found among the structures that matches:
+// 1. The external field, external value, and an IN operator
+// 2. The external field, _no_ external value, and a NOT_IN operator
+//
+// Without this filtering, if a field was something like 'emailAddress' or 'username', every Subject is probably going to relate to that mapping
+// in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no
+// logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
+// initial filter.
+//
+// NOTE: This relationship is sometimes called Entitlements or Subject Entitlements.
+// NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
+func (c PolicyDbClient) GetMatchedSubjectMappings(ctx context.Context, properties []*subjectmapping.SubjectProperty) ([]*subjectmapping.SubjectMapping, error) {
+	sql, args, err := selectMatchedSubjectMappingsSql(properties)
+	slog.Debug("generated SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args))
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := c.Query(ctx, sql, args, err)
+	slog.Debug("executed SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args), slog.Any("rows", rows), slog.Any("error", err))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return subjectMappingHydrateList(rows)
 }

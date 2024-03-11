@@ -3,7 +3,6 @@ package fixtures
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -11,7 +10,7 @@ import (
 )
 
 var (
-	fixtureFilename = "fixtures.yaml"
+	fixtureFilename = "policy_fixtures.yaml"
 	fixtureData     FixtureData
 )
 
@@ -137,7 +136,7 @@ func LoadFixtureData(file string) {
 		slog.Error("could not unmarshal "+fixtureFilename, slog.String("error", err.Error()))
 		panic(err)
 	}
-	fmt.Println(fixtureData)
+	slog.Info("Fully loaded fixtures", slog.Any("fixtureData", fixtureData))
 }
 
 type Fixtures struct {
@@ -311,7 +310,7 @@ func (f *Fixtures) provisionSubjectConditionSet() int64 {
 		var conditionJSON []byte
 		conditionJSON, err := json.Marshal(d.Condition.SubjectSets)
 		if err != nil {
-			slog.Error("⛔️ 📦 issue with subject condition set JSON - check fixtures.yaml for issues")
+			slog.Error("⛔️ 📦 issue with subject condition set JSON - check policy_fixtures.yaml for issues")
 			panic("issue with subject condition set JSON")
 		}
 
@@ -329,7 +328,7 @@ func (f *Fixtures) provisionSubjectMappings() int64 {
 		var actionsJSON []byte
 		actionsJSON, err := json.Marshal(d.Actions)
 		if err != nil {
-			slog.Error("⛔️ 📦 issue with subject mapping actions JSON - check fixtures.yaml for issues")
+			slog.Error("⛔️ 📦 issue with subject mapping actions JSON - check policy_fixtures.yaml for issues")
 			panic("issue with subject mapping actions JSON")
 		}
 
@@ -364,7 +363,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 		}
 
 		if pubKeyJSON, err := json.Marshal(d.PubKey); err != nil {
-			slog.Error("⛔️ 📦 issue with KAS registry public key JSON - check fixtures.yaml for issues")
+			slog.Error("⛔️ 📦 issue with KAS registry public key JSON - check policy_fixtures.yaml for issues")
 			panic("issue with KAS registry public key JSON")
 		} else {
 			v = append(v, f.db.StringWrap(string(pubKeyJSON)))
@@ -399,15 +398,15 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
 	rows, err := f.db.ExecInsert(t, c, v...)
 	if err != nil {
-		slog.Error("⛔️ 📦 issue with insert into table - check fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
+		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
 		panic("issue with insert into table")
 	}
 	if rows == 0 {
-		slog.Error("⛔️ 📦 no rows provisioned - check fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)))
+		slog.Error("⛔️ 📦 no rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)))
 		panic("no rows provisioned")
 	}
 	if rows != int64(len(v)) {
-		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
+		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
 		panic("incorrect number of rows provisioned")
 	}
 	return rows

@@ -540,64 +540,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *Request:
-     *grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *OR (for inactive)
-     *grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *Response:
-     *{
-     *"attributes": [
-     *{
-     *"id": "attribute_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id",
-     *"name": "namespace_name"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"values": [
-     *{
-     *"id": "value_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"attribute_id": "attribute_id",
-     *"value": "value",
-     *"members": ["value_id"],
-     *"grants": [
-     *{
-     *"id": "key_access_server_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"name": "key_access_server_name",
-     *"description": "key_access_server_description",
-     *}
-     *],
-     *}
-     *],
-     *"grants": [
-     *{
-     *"id": "key_access_server_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"name": "key_access_server_name",
-     *"description": "key_access_server_description",
-     *}
-     *],
-     *"active": true
-     *}
-     *]
-     *}
+     *--------------------------------------*
+     * Attribute RPCs
+     *---------------------------------------
      * </pre>
      */
     default void listAttributes(io.opentdf.platform.policy.attributes.ListAttributesRequest request,
@@ -606,41 +551,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *List Values
-     *Request:
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *Response:
-     *{
-     *"attributes": [
-     *{
-     *"id": "attribute_id",
-     *"metadata": {
-     *"createdAt": "2024-02-14T20:24:23.057404Z",
-     *"updatedAt": "2024-02-14T20:24:23.057404Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id",
-     *"name": "namespace_name"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"values": [
-     *{
-     *... VALUES ...
-     *}
-     *],
-     *"grants": [
-     *{
-     *... GRANTS ...
-     *}
-     *],
-     *"active": true
-     *}
-     *]
-     *}
-     * </pre>
      */
     default void listAttributeValues(io.opentdf.platform.policy.attributes.ListAttributeValuesRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.ListAttributeValuesResponse> responseObserver) {
@@ -662,27 +572,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     * Create Attribute
-     *Request:
-     *grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
-     *Response
-     *{
-     *"attribute": {
-     *"id": "e06f067b-d158-44bc-a814-1aa3f968dcf0",
-     *"metadata": {
-     *"createdAt": "2024-02-14T20:24:23.057404Z",
-     *"updatedAt": "2024-02-14T20:24:23.057404Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"active": true
-     *}
-     *}
-     * </pre>
      */
     default void createAttribute(io.opentdf.platform.policy.attributes.CreateAttributeRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.CreateAttributeResponse> responseObserver) {
@@ -705,7 +594,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     ** Attribute Value *
+     *--------------------------------------*
+     * Value RPCs
+     *---------------------------------------
      * </pre>
      */
     default void getAttributeValue(io.opentdf.platform.policy.attributes.GetAttributeValueRequest request,
@@ -714,11 +605,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     * Create Attribute Value
-     * Example:
-     *  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue
-     * </pre>
      */
     default void createAttributeValue(io.opentdf.platform.policy.attributes.CreateAttributeValueRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.CreateAttributeValueResponse> responseObserver) {
@@ -741,20 +627,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     *Assign Key Access Server to Attribute
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
+     *--------------------------------------*
+     * Attribute &lt;&gt; Key Access Server RPCs
+     *---------------------------------------
      * </pre>
      */
     default void assignKeyAccessServerToAttribute(io.opentdf.platform.policy.attributes.AssignKeyAccessServerToAttributeRequest request,
@@ -763,22 +638,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Remove Key Access Server to Attribute
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
-     * </pre>
      */
     default void removeKeyAccessServerFromAttribute(io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromAttributeRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromAttributeResponse> responseObserver) {
@@ -786,22 +645,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Assign Key Access Server to Value
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"value_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"value_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
-     * </pre>
      */
     default void assignKeyAccessServerToValue(io.opentdf.platform.policy.attributes.AssignKeyAccessServerToValueRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.AssignKeyAccessServerToValueResponse> responseObserver) {
@@ -809,21 +652,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Remove Key Access Server to Value
-     *grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
-     *Example Request:
-     *{
-     *"value_key_access_server": {
-     *"value_id": "value_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"value_key_access_server": {
-     *"value_id": "value_id",
-     *"key_access_server_id
-     * </pre>
      */
     default void removeKeyAccessServerFromValue(io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromValueRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromValueResponse> responseObserver) {
@@ -870,64 +698,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *Request:
-     *grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *OR (for inactive)
-     *grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *Response:
-     *{
-     *"attributes": [
-     *{
-     *"id": "attribute_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id",
-     *"name": "namespace_name"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"values": [
-     *{
-     *"id": "value_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"attribute_id": "attribute_id",
-     *"value": "value",
-     *"members": ["value_id"],
-     *"grants": [
-     *{
-     *"id": "key_access_server_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"name": "key_access_server_name",
-     *"description": "key_access_server_description",
-     *}
-     *],
-     *}
-     *],
-     *"grants": [
-     *{
-     *"id": "key_access_server_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"name": "key_access_server_name",
-     *"description": "key_access_server_description",
-     *}
-     *],
-     *"active": true
-     *}
-     *]
-     *}
+     *--------------------------------------*
+     * Attribute RPCs
+     *---------------------------------------
      * </pre>
      */
     public void listAttributes(io.opentdf.platform.policy.attributes.ListAttributesRequest request,
@@ -937,41 +710,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *List Values
-     *Request:
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *Response:
-     *{
-     *"attributes": [
-     *{
-     *"id": "attribute_id",
-     *"metadata": {
-     *"createdAt": "2024-02-14T20:24:23.057404Z",
-     *"updatedAt": "2024-02-14T20:24:23.057404Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id",
-     *"name": "namespace_name"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"values": [
-     *{
-     *... VALUES ...
-     *}
-     *],
-     *"grants": [
-     *{
-     *... GRANTS ...
-     *}
-     *],
-     *"active": true
-     *}
-     *]
-     *}
-     * </pre>
      */
     public void listAttributeValues(io.opentdf.platform.policy.attributes.ListAttributeValuesRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.ListAttributeValuesResponse> responseObserver) {
@@ -996,27 +734,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     * Create Attribute
-     *Request:
-     *grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
-     *Response
-     *{
-     *"attribute": {
-     *"id": "e06f067b-d158-44bc-a814-1aa3f968dcf0",
-     *"metadata": {
-     *"createdAt": "2024-02-14T20:24:23.057404Z",
-     *"updatedAt": "2024-02-14T20:24:23.057404Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"active": true
-     *}
-     *}
-     * </pre>
      */
     public void createAttribute(io.opentdf.platform.policy.attributes.CreateAttributeRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.CreateAttributeResponse> responseObserver) {
@@ -1042,7 +759,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     ** Attribute Value *
+     *--------------------------------------*
+     * Value RPCs
+     *---------------------------------------
      * </pre>
      */
     public void getAttributeValue(io.opentdf.platform.policy.attributes.GetAttributeValueRequest request,
@@ -1052,11 +771,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     * Create Attribute Value
-     * Example:
-     *  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue
-     * </pre>
      */
     public void createAttributeValue(io.opentdf.platform.policy.attributes.CreateAttributeValueRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.CreateAttributeValueResponse> responseObserver) {
@@ -1082,20 +796,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     *Assign Key Access Server to Attribute
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
+     *--------------------------------------*
+     * Attribute &lt;&gt; Key Access Server RPCs
+     *---------------------------------------
      * </pre>
      */
     public void assignKeyAccessServerToAttribute(io.opentdf.platform.policy.attributes.AssignKeyAccessServerToAttributeRequest request,
@@ -1105,22 +808,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Remove Key Access Server to Attribute
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
-     * </pre>
      */
     public void removeKeyAccessServerFromAttribute(io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromAttributeRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromAttributeResponse> responseObserver) {
@@ -1129,22 +816,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Assign Key Access Server to Value
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"value_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"value_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
-     * </pre>
      */
     public void assignKeyAccessServerToValue(io.opentdf.platform.policy.attributes.AssignKeyAccessServerToValueRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.AssignKeyAccessServerToValueResponse> responseObserver) {
@@ -1153,21 +824,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Remove Key Access Server to Value
-     *grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
-     *Example Request:
-     *{
-     *"value_key_access_server": {
-     *"value_id": "value_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"value_key_access_server": {
-     *"value_id": "value_id",
-     *"key_access_server_id
-     * </pre>
      */
     public void removeKeyAccessServerFromValue(io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromValueRequest request,
         io.grpc.stub.StreamObserver<io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromValueResponse> responseObserver) {
@@ -1199,64 +855,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *Request:
-     *grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *OR (for inactive)
-     *grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *Response:
-     *{
-     *"attributes": [
-     *{
-     *"id": "attribute_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id",
-     *"name": "namespace_name"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"values": [
-     *{
-     *"id": "value_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"attribute_id": "attribute_id",
-     *"value": "value",
-     *"members": ["value_id"],
-     *"grants": [
-     *{
-     *"id": "key_access_server_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"name": "key_access_server_name",
-     *"description": "key_access_server_description",
-     *}
-     *],
-     *}
-     *],
-     *"grants": [
-     *{
-     *"id": "key_access_server_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"name": "key_access_server_name",
-     *"description": "key_access_server_description",
-     *}
-     *],
-     *"active": true
-     *}
-     *]
-     *}
+     *--------------------------------------*
+     * Attribute RPCs
+     *---------------------------------------
      * </pre>
      */
     public io.opentdf.platform.policy.attributes.ListAttributesResponse listAttributes(io.opentdf.platform.policy.attributes.ListAttributesRequest request) {
@@ -1265,41 +866,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *List Values
-     *Request:
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *Response:
-     *{
-     *"attributes": [
-     *{
-     *"id": "attribute_id",
-     *"metadata": {
-     *"createdAt": "2024-02-14T20:24:23.057404Z",
-     *"updatedAt": "2024-02-14T20:24:23.057404Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id",
-     *"name": "namespace_name"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"values": [
-     *{
-     *... VALUES ...
-     *}
-     *],
-     *"grants": [
-     *{
-     *... GRANTS ...
-     *}
-     *],
-     *"active": true
-     *}
-     *]
-     *}
-     * </pre>
      */
     public io.opentdf.platform.policy.attributes.ListAttributeValuesResponse listAttributeValues(io.opentdf.platform.policy.attributes.ListAttributeValuesRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -1321,27 +887,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     * Create Attribute
-     *Request:
-     *grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
-     *Response
-     *{
-     *"attribute": {
-     *"id": "e06f067b-d158-44bc-a814-1aa3f968dcf0",
-     *"metadata": {
-     *"createdAt": "2024-02-14T20:24:23.057404Z",
-     *"updatedAt": "2024-02-14T20:24:23.057404Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"active": true
-     *}
-     *}
-     * </pre>
      */
     public io.opentdf.platform.policy.attributes.CreateAttributeResponse createAttribute(io.opentdf.platform.policy.attributes.CreateAttributeRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -1364,7 +909,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     ** Attribute Value *
+     *--------------------------------------*
+     * Value RPCs
+     *---------------------------------------
      * </pre>
      */
     public io.opentdf.platform.policy.attributes.GetAttributeValueResponse getAttributeValue(io.opentdf.platform.policy.attributes.GetAttributeValueRequest request) {
@@ -1373,11 +920,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     * Create Attribute Value
-     * Example:
-     *  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue
-     * </pre>
      */
     public io.opentdf.platform.policy.attributes.CreateAttributeValueResponse createAttributeValue(io.opentdf.platform.policy.attributes.CreateAttributeValueRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -1400,20 +942,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     *Assign Key Access Server to Attribute
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
+     *--------------------------------------*
+     * Attribute &lt;&gt; Key Access Server RPCs
+     *---------------------------------------
      * </pre>
      */
     public io.opentdf.platform.policy.attributes.AssignKeyAccessServerToAttributeResponse assignKeyAccessServerToAttribute(io.opentdf.platform.policy.attributes.AssignKeyAccessServerToAttributeRequest request) {
@@ -1422,22 +953,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Remove Key Access Server to Attribute
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
-     * </pre>
      */
     public io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromAttributeResponse removeKeyAccessServerFromAttribute(io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromAttributeRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -1445,22 +960,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Assign Key Access Server to Value
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"value_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"value_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
-     * </pre>
      */
     public io.opentdf.platform.policy.attributes.AssignKeyAccessServerToValueResponse assignKeyAccessServerToValue(io.opentdf.platform.policy.attributes.AssignKeyAccessServerToValueRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -1468,21 +967,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Remove Key Access Server to Value
-     *grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
-     *Example Request:
-     *{
-     *"value_key_access_server": {
-     *"value_id": "value_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"value_key_access_server": {
-     *"value_id": "value_id",
-     *"key_access_server_id
-     * </pre>
      */
     public io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromValueResponse removeKeyAccessServerFromValue(io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromValueRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
@@ -1513,64 +997,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *Request:
-     *grpcurl -plaintext localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *OR (for inactive)
-     *grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *Response:
-     *{
-     *"attributes": [
-     *{
-     *"id": "attribute_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id",
-     *"name": "namespace_name"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"values": [
-     *{
-     *"id": "value_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"attribute_id": "attribute_id",
-     *"value": "value",
-     *"members": ["value_id"],
-     *"grants": [
-     *{
-     *"id": "key_access_server_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"name": "key_access_server_name",
-     *"description": "key_access_server_description",
-     *}
-     *],
-     *}
-     *],
-     *"grants": [
-     *{
-     *"id": "key_access_server_id",
-     *"metadata": {
-     *"created_at": "2021-01-01T00:00:00Z",
-     *"updated_at": "2021-01-01T00:00:00Z"
-     *},
-     *"name": "key_access_server_name",
-     *"description": "key_access_server_description",
-     *}
-     *],
-     *"active": true
-     *}
-     *]
-     *}
+     *--------------------------------------*
+     * Attribute RPCs
+     *---------------------------------------
      * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.ListAttributesResponse> listAttributes(
@@ -1580,41 +1009,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *List Values
-     *Request:
-     *NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-     *grpcurl -plaintext -d '{"state": "STATE_TYPE_ENUM_INACTIVE"}' localhost:9000 policy.attributes.AttributesService/ListAttributes
-     *Response:
-     *{
-     *"attributes": [
-     *{
-     *"id": "attribute_id",
-     *"metadata": {
-     *"createdAt": "2024-02-14T20:24:23.057404Z",
-     *"updatedAt": "2024-02-14T20:24:23.057404Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id",
-     *"name": "namespace_name"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"values": [
-     *{
-     *... VALUES ...
-     *}
-     *],
-     *"grants": [
-     *{
-     *... GRANTS ...
-     *}
-     *],
-     *"active": true
-     *}
-     *]
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.ListAttributeValuesResponse> listAttributeValues(
         io.opentdf.platform.policy.attributes.ListAttributeValuesRequest request) {
@@ -1639,27 +1033,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     * Create Attribute
-     *Request:
-     *grpcurl -plaintext -d '{"attribute": {"namespace_id": "namespace_id", "name": "attribute_name", "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute
-     *Response
-     *{
-     *"attribute": {
-     *"id": "e06f067b-d158-44bc-a814-1aa3f968dcf0",
-     *"metadata": {
-     *"createdAt": "2024-02-14T20:24:23.057404Z",
-     *"updatedAt": "2024-02-14T20:24:23.057404Z"
-     *},
-     *"namespace": {
-     *"id": "namespace_id"
-     *},
-     *"name": "attribute_name",
-     *"rule": "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-     *"active": true
-     *}
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.CreateAttributeResponse> createAttribute(
         io.opentdf.platform.policy.attributes.CreateAttributeRequest request) {
@@ -1685,7 +1058,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     ** Attribute Value *
+     *--------------------------------------*
+     * Value RPCs
+     *---------------------------------------
      * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.GetAttributeValueResponse> getAttributeValue(
@@ -1695,11 +1070,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     * Create Attribute Value
-     * Example:
-     *  grpcurl -plaintext -d '{"attribute_id": "attribute_id", "value": {"value": "value"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.CreateAttributeValueResponse> createAttributeValue(
         io.opentdf.platform.policy.attributes.CreateAttributeValueRequest request) {
@@ -1725,20 +1095,9 @@ public final class AttributesServiceGrpc {
 
     /**
      * <pre>
-     *Assign Key Access Server to Attribute
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
+     *--------------------------------------*
+     * Attribute &lt;&gt; Key Access Server RPCs
+     *---------------------------------------
      * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.AssignKeyAccessServerToAttributeResponse> assignKeyAccessServerToAttribute(
@@ -1748,22 +1107,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Remove Key Access Server to Attribute
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"attribute_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromAttributeResponse> removeKeyAccessServerFromAttribute(
         io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromAttributeRequest request) {
@@ -1772,22 +1115,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Assign Key Access Server to Value
-     *grpcurl -plaintext -d '{"attribute_key_access_server": {"attribute_id": "attribute_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue
-     *Example Request:
-     *{
-     *"attribute_key_access_server": {
-     *"value_id": "attribute_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"attribute_key_access_server": {
-     *"value_id": "attribute_id",
-     *"key_access_server_id: "key_access_server_id"
-     *}
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.AssignKeyAccessServerToValueResponse> assignKeyAccessServerToValue(
         io.opentdf.platform.policy.attributes.AssignKeyAccessServerToValueRequest request) {
@@ -1796,21 +1123,6 @@ public final class AttributesServiceGrpc {
     }
 
     /**
-     * <pre>
-     *Remove Key Access Server to Value
-     *grpcurl -plaintext -d '{"value_key_access_server": {"value_id": "value_id", "key_access_server_id": "key_access_server_id"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue
-     *Example Request:
-     *{
-     *"value_key_access_server": {
-     *"value_id": "value_id",
-     *"key_access_server_id
-     *}
-     *Example Response:
-     *{
-     *"value_key_access_server": {
-     *"value_id": "value_id",
-     *"key_access_server_id
-     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromValueResponse> removeKeyAccessServerFromValue(
         io.opentdf.platform.policy.attributes.RemoveKeyAccessServerFromValueRequest request) {

@@ -86,33 +86,7 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int METADATA_FIELD_NUMBER = 2;
-  private io.opentdf.platform.common.Metadata metadata_;
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
-   */
-  @java.lang.Override
-  public boolean hasMetadata() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return The metadata.
-   */
-  @java.lang.Override
-  public io.opentdf.platform.common.Metadata getMetadata() {
-    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
-  }
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   */
-  @java.lang.Override
-  public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
-    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
-  }
-
-  public static final int URI_FIELD_NUMBER = 3;
+  public static final int URI_FIELD_NUMBER = 2;
   @SuppressWarnings("serial")
   private volatile java.lang.Object uri_ = "";
   /**
@@ -120,7 +94,7 @@ private static final long serialVersionUID = 0L;
    * Address of a KAS instance
    * </pre>
    *
-   * <code>string uri = 3 [json_name = "uri"];</code>
+   * <code>string uri = 2 [json_name = "uri"];</code>
    * @return The uri.
    */
   @java.lang.Override
@@ -141,7 +115,7 @@ private static final long serialVersionUID = 0L;
    * Address of a KAS instance
    * </pre>
    *
-   * <code>string uri = 3 [json_name = "uri"];</code>
+   * <code>string uri = 2 [json_name = "uri"];</code>
    * @return The bytes for uri.
    */
   @java.lang.Override
@@ -159,18 +133,18 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int PUBLIC_KEY_FIELD_NUMBER = 4;
+  public static final int PUBLIC_KEY_FIELD_NUMBER = 3;
   private io.opentdf.platform.kasregistry.PublicKey publicKey_;
   /**
-   * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+   * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
    * @return Whether the publicKey field is set.
    */
   @java.lang.Override
   public boolean hasPublicKey() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+   * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
    * @return The publicKey.
    */
   @java.lang.Override
@@ -178,11 +152,49 @@ private static final long serialVersionUID = 0L;
     return publicKey_ == null ? io.opentdf.platform.kasregistry.PublicKey.getDefaultInstance() : publicKey_;
   }
   /**
-   * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+   * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
    */
   @java.lang.Override
   public io.opentdf.platform.kasregistry.PublicKeyOrBuilder getPublicKeyOrBuilder() {
     return publicKey_ == null ? io.opentdf.platform.kasregistry.PublicKey.getDefaultInstance() : publicKey_;
+  }
+
+  public static final int METADATA_FIELD_NUMBER = 100;
+  private io.opentdf.platform.common.Metadata metadata_;
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  @java.lang.Override
+  public boolean hasMetadata() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  @java.lang.Override
+  public io.opentdf.platform.common.Metadata getMetadata() {
+    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+  }
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
+    return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -202,14 +214,14 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
-    if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(2, getMetadata());
-    }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(uri_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, uri_);
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, uri_);
+    }
+    if (((bitField0_ & 0x00000001) != 0)) {
+      output.writeMessage(3, getPublicKey());
     }
     if (((bitField0_ & 0x00000002) != 0)) {
-      output.writeMessage(4, getPublicKey());
+      output.writeMessage(100, getMetadata());
     }
     getUnknownFields().writeTo(output);
   }
@@ -223,16 +235,16 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
     }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(uri_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, uri_);
+    }
     if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(2, getMetadata());
-    }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(uri_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, uri_);
+        .computeMessageSize(3, getPublicKey());
     }
     if (((bitField0_ & 0x00000002) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(4, getPublicKey());
+        .computeMessageSize(100, getMetadata());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -251,17 +263,17 @@ private static final long serialVersionUID = 0L;
 
     if (!getId()
         .equals(other.getId())) return false;
-    if (hasMetadata() != other.hasMetadata()) return false;
-    if (hasMetadata()) {
-      if (!getMetadata()
-          .equals(other.getMetadata())) return false;
-    }
     if (!getUri()
         .equals(other.getUri())) return false;
     if (hasPublicKey() != other.hasPublicKey()) return false;
     if (hasPublicKey()) {
       if (!getPublicKey()
           .equals(other.getPublicKey())) return false;
+    }
+    if (hasMetadata() != other.hasMetadata()) return false;
+    if (hasMetadata()) {
+      if (!getMetadata()
+          .equals(other.getMetadata())) return false;
     }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
@@ -276,15 +288,15 @@ private static final long serialVersionUID = 0L;
     hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + ID_FIELD_NUMBER;
     hash = (53 * hash) + getId().hashCode();
-    if (hasMetadata()) {
-      hash = (37 * hash) + METADATA_FIELD_NUMBER;
-      hash = (53 * hash) + getMetadata().hashCode();
-    }
     hash = (37 * hash) + URI_FIELD_NUMBER;
     hash = (53 * hash) + getUri().hashCode();
     if (hasPublicKey()) {
       hash = (37 * hash) + PUBLIC_KEY_FIELD_NUMBER;
       hash = (53 * hash) + getPublicKey().hashCode();
+    }
+    if (hasMetadata()) {
+      hash = (37 * hash) + METADATA_FIELD_NUMBER;
+      hash = (53 * hash) + getMetadata().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -421,8 +433,8 @@ private static final long serialVersionUID = 0L;
     private void maybeForceBuilderInitialization() {
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
-        getMetadataFieldBuilder();
         getPublicKeyFieldBuilder();
+        getMetadataFieldBuilder();
       }
     }
     @java.lang.Override
@@ -430,16 +442,16 @@ private static final long serialVersionUID = 0L;
       super.clear();
       bitField0_ = 0;
       id_ = "";
-      metadata_ = null;
-      if (metadataBuilder_ != null) {
-        metadataBuilder_.dispose();
-        metadataBuilder_ = null;
-      }
       uri_ = "";
       publicKey_ = null;
       if (publicKeyBuilder_ != null) {
         publicKeyBuilder_.dispose();
         publicKeyBuilder_ = null;
+      }
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
       }
       return this;
     }
@@ -477,20 +489,20 @@ private static final long serialVersionUID = 0L;
       if (((from_bitField0_ & 0x00000001) != 0)) {
         result.id_ = id_;
       }
-      int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.metadata_ = metadataBuilder_ == null
-            ? metadata_
-            : metadataBuilder_.build();
-        to_bitField0_ |= 0x00000001;
-      }
-      if (((from_bitField0_ & 0x00000004) != 0)) {
         result.uri_ = uri_;
       }
-      if (((from_bitField0_ & 0x00000008) != 0)) {
+      int to_bitField0_ = 0;
+      if (((from_bitField0_ & 0x00000004) != 0)) {
         result.publicKey_ = publicKeyBuilder_ == null
             ? publicKey_
             : publicKeyBuilder_.build();
+        to_bitField0_ |= 0x00000001;
+      }
+      if (((from_bitField0_ & 0x00000008) != 0)) {
+        result.metadata_ = metadataBuilder_ == null
+            ? metadata_
+            : metadataBuilder_.build();
         to_bitField0_ |= 0x00000002;
       }
       result.bitField0_ |= to_bitField0_;
@@ -545,16 +557,16 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00000001;
         onChanged();
       }
-      if (other.hasMetadata()) {
-        mergeMetadata(other.getMetadata());
-      }
       if (!other.getUri().isEmpty()) {
         uri_ = other.uri_;
-        bitField0_ |= 0x00000004;
+        bitField0_ |= 0x00000002;
         onChanged();
       }
       if (other.hasPublicKey()) {
         mergePublicKey(other.getPublicKey());
+      }
+      if (other.hasMetadata()) {
+        mergeMetadata(other.getMetadata());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -588,24 +600,24 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 10
             case 18: {
-              input.readMessage(
-                  getMetadataFieldBuilder().getBuilder(),
-                  extensionRegistry);
+              uri_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000002;
               break;
             } // case 18
             case 26: {
-              uri_ = input.readStringRequireUtf8();
-              bitField0_ |= 0x00000004;
-              break;
-            } // case 26
-            case 34: {
               input.readMessage(
                   getPublicKeyFieldBuilder().getBuilder(),
                   extensionRegistry);
+              bitField0_ |= 0x00000004;
+              break;
+            } // case 26
+            case 802: {
+              input.readMessage(
+                  getMetadataFieldBuilder().getBuilder(),
+                  extensionRegistry);
               bitField0_ |= 0x00000008;
               break;
-            } // case 34
+            } // case 802
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -695,134 +707,13 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private io.opentdf.platform.common.Metadata metadata_;
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> metadataBuilder_;
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     * @return Whether the metadata field is set.
-     */
-    public boolean hasMetadata() {
-      return ((bitField0_ & 0x00000002) != 0);
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     * @return The metadata.
-     */
-    public io.opentdf.platform.common.Metadata getMetadata() {
-      if (metadataBuilder_ == null) {
-        return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
-      } else {
-        return metadataBuilder_.getMessage();
-      }
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public Builder setMetadata(io.opentdf.platform.common.Metadata value) {
-      if (metadataBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        metadata_ = value;
-      } else {
-        metadataBuilder_.setMessage(value);
-      }
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public Builder setMetadata(
-        io.opentdf.platform.common.Metadata.Builder builderForValue) {
-      if (metadataBuilder_ == null) {
-        metadata_ = builderForValue.build();
-      } else {
-        metadataBuilder_.setMessage(builderForValue.build());
-      }
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public Builder mergeMetadata(io.opentdf.platform.common.Metadata value) {
-      if (metadataBuilder_ == null) {
-        if (((bitField0_ & 0x00000002) != 0) &&
-          metadata_ != null &&
-          metadata_ != io.opentdf.platform.common.Metadata.getDefaultInstance()) {
-          getMetadataBuilder().mergeFrom(value);
-        } else {
-          metadata_ = value;
-        }
-      } else {
-        metadataBuilder_.mergeFrom(value);
-      }
-      if (metadata_ != null) {
-        bitField0_ |= 0x00000002;
-        onChanged();
-      }
-      return this;
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public Builder clearMetadata() {
-      bitField0_ = (bitField0_ & ~0x00000002);
-      metadata_ = null;
-      if (metadataBuilder_ != null) {
-        metadataBuilder_.dispose();
-        metadataBuilder_ = null;
-      }
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public io.opentdf.platform.common.Metadata.Builder getMetadataBuilder() {
-      bitField0_ |= 0x00000002;
-      onChanged();
-      return getMetadataFieldBuilder().getBuilder();
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
-      if (metadataBuilder_ != null) {
-        return metadataBuilder_.getMessageOrBuilder();
-      } else {
-        return metadata_ == null ?
-            io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
-      }
-    }
-    /**
-     * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-     */
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> 
-        getMetadataFieldBuilder() {
-      if (metadataBuilder_ == null) {
-        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder>(
-                getMetadata(),
-                getParentForChildren(),
-                isClean());
-        metadata_ = null;
-      }
-      return metadataBuilder_;
-    }
-
     private java.lang.Object uri_ = "";
     /**
      * <pre>
      * Address of a KAS instance
      * </pre>
      *
-     * <code>string uri = 3 [json_name = "uri"];</code>
+     * <code>string uri = 2 [json_name = "uri"];</code>
      * @return The uri.
      */
     public java.lang.String getUri() {
@@ -842,7 +733,7 @@ private static final long serialVersionUID = 0L;
      * Address of a KAS instance
      * </pre>
      *
-     * <code>string uri = 3 [json_name = "uri"];</code>
+     * <code>string uri = 2 [json_name = "uri"];</code>
      * @return The bytes for uri.
      */
     public com.google.protobuf.ByteString
@@ -863,7 +754,7 @@ private static final long serialVersionUID = 0L;
      * Address of a KAS instance
      * </pre>
      *
-     * <code>string uri = 3 [json_name = "uri"];</code>
+     * <code>string uri = 2 [json_name = "uri"];</code>
      * @param value The uri to set.
      * @return This builder for chaining.
      */
@@ -871,7 +762,7 @@ private static final long serialVersionUID = 0L;
         java.lang.String value) {
       if (value == null) { throw new NullPointerException(); }
       uri_ = value;
-      bitField0_ |= 0x00000004;
+      bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
@@ -880,12 +771,12 @@ private static final long serialVersionUID = 0L;
      * Address of a KAS instance
      * </pre>
      *
-     * <code>string uri = 3 [json_name = "uri"];</code>
+     * <code>string uri = 2 [json_name = "uri"];</code>
      * @return This builder for chaining.
      */
     public Builder clearUri() {
       uri_ = getDefaultInstance().getUri();
-      bitField0_ = (bitField0_ & ~0x00000004);
+      bitField0_ = (bitField0_ & ~0x00000002);
       onChanged();
       return this;
     }
@@ -894,7 +785,7 @@ private static final long serialVersionUID = 0L;
      * Address of a KAS instance
      * </pre>
      *
-     * <code>string uri = 3 [json_name = "uri"];</code>
+     * <code>string uri = 2 [json_name = "uri"];</code>
      * @param value The bytes for uri to set.
      * @return This builder for chaining.
      */
@@ -903,7 +794,7 @@ private static final long serialVersionUID = 0L;
       if (value == null) { throw new NullPointerException(); }
       checkByteStringIsUtf8(value);
       uri_ = value;
-      bitField0_ |= 0x00000004;
+      bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
@@ -912,14 +803,14 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.kasregistry.PublicKey, io.opentdf.platform.kasregistry.PublicKey.Builder, io.opentdf.platform.kasregistry.PublicKeyOrBuilder> publicKeyBuilder_;
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      * @return Whether the publicKey field is set.
      */
     public boolean hasPublicKey() {
-      return ((bitField0_ & 0x00000008) != 0);
+      return ((bitField0_ & 0x00000004) != 0);
     }
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      * @return The publicKey.
      */
     public io.opentdf.platform.kasregistry.PublicKey getPublicKey() {
@@ -930,7 +821,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      */
     public Builder setPublicKey(io.opentdf.platform.kasregistry.PublicKey value) {
       if (publicKeyBuilder_ == null) {
@@ -941,12 +832,12 @@ private static final long serialVersionUID = 0L;
       } else {
         publicKeyBuilder_.setMessage(value);
       }
-      bitField0_ |= 0x00000008;
+      bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      */
     public Builder setPublicKey(
         io.opentdf.platform.kasregistry.PublicKey.Builder builderForValue) {
@@ -955,16 +846,16 @@ private static final long serialVersionUID = 0L;
       } else {
         publicKeyBuilder_.setMessage(builderForValue.build());
       }
-      bitField0_ |= 0x00000008;
+      bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      */
     public Builder mergePublicKey(io.opentdf.platform.kasregistry.PublicKey value) {
       if (publicKeyBuilder_ == null) {
-        if (((bitField0_ & 0x00000008) != 0) &&
+        if (((bitField0_ & 0x00000004) != 0) &&
           publicKey_ != null &&
           publicKey_ != io.opentdf.platform.kasregistry.PublicKey.getDefaultInstance()) {
           getPublicKeyBuilder().mergeFrom(value);
@@ -975,16 +866,16 @@ private static final long serialVersionUID = 0L;
         publicKeyBuilder_.mergeFrom(value);
       }
       if (publicKey_ != null) {
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000004;
         onChanged();
       }
       return this;
     }
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      */
     public Builder clearPublicKey() {
-      bitField0_ = (bitField0_ & ~0x00000008);
+      bitField0_ = (bitField0_ & ~0x00000004);
       publicKey_ = null;
       if (publicKeyBuilder_ != null) {
         publicKeyBuilder_.dispose();
@@ -994,15 +885,15 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      */
     public io.opentdf.platform.kasregistry.PublicKey.Builder getPublicKeyBuilder() {
-      bitField0_ |= 0x00000008;
+      bitField0_ |= 0x00000004;
       onChanged();
       return getPublicKeyFieldBuilder().getBuilder();
     }
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      */
     public io.opentdf.platform.kasregistry.PublicKeyOrBuilder getPublicKeyOrBuilder() {
       if (publicKeyBuilder_ != null) {
@@ -1013,7 +904,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>.kasregistry.PublicKey public_key = 4 [json_name = "publicKey"];</code>
+     * <code>.kasregistry.PublicKey public_key = 3 [json_name = "publicKey"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.kasregistry.PublicKey, io.opentdf.platform.kasregistry.PublicKey.Builder, io.opentdf.platform.kasregistry.PublicKeyOrBuilder> 
@@ -1027,6 +918,163 @@ private static final long serialVersionUID = 0L;
         publicKey_ = null;
       }
       return publicKeyBuilder_;
+    }
+
+    private io.opentdf.platform.common.Metadata metadata_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> metadataBuilder_;
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     * @return Whether the metadata field is set.
+     */
+    public boolean hasMetadata() {
+      return ((bitField0_ & 0x00000008) != 0);
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     * @return The metadata.
+     */
+    public io.opentdf.platform.common.Metadata getMetadata() {
+      if (metadataBuilder_ == null) {
+        return metadata_ == null ? io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+      } else {
+        return metadataBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(io.opentdf.platform.common.Metadata value) {
+      if (metadataBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        metadata_ = value;
+      } else {
+        metadataBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000008;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(
+        io.opentdf.platform.common.Metadata.Builder builderForValue) {
+      if (metadataBuilder_ == null) {
+        metadata_ = builderForValue.build();
+      } else {
+        metadataBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000008;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder mergeMetadata(io.opentdf.platform.common.Metadata value) {
+      if (metadataBuilder_ == null) {
+        if (((bitField0_ & 0x00000008) != 0) &&
+          metadata_ != null &&
+          metadata_ != io.opentdf.platform.common.Metadata.getDefaultInstance()) {
+          getMetadataBuilder().mergeFrom(value);
+        } else {
+          metadata_ = value;
+        }
+      } else {
+        metadataBuilder_.mergeFrom(value);
+      }
+      if (metadata_ != null) {
+        bitField0_ |= 0x00000008;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder clearMetadata() {
+      bitField0_ = (bitField0_ & ~0x00000008);
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
+      }
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.Metadata.Builder getMetadataBuilder() {
+      bitField0_ |= 0x00000008;
+      onChanged();
+      return getMetadataFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder() {
+      if (metadataBuilder_ != null) {
+        return metadataBuilder_.getMessageOrBuilder();
+      } else {
+        return metadata_ == null ?
+            io.opentdf.platform.common.Metadata.getDefaultInstance() : metadata_;
+      }
+    }
+    /**
+     * <pre>
+     * Common metadata
+     * </pre>
+     *
+     * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder> 
+        getMetadataFieldBuilder() {
+      if (metadataBuilder_ == null) {
+        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.common.Metadata, io.opentdf.platform.common.Metadata.Builder, io.opentdf.platform.common.MetadataOrBuilder>(
+                getMetadata(),
+                getParentForChildren(),
+                isClean());
+        metadata_ = null;
+      }
+      return metadataBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

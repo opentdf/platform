@@ -29,39 +29,27 @@ public interface ValueOrBuilder extends
       getIdBytes();
 
   /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
+   * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
+   * @return Whether the attribute field is set.
    */
-  boolean hasMetadata();
+  boolean hasAttribute();
   /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return The metadata.
+   * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
+   * @return The attribute.
    */
-  io.opentdf.platform.common.Metadata getMetadata();
+  io.opentdf.platform.policy.attributes.Attribute getAttribute();
   /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
+   * <code>.policy.attributes.Attribute attribute = 2 [json_name = "attribute"];</code>
    */
-  io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();
+  io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributeOrBuilder();
 
   /**
-   * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-   * @return The attributeId.
-   */
-  java.lang.String getAttributeId();
-  /**
-   * <code>string attribute_id = 3 [json_name = "attributeId", (.buf.validate.field) = { ... }</code>
-   * @return The bytes for attributeId.
-   */
-  com.google.protobuf.ByteString
-      getAttributeIdBytes();
-
-  /**
-   * <code>string value = 4 [json_name = "value"];</code>
+   * <code>string value = 3 [json_name = "value"];</code>
    * @return The value.
    */
   java.lang.String getValue();
   /**
-   * <code>string value = 4 [json_name = "value"];</code>
+   * <code>string value = 3 [json_name = "value"];</code>
    * @return The bytes for value.
    */
   com.google.protobuf.ByteString
@@ -72,7 +60,7 @@ public interface ValueOrBuilder extends
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 5 [json_name = "members"];</code>
+   * <code>repeated string members = 4 [json_name = "members"];</code>
    * @return A list containing the members.
    */
   java.util.List<java.lang.String>
@@ -82,7 +70,7 @@ public interface ValueOrBuilder extends
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 5 [json_name = "members"];</code>
+   * <code>repeated string members = 4 [json_name = "members"];</code>
    * @return The count of members.
    */
   int getMembersCount();
@@ -91,7 +79,7 @@ public interface ValueOrBuilder extends
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 5 [json_name = "members"];</code>
+   * <code>repeated string members = 4 [json_name = "members"];</code>
    * @param index The index of the element to return.
    * @return The members at the given index.
    */
@@ -101,7 +89,7 @@ public interface ValueOrBuilder extends
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 5 [json_name = "members"];</code>
+   * <code>repeated string members = 4 [json_name = "members"];</code>
    * @param index The index of the value to return.
    * @return The bytes of the members at the given index.
    */
@@ -113,7 +101,7 @@ public interface ValueOrBuilder extends
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   java.util.List<io.opentdf.platform.kasregistry.KeyAccessServer> 
       getGrantsList();
@@ -122,7 +110,7 @@ public interface ValueOrBuilder extends
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   io.opentdf.platform.kasregistry.KeyAccessServer getGrants(int index);
   /**
@@ -130,7 +118,7 @@ public interface ValueOrBuilder extends
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   int getGrantsCount();
   /**
@@ -138,7 +126,7 @@ public interface ValueOrBuilder extends
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   java.util.List<? extends io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder> 
       getGrantsOrBuilderList();
@@ -147,18 +135,18 @@ public interface ValueOrBuilder extends
    * list of key access servers
    * </pre>
    *
-   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 5 [json_name = "grants"];</code>
    */
   io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder getGrantsOrBuilder(
       int index);
 
   /**
-   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * <code>string fqn = 6 [json_name = "fqn"];</code>
    * @return The fqn.
    */
   java.lang.String getFqn();
   /**
-   * <code>string fqn = 7 [json_name = "fqn"];</code>
+   * <code>string fqn = 6 [json_name = "fqn"];</code>
    * @return The bytes for fqn.
    */
   com.google.protobuf.ByteString
@@ -169,7 +157,7 @@ public interface ValueOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
    * @return Whether the active field is set.
    */
   boolean hasActive();
@@ -178,7 +166,7 @@ public interface ValueOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
    * @return The active.
    */
   com.google.protobuf.BoolValue getActive();
@@ -187,7 +175,34 @@ public interface ValueOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 7 [json_name = "active"];</code>
    */
   com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder();
+
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.Metadata getMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();
 }

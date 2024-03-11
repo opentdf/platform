@@ -78,8 +78,8 @@ jobs:
           mkdir -p $(pwd)/.tmp/tokens
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
-          export SOFTHSM2_CONF=$(pwd)/softhsm2.conf
-      - run: SOFTHSM2_CONF="$(pwd)/softhsm2.conf" go test ./... -short
+          echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
+      - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
 
   integration:
@@ -97,13 +97,17 @@ jobs:
             sdk/go.sum
       - run: make go.work
       - run: go test ./integration -race
-      - run: docker-compose up -d
+      - run: docker compose up -d --wait --wait-timeout 240
       - run: cp example-opentdf.yaml opentdf.yaml
-      - run: sleep 15
-      - run: go run . start &
+      - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
+        name: start server in background
+        with:
+          run: |
+            go run . start
+          wait-on: |
+            tcp:localhost:9000
+          log-output-if: true
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
-      - run: sleep 15
-        name: wake me up when github action runner supports docker-compose --wait
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
 
@@ -163,8 +167,8 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '20'
-          distribution: 'adopt'
+          java-version: "20"
+          distribution: "adopt"
           server-id: github
       - name: Compile Java SDK
         run: |
@@ -180,7 +184,7 @@ jobs:
     if: always()
     steps:
       - if: contains(needs.*.result, 'failure')
-        run: exit 1
+        run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
 
   license:
     name: license check

@@ -54,13 +54,13 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	}
 
 	v := &attributes.Value{
-		Id:          id,
-		Value:       value,
-		Active:      &wrapperspb.BoolValue{Value: active},
-		Members:     members,
-		Metadata:    m,
-		AttributeId: attributeId,
-		Fqn:         fqn.String,
+		Id:       id,
+		Value:    value,
+		Active:   &wrapperspb.BoolValue{Value: active},
+		Members:  members,
+		Metadata: m,
+		// TODO: get & hydrate full attribute
+		Fqn: fqn.String,
 	}
 	return v, nil
 }
@@ -87,7 +87,7 @@ func createAttributeValueSql(
 	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns(
@@ -106,7 +106,7 @@ func createAttributeValueSql(
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
+func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.CreateAttributeValueRequest) (*attributes.Value, error) {
 	metadataJson, metadata, err := db.MarshalCreateMetadata(v.Metadata)
 	if err != nil {
 		return nil, err
@@ -133,18 +133,18 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
 
 	rV := &attributes.Value{
-		Id:          id,
-		AttributeId: attributeId,
-		Value:       v.Value,
-		Members:     v.Members,
-		Metadata:    metadata,
-		Active:      &wrapperspb.BoolValue{Value: true},
+		Id:        id,
+		Attribute: &attributes.Attribute{Id: attributeId},
+		Value:     v.Value,
+		Members:   v.Members,
+		Metadata:  metadata,
+		Active:    &wrapperspb.BoolValue{Value: true},
 	}
 	return rV, nil
 }
 
 func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	fields := []string{
 		t.Field("id"),
 		t.Field("value"),
@@ -154,7 +154,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		t.Field("attribute_definition_id"),
 	}
 	if opts.withFqn {
-		fields = append(fields, db.Tables.AttrFqn.Field("fqn"))
+		fields = append(fields, Tables.AttrFqn.Field("fqn"))
 	}
 
 	sb := db.NewStatementBuilder().
@@ -162,7 +162,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		From(t.Name())
 
 	if opts.withFqn {
-		fqnT := db.Tables.AttrFqn
+		fqnT := Tables.AttrFqn
 		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
 	}
 
@@ -188,7 +188,7 @@ func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*attr
 }
 
 func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	fields := []string{
 		t.Field("id"),
 		t.Field("value"),
@@ -205,7 +205,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		Select(fields...)
 
 	if opts.withFqn {
-		fqnT := db.Tables.AttrFqn
+		fqnT := Tables.AttrFqn
 		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
 	}
 
@@ -234,7 +234,7 @@ func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id st
 }
 
 func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	fields := []string{
 		t.Field("id"),
 		t.Field("value"),
@@ -250,7 +250,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		Select(fields...)
 
 	if opts.withFqn {
-		fqnT := db.Tables.AttrFqn
+		fqnT := Tables.AttrFqn
 		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
 	}
 
@@ -272,60 +272,63 @@ func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string
 
 func updateAttributeValueSql(
 	id string,
-	value string,
 	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
-	sb := db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("metadata", metadata)
+	t := Tables.AttributeValues
+	sb := db.NewStatementBuilder().Update(t.Name())
 
-	if value != "" {
-		sb = sb.Set("value", value)
+	if metadata != nil {
+		sb = sb.Set("metadata", metadata)
 	}
+
 	if members != nil {
 		sb = sb.Set("members", members)
 	}
 
-	return sb.
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
+	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
-func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, v *attributes.ValueCreateUpdate) (*attributes.Value, error) {
-	prev, err := c.GetAttributeValue(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	metadataJson, _, err := db.MarshalUpdateMetadata(prev.Metadata, v.Metadata)
+func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*attributes.Value, error) {
+	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+		v, err := c.GetAttributeValue(ctx, r.Id)
+		if err != nil {
+			return nil, err
+		}
+		return v.Metadata, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	sql, args, err := updateAttributeValueSql(
-		id,
-		v.Value,
-		v.Members,
+		r.Id,
+		r.Members,
 		metadataJson,
 	)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &attributes.Value{
+			Id: r.Id,
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: r.Id})
 
-	return prev, nil
+	return &attributes.Value{
+		Id: r.Id,
+	}, nil
 }
 
 func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	return db.NewStatementBuilder().
 		Update(t.Name()).
 		Set("active", false).
@@ -336,14 +339,18 @@ func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) DeactivateAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
 	sql, args, err := deactivateAttributeValueSql(id)
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 	return c.GetAttributeValue(ctx, id)
 }
 
 func deleteAttributeValueSql(id string) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
@@ -357,7 +364,11 @@ func (c PolicyDbClient) DeleteAttributeValue(ctx context.Context, id string) (*a
 	}
 
 	sql, args, err := deleteAttributeValueSql(id)
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -365,7 +376,7 @@ func (c PolicyDbClient) DeleteAttributeValue(ctx context.Context, id string) (*a
 }
 
 func assignKeyAccessServerToValueSql(valueID, keyAccessServerID string) (string, []interface{}, error) {
-	t := db.Tables.AttributeValueKeyAccessGrants
+	t := Tables.AttributeValueKeyAccessGrants
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("attribute_value_id", "key_access_server_id").
@@ -379,7 +390,7 @@ func (c PolicyDbClient) AssignKeyAccessServerToValue(ctx context.Context, k *att
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -387,7 +398,7 @@ func (c PolicyDbClient) AssignKeyAccessServerToValue(ctx context.Context, k *att
 }
 
 func removeKeyAccessServerFromValueSql(valueID, keyAccessServerID string) (string, []interface{}, error) {
-	t := db.Tables.AttributeValueKeyAccessGrants
+	t := Tables.AttributeValueKeyAccessGrants
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("attribute_value_id"): valueID, t.Field("key_access_server_id"): keyAccessServerID}).
@@ -401,8 +412,8 @@ func (c PolicyDbClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 		return nil, err
 	}
 
-	if _, err := c.QueryCount(ctx, sql, args); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
 	}
 
 	return k, nil

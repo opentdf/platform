@@ -11,14 +11,20 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var KeyAccessServerTable string
+var (
+	TableKeyAccessServerRegistry = "key_access_servers"
+
+	Tables struct {
+		KeyAccessServerRegistry db.Table
+	}
+)
 
 type KasRegistryDbClient struct {
 	db.Client
 }
 
 func NewClient(c db.Client) *KasRegistryDbClient {
-	KeyAccessServerTable = db.Tables.KeyAccessServerRegistry.Name()
+	Tables.KeyAccessServerRegistry = db.NewTable(TableKeyAccessServerRegistry)
 
 	return &KasRegistryDbClient{c}
 }
@@ -35,7 +41,7 @@ func keyAccessServerSelect() sq.SelectBuilder {
 
 func listAllKeyAccessServersSql() (string, []interface{}, error) {
 	return keyAccessServerSelect().
-		From(KeyAccessServerTable).
+		From(Tables.KeyAccessServerRegistry.Name()).
 		ToSql()
 }
 
@@ -46,6 +52,7 @@ func (c KasRegistryDbClient) ListKeyAccessServers(ctx context.Context) ([]*kasr.
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	var keyAccessServers []*kasr.KeyAccessServer
 
 	var (
@@ -81,7 +88,6 @@ func (c KasRegistryDbClient) ListKeyAccessServers(ctx context.Context) ([]*kasr.
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +98,7 @@ func (c KasRegistryDbClient) ListKeyAccessServers(ctx context.Context) ([]*kasr.
 func getKeyAccessServerSql(id string) (string, []interface{}, error) {
 	return keyAccessServerSelect().
 		Where(sq.Eq{"id": id}).
-		From(KeyAccessServerTable).
+		From(Tables.KeyAccessServerRegistry.Name()).
 		ToSql()
 }
 
@@ -136,25 +142,25 @@ func (c KasRegistryDbClient) GetKeyAccessServer(ctx context.Context, id string) 
 
 func createKeyAccessServerSQL(uri string, publicKey, metadata []byte) (string, []interface{}, error) {
 	return db.NewStatementBuilder().
-		Insert(KeyAccessServerTable).
+		Insert(Tables.KeyAccessServerRegistry.Name()).
 		Columns("uri", "public_key", "metadata").
 		Values(uri, publicKey, metadata).
 		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
-func (c KasRegistryDbClient) CreateKeyAccessServer(ctx context.Context, keyAccessServer *kasr.KeyAccessServerCreateUpdate) (*kasr.KeyAccessServer, error) {
-	metadataBytes, newMetadata, err := db.MarshalCreateMetadata(keyAccessServer.Metadata)
+func (c KasRegistryDbClient) CreateKeyAccessServer(ctx context.Context, r *kasr.CreateKeyAccessServerRequest) (*kasr.KeyAccessServer, error) {
+	metadataBytes, _, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	pkBytes, err := protojson.Marshal(keyAccessServer.PublicKey)
+	pkBytes, err := protojson.Marshal(r.PublicKey)
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := createKeyAccessServerSQL(keyAccessServer.Uri, pkBytes, metadataBytes)
+	sql, args, err := createKeyAccessServerSQL(r.Uri, pkBytes, metadataBytes)
 
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
@@ -168,68 +174,85 @@ func (c KasRegistryDbClient) CreateKeyAccessServer(ctx context.Context, keyAcces
 	}
 
 	return &kasr.KeyAccessServer{
-		Metadata:  newMetadata,
-		Id:        id,
-		Uri:       keyAccessServer.Uri,
-		PublicKey: keyAccessServer.PublicKey,
+		Id: id,
 	}, nil
 }
 
 func updateKeyAccessServerSQL(id, keyAccessServer string, publicKey, metadata []byte) (string, []interface{}, error) {
-	return db.NewStatementBuilder().
-		Update(KeyAccessServerTable).
-		Set("uri", keyAccessServer).
-		Set("public_key", publicKey).
-		Set("metadata", metadata).
-		Where(sq.Eq{"id": id}).
-		ToSql()
+	sb := db.NewStatementBuilder().
+		Update(Tables.KeyAccessServerRegistry.Name())
+
+	if keyAccessServer != "" {
+		sb = sb.Set("uri", keyAccessServer)
+	}
+
+	if publicKey != nil {
+		sb = sb.Set("public_key", publicKey)
+	}
+
+	if metadata != nil {
+		sb = sb.Set("metadata", metadata)
+	}
+
+	return sb.Where(sq.Eq{"id": id}).ToSql()
 }
 
-func (c KasRegistryDbClient) UpdateKeyAccessServer(ctx context.Context, id string, keyAccessServer *kasr.KeyAccessServerCreateUpdate) (*kasr.KeyAccessServer, error) {
-	k, err := c.GetKeyAccessServer(ctx, id)
+func (c KasRegistryDbClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasr.UpdateKeyAccessServerRequest) (*kasr.KeyAccessServer, error) {
+	// if extend we need to merge the metadata
+	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+		k, err := c.GetKeyAccessServer(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return k.Metadata, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	metadataJSON, _, err := db.MarshalUpdateMetadata(k.Metadata, keyAccessServer.Metadata)
+	publicKeyJSON, err := protojson.Marshal(r.PublicKey)
 	if err != nil {
 		return nil, err
 	}
 
-	publicKeyJSON, err := protojson.Marshal(keyAccessServer.PublicKey)
+	sql, args, err := updateKeyAccessServerSQL(id, r.Uri, publicKeyJSON, metadataJson)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &kasr.KeyAccessServer{
+			Id: id,
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := updateKeyAccessServerSQL(id, keyAccessServer.Uri, publicKeyJSON, metadataJSON)
-
-	if err = c.Exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
-	return k, nil
+	return &kasr.KeyAccessServer{
+		Id: id,
+	}, nil
 }
 
 func deleteKeyAccessServerSQL(id string) (string, []interface{}, error) {
 	return db.NewStatementBuilder().
-		Delete(KeyAccessServerTable).
+		Delete(Tables.KeyAccessServerRegistry.Name()).
 		Where(sq.Eq{"id": id}).
 		ToSql()
 }
 
 func (c KasRegistryDbClient) DeleteKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAccessServer, error) {
-	// get attribute before deleting
-	k, err := c.GetKeyAccessServer(ctx, id)
+	sql, args, err := deleteKeyAccessServerSQL(id)
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := deleteKeyAccessServerSQL(id)
-
-	if err := c.Exec(ctx, sql, args, err); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
 	// return the attribute before deleting
-	return k, nil
+	return &kasr.KeyAccessServer{
+		Id: id,
+	}, nil
 }

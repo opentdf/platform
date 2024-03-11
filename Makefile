@@ -21,7 +21,7 @@ toolcheck:
 
 go.work go.work.sum:
 	go work init . examples protocol/go sdk
-	go work edit --go=1.21.7
+	go work edit --go=1.21.8
 
 fix:
 	for m in $(MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done

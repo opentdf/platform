@@ -55,6 +55,13 @@ func (d *DBInterface) StringWrap(v string) string {
 	return "'" + v + "'"
 }
 
+func (d *DBInterface) OptionalStringWrap(v string) string {
+	if v == "" {
+		return "NULL"
+	}
+	return d.StringWrap(v)
+}
+
 func (d *DBInterface) BoolWrap(b bool) string {
 	return strconv.FormatBool(b)
 }

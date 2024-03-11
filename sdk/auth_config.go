@@ -95,7 +95,7 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 	if err != nil {
 		return "", err
 	}
-	return "Bearer " + keyResp.AccessToken, nil
+	return keyResp.AccessToken, nil
 }
 
 func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Response, error) {

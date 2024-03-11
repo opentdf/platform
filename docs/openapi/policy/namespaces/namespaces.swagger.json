@@ -18,7 +18,6 @@
   "paths": {
     "/attributes/namespaces": {
       "get": {
-        "summary": "NOTE: ACTIVE state by default, INACTIVE or ANY when specified\nRequest: \ngrpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces\nResponse:\n{\n\"namespaces\": [\n{\n\"id\": \"namespace-id\",\n\"name\": \"namespace-name\",\n\"active\": true\n}\n]\n}",
         "operationId": "NamespaceService_ListNamespaces",
         "responses": {
           "200": {
@@ -55,7 +54,6 @@
         ]
       },
       "post": {
-        "summary": "Request: \ngrpcurl -plaintext -d '{\"name\": \"namespace-name\"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace\nResponse:\n{ \"namespace\": { \"id\": \"namespace-id\", \"active\": true } }",
         "operationId": "NamespaceService_CreateNamespace",
         "responses": {
           "200": {
@@ -73,10 +71,12 @@
         },
         "parameters": [
           {
-            "name": "name",
-            "in": "query",
-            "required": false,
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/namespacesCreateNamespaceRequest"
+            }
           }
         ],
         "tags": [
@@ -86,7 +86,6 @@
     },
     "/attributes/namespaces/{id}": {
       "get": {
-        "summary": "Request: \ngrpcurl -plaintext -d '{\"id\": \"namespace-id\"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace\nResponse:\n{\n\"namespace\": {\n\"id\": \"namespace-id\",\n\"name\": \"namespace-name\",\n\"active\": true\n}\n}",
         "operationId": "NamespaceService_GetNamespace",
         "responses": {
           "200": {
@@ -142,7 +141,7 @@
           "NamespaceService"
         ]
       },
-      "put": {
+      "patch": {
         "operationId": "NamespaceService_UpdateNamespace",
         "responses": {
           "200": {
@@ -161,15 +160,27 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "name",
-            "in": "query",
-            "required": false,
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Optional"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
+            }
           }
         ],
         "tags": [
@@ -189,6 +200,64 @@
       ],
       "default": "ACTIVE_STATE_ENUM_UNSPECIFIED",
       "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "commonMetadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "created_at set by server (entity who created will recorded in an audit event)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "updated_at set by server (entity who updated will recorded in an audit event)"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "optional short description"
+        }
+      },
+      "title": "Struct to uniquely identify a resource with optional additional metadata"
+    },
+    "commonMetadataMutable": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "optional labels"
+        }
+      }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
+    },
+    "namespacesCreateNamespaceRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Required"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
+        }
+      }
     },
     "namespacesCreateNamespaceResponse": {
       "type": "object",
@@ -238,6 +307,9 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
         }
       }
     },

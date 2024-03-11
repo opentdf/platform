@@ -18,19 +18,19 @@ ALTER TABLE IF EXISTS subject_mappings ADD COLUMN subject_condition_set_id UUID,
 
 WITH subject_mappings_migration_data AS (
    SELECT
-        JSON_BUILD_OBJECT(
-            'created_at', metadata::json->'created_at',
-            'updated_at', metadata::json->'updated_at'
+        JSONB_BUILD_OBJECT(
+            'created_at', metadata::jsonb->'created_at',
+            'updated_at', metadata::jsonb->'updated_at'
         ) AS metadata,
-        JSON_BUILD_OBJECT(
+        JSONB_BUILD_OBJECT(
         'subject_sets',
-            JSON_BUILD_ARRAY(
-                JSON_BUILD_OBJECT(
-                    'condition_groups', JSON_BUILD_ARRAY(
-                        JSON_BUILD_OBJECT(
+            JSONB_BUILD_ARRAY(
+                JSONB_BUILD_OBJECT(
+                    'condition_groups', JSONB_BUILD_ARRAY(
+                        JSONB_BUILD_OBJECT(
                             'boolean_operator', 'AND',
-                            'conditions', JSON_BUILD_ARRAY(
-                                JSON_BUILD_OBJECT(
+                            'conditions', JSONB_BUILD_ARRAY(
+                                JSONB_BUILD_OBJECT(
                                     'operator', operator,
                                     'subject_external_field', subject_attribute,
                                     'subject_external_values', subject_attribute_values

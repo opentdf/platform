@@ -59,7 +59,7 @@ const (
 
 type Reader struct {
 	manifest            Manifest
-	unencryptedMetadata string
+	unencryptedMetadata []byte
 	tdfReader           archive.TDFReader
 	unwrapper           Unwrapper
 	cursor              int64
@@ -559,11 +559,11 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 }
 
 // UnencryptedMetadata return decrypted metadata in manifest.
-func (r *Reader) UnencryptedMetadata() (string, error) {
+func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return "", fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return nil, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
@@ -611,7 +611,7 @@ func (r *Reader) DataAttributes() ([]string, error) {
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
-	var unencryptedMetadata string
+	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		wrappedKey, err := r.unwrapper.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
@@ -647,7 +647,7 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 				return fmt.Errorf("crypto.AesGcm.encrypt failed:%w", err)
 			}
 
-			unencryptedMetadata = string(metaData)
+			unencryptedMetadata = metaData
 		}
 	}
 

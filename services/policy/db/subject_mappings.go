@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -742,7 +741,6 @@ func (c PolicyDbClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("sql", sql)
 
 	rows, err := c.Query(ctx, sql, args, err)
 	slog.Debug("executed SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args), slog.Any("rows", rows), slog.Any("error", err))

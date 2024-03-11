@@ -29,21 +29,82 @@ func attributesRuleTypeEnumTransformOut(value string) attributes.AttributeRuleTy
 	return attributes.AttributeRuleTypeEnum(attributes.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
 }
 
-func attributesValuesProtojson(valuesJson []byte) ([]*attributes.Value, error) {
+func convertJSONToAttrVal(c PolicyDbClient, r json.RawMessage) (*attributes.Value, error) {
+	type AttributeValueDBItem struct {
+		// generated uuid in database
+		Id          string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+		Metadata    *common.Metadata `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
+		AttributeId string           `protobuf:"bytes,3,opt,name=attribute_id,json=attributeId,proto3" json:"attribute_id,omitempty"`
+		Value       string           `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+		// list of attribute values that this value is related to (attribute group)
+		Members []string `protobuf:"bytes,5,rep,name=members,proto3" json:"members,omitempty"`
+		// list of key access servers
+		Grants []*kasregistry.KeyAccessServer `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
+		Fqn    string                         `protobuf:"bytes,7,opt,name=fqn,proto3" json:"fqn,omitempty"`
+		Active bool                           `protobuf:"bytes,8,opt,name=active,proto3" json:"active,omitempty"`
+	}
+	var item AttributeValueDBItem
+	if err := json.Unmarshal(r, &item); err != nil {
+		return nil, err
+	}
+	if item.Metadata == nil {
+		item.Metadata = &common.Metadata{}
+	}
+
+	// if item.Active == nil {
+	// 	item.Active = &wrapperspb.BoolValue{Value: true}
+	// }
+
+	var members []*attributes.Value
+	if len(item.Members) > 0 {
+		attr, err := c.GetAttributeValue(context.TODO(), item.Id)
+		if err != nil {
+			return nil, err
+		}
+		return attr, nil
+	}
+	println("r", string(r))
+	return &attributes.Value{
+		Id:       item.Id,
+		Value:    item.Value,
+		Members:  members,
+		Metadata: item.Metadata,
+		Fqn:      item.Fqn,
+		Grants:   item.Grants,
+		Active:   &wrapperspb.BoolValue{Value: item.Active},
+	}, nil
+}
+
+func attributesValuesProtojson(c PolicyDbClient, valuesJson []byte) ([]*attributes.Value, error) {
 	var (
 		raw    []json.RawMessage
 		values []*attributes.Value
 	)
+
+	if valuesJson == nil {
+		return values, nil
+	}
+
 	if err := json.Unmarshal(valuesJson, &raw); err != nil {
 		return nil, err
 	}
 
+	if len(raw) == 0 {
+		return values, nil
+	}
+
+	// log.Fatal("valuesJson", string(valuesJson))
+
 	for _, r := range raw {
-		value := attributes.Value{}
-		if err := protojson.Unmarshal(r, &value); err != nil {
+		println("r", string(r))
+		// if string(r) == "[]" {
+		// 	continue
+		// }
+		value, err := convertJSONToAttrVal(c, r)
+		if err != nil {
 			return nil, err
 		}
-		values = append(values, &value)
+		values = append(values, value)
 	}
 	return values, nil
 }
@@ -139,7 +200,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	return sb.GroupBy(g...)
 }
 
-func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attributes.Attribute, error) {
+func attributesHydrateItem(c PolicyDbClient, row pgx.Row, opts attributesSelectOptions) (*attributes.Attribute, error) {
 	if opts.withKeyAccessGrants {
 		opts.withAttributeValues = true
 	}
@@ -183,7 +244,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 
 	var v []*attributes.Value
 	if valuesJson != nil {
-		v, err = attributesValuesProtojson(valuesJson)
+		v, err = attributesValuesProtojson(c, valuesJson)
 		if err != nil {
 			slog.Error("could not unmarshal values", slog.String("error", err.Error()))
 			return nil, err
@@ -213,10 +274,10 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 	return attr, nil
 }
 
-func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions) ([]*attributes.Attribute, error) {
+func attributesHydrateList(c PolicyDbClient, rows pgx.Rows, opts attributesSelectOptions) ([]*attributes.Attribute, error) {
 	list := make([]*attributes.Attribute, 0)
 	for rows.Next() {
-		attr, err := attributesHydrateItem(rows, opts)
+		attr, err := attributesHydrateItem(c, rows, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -256,7 +317,7 @@ func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(rows, opts)
+	list, err := attributesHydrateList(c, rows, opts)
 	if err != nil {
 		slog.Error("could not hydrate list", slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -280,7 +341,7 @@ func (c PolicyDbClient) ListAllAttributesWithout(ctx context.Context, state stri
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(rows, opts)
+	list, err := attributesHydrateList(c, rows, opts)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -307,7 +368,7 @@ func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*attribute
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attribute, err := attributesHydrateItem(row, opts)
+	attribute, err := attributesHydrateItem(c, row, opts)
 	if err != nil {
 		slog.Error("could not hydrate item", slog.String("attributeId", id), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -340,7 +401,7 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*att
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attribute, err := attributesHydrateItem(row, opts)
+	attribute, err := attributesHydrateItem(c, row, opts)
 	if err != nil {
 		slog.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -366,7 +427,7 @@ func (c PolicyDbClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(rows, opts)
+	list, err := attributesHydrateList(c, rows, opts)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

@@ -8,6 +8,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/internal/set"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -19,31 +20,126 @@ type attributeValueSelectOptions struct {
 	state   string
 }
 
-func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
+func getMembersFromStringArray(c PolicyDbClient, members []string) ([]*attributes.Value, error) {
+	// Hydrate members
+	hydratedMemberIds := set.NewSet()
+	var hydratedMembers []*attributes.Value
+
+	for _, member := range members {
+		var (
+			vm_id     string
+			value_id  string
+			member_id string
+		)
+
+		// Get member value from db
+		sql, args, err := getMemberSql(member)
+		if err != nil {
+			return nil, err
+		}
+		if r, err := c.QueryRow(context.TODO(), sql, args, err); err != nil {
+			return nil, err
+		} else if err := r.Scan(&vm_id, &value_id, &member_id); err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attr, err := c.GetAttributeValue(context.TODO(), member_id)
+		if err != nil {
+			return nil, err
+		}
+
+		if hydratedMemberIds.Contains(member_id) {
+			slog.Info("attr val member may be duplicated", slog.String("member_id", member_id))
+			continue
+		}
+
+		hydratedMemberIds.Add(member_id)
+		hydratedMembers = append(hydratedMembers, attr)
+	}
+	return hydratedMembers, nil
+}
+
+func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
 	var (
 		id           string
 		value        string
 		active       bool
-		members      []string
+		membersJson  []byte
 		metadataJson []byte
 		attributeId  string
 		fqn          sql.NullString
+		memberUUIDs  []string
+		members      []*attributes.Value
 	)
-
 	fields := []interface{}{
 		&id,
 		&value,
 		&active,
-		&members,
+		&membersJson,
 		&metadataJson,
 		&attributeId,
 	}
+
 	if opts.withFqn {
 		fields = append(fields, &fqn)
 	}
-
+	println("fqn", fqn.String)
 	if err := row.Scan(fields...); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		fields := []interface{}{
+			&id,
+			&value,
+			&active,
+			&memberUUIDs,
+			&metadataJson,
+			&attributeId,
+		}
+		if opts.withFqn {
+			fields = append(fields, &fqn)
+		}
+
+		if err := row.Scan(fields...); err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		members, err = getMembersFromStringArray(c, memberUUIDs)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// for _, memberJson := range membersJson {
+		// 	// memberJson = memberJson.(json.RawMessage)
+		// 	println("memberJson", string(memberJson))
+		// 	// var i interface{}
+		// 	// if err := json.Unmarshal(memberJson, &i); err != nil {
+		// 	// 	return nil, err
+		// 	// }
+		// 	// memberattributesValuesProtojson(membersJson)
+
+		// 	member, err := attributesValuesProtojson(c, memberJson)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	// member := &attributes.Value{}
+		// 	// if err := protojson.Unmarshal(memberJson, member); err != nil {
+		// 	// 	return nil, err
+		// 	// }
+		// 	members = append(members, member)
+		// }
+		println("membersJson before", string(membersJson))
+		if membersJson != nil {
+			members, err = attributesValuesProtojson(c, membersJson)
+			println("len(members)", len(members))
+			for _, member := range members {
+				println("member", member.Id)
+			}
+			// if len(members) == 0 {
+			// 	// log.Fatal("members is empty")
+			// 	println("members is empty")
+			// }
+			// log.Fatal("IsSuE In UnMaRsHaLlInG")
+			if err != nil {
+				println("IsSuE In UnMaRsHaLlInG")
+				return nil, err
+			}
+		}
 	}
 
 	m := &common.Metadata{}
@@ -52,6 +148,46 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 			return nil, err
 		}
 	}
+	println("fqn: ", fqn.String)
+
+	// // Hydrate members
+	// hydratedMemberIds := set.NewSet()
+	// var hydratedMembers []*attributes.Value
+
+	// for _, member := range members {
+	// 	var (
+	// 		vm_id     string
+	// 		value_id  string
+	// 		member_id string
+	// 	)
+
+	// 	// Get member value from db
+	// 	sql, args, err := getMemberSql(member)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if r, err := c.QueryRow(context.TODO(), sql, args, err); err != nil {
+	// 		return nil, err
+	// 	} else if err := r.Scan(&vm_id, &value_id, &member_id); err != nil {
+	// 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	// 	}
+	// 	attr, err := c.GetAttributeValue(context.TODO(), member_id)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	if hydratedMemberIds.Contains(member_id) {
+	// 		slog.Info("attr val member may be duplicated", slog.String("member_id", member_id))
+	// 		continue
+	// 	}
+
+	// 	hydratedMemberIds.Add(member_id)
+	// 	hydratedMembers = append(hydratedMembers, attr)
+	// }
+	// hydratedMembers, err := getMembersFromStringArray(c, memberUUIDs)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	v := &attributes.Value{
 		Id:       id,
@@ -59,16 +195,15 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		Active:   &wrapperspb.BoolValue{Value: active},
 		Members:  members,
 		Metadata: m,
-		// TODO: get & hydrate full attribute
-		Fqn: fqn.String,
+		Fqn:      fqn.String,
 	}
 	return v, nil
 }
 
-func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions) ([]*attributes.Value, error) {
+func attributeValueHydrateItems(c PolicyDbClient, rows pgx.Rows, opts attributeValueSelectOptions) ([]*attributes.Value, error) {
 	list := make([]*attributes.Value, 0)
 	for rows.Next() {
-		v, err := attributeValueHydrateItem(rows, opts)
+		v, err := attributeValueHydrateItem(c, rows, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -81,10 +216,37 @@ func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions)
 /// CRUD
 ///
 
+func addMemberSql(value_id string, member_id string) (string, []interface{}, error) {
+	t := Tables.ValueMembers
+	return db.NewStatementBuilder().
+		Insert(t.Name()).
+		Columns(
+			"value_id",
+			"member_id",
+		).
+		Values(
+			value_id,
+			member_id,
+		).
+		Suffix("RETURNING id").
+		ToSql()
+}
+
+func removeMemberSql(value_id string, member_id string) (string, []interface{}, error) {
+	t := Tables.ValueMembers
+	return db.NewStatementBuilder().
+		Delete(t.Name()).
+		Where(sq.Eq{
+			t.Field("value_id"):  value_id,
+			t.Field("member_id"): member_id,
+		}).
+		Suffix("RETURNING id").
+		ToSql()
+}
+
 func createAttributeValueSql(
 	attribute_id string,
 	value string,
-	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
 	t := Tables.AttributeValues
@@ -93,13 +255,13 @@ func createAttributeValueSql(
 		Columns(
 			"attribute_definition_id",
 			"value",
-			"members",
+			// "members",
 			"metadata",
 		).
 		Values(
 			attribute_id,
 			value,
-			members,
+			// members,
 			metadata,
 		).
 		Suffix("RETURNING id").
@@ -115,7 +277,7 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	sql, args, err := createAttributeValueSql(
 		attributeId,
 		v.Value,
-		v.Members,
+		// v.Members,
 		metadataJson,
 	)
 	if err != nil {
@@ -129,6 +291,27 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	var members []*attributes.Value
+
+	// Add members
+	for _, member := range v.Members {
+		var vm_id string
+		sql, args, err := addMemberSql(id, member)
+		if err != nil {
+			return nil, err
+		}
+		if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
+			return nil, err
+		} else if err := r.Scan(&vm_id); err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attr, err := c.GetAttributeValue(ctx, member)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, attr)
+	}
+
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
 
@@ -136,37 +319,86 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 		Id:        id,
 		Attribute: &attributes.Attribute{Id: attributeId},
 		Value:     v.Value,
-		Members:   v.Members,
+		Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
 	}
 	return rV, nil
 }
 
-func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
-	t := Tables.AttributeValues
+func getMemberSql(id string) (string, []interface{}, error) {
+	t := Tables.ValueMembers
 	fields := []string{
 		t.Field("id"),
-		t.Field("value"),
-		t.Field("active"),
-		t.Field("members"),
-		t.Field("metadata"),
-		t.Field("attribute_definition_id"),
-	}
-	if opts.withFqn {
-		fields = append(fields, Tables.AttrFqn.Field("fqn"))
+		t.Field("value_id"),
+		t.Field("member_id"),
 	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...).
 		From(t.Name())
 
+	return sb.
+		Where(sq.Eq{t.Field("id"): id}).
+		ToSql()
+}
+
+func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
+	t := Tables.AttributeValues
+	fqnT := Tables.AttrFqn
+	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		"'id', vmv.id, " +
+		"'value', vmv.value, " +
+		"'active', vmv.active, " +
+		"'members', vmv.members || ARRAY[]::UUID[], " +
+		"'metadata', vmv.metadata ," +
+		"'attribute_id', vmv.attribute_definition_id "
 	if opts.withFqn {
-		fqnT := Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
+		members += ", 'fqn', " + fqnT.Field("fqn")
+	}
+	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
+	fields := []string{
+		// t.Field("id"),
+		// t.Field("value"),
+		// t.Field("active"),
+		// t.Field("members"),
+		// t.Field("metadata"),
+		// t.Field("attribute_definition_id"),
+		"av.id",
+		"av.value",
+		"av.active",
+		members,
+		"av.metadata",
+		"av.attribute_definition_id",
+	}
+	if opts.withFqn {
+		// fields = append(fields, "MAX("+fqnT.Field("fqn")+") AS fqn")
+		fields = append(fields, Tables.AttrFqn.Field("fqn"))
 	}
 
-	return sb.Where(sq.Eq{t.Field("id"): id}).
+	sb := db.NewStatementBuilder().
+		Select(fields...).
+		From(t.Name() + " av")
+		// add alias
+
+	// join members
+	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
+
+	// join attribute values
+	sb = sb.JoinClause("FULL OUTER JOIN " + t.Name() + " vmv ON vm.member_id = vmv.id")
+
+	if opts.withFqn {
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + "vmv.id")
+		// sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("attribute_id") + " = " + "vmv.attribute_definition_id")
+	}
+
+	return sb.Where(sq.Eq{
+		"av.id": id}).
+		GroupBy(
+			"av.id",
+			fqnT.Field("fqn"),
+		).
+		// LeftJoin(t.Name() + " ON " + t.Field("id") + " = " + db.Tables.ValueMembers.Field("member_id")).
 		ToSql()
 }
 
@@ -179,7 +411,7 @@ func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*attr
 		return nil, err
 	}
 
-	a, err := attributeValueHydrateItem(row, opts)
+	a, err := attributeValueHydrateItem(c, row, opts)
 	if err != nil {
 		slog.Error("error hydrating attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
@@ -230,7 +462,7 @@ func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id st
 		return nil, err
 	}
 	defer rows.Close()
-	return attributeValueHydrateItems(rows, opts)
+	return attributeValueHydrateItems(c, rows, opts)
 }
 
 func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []interface{}, error) {
@@ -267,12 +499,12 @@ func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string
 		return nil, err
 	}
 	defer rows.Close()
-	return attributeValueHydrateItems(rows, opts)
+	return attributeValueHydrateItems(c, rows, opts)
 }
 
 func updateAttributeValueSql(
 	id string,
-	members []string,
+	// members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
 	t := Tables.AttributeValues
@@ -282,9 +514,9 @@ func updateAttributeValueSql(
 		sb = sb.Set("metadata", metadata)
 	}
 
-	if members != nil {
-		sb = sb.Set("members", members)
-	}
+	// if members != nil {
+	// 	sb = sb.Set("members", members)
+	// }
 
 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
@@ -303,7 +535,7 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 
 	sql, args, err := updateAttributeValueSql(
 		r.Id,
-		r.Members,
+		// r.Members,
 		metadataJson,
 	)
 	if db.IsQueryBuilderSetClauseError(err) {
@@ -315,8 +547,56 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		return nil, err
 	}
 
+	prev, err := c.GetAttributeValue(ctx, r.Id)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
+	}
+	prevMembersSet := set.NewSet()
+	for _, member := range prev.Members {
+		prevMembersSet.Add(member.Id)
+	}
+
+	membersSet := set.NewSet()
+	for _, member := range r.Members {
+		membersSet.Add(member)
+	}
+
+	toRemove := prevMembersSet.Difference(membersSet).ToSlice()
+	toAdd := membersSet.Difference(prevMembersSet).ToSlice()
+
+	// Remove members
+	for _, member := range toRemove {
+		sql, args, err := removeMemberSql(r.Id, member.(string))
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Exec(ctx, sql, args); err != nil {
+			return nil, err
+		}
+	}
+
+	// Add members
+	for _, member := range toAdd {
+		sql, args, err := addMemberSql(r.Id, member.(string))
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Exec(ctx, sql, args); err != nil {
+			return nil, err
+		}
+	}
+
+	var members []*attributes.Value
+	for _, member := range r.Members {
+		attr, err := c.GetAttributeValue(ctx, member)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, attr)
 	}
 
 	// Update FQN

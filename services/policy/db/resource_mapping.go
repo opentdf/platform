@@ -14,11 +14,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func resourceMappingHydrateList(rows pgx.Rows) ([]*resourcemapping.ResourceMapping, error) {
+func resourceMappingHydrateList(c PolicyDbClient, rows pgx.Rows) ([]*resourcemapping.ResourceMapping, error) {
 	var list []*resourcemapping.ResourceMapping
 
 	for rows.Next() {
-		rm, err := resourceMappingHydrateItem(rows)
+		rm, err := resourceMappingHydrateItem(c, rows)
 		if err != nil {
 			return nil, err
 		}
@@ -27,7 +27,7 @@ func resourceMappingHydrateList(rows pgx.Rows) ([]*resourcemapping.ResourceMappi
 	return list, nil
 }
 
-func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, error) {
+func resourceMappingHydrateItem(c PolicyDbClient, row pgx.Row) (*resourcemapping.ResourceMapping, error) {
 	var (
 		id                 string
 		metadataJSON       []byte
@@ -54,7 +54,7 @@ func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, 
 		}
 	}
 
-	err = protojson.Unmarshal(attributeValueJSON, attributeValue)
+	attributeValue, err = convertJSONToAttrVal(c, attributeValueJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (c PolicyDbClient) GetResourceMapping(ctx context.Context, id string) (*res
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rm, err := resourceMappingHydrateItem(row)
+	rm, err := resourceMappingHydrateItem(c, row)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -183,7 +183,7 @@ func (c PolicyDbClient) ListResourceMappings(ctx context.Context) ([]*resourcema
 	}
 	defer rows.Close()
 
-	list, err := resourceMappingHydrateList(rows)
+	list, err := resourceMappingHydrateList(c, rows)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

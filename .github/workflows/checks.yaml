@@ -97,13 +97,17 @@ jobs:
             sdk/go.sum
       - run: make go.work
       - run: go test ./integration -race
-      - run: docker-compose up -d
+      - run: docker compose up -d --wait --wait-timeout 240
       - run: cp example-opentdf.yaml opentdf.yaml
-      - run: sleep 15
-      - run: go run . start &
+      - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
+        name: start server in background
+        with:
+          run: |
+            go run . start
+          wait-on: |
+            tcp:localhost:9000
+          log-output-if: true
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
-      - run: sleep 15
-        name: wake me up when github action runner supports docker-compose --wait
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
 

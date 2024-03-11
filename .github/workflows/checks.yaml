@@ -180,7 +180,10 @@ jobs:
     if: always()
     steps:
       - if: contains(needs.*.result, 'failure')
-        run: exit 1
+      # TODO: see which job failed
+        run: | 
+          echo "One or more jobs failed"
+          exit 1
 
   license:
     name: license check

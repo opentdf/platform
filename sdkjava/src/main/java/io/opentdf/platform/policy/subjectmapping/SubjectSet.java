@@ -6,8 +6,7 @@ package io.opentdf.platform.policy.subjectmapping;
 
 /**
  * <pre>
- * A Set of subjects described by matching criteria via a list of condition groups.
- * A Subject Set can be used by multiple Subject Mappings
+ * A collection of Condition Groups
  * </pre>
  *
  * Protobuf type {@code policy.subjectmapping.SubjectSet}
@@ -50,7 +49,7 @@ private static final long serialVersionUID = 0L;
   private java.util.List<io.opentdf.platform.policy.subjectmapping.ConditionGroup> conditionGroups_;
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -61,7 +60,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -73,7 +72,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -84,7 +83,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -95,7 +94,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * The conditions groups describing the matching rules for subjects in the set
+   * multiple Condition Groups are evaluated with AND logic
    * </pre>
    *
    * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -267,8 +266,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * A Set of subjects described by matching criteria via a list of condition groups.
-   * A Subject Set can be used by multiple Subject Mappings
+   * A collection of Condition Groups
    * </pre>
    *
    * Protobuf type {@code policy.subjectmapping.SubjectSet}
@@ -499,7 +497,7 @@ private static final long serialVersionUID = 0L;
 
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -513,7 +511,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -527,7 +525,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -541,7 +539,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -562,7 +560,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -580,7 +578,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -600,7 +598,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -621,7 +619,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -639,7 +637,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -657,7 +655,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -676,7 +674,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -693,7 +691,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -710,7 +708,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -721,7 +719,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -735,7 +733,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -750,7 +748,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -761,7 +759,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>
@@ -773,7 +771,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <pre>
-     * The conditions groups describing the matching rules for subjects in the set
+     * multiple Condition Groups are evaluated with AND logic
      * </pre>
      *
      * <code>repeated .policy.subjectmapping.ConditionGroup condition_groups = 1 [json_name = "conditionGroups", (.buf.validate.field) = { ... }</code>

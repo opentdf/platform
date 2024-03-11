@@ -37,17 +37,17 @@ public interface ConditionGroupOrBuilder extends
    * the boolean evaluation type across the conditions
    * </pre>
    *
-   * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
-   * @return The enum numeric value on the wire for booleanType.
+   * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
+   * @return The enum numeric value on the wire for booleanOperator.
    */
-  int getBooleanTypeValue();
+  int getBooleanOperatorValue();
   /**
    * <pre>
    * the boolean evaluation type across the conditions
    * </pre>
    *
-   * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
-   * @return The booleanType.
+   * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
+   * @return The booleanOperator.
    */
-  io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum getBooleanType();
+  io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum getBooleanOperator();
 }

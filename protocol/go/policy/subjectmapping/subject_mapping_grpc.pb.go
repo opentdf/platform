@@ -19,12 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SubjectMappingService_MatchSubjectMappings_FullMethodName = "/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings"
-	SubjectMappingService_ListSubjectMappings_FullMethodName  = "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings"
-	SubjectMappingService_GetSubjectMapping_FullMethodName    = "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping"
-	SubjectMappingService_CreateSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping"
-	SubjectMappingService_UpdateSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping"
-	SubjectMappingService_DeleteSubjectMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping"
+	SubjectMappingService_MatchSubjectMappings_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings"
+	SubjectMappingService_ListSubjectMappings_FullMethodName       = "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings"
+	SubjectMappingService_GetSubjectMapping_FullMethodName         = "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping"
+	SubjectMappingService_CreateSubjectMapping_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping"
+	SubjectMappingService_UpdateSubjectMapping_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping"
+	SubjectMappingService_DeleteSubjectMapping_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping"
+	SubjectMappingService_ListSubjectConditionSets_FullMethodName  = "/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets"
+	SubjectMappingService_GetSubjectConditionSet_FullMethodName    = "/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet"
+	SubjectMappingService_CreateSubjectConditionSet_FullMethodName = "/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet"
+	SubjectMappingService_UpdateSubjectConditionSet_FullMethodName = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet"
+	SubjectMappingService_DeleteSubjectConditionSet_FullMethodName = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet"
 )
 
 // SubjectMappingServiceClient is the client API for SubjectMappingService service.
@@ -38,6 +43,11 @@ type SubjectMappingServiceClient interface {
 	CreateSubjectMapping(ctx context.Context, in *CreateSubjectMappingRequest, opts ...grpc.CallOption) (*CreateSubjectMappingResponse, error)
 	UpdateSubjectMapping(ctx context.Context, in *UpdateSubjectMappingRequest, opts ...grpc.CallOption) (*UpdateSubjectMappingResponse, error)
 	DeleteSubjectMapping(ctx context.Context, in *DeleteSubjectMappingRequest, opts ...grpc.CallOption) (*DeleteSubjectMappingResponse, error)
+	ListSubjectConditionSets(ctx context.Context, in *ListSubjectConditionSetsRequest, opts ...grpc.CallOption) (*ListSubjectConditionSetsResponse, error)
+	GetSubjectConditionSet(ctx context.Context, in *GetSubjectConditionSetRequest, opts ...grpc.CallOption) (*GetSubjectConditionSetResponse, error)
+	CreateSubjectConditionSet(ctx context.Context, in *CreateSubjectConditionSetRequest, opts ...grpc.CallOption) (*CreateSubjectConditionSetResponse, error)
+	UpdateSubjectConditionSet(ctx context.Context, in *UpdateSubjectConditionSetRequest, opts ...grpc.CallOption) (*UpdateSubjectConditionSetResponse, error)
+	DeleteSubjectConditionSet(ctx context.Context, in *DeleteSubjectConditionSetRequest, opts ...grpc.CallOption) (*DeleteSubjectConditionSetResponse, error)
 }
 
 type subjectMappingServiceClient struct {
@@ -102,6 +112,51 @@ func (c *subjectMappingServiceClient) DeleteSubjectMapping(ctx context.Context, 
 	return out, nil
 }
 
+func (c *subjectMappingServiceClient) ListSubjectConditionSets(ctx context.Context, in *ListSubjectConditionSetsRequest, opts ...grpc.CallOption) (*ListSubjectConditionSetsResponse, error) {
+	out := new(ListSubjectConditionSetsResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_ListSubjectConditionSets_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) GetSubjectConditionSet(ctx context.Context, in *GetSubjectConditionSetRequest, opts ...grpc.CallOption) (*GetSubjectConditionSetResponse, error) {
+	out := new(GetSubjectConditionSetResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_GetSubjectConditionSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) CreateSubjectConditionSet(ctx context.Context, in *CreateSubjectConditionSetRequest, opts ...grpc.CallOption) (*CreateSubjectConditionSetResponse, error) {
+	out := new(CreateSubjectConditionSetResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_CreateSubjectConditionSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) UpdateSubjectConditionSet(ctx context.Context, in *UpdateSubjectConditionSetRequest, opts ...grpc.CallOption) (*UpdateSubjectConditionSetResponse, error) {
+	out := new(UpdateSubjectConditionSetResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_UpdateSubjectConditionSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) DeleteSubjectConditionSet(ctx context.Context, in *DeleteSubjectConditionSetRequest, opts ...grpc.CallOption) (*DeleteSubjectConditionSetResponse, error) {
+	out := new(DeleteSubjectConditionSetResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_DeleteSubjectConditionSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SubjectMappingServiceServer is the server API for SubjectMappingService service.
 // All implementations must embed UnimplementedSubjectMappingServiceServer
 // for forward compatibility
@@ -113,6 +168,11 @@ type SubjectMappingServiceServer interface {
 	CreateSubjectMapping(context.Context, *CreateSubjectMappingRequest) (*CreateSubjectMappingResponse, error)
 	UpdateSubjectMapping(context.Context, *UpdateSubjectMappingRequest) (*UpdateSubjectMappingResponse, error)
 	DeleteSubjectMapping(context.Context, *DeleteSubjectMappingRequest) (*DeleteSubjectMappingResponse, error)
+	ListSubjectConditionSets(context.Context, *ListSubjectConditionSetsRequest) (*ListSubjectConditionSetsResponse, error)
+	GetSubjectConditionSet(context.Context, *GetSubjectConditionSetRequest) (*GetSubjectConditionSetResponse, error)
+	CreateSubjectConditionSet(context.Context, *CreateSubjectConditionSetRequest) (*CreateSubjectConditionSetResponse, error)
+	UpdateSubjectConditionSet(context.Context, *UpdateSubjectConditionSetRequest) (*UpdateSubjectConditionSetResponse, error)
+	DeleteSubjectConditionSet(context.Context, *DeleteSubjectConditionSetRequest) (*DeleteSubjectConditionSetResponse, error)
 	mustEmbedUnimplementedSubjectMappingServiceServer()
 }
 
@@ -137,6 +197,21 @@ func (UnimplementedSubjectMappingServiceServer) UpdateSubjectMapping(context.Con
 }
 func (UnimplementedSubjectMappingServiceServer) DeleteSubjectMapping(context.Context, *DeleteSubjectMappingRequest) (*DeleteSubjectMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteSubjectMapping not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) ListSubjectConditionSets(context.Context, *ListSubjectConditionSetsRequest) (*ListSubjectConditionSetsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSubjectConditionSets not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) GetSubjectConditionSet(context.Context, *GetSubjectConditionSetRequest) (*GetSubjectConditionSetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSubjectConditionSet not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) CreateSubjectConditionSet(context.Context, *CreateSubjectConditionSetRequest) (*CreateSubjectConditionSetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateSubjectConditionSet not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) UpdateSubjectConditionSet(context.Context, *UpdateSubjectConditionSetRequest) (*UpdateSubjectConditionSetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSubjectConditionSet not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) DeleteSubjectConditionSet(context.Context, *DeleteSubjectConditionSetRequest) (*DeleteSubjectConditionSetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSubjectConditionSet not implemented")
 }
 func (UnimplementedSubjectMappingServiceServer) mustEmbedUnimplementedSubjectMappingServiceServer() {}
 
@@ -259,6 +334,96 @@ func _SubjectMappingService_DeleteSubjectMapping_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SubjectMappingService_ListSubjectConditionSets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSubjectConditionSetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).ListSubjectConditionSets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_ListSubjectConditionSets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).ListSubjectConditionSets(ctx, req.(*ListSubjectConditionSetsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_GetSubjectConditionSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSubjectConditionSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).GetSubjectConditionSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_GetSubjectConditionSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).GetSubjectConditionSet(ctx, req.(*GetSubjectConditionSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_CreateSubjectConditionSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateSubjectConditionSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).CreateSubjectConditionSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_CreateSubjectConditionSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).CreateSubjectConditionSet(ctx, req.(*CreateSubjectConditionSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_UpdateSubjectConditionSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSubjectConditionSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).UpdateSubjectConditionSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_UpdateSubjectConditionSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).UpdateSubjectConditionSet(ctx, req.(*UpdateSubjectConditionSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_DeleteSubjectConditionSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSubjectConditionSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).DeleteSubjectConditionSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_DeleteSubjectConditionSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).DeleteSubjectConditionSet(ctx, req.(*DeleteSubjectConditionSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SubjectMappingService_ServiceDesc is the grpc.ServiceDesc for SubjectMappingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -289,6 +454,26 @@ var SubjectMappingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteSubjectMapping",
 			Handler:    _SubjectMappingService_DeleteSubjectMapping_Handler,
+		},
+		{
+			MethodName: "ListSubjectConditionSets",
+			Handler:    _SubjectMappingService_ListSubjectConditionSets_Handler,
+		},
+		{
+			MethodName: "GetSubjectConditionSet",
+			Handler:    _SubjectMappingService_GetSubjectConditionSet_Handler,
+		},
+		{
+			MethodName: "CreateSubjectConditionSet",
+			Handler:    _SubjectMappingService_CreateSubjectConditionSet_Handler,
+		},
+		{
+			MethodName: "UpdateSubjectConditionSet",
+			Handler:    _SubjectMappingService_UpdateSubjectConditionSet_Handler,
+		},
+		{
+			MethodName: "DeleteSubjectConditionSet",
+			Handler:    _SubjectMappingService_DeleteSubjectConditionSet_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

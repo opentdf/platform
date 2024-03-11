@@ -1,6 +1,6 @@
 module github.com/opentdf/platform
 
-go 1.21.7
+go 1.21.8
 
 require (
 	github.com/Masterminds/squirrel v1.5.4

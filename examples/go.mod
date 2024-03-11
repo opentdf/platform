@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/examples
 
-go 1.21.7
+go 1.21.8
 
 require (
 	github.com/opentdf/platform/protocol/go v0.0.0-20240311150102-3def0380e6e6

@@ -136,7 +136,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 	r, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), r)
-	assert.NotEqual(s.T(), "", r.Id)
+	assert.NotZero(s.T(), r.Id)
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer() {

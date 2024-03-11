@@ -9,17 +9,144 @@ public interface CreateSubjectMappingRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
-   * @return Whether the subjectMapping field is set.
+   * <pre>
+   * Required
+   * Attribute Value to be mapped to
+   * </pre>
+   *
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * @return The attributeValueId.
    */
-  boolean hasSubjectMapping();
+  java.lang.String getAttributeValueId();
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
-   * @return The subjectMapping.
+   * <pre>
+   * Required
+   * Attribute Value to be mapped to
+   * </pre>
+   *
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * @return The bytes for attributeValueId.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getSubjectMapping();
+  com.google.protobuf.ByteString
+      getAttributeValueIdBytes();
+
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder getSubjectMappingOrBuilder();
+  java.util.List<io.opentdf.platform.authorization.Action> 
+      getActionsList();
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  io.opentdf.platform.authorization.Action getActions(int index);
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  int getActionsCount();
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+      getActionsOrBuilderList();
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+      int index);
+
+  /**
+   * <pre>
+   * Either of the following:
+   * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+   * </pre>
+   *
+   * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+   * @return The existingSubjectConditionSetId.
+   */
+  java.lang.String getExistingSubjectConditionSetId();
+  /**
+   * <pre>
+   * Either of the following:
+   * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+   * </pre>
+   *
+   * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+   * @return The bytes for existingSubjectConditionSetId.
+   */
+  com.google.protobuf.ByteString
+      getExistingSubjectConditionSetIdBytes();
+
+  /**
+   * <pre>
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+   * @return Whether the newSubjectConditionSet field is set.
+   */
+  boolean hasNewSubjectConditionSet();
+  /**
+   * <pre>
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+   * @return The newSubjectConditionSet.
+   */
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate getNewSubjectConditionSet();
+  /**
+   * <pre>
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+   */
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreateOrBuilder getNewSubjectConditionSetOrBuilder();
+
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.MetadataMutable getMetadata();
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
 }

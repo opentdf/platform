@@ -787,7 +787,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInPrope
 	}
 
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	assert.ErrorIs(s.T(), err, db.ErrMissingRequiredValue)
+	assert.ErrorIs(s.T(), err, db.ErrMissingValue)
 	assert.Zero(s.T(), sm)
 }
 
@@ -799,7 +799,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInPrope
 	}
 
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	assert.ErrorIs(s.T(), err, db.ErrMissingRequiredValue)
+	assert.ErrorIs(s.T(), err, db.ErrMissingValue)
 	assert.Zero(s.T(), sm)
 }
 
@@ -807,7 +807,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NoPropertiesProvide
 	props := []*subjectmapping.SubjectProperty{}
 
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	assert.ErrorIs(s.T(), err, db.ErrMissingRequiredValue)
+	assert.ErrorIs(s.T(), err, db.ErrMissingValue)
 	assert.Zero(s.T(), sm)
 }
 

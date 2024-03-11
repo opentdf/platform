@@ -475,7 +475,6 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		if err != nil {
 			return nil, err
 		}
-		scsId = scs.Id
 	} else {
 		return nil, errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new Subject Condition Set is required when creating a subject mapping"))
 	}
@@ -675,14 +674,14 @@ func (c PolicyDbClient) DeleteSubjectMapping(ctx context.Context, id string) (*s
 func selectMatchedSubjectMappingsSql(subjectProperties []*subjectmapping.SubjectProperty) (string, []interface{}, error) {
 	var err error
 	if len(subjectProperties) == 0 {
-		err = errors.Join(db.ErrMissingRequiredValue, errors.New("one or more subject properties is required"))
+		err = errors.Join(db.ErrMissingValue, errors.New("one or more subject properties is required"))
 		slog.Error("subject property missing required value", slog.Any("properties provided", subjectProperties), slog.String("error", err.Error()))
 		return "", nil, err
 	}
 	where := "("
 	for i, sp := range subjectProperties {
 		if sp.ExternalField == "" || sp.ExternalValue == "" {
-			err = errors.Join(db.ErrMissingRequiredValue, errors.New("all subject properties must include defined external field and value"))
+			err = errors.Join(db.ErrMissingValue, errors.New("all subject properties must include defined external field and value"))
 			slog.Error("subject property missing required value", slog.Any("properties provided", subjectProperties), slog.String("error", err.Error()))
 			return "", nil, err
 		}

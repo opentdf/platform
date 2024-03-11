@@ -12,8 +12,8 @@ import (
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	kasrDb "github.com/opentdf/platform/services/kasregistry/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -25,21 +25,21 @@ func attributesRuleTypeEnumTransformIn(value string) string {
 	return strings.TrimPrefix(value, AttributeRuleTypeEnumPrefix)
 }
 
-func attributesRuleTypeEnumTransformOut(value string) attributes.AttributeRuleTypeEnum {
-	return attributes.AttributeRuleTypeEnum(attributes.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
+func attributesRuleTypeEnumTransformOut(value string) policy.AttributeRuleTypeEnum {
+	return policy.AttributeRuleTypeEnum(policy.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
 }
 
-func attributesValuesProtojson(valuesJson []byte) ([]*attributes.Value, error) {
+func attributesValuesProtojson(valuesJson []byte) ([]*policy.Value, error) {
 	var (
 		raw    []json.RawMessage
-		values []*attributes.Value
+		values []*policy.Value
 	)
 	if err := json.Unmarshal(valuesJson, &raw); err != nil {
 		return nil, err
 	}
 
 	for _, r := range raw {
-		value := attributes.Value{}
+		value := policy.Value{}
 		if err := protojson.Unmarshal(r, &value); err != nil {
 			return nil, err
 		}
@@ -139,7 +139,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	return sb.GroupBy(g...)
 }
 
-func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attributes.Attribute, error) {
+func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.Attribute, error) {
 	if opts.withKeyAccessGrants {
 		opts.withAttributeValues = true
 	}
@@ -181,7 +181,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 		}
 	}
 
-	var v []*attributes.Value
+	var v []*policy.Value
 	if valuesJson != nil {
 		v, err = attributesValuesProtojson(valuesJson)
 		if err != nil {
@@ -198,14 +198,14 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 		}
 	}
 
-	attr := &attributes.Attribute{
+	attr := &policy.Attribute{
 		Id:        id,
 		Name:      name,
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
 		Active:    &wrapperspb.BoolValue{Value: active},
 		Metadata:  m,
 		Values:    v,
-		Namespace: &namespaces.Namespace{Id: namespaceId, Name: namespaceName},
+		Namespace: &policy.Namespace{Id: namespaceId, Name: namespaceName},
 		Grants:    k,
 		Fqn:       fqn.String,
 	}
@@ -213,8 +213,8 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*attribut
 	return attr, nil
 }
 
-func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions) ([]*attributes.Attribute, error) {
-	list := make([]*attributes.Attribute, 0)
+func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions) ([]*policy.Attribute, error) {
+	list := make([]*policy.Attribute, 0)
 	for rows.Next() {
 		attr, err := attributesHydrateItem(rows, opts)
 		if err != nil {
@@ -240,7 +240,7 @@ func listAllAttributesSql(opts attributesSelectOptions) (string, []interface{}, 
 	return sb.ToSql()
 }
 
-func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]*attributes.Attribute, error) {
+func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]*policy.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: false,
@@ -265,7 +265,7 @@ func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]
 	return list, nil
 }
 
-func (c PolicyDbClient) ListAllAttributesWithout(ctx context.Context, state string) ([]*attributes.Attribute, error) {
+func (c PolicyDbClient) ListAllAttributesWithout(ctx context.Context, state string) ([]*policy.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: false,
 		withKeyAccessGrants: false,
@@ -297,7 +297,7 @@ func getAttributeSql(id string, opts attributesSelectOptions) (string, []interfa
 		ToSql()
 }
 
-func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
 	opts := attributesSelectOptions{
 		withFqn: true,
 	}
@@ -324,7 +324,7 @@ func getAttributeByFqnSql(fqn string, opts attributesSelectOptions) (string, []i
 		ToSql()
 }
 
-func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*attributes.Attribute, error) {
+func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: false,
@@ -356,7 +356,7 @@ func getAttributesByNamespaceSql(namespaceId string, opts attributesSelectOption
 		ToSql()
 }
 
-func (c PolicyDbClient) GetAttributesByNamespace(ctx context.Context, namespaceId string) ([]*attributes.Attribute, error) {
+func (c PolicyDbClient) GetAttributesByNamespace(ctx context.Context, namespaceId string) ([]*policy.Attribute, error) {
 	opts := attributesSelectOptions{}
 	sql, args, err := getAttributesByNamespaceSql(namespaceId, opts)
 
@@ -384,7 +384,7 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*attributes.Attribute, error) {
+func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*policy.Attribute, error) {
 	metadataJson, metadata, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
 		return nil, err
@@ -401,12 +401,12 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	// Update the FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeId: id})
 
-	a := &attributes.Attribute{
+	a := &policy.Attribute{
 		Id:       id,
 		Name:     r.Name,
 		Rule:     r.Rule,
 		Metadata: metadata,
-		Namespace: &namespaces.Namespace{
+		Namespace: &policy.Namespace{
 			Id: r.NamespaceId,
 		},
 		Active: &wrapperspb.BoolValue{Value: true},
@@ -425,7 +425,7 @@ func updateAttributeSql(id string, metadata []byte) (string, []interface{}, erro
 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
-func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*attributes.Attribute, error) {
+func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*policy.Attribute, error) {
 	// if extend we need to merge the metadata
 	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
 		a, err := c.GetAttribute(ctx, id)
@@ -440,7 +440,7 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attri
 
 	sql, args, err := updateAttributeSql(id, metadataJson)
 	if db.IsQueryBuilderSetClauseError(err) {
-		return &attributes.Attribute{
+		return &policy.Attribute{
 			Id: id,
 		}, nil
 	}
@@ -455,7 +455,7 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attri
 	// Update the FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeId: id})
 
-	return &attributes.Attribute{
+	return &policy.Attribute{
 		Id: id,
 	}, nil
 }
@@ -470,7 +470,7 @@ func deactivateAttributeSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) DeactivateAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+func (c PolicyDbClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
 	sql, args, err := deactivateAttributeSql(id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -490,7 +490,7 @@ func deleteAttributeSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) DeleteAttribute(ctx context.Context, id string) (*attributes.Attribute, error) {
+func (c PolicyDbClient) DeleteAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
 	// get attribute before deleting
 	a, err := c.GetAttribute(ctx, id)
 	if err != nil {

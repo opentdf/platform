@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
@@ -149,7 +150,7 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 	return res
 }
 
-func filterValues(values []*attributes.Value, fqn string) *attributes.Value {
+func filterValues(values []*policy.Value, fqn string) *policy.Value {
 	val := strings.Split(fqn, "/value/")[1]
 	for _, v := range values {
 		if v.Value == val {

@@ -4,8 +4,7 @@ import (
 	ctx "context"
 	"testing"
 
-	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,14 +12,14 @@ import (
 func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -76,14 +75,14 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -138,14 +137,14 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -200,14 +199,14 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -262,14 +261,14 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -314,14 +313,14 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	// There are no data attribute instances in this test so the data attribute definitions
 	// are useless, and should be ignored, but supply the definitions anyway to test that assumption
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -363,14 +362,14 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDecisions(t *testing.T) {
 	entityID1 := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	entityID2 := "bubble@squeak.biz"
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -381,11 +380,11 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 		},
 		{
 			Name: "YourAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value3",
 				},
@@ -445,14 +444,14 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -511,14 +510,14 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -578,14 +577,14 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -640,14 +639,14 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+			Values: []*policy.Value{
 				{
 					Value: "Value1",
 				},
@@ -708,14 +707,14 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -772,14 +771,14 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -841,14 +840,14 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -895,14 +894,14 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -964,14 +963,14 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -1033,14 +1032,14 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -1097,14 +1096,14 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -1157,14 +1156,14 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -1221,14 +1220,14 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},
@@ -1281,14 +1280,14 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing.T) {
 	entityID := "4f6636ca-c60c-40d1-9f3f-015086303f74"
 	attrAuthorities := []string{"https://example.org"}
-	mockAttrDefinitions := []*attrs.Attribute{
+	mockAttrDefinitions := []*policy.Attribute{
 		{
 			Name: "MyAttr",
-			Namespace: &namespaces.Namespace{
+			Namespace: &policy.Namespace{
 				Name: "https://example.org",
 			},
-			Rule: attrs.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Values: []*attrs.Value{
+			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Values: []*policy.Value{
 				{
 					Value: "Privileged",
 				},

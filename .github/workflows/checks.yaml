@@ -99,11 +99,10 @@ jobs:
       - run: go test ./integration -race
       - run: docker-compose up -d
       - run: cp example-opentdf.yaml opentdf.yaml
-      - run: sleep 15
-      - run: go run . start &
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
-      - run: sleep 15
-        name: wake me up when github action runner supports docker-compose --wait
+      - run: sleep 20
+      - run: go run . start &
+      - run: ./.github/scripts/wait-for.sh localhost:8080
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
 

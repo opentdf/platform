@@ -13,6 +13,32 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+func migrationInit(c *Client, ctx context.Context) (*goose.Provider, func(), error) {
+	if !c.config.RunMigrations {
+		return nil, nil, fmt.Errorf("migrations are disabled")
+	}
+
+	c.Pgx.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.config.Schema))
+
+	pool, ok := c.Pgx.(*pgxpool.Pool)
+	if !ok || pool == nil {
+		return nil, nil, fmt.Errorf("failed to cast pgxpool.Pool")
+	}
+
+	conn := stdlib.OpenDBFromPool(pool)
+
+	provider, err := goose.NewProvider(goose.DialectPostgres, conn, migrations.MigrationsFS)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create goose provider: %w", err)
+	}
+	return provider, func() {
+		if err := conn.Close(); err != nil {
+			slog.Error("failed to close connection", "err", err)
+		}
+
+	}, nil
+}
+
 func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 	var (
 		applied int
@@ -71,6 +97,17 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 	}
 
 	return applied, nil
+}
+
+func (c *Client) MigrationStatus(ctx context.Context) ([]*goose.MigrationStatus, error) {
+	provider, close, err := migrationInit(c, ctx)
+	if err != nil {
+		slog.Error("failed to create goose provider", "err", err)
+		return nil, err
+	}
+	defer close()
+
+	return provider.Status(context.Background())
 }
 
 func (c *Client) MigrationDown(ctx context.Context) error {

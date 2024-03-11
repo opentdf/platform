@@ -444,7 +444,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 			return "", err
 		}
 	} else {
-		return "", errors.Join(db.ErrMissingRequiredValue, errors.New("either an existing Subject Condition Set ID or a new one is required when creating a subject mapping"))
+		return "", errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new one is required when creating a subject mapping"))
 	}
 
 	// TODO: remove roundtrip and handle metadata mutation with selector [https://github.com/opentdf/platform/pull/314]
@@ -453,7 +453,7 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return "", err
 	}
 	if s.Actions == nil {
-		return "", errors.Join(db.ErrMissingRequiredValue, errors.New("actions are required when creating a subject mapping"))
+		return "", errors.Join(db.ErrMissingValue, errors.New("actions are required when creating a subject mapping"))
 	}
 	actionsJSON, err := marshalActionsProto(s.Actions)
 	if err != nil {
@@ -548,13 +548,14 @@ func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_s
 
 // Mutates provided fields and returns id of the updated subject mapping
 func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (string, error) {
-	// TODO: remove roundtrip and handle metadata mutation with selector [https://github.com/opentdf/platform/pull/314]
-	prev, err := c.GetSubjectMapping(ctx, r.Id)
-	if err != nil {
-		return "", err
-	}
-
-	metadataJson, _, err := db.MarshalUpdateMetadata(prev.Metadata, r.UpdateMetadata)
+	// if extend we need to merge the metadata
+	metadataJson, _, err := db.MarshalUpdateMetadata(s.Metadata, common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND, func() (*common.Metadata, error) {
+		a, err := c.GetSubjectMapping(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return a.Metadata, nil
+	})
 	if err != nil {
 		return "", err
 	}
@@ -582,15 +583,22 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		r.UpdateSubjectConditionSetId,
 		actionsJSON,
 	)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &subjectmapping.SubjectMapping{
+			Id: id,
+		}, nil
+	}
 	if err != nil {
 		return "", err
 	}
 
-	if err := c.Exec(ctx, sql, args, err); err != nil {
-		return "", err
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
 	}
 
-	return r.Id, nil
+	return &subjectmapping.SubjectMapping{
+		Id: id,
+	}, nil
 }
 
 func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
@@ -609,8 +617,8 @@ func (c PolicyDbClient) DeleteSubjectMapping(ctx context.Context, id string) (st
 		return "", err
 	}
 
-	if _, err := c.QueryCount(ctx, sql, args); err != nil {
-		return "", db.WrapIfKnownInvalidQueryErr(err)
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
 	}
 
 	return id, nil

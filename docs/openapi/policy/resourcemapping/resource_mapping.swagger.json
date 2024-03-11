@@ -59,11 +59,11 @@
         },
         "parameters": [
           {
-            "name": "resourceMapping",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/resourcemappingResourceMappingCreateUpdate"
+              "$ref": "#/definitions/resourcemappingCreateResourceMappingRequest"
             }
           }
         ],
@@ -154,16 +154,36 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "resourceMapping",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/resourcemappingResourceMappingCreateUpdate"
+              "type": "object",
+              "properties": {
+                "attributeValueId": {
+                  "type": "string",
+                  "title": "Optional"
+                },
+                "terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common Metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
             }
           }
         ],
@@ -174,6 +194,62 @@
     }
   },
   "definitions": {
+    "attributesAttribute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespace": {
+          "$ref": "#/definitions/namespacesNamespace",
+          "title": "namespace of the attribute"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/attributesAttributeRuleTypeEnum",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyattributesValue"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          }
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "attributesAttributeRuleTypeEnum": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
     "commonMetadata": {
       "type": "object",
       "properties": {
@@ -193,10 +269,6 @@
             "type": "string"
           },
           "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
@@ -209,13 +281,19 @@
           "additionalProperties": {
             "type": "string"
           },
-          "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
+          "title": "optional labels"
         }
       }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "kasregistryKeyAccessServer": {
       "type": "object",
@@ -223,15 +301,16 @@
         "id": {
           "type": "string"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
         "uri": {
           "type": "string",
           "title": "Address of a KAS instance"
         },
         "publicKey": {
           "$ref": "#/definitions/kasregistryPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       },
       "title": "Descriptor for a KAS"
@@ -249,6 +328,29 @@
         }
       }
     },
+    "namespacesNamespace": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
+        },
+        "name": {
+          "type": "string",
+          "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      }
+    },
     "policyattributesValue": {
       "type": "object",
       "properties": {
@@ -256,11 +358,8 @@
           "type": "string",
           "title": "generated uuid in database"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
-        "attributeId": {
-          "type": "string"
+        "attribute": {
+          "$ref": "#/definitions/attributesAttribute"
         },
         "value": {
           "type": "string"
@@ -286,6 +385,10 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       }
     },
@@ -299,6 +402,25 @@
       },
       "additionalProperties": {},
       "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "resourcemappingCreateResourceMappingRequest": {
+      "type": "object",
+      "properties": {
+        "attributeValueId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
+        }
+      }
     },
     "resourcemappingCreateResourceMappingResponse": {
       "type": "object",
@@ -357,23 +479,6 @@
       },
       "description": "## Examples\n\n### Where\n\nattributeId is an id of the following attribute\n\nFQN: http://demo.com/attr/Classification/value/Confidential\nUUID: 12345678-1234-1234-1234-123456789012\n\n### Request\n\ngrpcurl -plaintext -d @ localhost:9000 policy.resourcemapping.ResourceMappingService/CreateResourceMapping \u003c\u003cEOM\n{\n\"mapping\": {\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}\nEOM\n\n### Response\n\n{\n\"mapping\": {\n\"metadata\": {\n\"id\": \"12345678-1234-1234-1234-123456789012\",\n\"created_at\": \"2020-01-01T00:00:00Z\",\n\"updated_at\": \"2020-01-01T00:00:00Z\"\n},\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}",
       "title": "# Resource Mappings (aka Access Control Resource Encodings aka ACRE):  Structures supporting Resources and Attributes mappings"
-    },
-    "resourcemappingResourceMappingCreateUpdate": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
-        },
-        "attributeValueId": {
-          "type": "string"
-        },
-        "terms": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
     },
     "resourcemappingUpdateResourceMappingResponse": {
       "type": "object",

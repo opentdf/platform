@@ -21,11 +21,6 @@ public final class KeyAccessServerRegistryProto {
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_kasregistry_KeyAccessServer_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_kasregistry_KeyAccessServerCreateUpdate_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_kasregistry_KeyAccessServerCreateUpdate_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
     internal_static_kasregistry_PublicKey_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
@@ -93,74 +88,73 @@ public final class KeyAccessServerRegistryProto {
       ".proto\022\013kasregistry\032\033buf/validate/valida" +
       "te.proto\032\023common/common.proto\032\034google/ap" +
       "i/annotations.proto\"\230\001\n\017KeyAccessServer\022" +
-      "\016\n\002id\030\001 \001(\tR\002id\022,\n\010metadata\030\002 \001(\0132\020.comm" +
-      "on.MetadataR\010metadata\022\020\n\003uri\030\003 \001(\tR\003uri\022" +
-      "5\n\npublic_key\030\004 \001(\0132\026.kasregistry.Public" +
-      "KeyR\tpublicKey\"\253\001\n\033KeyAccessServerCreate" +
-      "Update\0223\n\010metadata\030\001 \001(\0132\027.common.Metada" +
-      "taMutableR\010metadata\022\030\n\003uri\030\002 \001(\tB\006\272H\003\310\001\001" +
-      "R\003uri\022=\n\npublic_key\030\003 \001(\0132\026.kasregistry." +
-      "PublicKeyB\006\272H\003\310\001\001R\tpublicKey\"\300\003\n\tPublicK" +
-      "ey\022\214\003\n\006remote\030\001 \001(\tB\361\002\272H\355\002\272\001\351\002\n\nfqn_form" +
-      "at\022\327\001FQN must start with a valid URL (e." +
-      "g., \'https://demo.com/\') followed by add" +
-      "itional segments. Each segment must star" +
-      "t and end with an alphanumeric character" +
-      ", can contain hyphens, alphanumeric char" +
-      "acters, and slashes.\032\200\001this.matches(\'^ht" +
-      "tps://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a" +
-      "-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-" +
-      "]{0,61}[a-zA-Z0-9])?)*(/.*)?$\')H\000R\006remot" +
-      "e\022\026\n\005local\030\002 \001(\tH\000R\005localB\014\n\npublic_key\"" +
-      "3\n\031GetKeyAccessServerRequest\022\026\n\002id\030\001 \001(\t" +
-      "B\006\272H\003\310\001\001R\002id\"f\n\032GetKeyAccessServerRespon" +
-      "se\022H\n\021key_access_server\030\001 \001(\0132\034.kasregis" +
-      "try.KeyAccessServerR\017keyAccessServer\"\035\n\033" +
-      "ListKeyAccessServersRequest\"j\n\034ListKeyAc" +
-      "cessServersResponse\022J\n\022key_access_server" +
-      "s\030\001 \003(\0132\034.kasregistry.KeyAccessServerR\020k" +
-      "eyAccessServers\"|\n\034CreateKeyAccessServer" +
-      "Request\022\\\n\021key_access_server\030\001 \001(\0132(.kas" +
-      "registry.KeyAccessServerCreateUpdateB\006\272H" +
-      "\003\310\001\001R\017keyAccessServer\"i\n\035CreateKeyAccess" +
-      "ServerResponse\022H\n\021key_access_server\030\001 \001(" +
-      "\0132\034.kasregistry.KeyAccessServerR\017keyAcce" +
-      "ssServer\"\224\001\n\034UpdateKeyAccessServerReques" +
-      "t\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022\\\n\021key_access_" +
-      "server\030\002 \001(\0132(.kasregistry.KeyAccessServ" +
-      "erCreateUpdateB\006\272H\003\310\001\001R\017keyAccessServer\"" +
-      "i\n\035UpdateKeyAccessServerResponse\022H\n\021key_" +
-      "access_server\030\001 \001(\0132\034.kasregistry.KeyAcc" +
-      "essServerR\017keyAccessServer\"6\n\034DeleteKeyA" +
-      "ccessServerRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002" +
-      "id\"i\n\035DeleteKeyAccessServerResponse\022H\n\021k" +
-      "ey_access_server\030\001 \001(\0132\034.kasregistry.Key" +
-      "AccessServerR\017keyAccessServer2\217\006\n\036KeyAcc" +
-      "essServerRegistryService\022\210\001\n\024ListKeyAcce" +
-      "ssServers\022(.kasregistry.ListKeyAccessSer" +
-      "versRequest\032).kasregistry.ListKeyAccessS" +
-      "erversResponse\"\033\202\323\344\223\002\025\022\023/key-access-serv" +
-      "ers\022\207\001\n\022GetKeyAccessServer\022&.kasregistry" +
-      ".GetKeyAccessServerRequest\032\'.kasregistry" +
-      ".GetKeyAccessServerResponse\" \202\323\344\223\002\032\022\030/ke" +
-      "y-access-servers/{id}\022\236\001\n\025CreateKeyAcces" +
-      "sServer\022).kasregistry.CreateKeyAccessSer" +
-      "verRequest\032*.kasregistry.CreateKeyAccess" +
-      "ServerResponse\".\202\323\344\223\002(\"\023/key-access-serv" +
-      "ers:\021key_access_server\022\243\001\n\025UpdateKeyAcce" +
-      "ssServer\022).kasregistry.UpdateKeyAccessSe" +
-      "rverRequest\032*.kasregistry.UpdateKeyAcces" +
-      "sServerResponse\"3\202\323\344\223\002-\032\030/key-access-ser" +
-      "vers/{id}:\021key_access_server\022\220\001\n\025DeleteK" +
-      "eyAccessServer\022).kasregistry.DeleteKeyAc" +
-      "cessServerRequest\032*.kasregistry.DeleteKe" +
-      "yAccessServerResponse\" \202\323\344\223\002\032*\030/key-acce" +
-      "ss-servers/{id}B\300\001\n\037io.opentdf.platform." +
-      "kasregistryB\034KeyAccessServerRegistryProt" +
-      "oP\001Z3github.com/opentdf/platform/protoco" +
-      "l/go/kasregistry\242\002\003KXX\252\002\013Kasregistry\312\002\013K" +
-      "asregistry\342\002\027Kasregistry\\GPBMetadata\352\002\013K" +
-      "asregistryb\006proto3"
+      "\016\n\002id\030\001 \001(\tR\002id\022\020\n\003uri\030\002 \001(\tR\003uri\0225\n\npub" +
+      "lic_key\030\003 \001(\0132\026.kasregistry.PublicKeyR\tp" +
+      "ublicKey\022,\n\010metadata\030d \001(\0132\020.common.Meta" +
+      "dataR\010metadata\"\300\003\n\tPublicKey\022\214\003\n\006remote\030" +
+      "\001 \001(\tB\361\002\272H\355\002\272\001\351\002\n\nfqn_format\022\327\001FQN must " +
+      "start with a valid URL (e.g., \'https://d" +
+      "emo.com/\') followed by additional segmen" +
+      "ts. Each segment must start and end with" +
+      " an alphanumeric character, can contain " +
+      "hyphens, alphanumeric characters, and sl" +
+      "ashes.\032\200\001this.matches(\'^https://[a-zA-Z0" +
+      "-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\" +
+      ".[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z" +
+      "0-9])?)*(/.*)?$\')H\000R\006remote\022\026\n\005local\030\002 \001" +
+      "(\tH\000R\005localB\014\n\npublic_key\"3\n\031GetKeyAcces" +
+      "sServerRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"f" +
+      "\n\032GetKeyAccessServerResponse\022H\n\021key_acce" +
+      "ss_server\030\001 \001(\0132\034.kasregistry.KeyAccessS" +
+      "erverR\017keyAccessServer\"\035\n\033ListKeyAccessS" +
+      "erversRequest\"j\n\034ListKeyAccessServersRes" +
+      "ponse\022J\n\022key_access_servers\030\001 \003(\0132\034.kasr" +
+      "egistry.KeyAccessServerR\020keyAccessServer" +
+      "s\"\254\001\n\034CreateKeyAccessServerRequest\022\030\n\003ur" +
+      "i\030\001 \001(\tB\006\272H\003\310\001\001R\003uri\022=\n\npublic_key\030\002 \001(\013" +
+      "2\026.kasregistry.PublicKeyB\006\272H\003\310\001\001R\tpublic" +
+      "Key\0223\n\010metadata\030d \001(\0132\027.common.MetadataM" +
+      "utableR\010metadata\"i\n\035CreateKeyAccessServe" +
+      "rResponse\022H\n\021key_access_server\030\001 \001(\0132\034.k" +
+      "asregistry.KeyAccessServerR\017keyAccessSer" +
+      "ver\"\232\002\n\034UpdateKeyAccessServerRequest\022\026\n\002" +
+      "id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022\030\n\003uri\030\002 \001(\tB\006\272H\003\310\001" +
+      "\001R\003uri\022=\n\npublic_key\030\003 \001(\0132\026.kasregistry" +
+      ".PublicKeyB\006\272H\003\310\001\001R\tpublicKey\0223\n\010metadat" +
+      "a\030d \001(\0132\027.common.MetadataMutableR\010metada" +
+      "ta\022T\n\030metadata_update_behavior\030e \001(\0162\032.c" +
+      "ommon.MetadataUpdateEnumR\026metadataUpdate" +
+      "Behavior\"i\n\035UpdateKeyAccessServerRespons" +
+      "e\022H\n\021key_access_server\030\001 \001(\0132\034.kasregist" +
+      "ry.KeyAccessServerR\017keyAccessServer\"6\n\034D" +
+      "eleteKeyAccessServerRequest\022\026\n\002id\030\001 \001(\tB" +
+      "\006\272H\003\310\001\001R\002id\"i\n\035DeleteKeyAccessServerResp" +
+      "onse\022H\n\021key_access_server\030\001 \001(\0132\034.kasreg" +
+      "istry.KeyAccessServerR\017keyAccessServer2\357" +
+      "\005\n\036KeyAccessServerRegistryService\022\210\001\n\024Li" +
+      "stKeyAccessServers\022(.kasregistry.ListKey" +
+      "AccessServersRequest\032).kasregistry.ListK" +
+      "eyAccessServersResponse\"\033\202\323\344\223\002\025\022\023/key-ac" +
+      "cess-servers\022\207\001\n\022GetKeyAccessServer\022&.ka" +
+      "sregistry.GetKeyAccessServerRequest\032\'.ka" +
+      "sregistry.GetKeyAccessServerResponse\" \202\323" +
+      "\344\223\002\032\022\030/key-access-servers/{id}\022\216\001\n\025Creat" +
+      "eKeyAccessServer\022).kasregistry.CreateKey" +
+      "AccessServerRequest\032*.kasregistry.Create" +
+      "KeyAccessServerResponse\"\036\202\323\344\223\002\030\"\023/key-ac" +
+      "cess-servers:\001*\022\223\001\n\025UpdateKeyAccessServe" +
+      "r\022).kasregistry.UpdateKeyAccessServerReq" +
+      "uest\032*.kasregistry.UpdateKeyAccessServer" +
+      "Response\"#\202\323\344\223\002\035\032\030/key-access-servers/{i" +
+      "d}:\001*\022\220\001\n\025DeleteKeyAccessServer\022).kasreg" +
+      "istry.DeleteKeyAccessServerRequest\032*.kas" +
+      "registry.DeleteKeyAccessServerResponse\" " +
+      "\202\323\344\223\002\032*\030/key-access-servers/{id}B\300\001\n\037io." +
+      "opentdf.platform.kasregistryB\034KeyAccessS" +
+      "erverRegistryProtoP\001Z3github.com/opentdf" +
+      "/platform/protocol/go/kasregistry\242\002\003KXX\252" +
+      "\002\013Kasregistry\312\002\013Kasregistry\342\002\027Kasregistr" +
+      "y\\GPBMetadata\352\002\013Kasregistryb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -174,75 +168,69 @@ public final class KeyAccessServerRegistryProto {
     internal_static_kasregistry_KeyAccessServer_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_KeyAccessServer_descriptor,
-        new java.lang.String[] { "Id", "Metadata", "Uri", "PublicKey", });
-    internal_static_kasregistry_KeyAccessServerCreateUpdate_descriptor =
-      getDescriptor().getMessageTypes().get(1);
-    internal_static_kasregistry_KeyAccessServerCreateUpdate_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_kasregistry_KeyAccessServerCreateUpdate_descriptor,
-        new java.lang.String[] { "Metadata", "Uri", "PublicKey", });
+        new java.lang.String[] { "Id", "Uri", "PublicKey", "Metadata", });
     internal_static_kasregistry_PublicKey_descriptor =
-      getDescriptor().getMessageTypes().get(2);
+      getDescriptor().getMessageTypes().get(1);
     internal_static_kasregistry_PublicKey_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_PublicKey_descriptor,
         new java.lang.String[] { "Remote", "Local", "PublicKey", });
     internal_static_kasregistry_GetKeyAccessServerRequest_descriptor =
-      getDescriptor().getMessageTypes().get(3);
+      getDescriptor().getMessageTypes().get(2);
     internal_static_kasregistry_GetKeyAccessServerRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_GetKeyAccessServerRequest_descriptor,
         new java.lang.String[] { "Id", });
     internal_static_kasregistry_GetKeyAccessServerResponse_descriptor =
-      getDescriptor().getMessageTypes().get(4);
+      getDescriptor().getMessageTypes().get(3);
     internal_static_kasregistry_GetKeyAccessServerResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_GetKeyAccessServerResponse_descriptor,
         new java.lang.String[] { "KeyAccessServer", });
     internal_static_kasregistry_ListKeyAccessServersRequest_descriptor =
-      getDescriptor().getMessageTypes().get(5);
+      getDescriptor().getMessageTypes().get(4);
     internal_static_kasregistry_ListKeyAccessServersRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_ListKeyAccessServersRequest_descriptor,
         new java.lang.String[] { });
     internal_static_kasregistry_ListKeyAccessServersResponse_descriptor =
-      getDescriptor().getMessageTypes().get(6);
+      getDescriptor().getMessageTypes().get(5);
     internal_static_kasregistry_ListKeyAccessServersResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_ListKeyAccessServersResponse_descriptor,
         new java.lang.String[] { "KeyAccessServers", });
     internal_static_kasregistry_CreateKeyAccessServerRequest_descriptor =
-      getDescriptor().getMessageTypes().get(7);
+      getDescriptor().getMessageTypes().get(6);
     internal_static_kasregistry_CreateKeyAccessServerRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_CreateKeyAccessServerRequest_descriptor,
-        new java.lang.String[] { "KeyAccessServer", });
+        new java.lang.String[] { "Uri", "PublicKey", "Metadata", });
     internal_static_kasregistry_CreateKeyAccessServerResponse_descriptor =
-      getDescriptor().getMessageTypes().get(8);
+      getDescriptor().getMessageTypes().get(7);
     internal_static_kasregistry_CreateKeyAccessServerResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_CreateKeyAccessServerResponse_descriptor,
         new java.lang.String[] { "KeyAccessServer", });
     internal_static_kasregistry_UpdateKeyAccessServerRequest_descriptor =
-      getDescriptor().getMessageTypes().get(9);
+      getDescriptor().getMessageTypes().get(8);
     internal_static_kasregistry_UpdateKeyAccessServerRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_UpdateKeyAccessServerRequest_descriptor,
-        new java.lang.String[] { "Id", "KeyAccessServer", });
+        new java.lang.String[] { "Id", "Uri", "PublicKey", "Metadata", "MetadataUpdateBehavior", });
     internal_static_kasregistry_UpdateKeyAccessServerResponse_descriptor =
-      getDescriptor().getMessageTypes().get(10);
+      getDescriptor().getMessageTypes().get(9);
     internal_static_kasregistry_UpdateKeyAccessServerResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_UpdateKeyAccessServerResponse_descriptor,
         new java.lang.String[] { "KeyAccessServer", });
     internal_static_kasregistry_DeleteKeyAccessServerRequest_descriptor =
-      getDescriptor().getMessageTypes().get(11);
+      getDescriptor().getMessageTypes().get(10);
     internal_static_kasregistry_DeleteKeyAccessServerRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_DeleteKeyAccessServerRequest_descriptor,
         new java.lang.String[] { "Id", });
     internal_static_kasregistry_DeleteKeyAccessServerResponse_descriptor =
-      getDescriptor().getMessageTypes().get(12);
+      getDescriptor().getMessageTypes().get(11);
     internal_static_kasregistry_DeleteKeyAccessServerResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_kasregistry_DeleteKeyAccessServerResponse_descriptor,

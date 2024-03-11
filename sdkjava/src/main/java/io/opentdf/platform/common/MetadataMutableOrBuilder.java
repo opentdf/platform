@@ -10,7 +10,7 @@ public interface MetadataMutableOrBuilder extends
 
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -18,7 +18,7 @@ public interface MetadataMutableOrBuilder extends
   int getLabelsCount();
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -33,7 +33,7 @@ public interface MetadataMutableOrBuilder extends
   getLabels();
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -42,7 +42,7 @@ public interface MetadataMutableOrBuilder extends
   getLabelsMap();
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
@@ -54,31 +54,11 @@ java.lang.String getLabelsOrDefault(
 java.lang.String defaultValue);
   /**
    * <pre>
-   * optional short description
+   * optional labels
    * </pre>
    *
    * <code>map&lt;string, string&gt; labels = 3 [json_name = "labels"];</code>
    */
   java.lang.String getLabelsOrThrow(
       java.lang.String key);
-
-  /**
-   * <pre>
-   * optional long description
-   * </pre>
-   *
-   * <code>string description = 4 [json_name = "description"];</code>
-   * @return The description.
-   */
-  java.lang.String getDescription();
-  /**
-   * <pre>
-   * optional long description
-   * </pre>
-   *
-   * <code>string description = 4 [json_name = "description"];</code>
-   * @return The bytes for description.
-   */
-  com.google.protobuf.ByteString
-      getDescriptionBytes();
 }

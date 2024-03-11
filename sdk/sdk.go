@@ -142,6 +142,9 @@ func buildKASClient(c *config) (KASClient, error) {
 
 // Close closes the underlying grpc.ClientConn.
 func (s SDK) Close() error {
+	if s.conn == nil {
+		return nil
+	}
 	if err := s.conn.Close(); err != nil {
 		return errors.Join(ErrShutdownFailed, err)
 	}
@@ -153,7 +156,7 @@ func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
 }
 
-// ExchangeToken exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
+// TokenExchange exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
 func (s SDK) TokenExchange(token string) (string, error) {
 	return "", nil
 }

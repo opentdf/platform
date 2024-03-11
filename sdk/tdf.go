@@ -59,7 +59,7 @@ const (
 
 type Reader struct {
 	manifest            Manifest
-	unencryptedMetadata string
+	unencryptedMetadata []byte
 	tdfReader           archive.TDFReader
 	unwrapper           Unwrapper
 	cursor              int64
@@ -81,7 +81,7 @@ type Unwrapper interface {
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
-func (sdk SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -101,7 +101,7 @@ func (sdk SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOpti
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
-	err = fillInPublicKeys(sdk.unwrapper, tdfConfig.kasInfoList)
+	err = fillInPublicKeys(s.unwrapper, tdfConfig.kasInfoList)
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +360,7 @@ func (t *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func (sdk SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
+func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
@@ -381,7 +381,7 @@ func (sdk SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	return &Reader{
 		tdfReader: tdfReader,
 		manifest:  *manifestObj,
-		unwrapper: sdk.unwrapper,
+		unwrapper: s.unwrapper,
 	}, nil
 }
 
@@ -559,11 +559,11 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 }
 
 // UnencryptedMetadata return decrypted metadata in manifest.
-func (r *Reader) UnencryptedMetadata() (string, error) {
+func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return "", fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return nil, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
 		}
 	}
 
@@ -611,7 +611,7 @@ func (r *Reader) DataAttributes() ([]string, error) {
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
-	var unencryptedMetadata string
+	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		wrappedKey, err := r.unwrapper.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
@@ -647,7 +647,7 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 				return fmt.Errorf("crypto.AesGcm.encrypt failed:%w", err)
 			}
 
-			unencryptedMetadata = string(metaData)
+			unencryptedMetadata = metaData
 		}
 	}
 

@@ -27,10 +27,10 @@ type attrFqnUpsertOptions struct {
 // 2. namespaceId, attributeId
 // 3. namespaceId, attributeId, valueId
 func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (string, []interface{}, error) {
-	t := db.Tables.AttrFqn
-	nT := db.Tables.Namespaces
-	adT := db.Tables.Attributes
-	avT := db.Tables.AttributeValues
+	t := Tables.AttrFqn
+	nT := Tables.Namespaces
+	adT := Tables.Attributes
+	avT := Tables.AttributeValues
 
 	sb := db.NewStatementBuilder()
 	var subQ squirrel.SelectBuilder

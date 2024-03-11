@@ -9,11 +9,19 @@ public interface UpdateResourceMappingRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The id.
    */
   java.lang.String getId();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The bytes for id.
    */
@@ -21,17 +29,85 @@ public interface UpdateResourceMappingRequestOrBuilder extends
       getIdBytes();
 
   /**
-   * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 2 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
-   * @return Whether the resourceMapping field is set.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>string attribute_value_id = 4 [json_name = "attributeValueId"];</code>
+   * @return The attributeValueId.
    */
-  boolean hasResourceMapping();
+  java.lang.String getAttributeValueId();
   /**
-   * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 2 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
-   * @return The resourceMapping.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>string attribute_value_id = 4 [json_name = "attributeValueId"];</code>
+   * @return The bytes for attributeValueId.
    */
-  io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate getResourceMapping();
+  com.google.protobuf.ByteString
+      getAttributeValueIdBytes();
+
   /**
-   * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 2 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+   * <code>repeated string terms = 5 [json_name = "terms"];</code>
+   * @return A list containing the terms.
    */
-  io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdateOrBuilder getResourceMappingOrBuilder();
+  java.util.List<java.lang.String>
+      getTermsList();
+  /**
+   * <code>repeated string terms = 5 [json_name = "terms"];</code>
+   * @return The count of terms.
+   */
+  int getTermsCount();
+  /**
+   * <code>repeated string terms = 5 [json_name = "terms"];</code>
+   * @param index The index of the element to return.
+   * @return The terms at the given index.
+   */
+  java.lang.String getTerms(int index);
+  /**
+   * <code>repeated string terms = 5 [json_name = "terms"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the terms at the given index.
+   */
+  com.google.protobuf.ByteString
+      getTermsBytes(int index);
+
+  /**
+   * <pre>
+   * Common Metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Common Metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.MetadataMutable getMetadata();
+  /**
+   * <pre>
+   * Common Metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
+
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
+   */
+  int getMetadataUpdateBehaviorValue();
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
+   */
+  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior();
 }

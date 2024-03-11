@@ -18,8 +18,6 @@
   "paths": {
     "/key-access-servers": {
       "get": {
-        "summary": "Request Examples:\n{}",
-        "description": "Response Examples:\n{\n\"key_access_servers\": [\n{\n\"id\": \"71eae02f-6837-4980-8a2c-70abf6b68732\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"updated_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"description\": \"test kas instance\"\n},\n\"uri\": \"kas2\",\n\"public_key\": {\n\"remote\": \"https://platform.virtru.com/kas1\"\n}\n},\n{\n\"id\": \"cad1fc87-1193-456b-a217-d5cdae1fa67a\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1705971990\",\n\"nanos\": 303386000\n},\n\"updated_at\": {\n\"seconds\": \"1705971990\",\n\"nanos\": 303386000\n},\n\"description\": \"test kas instance\"\n},\n\"uri\": \"kas3\",\n\"public_key\": {\n\"local\": \"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ6ekNDQVhXZ0F3SUJBZ0lVT1J1VjNhdlU5QUU2enNCNlp4eWxsSHBpNWQ0d0NnWUlLb1pJemowRUF3SXcKUFRFTE1Ba0dBMVVFQmhNQ2RYTXhDekFKQmdOVkJBZ01BbU4wTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NalF3TVRBeU1UWTFOalUyV2hjTk1qVXdNVEF4TVRZMU5qVTJXakE5Ck1Rc3dDUVlEVlFRR0V3SjFjekVMTUFrR0ExVUVDQXdDWTNReElUQWZCZ05WQkFvTUdFbHVkR1Z5Ym1WMElGZHAKWkdkcGRITWdVSFI1SUV4MFpEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJMVjlmQ0pIRC9rYwpyWHJVSFF3QVp4ME1jMGRQdkxqc0ovb2pFdE1NbjBST2RlT3g4eWd4Z2NRVEZGQXh5Q3RCdWFkaEFkbS9pVkh0CjhnMkVNejVkTzNXalV6QlJNQjBHQTFVZERnUVdCQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBZkJnTlYKSFNNRUdEQVdnQlFZTmt1aytKSXVSV3luK2JFOHNCaFJ3MjdPVlRBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvRwpDQ3FHU000OUJBTUNBMGdBTUVVQ0lRQ0FCMmppWWU4QVk2TUo0QURQU1FHRTQ3K2Eza1dGTGNHc0pob1pieHRnClV3SWdjZklJdVBmaDRmYmN2OGNUaTJCbEkzazdzV1B1QW1JRlZyaUkyZDNVeDVRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==\"\n}\n}\n]\n}",
         "operationId": "KeyAccessServerRegistryService_ListKeyAccessServers",
         "responses": {
           "200": {
@@ -40,8 +38,6 @@
         ]
       },
       "post": {
-        "summary": "Request Examples:\n{\n\"key_access_server\": {\n\"uri\": \"kas2\",\n\"public_key\": {\n\"remote\": \"https://platform.virtru.com/kas1\"\n}\n}\n}",
-        "description": "Response Examples:\n{\n\"key_access_server\": {\n\"id\": \"71eae02f-6837-4980-8a2c-70abf6b68732\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"updated_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"description\": \"test kas instance\"\n},\n\"uri\": \"kas2\",\n\"public_key\": {\n\"remote\": \"https://platform.virtru.com/kas1\"\n}\n}\n}",
         "operationId": "KeyAccessServerRegistryService_CreateKeyAccessServer",
         "responses": {
           "200": {
@@ -59,11 +55,11 @@
         },
         "parameters": [
           {
-            "name": "keyAccessServer",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/kasregistryKeyAccessServerCreateUpdate"
+              "$ref": "#/definitions/kasregistryCreateKeyAccessServerRequest"
             }
           }
         ],
@@ -74,8 +70,6 @@
     },
     "/key-access-servers/{id}": {
       "get": {
-        "summary": "Request Examples:\n{\n\"id\": \"71eae02f-6837-4980-8a2c-70abf6b68732\"\n}",
-        "description": "Response Examples:\n{\n\"key_access_server\": {\n\"id\": \"71eae02f-6837-4980-8a2c-70abf6b68732\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"updated_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"description\": \"test kas instance\"\n},\n\"uri\": \"kas2\",\n\"public_key\": {\n\"remote\": \"https://platform.virtru.com/kas1\"\n}\n}\n}",
         "operationId": "KeyAccessServerRegistryService_GetKeyAccessServer",
         "responses": {
           "200": {
@@ -104,8 +98,6 @@
         ]
       },
       "delete": {
-        "summary": "Request Examples:\n{\n\"id\": \"71eae02f-6837-4980-8a2c-70abf6b68732\"\n}",
-        "description": "Response Examples:\n{\n\"key_access_server\": {\n\"id\": \"71eae02f-6837-4980-8a2c-70abf6b68732\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"updated_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"description\": \"test kas instance\"\n},\n\"uri\": \"kas2\",\n\"public_key\": {\n\"remote\": \"https://platform.virtru.com/kas1\"\n}\n}\n}",
         "operationId": "KeyAccessServerRegistryService_DeleteKeyAccessServer",
         "responses": {
           "200": {
@@ -134,8 +126,6 @@
         ]
       },
       "put": {
-        "summary": "Request Examples:\n{\n\"id\": \"71eae02f-6837-4980-8a2c-70abf6b68732\",\n\"key_access_server\": {\n\"uri\": \"kas2\",\n\"public_key\": {\n\"remote\": \"https://platform.virtru.com/kas1\"\n}\n}\n}",
-        "description": "Response Examples:\n{\n\"key_access_server\": {\n\"id\": \"71eae02f-6837-4980-8a2c-70abf6b68732\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"updated_at\": {\n\"seconds\": \"1705971719\",\n\"nanos\": 534029000\n},\n\"description\": \"test kas instance\"\n},\n\"uri\": \"kas2\",\n\"public_key\": {\n\"remote\": \"https://platform.virtru.com/kas1\"\n}\n}\n}",
         "operationId": "KeyAccessServerRegistryService_UpdateKeyAccessServer",
         "responses": {
           "200": {
@@ -154,16 +144,32 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "keyAccessServer",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/kasregistryKeyAccessServerCreateUpdate"
+              "type": "object",
+              "properties": {
+                "uri": {
+                  "type": "string"
+                },
+                "publicKey": {
+                  "$ref": "#/definitions/kasregistryPublicKey"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
             }
           }
         ],
@@ -193,10 +199,6 @@
             "type": "string"
           },
           "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
@@ -209,11 +211,33 @@
           "additionalProperties": {
             "type": "string"
           },
-          "title": "optional short description"
-        },
-        "description": {
+          "title": "optional labels"
+        }
+      }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
+    },
+    "kasregistryCreateKeyAccessServerRequest": {
+      "type": "object",
+      "properties": {
+        "uri": {
           "type": "string",
-          "title": "optional long description"
+          "title": "Required"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/kasregistryPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Common metadata"
         }
       }
     },
@@ -247,34 +271,19 @@
         "id": {
           "type": "string"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
         "uri": {
           "type": "string",
           "title": "Address of a KAS instance"
         },
         "publicKey": {
           "$ref": "#/definitions/kasregistryPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       },
       "title": "Descriptor for a KAS"
-    },
-    "kasregistryKeyAccessServerCreateUpdate": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Optional metadata for the attribute definition"
-        },
-        "uri": {
-          "type": "string",
-          "title": "Address of a KAS instance"
-        },
-        "publicKey": {
-          "$ref": "#/definitions/kasregistryPublicKey"
-        }
-      }
     },
     "kasregistryListKeyAccessServersResponse": {
       "type": "object",

@@ -17,6 +17,9 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private CreateSubjectMappingRequest() {
+    attributeValueId_ = "";
+    actions_ = java.util.Collections.emptyList();
+    existingSubjectConditionSetId_ = "";
   }
 
   @java.lang.Override
@@ -40,30 +43,239 @@ private static final long serialVersionUID = 0L;
   }
 
   private int bitField0_;
-  public static final int SUBJECT_MAPPING_FIELD_NUMBER = 1;
-  private io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate subjectMapping_;
+  public static final int ATTRIBUTE_VALUE_ID_FIELD_NUMBER = 1;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object attributeValueId_ = "";
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
-   * @return Whether the subjectMapping field is set.
+   * <pre>
+   * Required
+   * Attribute Value to be mapped to
+   * </pre>
+   *
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * @return The attributeValueId.
    */
   @java.lang.Override
-  public boolean hasSubjectMapping() {
+  public java.lang.String getAttributeValueId() {
+    java.lang.Object ref = attributeValueId_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      attributeValueId_ = s;
+      return s;
+    }
+  }
+  /**
+   * <pre>
+   * Required
+   * Attribute Value to be mapped to
+   * </pre>
+   *
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * @return The bytes for attributeValueId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getAttributeValueIdBytes() {
+    java.lang.Object ref = attributeValueId_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      attributeValueId_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
+  public static final int ACTIONS_FIELD_NUMBER = 2;
+  @SuppressWarnings("serial")
+  private java.util.List<io.opentdf.platform.authorization.Action> actions_;
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
+    return actions_;
+  }
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+      getActionsOrBuilderList() {
+    return actions_;
+  }
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public int getActionsCount() {
+    return actions_.size();
+  }
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.authorization.Action getActions(int index) {
+    return actions_.get(index);
+  }
+  /**
+   * <pre>
+   * The actions permitted by subjects in this mapping
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+      int index) {
+    return actions_.get(index);
+  }
+
+  public static final int EXISTING_SUBJECT_CONDITION_SET_ID_FIELD_NUMBER = 3;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object existingSubjectConditionSetId_ = "";
+  /**
+   * <pre>
+   * Either of the following:
+   * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+   * </pre>
+   *
+   * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+   * @return The existingSubjectConditionSetId.
+   */
+  @java.lang.Override
+  public java.lang.String getExistingSubjectConditionSetId() {
+    java.lang.Object ref = existingSubjectConditionSetId_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      existingSubjectConditionSetId_ = s;
+      return s;
+    }
+  }
+  /**
+   * <pre>
+   * Either of the following:
+   * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+   * </pre>
+   *
+   * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+   * @return The bytes for existingSubjectConditionSetId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getExistingSubjectConditionSetIdBytes() {
+    java.lang.Object ref = existingSubjectConditionSetId_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      existingSubjectConditionSetId_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
+  public static final int NEW_SUBJECT_CONDITION_SET_FIELD_NUMBER = 4;
+  private io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate newSubjectConditionSet_;
+  /**
+   * <pre>
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+   * @return Whether the newSubjectConditionSet field is set.
+   */
+  @java.lang.Override
+  public boolean hasNewSubjectConditionSet() {
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
-   * @return The subjectMapping.
+   * <pre>
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+   * @return The newSubjectConditionSet.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getSubjectMapping() {
-    return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance() : subjectMapping_;
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate getNewSubjectConditionSet() {
+    return newSubjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.getDefaultInstance() : newSubjectConditionSet_;
   }
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <pre>
+   * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+   * </pre>
+   *
+   * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder getSubjectMappingOrBuilder() {
-    return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance() : subjectMapping_;
+  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreateOrBuilder getNewSubjectConditionSetOrBuilder() {
+    return newSubjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.getDefaultInstance() : newSubjectConditionSet_;
+  }
+
+  public static final int METADATA_FIELD_NUMBER = 100;
+  private io.opentdf.platform.common.MetadataMutable metadata_;
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  @java.lang.Override
+  public boolean hasMetadata() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  @java.lang.Override
+  public io.opentdf.platform.common.MetadataMutable getMetadata() {
+    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
+  }
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
+    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -80,8 +292,20 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeValueId_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, attributeValueId_);
+    }
+    for (int i = 0; i < actions_.size(); i++) {
+      output.writeMessage(2, actions_.get(i));
+    }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(existingSubjectConditionSetId_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, existingSubjectConditionSetId_);
+    }
     if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(1, getSubjectMapping());
+      output.writeMessage(4, getNewSubjectConditionSet());
+    }
+    if (((bitField0_ & 0x00000002) != 0)) {
+      output.writeMessage(100, getMetadata());
     }
     getUnknownFields().writeTo(output);
   }
@@ -92,9 +316,23 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeValueId_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, attributeValueId_);
+    }
+    for (int i = 0; i < actions_.size(); i++) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(2, actions_.get(i));
+    }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(existingSubjectConditionSetId_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, existingSubjectConditionSetId_);
+    }
     if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(1, getSubjectMapping());
+        .computeMessageSize(4, getNewSubjectConditionSet());
+    }
+    if (((bitField0_ & 0x00000002) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(100, getMetadata());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -111,10 +349,21 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest other = (io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest) obj;
 
-    if (hasSubjectMapping() != other.hasSubjectMapping()) return false;
-    if (hasSubjectMapping()) {
-      if (!getSubjectMapping()
-          .equals(other.getSubjectMapping())) return false;
+    if (!getAttributeValueId()
+        .equals(other.getAttributeValueId())) return false;
+    if (!getActionsList()
+        .equals(other.getActionsList())) return false;
+    if (!getExistingSubjectConditionSetId()
+        .equals(other.getExistingSubjectConditionSetId())) return false;
+    if (hasNewSubjectConditionSet() != other.hasNewSubjectConditionSet()) return false;
+    if (hasNewSubjectConditionSet()) {
+      if (!getNewSubjectConditionSet()
+          .equals(other.getNewSubjectConditionSet())) return false;
+    }
+    if (hasMetadata() != other.hasMetadata()) return false;
+    if (hasMetadata()) {
+      if (!getMetadata()
+          .equals(other.getMetadata())) return false;
     }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
@@ -127,9 +376,21 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    if (hasSubjectMapping()) {
-      hash = (37 * hash) + SUBJECT_MAPPING_FIELD_NUMBER;
-      hash = (53 * hash) + getSubjectMapping().hashCode();
+    hash = (37 * hash) + ATTRIBUTE_VALUE_ID_FIELD_NUMBER;
+    hash = (53 * hash) + getAttributeValueId().hashCode();
+    if (getActionsCount() > 0) {
+      hash = (37 * hash) + ACTIONS_FIELD_NUMBER;
+      hash = (53 * hash) + getActionsList().hashCode();
+    }
+    hash = (37 * hash) + EXISTING_SUBJECT_CONDITION_SET_ID_FIELD_NUMBER;
+    hash = (53 * hash) + getExistingSubjectConditionSetId().hashCode();
+    if (hasNewSubjectConditionSet()) {
+      hash = (37 * hash) + NEW_SUBJECT_CONDITION_SET_FIELD_NUMBER;
+      hash = (53 * hash) + getNewSubjectConditionSet().hashCode();
+    }
+    if (hasMetadata()) {
+      hash = (37 * hash) + METADATA_FIELD_NUMBER;
+      hash = (53 * hash) + getMetadata().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -261,17 +522,33 @@ private static final long serialVersionUID = 0L;
     private void maybeForceBuilderInitialization() {
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
-        getSubjectMappingFieldBuilder();
+        getActionsFieldBuilder();
+        getNewSubjectConditionSetFieldBuilder();
+        getMetadataFieldBuilder();
       }
     }
     @java.lang.Override
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      subjectMapping_ = null;
-      if (subjectMappingBuilder_ != null) {
-        subjectMappingBuilder_.dispose();
-        subjectMappingBuilder_ = null;
+      attributeValueId_ = "";
+      if (actionsBuilder_ == null) {
+        actions_ = java.util.Collections.emptyList();
+      } else {
+        actions_ = null;
+        actionsBuilder_.clear();
+      }
+      bitField0_ = (bitField0_ & ~0x00000002);
+      existingSubjectConditionSetId_ = "";
+      newSubjectConditionSet_ = null;
+      if (newSubjectConditionSetBuilder_ != null) {
+        newSubjectConditionSetBuilder_.dispose();
+        newSubjectConditionSetBuilder_ = null;
+      }
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
       }
       return this;
     }
@@ -299,19 +576,44 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest buildPartial() {
       io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest result = new io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest(this);
+      buildPartialRepeatedFields(result);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
+    private void buildPartialRepeatedFields(io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest result) {
+      if (actionsBuilder_ == null) {
+        if (((bitField0_ & 0x00000002) != 0)) {
+          actions_ = java.util.Collections.unmodifiableList(actions_);
+          bitField0_ = (bitField0_ & ~0x00000002);
+        }
+        result.actions_ = actions_;
+      } else {
+        result.actions_ = actionsBuilder_.build();
+      }
+    }
+
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest result) {
       int from_bitField0_ = bitField0_;
-      int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.subjectMapping_ = subjectMappingBuilder_ == null
-            ? subjectMapping_
-            : subjectMappingBuilder_.build();
+        result.attributeValueId_ = attributeValueId_;
+      }
+      if (((from_bitField0_ & 0x00000004) != 0)) {
+        result.existingSubjectConditionSetId_ = existingSubjectConditionSetId_;
+      }
+      int to_bitField0_ = 0;
+      if (((from_bitField0_ & 0x00000008) != 0)) {
+        result.newSubjectConditionSet_ = newSubjectConditionSetBuilder_ == null
+            ? newSubjectConditionSet_
+            : newSubjectConditionSetBuilder_.build();
         to_bitField0_ |= 0x00000001;
+      }
+      if (((from_bitField0_ & 0x00000010) != 0)) {
+        result.metadata_ = metadataBuilder_ == null
+            ? metadata_
+            : metadataBuilder_.build();
+        to_bitField0_ |= 0x00000002;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -360,8 +662,47 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest other) {
       if (other == io.opentdf.platform.policy.subjectmapping.CreateSubjectMappingRequest.getDefaultInstance()) return this;
-      if (other.hasSubjectMapping()) {
-        mergeSubjectMapping(other.getSubjectMapping());
+      if (!other.getAttributeValueId().isEmpty()) {
+        attributeValueId_ = other.attributeValueId_;
+        bitField0_ |= 0x00000001;
+        onChanged();
+      }
+      if (actionsBuilder_ == null) {
+        if (!other.actions_.isEmpty()) {
+          if (actions_.isEmpty()) {
+            actions_ = other.actions_;
+            bitField0_ = (bitField0_ & ~0x00000002);
+          } else {
+            ensureActionsIsMutable();
+            actions_.addAll(other.actions_);
+          }
+          onChanged();
+        }
+      } else {
+        if (!other.actions_.isEmpty()) {
+          if (actionsBuilder_.isEmpty()) {
+            actionsBuilder_.dispose();
+            actionsBuilder_ = null;
+            actions_ = other.actions_;
+            bitField0_ = (bitField0_ & ~0x00000002);
+            actionsBuilder_ = 
+              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
+                 getActionsFieldBuilder() : null;
+          } else {
+            actionsBuilder_.addAllMessages(other.actions_);
+          }
+        }
+      }
+      if (!other.getExistingSubjectConditionSetId().isEmpty()) {
+        existingSubjectConditionSetId_ = other.existingSubjectConditionSetId_;
+        bitField0_ |= 0x00000004;
+        onChanged();
+      }
+      if (other.hasNewSubjectConditionSet()) {
+        mergeNewSubjectConditionSet(other.getNewSubjectConditionSet());
+      }
+      if (other.hasMetadata()) {
+        mergeMetadata(other.getMetadata());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -390,12 +731,42 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              input.readMessage(
-                  getSubjectMappingFieldBuilder().getBuilder(),
-                  extensionRegistry);
+              attributeValueId_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000001;
               break;
             } // case 10
+            case 18: {
+              io.opentdf.platform.authorization.Action m =
+                  input.readMessage(
+                      io.opentdf.platform.authorization.Action.parser(),
+                      extensionRegistry);
+              if (actionsBuilder_ == null) {
+                ensureActionsIsMutable();
+                actions_.add(m);
+              } else {
+                actionsBuilder_.addMessage(m);
+              }
+              break;
+            } // case 18
+            case 26: {
+              existingSubjectConditionSetId_ = input.readStringRequireUtf8();
+              bitField0_ |= 0x00000004;
+              break;
+            } // case 26
+            case 34: {
+              input.readMessage(
+                  getNewSubjectConditionSetFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000008;
+              break;
+            } // case 34
+            case 802: {
+              input.readMessage(
+                  getMetadataFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000010;
+              break;
+            } // case 802
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -413,125 +784,824 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate subjectMapping_;
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder> subjectMappingBuilder_;
+    private java.lang.Object attributeValueId_ = "";
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
-     * @return Whether the subjectMapping field is set.
+     * <pre>
+     * Required
+     * Attribute Value to be mapped to
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @return The attributeValueId.
      */
-    public boolean hasSubjectMapping() {
-      return ((bitField0_ & 0x00000001) != 0);
-    }
-    /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
-     * @return The subjectMapping.
-     */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getSubjectMapping() {
-      if (subjectMappingBuilder_ == null) {
-        return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance() : subjectMapping_;
+    public java.lang.String getAttributeValueId() {
+      java.lang.Object ref = attributeValueId_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        attributeValueId_ = s;
+        return s;
       } else {
-        return subjectMappingBuilder_.getMessage();
+        return (java.lang.String) ref;
       }
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Required
+     * Attribute Value to be mapped to
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @return The bytes for attributeValueId.
      */
-    public Builder setSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate value) {
-      if (subjectMappingBuilder_ == null) {
+    public com.google.protobuf.ByteString
+        getAttributeValueIdBytes() {
+      java.lang.Object ref = attributeValueId_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        attributeValueId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <pre>
+     * Required
+     * Attribute Value to be mapped to
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @param value The attributeValueId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttributeValueId(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      attributeValueId_ = value;
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Required
+     * Attribute Value to be mapped to
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAttributeValueId() {
+      attributeValueId_ = getDefaultInstance().getAttributeValueId();
+      bitField0_ = (bitField0_ & ~0x00000001);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Required
+     * Attribute Value to be mapped to
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @param value The bytes for attributeValueId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttributeValueIdBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      attributeValueId_ = value;
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
+
+    private java.util.List<io.opentdf.platform.authorization.Action> actions_ =
+      java.util.Collections.emptyList();
+    private void ensureActionsIsMutable() {
+      if (!((bitField0_ & 0x00000002) != 0)) {
+        actions_ = new java.util.ArrayList<io.opentdf.platform.authorization.Action>(actions_);
+        bitField0_ |= 0x00000002;
+       }
+    }
+
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> actionsBuilder_;
+
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public java.util.List<io.opentdf.platform.authorization.Action> getActionsList() {
+      if (actionsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(actions_);
+      } else {
+        return actionsBuilder_.getMessageList();
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public int getActionsCount() {
+      if (actionsBuilder_ == null) {
+        return actions_.size();
+      } else {
+        return actionsBuilder_.getCount();
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.Action getActions(int index) {
+      if (actionsBuilder_ == null) {
+        return actions_.get(index);
+      } else {
+        return actionsBuilder_.getMessage(index);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder setActions(
+        int index, io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        subjectMapping_ = value;
+        ensureActionsIsMutable();
+        actions_.set(index, value);
+        onChanged();
       } else {
-        subjectMappingBuilder_.setMessage(value);
+        actionsBuilder_.setMessage(index, value);
       }
-      bitField0_ |= 0x00000001;
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder setActions(
+        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.set(index, builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.setMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addActions(io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureActionsIsMutable();
+        actions_.add(value);
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addActions(
+        int index, io.opentdf.platform.authorization.Action value) {
+      if (actionsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureActionsIsMutable();
+        actions_.add(index, value);
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addActions(
+        io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.add(builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addActions(
+        int index, io.opentdf.platform.authorization.Action.Builder builderForValue) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.add(index, builderForValue.build());
+        onChanged();
+      } else {
+        actionsBuilder_.addMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder addAllActions(
+        java.lang.Iterable<? extends io.opentdf.platform.authorization.Action> values) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, actions_);
+        onChanged();
+      } else {
+        actionsBuilder_.addAllMessages(values);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder clearActions() {
+      if (actionsBuilder_ == null) {
+        actions_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000002);
+        onChanged();
+      } else {
+        actionsBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public Builder removeActions(int index) {
+      if (actionsBuilder_ == null) {
+        ensureActionsIsMutable();
+        actions_.remove(index);
+        onChanged();
+      } else {
+        actionsBuilder_.remove(index);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder getActionsBuilder(
+        int index) {
+      return getActionsFieldBuilder().getBuilder(index);
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+        int index) {
+      if (actionsBuilder_ == null) {
+        return actions_.get(index);  } else {
+        return actionsBuilder_.getMessageOrBuilder(index);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+         getActionsOrBuilderList() {
+      if (actionsBuilder_ != null) {
+        return actionsBuilder_.getMessageOrBuilderList();
+      } else {
+        return java.util.Collections.unmodifiableList(actions_);
+      }
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder() {
+      return getActionsFieldBuilder().addBuilder(
+          io.opentdf.platform.authorization.Action.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public io.opentdf.platform.authorization.Action.Builder addActionsBuilder(
+        int index) {
+      return getActionsFieldBuilder().addBuilder(
+          index, io.opentdf.platform.authorization.Action.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * The actions permitted by subjects in this mapping
+     * </pre>
+     *
+     * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+     */
+    public java.util.List<io.opentdf.platform.authorization.Action.Builder> 
+         getActionsBuilderList() {
+      return getActionsFieldBuilder().getBuilderList();
+    }
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> 
+        getActionsFieldBuilder() {
+      if (actionsBuilder_ == null) {
+        actionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>(
+                actions_,
+                ((bitField0_ & 0x00000002) != 0),
+                getParentForChildren(),
+                isClean());
+        actions_ = null;
+      }
+      return actionsBuilder_;
+    }
+
+    private java.lang.Object existingSubjectConditionSetId_ = "";
+    /**
+     * <pre>
+     * Either of the following:
+     * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+     * </pre>
+     *
+     * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+     * @return The existingSubjectConditionSetId.
+     */
+    public java.lang.String getExistingSubjectConditionSetId() {
+      java.lang.Object ref = existingSubjectConditionSetId_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        existingSubjectConditionSetId_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <pre>
+     * Either of the following:
+     * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+     * </pre>
+     *
+     * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+     * @return The bytes for existingSubjectConditionSetId.
+     */
+    public com.google.protobuf.ByteString
+        getExistingSubjectConditionSetIdBytes() {
+      java.lang.Object ref = existingSubjectConditionSetId_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        existingSubjectConditionSetId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <pre>
+     * Either of the following:
+     * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+     * </pre>
+     *
+     * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+     * @param value The existingSubjectConditionSetId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setExistingSubjectConditionSetId(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      existingSubjectConditionSetId_ = value;
+      bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Either of the following:
+     * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+     * </pre>
+     *
+     * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+     * @return This builder for chaining.
      */
-    public Builder setSubjectMapping(
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder builderForValue) {
-      if (subjectMappingBuilder_ == null) {
-        subjectMapping_ = builderForValue.build();
-      } else {
-        subjectMappingBuilder_.setMessage(builderForValue.build());
-      }
-      bitField0_ |= 0x00000001;
+    public Builder clearExistingSubjectConditionSetId() {
+      existingSubjectConditionSetId_ = getDefaultInstance().getExistingSubjectConditionSetId();
+      bitField0_ = (bitField0_ & ~0x00000004);
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Either of the following:
+     * Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+     * </pre>
+     *
+     * <code>string existing_subject_condition_set_id = 3 [json_name = "existingSubjectConditionSetId"];</code>
+     * @param value The bytes for existingSubjectConditionSetId to set.
+     * @return This builder for chaining.
      */
-    public Builder mergeSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate value) {
-      if (subjectMappingBuilder_ == null) {
-        if (((bitField0_ & 0x00000001) != 0) &&
-          subjectMapping_ != null &&
-          subjectMapping_ != io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance()) {
-          getSubjectMappingBuilder().mergeFrom(value);
+    public Builder setExistingSubjectConditionSetIdBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      existingSubjectConditionSetId_ = value;
+      bitField0_ |= 0x00000004;
+      onChanged();
+      return this;
+    }
+
+    private io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate newSubjectConditionSet_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreateOrBuilder> newSubjectConditionSetBuilder_;
+    /**
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+     * @return Whether the newSubjectConditionSet field is set.
+     */
+    public boolean hasNewSubjectConditionSet() {
+      return ((bitField0_ & 0x00000008) != 0);
+    }
+    /**
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+     * @return The newSubjectConditionSet.
+     */
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate getNewSubjectConditionSet() {
+      if (newSubjectConditionSetBuilder_ == null) {
+        return newSubjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.getDefaultInstance() : newSubjectConditionSet_;
+      } else {
+        return newSubjectConditionSetBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+     */
+    public Builder setNewSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate value) {
+      if (newSubjectConditionSetBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        newSubjectConditionSet_ = value;
+      } else {
+        newSubjectConditionSetBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000008;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+     */
+    public Builder setNewSubjectConditionSet(
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.Builder builderForValue) {
+      if (newSubjectConditionSetBuilder_ == null) {
+        newSubjectConditionSet_ = builderForValue.build();
+      } else {
+        newSubjectConditionSetBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000008;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
+     */
+    public Builder mergeNewSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate value) {
+      if (newSubjectConditionSetBuilder_ == null) {
+        if (((bitField0_ & 0x00000008) != 0) &&
+          newSubjectConditionSet_ != null &&
+          newSubjectConditionSet_ != io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.getDefaultInstance()) {
+          getNewSubjectConditionSetBuilder().mergeFrom(value);
         } else {
-          subjectMapping_ = value;
+          newSubjectConditionSet_ = value;
         }
       } else {
-        subjectMappingBuilder_.mergeFrom(value);
+        newSubjectConditionSetBuilder_.mergeFrom(value);
       }
-      if (subjectMapping_ != null) {
-        bitField0_ |= 0x00000001;
+      if (newSubjectConditionSet_ != null) {
+        bitField0_ |= 0x00000008;
         onChanged();
       }
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
      */
-    public Builder clearSubjectMapping() {
-      bitField0_ = (bitField0_ & ~0x00000001);
-      subjectMapping_ = null;
-      if (subjectMappingBuilder_ != null) {
-        subjectMappingBuilder_.dispose();
-        subjectMappingBuilder_ = null;
+    public Builder clearNewSubjectConditionSet() {
+      bitField0_ = (bitField0_ & ~0x00000008);
+      newSubjectConditionSet_ = null;
+      if (newSubjectConditionSetBuilder_ != null) {
+        newSubjectConditionSetBuilder_.dispose();
+        newSubjectConditionSetBuilder_ = null;
       }
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder getSubjectMappingBuilder() {
-      bitField0_ |= 0x00000001;
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.Builder getNewSubjectConditionSetBuilder() {
+      bitField0_ |= 0x00000008;
       onChanged();
-      return getSubjectMappingFieldBuilder().getBuilder();
+      return getNewSubjectConditionSetFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder getSubjectMappingOrBuilder() {
-      if (subjectMappingBuilder_ != null) {
-        return subjectMappingBuilder_.getMessageOrBuilder();
+    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreateOrBuilder getNewSubjectConditionSetOrBuilder() {
+      if (newSubjectConditionSetBuilder_ != null) {
+        return newSubjectConditionSetBuilder_.getMessageOrBuilder();
       } else {
-        return subjectMapping_ == null ?
-            io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.getDefaultInstance() : subjectMapping_;
+        return newSubjectConditionSet_ == null ?
+            io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.getDefaultInstance() : newSubjectConditionSet_;
       }
     }
     /**
-     * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 1 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+     * </pre>
+     *
+     * <code>.policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 4 [json_name = "newSubjectConditionSet"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder> 
-        getSubjectMappingFieldBuilder() {
-      if (subjectMappingBuilder_ == null) {
-        subjectMappingBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder>(
-                getSubjectMapping(),
+        io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreateOrBuilder> 
+        getNewSubjectConditionSetFieldBuilder() {
+      if (newSubjectConditionSetBuilder_ == null) {
+        newSubjectConditionSetBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreate.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetCreateOrBuilder>(
+                getNewSubjectConditionSet(),
                 getParentForChildren(),
                 isClean());
-        subjectMapping_ = null;
+        newSubjectConditionSet_ = null;
       }
-      return subjectMappingBuilder_;
+      return newSubjectConditionSetBuilder_;
+    }
+
+    private io.opentdf.platform.common.MetadataMutable metadata_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> metadataBuilder_;
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     * @return Whether the metadata field is set.
+     */
+    public boolean hasMetadata() {
+      return ((bitField0_ & 0x00000010) != 0);
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     * @return The metadata.
+     */
+    public io.opentdf.platform.common.MetadataMutable getMetadata() {
+      if (metadataBuilder_ == null) {
+        return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
+      } else {
+        return metadataBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(io.opentdf.platform.common.MetadataMutable value) {
+      if (metadataBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        metadata_ = value;
+      } else {
+        metadataBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000010;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(
+        io.opentdf.platform.common.MetadataMutable.Builder builderForValue) {
+      if (metadataBuilder_ == null) {
+        metadata_ = builderForValue.build();
+      } else {
+        metadataBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000010;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder mergeMetadata(io.opentdf.platform.common.MetadataMutable value) {
+      if (metadataBuilder_ == null) {
+        if (((bitField0_ & 0x00000010) != 0) &&
+          metadata_ != null &&
+          metadata_ != io.opentdf.platform.common.MetadataMutable.getDefaultInstance()) {
+          getMetadataBuilder().mergeFrom(value);
+        } else {
+          metadata_ = value;
+        }
+      } else {
+        metadataBuilder_.mergeFrom(value);
+      }
+      if (metadata_ != null) {
+        bitField0_ |= 0x00000010;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder clearMetadata() {
+      bitField0_ = (bitField0_ & ~0x00000010);
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
+      }
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.MetadataMutable.Builder getMetadataBuilder() {
+      bitField0_ |= 0x00000010;
+      onChanged();
+      return getMetadataFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
+      if (metadataBuilder_ != null) {
+        return metadataBuilder_.getMessageOrBuilder();
+      } else {
+        return metadata_ == null ?
+            io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
+      }
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> 
+        getMetadataFieldBuilder() {
+      if (metadataBuilder_ == null) {
+        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder>(
+                getMetadata(),
+                getParentForChildren(),
+                isClean());
+        metadata_ = null;
+      }
+      return metadataBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

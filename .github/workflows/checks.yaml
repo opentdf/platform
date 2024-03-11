@@ -1,0 +1,197 @@
+name: "Checks"
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  merge_group:
+    branches:
+      - main
+    types:
+      - checks_requested
+
+jobs:
+  pr:
+    name: Validate PR title
+    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@e9fabac35e210fea40ca5b14c0da95a099eff26f
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  go:
+    runs-on: ubuntu-22.04
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: read
+    strategy:
+      matrix:
+        directory:
+          - "."
+          - sdk
+          - examples
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            examples/go.sum
+            protocol/go/go.sum
+            sdk/go.sum
+      - run: make go.work
+      - name: golangci-lint on PR
+        if: github.event_name == 'pull_request'
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        with:
+          version: v1.55
+          working-directory: ${{ matrix.directory }}
+          only-new-issues: true
+      - name: golangci-lint on merge_group
+        if: github.event_name == 'merge_group'
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        with:
+          version: v1.55
+          working-directory: ${{ matrix.directory }}
+          args: -c ${{ github.workspace }}/.golangci-ratchet.yaml
+      - name: golangci-lint on push
+        if: github.event_name == 'push'
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        continue-on-error: true
+        with:
+          version: v1.55
+          working-directory: ${{ matrix.directory }}
+      - name: Install softHSM
+        if: matrix.directory == '.'
+        run: |-
+          sudo apt-get install -y softhsm opensc openssl
+          sudo chmod +x /etc/softhsm
+          sudo chmod +r /etc/softhsm/softhsm2.conf
+          mkdir -p $(pwd)/.tmp/tokens
+          echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
+          echo "log.level = DEBUG" >> softhsm2.conf
+          export SOFTHSM2_CONF=$(pwd)/softhsm2.conf
+      - run: SOFTHSM2_CONF="$(pwd)/softhsm2.conf" go test ./... -short
+        working-directory: ${{ matrix.directory }}
+
+  integration:
+    name: integration tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            examples/go.sum
+            protocol/go/go.sum
+            sdk/go.sum
+      - run: make go.work
+      - run: go test ./integration -race
+      - run: docker-compose up -d
+      - run: cp example-opentdf.yaml opentdf.yaml
+      - run: sleep 15
+      - run: go run . start &
+      - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
+      - run: sleep 15
+        name: wake me up when github action runner supports docker-compose --wait
+      - run: grpcurl -plaintext localhost:9000 list
+      - run: grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
+
+  image:
+    name: image build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5.1.0
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+
+  buflint:
+    name: Protocol Buffer Lint and Gencode Up-to-date check
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: bufbuild/buf-setup-action@382440cdb8ec7bc25a68d7b4711163d95f7cc3aa
+      - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
+        with:
+          input: services
+      - uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01
+        # TODO(#212) Block on breaking changes after protos are frozen
+        continue-on-error: true
+        with:
+          input: services
+          against: "https://github.com/opentdf/platform.git#branch=main,subdir=services"
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache-dependency-path: |
+            ./go.sum
+            protocol/go/go.sum
+            sdk/go.sum
+            examples/go.sum
+      - run: go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: rm -rf sdkjava/io sdkjava/src protocol/go/
+      - run: make proto-generate
+      - name: Restore go.mod after installing protoc-gen-doc
+        run: git restore {.,protocol/go}/go.{mod,sum}
+      - run: git diff
+      - run: git diff-files --ignore-submodules
+      - name: Check that files have been formatted before PR submission
+        run: git diff-files --quiet --ignore-submodules
+
+  javasdk:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - buflint
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '20'
+          distribution: 'adopt'
+          server-id: github
+      - name: Compile Java SDK
+        run: |
+          mvn -f sdkjava/pom.xml clean install
+  ci:
+    needs:
+      - go
+      - integration
+      - image
+      - buflint
+      - pr
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - if: contains(needs.*.result, 'failure')
+        run: exit 1
+
+  license:
+    name: license check
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.21"
+          cache: false
+      - name: install go-licenses
+        run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
+      - name: check licenses
+        run: go-licenses check --disallowed_types=forbidden --include_tests ./...

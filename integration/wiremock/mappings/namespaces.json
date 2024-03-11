@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/namespaces.NamespaceService/ListNamespaces"
+  },
+
+  "response": {
+    "status": 200,
+    "bodyFileName": "messages/list_namespaces.json",
+    "transformers": ["response-template"]
+  }
+}

@@ -1,0 +1,22 @@
+version: v1
+deps:
+  - buf.build/bufbuild/protovalidate
+  - buf.build/googleapis/googleapis
+  - buf.build/grpc-ecosystem/grpc-gateway
+breaking:
+  use:
+    - FILE
+    - PACKAGE
+    - WIRE_JSON
+    - WIRE
+lint:
+  allow_comment_ignores: true
+  use:
+    - DEFAULT
+  except:
+    - PACKAGE_VERSION_SUFFIX
+  ignore_only:
+    PACKAGE_VERSION_SUFFIX:
+      - google/api/annotations.proto
+      - google/api/http.proto
+      - google/protobuf/wrappers.proto

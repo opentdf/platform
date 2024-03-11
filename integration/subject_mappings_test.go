@@ -16,17 +16,17 @@ import (
 
 type SubjectMappingsSuite struct {
 	suite.Suite
-	schema string
-	f      fixtures.Fixtures
-	db     fixtures.DBInterface
-	ctx    context.Context
+	f   fixtures.Fixtures
+	db  fixtures.DBInterface
+	ctx context.Context
 }
 
 func (s *SubjectMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.SubjectMappings test suite")
 	s.ctx = context.Background()
-	s.schema = "test_opentdf_subject_mappings"
-	s.db = fixtures.NewDBInterface(*Config)
+	c := *Config
+	c.DB.Schema = "test_opentdf_subject_mappings"
+	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 }

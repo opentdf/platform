@@ -3,28 +3,22 @@ syntax = "proto3";
 package policy.namespaces;
 
 import "buf/validate/validate.proto";
+import "common/common.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/wrappers.proto";
-import "common/common.proto";
 
 message Namespace {
   // generated uuid in database
   string id = 1;
   // used to partition Attribute Definitions, support by namespace AuthN and enable federation
-  string name = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.max_len = 253,
-    (buf.validate.field).cel = {
-      id: "namespace_format",
-      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters.",
-      expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
-    }
-  ];
+  string name = 2;
 
   string fqn = 3;
 
   // active by default until explicitly deactivated
   google.protobuf.BoolValue active = 4;
+
+  common.Metadata metadata = 5;
 }
 
 /*
@@ -49,15 +43,31 @@ message ListNamespacesResponse {
 }
 
 message CreateNamespaceRequest {
-  string name = 1 [(buf.validate.field).required = true];
+  // Required
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "namespace_format",
+      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters.",
+      expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
+    }
+  ];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
 }
 message CreateNamespaceResponse {
   Namespace namespace = 1;
 }
 
 message UpdateNamespaceRequest {
+  // Required
   string id = 1 [(buf.validate.field).required = true];
-  string name = 2 [(buf.validate.field).required = true];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateNamespaceResponse {
   Namespace namespace = 1;
@@ -69,57 +79,27 @@ message DeactivateNamespaceRequest {
 message DeactivateNamespaceResponse {}
 
 service NamespaceService {
-
-  /* 
-    Request: 
-      grpcurl -plaintext -d '{"id": "namespace-id"}' localhost:9000 policy.namespaces.NamespaceService/GetNamespace
-    Response:
-      {
-        "namespace": {
-          "id": "namespace-id",
-          "name": "namespace-name",
-          "active": true
-        }
-      }
-  */
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
     option (google.api.http) = {get: "/attributes/namespaces/{id}"};
   }
 
-  /*
-    NOTE: ACTIVE state by default, INACTIVE or ANY when specified
-    Request: 
-      grpcurl -plaintext localhost:9000 policy.namespaces.NamespaceService/ListNamespaces
-    Response:
-      {
-        "namespaces": [
-          {
-            "id": "namespace-id",
-            "name": "namespace-name",
-            "active": true
-          }
-        ]
-      }
-  */  
   rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse) {
     option (google.api.http) = {get: "/attributes/namespaces"};
   }
 
-  /*
-    Request: 
-      grpcurl -plaintext -d '{"name": "namespace-name"}' localhost:9000 policy.namespaces.NamespaceService/CreateNamespace
-    Response:
-      { "namespace": { "id": "namespace-id", "active": true } }
-  */
   rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse) {
-    option (google.api.http) = {post: "/attributes/namespaces"};
+    option (google.api.http) = {
+      post: "/attributes/namespaces"
+      body: "*"
+    };
   }
   rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse) {
-    option (google.api.http) = {put: "/attributes/namespaces/{id}"};
+    option (google.api.http) = {
+      patch: "/attributes/namespaces/{id}"
+      body: "*"
+    };
   }
   rpc DeactivateNamespace(DeactivateNamespaceRequest) returns (DeactivateNamespaceResponse) {
-      option (google.api.http) = {
-      delete: "/attributes/namespaces/{id}"
-      };
+    option (google.api.http) = {delete: "/attributes/namespaces/{id}"};
   }
 }

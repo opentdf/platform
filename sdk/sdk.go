@@ -52,7 +52,16 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
-	unwrapper := cfg.unwrapper
+	var unwrapper Unwrapper
+	if cfg.authConfig == nil {
+		uw, err := buildKASClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		unwrapper = &uw
+	} else {
+		unwrapper = cfg.authConfig
+	}
 
 	var (
 		defaultConn       *grpc.ClientConn
@@ -101,9 +110,10 @@ func buildKASClient(c *config) (KASClient, error) {
 		return KASClient{}, errors.New("either both or neither of client credentials and token endpoint must be specified")
 	}
 
-	// at this point we have either both client credentials and a token endpoint or none of the above
+	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
+	// any just return a KAS client that can only get public keys
 	if c.clientCredentials.ClientId == "" {
-		return KASClient{}, errors.New("cannot create an SDK with no client credentials")
+		return KASClient{}, nil
 	}
 
 	ts, err := NewIDPAccessTokenSource(

@@ -387,7 +387,7 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*attributes.Attribute, error) {
 	metadataJson, metadata, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	sql, args, err := createAttributeSql(r.NamespaceId, r.Name, attributesRuleTypeEnumTransformIn(r.Rule.String()), metadataJson)
@@ -445,7 +445,7 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		}, nil
 	}
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {

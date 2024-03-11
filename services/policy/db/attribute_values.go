@@ -289,9 +289,9 @@ func updateAttributeValueSql(
 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
-func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *attributes.UpdateAttributeValueRequest) (*attributes.Value, error) {
+func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*attributes.Value, error) {
 	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
-		v, err := c.GetAttributeValue(ctx, id)
+		v, err := c.GetAttributeValue(ctx, r.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -302,13 +302,13 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *
 	}
 
 	sql, args, err := updateAttributeValueSql(
-		id,
+		r.Id,
 		r.Members,
 		metadataJson,
 	)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &attributes.Value{
-			Id: id,
+			Id: r.Id,
 		}, nil
 	}
 	if err != nil {
@@ -320,10 +320,10 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: r.Id})
 
 	return &attributes.Value{
-		Id: id,
+		Id: r.Id,
 	}, nil
 }
 

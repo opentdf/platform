@@ -351,10 +351,7 @@ func updateSubjectConditionSetSql(id string, metadata []byte, condition []byte) 
 
 // Mutates provided fields and returns id of the updated subject condition set
 func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, r *subjectmapping.UpdateSubjectConditionSetRequest) (*subjectmapping.SubjectConditionSet, error) {
-	var (
-		subjectSets []*subjectmapping.SubjectSet
-		condition   []byte
-	)
+	var condition []byte
 
 	// if extend we need to merge the metadata
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
@@ -369,8 +366,7 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 	}
 
 	if r.SubjectSets != nil {
-		subjectSets = r.SubjectSets
-		condition, err = marshalSubjectSetsProto(subjectSets)
+		condition, err = marshalSubjectSetsProto(r.SubjectSets)
 		if err != nil {
 			slog.Error("failed to marshal subject sets", slog.String("error", err.Error()))
 			return nil, err
@@ -386,6 +382,9 @@ func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 		return &subjectmapping.SubjectConditionSet{
 			Id: r.Id,
 		}, nil
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
@@ -579,7 +578,7 @@ func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_s
 // Mutates provided fields and returns id of the updated subject mapping
 func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (*subjectmapping.SubjectMapping, error) {
 	// if extend we need to merge the metadata
-	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND, func() (*common.Metadata, error) {
+	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
 		a, err := c.GetSubjectMapping(ctx, r.Id)
 		if err != nil {
 			return nil, err

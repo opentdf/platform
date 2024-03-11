@@ -156,7 +156,7 @@ func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attribut
 }
 
 func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attributes.UpdateAttributeValueRequest) (*attributes.UpdateAttributeValueResponse, error) {
-	a, err := s.dbClient.UpdateAttributeValue(ctx, req.Id, req)
+	a, err := s.dbClient.UpdateAttributeValue(ctx, req)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("value", req.String()))
 	}

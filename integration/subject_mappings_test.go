@@ -86,12 +86,12 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 		Actions:                       []*authorization.Action{aDecrypt, aTransmit},
 	}
 
-	smId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), smId)
+	assert.NotNil(s.T(), created)
 
 	// verify the subject mapping was created
-	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, smId)
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), new.AttributeValueId, sm.AttributeValue.Id)
 	assert.Equal(s.T(), new.ExistingSubjectConditionSetId, sm.SubjectConditionSet.Id)
@@ -128,12 +128,12 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 		NewSubjectConditionSet: scs,
 	}
 
-	smId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), smId)
+	assert.NotNil(s.T(), created)
 
 	// verify the new subject condition set created was returned properly
-	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, smId)
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), sm.SubjectConditionSet)
 	assert.Equal(s.T(), len(scs.SubjectSets), len(sm.SubjectConditionSet.SubjectSets))
@@ -158,9 +158,9 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NoActions_Fails() {
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.NotNil(s.T(), err)
-	assert.Zero(s.T(), createdId)
+	assert.Nil(s.T(), created)
 	assert.ErrorIs(s.T(), err, db.ErrMissingValue)
 }
 
@@ -173,9 +173,9 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValu
 		AttributeValueId:              nonExistentAttributeValueUuid,
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.NotNil(s.T(), err)
-	assert.Zero(s.T(), createdId)
+	assert.Nil(s.T(), created)
 	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
@@ -188,10 +188,10 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 		ExistingSubjectConditionSetId: nonExistentSubjectSetId,
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.NotNil(s.T(), err)
-	assert.Zero(s.T(), createdId)
-	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
+	assert.Nil(s.T(), created)
+	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
@@ -207,23 +207,24 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), createdId)
+	assert.NotNil(s.T(), created)
 
 	// update the subject mapping
 	newActions := []*authorization.Action{aTransmit}
 	update := &subjectmapping.UpdateSubjectMappingRequest{
-		Id:            createdId,
-		UpdateActions: newActions,
+		Id:      created.Id,
+		Actions: newActions,
 	}
 
-	updatedId, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), createdId, updatedId)
+	assert.NotNil(s.T(), updated)
+	assert.Equal(s.T(), created.Id, updated.Id)
 
 	// verify the actions were updated but nothing else
-	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, createdId)
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), len(newActions), len(got.Actions))
@@ -244,23 +245,24 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), createdId)
+	assert.NotNil(s.T(), created)
 
 	// update the subject mapping
 	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
 	update := &subjectmapping.UpdateSubjectMappingRequest{
-		Id:                          createdId,
-		UpdateSubjectConditionSetId: newScs.Id,
+		Id:                    created.Id,
+		SubjectConditionSetId: newScs.Id,
 	}
 
-	updatedId, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), createdId, updatedId)
+	assert.NotNil(s.T(), updated)
+	assert.Equal(s.T(), created.Id, updated.Id)
 
 	// verify the subject condition set was updated but nothing else
-	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, createdId)
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
 	assert.Equal(s.T(), new.AttributeValueId, got.AttributeValue.Id)
@@ -281,9 +283,9 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), createdId)
+	assert.NotNil(s.T(), created)
 
 	// update the subject mapping
 	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
@@ -292,21 +294,23 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 		Labels: map[string]string{"key": "value"},
 	}
 	update := &subjectmapping.UpdateSubjectMappingRequest{
-		Id:                          createdId,
-		UpdateActions:               newActions,
-		UpdateSubjectConditionSetId: newScs.Id,
-		UpdateMetadata:              metadata,
+		Id:                     created.Id,
+		SubjectConditionSetId:  newScs.Id,
+		Actions:                newActions,
+		Metadata:               metadata,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	}
 
-	updatedId, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), createdId, updatedId)
+	assert.NotNil(s.T(), updated)
+	assert.Equal(s.T(), created.Id, updated.Id)
 
 	// verify the subject mapping was updated
-	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, createdId)
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
-	assert.Equal(s.T(), createdId, got.Id)
+	assert.Equal(s.T(), created.Id, got.Id)
 	assert.Equal(s.T(), new.AttributeValueId, got.AttributeValue.Id)
 	assert.Equal(s.T(), newScs.Id, got.SubjectConditionSet.Id)
 	assert.Equal(s.T(), len(newActions), len(got.Actions))
@@ -317,24 +321,28 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentId_Fails() {
 	update := &subjectmapping.UpdateSubjectMappingRequest{
 		Id: nonExistentSubjectMappingId,
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"key": "value"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	}
 
-	smId, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	sm, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	assert.NotNil(s.T(), err)
-	assert.Zero(s.T(), smId)
+	assert.Nil(s.T(), sm)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentSubjectConditionSetId_Fails() {
 	update := &subjectmapping.UpdateSubjectMappingRequest{
-		Id:                          s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3").Id,
-		UpdateSubjectConditionSetId: nonExistentSubjectSetId,
+		Id:                    s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3").Id,
+		SubjectConditionSetId: nonExistentSubjectSetId,
 	}
 
-	smId, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	sm, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	assert.NotNil(s.T(), err)
-	assert.Zero(s.T(), smId)
-	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+	assert.Nil(s.T(), sm)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
@@ -418,24 +426,24 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), createdId)
+	assert.NotNil(s.T(), created)
 
-	deletedId, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, createdId)
+	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdId, deletedId)
+	assert.NotNil(s.T(), deleted)
 
-	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, createdId)
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.Id)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), got)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_WithNonExistentId_Fails() {
-	deletedId, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, nonExistentSubjectMappingId)
+	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, nonExistentSubjectMappingId)
 	assert.NotNil(s.T(), err)
-	assert.Zero(s.T(), deletedId)
+	assert.Nil(s.T(), deleted)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
@@ -468,15 +476,17 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 		NewSubjectConditionSet: newScs,
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), createdId)
+	assert.NotNil(s.T(), created)
 
-	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, createdId)
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
-	deletedId, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, sm.Id)
+	assert.NotNil(s.T(), sm)
+	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, sm.Id)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), deletedId)
+	assert.NotNil(s.T(), deleted)
+	assert.NotZero(s.T(), deleted.Id)
 
 	scs, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, sm.SubjectConditionSet.Id)
 	assert.Nil(s.T(), err)
@@ -574,24 +584,25 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 		SubjectSets: []*subjectmapping.SubjectSet{},
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), createdId)
+	assert.NotNil(s.T(), created)
 
-	deletedId, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, createdId)
+	deleted, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), createdId, deletedId)
+	assert.NotNil(s.T(), deleted)
+	assert.Equal(s.T(), created.Id, deleted.Id)
 
-	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, createdId)
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.Id)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), got)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet_WithNonExistentId_Fails() {
-	deletedId, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, nonExistentSubjectSetId)
+	deleted, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, nonExistentSubjectSetId)
 	assert.NotNil(s.T(), err)
-	assert.Zero(s.T(), deletedId)
+	assert.Nil(s.T(), deleted)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
 }
 
@@ -603,9 +614,9 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 		},
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), createdId)
+	assert.NotNil(s.T(), created)
 
 	// update the subject condition set
 	ss := []*subjectmapping.SubjectSet{
@@ -626,18 +637,21 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 	}
 
 	update := &subjectmapping.UpdateSubjectConditionSetRequest{
-		UpdateSubjectSets: ss,
-		Id:                createdId,
+		SubjectSets:            ss,
+		Id:                     created.Id,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	}
 
-	id, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), createdId, id)
+	assert.NotNil(s.T(), updated)
+	assert.Equal(s.T(), created.Id, updated.Id)
 
 	// verify the subject condition set was updated
-	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, createdId)
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), createdId, got.Id)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), created.Id, got.Id)
 	assert.Equal(s.T(), len(ss), len(got.SubjectSets))
 	assert.Equal(s.T(), ss[0].ConditionGroups[0].Conditions[0].SubjectExternalField, got.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField)
 }
@@ -650,9 +664,9 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 		},
 	}
 
-	createdId, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
 	assert.Nil(s.T(), err)
-	assert.NotZero(s.T(), createdId)
+	assert.NotNil(s.T(), created)
 
 	// update the subject condition set
 	ss := []*subjectmapping.SubjectSet{
@@ -675,20 +689,22 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 		Labels: map[string]string{"key_example": "value_example"},
 	}
 	update := &subjectmapping.UpdateSubjectConditionSetRequest{
-		UpdateSubjectSets: ss,
-		UpdateMetadata:    metadata,
-		Id:                createdId,
+		SubjectSets:            ss,
+		Metadata:               metadata,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+		Id:                     created.Id,
 	}
 
-	id, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), createdId, id)
+	assert.NotNil(s.T(), updated)
+	assert.Equal(s.T(), created.Id, updated.Id)
 
 	// verify the subject condition set was updated
-	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, createdId)
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), got)
-	assert.Equal(s.T(), createdId, got.Id)
+	assert.Equal(s.T(), created.Id, got.Id)
 	assert.Equal(s.T(), len(ss), len(got.SubjectSets))
 	assert.Equal(s.T(), ss[0].ConditionGroups[0].Conditions[0].SubjectExternalField, got.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField)
 	assert.Equal(s.T(), metadata.Labels["key_example"], got.Metadata.Labels["key_example"])
@@ -696,13 +712,88 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails() {
 	update := &subjectmapping.UpdateSubjectConditionSetRequest{
-		Id: nonExistentSubjectSetId,
+		Id:          nonExistentSubjectSetId,
+		SubjectSets: []*subjectmapping.SubjectSet{},
 	}
 
-	id, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	assert.NotNil(s.T(), err)
-	assert.Zero(s.T(), id)
+	assert.Nil(s.T(), updated)
 	assert.ErrorIs(s.T(), err, db.ErrNotFound)
+}
+
+func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations() {
+	fixedLabel := "fixed label"
+	updateLabel := "update label"
+	updatedLabel := "true"
+	newLabel := "new label"
+
+	labels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updateLabel,
+	}
+	updateLabels := map[string]string{
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+	expectedLabels := map[string]string{
+		"fixed":  fixedLabel,
+		"update": updatedLabel,
+		"new":    newLabel,
+	}
+
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*subjectmapping.SubjectSet{
+			{},
+		},
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
+		},
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), created)
+
+	// update with no changes
+	updatedWithoutChange, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
+		Id: created.Id,
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updatedWithoutChange)
+	assert.Equal(s.T(), created.Id, updatedWithoutChange.Id)
+
+	// update with changes
+	updatedWithChange, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
+		Id:                     created.Id,
+		Metadata:               &common.MetadataMutable{Labels: updateLabels},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updatedWithChange)
+	assert.Equal(s.T(), created.Id, updatedWithChange.Id)
+
+	// verify the metadata was extended
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), created.Id, got.Id)
+	assert.Equal(s.T(), expectedLabels, got.Metadata.Labels)
+
+	// update with replace
+	updatedWithReplace, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
+		Id:                     created.Id,
+		Metadata:               &common.MetadataMutable{Labels: labels},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), updatedWithReplace)
+	assert.Equal(s.T(), created.Id, updatedWithReplace.Id)
+
+	// verify the metadata was replaced
+	got, err = s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), created.Id, got.Id)
+	assert.Equal(s.T(), labels, got.Metadata.Labels)
 }
 
 func TestSubjectMappingSuite(t *testing.T) {

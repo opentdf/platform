@@ -29,12 +29,16 @@ func (c Error) Error() string {
 type SDK struct {
 	conn                    *grpc.ClientConn
 	unwrapper               Unwrapper
-	Namespaces              namespaces.NamespaceServiceClient
-	Attributes              attributes.AttributesServiceClient
-	ResourceMapping         resourcemapping.ResourceMappingServiceClient
-	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
+	Policy                  Policy
+}
+
+type Policy struct {
+	namespaces.NamespaceServiceClient
+	attributes.AttributesServiceClient
+	resourcemapping.ResourceMappingServiceClient
+	subjectmapping.SubjectMappingServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -90,12 +94,14 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	return &SDK{
-		conn:                    defaultConn,
-		unwrapper:               unwrapper,
-		Attributes:              attributes.NewAttributesServiceClient(policyConn),
-		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
-		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),
-		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(policyConn),
+		conn:      defaultConn,
+		unwrapper: unwrapper,
+		Policy: Policy{
+			AttributesServiceClient:      attributes.NewAttributesServiceClient(policyConn),
+			NamespaceServiceClient:       namespaces.NewNamespaceServiceClient(policyConn),
+			ResourceMappingServiceClient: resourcemapping.NewResourceMappingServiceClient(policyConn),
+			SubjectMappingServiceClient:  subjectmapping.NewSubjectMappingServiceClient(policyConn),
+		},
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
 	}, nil

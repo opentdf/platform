@@ -36,7 +36,7 @@ func attributesExample(examplesConfig *ExampleConfig) error {
 
 	var exampleNamespace *namespaces.Namespace
 	slog.Info("listing namespaces")
-	listResp, err := s.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
+	listResp, err := s.Policy.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func attributesExample(examplesConfig *ExampleConfig) error {
 
 	if exampleNamespace == nil {
 		slog.Info("creating new namespace")
-		resp, err := s.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
+		resp, err := s.Policy.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
 			Name: "example",
 		})
 		if err != nil {
@@ -60,7 +60,7 @@ func attributesExample(examplesConfig *ExampleConfig) error {
 	}
 
 	slog.Info("creating new attribute with hierarchy rule")
-	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = s.Policy.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "IntellectualProperty",
 		NamespaceId: exampleNamespace.Id,
 		Rule:        *attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
@@ -82,7 +82,7 @@ func attributesExample(examplesConfig *ExampleConfig) error {
 		slog.Info("attribute created")
 	}
 
-	allAttr, err := s.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
+	allAttr, err := s.Policy.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
 	if err != nil {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err

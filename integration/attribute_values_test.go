@@ -209,17 +209,20 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	assert.NotNil(s.T(), created)
 
 	// update with no changes
-	updatedWithoutChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, created.Id, &attributes.UpdateAttributeValueRequest{})
+	updatedWithoutChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, &attributes.UpdateAttributeValueRequest{
+		Id: created.Id,
+	})
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updatedWithoutChange)
 	assert.Equal(s.T(), created.Id, updatedWithoutChange.Id)
 
 	// update with changes
-	updatedWithChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, created.Id, &attributes.UpdateAttributeValueRequest{
+	updatedWithChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, &attributes.UpdateAttributeValueRequest{
 		Metadata: &common.MetadataMutable{
 			Labels: updateLabels,
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+		Id:                     created.Id,
 	})
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updatedWithChange)
@@ -234,7 +237,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
-	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, nonExistentAttributeValueUuid, &attributes.UpdateAttributeValueRequest{
+	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, &attributes.UpdateAttributeValueRequest{
 		// some data is required to ensure the request reaches the db
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{
@@ -242,6 +245,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
 			},
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+		Id:                     nonExistentAttributeValueUuid,
 	})
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
@@ -289,7 +293,7 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 		Name: "cascading-deactivate-attribute-value.com",
 	})
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", n)
+	assert.NotZero(s.T(), n.Id)
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{

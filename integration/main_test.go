@@ -112,10 +112,6 @@ func TestMain(m *testing.M) {
 	conf.DB.Port = port.Int()
 
 	db := fixtures.NewDBInterface(*Config)
-	if err != nil {
-		slog.Error("issue creating database client", slog.String("error", err.Error()))
-		panic(err)
-	}
 
 	slog.Info("🚚 applying migrations")
 	applied, err := db.Client.RunMigrations(ctx)

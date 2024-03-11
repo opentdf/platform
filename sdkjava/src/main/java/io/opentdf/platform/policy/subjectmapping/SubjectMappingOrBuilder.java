@@ -21,97 +21,65 @@ public interface SubjectMappingOrBuilder extends
       getIdBytes();
 
   /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
-   */
-  boolean hasMetadata();
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return The metadata.
-   */
-  io.opentdf.platform.common.Metadata getMetadata();
-  /**
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   */
-  io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();
-
-  /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
-   * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
+   * <code>.policy.attributes.Value attribute_value = 2 [json_name = "attributeValue"];</code>
    * @return Whether the attributeValue field is set.
    */
   boolean hasAttributeValue();
   /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
-   * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
+   * <code>.policy.attributes.Value attribute_value = 2 [json_name = "attributeValue"];</code>
    * @return The attributeValue.
    */
   io.opentdf.platform.policy.attributes.Value getAttributeValue();
   /**
    * <pre>
-   * Attribute Value to be mapped to; aka: "The Entity Entitlement Attribute"
+   * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
    * </pre>
    *
-   * <code>.policy.attributes.Value attribute_value = 3 [json_name = "attributeValue"];</code>
+   * <code>.policy.attributes.Value attribute_value = 2 [json_name = "attributeValue"];</code>
    */
   io.opentdf.platform.policy.attributes.ValueOrBuilder getAttributeValueOrBuilder();
 
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSet mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 3 [json_name = "subjectConditionSet"];</code>
+   * @return Whether the subjectConditionSet field is set.
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
-      getSubjectSetsList();
+  boolean hasSubjectConditionSet();
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSet mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 3 [json_name = "subjectConditionSet"];</code>
+   * @return The subjectConditionSet.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet();
   /**
    * <pre>
-   * the subjects included in this mapping
+   * the reusable SubjectConditionSet mapped to the given Attribute Value
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
+   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 3 [json_name = "subjectConditionSet"];</code>
    */
-  int getSubjectSetsCount();
-  /**
-   * <pre>
-   * the subjects included in this mapping
-   * </pre>
-   *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
-   */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
-      getSubjectSetsOrBuilderList();
-  /**
-   * <pre>
-   * the subjects included in this mapping
-   * </pre>
-   *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 4 [json_name = "subjectSets"];</code>
-   */
-  io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
-      int index);
+  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder();
 
   /**
    * <pre>
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
   java.util.List<io.opentdf.platform.authorization.Action> 
       getActionsList();
@@ -120,7 +88,7 @@ public interface SubjectMappingOrBuilder extends
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
   io.opentdf.platform.authorization.Action getActions(int index);
   /**
@@ -128,7 +96,7 @@ public interface SubjectMappingOrBuilder extends
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
   int getActionsCount();
   /**
@@ -136,7 +104,7 @@ public interface SubjectMappingOrBuilder extends
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
   java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
       getActionsOrBuilderList();
@@ -145,8 +113,23 @@ public interface SubjectMappingOrBuilder extends
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 5 [json_name = "actions"];</code>
+   * <code>repeated .authorization.Action actions = 4 [json_name = "actions"];</code>
    */
   io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
       int index);
+
+  /**
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.Metadata getMetadata();
+  /**
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();
 }

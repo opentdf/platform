@@ -3,19 +3,18 @@
 
 CREATE TABLE IF NOT EXISTS subject_condition_set (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR UNIQUE,
+    condition JSONB NOT NULL,
     metadata JSONB,
-    condition JSONB NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS subject_mapping_condition_set_pivot (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    subject_mapping_id UUID REFERENCES subject_mappings(id) ON DELETE CASCADE,
-    subject_condition_set_id UUID,
-    UNIQUE (subject_mapping_id, subject_condition_set_id)
-);
+CREATE TRIGGER subject_condition_set_updated_at
+  BEFORE UPDATE ON subject_condition_set
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
 
-ALTER TABLE IF EXISTS subject_mappings ADD COLUMN subject_condition_set_pivot_ids UUID[], ADD COLUMN actions VARCHAR[];
+ALTER TABLE IF EXISTS subject_mappings ADD COLUMN subject_condition_set_id UUID, ADD COLUMN actions JSONB;
 
 WITH subject_mappings_migration_data AS (
    SELECT
@@ -42,31 +41,25 @@ WITH subject_mappings_migration_data AS (
                 )
             )
         ) AS condition_json,
-        id AS sm_id
+        id AS sm_id,
+        gen_random_uuid() AS subject_condition_set_id
     FROM subject_mappings
-),
--- populate the pivot table
-pivot_insert AS (
-    INSERT INTO subject_mapping_condition_set_pivot(subject_mapping_id, subject_condition_set_id)
-    SELECT subject_mappings_migration_data.sm_id, gen_random_uuid()
-    FROM subject_mappings_migration_data
-    RETURNING id AS pivot_id, subject_mapping_id, subject_condition_set_id
 ),
 -- populate the condition set table
 insert_subject_condition_set AS (
     INSERT INTO subject_condition_set(metadata, condition, id)
     SELECT metadata, condition_json, subject_condition_set_id
-    FROM subject_mappings_migration_data JOIN pivot_insert ON subject_mappings_migration_data.sm_id = pivot_insert.subject_mapping_id
+    FROM subject_mappings_migration_data
 )
 -- populate the subject_mappings column with the new pivot id
 UPDATE subject_mappings
-SET subject_condition_set_pivot_ids = (
-    SELECT ARRAY_AGG(pivot_insert.pivot_id)
-    FROM pivot_insert
-    WHERE subject_mappings.id = pivot_insert.subject_mapping_id
+SET subject_condition_set_id = (
+    SELECT subject_condition_set_id
+    FROM subject_mappings_migration_data
+    WHERE subject_mappings.id = subject_mappings_migration_data.sm_id
 );
 
-ALTER TABLE subject_mapping_condition_set_pivot ADD FOREIGN KEY (subject_condition_set_id) REFERENCES subject_condition_set(id) ON DELETE CASCADE;
+ALTER TABLE subject_mappings ADD FOREIGN KEY (subject_condition_set_id) REFERENCES subject_condition_set(id) ON DELETE CASCADE;
 
 /* Example of the built 'condition' JSON that maps to the protos:
 {
@@ -117,12 +110,11 @@ SET operator = subject_mappings_migration_data.operator,
         SELECT subject_mappings_migration_data.subject_attribute_values
     )
 FROM subject_mappings_migration_data
-JOIN subject_mapping_condition_set_pivot ON subject_mappings_migration_data.set_id = subject_mapping_condition_set_pivot.subject_condition_set_id
-WHERE subject_mapping_condition_set_pivot.subject_mapping_id = subject_mappings.id;
+WHERE subject_mappings.subject_condition_set_id = subject_mappings_migration_data.set_id;
 
-ALTER TABLE IF EXISTS subject_mappings DROP COLUMN subject_condition_set_pivot_ids, DROP COLUMN actions;
+ALTER TABLE IF EXISTS subject_mappings DROP COLUMN subject_condition_set_id, DROP COLUMN actions;
 
-DROP TABLE subject_mapping_condition_set_pivot;
+DROP TRIGGER subject_condition_set_updated_at;
 DROP TABLE subject_condition_set;
 CREATE TYPE subject_mappings_operator AS ENUM ('UNSPECIFIED', 'IN', 'NOT_IN');
 

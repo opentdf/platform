@@ -43,6 +43,10 @@ private static final long serialVersionUID = 0L;
   public static final int SUBJECT_MAPPING_FIELD_NUMBER = 1;
   private io.opentdf.platform.policy.subjectmapping.SubjectMapping subjectMapping_;
   /**
+   * <pre>
+   * Only ID of the updated Subject Mapping provided
+   * </pre>
+   *
    * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
    * @return Whether the subjectMapping field is set.
    */
@@ -51,6 +55,10 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
+   * <pre>
+   * Only ID of the updated Subject Mapping provided
+   * </pre>
+   *
    * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
    * @return The subjectMapping.
    */
@@ -59,6 +67,10 @@ private static final long serialVersionUID = 0L;
     return subjectMapping_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectMapping.getDefaultInstance() : subjectMapping_;
   }
   /**
+   * <pre>
+   * Only ID of the updated Subject Mapping provided
+   * </pre>
+   *
    * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
    */
   @java.lang.Override
@@ -417,6 +429,10 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.policy.subjectmapping.SubjectMapping, io.opentdf.platform.policy.subjectmapping.SubjectMapping.Builder, io.opentdf.platform.policy.subjectmapping.SubjectMappingOrBuilder> subjectMappingBuilder_;
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      * @return Whether the subjectMapping field is set.
      */
@@ -424,6 +440,10 @@ private static final long serialVersionUID = 0L;
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      * @return The subjectMapping.
      */
@@ -435,6 +455,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     public Builder setSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMapping value) {
@@ -451,6 +475,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     public Builder setSubjectMapping(
@@ -465,6 +493,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     public Builder mergeSubjectMapping(io.opentdf.platform.policy.subjectmapping.SubjectMapping value) {
@@ -486,6 +518,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     public Builder clearSubjectMapping() {
@@ -499,6 +535,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectMapping.Builder getSubjectMappingBuilder() {
@@ -507,6 +547,10 @@ private static final long serialVersionUID = 0L;
       return getSubjectMappingFieldBuilder().getBuilder();
     }
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     public io.opentdf.platform.policy.subjectmapping.SubjectMappingOrBuilder getSubjectMappingOrBuilder() {
@@ -518,6 +562,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Only ID of the updated Subject Mapping provided
+     * </pre>
+     *
      * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<

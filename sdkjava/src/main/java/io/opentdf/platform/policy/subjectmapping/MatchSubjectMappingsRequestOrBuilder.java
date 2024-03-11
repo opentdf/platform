@@ -9,16 +9,28 @@ public interface MatchSubjectMappingsRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
    * @return Whether the subject field is set.
    */
   boolean hasSubject();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
    * @return The subject.
    */
   io.opentdf.platform.policy.subjectmapping.Subject getSubject();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>.policy.subjectmapping.Subject subject = 1 [json_name = "subject"];</code>
    */
   io.opentdf.platform.policy.subjectmapping.SubjectOrBuilder getSubjectOrBuilder();

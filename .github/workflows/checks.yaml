@@ -195,7 +195,17 @@ jobs:
         with:
           go-version: "1.21"
           cache: false
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: sdk-changed
+        with:
+          filters: |
+            src:
+              - 'sdk/**'
       - name: install go-licenses
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
-      - name: check licenses
-        run: go-licenses check --disallowed_types=forbidden --include_tests ./...
+      - name: check platform licenses
+        if: steps.sdk-changed.outputs.src == 'false'
+        run: go-licenses check --disallowed_types=forbidden --include_tests  --ignore github.com/opentdf/platform/sdk --ignore github.com/opentdf/platform/protocol  ./...
+      - name: check sdk licenses
+        if: steps.sdk-changed.outputs.src == 'true'
+        run: go-licenses check --disallowed_types=forbidden --include_tests --ignore github.com/opentdf/platform/protocol ./sdk

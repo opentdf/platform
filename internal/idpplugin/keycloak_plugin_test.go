@@ -34,7 +34,6 @@ const by_email_alice_resp = `[
 {"id": "aliceid", "username":"alice.smith"}
 ]
 `
-const by_email_non_ext_resp = `[]`
 
 const by_username_bob_resp = `[
 {"id": "bobid", "username":"bob.smith"}

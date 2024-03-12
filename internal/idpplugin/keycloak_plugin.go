@@ -213,7 +213,6 @@ func expandGroup(groupID string, kcConnector *KeyCloakConnector, kcConfig *KeyCl
 			}
 		} else {
 			slog.Error("Error getting group members", memberErr)
-			err = memberErr
 		}
 	} else {
 		slog.Error("Error getting group", err)

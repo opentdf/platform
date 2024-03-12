@@ -1069,8 +1069,12 @@
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
         },
-        "subjectMapping": {
-          "$ref": "#/definitions/policySubjectMapping",
+        "subjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectMapping"
+          },
           "title": "subject mapping"
         },
         "metadata": {

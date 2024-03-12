@@ -96,66 +96,66 @@ public final class ObjectsProto {
       "AccessServerR\006grants\022\020\n\003fqn\030\007 \001(\tR\003fqn\0222" +
       "\n\006active\030\010 \001(\0132\032.google.protobuf.BoolVal" +
       "ueR\006active\022,\n\010metadata\030d \001(\0132\020.common.Me" +
-      "tadataR\010metadata\"\343\002\n\005Value\022\016\n\002id\030\001 \001(\tR\002" +
+      "tadataR\010metadata\"\345\002\n\005Value\022\016\n\002id\030\001 \001(\tR\002" +
       "id\022/\n\tattribute\030\002 \001(\0132\021.policy.Attribute" +
       "R\tattribute\022\024\n\005value\030\003 \001(\tR\005value\022\030\n\007mem" +
       "bers\030\004 \003(\tR\007members\0224\n\006grants\030\005 \003(\0132\034.ka" +
       "sregistry.KeyAccessServerR\006grants\022\020\n\003fqn" +
       "\030\006 \001(\tR\003fqn\0222\n\006active\030\007 \001(\0132\032.google.pro" +
-      "tobuf.BoolValueR\006active\022?\n\017subject_mappi" +
-      "ng\030\010 \001(\0132\026.policy.SubjectMappingR\016subjec" +
-      "tMapping\022,\n\010metadata\030d \001(\0132\020.common.Meta" +
-      "dataR\010metadata\"\326\001\n\006Action\022;\n\010standard\030\001 " +
-      "\001(\0162\035.policy.Action.StandardActionH\000R\010st" +
-      "andard\022\030\n\006custom\030\002 \001(\tH\000R\006custom\"l\n\016Stan" +
-      "dardAction\022\037\n\033STANDARD_ACTION_UNSPECIFIE" +
-      "D\020\000\022\033\n\027STANDARD_ACTION_DECRYPT\020\001\022\034\n\030STAN" +
-      "DARD_ACTION_TRANSMIT\020\002B\007\n\005value\"\201\002\n\016Subj" +
-      "ectMapping\022\016\n\002id\030\001 \001(\tR\002id\0226\n\017attribute_" +
-      "value\030\002 \001(\0132\r.policy.ValueR\016attributeVal" +
-      "ue\022O\n\025subject_condition_set\030\003 \001(\0132\033.poli" +
-      "cy.SubjectConditionSetR\023subjectCondition" +
-      "Set\022(\n\007actions\030\004 \003(\0132\016.policy.ActionR\007ac" +
-      "tions\022,\n\010metadata\030d \001(\0132\020.common.Metadat" +
-      "aR\010metadata\"\306\001\n\tCondition\0224\n\026subject_ext" +
-      "ernal_field\030\001 \001(\tR\024subjectExternalField\022" +
-      "K\n\010operator\030\002 \001(\0162\".policy.SubjectMappin" +
-      "gOperatorEnumB\013\272H\010\202\001\002\020\001\310\001\001R\010operator\0226\n\027" +
-      "subject_external_values\030\003 \003(\tR\025subjectEx" +
-      "ternalValues\"\247\001\n\016ConditionGroup\022;\n\ncondi" +
-      "tions\030\001 \003(\0132\021.policy.ConditionB\010\272H\005\222\001\002\010\001" +
-      "R\nconditions\022X\n\020boolean_operator\030\002 \001(\0162 " +
-      ".policy.ConditionBooleanTypeEnumB\013\272H\010\202\001\002" +
-      "\020\001\310\001\001R\017booleanOperator\"Y\n\nSubjectSet\022K\n\020" +
-      "condition_groups\030\001 \003(\0132\026.policy.Conditio" +
-      "nGroupB\010\272H\005\222\001\002\010\001R\017conditionGroups\"\224\001\n\023Su" +
-      "bjectConditionSet\022\016\n\002id\030\001 \001(\tR\002id\022?\n\014sub" +
-      "ject_sets\030\003 \003(\0132\022.policy.SubjectSetB\010\272H\005" +
-      "\222\001\002\010\001R\013subjectSets\022,\n\010metadata\030d \001(\0132\020.c" +
-      "ommon.MetadataR\010metadata\"o\n\017SubjectPrope" +
-      "rty\022-\n\016external_field\030\001 \001(\tB\006\272H\003\310\001\001R\rext" +
-      "ernalField\022-\n\016external_value\030\002 \001(\tB\006\272H\003\310" +
-      "\001\001R\rexternalValue\"\245\001\n\017ResourceMapping\022\016\n" +
-      "\002id\030\001 \001(\tR\002id\022,\n\010metadata\030\002 \001(\0132\020.common" +
-      ".MetadataR\010metadata\022>\n\017attribute_value\030\003" +
-      " \001(\0132\r.policy.ValueB\006\272H\003\310\001\001R\016attributeVa" +
-      "lue\022\024\n\005terms\030\004 \003(\tR\005terms*\263\001\n\025AttributeR" +
-      "uleTypeEnum\022(\n$ATTRIBUTE_RULE_TYPE_ENUM_" +
-      "UNSPECIFIED\020\000\022#\n\037ATTRIBUTE_RULE_TYPE_ENU" +
-      "M_ALL_OF\020\001\022#\n\037ATTRIBUTE_RULE_TYPE_ENUM_A" +
-      "NY_OF\020\002\022&\n\"ATTRIBUTE_RULE_TYPE_ENUM_HIER" +
-      "ARCHY\020\003*\233\001\n\032SubjectMappingOperatorEnum\022-" +
-      "\n)SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIF" +
-      "IED\020\000\022$\n SUBJECT_MAPPING_OPERATOR_ENUM_I" +
-      "N\020\001\022(\n$SUBJECT_MAPPING_OPERATOR_ENUM_NOT" +
-      "_IN\020\002*\220\001\n\030ConditionBooleanTypeEnum\022+\n\'CO" +
-      "NDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED\020\000\022" +
-      "#\n\037CONDITION_BOOLEAN_TYPE_ENUM_AND\020\001\022\"\n\036" +
-      "CONDITION_BOOLEAN_TYPE_ENUM_OR\020\002B\222\001\n\032io." +
-      "opentdf.platform.policyB\014ObjectsProtoP\001Z" +
-      ".github.com/opentdf/platform/protocol/go" +
-      "/policy\242\002\003PXX\252\002\006Policy\312\002\006Policy\342\002\022Policy" +
-      "\\GPBMetadata\352\002\006Policyb\006proto3"
+      "tobuf.BoolValueR\006active\022A\n\020subject_mappi" +
+      "ngs\030\010 \003(\0132\026.policy.SubjectMappingR\017subje" +
+      "ctMappings\022,\n\010metadata\030d \001(\0132\020.common.Me" +
+      "tadataR\010metadata\"\326\001\n\006Action\022;\n\010standard\030" +
+      "\001 \001(\0162\035.policy.Action.StandardActionH\000R\010" +
+      "standard\022\030\n\006custom\030\002 \001(\tH\000R\006custom\"l\n\016St" +
+      "andardAction\022\037\n\033STANDARD_ACTION_UNSPECIF" +
+      "IED\020\000\022\033\n\027STANDARD_ACTION_DECRYPT\020\001\022\034\n\030ST" +
+      "ANDARD_ACTION_TRANSMIT\020\002B\007\n\005value\"\201\002\n\016Su" +
+      "bjectMapping\022\016\n\002id\030\001 \001(\tR\002id\0226\n\017attribut" +
+      "e_value\030\002 \001(\0132\r.policy.ValueR\016attributeV" +
+      "alue\022O\n\025subject_condition_set\030\003 \001(\0132\033.po" +
+      "licy.SubjectConditionSetR\023subjectConditi" +
+      "onSet\022(\n\007actions\030\004 \003(\0132\016.policy.ActionR\007" +
+      "actions\022,\n\010metadata\030d \001(\0132\020.common.Metad" +
+      "ataR\010metadata\"\306\001\n\tCondition\0224\n\026subject_e" +
+      "xternal_field\030\001 \001(\tR\024subjectExternalFiel" +
+      "d\022K\n\010operator\030\002 \001(\0162\".policy.SubjectMapp" +
+      "ingOperatorEnumB\013\272H\010\202\001\002\020\001\310\001\001R\010operator\0226" +
+      "\n\027subject_external_values\030\003 \003(\tR\025subject" +
+      "ExternalValues\"\247\001\n\016ConditionGroup\022;\n\ncon" +
+      "ditions\030\001 \003(\0132\021.policy.ConditionB\010\272H\005\222\001\002" +
+      "\010\001R\nconditions\022X\n\020boolean_operator\030\002 \001(\016" +
+      "2 .policy.ConditionBooleanTypeEnumB\013\272H\010\202" +
+      "\001\002\020\001\310\001\001R\017booleanOperator\"Y\n\nSubjectSet\022K" +
+      "\n\020condition_groups\030\001 \003(\0132\026.policy.Condit" +
+      "ionGroupB\010\272H\005\222\001\002\010\001R\017conditionGroups\"\224\001\n\023" +
+      "SubjectConditionSet\022\016\n\002id\030\001 \001(\tR\002id\022?\n\014s" +
+      "ubject_sets\030\003 \003(\0132\022.policy.SubjectSetB\010\272" +
+      "H\005\222\001\002\010\001R\013subjectSets\022,\n\010metadata\030d \001(\0132\020" +
+      ".common.MetadataR\010metadata\"o\n\017SubjectPro" +
+      "perty\022-\n\016external_field\030\001 \001(\tB\006\272H\003\310\001\001R\re" +
+      "xternalField\022-\n\016external_value\030\002 \001(\tB\006\272H" +
+      "\003\310\001\001R\rexternalValue\"\245\001\n\017ResourceMapping\022" +
+      "\016\n\002id\030\001 \001(\tR\002id\022,\n\010metadata\030\002 \001(\0132\020.comm" +
+      "on.MetadataR\010metadata\022>\n\017attribute_value" +
+      "\030\003 \001(\0132\r.policy.ValueB\006\272H\003\310\001\001R\016attribute" +
+      "Value\022\024\n\005terms\030\004 \003(\tR\005terms*\263\001\n\025Attribut" +
+      "eRuleTypeEnum\022(\n$ATTRIBUTE_RULE_TYPE_ENU" +
+      "M_UNSPECIFIED\020\000\022#\n\037ATTRIBUTE_RULE_TYPE_E" +
+      "NUM_ALL_OF\020\001\022#\n\037ATTRIBUTE_RULE_TYPE_ENUM" +
+      "_ANY_OF\020\002\022&\n\"ATTRIBUTE_RULE_TYPE_ENUM_HI" +
+      "ERARCHY\020\003*\233\001\n\032SubjectMappingOperatorEnum" +
+      "\022-\n)SUBJECT_MAPPING_OPERATOR_ENUM_UNSPEC" +
+      "IFIED\020\000\022$\n SUBJECT_MAPPING_OPERATOR_ENUM" +
+      "_IN\020\001\022(\n$SUBJECT_MAPPING_OPERATOR_ENUM_N" +
+      "OT_IN\020\002*\220\001\n\030ConditionBooleanTypeEnum\022+\n\'" +
+      "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED\020" +
+      "\000\022#\n\037CONDITION_BOOLEAN_TYPE_ENUM_AND\020\001\022\"" +
+      "\n\036CONDITION_BOOLEAN_TYPE_ENUM_OR\020\002B\222\001\n\032i" +
+      "o.opentdf.platform.policyB\014ObjectsProtoP" +
+      "\001Z.github.com/opentdf/platform/protocol/" +
+      "go/policy\242\002\003PXX\252\002\006Policy\312\002\006Policy\342\002\022Poli" +
+      "cy\\GPBMetadata\352\002\006Policyb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -182,7 +182,7 @@ public final class ObjectsProto {
     internal_static_policy_Value_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_Value_descriptor,
-        new java.lang.String[] { "Id", "Attribute", "Value", "Members", "Grants", "Fqn", "Active", "SubjectMapping", "Metadata", });
+        new java.lang.String[] { "Id", "Attribute", "Value", "Members", "Grants", "Fqn", "Active", "SubjectMappings", "Metadata", });
     internal_static_policy_Action_descriptor =
       getDescriptor().getMessageTypes().get(3);
     internal_static_policy_Action_fieldAccessorTable = new

@@ -52,7 +52,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 		for _, ra := range dr.ResourceAttributes {
 			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
 
-			attrs, err := as.sdk.Attributes.GetAttributesByValueFqns(ctx, &attr.GetAttributesByValueFqnsRequest{
+			attrs, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 				Fqns: ra.AttributeFqns,
 			})
 			if err != nil {

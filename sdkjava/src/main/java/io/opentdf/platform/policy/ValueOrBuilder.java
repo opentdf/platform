@@ -184,27 +184,44 @@ public interface ValueOrBuilder extends
    * subject mapping
    * </pre>
    *
-   * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-   * @return Whether the subjectMapping field is set.
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
    */
-  boolean hasSubjectMapping();
+  java.util.List<io.opentdf.platform.policy.SubjectMapping> 
+      getSubjectMappingsList();
   /**
    * <pre>
    * subject mapping
    * </pre>
    *
-   * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-   * @return The subjectMapping.
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
    */
-  io.opentdf.platform.policy.SubjectMapping getSubjectMapping();
+  io.opentdf.platform.policy.SubjectMapping getSubjectMappings(int index);
   /**
    * <pre>
    * subject mapping
    * </pre>
    *
-   * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
    */
-  io.opentdf.platform.policy.SubjectMappingOrBuilder getSubjectMappingOrBuilder();
+  int getSubjectMappingsCount();
+  /**
+   * <pre>
+   * subject mapping
+   * </pre>
+   *
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+   */
+  java.util.List<? extends io.opentdf.platform.policy.SubjectMappingOrBuilder> 
+      getSubjectMappingsOrBuilderList();
+  /**
+   * <pre>
+   * subject mapping
+   * </pre>
+   *
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+   */
+  io.opentdf.platform.policy.SubjectMappingOrBuilder getSubjectMappingsOrBuilder(
+      int index);
 
   /**
    * <pre>

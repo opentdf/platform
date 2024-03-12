@@ -23,6 +23,7 @@ private static final long serialVersionUID = 0L;
         com.google.protobuf.LazyStringArrayList.emptyList();
     grants_ = java.util.Collections.emptyList();
     fqn_ = "";
+    subjectMappings_ = java.util.Collections.emptyList();
   }
 
   @java.lang.Override
@@ -349,42 +350,65 @@ private static final long serialVersionUID = 0L;
     return active_ == null ? com.google.protobuf.BoolValue.getDefaultInstance() : active_;
   }
 
-  public static final int SUBJECT_MAPPING_FIELD_NUMBER = 8;
-  private io.opentdf.platform.policy.SubjectMapping subjectMapping_;
+  public static final int SUBJECT_MAPPINGS_FIELD_NUMBER = 8;
+  @SuppressWarnings("serial")
+  private java.util.List<io.opentdf.platform.policy.SubjectMapping> subjectMappings_;
   /**
    * <pre>
    * subject mapping
    * </pre>
    *
-   * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-   * @return Whether the subjectMapping field is set.
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
    */
   @java.lang.Override
-  public boolean hasSubjectMapping() {
-    return ((bitField0_ & 0x00000004) != 0);
+  public java.util.List<io.opentdf.platform.policy.SubjectMapping> getSubjectMappingsList() {
+    return subjectMappings_;
   }
   /**
    * <pre>
    * subject mapping
    * </pre>
    *
-   * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-   * @return The subjectMapping.
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.SubjectMapping getSubjectMapping() {
-    return subjectMapping_ == null ? io.opentdf.platform.policy.SubjectMapping.getDefaultInstance() : subjectMapping_;
+  public java.util.List<? extends io.opentdf.platform.policy.SubjectMappingOrBuilder> 
+      getSubjectMappingsOrBuilderList() {
+    return subjectMappings_;
   }
   /**
    * <pre>
    * subject mapping
    * </pre>
    *
-   * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.SubjectMappingOrBuilder getSubjectMappingOrBuilder() {
-    return subjectMapping_ == null ? io.opentdf.platform.policy.SubjectMapping.getDefaultInstance() : subjectMapping_;
+  public int getSubjectMappingsCount() {
+    return subjectMappings_.size();
+  }
+  /**
+   * <pre>
+   * subject mapping
+   * </pre>
+   *
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.SubjectMapping getSubjectMappings(int index) {
+    return subjectMappings_.get(index);
+  }
+  /**
+   * <pre>
+   * subject mapping
+   * </pre>
+   *
+   * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.SubjectMappingOrBuilder getSubjectMappingsOrBuilder(
+      int index) {
+    return subjectMappings_.get(index);
   }
 
   public static final int METADATA_FIELD_NUMBER = 100;
@@ -399,7 +423,7 @@ private static final long serialVersionUID = 0L;
    */
   @java.lang.Override
   public boolean hasMetadata() {
-    return ((bitField0_ & 0x00000008) != 0);
+    return ((bitField0_ & 0x00000004) != 0);
   }
   /**
    * <pre>
@@ -460,10 +484,10 @@ private static final long serialVersionUID = 0L;
     if (((bitField0_ & 0x00000002) != 0)) {
       output.writeMessage(7, getActive());
     }
-    if (((bitField0_ & 0x00000004) != 0)) {
-      output.writeMessage(8, getSubjectMapping());
+    for (int i = 0; i < subjectMappings_.size(); i++) {
+      output.writeMessage(8, subjectMappings_.get(i));
     }
-    if (((bitField0_ & 0x00000008) != 0)) {
+    if (((bitField0_ & 0x00000004) != 0)) {
       output.writeMessage(100, getMetadata());
     }
     getUnknownFields().writeTo(output);
@@ -504,11 +528,11 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(7, getActive());
     }
-    if (((bitField0_ & 0x00000004) != 0)) {
+    for (int i = 0; i < subjectMappings_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(8, getSubjectMapping());
+        .computeMessageSize(8, subjectMappings_.get(i));
     }
-    if (((bitField0_ & 0x00000008) != 0)) {
+    if (((bitField0_ & 0x00000004) != 0)) {
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(100, getMetadata());
     }
@@ -547,11 +571,8 @@ private static final long serialVersionUID = 0L;
       if (!getActive()
           .equals(other.getActive())) return false;
     }
-    if (hasSubjectMapping() != other.hasSubjectMapping()) return false;
-    if (hasSubjectMapping()) {
-      if (!getSubjectMapping()
-          .equals(other.getSubjectMapping())) return false;
-    }
+    if (!getSubjectMappingsList()
+        .equals(other.getSubjectMappingsList())) return false;
     if (hasMetadata() != other.hasMetadata()) return false;
     if (hasMetadata()) {
       if (!getMetadata()
@@ -590,9 +611,9 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + ACTIVE_FIELD_NUMBER;
       hash = (53 * hash) + getActive().hashCode();
     }
-    if (hasSubjectMapping()) {
-      hash = (37 * hash) + SUBJECT_MAPPING_FIELD_NUMBER;
-      hash = (53 * hash) + getSubjectMapping().hashCode();
+    if (getSubjectMappingsCount() > 0) {
+      hash = (37 * hash) + SUBJECT_MAPPINGS_FIELD_NUMBER;
+      hash = (53 * hash) + getSubjectMappingsList().hashCode();
     }
     if (hasMetadata()) {
       hash = (37 * hash) + METADATA_FIELD_NUMBER;
@@ -731,7 +752,7 @@ private static final long serialVersionUID = 0L;
         getAttributeFieldBuilder();
         getGrantsFieldBuilder();
         getActiveFieldBuilder();
-        getSubjectMappingFieldBuilder();
+        getSubjectMappingsFieldBuilder();
         getMetadataFieldBuilder();
       }
     }
@@ -761,11 +782,13 @@ private static final long serialVersionUID = 0L;
         activeBuilder_.dispose();
         activeBuilder_ = null;
       }
-      subjectMapping_ = null;
-      if (subjectMappingBuilder_ != null) {
-        subjectMappingBuilder_.dispose();
-        subjectMappingBuilder_ = null;
+      if (subjectMappingsBuilder_ == null) {
+        subjectMappings_ = java.util.Collections.emptyList();
+      } else {
+        subjectMappings_ = null;
+        subjectMappingsBuilder_.clear();
       }
+      bitField0_ = (bitField0_ & ~0x00000080);
       metadata_ = null;
       if (metadataBuilder_ != null) {
         metadataBuilder_.dispose();
@@ -813,6 +836,15 @@ private static final long serialVersionUID = 0L;
       } else {
         result.grants_ = grantsBuilder_.build();
       }
+      if (subjectMappingsBuilder_ == null) {
+        if (((bitField0_ & 0x00000080) != 0)) {
+          subjectMappings_ = java.util.Collections.unmodifiableList(subjectMappings_);
+          bitField0_ = (bitField0_ & ~0x00000080);
+        }
+        result.subjectMappings_ = subjectMappings_;
+      } else {
+        result.subjectMappings_ = subjectMappingsBuilder_.build();
+      }
     }
 
     private void buildPartial0(io.opentdf.platform.policy.Value result) {
@@ -843,17 +875,11 @@ private static final long serialVersionUID = 0L;
             : activeBuilder_.build();
         to_bitField0_ |= 0x00000002;
       }
-      if (((from_bitField0_ & 0x00000080) != 0)) {
-        result.subjectMapping_ = subjectMappingBuilder_ == null
-            ? subjectMapping_
-            : subjectMappingBuilder_.build();
-        to_bitField0_ |= 0x00000004;
-      }
       if (((from_bitField0_ & 0x00000100) != 0)) {
         result.metadata_ = metadataBuilder_ == null
             ? metadata_
             : metadataBuilder_.build();
-        to_bitField0_ |= 0x00000008;
+        to_bitField0_ |= 0x00000004;
       }
       result.bitField0_ |= to_bitField0_;
     }
@@ -959,8 +985,31 @@ private static final long serialVersionUID = 0L;
       if (other.hasActive()) {
         mergeActive(other.getActive());
       }
-      if (other.hasSubjectMapping()) {
-        mergeSubjectMapping(other.getSubjectMapping());
+      if (subjectMappingsBuilder_ == null) {
+        if (!other.subjectMappings_.isEmpty()) {
+          if (subjectMappings_.isEmpty()) {
+            subjectMappings_ = other.subjectMappings_;
+            bitField0_ = (bitField0_ & ~0x00000080);
+          } else {
+            ensureSubjectMappingsIsMutable();
+            subjectMappings_.addAll(other.subjectMappings_);
+          }
+          onChanged();
+        }
+      } else {
+        if (!other.subjectMappings_.isEmpty()) {
+          if (subjectMappingsBuilder_.isEmpty()) {
+            subjectMappingsBuilder_.dispose();
+            subjectMappingsBuilder_ = null;
+            subjectMappings_ = other.subjectMappings_;
+            bitField0_ = (bitField0_ & ~0x00000080);
+            subjectMappingsBuilder_ = 
+              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
+                 getSubjectMappingsFieldBuilder() : null;
+          } else {
+            subjectMappingsBuilder_.addAllMessages(other.subjectMappings_);
+          }
+        }
       }
       if (other.hasMetadata()) {
         mergeMetadata(other.getMetadata());
@@ -1040,10 +1089,16 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 58
             case 66: {
-              input.readMessage(
-                  getSubjectMappingFieldBuilder().getBuilder(),
-                  extensionRegistry);
-              bitField0_ |= 0x00000080;
+              io.opentdf.platform.policy.SubjectMapping m =
+                  input.readMessage(
+                      io.opentdf.platform.policy.SubjectMapping.parser(),
+                      extensionRegistry);
+              if (subjectMappingsBuilder_ == null) {
+                ensureSubjectMappingsIsMutable();
+                subjectMappings_.add(m);
+              } else {
+                subjectMappingsBuilder_.addMessage(m);
+              }
               break;
             } // case 66
             case 802: {
@@ -2043,33 +2098,30 @@ private static final long serialVersionUID = 0L;
       return activeBuilder_;
     }
 
-    private io.opentdf.platform.policy.SubjectMapping subjectMapping_;
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.SubjectMapping, io.opentdf.platform.policy.SubjectMapping.Builder, io.opentdf.platform.policy.SubjectMappingOrBuilder> subjectMappingBuilder_;
-    /**
-     * <pre>
-     * subject mapping
-     * </pre>
-     *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-     * @return Whether the subjectMapping field is set.
-     */
-    public boolean hasSubjectMapping() {
-      return ((bitField0_ & 0x00000080) != 0);
+    private java.util.List<io.opentdf.platform.policy.SubjectMapping> subjectMappings_ =
+      java.util.Collections.emptyList();
+    private void ensureSubjectMappingsIsMutable() {
+      if (!((bitField0_ & 0x00000080) != 0)) {
+        subjectMappings_ = new java.util.ArrayList<io.opentdf.platform.policy.SubjectMapping>(subjectMappings_);
+        bitField0_ |= 0x00000080;
+       }
     }
+
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.policy.SubjectMapping, io.opentdf.platform.policy.SubjectMapping.Builder, io.opentdf.platform.policy.SubjectMappingOrBuilder> subjectMappingsBuilder_;
+
     /**
      * <pre>
      * subject mapping
      * </pre>
      *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-     * @return The subjectMapping.
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
      */
-    public io.opentdf.platform.policy.SubjectMapping getSubjectMapping() {
-      if (subjectMappingBuilder_ == null) {
-        return subjectMapping_ == null ? io.opentdf.platform.policy.SubjectMapping.getDefaultInstance() : subjectMapping_;
+    public java.util.List<io.opentdf.platform.policy.SubjectMapping> getSubjectMappingsList() {
+      if (subjectMappingsBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(subjectMappings_);
       } else {
-        return subjectMappingBuilder_.getMessage();
+        return subjectMappingsBuilder_.getMessageList();
       }
     }
     /**
@@ -2077,106 +2129,221 @@ private static final long serialVersionUID = 0L;
      * subject mapping
      * </pre>
      *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
      */
-    public Builder setSubjectMapping(io.opentdf.platform.policy.SubjectMapping value) {
-      if (subjectMappingBuilder_ == null) {
+    public int getSubjectMappingsCount() {
+      if (subjectMappingsBuilder_ == null) {
+        return subjectMappings_.size();
+      } else {
+        return subjectMappingsBuilder_.getCount();
+      }
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public io.opentdf.platform.policy.SubjectMapping getSubjectMappings(int index) {
+      if (subjectMappingsBuilder_ == null) {
+        return subjectMappings_.get(index);
+      } else {
+        return subjectMappingsBuilder_.getMessage(index);
+      }
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder setSubjectMappings(
+        int index, io.opentdf.platform.policy.SubjectMapping value) {
+      if (subjectMappingsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        subjectMapping_ = value;
-      } else {
-        subjectMappingBuilder_.setMessage(value);
-      }
-      bitField0_ |= 0x00000080;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * subject mapping
-     * </pre>
-     *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-     */
-    public Builder setSubjectMapping(
-        io.opentdf.platform.policy.SubjectMapping.Builder builderForValue) {
-      if (subjectMappingBuilder_ == null) {
-        subjectMapping_ = builderForValue.build();
-      } else {
-        subjectMappingBuilder_.setMessage(builderForValue.build());
-      }
-      bitField0_ |= 0x00000080;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * subject mapping
-     * </pre>
-     *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-     */
-    public Builder mergeSubjectMapping(io.opentdf.platform.policy.SubjectMapping value) {
-      if (subjectMappingBuilder_ == null) {
-        if (((bitField0_ & 0x00000080) != 0) &&
-          subjectMapping_ != null &&
-          subjectMapping_ != io.opentdf.platform.policy.SubjectMapping.getDefaultInstance()) {
-          getSubjectMappingBuilder().mergeFrom(value);
-        } else {
-          subjectMapping_ = value;
-        }
-      } else {
-        subjectMappingBuilder_.mergeFrom(value);
-      }
-      if (subjectMapping_ != null) {
-        bitField0_ |= 0x00000080;
+        ensureSubjectMappingsIsMutable();
+        subjectMappings_.set(index, value);
         onChanged();
-      }
-      return this;
-    }
-    /**
-     * <pre>
-     * subject mapping
-     * </pre>
-     *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-     */
-    public Builder clearSubjectMapping() {
-      bitField0_ = (bitField0_ & ~0x00000080);
-      subjectMapping_ = null;
-      if (subjectMappingBuilder_ != null) {
-        subjectMappingBuilder_.dispose();
-        subjectMappingBuilder_ = null;
-      }
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * subject mapping
-     * </pre>
-     *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-     */
-    public io.opentdf.platform.policy.SubjectMapping.Builder getSubjectMappingBuilder() {
-      bitField0_ |= 0x00000080;
-      onChanged();
-      return getSubjectMappingFieldBuilder().getBuilder();
-    }
-    /**
-     * <pre>
-     * subject mapping
-     * </pre>
-     *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
-     */
-    public io.opentdf.platform.policy.SubjectMappingOrBuilder getSubjectMappingOrBuilder() {
-      if (subjectMappingBuilder_ != null) {
-        return subjectMappingBuilder_.getMessageOrBuilder();
       } else {
-        return subjectMapping_ == null ?
-            io.opentdf.platform.policy.SubjectMapping.getDefaultInstance() : subjectMapping_;
+        subjectMappingsBuilder_.setMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder setSubjectMappings(
+        int index, io.opentdf.platform.policy.SubjectMapping.Builder builderForValue) {
+      if (subjectMappingsBuilder_ == null) {
+        ensureSubjectMappingsIsMutable();
+        subjectMappings_.set(index, builderForValue.build());
+        onChanged();
+      } else {
+        subjectMappingsBuilder_.setMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder addSubjectMappings(io.opentdf.platform.policy.SubjectMapping value) {
+      if (subjectMappingsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSubjectMappingsIsMutable();
+        subjectMappings_.add(value);
+        onChanged();
+      } else {
+        subjectMappingsBuilder_.addMessage(value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder addSubjectMappings(
+        int index, io.opentdf.platform.policy.SubjectMapping value) {
+      if (subjectMappingsBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSubjectMappingsIsMutable();
+        subjectMappings_.add(index, value);
+        onChanged();
+      } else {
+        subjectMappingsBuilder_.addMessage(index, value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder addSubjectMappings(
+        io.opentdf.platform.policy.SubjectMapping.Builder builderForValue) {
+      if (subjectMappingsBuilder_ == null) {
+        ensureSubjectMappingsIsMutable();
+        subjectMappings_.add(builderForValue.build());
+        onChanged();
+      } else {
+        subjectMappingsBuilder_.addMessage(builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder addSubjectMappings(
+        int index, io.opentdf.platform.policy.SubjectMapping.Builder builderForValue) {
+      if (subjectMappingsBuilder_ == null) {
+        ensureSubjectMappingsIsMutable();
+        subjectMappings_.add(index, builderForValue.build());
+        onChanged();
+      } else {
+        subjectMappingsBuilder_.addMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder addAllSubjectMappings(
+        java.lang.Iterable<? extends io.opentdf.platform.policy.SubjectMapping> values) {
+      if (subjectMappingsBuilder_ == null) {
+        ensureSubjectMappingsIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, subjectMappings_);
+        onChanged();
+      } else {
+        subjectMappingsBuilder_.addAllMessages(values);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder clearSubjectMappings() {
+      if (subjectMappingsBuilder_ == null) {
+        subjectMappings_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000080);
+        onChanged();
+      } else {
+        subjectMappingsBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public Builder removeSubjectMappings(int index) {
+      if (subjectMappingsBuilder_ == null) {
+        ensureSubjectMappingsIsMutable();
+        subjectMappings_.remove(index);
+        onChanged();
+      } else {
+        subjectMappingsBuilder_.remove(index);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public io.opentdf.platform.policy.SubjectMapping.Builder getSubjectMappingsBuilder(
+        int index) {
+      return getSubjectMappingsFieldBuilder().getBuilder(index);
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public io.opentdf.platform.policy.SubjectMappingOrBuilder getSubjectMappingsOrBuilder(
+        int index) {
+      if (subjectMappingsBuilder_ == null) {
+        return subjectMappings_.get(index);  } else {
+        return subjectMappingsBuilder_.getMessageOrBuilder(index);
       }
     }
     /**
@@ -2184,20 +2351,63 @@ private static final long serialVersionUID = 0L;
      * subject mapping
      * </pre>
      *
-     * <code>.policy.SubjectMapping subject_mapping = 8 [json_name = "subjectMapping"];</code>
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
      */
-    private com.google.protobuf.SingleFieldBuilderV3<
+    public java.util.List<? extends io.opentdf.platform.policy.SubjectMappingOrBuilder> 
+         getSubjectMappingsOrBuilderList() {
+      if (subjectMappingsBuilder_ != null) {
+        return subjectMappingsBuilder_.getMessageOrBuilderList();
+      } else {
+        return java.util.Collections.unmodifiableList(subjectMappings_);
+      }
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public io.opentdf.platform.policy.SubjectMapping.Builder addSubjectMappingsBuilder() {
+      return getSubjectMappingsFieldBuilder().addBuilder(
+          io.opentdf.platform.policy.SubjectMapping.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public io.opentdf.platform.policy.SubjectMapping.Builder addSubjectMappingsBuilder(
+        int index) {
+      return getSubjectMappingsFieldBuilder().addBuilder(
+          index, io.opentdf.platform.policy.SubjectMapping.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * subject mapping
+     * </pre>
+     *
+     * <code>repeated .policy.SubjectMapping subject_mappings = 8 [json_name = "subjectMappings"];</code>
+     */
+    public java.util.List<io.opentdf.platform.policy.SubjectMapping.Builder> 
+         getSubjectMappingsBuilderList() {
+      return getSubjectMappingsFieldBuilder().getBuilderList();
+    }
+    private com.google.protobuf.RepeatedFieldBuilderV3<
         io.opentdf.platform.policy.SubjectMapping, io.opentdf.platform.policy.SubjectMapping.Builder, io.opentdf.platform.policy.SubjectMappingOrBuilder> 
-        getSubjectMappingFieldBuilder() {
-      if (subjectMappingBuilder_ == null) {
-        subjectMappingBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+        getSubjectMappingsFieldBuilder() {
+      if (subjectMappingsBuilder_ == null) {
+        subjectMappingsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
             io.opentdf.platform.policy.SubjectMapping, io.opentdf.platform.policy.SubjectMapping.Builder, io.opentdf.platform.policy.SubjectMappingOrBuilder>(
-                getSubjectMapping(),
+                subjectMappings_,
+                ((bitField0_ & 0x00000080) != 0),
                 getParentForChildren(),
                 isClean());
-        subjectMapping_ = null;
+        subjectMappings_ = null;
       }
-      return subjectMappingBuilder_;
+      return subjectMappingsBuilder_;
     }
 
     private io.opentdf.platform.common.Metadata metadata_;

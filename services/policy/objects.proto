@@ -78,7 +78,7 @@ message Value {
   google.protobuf.BoolValue active = 7;
 
   // subject mapping
-  SubjectMapping subject_mapping = 8;
+  repeated SubjectMapping subject_mappings = 8;
 
   // Common metadata
   common.Metadata metadata = 100;

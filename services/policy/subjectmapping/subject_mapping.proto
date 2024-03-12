@@ -148,7 +148,6 @@ message DeleteSubjectConditionSetResponse {
   policy.SubjectConditionSet subject_condition_set = 1;
 }
 
-
 service SubjectMappingService {
 
   // Find matching Subject Mappings for a given Subject

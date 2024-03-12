@@ -48,6 +48,8 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
       - run: make go.work
+      - run: go mod download
+      - run: go mod verify
       - name: golangci-lint on PR
         if: github.event_name == 'pull_request'
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
@@ -96,6 +98,8 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
       - run: make go.work
+      - run: go mod download
+      - run: go mod verify
       - run: go test ./integration -race
       - run: docker compose up -d --wait --wait-timeout 240
       - run: cp example-opentdf.yaml opentdf.yaml

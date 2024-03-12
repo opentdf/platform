@@ -4,13 +4,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -35,6 +35,7 @@ type SDK struct {
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
+	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -67,6 +68,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		defaultConn       *grpc.ClientConn
 		policyConn        *grpc.ClientConn
 		authorizationConn *grpc.ClientConn
+		wellknownConn     *grpc.ClientConn
 	)
 
 	if platformEndpoint != "" {
@@ -89,6 +91,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		authorizationConn = defaultConn
 	}
 
+	if cfg.wellknownConn != nil {
+		wellknownConn = cfg.wellknownConn
+	} else {
+		wellknownConn = defaultConn
+	}
+
 	return &SDK{
 		conn:                    defaultConn,
 		unwrapper:               unwrapper,
@@ -98,6 +106,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(policyConn),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
+		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(wellknownConn),
 	}, nil
 }
 

@@ -11,7 +11,7 @@ import (
 
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
-	Short: "Create encrypted TDF from string",
+	Short: "Create encrypted tdf from string",
 	RunE:  encrypt,
 	Args:  cobra.MinimumNArgs(1),
 }

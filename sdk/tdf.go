@@ -237,7 +237,7 @@ func (r *Reader) Manifest() Manifest {
 	return r.manifest
 }
 
-// prepare the manifest for TDF
+// prepare the manifest for tdf
 func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
 	manifest := Manifest{}
 	if len(tdfConfig.kasInfoList) == 0 {
@@ -359,7 +359,7 @@ func (t *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error
 	return policyObj, nil
 }
 
-// LoadTDF loads the tdf and prepare for reading the payload from TDF
+// LoadTDF loads the tdf and prepare for reading the payload from tdf
 func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)

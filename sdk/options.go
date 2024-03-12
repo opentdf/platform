@@ -17,6 +17,7 @@ type config struct {
 	authConfig        *AuthConfig
 	policyConn        *grpc.ClientConn
 	authorizationConn *grpc.ClientConn
+	wellknownConn     *grpc.ClientConn
 }
 
 func (c *config) build() []grpc.DialOption {

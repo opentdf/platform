@@ -9,27 +9,27 @@ public interface DecisionRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
-  java.util.List<io.opentdf.platform.authorization.Action> 
+  java.util.List<io.opentdf.platform.policy.Action> 
       getActionsList();
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
-  io.opentdf.platform.authorization.Action getActions(int index);
+  io.opentdf.platform.policy.Action getActions(int index);
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
   int getActionsCount();
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.ActionOrBuilder> 
       getActionsOrBuilderList();
   /**
-   * <code>repeated .authorization.Action actions = 1 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 1 [json_name = "actions"];</code>
    */
-  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+  io.opentdf.platform.policy.ActionOrBuilder getActionsOrBuilder(
       int index);
 
   /**

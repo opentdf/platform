@@ -34,9 +34,9 @@ public interface UpdateSubjectConditionSetRequestOrBuilder extends
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
+  java.util.List<io.opentdf.platform.policy.SubjectSet> 
       getSubjectSetsList();
   /**
    * <pre>
@@ -44,16 +44,16 @@ public interface UpdateSubjectConditionSetRequestOrBuilder extends
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
+  io.opentdf.platform.policy.SubjectSet getSubjectSets(int index);
   /**
    * <pre>
    * Optional
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
   int getSubjectSetsCount();
   /**
@@ -62,9 +62,9 @@ public interface UpdateSubjectConditionSetRequestOrBuilder extends
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.SubjectSetOrBuilder> 
       getSubjectSetsOrBuilderList();
   /**
    * <pre>
@@ -72,9 +72,9 @@ public interface UpdateSubjectConditionSetRequestOrBuilder extends
    * If provided, replaces entire existing structure of Subject Sets, Condition Groups, &amp; Conditions
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 2 [json_name = "subjectSets"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+  io.opentdf.platform.policy.SubjectSetOrBuilder getSubjectSetsOrBuilder(
       int index);
 
   /**

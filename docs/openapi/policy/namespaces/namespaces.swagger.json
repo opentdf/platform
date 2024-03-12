@@ -263,7 +263,7 @@
       "type": "object",
       "properties": {
         "namespace": {
-          "$ref": "#/definitions/namespacesNamespace"
+          "$ref": "#/definitions/policyNamespace"
         }
       }
     },
@@ -274,7 +274,7 @@
       "type": "object",
       "properties": {
         "namespace": {
-          "$ref": "#/definitions/namespacesNamespace"
+          "$ref": "#/definitions/policyNamespace"
         }
       }
     },
@@ -285,12 +285,20 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/namespacesNamespace"
+            "$ref": "#/definitions/policyNamespace"
           }
         }
       }
     },
-    "namespacesNamespace": {
+    "namespacesUpdateNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace"
+        }
+      }
+    },
+    "policyNamespace": {
       "type": "object",
       "properties": {
         "id": {
@@ -310,14 +318,6 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
-        }
-      }
-    },
-    "namespacesUpdateNamespaceResponse": {
-      "type": "object",
-      "properties": {
-        "namespace": {
-          "$ref": "#/definitions/namespacesNamespace"
         }
       }
     },

@@ -9,26 +9,26 @@ public interface ListAttributesResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.attributes.Attribute> 
+  java.util.List<io.opentdf.platform.policy.Attribute> 
       getAttributesList();
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
-  io.opentdf.platform.policy.attributes.Attribute getAttributes(int index);
+  io.opentdf.platform.policy.Attribute getAttributes(int index);
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
   int getAttributesCount();
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.AttributeOrBuilder> 
       getAttributesOrBuilderList();
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
-  io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributesOrBuilder(
+  io.opentdf.platform.policy.AttributeOrBuilder getAttributesOrBuilder(
       int index);
 }

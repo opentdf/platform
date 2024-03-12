@@ -84,37 +84,37 @@ func local_request_AttributesService_GetAttribute_0(ctx context.Context, marshal
 }
 
 var (
-	filter_AttributesService_GetAttributesByValueFqns_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_AttributesService_GetAttributeValuesByFqns_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_AttributesService_GetAttributesByValueFqns_0(ctx context.Context, marshaler runtime.Marshaler, client AttributesServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetAttributesByValueFqnsRequest
+func request_AttributesService_GetAttributeValuesByFqns_0(ctx context.Context, marshaler runtime.Marshaler, client AttributesServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetAttributeValuesByFqnsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AttributesService_GetAttributesByValueFqns_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AttributesService_GetAttributeValuesByFqns_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetAttributesByValueFqns(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetAttributeValuesByFqns(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_AttributesService_GetAttributesByValueFqns_0(ctx context.Context, marshaler runtime.Marshaler, server AttributesServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetAttributesByValueFqnsRequest
+func local_request_AttributesService_GetAttributeValuesByFqns_0(ctx context.Context, marshaler runtime.Marshaler, server AttributesServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetAttributeValuesByFqnsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AttributesService_GetAttributesByValueFqns_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AttributesService_GetAttributeValuesByFqns_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.GetAttributesByValueFqns(ctx, &protoReq)
+	msg, err := server.GetAttributeValuesByFqns(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -680,7 +680,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("GET", pattern_AttributesService_GetAttributesByValueFqns_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_AttributesService_GetAttributeValuesByFqns_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -688,12 +688,12 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/GetAttributesByValueFqns", runtime.WithHTTPPathPattern("/attributes/*/fqn"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/GetAttributeValuesByFqns", runtime.WithHTTPPathPattern("/attributes/*/fqn"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_AttributesService_GetAttributesByValueFqns_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_AttributesService_GetAttributeValuesByFqns_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -701,7 +701,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 
-		forward_AttributesService_GetAttributesByValueFqns_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AttributesService_GetAttributeValuesByFqns_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1043,25 +1043,25 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("GET", pattern_AttributesService_GetAttributesByValueFqns_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_AttributesService_GetAttributeValuesByFqns_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/GetAttributesByValueFqns", runtime.WithHTTPPathPattern("/attributes/*/fqn"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/GetAttributeValuesByFqns", runtime.WithHTTPPathPattern("/attributes/*/fqn"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_AttributesService_GetAttributesByValueFqns_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_AttributesService_GetAttributeValuesByFqns_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AttributesService_GetAttributesByValueFqns_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AttributesService_GetAttributeValuesByFqns_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1313,7 +1313,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 var (
 	pattern_AttributesService_GetAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"attributes", "id"}, ""))
 
-	pattern_AttributesService_GetAttributesByValueFqns_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 2, 1}, []string{"attributes", "fqn"}, ""))
+	pattern_AttributesService_GetAttributeValuesByFqns_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 2, 1}, []string{"attributes", "fqn"}, ""))
 
 	pattern_AttributesService_CreateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"attributes"}, ""))
 
@@ -1341,7 +1341,7 @@ var (
 var (
 	forward_AttributesService_GetAttribute_0 = runtime.ForwardResponseMessage
 
-	forward_AttributesService_GetAttributesByValueFqns_0 = runtime.ForwardResponseMessage
+	forward_AttributesService_GetAttributeValuesByFqns_0 = runtime.ForwardResponseMessage
 
 	forward_AttributesService_CreateAttribute_0 = runtime.ForwardResponseMessage
 

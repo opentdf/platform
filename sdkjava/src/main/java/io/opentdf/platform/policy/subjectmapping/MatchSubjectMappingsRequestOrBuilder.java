@@ -9,26 +9,26 @@ public interface MatchSubjectMappingsRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   * <code>repeated .policy.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectProperty> 
+  java.util.List<io.opentdf.platform.policy.SubjectProperty> 
       getSubjectPropertiesList();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   * <code>repeated .policy.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectProperty getSubjectProperties(int index);
+  io.opentdf.platform.policy.SubjectProperty getSubjectProperties(int index);
   /**
-   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   * <code>repeated .policy.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
   int getSubjectPropertiesCount();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   * <code>repeated .policy.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.SubjectPropertyOrBuilder> 
       getSubjectPropertiesOrBuilderList();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
+   * <code>repeated .policy.SubjectProperty subject_properties = 1 [json_name = "subjectProperties"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectPropertyOrBuilder getSubjectPropertiesOrBuilder(
+  io.opentdf.platform.policy.SubjectPropertyOrBuilder getSubjectPropertiesOrBuilder(
       int index);
 }

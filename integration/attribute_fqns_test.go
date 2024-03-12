@@ -121,7 +121,6 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 
 	// the value should match the fixture (verify by looping through and matching the fqn)
 	for _, v := range attr.Values {
-		fmt.Printf("\n\n %+v \n\n", v)
 		if v.Id == valueFixture.Id {
 			s.Equal(fullFqn, v.Fqn)
 			s.Equal(valueFixture.Id, v.Id)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -90,8 +89,8 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 
 		// include the subject mapping / subject condition set for each value
 		if opts.withOneValueByFqn != "" {
-			valueSelect += ", 'fqn', " + fqnt.Field("fqn") + ", " +
-				"'subject_mappings', sm_arr"
+			valueSelect += ", 'fqn', val_sm_fqn_join.fqn, " +
+				"'subject_mappings', sub_maps_arr"
 		}
 		valueSelect += ")) AS values"
 		selectFields = append(selectFields, valueSelect)
@@ -135,8 +134,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			" AND " + fqnt.Field("value_id") + " IS NULL")
 	}
 	if opts.withOneValueByFqn != "" {
-		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
-			" AND " + fqnt.Field("value_id") + " = " + avt.Field("id")).
+		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id")).
 			LeftJoin("(SELECT " +
 				avt.Field("id") + " AS av_id," +
 				"JSON_AGG(JSON_BUILD_OBJECT(" +
@@ -148,14 +146,17 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"'metadata', " + scsT.Field("metadata") + "," +
 				"'subject_sets', " + scsT.Field("condition") +
 				")" +
-				")) AS sm_arr " +
+				")) AS sub_maps_arr " +
+				", inner_fqns.fqn AS fqn " +
 				"FROM " + smT.Name() + " " +
 				"LEFT JOIN " + avt.Name() + " ON " + smT.Field("attribute_value_id") + " = " + avt.Field("id") + " " +
 				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
 				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
 				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
-				"GROUP BY " + avt.Field("id") +
-				") AS sub_sm ON " + avt.Field("id") + " = sub_sm.av_id")
+				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
+				") AS val_sm_fqn_join ON " + avt.Field("id") + " = val_sm_fqn_join.av_id " +
+				"AND " + avt.Field("id") + " = " + fqnt.Field("value_id"),
+			)
 	}
 
 	g := []string{t.Field("id"), nt.Field("name")}
@@ -363,7 +364,6 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		opts.withFqn = true
 	}
 	sql, args, err := getAttributeByFqnSql(fqn, opts)
-	fmt.Println("\nsql: ", sql, "\nargs: ", args, "\nerr: ", err)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

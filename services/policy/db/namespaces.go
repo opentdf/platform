@@ -201,9 +201,9 @@ func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
 
 	return &namespaces.Namespace{
-		Id: id,
-		Name: r.Name,
-		Active: &wrapperspb.BoolValue{Value: true},
+		Id:       id,
+		Name:     r.Name,
+		Active:   &wrapperspb.BoolValue{Value: true},
 		Metadata: m,
 	}, nil
 }

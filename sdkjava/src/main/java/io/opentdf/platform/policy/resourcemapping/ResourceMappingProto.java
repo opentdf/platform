@@ -77,63 +77,63 @@ public final class ResourceMappingProto {
       "\n-policy/resourcemapping/resource_mappin" +
       "g.proto\022\026policy.resourcemapping\032\033buf/val" +
       "idate/validate.proto\032\034google/api/annotat" +
-      "ions.proto\032\023common/common.proto\032\022policy/" +
-      "types.proto\"\035\n\033ListResourceMappingsReque" +
-      "st\"d\n\034ListResourceMappingsResponse\022D\n\021re" +
-      "source_mappings\030\001 \003(\0132\027.policy.ResourceM" +
-      "appingR\020resourceMappings\"3\n\031GetResourceM" +
-      "appingRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"`\n" +
-      "\032GetResourceMappingResponse\022B\n\020resource_" +
-      "mapping\030\001 \001(\0132\027.policy.ResourceMappingR\017" +
-      "resourceMapping\"\247\001\n\034CreateResourceMappin" +
-      "gRequest\0224\n\022attribute_value_id\030\001 \001(\tB\006\272H" +
-      "\003\310\001\001R\020attributeValueId\022\034\n\005terms\030\002 \003(\tB\006\272" +
-      "H\003\310\001\001R\005terms\0223\n\010metadata\030d \001(\0132\027.common." +
-      "MetadataMutableR\010metadata\"c\n\035CreateResou" +
-      "rceMappingResponse\022B\n\020resource_mapping\030\001" +
-      " \001(\0132\027.policy.ResourceMappingR\017resourceM" +
-      "apping\"\205\002\n\034UpdateResourceMappingRequest\022" +
-      "\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022,\n\022attribute_val" +
-      "ue_id\030\004 \001(\tR\020attributeValueId\022\024\n\005terms\030\005" +
-      " \003(\tR\005terms\0223\n\010metadata\030d \001(\0132\027.common.M" +
-      "etadataMutableR\010metadata\022T\n\030metadata_upd" +
-      "ate_behavior\030e \001(\0162\032.common.MetadataUpda" +
-      "teEnumR\026metadataUpdateBehavior\"c\n\035Update" +
-      "ResourceMappingResponse\022B\n\020resource_mapp" +
-      "ing\030\001 \001(\0132\027.policy.ResourceMappingR\017reso" +
-      "urceMapping\"6\n\034DeleteResourceMappingRequ" +
-      "est\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"c\n\035DeleteRes" +
+      "ions.proto\032\023common/common.proto\032\024policy/" +
+      "objects.proto\"\035\n\033ListResourceMappingsReq" +
+      "uest\"d\n\034ListResourceMappingsResponse\022D\n\021" +
+      "resource_mappings\030\001 \003(\0132\027.policy.Resourc" +
+      "eMappingR\020resourceMappings\"3\n\031GetResourc" +
+      "eMappingRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"" +
+      "`\n\032GetResourceMappingResponse\022B\n\020resourc" +
+      "e_mapping\030\001 \001(\0132\027.policy.ResourceMapping" +
+      "R\017resourceMapping\"\247\001\n\034CreateResourceMapp" +
+      "ingRequest\0224\n\022attribute_value_id\030\001 \001(\tB\006" +
+      "\272H\003\310\001\001R\020attributeValueId\022\034\n\005terms\030\002 \003(\tB" +
+      "\006\272H\003\310\001\001R\005terms\0223\n\010metadata\030d \001(\0132\027.commo" +
+      "n.MetadataMutableR\010metadata\"c\n\035CreateRes" +
       "ourceMappingResponse\022B\n\020resource_mapping" +
       "\030\001 \001(\0132\027.policy.ResourceMappingR\017resourc" +
-      "eMapping2\320\006\n\026ResourceMappingService\022\235\001\n\024" +
-      "ListResourceMappings\0223.policy.resourcema" +
-      "pping.ListResourceMappingsRequest\0324.poli" +
-      "cy.resourcemapping.ListResourceMappingsR" +
-      "esponse\"\032\202\323\344\223\002\024\022\022/resource-mappings\022\234\001\n\022" +
-      "GetResourceMapping\0221.policy.resourcemapp" +
-      "ing.GetResourceMappingRequest\0322.policy.r" +
-      "esourcemapping.GetResourceMappingRespons" +
-      "e\"\037\202\323\344\223\002\031\022\027/resource-mappings/{id}\022\243\001\n\025C" +
-      "reateResourceMapping\0224.policy.resourcema" +
-      "pping.CreateResourceMappingRequest\0325.pol" +
-      "icy.resourcemapping.CreateResourceMappin" +
-      "gResponse\"\035\202\323\344\223\002\027\"\022/resource-mappings:\001*" +
-      "\022\250\001\n\025UpdateResourceMapping\0224.policy.reso" +
-      "urcemapping.UpdateResourceMappingRequest" +
-      "\0325.policy.resourcemapping.UpdateResource" +
-      "MappingResponse\"\"\202\323\344\223\002\034\"\027/resource-mappi" +
-      "ngs/{id}:\001*\022\245\001\n\025DeleteResourceMapping\0224." +
-      "policy.resourcemapping.DeleteResourceMap" +
-      "pingRequest\0325.policy.resourcemapping.Del" +
-      "eteResourceMappingResponse\"\037\202\323\344\223\002\031*\027/res" +
-      "ource-mappings/{id}B\373\001\n*io.opentdf.platf" +
-      "orm.policy.resourcemappingB\024ResourceMapp" +
-      "ingProtoP\001Z>github.com/opentdf/platform/" +
-      "protocol/go/policy/resourcemapping\242\002\003PRX" +
-      "\252\002\026Policy.Resourcemapping\312\002\026Policy\\Resou" +
-      "rcemapping\342\002\"Policy\\Resourcemapping\\GPBM" +
-      "etadata\352\002\027Policy::Resourcemappingb\006proto" +
-      "3"
+      "eMapping\"\205\002\n\034UpdateResourceMappingReques" +
+      "t\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\022,\n\022attribute_v" +
+      "alue_id\030\004 \001(\tR\020attributeValueId\022\024\n\005terms" +
+      "\030\005 \003(\tR\005terms\0223\n\010metadata\030d \001(\0132\027.common" +
+      ".MetadataMutableR\010metadata\022T\n\030metadata_u" +
+      "pdate_behavior\030e \001(\0162\032.common.MetadataUp" +
+      "dateEnumR\026metadataUpdateBehavior\"c\n\035Upda" +
+      "teResourceMappingResponse\022B\n\020resource_ma" +
+      "pping\030\001 \001(\0132\027.policy.ResourceMappingR\017re" +
+      "sourceMapping\"6\n\034DeleteResourceMappingRe" +
+      "quest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"c\n\035DeleteR" +
+      "esourceMappingResponse\022B\n\020resource_mappi" +
+      "ng\030\001 \001(\0132\027.policy.ResourceMappingR\017resou" +
+      "rceMapping2\320\006\n\026ResourceMappingService\022\235\001" +
+      "\n\024ListResourceMappings\0223.policy.resource" +
+      "mapping.ListResourceMappingsRequest\0324.po" +
+      "licy.resourcemapping.ListResourceMapping" +
+      "sResponse\"\032\202\323\344\223\002\024\022\022/resource-mappings\022\234\001" +
+      "\n\022GetResourceMapping\0221.policy.resourcema" +
+      "pping.GetResourceMappingRequest\0322.policy" +
+      ".resourcemapping.GetResourceMappingRespo" +
+      "nse\"\037\202\323\344\223\002\031\022\027/resource-mappings/{id}\022\243\001\n" +
+      "\025CreateResourceMapping\0224.policy.resource" +
+      "mapping.CreateResourceMappingRequest\0325.p" +
+      "olicy.resourcemapping.CreateResourceMapp" +
+      "ingResponse\"\035\202\323\344\223\002\027\"\022/resource-mappings:" +
+      "\001*\022\250\001\n\025UpdateResourceMapping\0224.policy.re" +
+      "sourcemapping.UpdateResourceMappingReque" +
+      "st\0325.policy.resourcemapping.UpdateResour" +
+      "ceMappingResponse\"\"\202\323\344\223\002\034\"\027/resource-map" +
+      "pings/{id}:\001*\022\245\001\n\025DeleteResourceMapping\022" +
+      "4.policy.resourcemapping.DeleteResourceM" +
+      "appingRequest\0325.policy.resourcemapping.D" +
+      "eleteResourceMappingResponse\"\037\202\323\344\223\002\031*\027/r" +
+      "esource-mappings/{id}B\373\001\n*io.opentdf.pla" +
+      "tform.policy.resourcemappingB\024ResourceMa" +
+      "ppingProtoP\001Z>github.com/opentdf/platfor" +
+      "m/protocol/go/policy/resourcemapping\242\002\003P" +
+      "RX\252\002\026Policy.Resourcemapping\312\002\026Policy\\Res" +
+      "ourcemapping\342\002\"Policy\\Resourcemapping\\GP" +
+      "BMetadata\352\002\027Policy::Resourcemappingb\006pro" +
+      "to3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -141,7 +141,7 @@ public final class ResourceMappingProto {
           build.buf.validate.ValidateProto.getDescriptor(),
           com.google.api.AnnotationsProto.getDescriptor(),
           io.opentdf.platform.common.CommonProto.getDescriptor(),
-          io.opentdf.platform.policy.TypesProto.getDescriptor(),
+          io.opentdf.platform.policy.ObjectsProto.getDescriptor(),
         });
     internal_static_policy_resourcemapping_ListResourceMappingsRequest_descriptor =
       getDescriptor().getMessageTypes().get(0);
@@ -212,7 +212,7 @@ public final class ResourceMappingProto {
     build.buf.validate.ValidateProto.getDescriptor();
     com.google.api.AnnotationsProto.getDescriptor();
     io.opentdf.platform.common.CommonProto.getDescriptor();
-    io.opentdf.platform.policy.TypesProto.getDescriptor();
+    io.opentdf.platform.policy.ObjectsProto.getDescriptor();
   }
 
   // @@protoc_insertion_point(outer_class_scope)

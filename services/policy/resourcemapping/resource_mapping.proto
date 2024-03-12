@@ -6,7 +6,7 @@ import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
 
 import "common/common.proto";
-import "policy/types.proto";
+import "policy/objects.proto";
 
 /*
    Resource Mappings

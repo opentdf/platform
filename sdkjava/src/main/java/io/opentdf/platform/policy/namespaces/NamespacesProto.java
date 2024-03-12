@@ -77,64 +77,64 @@ public final class NamespacesProto {
       "\n\"policy/namespaces/namespaces.proto\022\021po" +
       "licy.namespaces\032\033buf/validate/validate.p" +
       "roto\032\034google/api/annotations.proto\032\023comm" +
-      "on/common.proto\032\022policy/types.proto\"-\n\023G" +
-      "etNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002" +
-      "id\"G\n\024GetNamespaceResponse\022/\n\tnamespace\030" +
-      "\001 \001(\0132\021.policy.NamespaceR\tnamespace\"F\n\025L" +
-      "istNamespacesRequest\022-\n\005state\030\001 \001(\0162\027.co" +
-      "mmon.ActiveStateEnumR\005state\"K\n\026ListNames" +
-      "pacesResponse\0221\n\nnamespaces\030\001 \003(\0132\021.poli" +
-      "cy.NamespaceR\nnamespaces\"\307\004\n\026CreateNames" +
-      "paceRequest\022\367\003\n\004name\030\001 \001(\tB\342\003\272H\336\003r\003\030\375\001\272\001" +
-      "\322\003\n\020namespace_format\022\352\002Namespace must be" +
-      " a valid hostname. It should include at " +
-      "least one dot, with each segment (label)" +
-      " starting and ending with an alphanumeri" +
-      "c character. Each label must be 1 to 63 " +
-      "characters long, allowing hyphens but no" +
-      "t as the first or last character. The to" +
-      "p-level domain (the last segment after t" +
-      "he final dot) must consist of at least t" +
-      "wo alphabetic characters.\032Qthis.matches(" +
-      "\'^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA" +
-      "-Z0-9])?\\\\.)+[a-zA-Z]{2,}$\')\310\001\001R\004name\0223\n" +
-      "\010metadata\030d \001(\0132\027.common.MetadataMutable" +
-      "R\010metadata\"J\n\027CreateNamespaceResponse\022/\n" +
-      "\tnamespace\030\001 \001(\0132\021.policy.NamespaceR\tnam" +
-      "espace\"\273\001\n\026UpdateNamespaceRequest\022\026\n\002id\030" +
-      "\001 \001(\tB\006\272H\003\310\001\001R\002id\0223\n\010metadata\030d \001(\0132\027.co" +
-      "mmon.MetadataMutableR\010metadata\022T\n\030metada" +
-      "ta_update_behavior\030e \001(\0162\032.common.Metada" +
-      "taUpdateEnumR\026metadataUpdateBehavior\"J\n\027" +
-      "UpdateNamespaceResponse\022/\n\tnamespace\030\001 \001" +
-      "(\0132\021.policy.NamespaceR\tnamespace\"4\n\032Deac" +
-      "tivateNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310" +
-      "\001\001R\002id\"\035\n\033DeactivateNamespaceResponse2\336\005" +
-      "\n\020NamespaceService\022\204\001\n\014GetNamespace\022&.po" +
-      "licy.namespaces.GetNamespaceRequest\032\'.po" +
-      "licy.namespaces.GetNamespaceResponse\"#\202\323" +
-      "\344\223\002\035\022\033/attributes/namespaces/{id}\022\205\001\n\016Li" +
-      "stNamespaces\022(.policy.namespaces.ListNam" +
-      "espacesRequest\032).policy.namespaces.ListN" +
-      "amespacesResponse\"\036\202\323\344\223\002\030\022\026/attributes/n" +
-      "amespaces\022\213\001\n\017CreateNamespace\022).policy.n" +
-      "amespaces.CreateNamespaceRequest\032*.polic" +
-      "y.namespaces.CreateNamespaceResponse\"!\202\323" +
-      "\344\223\002\033\"\026/attributes/namespaces:\001*\022\220\001\n\017Upda" +
-      "teNamespace\022).policy.namespaces.UpdateNa" +
-      "mespaceRequest\032*.policy.namespaces.Updat" +
-      "eNamespaceResponse\"&\202\323\344\223\002 2\033/attributes/" +
-      "namespaces/{id}:\001*\022\231\001\n\023DeactivateNamespa" +
-      "ce\022-.policy.namespaces.DeactivateNamespa" +
-      "ceRequest\032..policy.namespaces.Deactivate" +
-      "NamespaceResponse\"#\202\323\344\223\002\035*\033/attributes/n" +
-      "amespaces/{id}B\330\001\n%io.opentdf.platform.p" +
-      "olicy.namespacesB\017NamespacesProtoP\001Z9git" +
-      "hub.com/opentdf/platform/protocol/go/pol" +
-      "icy/namespaces\242\002\003PNX\252\002\021Policy.Namespaces" +
-      "\312\002\021Policy\\Namespaces\342\002\035Policy\\Namespaces" +
-      "\\GPBMetadata\352\002\022Policy::Namespacesb\006proto" +
-      "3"
+      "on/common.proto\032\024policy/objects.proto\"-\n" +
+      "\023GetNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001" +
+      "R\002id\"G\n\024GetNamespaceResponse\022/\n\tnamespac" +
+      "e\030\001 \001(\0132\021.policy.NamespaceR\tnamespace\"F\n" +
+      "\025ListNamespacesRequest\022-\n\005state\030\001 \001(\0162\027." +
+      "common.ActiveStateEnumR\005state\"K\n\026ListNam" +
+      "espacesResponse\0221\n\nnamespaces\030\001 \003(\0132\021.po" +
+      "licy.NamespaceR\nnamespaces\"\307\004\n\026CreateNam" +
+      "espaceRequest\022\367\003\n\004name\030\001 \001(\tB\342\003\272H\336\003r\003\030\375\001" +
+      "\272\001\322\003\n\020namespace_format\022\352\002Namespace must " +
+      "be a valid hostname. It should include a" +
+      "t least one dot, with each segment (labe" +
+      "l) starting and ending with an alphanume" +
+      "ric character. Each label must be 1 to 6" +
+      "3 characters long, allowing hyphens but " +
+      "not as the first or last character. The " +
+      "top-level domain (the last segment after" +
+      " the final dot) must consist of at least" +
+      " two alphabetic characters.\032Qthis.matche" +
+      "s(\'^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-" +
+      "zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$\')\310\001\001R\004name\022" +
+      "3\n\010metadata\030d \001(\0132\027.common.MetadataMutab" +
+      "leR\010metadata\"J\n\027CreateNamespaceResponse\022" +
+      "/\n\tnamespace\030\001 \001(\0132\021.policy.NamespaceR\tn" +
+      "amespace\"\273\001\n\026UpdateNamespaceRequest\022\026\n\002i" +
+      "d\030\001 \001(\tB\006\272H\003\310\001\001R\002id\0223\n\010metadata\030d \001(\0132\027." +
+      "common.MetadataMutableR\010metadata\022T\n\030meta" +
+      "data_update_behavior\030e \001(\0162\032.common.Meta" +
+      "dataUpdateEnumR\026metadataUpdateBehavior\"J" +
+      "\n\027UpdateNamespaceResponse\022/\n\tnamespace\030\001" +
+      " \001(\0132\021.policy.NamespaceR\tnamespace\"4\n\032De" +
+      "activateNamespaceRequest\022\026\n\002id\030\001 \001(\tB\006\272H" +
+      "\003\310\001\001R\002id\"\035\n\033DeactivateNamespaceResponse2" +
+      "\336\005\n\020NamespaceService\022\204\001\n\014GetNamespace\022&." +
+      "policy.namespaces.GetNamespaceRequest\032\'." +
+      "policy.namespaces.GetNamespaceResponse\"#" +
+      "\202\323\344\223\002\035\022\033/attributes/namespaces/{id}\022\205\001\n\016" +
+      "ListNamespaces\022(.policy.namespaces.ListN" +
+      "amespacesRequest\032).policy.namespaces.Lis" +
+      "tNamespacesResponse\"\036\202\323\344\223\002\030\022\026/attributes" +
+      "/namespaces\022\213\001\n\017CreateNamespace\022).policy" +
+      ".namespaces.CreateNamespaceRequest\032*.pol" +
+      "icy.namespaces.CreateNamespaceResponse\"!" +
+      "\202\323\344\223\002\033\"\026/attributes/namespaces:\001*\022\220\001\n\017Up" +
+      "dateNamespace\022).policy.namespaces.Update" +
+      "NamespaceRequest\032*.policy.namespaces.Upd" +
+      "ateNamespaceResponse\"&\202\323\344\223\002 2\033/attribute" +
+      "s/namespaces/{id}:\001*\022\231\001\n\023DeactivateNames" +
+      "pace\022-.policy.namespaces.DeactivateNames" +
+      "paceRequest\032..policy.namespaces.Deactiva" +
+      "teNamespaceResponse\"#\202\323\344\223\002\035*\033/attributes" +
+      "/namespaces/{id}B\330\001\n%io.opentdf.platform" +
+      ".policy.namespacesB\017NamespacesProtoP\001Z9g" +
+      "ithub.com/opentdf/platform/protocol/go/p" +
+      "olicy/namespaces\242\002\003PNX\252\002\021Policy.Namespac" +
+      "es\312\002\021Policy\\Namespaces\342\002\035Policy\\Namespac" +
+      "es\\GPBMetadata\352\002\022Policy::Namespacesb\006pro" +
+      "to3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -142,7 +142,7 @@ public final class NamespacesProto {
           build.buf.validate.ValidateProto.getDescriptor(),
           com.google.api.AnnotationsProto.getDescriptor(),
           io.opentdf.platform.common.CommonProto.getDescriptor(),
-          io.opentdf.platform.policy.TypesProto.getDescriptor(),
+          io.opentdf.platform.policy.ObjectsProto.getDescriptor(),
         });
     internal_static_policy_namespaces_GetNamespaceRequest_descriptor =
       getDescriptor().getMessageTypes().get(0);
@@ -213,7 +213,7 @@ public final class NamespacesProto {
     build.buf.validate.ValidateProto.getDescriptor();
     com.google.api.AnnotationsProto.getDescriptor();
     io.opentdf.platform.common.CommonProto.getDescriptor();
-    io.opentdf.platform.policy.TypesProto.getDescriptor();
+    io.opentdf.platform.policy.ObjectsProto.getDescriptor();
   }
 
   // @@protoc_insertion_point(outer_class_scope)

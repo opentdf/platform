@@ -5,7 +5,7 @@ package authorization;
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 
-import "policy/types.proto";
+import "policy/objects.proto";
 
 // PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {

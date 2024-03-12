@@ -280,7 +280,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"'metadata', vmv.metadata ," +
 		"'attribute_id', vmv.attribute_definition_id "
 	if opts.withFqn {
-		members += ", 'fqn', " + fqnT.Field("fqn")
+		members += ", 'fqn', " + "fqn1.fqn"
 	}
 	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
@@ -292,7 +292,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, Tables.AttrFqn.Field("fqn"))
+		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
 	}
 
 	sb := db.NewStatementBuilder().
@@ -306,14 +306,15 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	sb = sb.JoinClause("FULL OUTER JOIN " + t.Name() + " vmv ON vm.member_id = vmv.id")
 
 	if opts.withFqn {
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + "av.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
 
 	return sb.Where(sq.Eq{
 		"av.id": id}).
 		GroupBy(
 			"av.id",
-			fqnT.Field("fqn"),
+			// fqnT.Field("fqn"),
 		).
 		ToSql()
 }

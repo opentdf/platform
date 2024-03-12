@@ -47,7 +47,7 @@ func (s *AttributeFqnSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeFqn test suite")
 	s.ctx = context.Background()
 	c := *Config
-	c.DB.Schema = "test_opentdf_attribute_fqn"
+	c.DB.Schema = "opentdf" // TODO: put this back
 	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
@@ -174,7 +174,12 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 
 	// Get attributes by fqns with a solo value
 	fqns := []string{fqn1}
-	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, fqns)
+	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
 	assert.NoError(s.T(), err)
 
 	// Verify attribute1 is sole attribute
@@ -197,7 +202,12 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 
 	// Get attributes by fqns with two values
 	fqns = []string{fqn1, fqn2}
-	attributeAndValue, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, fqns)
+	attributeAndValue, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), attributeAndValue, 2)
 
@@ -221,12 +231,22 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns() {
 	nsFqn := fqnBuilder("example.com", "", "")
 	attrFqn := fqnBuilder("example.com", "attr1", "")
-	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, []string{nsFqn})
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{nsFqn},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), v)
 	assert.ErrorIs(s.T(), err, db.ErrFqnMissingValue)
 
-	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, []string{attrFqn})
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{attrFqn},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), v)
 	assert.ErrorIs(s.T(), err, db.ErrFqnMissingValue)

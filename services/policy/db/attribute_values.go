@@ -16,8 +16,15 @@ import (
 )
 
 type attributeValueSelectOptions struct {
-	withFqn bool
 	state   string
+	withFqn bool
+	// withKeyAccessGrants  bool
+	// withSubjectMappings  bool
+	// withResourceMappings bool
+
+	// withAttribute                bool
+	// withAttributeKeyAccessGrants bool
+	// withAttributeNamespace       bool
 }
 
 func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*policy.Value, error) {

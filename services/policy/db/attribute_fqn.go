@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -160,9 +161,12 @@ func filterValues(values []*policy.Value, fqn string) *policy.Value {
 	return nil
 }
 
-func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []string) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(fqns))
-	for _, fqn := range fqns {
+func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	if r.Fqns == nil || r.WithValue == nil {
+		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
+	}
+	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(r.Fqns))
+	for _, fqn := range r.Fqns {
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
 		if !strings.Contains(fqn, "/value/") {
 			return nil, db.ErrFqnMissingValue

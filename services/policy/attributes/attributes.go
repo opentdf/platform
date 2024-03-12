@@ -80,7 +80,7 @@ func (s *AttributesService) GetValuesByFqns(ctx context.Context,
 ) (*attributes.GetAttributeValuesByFqnsResponse, error) {
 	rsp := &attributes.GetAttributeValuesByFqnsResponse{}
 
-	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req.Fqns)
+	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Fqns)))
 	}

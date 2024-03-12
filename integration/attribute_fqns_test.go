@@ -122,6 +122,8 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 	s.Equal(attr.Id, valueFixture.AttributeDefinitionId)
 	s.Equal(av.Id, valueFixture.Id)
 	s.Equal(av.Value, valueFixture.Value)
+	// the value should contain subject mappings
+	s.GreaterOrEqual(len(av.SubjectMappings), 3)
 }
 
 // Test Get one attribute by the FQN of the attribute definition

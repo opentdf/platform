@@ -68,7 +68,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	avt := Tables.AttributeValues
 	fqnt := Tables.AttrFqn
 	smT := Tables.SubjectMappings
-	// scsT := Tables.SubjectConditionSet
+	scsT := Tables.SubjectConditionSet
 	// akt := Tables.AttributeKeyAccessGrants
 	// avkt := Tables.AttributeKeyAccessGrants
 	selectFields := []string{
@@ -88,20 +88,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'members', " + avt.Field("members") + "," +
 			"'active', " + avt.Field("active")
 
-		// include the subject mapping / subject condition set for the value
+		// include the subject mapping / subject condition set for each value
 		if opts.withOneValueByFqn {
-			valueSelect += ", 'subject_mapping', sm_by_value"
-			// valueSelect += ", 'fqn', " + fqnt.Field("fqn") + ", " +
-			// 	"'subject_mapping', JSON_BUILD_OBJECT(" +
-			// 	"'id', " + smT.Field("id") + ", " +
-			// 	"'actions', " + smT.Field("actions") + ", " +
-			// 	"'metadata', " + smT.Field("metadata") + ", " +
-			// 	"'subject_condition_set', JSON_BUILD_OBJECT(" +
-			// 	"'id', " + scsT.Field("id") + ", " +
-			// 	"'metadata', " + scsT.Field("metadata") + ", " +
-			// 	"'subject_sets', " + scsT.Field("conditions") +
-			// 	")" +
-			// 	")"
+			valueSelect += ", 'fqn', " + fqnt.Field("fqn") + ", " +
+				"'subject_mappings', sm_arr"
 		}
 		valueSelect += ")) AS values"
 		selectFields = append(selectFields, valueSelect)
@@ -145,23 +135,30 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			" AND " + fqnt.Field("value_id") + " IS NULL")
 	}
 	if opts.withOneValueByFqn {
-		sm := subjectMappingSelect().
-			From(smT.Name()).
-			Where(sq.Eq{smT.Field("attribute_value_id"): fqnt.Field("value_id")}).
-			LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
-				" AND " + fqnt.Field("value_id") + " = " + avt.Field("id")).
-			LeftJoin(t.Name() + " ON " + t.Field("id") + " = " + avt.Field("attribute_definition_id"))
-		sb = sb.LeftJoin(fqnt.Name()+" ON "+fqnt.Field("attribute_id")+" = "+t.Field("id")+
-			" AND "+fqnt.Field("value_id")+" = "+avt.Field("id")).
-			FromSelect(sm, "sm_by_value")
+		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
+			" AND " + fqnt.Field("value_id") + " = " + avt.Field("id")).
+			LeftJoin("(SELECT " +
+				avt.Field("id") + " AS av_id," +
+				"JSON_AGG(JSON_BUILD_OBJECT(" +
+				"'id', " + smT.Field("id") + "," +
+				"'actions', " + smT.Field("actions") + "," +
+				"'metadata', " + smT.Field("metadata") + "," +
+				"'subject_condition_set', JSON_BUILD_OBJECT(" +
+				"'id', " + scsT.Field("id") + "," +
+				"'metadata', " + scsT.Field("metadata") + "," +
+				"'subject_sets', " + scsT.Field("condition") +
+				")" +
+				")) AS sm_arr " +
+				"FROM " + smT.Name() + " " +
+				"LEFT JOIN " + avt.Name() + " ON " + smT.Field("attribute_value_id") + " = " + avt.Field("id") + " " +
+				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
+				"GROUP BY " + avt.Field("id") + ") AS sub_sm ON " + avt.Field("id") + " = sub_sm.av_id")
 	}
-	currSql, args, _ := sb.ToSql()
-	fmt.Printf("here\n%s\n%+v", currSql, args)
 
 	g := []string{t.Field("id"), nt.Field("name")}
 
 	if opts.withFqn {
-		g = append(g, Tables.AttrFqn.Field("fqn"))
+		g = append(g, fqnt.Field("fqn"))
 	}
 
 	return sb.GroupBy(g...)
@@ -363,7 +360,6 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		opts.withFqn = true
 	}
 	sql, args, err := getAttributeByFqnSql(fqn, opts)
-	fmt.Println("\nsql", sql)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

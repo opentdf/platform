@@ -197,9 +197,38 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: "1.21.8"
           cache: false
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: deps-changed
+        with:
+          filters: |
+            examples:
+              - 'examplesk/go.*'
+            platform:
+              - './go.*'
+            sdk:
+              - 'sdk/go.*'
       - name: install go-licenses
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
-      - name: check licenses
-        run: go-licenses check --disallowed_types=forbidden --include_tests ./...
+      - name: check platform licenses
+        if: steps.deps-changed.outputs.platform == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              .
+      - name: check sdk licenses
+        if: steps.deps-changed.outputs.sdk == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              ./sdk
+      - name: check examples licenses
+        if: steps.deps-changed.outputs.examples == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              ./examples

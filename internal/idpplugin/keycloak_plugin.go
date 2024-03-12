@@ -15,11 +15,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type IdpPlugin struct {
-	connector KeyCloakConnector
-	config    KeyCloakConfg
-}
-
 type KeyCloakConfg struct {
 	Url            string `json:"url"`
 	Realm          string `json:"realm"`
@@ -32,19 +27,6 @@ type KeyCloakConfg struct {
 type KeyCloakConnector struct {
 	token  *gocloak.JWT
 	client gocloak.GoCloak
-}
-
-func NewIdpPlugin(config KeyCloakConfg, ctx context.Context) (*IdpPlugin, error) {
-	kcConnector, err := getKCClient(config, ctx)
-	if err != nil {
-		return &IdpPlugin{},
-			status.Error(codes.Internal, services.ErrCreationFailed)
-	}
-
-	plugin := new(IdpPlugin)
-	plugin.connector = *kcConnector
-	plugin.config = config
-	return plugin, nil
 }
 
 func EntityResolution(ctx context.Context,

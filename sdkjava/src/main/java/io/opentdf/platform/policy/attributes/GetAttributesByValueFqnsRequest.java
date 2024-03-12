@@ -41,11 +41,16 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.class, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.Builder.class);
   }
 
+  private int bitField0_;
   public static final int FQNS_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
   private com.google.protobuf.LazyStringArrayList fqns_ =
       com.google.protobuf.LazyStringArrayList.emptyList();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
    * @return A list containing the fqns.
    */
@@ -54,6 +59,10 @@ private static final long serialVersionUID = 0L;
     return fqns_;
   }
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
    * @return The count of fqns.
    */
@@ -61,6 +70,10 @@ private static final long serialVersionUID = 0L;
     return fqns_.size();
   }
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
    * @param index The index of the element to return.
    * @return The fqns at the given index.
@@ -69,6 +82,10 @@ private static final long serialVersionUID = 0L;
     return fqns_.get(index);
   }
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
    * @param index The index of the value to return.
    * @return The bytes of the fqns at the given index.
@@ -76,6 +93,32 @@ private static final long serialVersionUID = 0L;
   public com.google.protobuf.ByteString
       getFqnsBytes(int index) {
     return fqns_.getByteString(index);
+  }
+
+  public static final int WITH_VALUE_FIELD_NUMBER = 2;
+  private io.opentdf.platform.policy.AttributeValueSelector withValue_;
+  /**
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * @return Whether the withValue field is set.
+   */
+  @java.lang.Override
+  public boolean hasWithValue() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * @return The withValue.
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.AttributeValueSelector getWithValue() {
+    return withValue_ == null ? io.opentdf.platform.policy.AttributeValueSelector.getDefaultInstance() : withValue_;
+  }
+  /**
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.policy.AttributeValueSelectorOrBuilder getWithValueOrBuilder() {
+    return withValue_ == null ? io.opentdf.platform.policy.AttributeValueSelector.getDefaultInstance() : withValue_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -95,6 +138,9 @@ private static final long serialVersionUID = 0L;
     for (int i = 0; i < fqns_.size(); i++) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, fqns_.getRaw(i));
     }
+    if (((bitField0_ & 0x00000001) != 0)) {
+      output.writeMessage(2, getWithValue());
+    }
     getUnknownFields().writeTo(output);
   }
 
@@ -111,6 +157,10 @@ private static final long serialVersionUID = 0L;
       }
       size += dataSize;
       size += 1 * getFqnsList().size();
+    }
+    if (((bitField0_ & 0x00000001) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(2, getWithValue());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -129,6 +179,11 @@ private static final long serialVersionUID = 0L;
 
     if (!getFqnsList()
         .equals(other.getFqnsList())) return false;
+    if (hasWithValue() != other.hasWithValue()) return false;
+    if (hasWithValue()) {
+      if (!getWithValue()
+          .equals(other.getWithValue())) return false;
+    }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -143,6 +198,10 @@ private static final long serialVersionUID = 0L;
     if (getFqnsCount() > 0) {
       hash = (37 * hash) + FQNS_FIELD_NUMBER;
       hash = (53 * hash) + getFqnsList().hashCode();
+    }
+    if (hasWithValue()) {
+      hash = (37 * hash) + WITH_VALUE_FIELD_NUMBER;
+      hash = (53 * hash) + getWithValue().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -263,13 +322,19 @@ private static final long serialVersionUID = 0L;
 
     // Construct using io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.newBuilder()
     private Builder() {
-
+      maybeForceBuilderInitialization();
     }
 
     private Builder(
         com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
       super(parent);
-
+      maybeForceBuilderInitialization();
+    }
+    private void maybeForceBuilderInitialization() {
+      if (com.google.protobuf.GeneratedMessageV3
+              .alwaysUseFieldBuilders) {
+        getWithValueFieldBuilder();
+      }
     }
     @java.lang.Override
     public Builder clear() {
@@ -277,6 +342,11 @@ private static final long serialVersionUID = 0L;
       bitField0_ = 0;
       fqns_ =
           com.google.protobuf.LazyStringArrayList.emptyList();
+      withValue_ = null;
+      if (withValueBuilder_ != null) {
+        withValueBuilder_.dispose();
+        withValueBuilder_ = null;
+      }
       return this;
     }
 
@@ -314,6 +384,14 @@ private static final long serialVersionUID = 0L;
         fqns_.makeImmutable();
         result.fqns_ = fqns_;
       }
+      int to_bitField0_ = 0;
+      if (((from_bitField0_ & 0x00000002) != 0)) {
+        result.withValue_ = withValueBuilder_ == null
+            ? withValue_
+            : withValueBuilder_.build();
+        to_bitField0_ |= 0x00000001;
+      }
+      result.bitField0_ |= to_bitField0_;
     }
 
     @java.lang.Override
@@ -370,6 +448,9 @@ private static final long serialVersionUID = 0L;
         }
         onChanged();
       }
+      if (other.hasWithValue()) {
+        mergeWithValue(other.getWithValue());
+      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -402,6 +483,13 @@ private static final long serialVersionUID = 0L;
               fqns_.add(s);
               break;
             } // case 10
+            case 18: {
+              input.readMessage(
+                  getWithValueFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000002;
+              break;
+            } // case 18
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -428,6 +516,10 @@ private static final long serialVersionUID = 0L;
       bitField0_ |= 0x00000001;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @return A list containing the fqns.
      */
@@ -437,6 +529,10 @@ private static final long serialVersionUID = 0L;
       return fqns_;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @return The count of fqns.
      */
@@ -444,6 +540,10 @@ private static final long serialVersionUID = 0L;
       return fqns_.size();
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @param index The index of the element to return.
      * @return The fqns at the given index.
@@ -452,6 +552,10 @@ private static final long serialVersionUID = 0L;
       return fqns_.get(index);
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @param index The index of the value to return.
      * @return The bytes of the fqns at the given index.
@@ -461,6 +565,10 @@ private static final long serialVersionUID = 0L;
       return fqns_.getByteString(index);
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @param index The index to set the value at.
      * @param value The fqns to set.
@@ -476,6 +584,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @param value The fqns to add.
      * @return This builder for chaining.
@@ -490,6 +602,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @param values The fqns to add.
      * @return This builder for chaining.
@@ -504,6 +620,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
@@ -515,6 +635,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
      * @param value The bytes of the fqns to add.
      * @return This builder for chaining.
@@ -528,6 +652,127 @@ private static final long serialVersionUID = 0L;
       bitField0_ |= 0x00000001;
       onChanged();
       return this;
+    }
+
+    private io.opentdf.platform.policy.AttributeValueSelector withValue_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.policy.AttributeValueSelector, io.opentdf.platform.policy.AttributeValueSelector.Builder, io.opentdf.platform.policy.AttributeValueSelectorOrBuilder> withValueBuilder_;
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * @return Whether the withValue field is set.
+     */
+    public boolean hasWithValue() {
+      return ((bitField0_ & 0x00000002) != 0);
+    }
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * @return The withValue.
+     */
+    public io.opentdf.platform.policy.AttributeValueSelector getWithValue() {
+      if (withValueBuilder_ == null) {
+        return withValue_ == null ? io.opentdf.platform.policy.AttributeValueSelector.getDefaultInstance() : withValue_;
+      } else {
+        return withValueBuilder_.getMessage();
+      }
+    }
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     */
+    public Builder setWithValue(io.opentdf.platform.policy.AttributeValueSelector value) {
+      if (withValueBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        withValue_ = value;
+      } else {
+        withValueBuilder_.setMessage(value);
+      }
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     */
+    public Builder setWithValue(
+        io.opentdf.platform.policy.AttributeValueSelector.Builder builderForValue) {
+      if (withValueBuilder_ == null) {
+        withValue_ = builderForValue.build();
+      } else {
+        withValueBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     */
+    public Builder mergeWithValue(io.opentdf.platform.policy.AttributeValueSelector value) {
+      if (withValueBuilder_ == null) {
+        if (((bitField0_ & 0x00000002) != 0) &&
+          withValue_ != null &&
+          withValue_ != io.opentdf.platform.policy.AttributeValueSelector.getDefaultInstance()) {
+          getWithValueBuilder().mergeFrom(value);
+        } else {
+          withValue_ = value;
+        }
+      } else {
+        withValueBuilder_.mergeFrom(value);
+      }
+      if (withValue_ != null) {
+        bitField0_ |= 0x00000002;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     */
+    public Builder clearWithValue() {
+      bitField0_ = (bitField0_ & ~0x00000002);
+      withValue_ = null;
+      if (withValueBuilder_ != null) {
+        withValueBuilder_.dispose();
+        withValueBuilder_ = null;
+      }
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     */
+    public io.opentdf.platform.policy.AttributeValueSelector.Builder getWithValueBuilder() {
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return getWithValueFieldBuilder().getBuilder();
+    }
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     */
+    public io.opentdf.platform.policy.AttributeValueSelectorOrBuilder getWithValueOrBuilder() {
+      if (withValueBuilder_ != null) {
+        return withValueBuilder_.getMessageOrBuilder();
+      } else {
+        return withValue_ == null ?
+            io.opentdf.platform.policy.AttributeValueSelector.getDefaultInstance() : withValue_;
+      }
+    }
+    /**
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.policy.AttributeValueSelector, io.opentdf.platform.policy.AttributeValueSelector.Builder, io.opentdf.platform.policy.AttributeValueSelectorOrBuilder> 
+        getWithValueFieldBuilder() {
+      if (withValueBuilder_ == null) {
+        withValueBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.policy.AttributeValueSelector, io.opentdf.platform.policy.AttributeValueSelector.Builder, io.opentdf.platform.policy.AttributeValueSelectorOrBuilder>(
+                getWithValue(),
+                getParentForChildren(),
+                isClean());
+        withValue_ = null;
+      }
+      return withValueBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

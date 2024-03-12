@@ -454,6 +454,53 @@
         
           
           <li>
+            <a href="#policy%2fselectors.proto">policy/selectors.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#policy.AttributeDefinitionSelector"><span class="badge">M</span>AttributeDefinitionSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.AttributeDefinitionSelector.NamespaceSelector"><span class="badge">M</span>AttributeDefinitionSelector.NamespaceSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.AttributeDefinitionSelector.ValueSelector"><span class="badge">M</span>AttributeDefinitionSelector.ValueSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.AttributeNamespaceSelector"><span class="badge">M</span>AttributeNamespaceSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.AttributeNamespaceSelector.AttributeSelector"><span class="badge">M</span>AttributeNamespaceSelector.AttributeSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector"><span class="badge">M</span>AttributeNamespaceSelector.AttributeSelector.ValueSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.AttributeValueSelector"><span class="badge">M</span>AttributeValueSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.AttributeValueSelector.AttributeSelector"><span class="badge">M</span>AttributeValueSelector.AttributeSelector</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.AttributeValueSelector.AttributeSelector.NamespaceSelector"><span class="badge">M</span>AttributeValueSelector.AttributeSelector.NamespaceSelector</a>
+                </li>
+              
+              
+              
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#policy%2fattributes%2fattributes.proto">policy/attributes/attributes.proto</a>
             <ul>
               
@@ -709,53 +756,6 @@
                 <li>
                   <a href="#policy.resourcemapping.ResourceMappingService"><span class="badge">S</span>ResourceMappingService</a>
                 </li>
-              
-            </ul>
-          </li>
-        
-          
-          <li>
-            <a href="#policy%2fselectors.proto">policy/selectors.proto</a>
-            <ul>
-              
-                <li>
-                  <a href="#policy.AttributeDefinitionSelector"><span class="badge">M</span>AttributeDefinitionSelector</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.AttributeDefinitionSelector.NamespaceSelector"><span class="badge">M</span>AttributeDefinitionSelector.NamespaceSelector</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.AttributeDefinitionSelector.ValueSelector"><span class="badge">M</span>AttributeDefinitionSelector.ValueSelector</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.AttributeNamespaceSelector"><span class="badge">M</span>AttributeNamespaceSelector</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.AttributeNamespaceSelector.AttributeSelector"><span class="badge">M</span>AttributeNamespaceSelector.AttributeSelector</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector"><span class="badge">M</span>AttributeNamespaceSelector.AttributeSelector.ValueSelector</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.AttributeValueSelector"><span class="badge">M</span>AttributeValueSelector</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.AttributeValueSelector.AttributeSelector"><span class="badge">M</span>AttributeValueSelector.AttributeSelector</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.AttributeValueSelector.AttributeSelector.NamespaceSelector"><span class="badge">M</span>AttributeValueSelector.AttributeSelector.NamespaceSelector</a>
-                </li>
-              
-              
-              
               
             </ul>
           </li>
@@ -3027,6 +3027,279 @@
     
       
       <div class="file-heading">
+        <h2 id="policy/selectors.proto">policy/selectors.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="policy.AttributeDefinitionSelector">AttributeDefinitionSelector</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>with_key_access_grants</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_namespace</td>
+                  <td><a href="#policy.AttributeDefinitionSelector.NamespaceSelector">AttributeDefinitionSelector.NamespaceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_values</td>
+                  <td><a href="#policy.AttributeDefinitionSelector.ValueSelector">AttributeDefinitionSelector.ValueSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.AttributeDefinitionSelector.NamespaceSelector">AttributeDefinitionSelector.NamespaceSelector</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="policy.AttributeDefinitionSelector.ValueSelector">AttributeDefinitionSelector.ValueSelector</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>with_key_access_grants</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_subject_maps</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_resource_maps</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.AttributeNamespaceSelector">AttributeNamespaceSelector</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>with_attributes</td>
+                  <td><a href="#policy.AttributeNamespaceSelector.AttributeSelector">AttributeNamespaceSelector.AttributeSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.AttributeNamespaceSelector.AttributeSelector">AttributeNamespaceSelector.AttributeSelector</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>with_key_access_grants</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_values</td>
+                  <td><a href="#policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector">AttributeNamespaceSelector.AttributeSelector.ValueSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector">AttributeNamespaceSelector.AttributeSelector.ValueSelector</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>with_key_access_grants</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_subject_maps</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_resource_maps</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.AttributeValueSelector">AttributeValueSelector</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>with_key_access_grants</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_subject_maps</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_resource_maps</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_attribute</td>
+                  <td><a href="#policy.AttributeValueSelector.AttributeSelector">AttributeValueSelector.AttributeSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.AttributeValueSelector.AttributeSelector">AttributeValueSelector.AttributeSelector</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>with_key_access_grants</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_namespace</td>
+                  <td><a href="#policy.AttributeValueSelector.AttributeSelector.NamespaceSelector">AttributeValueSelector.AttributeSelector.NamespaceSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.AttributeValueSelector.AttributeSelector.NamespaceSelector">AttributeValueSelector.AttributeSelector.NamespaceSelector</h3>
+        <p></p>
+
+        
+
+        
+      
+
+      
+
+      
+
+      
+    
+      
+      <div class="file-heading">
         <h2 id="policy/attributes/attributes.proto">policy/attributes/attributes.proto</h2><a href="#title">Top</a>
       </div>
       <p></p>
@@ -3503,6 +3776,13 @@
                   <td>fqns</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_value</td>
+                  <td><a href="#policy.AttributeValueSelector">policy.AttributeValueSelector</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -5183,279 +5463,6 @@ Response Example:
           </table>
           
         
-    
-      
-      <div class="file-heading">
-        <h2 id="policy/selectors.proto">policy/selectors.proto</h2><a href="#title">Top</a>
-      </div>
-      <p></p>
-
-      
-        <h3 id="policy.AttributeDefinitionSelector">AttributeDefinitionSelector</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>with_key_access_grants</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_namespace</td>
-                  <td><a href="#policy.AttributeDefinitionSelector.NamespaceSelector">AttributeDefinitionSelector.NamespaceSelector</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_values</td>
-                  <td><a href="#policy.AttributeDefinitionSelector.ValueSelector">AttributeDefinitionSelector.ValueSelector</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.AttributeDefinitionSelector.NamespaceSelector">AttributeDefinitionSelector.NamespaceSelector</h3>
-        <p></p>
-
-        
-
-        
-      
-        <h3 id="policy.AttributeDefinitionSelector.ValueSelector">AttributeDefinitionSelector.ValueSelector</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>with_key_access_grants</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_subject_maps</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_resource_maps</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.AttributeNamespaceSelector">AttributeNamespaceSelector</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>with_attributes</td>
-                  <td><a href="#policy.AttributeNamespaceSelector.AttributeSelector">AttributeNamespaceSelector.AttributeSelector</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.AttributeNamespaceSelector.AttributeSelector">AttributeNamespaceSelector.AttributeSelector</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>with_key_access_grants</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_values</td>
-                  <td><a href="#policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector">AttributeNamespaceSelector.AttributeSelector.ValueSelector</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector">AttributeNamespaceSelector.AttributeSelector.ValueSelector</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>with_key_access_grants</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_subject_maps</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_resource_maps</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.AttributeValueSelector">AttributeValueSelector</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>with_key_access_grants</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_subject_maps</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_resource_maps</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_attribute</td>
-                  <td><a href="#policy.AttributeValueSelector.AttributeSelector">AttributeValueSelector.AttributeSelector</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.AttributeValueSelector.AttributeSelector">AttributeValueSelector.AttributeSelector</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>with_key_access_grants</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_namespace</td>
-                  <td><a href="#policy.AttributeValueSelector.AttributeSelector.NamespaceSelector">AttributeValueSelector.AttributeSelector.NamespaceSelector</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.AttributeValueSelector.AttributeSelector.NamespaceSelector">AttributeValueSelector.AttributeSelector.NamespaceSelector</h3>
-        <p></p>
-
-        
-
-        
-      
-
-      
-
-      
-
-      
     
       
       <div class="file-heading">

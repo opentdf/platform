@@ -9,27 +9,58 @@ public interface GetAttributesByValueFqnsRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
    * @return A list containing the fqns.
    */
   java.util.List<java.lang.String>
       getFqnsList();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
    * @return The count of fqns.
    */
   int getFqnsCount();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
    * @param index The index of the element to return.
    * @return The fqns at the given index.
    */
   java.lang.String getFqns(int index);
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>repeated string fqns = 1 [json_name = "fqns", (.buf.validate.field) = { ... }</code>
    * @param index The index of the value to return.
    * @return The bytes of the fqns at the given index.
    */
   com.google.protobuf.ByteString
       getFqnsBytes(int index);
+
+  /**
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * @return Whether the withValue field is set.
+   */
+  boolean hasWithValue();
+  /**
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * @return The withValue.
+   */
+  io.opentdf.platform.policy.AttributeValueSelector getWithValue();
+  /**
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   */
+  io.opentdf.platform.policy.AttributeValueSelectorOrBuilder getWithValueOrBuilder();
 }

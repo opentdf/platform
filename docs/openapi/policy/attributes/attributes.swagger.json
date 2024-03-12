@@ -68,6 +68,7 @@
         "parameters": [
           {
             "name": "fqns",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "array",
@@ -75,6 +76,30 @@
               "type": "string"
             },
             "collectionFormat": "multi"
+          },
+          {
+            "name": "withValue.withKeyAccessGrants",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withSubjectMaps",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withResourceMaps",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withAttribute.withKeyAccessGrants",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -493,6 +518,9 @@
       "default": "STANDARD_ACTION_UNSPECIFIED",
       "title": "Standard actions supported by the platform"
     },
+    "AttributeValueSelectorAttributeSelectorNamespaceSelector": {
+      "type": "object"
+    },
     "GetAttributesByValueFqnsResponseAttributeAndValue": {
       "type": "object",
       "properties": {
@@ -833,6 +861,34 @@
       ],
       "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
       "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyAttributeValueSelector": {
+      "type": "object",
+      "properties": {
+        "withKeyAccessGrants": {
+          "type": "boolean"
+        },
+        "withSubjectMaps": {
+          "type": "boolean"
+        },
+        "withResourceMaps": {
+          "type": "boolean"
+        },
+        "withAttribute": {
+          "$ref": "#/definitions/policyAttributeValueSelectorAttributeSelector"
+        }
+      }
+    },
+    "policyAttributeValueSelectorAttributeSelector": {
+      "type": "object",
+      "properties": {
+        "withKeyAccessGrants": {
+          "type": "boolean"
+        },
+        "withNamespace": {
+          "$ref": "#/definitions/AttributeValueSelectorAttributeSelectorNamespaceSelector"
+        }
+      }
     },
     "policyCondition": {
       "type": "object",

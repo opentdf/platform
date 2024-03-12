@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package authorization;
+
+import "authorization/authorization.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/any.proto";
+
+message IdpConfig {
+  google.protobuf.Struct config = 1; 
+}
+
+/*
+   Example: Get idp attributes for bob and alice (both represented using an email address
+   {
+     "entities": [
+       {
+         "id": "e1",
+         "emailAddress": "bob@example.org"
+       },
+       {
+         "id": "e2",
+         "emailAddress": "alice@example.org"
+       }
+     ]
+   }
+
+*/
+message IdpPluginRequest {
+    repeated authorization.Entity entities = 1;
+}
+
+
+message IdpEntityRepresentation {
+  repeated google.protobuf.Struct additional_props = 1;
+  string original_id = 2; // ephemeral entity id from the request
+}
+
+
+/*
+   Example: Get idp attributes for bob and alice
+   {
+     "entity_representations": [
+       {
+         "idp_entity_id": "e1",
+         "additional_props": {"someAttr1":"someValue1"}
+       },
+       {
+         "idp_entity_id": "e2",
+         "additional_props": {"someAttr2":"someValue2"}
+       }
+     ]
+   }
+
+*/
+message IdpPluginResponse {
+  repeated IdpEntityRepresentation entity_representations = 1;
+}
+
+message EntityNotFoundError {
+  int32 code = 1;
+  string message = 2;
+  repeated google.protobuf.Any details = 3;
+  string entity = 4;
+}

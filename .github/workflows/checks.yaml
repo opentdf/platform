@@ -48,6 +48,8 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
       - run: make go.work
+      - run: go mod download
+      - run: go mod verify
       - name: golangci-lint on PR
         if: github.event_name == 'pull_request'
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
@@ -78,8 +80,8 @@ jobs:
           mkdir -p $(pwd)/.tmp/tokens
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
-          export SOFTHSM2_CONF=$(pwd)/softhsm2.conf
-      - run: SOFTHSM2_CONF="$(pwd)/softhsm2.conf" go test ./... -short
+          echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
+      - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
 
   integration:
@@ -96,14 +98,21 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
       - run: make go.work
+      - run: go mod download
+      - run: go mod verify
       - run: go test ./integration -race
-      - run: docker-compose up -d
+      - run: docker compose up -d --wait --wait-timeout 240
       - run: cp example-opentdf.yaml opentdf.yaml
-      - run: sleep 15
-      - run: go run . start &
+      - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
+        name: start server in background
+        with:
+          run: |
+            go run . start
+          wait-on: |
+            tcp:localhost:9000
+          log-output-if: true
+          wait-for: 90s
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
-      - run: sleep 15
-        name: wake me up when github action runner supports docker-compose --wait
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 grpc.health.v1.Health.Check
 
@@ -163,8 +172,8 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '20'
-          distribution: 'adopt'
+          java-version: "20"
+          distribution: "adopt"
           server-id: github
       - name: Compile Java SDK
         run: |
@@ -180,7 +189,7 @@ jobs:
     if: always()
     steps:
       - if: contains(needs.*.result, 'failure')
-        run: exit 1
+        run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
 
   license:
     name: license check
@@ -189,9 +198,38 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: "1.21.8"
           cache: false
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: deps-changed
+        with:
+          filters: |
+            examples:
+              - 'examplesk/go.*'
+            platform:
+              - './go.*'
+            sdk:
+              - 'sdk/go.*'
       - name: install go-licenses
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
-      - name: check licenses
-        run: go-licenses check --disallowed_types=forbidden --include_tests ./...
+      - name: check platform licenses
+        if: steps.deps-changed.outputs.platform == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              .
+      - name: check sdk licenses
+        if: steps.deps-changed.outputs.sdk == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              ./sdk
+      - name: check examples licenses
+        if: steps.deps-changed.outputs.examples == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              ./examples

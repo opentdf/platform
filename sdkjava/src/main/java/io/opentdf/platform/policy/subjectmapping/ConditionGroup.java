@@ -6,7 +6,7 @@ package io.opentdf.platform.policy.subjectmapping;
 
 /**
  * <pre>
- * A Group of conditions with either OR or AND evaluation across the contained conditions
+ * A collection of Conditions evaluated by the boolean_operator provided
  * </pre>
  *
  * Protobuf type {@code policy.subjectmapping.ConditionGroup}
@@ -22,7 +22,7 @@ private static final long serialVersionUID = 0L;
   }
   private ConditionGroup() {
     conditions_ = java.util.Collections.emptyList();
-    booleanType_ = 0;
+    booleanOperator_ = 0;
   }
 
   @java.lang.Override
@@ -86,29 +86,29 @@ private static final long serialVersionUID = 0L;
     return conditions_.get(index);
   }
 
-  public static final int BOOLEAN_TYPE_FIELD_NUMBER = 2;
-  private int booleanType_ = 0;
+  public static final int BOOLEAN_OPERATOR_FIELD_NUMBER = 2;
+  private int booleanOperator_ = 0;
   /**
    * <pre>
    * the boolean evaluation type across the conditions
    * </pre>
    *
-   * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
-   * @return The enum numeric value on the wire for booleanType.
+   * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
+   * @return The enum numeric value on the wire for booleanOperator.
    */
-  @java.lang.Override public int getBooleanTypeValue() {
-    return booleanType_;
+  @java.lang.Override public int getBooleanOperatorValue() {
+    return booleanOperator_;
   }
   /**
    * <pre>
    * the boolean evaluation type across the conditions
    * </pre>
    *
-   * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
-   * @return The booleanType.
+   * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
+   * @return The booleanOperator.
    */
-  @java.lang.Override public io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum getBooleanType() {
-    io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum result = io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.forNumber(booleanType_);
+  @java.lang.Override public io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum getBooleanOperator() {
+    io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum result = io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.forNumber(booleanOperator_);
     return result == null ? io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.UNRECOGNIZED : result;
   }
 
@@ -129,8 +129,8 @@ private static final long serialVersionUID = 0L;
     for (int i = 0; i < conditions_.size(); i++) {
       output.writeMessage(1, conditions_.get(i));
     }
-    if (booleanType_ != io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED.getNumber()) {
-      output.writeEnum(2, booleanType_);
+    if (booleanOperator_ != io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+      output.writeEnum(2, booleanOperator_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -145,9 +145,9 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(1, conditions_.get(i));
     }
-    if (booleanType_ != io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+    if (booleanOperator_ != io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED.getNumber()) {
       size += com.google.protobuf.CodedOutputStream
-        .computeEnumSize(2, booleanType_);
+        .computeEnumSize(2, booleanOperator_);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -166,7 +166,7 @@ private static final long serialVersionUID = 0L;
 
     if (!getConditionsList()
         .equals(other.getConditionsList())) return false;
-    if (booleanType_ != other.booleanType_) return false;
+    if (booleanOperator_ != other.booleanOperator_) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -182,8 +182,8 @@ private static final long serialVersionUID = 0L;
       hash = (37 * hash) + CONDITIONS_FIELD_NUMBER;
       hash = (53 * hash) + getConditionsList().hashCode();
     }
-    hash = (37 * hash) + BOOLEAN_TYPE_FIELD_NUMBER;
-    hash = (53 * hash) + booleanType_;
+    hash = (37 * hash) + BOOLEAN_OPERATOR_FIELD_NUMBER;
+    hash = (53 * hash) + booleanOperator_;
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -283,7 +283,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * A Group of conditions with either OR or AND evaluation across the contained conditions
+   * A collection of Conditions evaluated by the boolean_operator provided
    * </pre>
    *
    * Protobuf type {@code policy.subjectmapping.ConditionGroup}
@@ -326,7 +326,7 @@ private static final long serialVersionUID = 0L;
         conditionsBuilder_.clear();
       }
       bitField0_ = (bitField0_ & ~0x00000001);
-      booleanType_ = 0;
+      booleanOperator_ = 0;
       return this;
     }
 
@@ -374,7 +374,7 @@ private static final long serialVersionUID = 0L;
     private void buildPartial0(io.opentdf.platform.policy.subjectmapping.ConditionGroup result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.booleanType_ = booleanType_;
+        result.booleanOperator_ = booleanOperator_;
       }
     }
 
@@ -448,8 +448,8 @@ private static final long serialVersionUID = 0L;
           }
         }
       }
-      if (other.booleanType_ != 0) {
-        setBooleanTypeValue(other.getBooleanTypeValue());
+      if (other.booleanOperator_ != 0) {
+        setBooleanOperatorValue(other.getBooleanOperatorValue());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -491,7 +491,7 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 10
             case 16: {
-              booleanType_ = input.readEnum();
+              booleanOperator_ = input.readEnum();
               bitField0_ |= 0x00000002;
               break;
             } // case 16
@@ -752,29 +752,29 @@ private static final long serialVersionUID = 0L;
       return conditionsBuilder_;
     }
 
-    private int booleanType_ = 0;
+    private int booleanOperator_ = 0;
     /**
      * <pre>
      * the boolean evaluation type across the conditions
      * </pre>
      *
-     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
-     * @return The enum numeric value on the wire for booleanType.
+     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
+     * @return The enum numeric value on the wire for booleanOperator.
      */
-    @java.lang.Override public int getBooleanTypeValue() {
-      return booleanType_;
+    @java.lang.Override public int getBooleanOperatorValue() {
+      return booleanOperator_;
     }
     /**
      * <pre>
      * the boolean evaluation type across the conditions
      * </pre>
      *
-     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
-     * @param value The enum numeric value on the wire for booleanType to set.
+     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
+     * @param value The enum numeric value on the wire for booleanOperator to set.
      * @return This builder for chaining.
      */
-    public Builder setBooleanTypeValue(int value) {
-      booleanType_ = value;
+    public Builder setBooleanOperatorValue(int value) {
+      booleanOperator_ = value;
       bitField0_ |= 0x00000002;
       onChanged();
       return this;
@@ -784,12 +784,12 @@ private static final long serialVersionUID = 0L;
      * the boolean evaluation type across the conditions
      * </pre>
      *
-     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
-     * @return The booleanType.
+     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
+     * @return The booleanOperator.
      */
     @java.lang.Override
-    public io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum getBooleanType() {
-      io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum result = io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.forNumber(booleanType_);
+    public io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum getBooleanOperator() {
+      io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum result = io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.forNumber(booleanOperator_);
       return result == null ? io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum.UNRECOGNIZED : result;
     }
     /**
@@ -797,16 +797,16 @@ private static final long serialVersionUID = 0L;
      * the boolean evaluation type across the conditions
      * </pre>
      *
-     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
-     * @param value The booleanType to set.
+     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
+     * @param value The booleanOperator to set.
      * @return This builder for chaining.
      */
-    public Builder setBooleanType(io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum value) {
+    public Builder setBooleanOperator(io.opentdf.platform.policy.subjectmapping.ConditionBooleanTypeEnum value) {
       if (value == null) {
         throw new NullPointerException();
       }
       bitField0_ |= 0x00000002;
-      booleanType_ = value.getNumber();
+      booleanOperator_ = value.getNumber();
       onChanged();
       return this;
     }
@@ -815,12 +815,12 @@ private static final long serialVersionUID = 0L;
      * the boolean evaluation type across the conditions
      * </pre>
      *
-     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_type = 2 [json_name = "booleanType", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.subjectmapping.ConditionBooleanTypeEnum boolean_operator = 2 [json_name = "booleanOperator", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
-    public Builder clearBooleanType() {
+    public Builder clearBooleanOperator() {
       bitField0_ = (bitField0_ & ~0x00000002);
-      booleanType_ = 0;
+      booleanOperator_ = 0;
       onChanged();
       return this;
     }

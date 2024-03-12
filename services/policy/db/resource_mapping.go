@@ -68,8 +68,8 @@ func resourceMappingHydrateItem(row pgx.Row) (*resourcemapping.ResourceMapping, 
 }
 
 func resourceMappingSelect() sq.SelectBuilder {
-	t := db.Tables.ResourceMappings
-	at := db.Tables.AttributeValues
+	t := Tables.ResourceMappings
+	at := Tables.AttributeValues
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("metadata"),
@@ -91,7 +91,7 @@ func resourceMappingSelect() sq.SelectBuilder {
 
 func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []string) (string, []interface{}, error) {
 	return db.NewStatementBuilder().
-		Insert(ResourceMappingTable).
+		Insert(Tables.ResourceMappings.Name()).
 		Columns(
 			"attribute_value_id",
 			"metadata",
@@ -142,10 +142,10 @@ func (c PolicyDbClient) CreateResourceMapping(ctx context.Context, r *resourcema
 }
 
 func getResourceMappingSQL(id string) (string, []interface{}, error) {
-	t := db.Tables.ResourceMappings
+	t := Tables.ResourceMappings
 	return resourceMappingSelect().
 		Where(sq.Eq{t.Field("id"): id}).
-		From(ResourceMappingTable).
+		From(Tables.ResourceMappings.Name()).
 		ToSql()
 }
 
@@ -165,7 +165,7 @@ func (c PolicyDbClient) GetResourceMapping(ctx context.Context, id string) (*res
 }
 
 func listResourceMappingsSQL() (string, []interface{}, error) {
-	t := db.Tables.ResourceMappings
+	t := Tables.ResourceMappings
 	return resourceMappingSelect().
 		From(t.Name()).
 		ToSql()
@@ -192,7 +192,7 @@ func (c PolicyDbClient) ListResourceMappings(ctx context.Context) ([]*resourcema
 }
 
 func updateResourceMappingSQL(id string, attribute_value_id string, metadata []byte, terms []string) (string, []interface{}, error) {
-	t := db.Tables.ResourceMappings
+	t := Tables.ResourceMappings
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
 
@@ -251,7 +251,7 @@ func (c PolicyDbClient) UpdateResourceMapping(ctx context.Context, id string, r 
 }
 
 func deleteResourceMappingSQL(id string) (string, []interface{}, error) {
-	t := db.Tables.ResourceMappings
+	t := Tables.ResourceMappings
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).

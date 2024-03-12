@@ -2,6 +2,7 @@ package idpplugin_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/opentdf/platform/services"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 //nolint:gosec
@@ -112,16 +114,20 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "1235", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "alice@sample.org"}})
 
 	var kcconfig = test_keycloakConfig(server)
+	var kcConfigInterface map[string]interface{}
+	inrec, err := json.Marshal(kcconfig)
+	assert.Nil(t, err)
+
+	json.Unmarshal(inrec, &kcConfigInterface)
+	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
+	assert.Nil(t, err)
 
 	var ctxb = context.Background()
-
-	var idp, err = idpplugin.NewIdpPlugin(kcconfig, ctxb)
-	assert.Nil(t, err)
 
 	var req = authorization.IdpPluginRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = idp.EntityResolution(ctxb, &req)
+	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
 	assert.Nil(t, reserr)
 
@@ -153,16 +159,20 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "1235", EntityType: &authorization.Entity_UserName{UserName: "alice.smith"}})
 
 	var kcconfig = test_keycloakConfig(server)
+	var kcConfigInterface map[string]interface{}
+	inrec, err := json.Marshal(kcconfig)
+	assert.Nil(t, err)
+
+	json.Unmarshal(inrec, &kcConfigInterface)
+	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
+	assert.Nil(t, err)
 
 	var ctxb = context.Background()
-
-	var idp, err = idpplugin.NewIdpPlugin(kcconfig, ctxb)
-	assert.Nil(t, err)
 
 	var req = authorization.IdpPluginRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = idp.EntityResolution(ctxb, &req)
+	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
 	assert.Nil(t, reserr)
 
@@ -197,16 +207,20 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "123456", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "group1@sample.org"}})
 
 	var kcconfig = test_keycloakConfig(server)
+	var kcConfigInterface map[string]interface{}
+	inrec, err := json.Marshal(kcconfig)
+	assert.Nil(t, err)
+
+	json.Unmarshal(inrec, &kcConfigInterface)
+	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
+	assert.Nil(t, err)
 
 	var ctxb = context.Background()
-
-	var idp, err = idpplugin.NewIdpPlugin(kcconfig, ctxb)
-	assert.Nil(t, err)
 
 	var req = authorization.IdpPluginRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = idp.EntityResolution(ctxb, &req)
+	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
 	assert.Nil(t, reserr)
 
@@ -239,16 +253,20 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random@sample.org"}})
 
 	var kcconfig = test_keycloakConfig(server)
+	var kcConfigInterface map[string]interface{}
+	inrec, err := json.Marshal(kcconfig)
+	assert.Nil(t, err)
+
+	json.Unmarshal(inrec, &kcConfigInterface)
+	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
+	assert.Nil(t, err)
 
 	var ctxb = context.Background()
-
-	var idp, err = idpplugin.NewIdpPlugin(kcconfig, ctxb)
-	assert.Nil(t, err)
 
 	var req = authorization.IdpPluginRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = idp.EntityResolution(ctxb, &req)
+	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
 	assert.NotNil(t, reserr)
 	assert.Equal(t, &authorization.IdpPluginResponse{}, resp)

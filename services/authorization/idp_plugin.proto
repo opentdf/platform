@@ -6,6 +6,10 @@ import "authorization/authorization.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/any.proto";
 
+message IdpConfig {
+  google.protobuf.Struct config = 1; 
+}
+
 /*
    Example: Get idp attributes for bob and alice (both represented using an email address
    {

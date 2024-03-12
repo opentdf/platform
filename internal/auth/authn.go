@@ -146,6 +146,7 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) e
 	}
 
 	// Future work is to validate DPoP proof if token type is DPoP
+	//nolint:staticcheck
 	if tokenType == "DPoP" {
 		// Implement in the future here or as separate interceptor
 	}

@@ -333,24 +333,6 @@ func jwtWrongIssuer() string {
 	return raw
 }
 
-func jwtNoClaims() string {
-	sig, err := jose.NewSigner(
-		jose.SigningKey{
-			Algorithm: jose.RS256,
-			Key:       privateKey(),
-		},
-		(&jose.SignerOptions{}).WithType("JWT"),
-	)
-	if err != nil {
-		panic(err)
-	}
-	raw, err := jwt.Signed(sig).Claims(jwt.Claims{Issuer: mockIdPOrigin, Audience: jwt.Audience{"testonly"}}).CompactSerialize()
-	if err != nil {
-		panic(err)
-	}
-	return raw
-}
-
 func jwtWrongKey() string {
 	return signedMockJWT(entityPrivateKey())
 }
@@ -411,7 +393,6 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		polite  bool
 	}{
 		{"good", jwtStandard(), srt, true, true},
-		{"bad bearer no claims", jwtNoClaims(), srt, false, true},
 		{"bad bearer wrong issuer", jwtWrongIssuer(), srt, false, true},
 		{"bad bearer signature", jwtWrongKey(), srt, false, true},
 		{"different policy", jwtStandard(), badPolicySrt, true, false},

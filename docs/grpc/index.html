@@ -246,6 +246,37 @@
         
           
           <li>
+            <a href="#authorization%2fidp_plugin.proto">authorization/idp_plugin.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#authorization.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.IdpConfig"><span class="badge">M</span>IdpConfig</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.IdpEntityRepresentation"><span class="badge">M</span>IdpEntityRepresentation</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.IdpPluginRequest"><span class="badge">M</span>IdpPluginRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.IdpPluginResponse"><span class="badge">M</span>IdpPluginResponse</a>
+                </li>
+              
+              
+              
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#common%2fcommon.proto">common/common.proto</a>
             <ul>
               
@@ -1380,6 +1411,168 @@
           </table>
           
         
+    
+      
+      <div class="file-heading">
+        <h2 id="authorization/idp_plugin.proto">authorization/idp_plugin.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="authorization.EntityNotFoundError">EntityNotFoundError</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>code</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>message</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>details</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entity</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.IdpConfig">IdpConfig</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>config</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.IdpEntityRepresentation">IdpEntityRepresentation</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>additional_props</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>original_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral entity id from the request </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.IdpPluginRequest">IdpPluginRequest</h3>
+        <p>Example: Get idp attributes for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#authorization.Entity">Entity</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.IdpPluginResponse">IdpPluginResponse</h3>
+        <p>Example: Get idp attributes for bob and alice</p><p>{</p><p>"entity_representations": [</p><p>{</p><p>"idp_entity_id": "e1",</p><p>"additional_props": {"someAttr1":"someValue1"}</p><p>},</p><p>{</p><p>"idp_entity_id": "e2",</p><p>"additional_props": {"someAttr2":"someValue2"}</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_representations</td>
+                  <td><a href="#authorization.IdpEntityRepresentation">IdpEntityRepresentation</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
     
       
       <div class="file-heading">

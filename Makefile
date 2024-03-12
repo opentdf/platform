@@ -51,6 +51,10 @@ proto-generate:
 	buf generate services --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
 	
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.java.yaml
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
+	
 	cp -r tmp-gen/sdkjava/src/main/java/grpc sdkjava/src/main/java/grpc
 	rm -rf tmp-gen
 

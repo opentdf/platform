@@ -111,6 +111,7 @@ jobs:
           wait-on: |
             tcp:localhost:9000
           log-output-if: true
+          wait-for: 90s
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService

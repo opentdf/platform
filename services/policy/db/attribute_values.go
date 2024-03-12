@@ -59,6 +59,61 @@ func getMembersFromStringArray(c PolicyDbClient, members []string) ([]*attribute
 	return hydratedMembers, nil
 }
 
+// func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
+// 	var (
+// 		id           string
+// 		value        string
+// 		active       bool
+// 		members      []string
+// 		metadataJson []byte
+// 		attributeId  string
+// 		fqn          sql.NullString
+// 	)
+
+// 	fields := []interface{}{
+// 		&id,
+// 		&value,
+// 		&active,
+// 		&members,
+// 		&metadataJson,
+// 		&attributeId,
+// 	}
+// 	if opts.withFqn {
+// 		fields = append(fields, &fqn)
+// 	}
+
+// 	if err := row.Scan(fields...); err != nil {
+// 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+// 	}
+
+// 	m := &common.Metadata{}
+// 	if metadataJson != nil {
+// 		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	newMembers := make([]*attributes.Value, len(members))
+// 	// for _, member := range members {
+// 	// 	attr, err := c.GetAttributeValue(context.TODO(), member)
+// 	// 	newMembers = append(newMembers, attr)
+// 	// 	if err != nil {
+// 	// 		return nil, err
+// 	// 	}
+// 	// }
+// 	// c.GetAttributeValue(ctx, member)
+
+// 	v := &attributes.Value{
+// 		Id:       id,
+// 		Value:    value,
+// 		Active:   &wrapperspb.BoolValue{Value: active},
+// 		Members:  newMembers,
+// 		Metadata: m,
+// 		// TODO: get & hydrate full attribute
+// 		Fqn: fqn.String,
+// 	}
+// 	return v, nil
+// }
+
 func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
 	var (
 		id           string
@@ -83,7 +138,7 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 	if opts.withFqn {
 		fields = append(fields, &fqn)
 	}
-	println("fqn", fqn.String)
+	println("fqn before:", fqn.String)
 	if err := row.Scan(fields...); err != nil {
 		fields := []interface{}{
 			&id,
@@ -102,6 +157,7 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 		}
 		members, err = getMembersFromStringArray(c, memberUUIDs)
 		if err != nil {
+			log.Fatal("IsSuE In UnMaRsHaLlInG")
 			return nil, err
 		}
 	} else {
@@ -137,6 +193,7 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 			// }
 			// log.Fatal("IsSuE In UnMaRsHaLlInG")
 			if err != nil {
+				log.Fatal("IsSuE In UnMaRsHaLlInG")
 				println("IsSuE In UnMaRsHaLlInG")
 				return nil, err
 			}
@@ -149,7 +206,7 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 			return nil, err
 		}
 	}
-	println("fqn: ", fqn.String)
+	println("fqn after: ", fqn.String)
 
 	// // Hydrate members
 	// hydratedMemberIds := set.NewSet()
@@ -355,7 +412,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"'metadata', vmv.metadata ," +
 		"'attribute_id', vmv.attribute_definition_id "
 	if opts.withFqn {
-		members += ", 'fqn', " + fqnT.Field("fqn")
+		members += ", 'fqn', " + "fqn2.fqn"
 	}
 	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
@@ -367,8 +424,9 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		// fields = append(fields, "MAX("+fqnT.Field("fqn")+") AS fqn")
-		fields = append(fields, Tables.AttrFqn.Field("fqn"))
+		// fields = append(fields, "MAX(fqn1.fqn) AS fqn")
+		fields = append(fields, "COALESCE(NULLIF(MAX(fqn1.fqn), ''), MAX(fqn2.fqn)) AS fqn")
+		// fields = append(fields, "MAX(fqn1.fqn) AS fqn")
 	}
 
 	sb := db.NewStatementBuilder().
@@ -382,15 +440,19 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	sb = sb.JoinClause("FULL OUTER JOIN " + t.Name() + " vmv ON vm.member_id = vmv.id")
 
 	if opts.withFqn {
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + "vmv.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "av.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "vmv.id")
+		// sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "COALESCE(vmv.id)") //COALESCE(a.SUB_ID,a.ID)
+		// sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "COALESCE(NULLIF(av.id,''), vmv.id)") //COALESCE(a.SUB_ID,a.ID)
 		// sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("attribute_id") + " = " + "vmv.attribute_definition_id")
 	}
 
 	return sb.Where(sq.Eq{
 		"av.id": id}).
+		// Where(map[string]interface{}{"COALESCE(fqn1.fqn, fqn2.fqn)": "IS NOT NULL"}).
 		GroupBy(
 			"av.id",
-			fqnT.Field("fqn"),
+			// fqnT.Field("fqn"),
 		).
 		ToSql()
 }
@@ -551,11 +613,11 @@ func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string
 	if err != nil {
 		return nil, err
 	}
-	for _, attr := range attrs {
-		if attr.Id == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
-			log.Fatal("FOUND IT")
-		}
-	}
+	// for _, attr := range attrs {
+	// 	if attr.Id == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
+	// 		log.Fatal("FOUND IT")
+	// 	}
+	// }
 	return attrs, nil
 }
 

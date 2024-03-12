@@ -69,7 +69,7 @@ func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (s
 func (c *PolicyDbClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) string {
 	sql, args, err := upsertAttrFqnSql(opts.namespaceId, opts.attributeId, opts.valueId)
 	if err != nil {
-		if opts.attributeId == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
+		if opts.valueId == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
 			log.Fatal("FOUND IT")
 		}
 		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
@@ -78,7 +78,7 @@ func (c *PolicyDbClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 
 	r, err := c.QueryRow(ctx, sql, args, nil)
 	if err != nil {
-		if opts.attributeId == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
+		if opts.valueId == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
 			log.Fatal("FOUND IT2")
 		}
 		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
@@ -87,12 +87,16 @@ func (c *PolicyDbClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 
 	var fqn string
 	if err := r.Scan(&fqn); err != nil {
-		if opts.attributeId == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
+		if opts.valueId == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
 			log.Fatal("FOUND IT3")
 		}
 		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""
 	}
+
+	// if opts.valueId == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
+	// 	log.Fatal(fqn)
+	// }
 
 	slog.Debug("updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
 	return fqn
@@ -128,11 +132,11 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 
 	// Get all attribute values
 	values, err := c.ListAllAttributeValues(context.Background(), StateAny)
-	for _, v := range values {
-		if v.Id == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
-			log.Fatal("LISTED VALUE")
-		}
-	}
+	// for _, v := range values {
+	// 	if v.Id == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
+	// 		log.Fatal("LISTED VALUE")
+	// 	}
+	// }
 	if err != nil {
 		panic(fmt.Errorf("could not get attribute values: %w", err))
 	}
@@ -155,6 +159,9 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 
 	// Reindex all attribute values
 	for _, av := range values {
+		// if av.Id == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
+		// 	log.Fatal("FOUND IT in reindex")
+		// }
 		res.Values = append(res.Values, struct {
 			Id  string
 			Fqn string

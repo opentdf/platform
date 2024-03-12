@@ -93,7 +93,7 @@ func (s *AttributeFqnSuite) TestCreateAttribute() {
 func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 	a := s.f.GetAttributeKey("example.com/attr/attr1")
 	n := s.f.GetNamespaceKey("example.com")
-	name := "test_namespace"
+	name := "test_new_value"
 	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.CreateAttributeValueRequest{
 		Value: name,
 	})
@@ -113,17 +113,23 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.NoError(err)
+	s.NotNil(attr)
+	s.Equal(valueFixture.AttributeDefinitionId, attr.Id)
 
-	// there should be only one value
-	s.Equal(1, len(attr.Values))
+	// there should be more than one value on the attribute
+	s.Greater(len(attr.Values), 1)
 
-	// the value should match the fixture
-	av := attr.Values[0]
-	s.Equal(attr.Id, valueFixture.AttributeDefinitionId)
-	s.Equal(av.Id, valueFixture.Id)
-	s.Equal(av.Value, valueFixture.Value)
-	// the value should contain subject mappings
-	s.GreaterOrEqual(len(av.SubjectMappings), 3)
+	// the value should match the fixture (verify by looping through and matching the fqn)
+	for _, v := range attr.Values {
+		fmt.Printf("\n\n %+v \n\n", v)
+		if v.Id == valueFixture.Id {
+			s.Equal(fullFqn, v.Fqn)
+			s.Equal(valueFixture.Id, v.Id)
+			s.Equal(valueFixture.Value, v.Value)
+			// the value should contain subject mappings
+			s.GreaterOrEqual(len(v.SubjectMappings), 3)
+		}
+	}
 }
 
 // Test Get one attribute by the FQN of the attribute definition

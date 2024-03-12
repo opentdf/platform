@@ -57,7 +57,7 @@ func convertJSONToAttrVal(c PolicyDbClient, r json.RawMessage) (*attributes.Valu
 
 	var members []*attributes.Value
 	if len(item.Members) > 0 {
-		attr, err := c.GetAttributeValue(context.TODO(), item.Id)
+		attr, err := c.GetAttributeValue(context.Background(), item.Id)
 		if err != nil {
 			return nil, err
 		}

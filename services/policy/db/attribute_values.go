@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"log"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -37,7 +38,7 @@ func getMembersFromStringArray(c PolicyDbClient, members []string) ([]*attribute
 		if err != nil {
 			return nil, err
 		}
-		if r, err := c.QueryRow(context.TODO(), sql, args, err); err != nil {
+		if r, err := c.QueryRow(context.Background(), sql, args, err); err != nil {
 			return nil, err
 		} else if err := r.Scan(&vm_id, &value_id, &member_id); err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -358,12 +359,6 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	}
 	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
-		// t.Field("id"),
-		// t.Field("value"),
-		// t.Field("active"),
-		// t.Field("members"),
-		// t.Field("metadata"),
-		// t.Field("attribute_definition_id"),
 		"av.id",
 		"av.value",
 		"av.active",
@@ -379,7 +374,6 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	sb := db.NewStatementBuilder().
 		Select(fields...).
 		From(t.Name() + " av")
-		// add alias
 
 	// join members
 	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
@@ -398,7 +392,6 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 			"av.id",
 			fqnT.Field("fqn"),
 		).
-		// LeftJoin(t.Name() + " ON " + t.Field("id") + " = " + db.Tables.ValueMembers.Field("member_id")).
 		ToSql()
 }
 
@@ -419,6 +412,61 @@ func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*attr
 	return a, nil
 }
 
+// func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
+// 	t := Tables.AttributeValues
+// 	fqnT := Tables.AttrFqn
+// 	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+// 		"'id', vmv.id, " +
+// 		"'value', vmv.value, " +
+// 		"'active', vmv.active, " +
+// 		"'members', vmv.members || ARRAY[]::UUID[], " +
+// 		"'metadata', vmv.metadata ," +
+// 		"'attribute_id', vmv.attribute_definition_id "
+// 	if opts.withFqn {
+// 		members += ", 'fqn', " + fqnT.Field("fqn")
+// 	}
+// 	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
+// 	fields := []string{
+// 		"av.id",
+// 		"av.value",
+// 		"av.active",
+// 		members,
+// 		"av.metadata",
+// 		"av.attribute_definition_id",
+// 	}
+// 	if opts.withFqn {
+// 		fields = append(fields, "fqn")
+// 	}
+
+// 	sb := db.NewStatementBuilder().
+// 		Select(fields...).
+// 		From(t.Name() + " av")
+
+// 	// join members
+// 	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
+
+// 	// join attribute values
+// 	sb = sb.JoinClause("FULL OUTER JOIN " + t.Name() + " vmv ON vm.member_id = vmv.id")
+
+// 	if opts.withFqn {
+// 		fqnT := Tables.AttrFqn
+// 		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + "vmv.id")
+// 	}
+
+// 	where := sq.Eq{}
+// 	if opts.state != "" && opts.state != StateAny {
+// 		where["av.active"] = opts.state == StateActive
+// 	}
+// 	where["av.attribute_definition_id"] = attribute_id
+
+//		return sb.
+//			Where(where).
+//			GroupBy(
+//				"av.id",
+//				fqnT.Field("fqn"),
+//			).
+//			ToSql()
+//	}
 func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	fields := []string{
@@ -499,7 +547,16 @@ func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string
 		return nil, err
 	}
 	defer rows.Close()
-	return attributeValueHydrateItems(c, rows, opts)
+	attrs, err := attributeValueHydrateItems(c, rows, opts)
+	if err != nil {
+		return nil, err
+	}
+	for _, attr := range attrs {
+		if attr.Id == "74babca6-016f-4f3e-a99b-4e46ea8d0fd8" {
+			log.Fatal("FOUND IT")
+		}
+	}
+	return attrs, nil
 }
 
 func updateAttributeValueSql(

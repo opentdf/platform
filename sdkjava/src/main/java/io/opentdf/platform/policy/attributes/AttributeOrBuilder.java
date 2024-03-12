@@ -22,37 +22,10 @@ public interface AttributeOrBuilder extends
 
   /**
    * <pre>
-   * Optional metadata for the attribute definition
-   * </pre>
-   *
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return Whether the metadata field is set.
-   */
-  boolean hasMetadata();
-  /**
-   * <pre>
-   * Optional metadata for the attribute definition
-   * </pre>
-   *
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   * @return The metadata.
-   */
-  io.opentdf.platform.common.Metadata getMetadata();
-  /**
-   * <pre>
-   * Optional metadata for the attribute definition
-   * </pre>
-   *
-   * <code>.common.Metadata metadata = 2 [json_name = "metadata"];</code>
-   */
-  io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();
-
-  /**
-   * <pre>
    * namespace of the attribute
    * </pre>
    *
-   * <code>.policy.namespaces.Namespace namespace = 3 [json_name = "namespace"];</code>
+   * <code>.policy.namespaces.Namespace namespace = 2 [json_name = "namespace"];</code>
    * @return Whether the namespace field is set.
    */
   boolean hasNamespace();
@@ -61,7 +34,7 @@ public interface AttributeOrBuilder extends
    * namespace of the attribute
    * </pre>
    *
-   * <code>.policy.namespaces.Namespace namespace = 3 [json_name = "namespace"];</code>
+   * <code>.policy.namespaces.Namespace namespace = 2 [json_name = "namespace"];</code>
    * @return The namespace.
    */
   io.opentdf.platform.policy.namespaces.Namespace getNamespace();
@@ -70,7 +43,7 @@ public interface AttributeOrBuilder extends
    * namespace of the attribute
    * </pre>
    *
-   * <code>.policy.namespaces.Namespace namespace = 3 [json_name = "namespace"];</code>
+   * <code>.policy.namespaces.Namespace namespace = 2 [json_name = "namespace"];</code>
    */
   io.opentdf.platform.policy.namespaces.NamespaceOrBuilder getNamespaceOrBuilder();
 
@@ -79,7 +52,7 @@ public interface AttributeOrBuilder extends
    *attribute name
    * </pre>
    *
-   * <code>string name = 4 [json_name = "name"];</code>
+   * <code>string name = 3 [json_name = "name"];</code>
    * @return The name.
    */
   java.lang.String getName();
@@ -88,7 +61,7 @@ public interface AttributeOrBuilder extends
    *attribute name
    * </pre>
    *
-   * <code>string name = 4 [json_name = "name"];</code>
+   * <code>string name = 3 [json_name = "name"];</code>
    * @return The bytes for name.
    */
   com.google.protobuf.ByteString
@@ -99,7 +72,7 @@ public interface AttributeOrBuilder extends
    * attribute rule enum
    * </pre>
    *
-   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 5 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 4 [json_name = "rule", (.buf.validate.field) = { ... }</code>
    * @return The enum numeric value on the wire for rule.
    */
   int getRuleValue();
@@ -108,66 +81,66 @@ public interface AttributeOrBuilder extends
    * attribute rule enum
    * </pre>
    *
-   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 5 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 4 [json_name = "rule", (.buf.validate.field) = { ... }</code>
    * @return The rule.
    */
   io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum getRule();
 
   /**
-   * <code>repeated .policy.attributes.Value values = 7 [json_name = "values"];</code>
+   * <code>repeated .policy.attributes.Value values = 5 [json_name = "values"];</code>
    */
   java.util.List<io.opentdf.platform.policy.attributes.Value> 
       getValuesList();
   /**
-   * <code>repeated .policy.attributes.Value values = 7 [json_name = "values"];</code>
+   * <code>repeated .policy.attributes.Value values = 5 [json_name = "values"];</code>
    */
   io.opentdf.platform.policy.attributes.Value getValues(int index);
   /**
-   * <code>repeated .policy.attributes.Value values = 7 [json_name = "values"];</code>
+   * <code>repeated .policy.attributes.Value values = 5 [json_name = "values"];</code>
    */
   int getValuesCount();
   /**
-   * <code>repeated .policy.attributes.Value values = 7 [json_name = "values"];</code>
+   * <code>repeated .policy.attributes.Value values = 5 [json_name = "values"];</code>
    */
   java.util.List<? extends io.opentdf.platform.policy.attributes.ValueOrBuilder> 
       getValuesOrBuilderList();
   /**
-   * <code>repeated .policy.attributes.Value values = 7 [json_name = "values"];</code>
+   * <code>repeated .policy.attributes.Value values = 5 [json_name = "values"];</code>
    */
   io.opentdf.platform.policy.attributes.ValueOrBuilder getValuesOrBuilder(
       int index);
 
   /**
-   * <code>repeated .kasregistry.KeyAccessServer grants = 8 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
    */
   java.util.List<io.opentdf.platform.kasregistry.KeyAccessServer> 
       getGrantsList();
   /**
-   * <code>repeated .kasregistry.KeyAccessServer grants = 8 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
    */
   io.opentdf.platform.kasregistry.KeyAccessServer getGrants(int index);
   /**
-   * <code>repeated .kasregistry.KeyAccessServer grants = 8 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
    */
   int getGrantsCount();
   /**
-   * <code>repeated .kasregistry.KeyAccessServer grants = 8 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
    */
   java.util.List<? extends io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder> 
       getGrantsOrBuilderList();
   /**
-   * <code>repeated .kasregistry.KeyAccessServer grants = 8 [json_name = "grants"];</code>
+   * <code>repeated .kasregistry.KeyAccessServer grants = 6 [json_name = "grants"];</code>
    */
   io.opentdf.platform.kasregistry.KeyAccessServerOrBuilder getGrantsOrBuilder(
       int index);
 
   /**
-   * <code>string fqn = 9 [json_name = "fqn"];</code>
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
    * @return The fqn.
    */
   java.lang.String getFqn();
   /**
-   * <code>string fqn = 9 [json_name = "fqn"];</code>
+   * <code>string fqn = 7 [json_name = "fqn"];</code>
    * @return The bytes for fqn.
    */
   com.google.protobuf.ByteString
@@ -178,7 +151,7 @@ public interface AttributeOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 10 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    * @return Whether the active field is set.
    */
   boolean hasActive();
@@ -187,7 +160,7 @@ public interface AttributeOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 10 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    * @return The active.
    */
   com.google.protobuf.BoolValue getActive();
@@ -196,7 +169,34 @@ public interface AttributeOrBuilder extends
    * active by default until explicitly deactivated
    * </pre>
    *
-   * <code>.google.protobuf.BoolValue active = 10 [json_name = "active"];</code>
+   * <code>.google.protobuf.BoolValue active = 8 [json_name = "active"];</code>
    */
   com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder();
+
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.Metadata getMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.Metadata metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();
 }

@@ -22,6 +22,12 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "health",
 		ServiceDesc: &healthpb.Health_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			srp.WellKnownConfig("health", map[string]any{
+				"endpoints": map[string]any{
+					"liveness":  "/healthz?service=liveness",
+					"readiness": "/healthz?service=readiness",
+				},
+			})
 			return &HealthService{db: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return nil
 			}

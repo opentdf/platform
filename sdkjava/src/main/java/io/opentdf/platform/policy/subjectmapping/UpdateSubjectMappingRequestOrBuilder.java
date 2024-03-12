@@ -9,11 +9,19 @@ public interface UpdateSubjectMappingRequestOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The id.
    */
   java.lang.String getId();
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The bytes for id.
    */
@@ -21,17 +29,106 @@ public interface UpdateSubjectMappingRequestOrBuilder extends
       getIdBytes();
 
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 2 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
-   * @return Whether the subjectMapping field is set.
+   * <pre>
+   * Optional
+   * Replaces the existing SubjectConditionSet id with a new one
+   * </pre>
+   *
+   * <code>string subject_condition_set_id = 2 [json_name = "subjectConditionSetId"];</code>
+   * @return The subjectConditionSetId.
    */
-  boolean hasSubjectMapping();
+  java.lang.String getSubjectConditionSetId();
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 2 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
-   * @return The subjectMapping.
+   * <pre>
+   * Optional
+   * Replaces the existing SubjectConditionSet id with a new one
+   * </pre>
+   *
+   * <code>string subject_condition_set_id = 2 [json_name = "subjectConditionSetId"];</code>
+   * @return The bytes for subjectConditionSetId.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdate getSubjectMapping();
+  com.google.protobuf.ByteString
+      getSubjectConditionSetIdBytes();
+
   /**
-   * <code>.policy.subjectmapping.SubjectMappingCreateUpdate subject_mapping = 2 [json_name = "subjectMapping", (.buf.validate.field) = { ... }</code>
+   * <pre>
+   * Replaces entire list of actions permitted by subjects
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingCreateUpdateOrBuilder getSubjectMappingOrBuilder();
+  java.util.List<io.opentdf.platform.authorization.Action> 
+      getActionsList();
+  /**
+   * <pre>
+   * Replaces entire list of actions permitted by subjects
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   */
+  io.opentdf.platform.authorization.Action getActions(int index);
+  /**
+   * <pre>
+   * Replaces entire list of actions permitted by subjects
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   */
+  int getActionsCount();
+  /**
+   * <pre>
+   * Replaces entire list of actions permitted by subjects
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   */
+  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+      getActionsOrBuilderList();
+  /**
+   * <pre>
+   * Replaces entire list of actions permitted by subjects
+   * </pre>
+   *
+   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   */
+  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+      int index);
+
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.MetadataMutable getMetadata();
+  /**
+   * <pre>
+   * Common metadata
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder();
+
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
+   */
+  int getMetadataUpdateBehaviorValue();
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
+   */
+  io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior();
 }

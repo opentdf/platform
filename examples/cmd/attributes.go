@@ -61,17 +61,15 @@ func attributesExample(examplesConfig *ExampleConfig) error {
 
 	slog.Info("creating new attribute with hierarchy rule")
 	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
-		Attribute: &attributes.AttributeCreateUpdate{
-			Name:        "IntellectualProperty",
-			NamespaceId: exampleNamespace.Id,
-			Rule:        *attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
-			Values: []*attributes.ValueCreateUpdate{
-				{Value: "TradeSecret"},
-				{Value: "Proprietary"},
-				{Value: "BusinessSensitive"},
-				{Value: "Open"},
-			},
-		},
+		Name:        "IntellectualProperty",
+		NamespaceId: exampleNamespace.Id,
+		Rule:        *attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
+		// Values: []*attributes.ValueCreateUpdate{
+		// 	{Value: "TradeSecret"},
+		// 	{Value: "Proprietary"},
+		// 	{Value: "BusinessSensitive"},
+		// 	{Value: "Open"},
+		// },
 	})
 	if err != nil {
 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {

@@ -17,6 +17,9 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private CreateResourceMappingRequest() {
+    attributeValueId_ = "";
+    terms_ =
+        com.google.protobuf.LazyStringArrayList.emptyList();
   }
 
   @java.lang.Override
@@ -40,30 +43,126 @@ private static final long serialVersionUID = 0L;
   }
 
   private int bitField0_;
-  public static final int RESOURCE_MAPPING_FIELD_NUMBER = 1;
-  private io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate resourceMapping_;
+  public static final int ATTRIBUTE_VALUE_ID_FIELD_NUMBER = 1;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object attributeValueId_ = "";
   /**
-   * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
-   * @return Whether the resourceMapping field is set.
+   * <pre>
+   * Required
+   * </pre>
+   *
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * @return The attributeValueId.
    */
   @java.lang.Override
-  public boolean hasResourceMapping() {
+  public java.lang.String getAttributeValueId() {
+    java.lang.Object ref = attributeValueId_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      attributeValueId_ = s;
+      return s;
+    }
+  }
+  /**
+   * <pre>
+   * Required
+   * </pre>
+   *
+   * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+   * @return The bytes for attributeValueId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getAttributeValueIdBytes() {
+    java.lang.Object ref = attributeValueId_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      attributeValueId_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
+  public static final int TERMS_FIELD_NUMBER = 2;
+  @SuppressWarnings("serial")
+  private com.google.protobuf.LazyStringArrayList terms_ =
+      com.google.protobuf.LazyStringArrayList.emptyList();
+  /**
+   * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+   * @return A list containing the terms.
+   */
+  public com.google.protobuf.ProtocolStringList
+      getTermsList() {
+    return terms_;
+  }
+  /**
+   * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+   * @return The count of terms.
+   */
+  public int getTermsCount() {
+    return terms_.size();
+  }
+  /**
+   * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+   * @param index The index of the element to return.
+   * @return The terms at the given index.
+   */
+  public java.lang.String getTerms(int index) {
+    return terms_.get(index);
+  }
+  /**
+   * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the terms at the given index.
+   */
+  public com.google.protobuf.ByteString
+      getTermsBytes(int index) {
+    return terms_.getByteString(index);
+  }
+
+  public static final int METADATA_FIELD_NUMBER = 100;
+  private io.opentdf.platform.common.MetadataMutable metadata_;
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  @java.lang.Override
+  public boolean hasMetadata() {
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
-   * @return The resourceMapping.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate getResourceMapping() {
-    return resourceMapping_ == null ? io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.getDefaultInstance() : resourceMapping_;
+  public io.opentdf.platform.common.MetadataMutable getMetadata() {
+    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
   }
   /**
-   * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdateOrBuilder getResourceMappingOrBuilder() {
-    return resourceMapping_ == null ? io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.getDefaultInstance() : resourceMapping_;
+  public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
+    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -80,8 +179,14 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeValueId_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, attributeValueId_);
+    }
+    for (int i = 0; i < terms_.size(); i++) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, terms_.getRaw(i));
+    }
     if (((bitField0_ & 0x00000001) != 0)) {
-      output.writeMessage(1, getResourceMapping());
+      output.writeMessage(100, getMetadata());
     }
     getUnknownFields().writeTo(output);
   }
@@ -92,9 +197,20 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(attributeValueId_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, attributeValueId_);
+    }
+    {
+      int dataSize = 0;
+      for (int i = 0; i < terms_.size(); i++) {
+        dataSize += computeStringSizeNoTag(terms_.getRaw(i));
+      }
+      size += dataSize;
+      size += 1 * getTermsList().size();
+    }
     if (((bitField0_ & 0x00000001) != 0)) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(1, getResourceMapping());
+        .computeMessageSize(100, getMetadata());
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -111,10 +227,14 @@ private static final long serialVersionUID = 0L;
     }
     io.opentdf.platform.policy.resourcemapping.CreateResourceMappingRequest other = (io.opentdf.platform.policy.resourcemapping.CreateResourceMappingRequest) obj;
 
-    if (hasResourceMapping() != other.hasResourceMapping()) return false;
-    if (hasResourceMapping()) {
-      if (!getResourceMapping()
-          .equals(other.getResourceMapping())) return false;
+    if (!getAttributeValueId()
+        .equals(other.getAttributeValueId())) return false;
+    if (!getTermsList()
+        .equals(other.getTermsList())) return false;
+    if (hasMetadata() != other.hasMetadata()) return false;
+    if (hasMetadata()) {
+      if (!getMetadata()
+          .equals(other.getMetadata())) return false;
     }
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
@@ -127,9 +247,15 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
-    if (hasResourceMapping()) {
-      hash = (37 * hash) + RESOURCE_MAPPING_FIELD_NUMBER;
-      hash = (53 * hash) + getResourceMapping().hashCode();
+    hash = (37 * hash) + ATTRIBUTE_VALUE_ID_FIELD_NUMBER;
+    hash = (53 * hash) + getAttributeValueId().hashCode();
+    if (getTermsCount() > 0) {
+      hash = (37 * hash) + TERMS_FIELD_NUMBER;
+      hash = (53 * hash) + getTermsList().hashCode();
+    }
+    if (hasMetadata()) {
+      hash = (37 * hash) + METADATA_FIELD_NUMBER;
+      hash = (53 * hash) + getMetadata().hashCode();
     }
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
@@ -261,17 +387,20 @@ private static final long serialVersionUID = 0L;
     private void maybeForceBuilderInitialization() {
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
-        getResourceMappingFieldBuilder();
+        getMetadataFieldBuilder();
       }
     }
     @java.lang.Override
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
-      resourceMapping_ = null;
-      if (resourceMappingBuilder_ != null) {
-        resourceMappingBuilder_.dispose();
-        resourceMappingBuilder_ = null;
+      attributeValueId_ = "";
+      terms_ =
+          com.google.protobuf.LazyStringArrayList.emptyList();
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
       }
       return this;
     }
@@ -306,11 +435,18 @@ private static final long serialVersionUID = 0L;
 
     private void buildPartial0(io.opentdf.platform.policy.resourcemapping.CreateResourceMappingRequest result) {
       int from_bitField0_ = bitField0_;
-      int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000001) != 0)) {
-        result.resourceMapping_ = resourceMappingBuilder_ == null
-            ? resourceMapping_
-            : resourceMappingBuilder_.build();
+        result.attributeValueId_ = attributeValueId_;
+      }
+      if (((from_bitField0_ & 0x00000002) != 0)) {
+        terms_.makeImmutable();
+        result.terms_ = terms_;
+      }
+      int to_bitField0_ = 0;
+      if (((from_bitField0_ & 0x00000004) != 0)) {
+        result.metadata_ = metadataBuilder_ == null
+            ? metadata_
+            : metadataBuilder_.build();
         to_bitField0_ |= 0x00000001;
       }
       result.bitField0_ |= to_bitField0_;
@@ -360,8 +496,23 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(io.opentdf.platform.policy.resourcemapping.CreateResourceMappingRequest other) {
       if (other == io.opentdf.platform.policy.resourcemapping.CreateResourceMappingRequest.getDefaultInstance()) return this;
-      if (other.hasResourceMapping()) {
-        mergeResourceMapping(other.getResourceMapping());
+      if (!other.getAttributeValueId().isEmpty()) {
+        attributeValueId_ = other.attributeValueId_;
+        bitField0_ |= 0x00000001;
+        onChanged();
+      }
+      if (!other.terms_.isEmpty()) {
+        if (terms_.isEmpty()) {
+          terms_ = other.terms_;
+          bitField0_ |= 0x00000002;
+        } else {
+          ensureTermsIsMutable();
+          terms_.addAll(other.terms_);
+        }
+        onChanged();
+      }
+      if (other.hasMetadata()) {
+        mergeMetadata(other.getMetadata());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -390,12 +541,23 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              input.readMessage(
-                  getResourceMappingFieldBuilder().getBuilder(),
-                  extensionRegistry);
+              attributeValueId_ = input.readStringRequireUtf8();
               bitField0_ |= 0x00000001;
               break;
             } // case 10
+            case 18: {
+              java.lang.String s = input.readStringRequireUtf8();
+              ensureTermsIsMutable();
+              terms_.add(s);
+              break;
+            } // case 18
+            case 802: {
+              input.readMessage(
+                  getMetadataFieldBuilder().getBuilder(),
+                  extensionRegistry);
+              bitField0_ |= 0x00000004;
+              break;
+            } // case 802
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -413,125 +575,364 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate resourceMapping_;
-    private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate, io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.Builder, io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdateOrBuilder> resourceMappingBuilder_;
+    private java.lang.Object attributeValueId_ = "";
     /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
-     * @return Whether the resourceMapping field is set.
+     * <pre>
+     * Required
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @return The attributeValueId.
      */
-    public boolean hasResourceMapping() {
-      return ((bitField0_ & 0x00000001) != 0);
-    }
-    /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
-     * @return The resourceMapping.
-     */
-    public io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate getResourceMapping() {
-      if (resourceMappingBuilder_ == null) {
-        return resourceMapping_ == null ? io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.getDefaultInstance() : resourceMapping_;
+    public java.lang.String getAttributeValueId() {
+      java.lang.Object ref = attributeValueId_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        attributeValueId_ = s;
+        return s;
       } else {
-        return resourceMappingBuilder_.getMessage();
+        return (java.lang.String) ref;
       }
     }
     /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Required
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @return The bytes for attributeValueId.
      */
-    public Builder setResourceMapping(io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate value) {
-      if (resourceMappingBuilder_ == null) {
+    public com.google.protobuf.ByteString
+        getAttributeValueIdBytes() {
+      java.lang.Object ref = attributeValueId_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        attributeValueId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <pre>
+     * Required
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @param value The attributeValueId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttributeValueId(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      attributeValueId_ = value;
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Required
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAttributeValueId() {
+      attributeValueId_ = getDefaultInstance().getAttributeValueId();
+      bitField0_ = (bitField0_ & ~0x00000001);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Required
+     * </pre>
+     *
+     * <code>string attribute_value_id = 1 [json_name = "attributeValueId", (.buf.validate.field) = { ... }</code>
+     * @param value The bytes for attributeValueId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttributeValueIdBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      attributeValueId_ = value;
+      bitField0_ |= 0x00000001;
+      onChanged();
+      return this;
+    }
+
+    private com.google.protobuf.LazyStringArrayList terms_ =
+        com.google.protobuf.LazyStringArrayList.emptyList();
+    private void ensureTermsIsMutable() {
+      if (!terms_.isModifiable()) {
+        terms_ = new com.google.protobuf.LazyStringArrayList(terms_);
+      }
+      bitField0_ |= 0x00000002;
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @return A list containing the terms.
+     */
+    public com.google.protobuf.ProtocolStringList
+        getTermsList() {
+      terms_.makeImmutable();
+      return terms_;
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @return The count of terms.
+     */
+    public int getTermsCount() {
+      return terms_.size();
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @param index The index of the element to return.
+     * @return The terms at the given index.
+     */
+    public java.lang.String getTerms(int index) {
+      return terms_.get(index);
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the terms at the given index.
+     */
+    public com.google.protobuf.ByteString
+        getTermsBytes(int index) {
+      return terms_.getByteString(index);
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @param index The index to set the value at.
+     * @param value The terms to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerms(
+        int index, java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      ensureTermsIsMutable();
+      terms_.set(index, value);
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @param value The terms to add.
+     * @return This builder for chaining.
+     */
+    public Builder addTerms(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      ensureTermsIsMutable();
+      terms_.add(value);
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @param values The terms to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllTerms(
+        java.lang.Iterable<java.lang.String> values) {
+      ensureTermsIsMutable();
+      com.google.protobuf.AbstractMessageLite.Builder.addAll(
+          values, terms_);
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTerms() {
+      terms_ =
+        com.google.protobuf.LazyStringArrayList.emptyList();
+      bitField0_ = (bitField0_ & ~0x00000002);;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>repeated string terms = 2 [json_name = "terms", (.buf.validate.field) = { ... }</code>
+     * @param value The bytes of the terms to add.
+     * @return This builder for chaining.
+     */
+    public Builder addTermsBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      ensureTermsIsMutable();
+      terms_.add(value);
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return this;
+    }
+
+    private io.opentdf.platform.common.MetadataMutable metadata_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> metadataBuilder_;
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     * @return Whether the metadata field is set.
+     */
+    public boolean hasMetadata() {
+      return ((bitField0_ & 0x00000004) != 0);
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     * @return The metadata.
+     */
+    public io.opentdf.platform.common.MetadataMutable getMetadata() {
+      if (metadataBuilder_ == null) {
+        return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
+      } else {
+        return metadataBuilder_.getMessage();
+      }
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder setMetadata(io.opentdf.platform.common.MetadataMutable value) {
+      if (metadataBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
-        resourceMapping_ = value;
+        metadata_ = value;
       } else {
-        resourceMappingBuilder_.setMessage(value);
+        metadataBuilder_.setMessage(value);
       }
-      bitField0_ |= 0x00000001;
+      bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public Builder setResourceMapping(
-        io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.Builder builderForValue) {
-      if (resourceMappingBuilder_ == null) {
-        resourceMapping_ = builderForValue.build();
+    public Builder setMetadata(
+        io.opentdf.platform.common.MetadataMutable.Builder builderForValue) {
+      if (metadataBuilder_ == null) {
+        metadata_ = builderForValue.build();
       } else {
-        resourceMappingBuilder_.setMessage(builderForValue.build());
+        metadataBuilder_.setMessage(builderForValue.build());
       }
-      bitField0_ |= 0x00000001;
+      bitField0_ |= 0x00000004;
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public Builder mergeResourceMapping(io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate value) {
-      if (resourceMappingBuilder_ == null) {
-        if (((bitField0_ & 0x00000001) != 0) &&
-          resourceMapping_ != null &&
-          resourceMapping_ != io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.getDefaultInstance()) {
-          getResourceMappingBuilder().mergeFrom(value);
+    public Builder mergeMetadata(io.opentdf.platform.common.MetadataMutable value) {
+      if (metadataBuilder_ == null) {
+        if (((bitField0_ & 0x00000004) != 0) &&
+          metadata_ != null &&
+          metadata_ != io.opentdf.platform.common.MetadataMutable.getDefaultInstance()) {
+          getMetadataBuilder().mergeFrom(value);
         } else {
-          resourceMapping_ = value;
+          metadata_ = value;
         }
       } else {
-        resourceMappingBuilder_.mergeFrom(value);
+        metadataBuilder_.mergeFrom(value);
       }
-      if (resourceMapping_ != null) {
-        bitField0_ |= 0x00000001;
+      if (metadata_ != null) {
+        bitField0_ |= 0x00000004;
         onChanged();
       }
       return this;
     }
     /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public Builder clearResourceMapping() {
-      bitField0_ = (bitField0_ & ~0x00000001);
-      resourceMapping_ = null;
-      if (resourceMappingBuilder_ != null) {
-        resourceMappingBuilder_.dispose();
-        resourceMappingBuilder_ = null;
+    public Builder clearMetadata() {
+      bitField0_ = (bitField0_ & ~0x00000004);
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
       }
       onChanged();
       return this;
     }
     /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.Builder getResourceMappingBuilder() {
-      bitField0_ |= 0x00000001;
+    public io.opentdf.platform.common.MetadataMutable.Builder getMetadataBuilder() {
+      bitField0_ |= 0x00000004;
       onChanged();
-      return getResourceMappingFieldBuilder().getBuilder();
+      return getMetadataFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdateOrBuilder getResourceMappingOrBuilder() {
-      if (resourceMappingBuilder_ != null) {
-        return resourceMappingBuilder_.getMessageOrBuilder();
+    public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
+      if (metadataBuilder_ != null) {
+        return metadataBuilder_.getMessageOrBuilder();
       } else {
-        return resourceMapping_ == null ?
-            io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.getDefaultInstance() : resourceMapping_;
+        return metadata_ == null ?
+            io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
       }
     }
     /**
-     * <code>.policy.resourcemapping.ResourceMappingCreateUpdate resource_mapping = 1 [json_name = "resourceMapping", (.buf.validate.field) = { ... }</code>
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate, io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.Builder, io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdateOrBuilder> 
-        getResourceMappingFieldBuilder() {
-      if (resourceMappingBuilder_ == null) {
-        resourceMappingBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate, io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdate.Builder, io.opentdf.platform.policy.resourcemapping.ResourceMappingCreateUpdateOrBuilder>(
-                getResourceMapping(),
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> 
+        getMetadataFieldBuilder() {
+      if (metadataBuilder_ == null) {
+        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder>(
+                getMetadata(),
                 getParentForChildren(),
                 isClean());
-        resourceMapping_ = null;
+        metadata_ = null;
       }
-      return resourceMappingBuilder_;
+      return metadataBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

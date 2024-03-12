@@ -5,12 +5,14 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/server"
 	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
 )
 
@@ -67,20 +69,33 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 				Enabled: true,
 			},
 		},
-	}, s, nil, nil)
+	}, s, nil, nil, nil)
 	assert.Nil(t, err)
 
-	s.Run()
+	s.Start()
 
 	defer s.Stop()
 
+	var resp *http.Response
 	// Make request to test service and ensure it registered
-	resp, err := http.Get("http://localhost:43481/testpath/world")
-	assert.Nil(t, err)
+	for i := 3; i > 0; i-- {
+		resp, err = http.Get("http://localhost:43481/testpath/world")
+		if err == nil {
+			break
+		}
+		slog.Info("not yet ready", "err", err)
+		// retry after a blip
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	assert.NoError(t, err)
+	if t.Failed() {
+		return
+	}
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 
 	respBody, err := io.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, "hello world from test service!", string(respBody))
 }

@@ -33,7 +33,7 @@ public interface NamespaceOrBuilder extends
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    * </pre>
    *
-   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name"];</code>
    * @return The name.
    */
   java.lang.String getName();
@@ -42,7 +42,7 @@ public interface NamespaceOrBuilder extends
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    * </pre>
    *
-   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
+   * <code>string name = 2 [json_name = "name"];</code>
    * @return The bytes for name.
    */
   com.google.protobuf.ByteString
@@ -86,4 +86,19 @@ public interface NamespaceOrBuilder extends
    * <code>.google.protobuf.BoolValue active = 4 [json_name = "active"];</code>
    */
   com.google.protobuf.BoolValueOrBuilder getActiveOrBuilder();
+
+  /**
+   * <code>.common.Metadata metadata = 5 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
+   */
+  boolean hasMetadata();
+  /**
+   * <code>.common.Metadata metadata = 5 [json_name = "metadata"];</code>
+   * @return The metadata.
+   */
+  io.opentdf.platform.common.Metadata getMetadata();
+  /**
+   * <code>.common.Metadata metadata = 5 [json_name = "metadata"];</code>
+   */
+  io.opentdf.platform.common.MetadataOrBuilder getMetadataOrBuilder();
 }

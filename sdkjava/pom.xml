@@ -10,6 +10,8 @@
     <packaging>jar</packaging>
     <properties>
         <grpc.version>1.57.2</grpc.version>
+        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>11</maven.compiler.source>
     </properties>
     <dependencies>
         <dependency>

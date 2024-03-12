@@ -30,7 +30,7 @@ public interface ConditionOrBuilder extends
 
   /**
    * <pre>
-   * the operator
+   * the evaluation operator of relation
    * </pre>
    *
    * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 2 [json_name = "operator", (.buf.validate.field) = { ... }</code>
@@ -39,7 +39,7 @@ public interface ConditionOrBuilder extends
   int getOperatorValue();
   /**
    * <pre>
-   * the operator
+   * the evaluation operator of relation
    * </pre>
    *
    * <code>.policy.subjectmapping.SubjectMappingOperatorEnum operator = 2 [json_name = "operator", (.buf.validate.field) = { ... }</code>
@@ -49,7 +49,7 @@ public interface ConditionOrBuilder extends
 
   /**
    * <pre>
-   * list of comparison values for the subject_external_field
+   * list of comparison values for the subject_external_field, evaluated by the operator
    * </pre>
    *
    * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
@@ -59,7 +59,7 @@ public interface ConditionOrBuilder extends
       getSubjectExternalValuesList();
   /**
    * <pre>
-   * list of comparison values for the subject_external_field
+   * list of comparison values for the subject_external_field, evaluated by the operator
    * </pre>
    *
    * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
@@ -68,7 +68,7 @@ public interface ConditionOrBuilder extends
   int getSubjectExternalValuesCount();
   /**
    * <pre>
-   * list of comparison values for the subject_external_field
+   * list of comparison values for the subject_external_field, evaluated by the operator
    * </pre>
    *
    * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>
@@ -78,7 +78,7 @@ public interface ConditionOrBuilder extends
   java.lang.String getSubjectExternalValues(int index);
   /**
    * <pre>
-   * list of comparison values for the subject_external_field
+   * list of comparison values for the subject_external_field, evaluated by the operator
    * </pre>
    *
    * <code>repeated string subject_external_values = 3 [json_name = "subjectExternalValues"];</code>

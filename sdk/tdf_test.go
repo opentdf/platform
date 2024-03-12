@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
+	"gotest.tools/v3/assert"
 
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
@@ -98,8 +99,8 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 		checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 		kasInfoList: []KASInfo{
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: "",
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: "",
 			},
 		},
 	},
@@ -109,8 +110,8 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 		checksum:    "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
 		kasInfoList: []KASInfo{
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: "",
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: "",
 			},
 		},
 	},
@@ -120,12 +121,12 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 		checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 		kasInfoList: []KASInfo{
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: mockKasPublicKey,
 			},
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: mockKasPublicKey,
 			},
 		},
 	},
@@ -135,12 +136,12 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 		checksum:    "d2fb707e70a804cf2ea770c9229295689831b4c88879c62bdb966e77e7336f18",
 		kasInfoList: []KASInfo{
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: mockKasPublicKey,
 			},
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: mockKasPublicKey,
 			},
 		},
 	},
@@ -226,12 +227,12 @@ var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals //
 		payload: payload, // len: 62
 		kasInfoList: []KASInfo{
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: mockKasPublicKey,
 			},
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: mockKasPublicKey,
 			},
 		},
 		readAtTests: []TestReadAt{
@@ -283,7 +284,7 @@ func TestSimpleTDF(t *testing.T) {
 	serverURL, closer, sdk := runKas()
 	defer closer()
 
-	metaDataStr := `{"displayName" : "openTDF go sdk"}`
+	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
 
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",
@@ -296,8 +297,8 @@ func TestSimpleTDF(t *testing.T) {
 	{
 		kasURLs := []KASInfo{
 			{
-				url:       serverURL,
-				publicKey: "",
+				URL:       serverURL,
+				PublicKey: "",
 			},
 		}
 
@@ -317,7 +318,7 @@ func TestSimpleTDF(t *testing.T) {
 
 		tdfObj, err := sdk.CreateTDF(fileWriter, bufReader,
 			WithKasInformation(kasURLs...),
-			WithMetaData(metaDataStr),
+			WithMetaData(string(metaData)),
 			WithDataAttributes(attributes...))
 		if err != nil {
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
@@ -352,9 +353,7 @@ func TestSimpleTDF(t *testing.T) {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
 
-		if metaDataStr != unencryptedMetaData {
-			t.Errorf("meta data test failed expected %v, got %v", metaDataStr, unencryptedMetaData)
-		}
+		assert.DeepEqual(t, metaData, unencryptedMetaData)
 
 		dataAttributes, err := r.DataAttributes()
 		if err != nil {
@@ -409,8 +408,8 @@ func TestTDFReader(t *testing.T) { //nolint:gocognit
 	for _, test := range partialTDFTestHarnesses { // create .txt file
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
-			kasInfoList[index].url = serverURL
-			kasInfoList[index].publicKey = ""
+			kasInfoList[index].URL = serverURL
+			kasInfoList[index].PublicKey = ""
 		}
 
 		for _, readAtTest := range test.readAtTests {
@@ -494,8 +493,8 @@ func TestTDF(t *testing.T) {
 
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
-			kasInfoList[index].url = serverURL
-			kasInfoList[index].publicKey = ""
+			kasInfoList[index].URL = serverURL
+			kasInfoList[index].PublicKey = ""
 		}
 
 		// test encrypt
@@ -515,8 +514,8 @@ func BenchmarkReader(b *testing.B) {
 		fileSize: 10 * oneMB,
 		kasInfoList: []KASInfo{
 			{
-				url:       "http://localhost:65432/api/kas",
-				publicKey: mockKasPublicKey,
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: mockKasPublicKey,
 			},
 		},
 	}
@@ -526,8 +525,8 @@ func BenchmarkReader(b *testing.B) {
 
 	kasInfoList := test.kasInfoList
 	for index := range kasInfoList {
-		kasInfoList[index].url = serverURL
-		kasInfoList[index].publicKey = ""
+		kasInfoList[index].URL = serverURL
+		kasInfoList[index].PublicKey = ""
 	}
 
 	// encrypt

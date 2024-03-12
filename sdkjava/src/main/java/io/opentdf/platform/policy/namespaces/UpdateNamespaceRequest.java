@@ -18,7 +18,7 @@ private static final long serialVersionUID = 0L;
   }
   private UpdateNamespaceRequest() {
     id_ = "";
-    name_ = "";
+    metadataUpdateBehavior_ = 0;
   }
 
   @java.lang.Override
@@ -41,10 +41,15 @@ private static final long serialVersionUID = 0L;
             io.opentdf.platform.policy.namespaces.UpdateNamespaceRequest.class, io.opentdf.platform.policy.namespaces.UpdateNamespaceRequest.Builder.class);
   }
 
+  private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
   private volatile java.lang.Object id_ = "";
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The id.
    */
@@ -62,6 +67,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * Required
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
    * @return The bytes for id.
    */
@@ -80,43 +89,60 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int NAME_FIELD_NUMBER = 2;
-  @SuppressWarnings("serial")
-  private volatile java.lang.Object name_ = "";
+  public static final int METADATA_FIELD_NUMBER = 100;
+  private io.opentdf.platform.common.MetadataMutable metadata_;
   /**
-   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-   * @return The name.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return Whether the metadata field is set.
    */
   @java.lang.Override
-  public java.lang.String getName() {
-    java.lang.Object ref = name_;
-    if (ref instanceof java.lang.String) {
-      return (java.lang.String) ref;
-    } else {
-      com.google.protobuf.ByteString bs = 
-          (com.google.protobuf.ByteString) ref;
-      java.lang.String s = bs.toStringUtf8();
-      name_ = s;
-      return s;
-    }
+  public boolean hasMetadata() {
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-   * @return The bytes for name.
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   * @return The metadata.
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString
-      getNameBytes() {
-    java.lang.Object ref = name_;
-    if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b = 
-          com.google.protobuf.ByteString.copyFromUtf8(
-              (java.lang.String) ref);
-      name_ = b;
-      return b;
-    } else {
-      return (com.google.protobuf.ByteString) ref;
-    }
+  public io.opentdf.platform.common.MetadataMutable getMetadata() {
+    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
+  }
+  /**
+   * <pre>
+   * Optional
+   * </pre>
+   *
+   * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+   */
+  @java.lang.Override
+  public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
+    return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
+  }
+
+  public static final int METADATA_UPDATE_BEHAVIOR_FIELD_NUMBER = 101;
+  private int metadataUpdateBehavior_ = 0;
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The enum numeric value on the wire for metadataUpdateBehavior.
+   */
+  @java.lang.Override public int getMetadataUpdateBehaviorValue() {
+    return metadataUpdateBehavior_;
+  }
+  /**
+   * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+   * @return The metadataUpdateBehavior.
+   */
+  @java.lang.Override public io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior() {
+    io.opentdf.platform.common.MetadataUpdateEnum result = io.opentdf.platform.common.MetadataUpdateEnum.forNumber(metadataUpdateBehavior_);
+    return result == null ? io.opentdf.platform.common.MetadataUpdateEnum.UNRECOGNIZED : result;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -136,8 +162,11 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
     }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(name_)) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, name_);
+    if (((bitField0_ & 0x00000001) != 0)) {
+      output.writeMessage(100, getMetadata());
+    }
+    if (metadataUpdateBehavior_ != io.opentdf.platform.common.MetadataUpdateEnum.METADATA_UPDATE_ENUM_UNSPECIFIED.getNumber()) {
+      output.writeEnum(101, metadataUpdateBehavior_);
     }
     getUnknownFields().writeTo(output);
   }
@@ -151,8 +180,13 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, id_);
     }
-    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(name_)) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, name_);
+    if (((bitField0_ & 0x00000001) != 0)) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(100, getMetadata());
+    }
+    if (metadataUpdateBehavior_ != io.opentdf.platform.common.MetadataUpdateEnum.METADATA_UPDATE_ENUM_UNSPECIFIED.getNumber()) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeEnumSize(101, metadataUpdateBehavior_);
     }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
@@ -171,8 +205,12 @@ private static final long serialVersionUID = 0L;
 
     if (!getId()
         .equals(other.getId())) return false;
-    if (!getName()
-        .equals(other.getName())) return false;
+    if (hasMetadata() != other.hasMetadata()) return false;
+    if (hasMetadata()) {
+      if (!getMetadata()
+          .equals(other.getMetadata())) return false;
+    }
+    if (metadataUpdateBehavior_ != other.metadataUpdateBehavior_) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -186,8 +224,12 @@ private static final long serialVersionUID = 0L;
     hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + ID_FIELD_NUMBER;
     hash = (53 * hash) + getId().hashCode();
-    hash = (37 * hash) + NAME_FIELD_NUMBER;
-    hash = (53 * hash) + getName().hashCode();
+    if (hasMetadata()) {
+      hash = (37 * hash) + METADATA_FIELD_NUMBER;
+      hash = (53 * hash) + getMetadata().hashCode();
+    }
+    hash = (37 * hash) + METADATA_UPDATE_BEHAVIOR_FIELD_NUMBER;
+    hash = (53 * hash) + metadataUpdateBehavior_;
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -307,20 +349,31 @@ private static final long serialVersionUID = 0L;
 
     // Construct using io.opentdf.platform.policy.namespaces.UpdateNamespaceRequest.newBuilder()
     private Builder() {
-
+      maybeForceBuilderInitialization();
     }
 
     private Builder(
         com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
       super(parent);
-
+      maybeForceBuilderInitialization();
+    }
+    private void maybeForceBuilderInitialization() {
+      if (com.google.protobuf.GeneratedMessageV3
+              .alwaysUseFieldBuilders) {
+        getMetadataFieldBuilder();
+      }
     }
     @java.lang.Override
     public Builder clear() {
       super.clear();
       bitField0_ = 0;
       id_ = "";
-      name_ = "";
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
+      }
+      metadataUpdateBehavior_ = 0;
       return this;
     }
 
@@ -357,9 +410,17 @@ private static final long serialVersionUID = 0L;
       if (((from_bitField0_ & 0x00000001) != 0)) {
         result.id_ = id_;
       }
+      int to_bitField0_ = 0;
       if (((from_bitField0_ & 0x00000002) != 0)) {
-        result.name_ = name_;
+        result.metadata_ = metadataBuilder_ == null
+            ? metadata_
+            : metadataBuilder_.build();
+        to_bitField0_ |= 0x00000001;
       }
+      if (((from_bitField0_ & 0x00000004) != 0)) {
+        result.metadataUpdateBehavior_ = metadataUpdateBehavior_;
+      }
+      result.bitField0_ |= to_bitField0_;
     }
 
     @java.lang.Override
@@ -411,10 +472,11 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00000001;
         onChanged();
       }
-      if (!other.getName().isEmpty()) {
-        name_ = other.name_;
-        bitField0_ |= 0x00000002;
-        onChanged();
+      if (other.hasMetadata()) {
+        mergeMetadata(other.getMetadata());
+      }
+      if (other.metadataUpdateBehavior_ != 0) {
+        setMetadataUpdateBehaviorValue(other.getMetadataUpdateBehaviorValue());
       }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
@@ -447,11 +509,18 @@ private static final long serialVersionUID = 0L;
               bitField0_ |= 0x00000001;
               break;
             } // case 10
-            case 18: {
-              name_ = input.readStringRequireUtf8();
+            case 802: {
+              input.readMessage(
+                  getMetadataFieldBuilder().getBuilder(),
+                  extensionRegistry);
               bitField0_ |= 0x00000002;
               break;
-            } // case 18
+            } // case 802
+            case 808: {
+              metadataUpdateBehavior_ = input.readEnum();
+              bitField0_ |= 0x00000004;
+              break;
+            } // case 808
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -471,6 +540,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object id_ = "";
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
      * @return The id.
      */
@@ -487,6 +560,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
      * @return The bytes for id.
      */
@@ -504,6 +581,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
      * @param value The id to set.
      * @return This builder for chaining.
@@ -517,6 +598,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
@@ -527,6 +612,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Required
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id", (.buf.validate.field) = { ... }</code>
      * @param value The bytes for id to set.
      * @return This builder for chaining.
@@ -541,74 +630,212 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private java.lang.Object name_ = "";
+    private io.opentdf.platform.common.MetadataMutable metadata_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> metadataBuilder_;
     /**
-     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-     * @return The name.
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     * @return Whether the metadata field is set.
      */
-    public java.lang.String getName() {
-      java.lang.Object ref = name_;
-      if (!(ref instanceof java.lang.String)) {
-        com.google.protobuf.ByteString bs =
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        name_ = s;
-        return s;
+    public boolean hasMetadata() {
+      return ((bitField0_ & 0x00000002) != 0);
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     * @return The metadata.
+     */
+    public io.opentdf.platform.common.MetadataMutable getMetadata() {
+      if (metadataBuilder_ == null) {
+        return metadata_ == null ? io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
       } else {
-        return (java.lang.String) ref;
+        return metadataBuilder_.getMessage();
       }
     }
     /**
-     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-     * @return The bytes for name.
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public com.google.protobuf.ByteString
-        getNameBytes() {
-      java.lang.Object ref = name_;
-      if (ref instanceof String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        name_ = b;
-        return b;
+    public Builder setMetadata(io.opentdf.platform.common.MetadataMutable value) {
+      if (metadataBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        metadata_ = value;
       } else {
-        return (com.google.protobuf.ByteString) ref;
+        metadataBuilder_.setMessage(value);
       }
-    }
-    /**
-     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-     * @param value The name to set.
-     * @return This builder for chaining.
-     */
-    public Builder setName(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      name_ = value;
       bitField0_ |= 0x00000002;
       onChanged();
       return this;
     }
     /**
-     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-     * @return This builder for chaining.
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
      */
-    public Builder clearName() {
-      name_ = getDefaultInstance().getName();
+    public Builder setMetadata(
+        io.opentdf.platform.common.MetadataMutable.Builder builderForValue) {
+      if (metadataBuilder_ == null) {
+        metadata_ = builderForValue.build();
+      } else {
+        metadataBuilder_.setMessage(builderForValue.build());
+      }
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder mergeMetadata(io.opentdf.platform.common.MetadataMutable value) {
+      if (metadataBuilder_ == null) {
+        if (((bitField0_ & 0x00000002) != 0) &&
+          metadata_ != null &&
+          metadata_ != io.opentdf.platform.common.MetadataMutable.getDefaultInstance()) {
+          getMetadataBuilder().mergeFrom(value);
+        } else {
+          metadata_ = value;
+        }
+      } else {
+        metadataBuilder_.mergeFrom(value);
+      }
+      if (metadata_ != null) {
+        bitField0_ |= 0x00000002;
+        onChanged();
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public Builder clearMetadata() {
       bitField0_ = (bitField0_ & ~0x00000002);
+      metadata_ = null;
+      if (metadataBuilder_ != null) {
+        metadataBuilder_.dispose();
+        metadataBuilder_ = null;
+      }
       onChanged();
       return this;
     }
     /**
-     * <code>string name = 2 [json_name = "name", (.buf.validate.field) = { ... }</code>
-     * @param value The bytes for name to set.
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.MetadataMutable.Builder getMetadataBuilder() {
+      bitField0_ |= 0x00000002;
+      onChanged();
+      return getMetadataFieldBuilder().getBuilder();
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    public io.opentdf.platform.common.MetadataMutableOrBuilder getMetadataOrBuilder() {
+      if (metadataBuilder_ != null) {
+        return metadataBuilder_.getMessageOrBuilder();
+      } else {
+        return metadata_ == null ?
+            io.opentdf.platform.common.MetadataMutable.getDefaultInstance() : metadata_;
+      }
+    }
+    /**
+     * <pre>
+     * Optional
+     * </pre>
+     *
+     * <code>.common.MetadataMutable metadata = 100 [json_name = "metadata"];</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder> 
+        getMetadataFieldBuilder() {
+      if (metadataBuilder_ == null) {
+        metadataBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.opentdf.platform.common.MetadataMutable, io.opentdf.platform.common.MetadataMutable.Builder, io.opentdf.platform.common.MetadataMutableOrBuilder>(
+                getMetadata(),
+                getParentForChildren(),
+                isClean());
+        metadata_ = null;
+      }
+      return metadataBuilder_;
+    }
+
+    private int metadataUpdateBehavior_ = 0;
+    /**
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @return The enum numeric value on the wire for metadataUpdateBehavior.
+     */
+    @java.lang.Override public int getMetadataUpdateBehaviorValue() {
+      return metadataUpdateBehavior_;
+    }
+    /**
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @param value The enum numeric value on the wire for metadataUpdateBehavior to set.
      * @return This builder for chaining.
      */
-    public Builder setNameBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      name_ = value;
-      bitField0_ |= 0x00000002;
+    public Builder setMetadataUpdateBehaviorValue(int value) {
+      metadataUpdateBehavior_ = value;
+      bitField0_ |= 0x00000004;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @return The metadataUpdateBehavior.
+     */
+    @java.lang.Override
+    public io.opentdf.platform.common.MetadataUpdateEnum getMetadataUpdateBehavior() {
+      io.opentdf.platform.common.MetadataUpdateEnum result = io.opentdf.platform.common.MetadataUpdateEnum.forNumber(metadataUpdateBehavior_);
+      return result == null ? io.opentdf.platform.common.MetadataUpdateEnum.UNRECOGNIZED : result;
+    }
+    /**
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @param value The metadataUpdateBehavior to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMetadataUpdateBehavior(io.opentdf.platform.common.MetadataUpdateEnum value) {
+      if (value == null) {
+        throw new NullPointerException();
+      }
+      bitField0_ |= 0x00000004;
+      metadataUpdateBehavior_ = value.getNumber();
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>.common.MetadataUpdateEnum metadata_update_behavior = 101 [json_name = "metadataUpdateBehavior"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMetadataUpdateBehavior() {
+      bitField0_ = (bitField0_ & ~0x00000004);
+      metadataUpdateBehavior_ = 0;
       onChanged();
       return this;
     }

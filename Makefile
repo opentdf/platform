@@ -24,7 +24,7 @@ toolcheck:
 
 go.work go.work.sum:
 	go work init . examples protocol/go sdk
-	go work edit --go=1.21.7
+	go work edit --go=1.21.8
 
 fix:
 	for m in $(MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
@@ -50,6 +50,9 @@ proto-generate:
 	buf generate services --exclude-path $(EXCLUDE_JAVA) --template buf.gen.java.yaml
 	buf generate services --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
 	
+	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
+	cp -r tmp-gen/sdkjava/src/main/java/grpc sdkjava/src/main/java/grpc
+	rm -rf tmp-gen
 
 test:
 	go test ./... -race
@@ -58,12 +61,12 @@ test:
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
-	rm -f serviceapp examples/examples go.work go.work.sum
+	rm -f opentdf examples/examples go.work go.work.sum
 
-build: go.work proto-generate serviceapp sdk/sdk examples/examples
+build: go.work proto-generate opentdf sdk/sdk examples/examples
 
-serviceapp: go.work go.mod go.sum main.go $(shell find cmd internal services)
-	go build -o serviceapp -v ./main.go
+opentdf: go.work go.mod go.sum main.go $(shell find cmd internal services)
+	go build -o opentdf -v ./main.go
 
 sdk/sdk: go.work $(shell find sdk)
 	(cd sdk && go build ./...)

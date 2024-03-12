@@ -108,7 +108,7 @@ public enum ActiveStateEnum
   }
   public static final com.google.protobuf.Descriptors.EnumDescriptor
       getDescriptor() {
-    return io.opentdf.platform.common.CommonProto.getDescriptor().getEnumTypes().get(0);
+    return io.opentdf.platform.common.CommonProto.getDescriptor().getEnumTypes().get(1);
   }
 
   private static final ActiveStateEnum[] VALUES = values();

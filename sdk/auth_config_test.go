@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewOIDCAuthConfig(t *testing.T) {
-	expectedAccessToken := "Bearer fail"
+	expectedAccessToken := "fail"
 	clientId := "idk"
 	clientSecret := "secret password"
 	subjectToken := "token"
@@ -28,7 +28,6 @@ func TestNewOIDCAuthConfig(t *testing.T) {
 			}
 
 			_, _ = w.Write([]byte("{\"access_token\": \"fail\", \"token_type\": \"ok\"}"))
-			w.WriteHeader(200)
 		}),
 	)
 	defer s.Close()

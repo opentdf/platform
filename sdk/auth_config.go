@@ -95,7 +95,7 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 	if err != nil {
 		return "", err
 	}
-	return "Bearer " + keyResp.AccessToken, nil
+	return keyResp.AccessToken, nil
 }
 
 func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Response, error) {
@@ -230,7 +230,7 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 }
 
 func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
-	kasPubKeyURL, err := url.JoinPath(kasInfo.url, kasPublicKeyPath)
+	kasPubKeyURL, err := url.JoinPath(kasInfo.URL, kasPublicKeyPath)
 	if err != nil {
 		return "", fmt.Errorf("url.Parse failed: %w", err)
 	}

@@ -10,13 +10,13 @@ on:
   merge_group:
     branches:
       - main
-    types: 
+    types:
       - checks_requested
 
 jobs:
   pr:
     name: Validate PR title
-    if: ${{ github.event_name != 'merge_group' }}
+    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
     runs-on: ubuntu-22.04
     permissions:
       pull-requests: read
@@ -48,6 +48,8 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
       - run: make go.work
+      - run: go mod download
+      - run: go mod verify
       - name: golangci-lint on PR
         if: github.event_name == 'pull_request'
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
@@ -69,6 +71,16 @@ jobs:
         with:
           version: v1.55
           working-directory: ${{ matrix.directory }}
+      - name: Install softHSM
+        if: matrix.directory == '.'
+        run: |-
+          sudo apt-get install -y softhsm opensc openssl
+          sudo chmod +x /etc/softhsm
+          sudo chmod +r /etc/softhsm/softhsm2.conf
+          mkdir -p $(pwd)/.tmp/tokens
+          echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
+          echo "log.level = DEBUG" >> softhsm2.conf
+          echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
 
@@ -86,13 +98,20 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
       - run: make go.work
+      - run: go mod download
+      - run: go mod verify
       - run: go test ./integration -race
-      - run: docker-compose up -d
+      - run: docker compose up -d --wait --wait-timeout 240
       - run: cp example-opentdf.yaml opentdf.yaml
-      - run: go run . start &
+      - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
+        name: start server in background
+        with:
+          run: |
+            go run . start
+          wait-on: |
+            tcp:localhost:9000
+          log-output-if: true
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
-      - run: sleep 15
-        name: wake me up when github action runner supports docker-compose --wait
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
 
@@ -142,17 +161,34 @@ jobs:
       - name: Check that files have been formatted before PR submission
         run: git diff-files --quiet --ignore-submodules
 
+  javasdk:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - buflint
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: "20"
+          distribution: "adopt"
+          server-id: github
+      - name: Compile Java SDK
+        run: |
+          mvn -f sdkjava/pom.xml clean install
   ci:
     needs:
       - go
       - integration
       - image
       - buflint
+      - pr
     runs-on: ubuntu-latest
     if: always()
     steps:
       - if: contains(needs.*.result, 'failure')
-        run: exit 1
+        run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
 
   license:
     name: license check

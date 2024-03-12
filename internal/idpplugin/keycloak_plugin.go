@@ -21,12 +21,12 @@ type IdpPlugin struct {
 }
 
 type KeyCloakConfg struct {
-	Url            string
-	Realm          string
-	ClientId       string
-	ClientSecret   string
-	LegacyKeycloak bool `default:"false"`
-	SubGroups      bool `default:"false"`
+	Url            string `json:"url"`
+	Realm          string `json:"realm"`
+	ClientId       string `json:"clientid"`
+	ClientSecret   string `json:"clientsecret"`
+	LegacyKeycloak bool   `json:"legacykeycloak" default:"false"`
+	SubGroups      bool   `json:"subgroups" default:"false"`
 }
 
 type KeyCloakConnector struct {
@@ -47,8 +47,21 @@ func NewIdpPlugin(config KeyCloakConfg, ctx context.Context) (*IdpPlugin, error)
 	return plugin, nil
 }
 
-func (s IdpPlugin) EntityResolution(ctx context.Context,
-	req *authorization.IdpPluginRequest) (*authorization.IdpPluginResponse, error) {
+func EntityResolution(ctx context.Context,
+	req *authorization.IdpPluginRequest, config *authorization.IdpConfig) (*authorization.IdpPluginResponse, error) {
+
+	jsonString, err := json.Marshal(config.Config.AsMap())
+	if err != nil {
+		slog.Error("Error marshalling keycloak config!", "error", err)
+		return nil, err
+	}
+	kcConfig := KeyCloakConfg{}
+	json.Unmarshal(jsonString, &kcConfig)
+	connector, err := getKCClient(kcConfig, ctx)
+	if err != nil {
+		return &authorization.IdpPluginResponse{},
+			status.Error(codes.Internal, services.ErrCreationFailed)
+	}
 	payload := req.GetEntities()
 
 	var resolvedEntities []*authorization.IdpEntityRepresentation
@@ -74,7 +87,7 @@ func (s IdpPlugin) EntityResolution(ctx context.Context,
 				status.Error(codes.InvalidArgument, typeErr.Error())
 		}
 
-		users, userErr := s.connector.client.GetUsers(ctx, s.connector.token.AccessToken, s.config.Realm, getUserParams)
+		users, userErr := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
 		if userErr != nil {
 			return &authorization.IdpPluginResponse{},
 				status.Error(codes.Internal, services.ErrGetRetrievalFailed)
@@ -86,10 +99,10 @@ func (s IdpPlugin) EntityResolution(ctx context.Context,
 			slog.Error("No user found for", "entity", ident.String())
 			if ident.GetEmailAddress() != "" {
 				//try by group
-				groups, groupErr := s.connector.client.GetGroups(
+				groups, groupErr := connector.client.GetGroups(
 					ctx,
-					s.connector.token.AccessToken,
-					s.config.Realm,
+					connector.token.AccessToken,
+					kcConfig.Realm,
 					gocloak.GetGroupsParams{Search: func() *string { t := payload[i].GetEmailAddress(); return &t }()},
 				)
 				if groupErr != nil {
@@ -99,7 +112,7 @@ func (s IdpPlugin) EntityResolution(ctx context.Context,
 				} else if len(groups) == 1 {
 					slog.Info("Group found for", "entity", ident.String())
 					group := groups[0]
-					expandedRepresentations, exErr := expandGroup(*group.ID, &s.connector, &s.config, ctx)
+					expandedRepresentations, exErr := expandGroup(*group.ID, connector, &kcConfig, ctx)
 					if exErr != nil {
 						return &authorization.IdpPluginResponse{},
 							status.Error(codes.Internal, services.ErrNotFound)
@@ -188,7 +201,10 @@ func getKCClient(kcConfig KeyCloakConfg, ctx context.Context) (*KeyCloakConnecto
 	// restyClient.SetDebug(true)
 	// restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	// client.SetRestyClient(restyClient)
-
+	slog.Debug(kcConfig.ClientId)
+	slog.Debug(kcConfig.ClientSecret)
+	slog.Debug(kcConfig.Url)
+	slog.Debug(kcConfig.Realm)
 	token, err := client.LoginClient(ctx, kcConfig.ClientId, kcConfig.ClientSecret, kcConfig.Realm)
 	if err != nil {
 		slog.Warn("Error connecting to keycloak!", err)

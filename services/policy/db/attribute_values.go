@@ -306,7 +306,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	sb = sb.JoinClause("FULL OUTER JOIN " + t.Name() + " vmv ON vm.member_id = vmv.id")
 
 	if opts.withFqn {
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + "vmv.id")
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + "av.id")
 	}
 
 	return sb.Where(sq.Eq{

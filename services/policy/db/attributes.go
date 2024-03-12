@@ -51,10 +51,6 @@ func convertJSONToAttrVal(c PolicyDbClient, r json.RawMessage) (*attributes.Valu
 		item.Metadata = &common.Metadata{}
 	}
 
-	// if item.Active == nil {
-	// 	item.Active = &wrapperspb.BoolValue{Value: true}
-	// }
-
 	var members []*attributes.Value
 	if len(item.Members) > 0 {
 		attr, err := c.GetAttributeValue(context.TODO(), item.Id)
@@ -63,7 +59,6 @@ func convertJSONToAttrVal(c PolicyDbClient, r json.RawMessage) (*attributes.Valu
 		}
 		return attr, nil
 	}
-	println("r", string(r))
 	return &attributes.Value{
 		Id:       item.Id,
 		Value:    item.Value,
@@ -93,13 +88,7 @@ func attributesValuesProtojson(c PolicyDbClient, valuesJson []byte) ([]*attribut
 		return values, nil
 	}
 
-	// log.Fatal("valuesJson", string(valuesJson))
-
 	for _, r := range raw {
-		println("r", string(r))
-		// if string(r) == "[]" {
-		// 	continue
-		// }
 		value, err := convertJSONToAttrVal(c, r)
 		if err != nil {
 			return nil, err

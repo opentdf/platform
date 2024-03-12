@@ -22,7 +22,7 @@ type attributeValueSelectOptions struct {
 
 func getMembersFromStringArray(c PolicyDbClient, members []string) ([]*attributes.Value, error) {
 	// Hydrate members
-	hydratedMemberIds := set.NewSet()
+	hydratedMemberIds := map[string]bool{}
 	var hydratedMembers []*attributes.Value
 
 	for _, member := range members {
@@ -47,12 +47,12 @@ func getMembersFromStringArray(c PolicyDbClient, members []string) ([]*attribute
 			return nil, err
 		}
 
-		if hydratedMemberIds.Contains(member_id) {
+		if hydratedMemberIds[member_id] {
 			slog.Info("attr val member may be duplicated", slog.String("member_id", member_id))
 			continue
 		}
 
-		hydratedMemberIds.Add(member_id)
+		hydratedMemberIds[member_id] = true
 		hydratedMembers = append(hydratedMembers, attr)
 	}
 	return hydratedMembers, nil
@@ -82,7 +82,6 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 	if opts.withFqn {
 		fields = append(fields, &fqn)
 	}
-	println("fqn", fqn.String)
 	if err := row.Scan(fields...); err != nil {
 		fields := []interface{}{
 			&id,
@@ -104,39 +103,9 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 			return nil, err
 		}
 	} else {
-		// for _, memberJson := range membersJson {
-		// 	// memberJson = memberJson.(json.RawMessage)
-		// 	println("memberJson", string(memberJson))
-		// 	// var i interface{}
-		// 	// if err := json.Unmarshal(memberJson, &i); err != nil {
-		// 	// 	return nil, err
-		// 	// }
-		// 	// memberattributesValuesProtojson(membersJson)
-
-		// 	member, err := attributesValuesProtojson(c, memberJson)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		// 	// member := &attributes.Value{}
-		// 	// if err := protojson.Unmarshal(memberJson, member); err != nil {
-		// 	// 	return nil, err
-		// 	// }
-		// 	members = append(members, member)
-		// }
-		println("membersJson before", string(membersJson))
 		if membersJson != nil {
 			members, err = attributesValuesProtojson(c, membersJson)
-			println("len(members)", len(members))
-			for _, member := range members {
-				println("member", member.Id)
-			}
-			// if len(members) == 0 {
-			// 	// log.Fatal("members is empty")
-			// 	println("members is empty")
-			// }
-			// log.Fatal("IsSuE In UnMaRsHaLlInG")
 			if err != nil {
-				println("IsSuE In UnMaRsHaLlInG")
 				return nil, err
 			}
 		}
@@ -148,46 +117,6 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 			return nil, err
 		}
 	}
-	println("fqn: ", fqn.String)
-
-	// // Hydrate members
-	// hydratedMemberIds := set.NewSet()
-	// var hydratedMembers []*attributes.Value
-
-	// for _, member := range members {
-	// 	var (
-	// 		vm_id     string
-	// 		value_id  string
-	// 		member_id string
-	// 	)
-
-	// 	// Get member value from db
-	// 	sql, args, err := getMemberSql(member)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if r, err := c.QueryRow(context.TODO(), sql, args, err); err != nil {
-	// 		return nil, err
-	// 	} else if err := r.Scan(&vm_id, &value_id, &member_id); err != nil {
-	// 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	// 	}
-	// 	attr, err := c.GetAttributeValue(context.TODO(), member_id)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	if hydratedMemberIds.Contains(member_id) {
-	// 		slog.Info("attr val member may be duplicated", slog.String("member_id", member_id))
-	// 		continue
-	// 	}
-
-	// 	hydratedMemberIds.Add(member_id)
-	// 	hydratedMembers = append(hydratedMembers, attr)
-	// }
-	// hydratedMembers, err := getMembersFromStringArray(c, memberUUIDs)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	v := &attributes.Value{
 		Id:       id,
@@ -255,13 +184,11 @@ func createAttributeValueSql(
 		Columns(
 			"attribute_definition_id",
 			"value",
-			// "members",
 			"metadata",
 		).
 		Values(
 			attribute_id,
 			value,
-			// members,
 			metadata,
 		).
 		Suffix("RETURNING id").
@@ -277,7 +204,6 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	sql, args, err := createAttributeValueSql(
 		attributeId,
 		v.Value,
-		// v.Members,
 		metadataJson,
 	)
 	if err != nil {
@@ -358,12 +284,6 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	}
 	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
-		// t.Field("id"),
-		// t.Field("value"),
-		// t.Field("active"),
-		// t.Field("members"),
-		// t.Field("metadata"),
-		// t.Field("attribute_definition_id"),
 		"av.id",
 		"av.value",
 		"av.active",
@@ -372,14 +292,12 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		// fields = append(fields, "MAX("+fqnT.Field("fqn")+") AS fqn")
 		fields = append(fields, Tables.AttrFqn.Field("fqn"))
 	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...).
 		From(t.Name() + " av")
-		// add alias
 
 	// join members
 	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
@@ -389,7 +307,6 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + "vmv.id")
-		// sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("attribute_id") + " = " + "vmv.attribute_definition_id")
 	}
 
 	return sb.Where(sq.Eq{
@@ -398,7 +315,6 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 			"av.id",
 			fqnT.Field("fqn"),
 		).
-		// LeftJoin(t.Name() + " ON " + t.Field("id") + " = " + db.Tables.ValueMembers.Field("member_id")).
 		ToSql()
 }
 
@@ -504,7 +420,6 @@ func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string
 
 func updateAttributeValueSql(
 	id string,
-	// members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
 	t := Tables.AttributeValues
@@ -513,10 +428,6 @@ func updateAttributeValueSql(
 	if metadata != nil {
 		sb = sb.Set("metadata", metadata)
 	}
-
-	// if members != nil {
-	// 	sb = sb.Set("members", members)
-	// }
 
 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
@@ -535,7 +446,6 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 
 	sql, args, err := updateAttributeValueSql(
 		r.Id,
-		// r.Members,
 		metadataJson,
 	)
 	if db.IsQueryBuilderSetClauseError(err) {

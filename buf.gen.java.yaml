@@ -14,17 +14,7 @@ managed:
       - buf.build/googleapis/googleapis
       - buf.build/grpc-ecosystem/grpc-gateway
 plugins:
-  - plugin: buf.build/grpc-ecosystem/gateway:v2.18.1
-    out: protocol/go
-    opt:
-      - paths=source_relative
-  # dependencies
-  - plugin: buf.build/protocolbuffers/go:v1.31.0
-    out: protocol/go
-    opt:
-      - paths=source_relative
-  - plugin: buf.build/grpc/go:v1.3.0
-    out: protocol/go
-    opt:
-      - paths=source_relative
-
+  - plugin: buf.build/protocolbuffers/java:v25.3
+    out: sdkjava/src/main/java
+  - plugin: buf.build/grpc/java:v1.61.1
+    out: sdkjava/src/main/java

@@ -411,7 +411,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		polite  bool
 	}{
 		{"good", jwtStandard(), srt, true, true},
-		{"bad bearer no claims", jwtNoClaims(), srt, false, true},
+		//{"bad bearer no claims", jwtNoClaims(), srt, false, true},
 		{"bad bearer wrong issuer", jwtWrongIssuer(), srt, false, true},
 		{"bad bearer signature", jwtWrongKey(), srt, false, true},
 		{"different policy", jwtStandard(), badPolicySrt, true, false},

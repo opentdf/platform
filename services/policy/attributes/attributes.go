@@ -75,10 +75,10 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	return rsp, err
 }
 
-func (s *AttributesService) GetAttributesByValueFqns(ctx context.Context,
-	req *attributes.GetAttributesByValueFqnsRequest,
-) (*attributes.GetAttributesByValueFqnsResponse, error) {
-	rsp := &attributes.GetAttributesByValueFqnsResponse{}
+func (s *AttributesService) GetValuesByFqns(ctx context.Context,
+	req *attributes.GetAttributeValuesByFqnsRequest,
+) (*attributes.GetAttributeValuesByFqnsResponse, error) {
+	rsp := &attributes.GetAttributeValuesByFqnsResponse{}
 
 	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req.Fqns)
 	if err != nil {

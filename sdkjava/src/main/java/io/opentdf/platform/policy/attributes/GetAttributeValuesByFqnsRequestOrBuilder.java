@@ -50,17 +50,17 @@ public interface GetAttributeValuesByFqnsRequestOrBuilder extends
       getFqnsBytes(int index);
 
   /**
-   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
    * @return Whether the withValue field is set.
    */
   boolean hasWithValue();
   /**
-   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
    * @return The withValue.
    */
   io.opentdf.platform.policy.AttributeValueSelector getWithValue();
   /**
-   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
    */
   io.opentdf.platform.policy.AttributeValueSelectorOrBuilder getWithValueOrBuilder();
 }

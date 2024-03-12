@@ -98,7 +98,7 @@ private static final long serialVersionUID = 0L;
   public static final int WITH_VALUE_FIELD_NUMBER = 2;
   private io.opentdf.platform.policy.AttributeValueSelector withValue_;
   /**
-   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
    * @return Whether the withValue field is set.
    */
   @java.lang.Override
@@ -106,7 +106,7 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
    * @return The withValue.
    */
   @java.lang.Override
@@ -114,7 +114,7 @@ private static final long serialVersionUID = 0L;
     return withValue_ == null ? io.opentdf.platform.policy.AttributeValueSelector.getDefaultInstance() : withValue_;
   }
   /**
-   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+   * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public io.opentdf.platform.policy.AttributeValueSelectorOrBuilder getWithValueOrBuilder() {
@@ -658,14 +658,14 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.policy.AttributeValueSelector, io.opentdf.platform.policy.AttributeValueSelector.Builder, io.opentdf.platform.policy.AttributeValueSelectorOrBuilder> withValueBuilder_;
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      * @return Whether the withValue field is set.
      */
     public boolean hasWithValue() {
       return ((bitField0_ & 0x00000002) != 0);
     }
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      * @return The withValue.
      */
     public io.opentdf.platform.policy.AttributeValueSelector getWithValue() {
@@ -676,7 +676,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      */
     public Builder setWithValue(io.opentdf.platform.policy.AttributeValueSelector value) {
       if (withValueBuilder_ == null) {
@@ -692,7 +692,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      */
     public Builder setWithValue(
         io.opentdf.platform.policy.AttributeValueSelector.Builder builderForValue) {
@@ -706,7 +706,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      */
     public Builder mergeWithValue(io.opentdf.platform.policy.AttributeValueSelector value) {
       if (withValueBuilder_ == null) {
@@ -727,7 +727,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      */
     public Builder clearWithValue() {
       bitField0_ = (bitField0_ & ~0x00000002);
@@ -740,7 +740,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.AttributeValueSelector.Builder getWithValueBuilder() {
       bitField0_ |= 0x00000002;
@@ -748,7 +748,7 @@ private static final long serialVersionUID = 0L;
       return getWithValueFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      */
     public io.opentdf.platform.policy.AttributeValueSelectorOrBuilder getWithValueOrBuilder() {
       if (withValueBuilder_ != null) {
@@ -759,7 +759,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue"];</code>
+     * <code>.policy.AttributeValueSelector with_value = 2 [json_name = "withValue", (.buf.validate.field) = { ... }</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
         io.opentdf.platform.policy.AttributeValueSelector, io.opentdf.platform.policy.AttributeValueSelector.Builder, io.opentdf.platform.policy.AttributeValueSelectorOrBuilder> 

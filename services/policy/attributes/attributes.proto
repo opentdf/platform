@@ -135,7 +135,7 @@ message DeactivateAttributeValueResponse {
 message GetAttributeValuesByFqnsRequest {
   // Required
   repeated string fqns = 1 [(buf.validate.field).required = true];
-  policy.AttributeValueSelector with_value = 2;
+  policy.AttributeValueSelector with_value = 2 [(buf.validate.field).required = true];
 }
 message GetAttributeValuesByFqnsResponse {
   message AttributeAndValue {

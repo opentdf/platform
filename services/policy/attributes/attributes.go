@@ -75,7 +75,7 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	return rsp, err
 }
 
-func (s *AttributesService) GetValuesByFqns(ctx context.Context,
+func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	req *attributes.GetAttributeValuesByFqnsRequest,
 ) (*attributes.GetAttributeValuesByFqnsResponse, error) {
 	rsp := &attributes.GetAttributeValuesByFqnsResponse{}

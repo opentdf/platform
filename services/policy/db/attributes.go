@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -53,7 +54,7 @@ type attributesSelectOptions struct {
 	withKeyAccessGrants bool
 	// withFqn and withOneValueByFqn are mutually exclusive
 	withFqn           bool
-	withOneValueByFqn bool
+	withOneValueByFqn string
 	state             string
 }
 
@@ -79,7 +80,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("active"),
 		nt.Field("name"),
 	}
-	if opts.withAttributeValues || opts.withOneValueByFqn {
+	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
 		valueSelect := "JSON_AGG(" +
 			"JSON_BUILD_OBJECT(" +
 			"'id', " + avt.Field("id") + ", " +
@@ -88,7 +89,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'active', " + avt.Field("active")
 
 		// include the subject mapping / subject condition set for each value
-		if opts.withOneValueByFqn {
+		if opts.withOneValueByFqn != "" {
 			valueSelect += ", 'fqn', " + fqnt.Field("fqn") + ", " +
 				"'subject_mappings', sm_arr"
 		}
@@ -133,7 +134,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
 			" AND " + fqnt.Field("value_id") + " IS NULL")
 	}
-	if opts.withOneValueByFqn {
+	if opts.withOneValueByFqn != "" {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
 			" AND " + fqnt.Field("value_id") + " = " + avt.Field("id")).
 			LeftJoin("(SELECT " +
@@ -151,7 +152,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"FROM " + smT.Name() + " " +
 				"LEFT JOIN " + avt.Name() + " ON " + smT.Field("attribute_value_id") + " = " + avt.Field("id") + " " +
 				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
-				"GROUP BY " + avt.Field("id") + ") AS sub_sm ON " + avt.Field("id") + " = sub_sm.av_id")
+				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
+				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
+				"GROUP BY " + avt.Field("id") +
+				") AS sub_sm ON " + avt.Field("id") + " = sub_sm.av_id")
 	}
 
 	g := []string{t.Field("id"), nt.Field("name")}
@@ -182,7 +186,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 	)
 
 	fields := []interface{}{&id, &name, &rule, &metadataJson, &namespaceId, &active, &namespaceName}
-	if opts.withAttributeValues || opts.withOneValueByFqn {
+	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
 		fields = append(fields, &valuesJson)
 	}
 	if opts.withKeyAccessGrants {
@@ -354,11 +358,12 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		withKeyAccessGrants: false,
 	}
 	if strings.Contains(fqn, "/value/") {
-		opts.withOneValueByFqn = true
+		opts.withOneValueByFqn = fqn
 	} else {
 		opts.withFqn = true
 	}
 	sql, args, err := getAttributeByFqnSql(fqn, opts)
+	fmt.Println("\nsql: ", sql, "\nargs: ", args, "\nerr: ", err)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

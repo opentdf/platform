@@ -42,20 +42,6 @@ message GetAttributeResponse {
   policy.Attribute attribute = 1;
 }
 
-message GetAttributesByValueFqnsRequest {
-  // Required
-  repeated string fqns = 1 [(buf.validate.field).required = true];
-  policy.AttributeValueSelector with_value = 2;
-}
-message GetAttributesByValueFqnsResponse {
-  message AttributeAndValue {
-    policy.Attribute attribute = 1;
-    policy.Value value = 2;
-  }
-  // map of fqns to complete attributes and the one selected value
-  map<string, AttributeAndValue> fqn_attribute_values = 1;
-}
-
 message CreateAttributeRequest {
   // Required
   string namespace_id = 1 [(buf.validate.field).required = true];
@@ -146,6 +132,20 @@ message DeactivateAttributeValueResponse {
   policy.Value value = 1;
 }
 
+message GetAttributeValuesByFqnsRequest {
+  // Required
+  repeated string fqns = 1 [(buf.validate.field).required = true];
+  policy.AttributeValueSelector with_value = 2;
+}
+message GetAttributeValuesByFqnsResponse {
+  message AttributeAndValue {
+    policy.Attribute attribute = 1;
+    policy.Value value = 2;
+  }
+  // map of fqns to complete attributes and the one selected value
+  map<string, AttributeAndValue> fqn_attribute_values = 1;
+}
+
 /*
    Assign Key Access Server to Attribute and Value
 */
@@ -195,7 +195,7 @@ service AttributesService {
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};
   }
-  rpc GetAttributesByValueFqns(GetAttributesByValueFqnsRequest) returns (GetAttributesByValueFqnsResponse) {
+  rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
     option (google.api.http) = {get: "/attributes/*/fqn"};
   }
 

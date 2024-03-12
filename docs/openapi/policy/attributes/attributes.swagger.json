@@ -50,12 +50,12 @@
     },
     "/attributes/*/fqn": {
       "get": {
-        "operationId": "AttributesService_GetAttributesByValueFqns",
+        "operationId": "AttributesService_GetAttributeValuesByFqns",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesGetAttributesByValueFqnsResponse"
+              "$ref": "#/definitions/attributesGetAttributeValuesByFqnsResponse"
             }
           },
           "default": {
@@ -521,7 +521,7 @@
     "AttributeValueSelectorAttributeSelectorNamespaceSelector": {
       "type": "object"
     },
-    "GetAttributesByValueFqnsResponseAttributeAndValue": {
+    "GetAttributeValuesByFqnsResponseAttributeAndValue": {
       "type": "object",
       "properties": {
         "attribute": {
@@ -626,13 +626,13 @@
         }
       }
     },
-    "attributesGetAttributesByValueFqnsResponse": {
+    "attributesGetAttributeValuesByFqnsResponse": {
       "type": "object",
       "properties": {
         "fqnAttributeValues": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/GetAttributesByValueFqnsResponseAttributeAndValue"
+            "$ref": "#/definitions/GetAttributeValuesByFqnsResponseAttributeAndValue"
           },
           "title": "map of fqns to complete attributes and the one selected value"
         }

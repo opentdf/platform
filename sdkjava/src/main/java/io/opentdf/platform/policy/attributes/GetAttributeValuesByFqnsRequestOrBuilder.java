@@ -4,8 +4,8 @@
 // Protobuf Java Version: 3.25.3
 package io.opentdf.platform.policy.attributes;
 
-public interface GetAttributesByValueFqnsRequestOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:policy.attributes.GetAttributesByValueFqnsRequest)
+public interface GetAttributeValuesByFqnsRequestOrBuilder extends
+    // @@protoc_insertion_point(interface_extends:policy.attributes.GetAttributeValuesByFqnsRequest)
     com.google.protobuf.MessageOrBuilder {
 
   /**

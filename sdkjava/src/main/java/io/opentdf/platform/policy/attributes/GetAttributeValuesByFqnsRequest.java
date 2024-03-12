@@ -5,18 +5,18 @@
 package io.opentdf.platform.policy.attributes;
 
 /**
- * Protobuf type {@code policy.attributes.GetAttributesByValueFqnsRequest}
+ * Protobuf type {@code policy.attributes.GetAttributeValuesByFqnsRequest}
  */
-public final class GetAttributesByValueFqnsRequest extends
+public final class GetAttributeValuesByFqnsRequest extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:policy.attributes.GetAttributesByValueFqnsRequest)
-    GetAttributesByValueFqnsRequestOrBuilder {
+    // @@protoc_insertion_point(message_implements:policy.attributes.GetAttributeValuesByFqnsRequest)
+    GetAttributeValuesByFqnsRequestOrBuilder {
 private static final long serialVersionUID = 0L;
-  // Use GetAttributesByValueFqnsRequest.newBuilder() to construct.
-  private GetAttributesByValueFqnsRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+  // Use GetAttributeValuesByFqnsRequest.newBuilder() to construct.
+  private GetAttributeValuesByFqnsRequest(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-  private GetAttributesByValueFqnsRequest() {
+  private GetAttributeValuesByFqnsRequest() {
     fqns_ =
         com.google.protobuf.LazyStringArrayList.emptyList();
   }
@@ -25,20 +25,20 @@ private static final long serialVersionUID = 0L;
   @SuppressWarnings({"unused"})
   protected java.lang.Object newInstance(
       UnusedPrivateParameter unused) {
-    return new GetAttributesByValueFqnsRequest();
+    return new GetAttributeValuesByFqnsRequest();
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsRequest_descriptor;
+    return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsRequest_fieldAccessorTable
+    return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.class, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.Builder.class);
+            io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest.class, io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest.Builder.class);
   }
 
   private int bitField0_;
@@ -172,10 +172,10 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest)) {
+    if (!(obj instanceof io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest)) {
       return super.equals(obj);
     }
-    io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest other = (io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest) obj;
+    io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest other = (io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest) obj;
 
     if (!getFqnsList()
         .equals(other.getFqnsList())) return false;
@@ -208,44 +208,44 @@ private static final long serialVersionUID = 0L;
     return hash;
   }
 
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(byte[] data)
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(java.io.InputStream input)
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -253,26 +253,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseDelimitedFrom(java.io.InputStream input)
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseDelimitedFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest parseFrom(
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -285,7 +285,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest prototype) {
+  public static Builder newBuilder(io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -301,26 +301,26 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * Protobuf type {@code policy.attributes.GetAttributesByValueFqnsRequest}
+   * Protobuf type {@code policy.attributes.GetAttributeValuesByFqnsRequest}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:policy.attributes.GetAttributesByValueFqnsRequest)
-      io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequestOrBuilder {
+      // @@protoc_insertion_point(builder_implements:policy.attributes.GetAttributeValuesByFqnsRequest)
+      io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequestOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsRequest_descriptor;
+      return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsRequest_fieldAccessorTable
+      return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.class, io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.Builder.class);
+              io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest.class, io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest.Builder.class);
     }
 
-    // Construct using io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.newBuilder()
+    // Construct using io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest.newBuilder()
     private Builder() {
       maybeForceBuilderInitialization();
     }
@@ -353,17 +353,17 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributesByValueFqnsRequest_descriptor;
+      return io.opentdf.platform.policy.attributes.AttributesProto.internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_descriptor;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest getDefaultInstanceForType() {
-      return io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.getDefaultInstance();
+    public io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest getDefaultInstanceForType() {
+      return io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest build() {
-      io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest result = buildPartial();
+    public io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest build() {
+      io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -371,14 +371,14 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest buildPartial() {
-      io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest result = new io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest(this);
+    public io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest buildPartial() {
+      io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest result = new io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest(this);
       if (bitField0_ != 0) { buildPartial0(result); }
       onBuilt();
       return result;
     }
 
-    private void buildPartial0(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest result) {
+    private void buildPartial0(io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest result) {
       int from_bitField0_ = bitField0_;
       if (((from_bitField0_ & 0x00000001) != 0)) {
         fqns_.makeImmutable();
@@ -428,16 +428,16 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest) {
-        return mergeFrom((io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest)other);
+      if (other instanceof io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest) {
+        return mergeFrom((io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest other) {
-      if (other == io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest.getDefaultInstance()) return this;
+    public Builder mergeFrom(io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest other) {
+      if (other == io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest.getDefaultInstance()) return this;
       if (!other.fqns_.isEmpty()) {
         if (fqns_.isEmpty()) {
           fqns_ = other.fqns_;
@@ -787,23 +787,23 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:policy.attributes.GetAttributesByValueFqnsRequest)
+    // @@protoc_insertion_point(builder_scope:policy.attributes.GetAttributeValuesByFqnsRequest)
   }
 
-  // @@protoc_insertion_point(class_scope:policy.attributes.GetAttributesByValueFqnsRequest)
-  private static final io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:policy.attributes.GetAttributeValuesByFqnsRequest)
+  private static final io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest();
+    DEFAULT_INSTANCE = new io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest();
   }
 
-  public static io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest getDefaultInstance() {
+  public static io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static final com.google.protobuf.Parser<GetAttributesByValueFqnsRequest>
-      PARSER = new com.google.protobuf.AbstractParser<GetAttributesByValueFqnsRequest>() {
+  private static final com.google.protobuf.Parser<GetAttributeValuesByFqnsRequest>
+      PARSER = new com.google.protobuf.AbstractParser<GetAttributeValuesByFqnsRequest>() {
     @java.lang.Override
-    public GetAttributesByValueFqnsRequest parsePartialFrom(
+    public GetAttributeValuesByFqnsRequest parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
@@ -822,17 +822,17 @@ private static final long serialVersionUID = 0L;
     }
   };
 
-  public static com.google.protobuf.Parser<GetAttributesByValueFqnsRequest> parser() {
+  public static com.google.protobuf.Parser<GetAttributeValuesByFqnsRequest> parser() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.google.protobuf.Parser<GetAttributesByValueFqnsRequest> getParserForType() {
+  public com.google.protobuf.Parser<GetAttributeValuesByFqnsRequest> getParserForType() {
     return PARSER;
   }
 
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.GetAttributesByValueFqnsRequest getDefaultInstanceForType() {
+  public io.opentdf.platform.policy.attributes.GetAttributeValuesByFqnsRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

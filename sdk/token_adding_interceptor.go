@@ -12,6 +12,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/internal/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -21,12 +22,12 @@ const (
 	JWTExpirationMinutes = 10
 )
 
-func newOutgoingInterceptor(t AccessTokenSource) tokenAddingInterceptor {
+func newOutgoingInterceptor(t auth.AccessTokenSource) tokenAddingInterceptor {
 	return tokenAddingInterceptor{tokenSource: t}
 }
 
 type tokenAddingInterceptor struct {
-	tokenSource AccessTokenSource
+	tokenSource auth.AccessTokenSource
 }
 
 func (i tokenAddingInterceptor) addCredentials(ctx context.Context,

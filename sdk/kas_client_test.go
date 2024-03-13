@@ -8,6 +8,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/internal/auth"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
@@ -17,8 +18,8 @@ type FakeAccessTokenSource struct {
 	accessToken    string
 }
 
-func (fake FakeAccessTokenSource) AccessToken() (AccessToken, error) {
-	return AccessToken(fake.accessToken), nil
+func (fake FakeAccessTokenSource) AccessToken() (auth.AccessToken, error) {
+	return auth.AccessToken(fake.accessToken), nil
 }
 func (fake FakeAccessTokenSource) DecryptWithDPoPKey(encrypted []byte) ([]byte, error) {
 	return fake.asymDecryption.Decrypt(encrypted)

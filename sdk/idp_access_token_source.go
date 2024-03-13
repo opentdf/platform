@@ -12,6 +12,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/opentdf/platform/internal/auth"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"golang.org/x/oauth2"
@@ -115,15 +116,15 @@ func NewIDPAccessTokenSource(
 }
 
 // use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) AccessToken() (AccessToken, error) {
+func (t *IDPAccessTokenSource) AccessToken() (auth.AccessToken, error) {
 	if t.token == nil {
 		err := t.RefreshAccessToken()
 		if err != nil {
-			return AccessToken(""), err
+			return auth.AccessToken(""), err
 		}
 	}
 
-	return AccessToken(t.token.AccessToken), nil
+	return auth.AccessToken(t.token.AccessToken), nil
 }
 
 func (t *IDPAccessTokenSource) DecryptWithDPoPKey(data []byte) ([]byte, error) {

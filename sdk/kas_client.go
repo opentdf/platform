@@ -10,6 +10,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	kas "github.com/opentdf/backend-go/pkg/access"
+	"github.com/opentdf/platform/internal/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,20 +21,8 @@ const (
 )
 
 type KASClient struct {
-	accessTokenSource AccessTokenSource
+	accessTokenSource auth.AccessTokenSource
 	dialOptions       []grpc.DialOption
-}
-
-type AccessToken string
-
-type AccessTokenSource interface {
-	AccessToken() (AccessToken, error)
-	// probably better to use `crypto.AsymDecryption` here than roll our own since this should be
-	// more closely linked to what happens in KAS in terms of crypto params
-	DecryptWithDPoPKey(data []byte) ([]byte, error)
-	MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error)
-	DPOPPublicKeyPEM() string
-	RefreshAccessToken() error
 }
 
 // once the backend moves over we should use the same type that the golang backend uses here

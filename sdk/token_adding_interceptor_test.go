@@ -16,6 +16,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	kas "github.com/opentdf/backend-go/pkg/access"
+	"github.com/opentdf/platform/internal/auth"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -144,8 +145,8 @@ type FakeTokenSource struct {
 	accessToken string
 }
 
-func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
-	return AccessToken(fts.accessToken), nil
+func (fts *FakeTokenSource) AccessToken() (auth.AccessToken, error) {
+	return auth.AccessToken(fts.accessToken), nil
 }
 func (*FakeTokenSource) DecryptWithDPoPKey([]byte) ([]byte, error) {
 	return nil, nil

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -29,8 +30,8 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 	defer s.Close()
 
 	// request decision on "TRANSMIT" Action
-	actions := []*authorization.Action{{
-		Value: &authorization.Action_Standard{Standard: authorization.Action_STANDARD_ACTION_TRANSMIT},
+	actions := []*policy.Action{{
+		Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_TRANSMIT},
 	}}
 
 	// model two groups of entities; user bob and user alice

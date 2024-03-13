@@ -132,19 +132,19 @@ private static final long serialVersionUID = 0L;
   public static final int RULE_FIELD_NUMBER = 3;
   private int rule_ = 0;
   /**
-   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
    * @return The enum numeric value on the wire for rule.
    */
   @java.lang.Override public int getRuleValue() {
     return rule_;
   }
   /**
-   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
    * @return The rule.
    */
-  @java.lang.Override public io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum getRule() {
-    io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum result = io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum.forNumber(rule_);
-    return result == null ? io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum.UNRECOGNIZED : result;
+  @java.lang.Override public io.opentdf.platform.policy.AttributeRuleTypeEnum getRule() {
+    io.opentdf.platform.policy.AttributeRuleTypeEnum result = io.opentdf.platform.policy.AttributeRuleTypeEnum.forNumber(rule_);
+    return result == null ? io.opentdf.platform.policy.AttributeRuleTypeEnum.UNRECOGNIZED : result;
   }
 
   public static final int METADATA_FIELD_NUMBER = 100;
@@ -205,7 +205,7 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(name_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 2, name_);
     }
-    if (rule_ != io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum.ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+    if (rule_ != io.opentdf.platform.policy.AttributeRuleTypeEnum.ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
       output.writeEnum(3, rule_);
     }
     if (((bitField0_ & 0x00000001) != 0)) {
@@ -226,7 +226,7 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(name_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, name_);
     }
-    if (rule_ != io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum.ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
+    if (rule_ != io.opentdf.platform.policy.AttributeRuleTypeEnum.ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED.getNumber()) {
       size += com.google.protobuf.CodedOutputStream
         .computeEnumSize(3, rule_);
     }
@@ -768,14 +768,14 @@ private static final long serialVersionUID = 0L;
 
     private int rule_ = 0;
     /**
-     * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
      * @return The enum numeric value on the wire for rule.
      */
     @java.lang.Override public int getRuleValue() {
       return rule_;
     }
     /**
-     * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
      * @param value The enum numeric value on the wire for rule to set.
      * @return This builder for chaining.
      */
@@ -786,20 +786,20 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
      * @return The rule.
      */
     @java.lang.Override
-    public io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum getRule() {
-      io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum result = io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum.forNumber(rule_);
-      return result == null ? io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum.UNRECOGNIZED : result;
+    public io.opentdf.platform.policy.AttributeRuleTypeEnum getRule() {
+      io.opentdf.platform.policy.AttributeRuleTypeEnum result = io.opentdf.platform.policy.AttributeRuleTypeEnum.forNumber(rule_);
+      return result == null ? io.opentdf.platform.policy.AttributeRuleTypeEnum.UNRECOGNIZED : result;
     }
     /**
-     * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
      * @param value The rule to set.
      * @return This builder for chaining.
      */
-    public Builder setRule(io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum value) {
+    public Builder setRule(io.opentdf.platform.policy.AttributeRuleTypeEnum value) {
       if (value == null) {
         throw new NullPointerException();
       }
@@ -809,7 +809,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+     * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
      * @return This builder for chaining.
      */
     public Builder clearRule() {

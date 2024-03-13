@@ -75,12 +75,12 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	return rsp, err
 }
 
-func (s *AttributesService) GetAttributesByValueFqns(ctx context.Context,
-	req *attributes.GetAttributesByValueFqnsRequest,
-) (*attributes.GetAttributesByValueFqnsResponse, error) {
-	rsp := &attributes.GetAttributesByValueFqnsResponse{}
+func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
+	req *attributes.GetAttributeValuesByFqnsRequest,
+) (*attributes.GetAttributeValuesByFqnsResponse, error) {
+	rsp := &attributes.GetAttributeValuesByFqnsResponse{}
 
-	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req.Fqns)
+	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Fqns)))
 	}

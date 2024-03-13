@@ -9,26 +9,26 @@ public interface MatchSubjectMappingsResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .policy.subjectmapping.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectMapping> 
+  java.util.List<io.opentdf.platform.policy.SubjectMapping> 
       getSubjectMappingsList();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMapping getSubjectMappings(int index);
+  io.opentdf.platform.policy.SubjectMapping getSubjectMappings(int index);
   /**
-   * <code>repeated .policy.subjectmapping.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
    */
   int getSubjectMappingsCount();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectMappingOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.SubjectMappingOrBuilder> 
       getSubjectMappingsOrBuilderList();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
+   * <code>repeated .policy.SubjectMapping subject_mappings = 1 [json_name = "subjectMappings"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingOrBuilder getSubjectMappingsOrBuilder(
+  io.opentdf.platform.policy.SubjectMappingOrBuilder getSubjectMappingsOrBuilder(
       int index);
 }

@@ -3,23 +3,10 @@ syntax = "proto3";
 package policy.namespaces;
 
 import "buf/validate/validate.proto";
-import "common/common.proto";
 import "google/api/annotations.proto";
-import "google/protobuf/wrappers.proto";
 
-message Namespace {
-  // generated uuid in database
-  string id = 1;
-  // used to partition Attribute Definitions, support by namespace AuthN and enable federation
-  string name = 2;
-
-  string fqn = 3;
-
-  // active by default until explicitly deactivated
-  google.protobuf.BoolValue active = 4;
-
-  common.Metadata metadata = 5;
-}
+import "common/common.proto";
+import "policy/objects.proto";
 
 /*
 
@@ -31,7 +18,7 @@ message GetNamespaceRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message GetNamespaceResponse {
-  Namespace namespace = 1;
+  policy.Namespace namespace = 1;
 }
 
 message ListNamespacesRequest {
@@ -39,7 +26,7 @@ message ListNamespacesRequest {
   common.ActiveStateEnum state = 1;
 }
 message ListNamespacesResponse {
-  repeated Namespace namespaces = 1;
+  repeated policy.Namespace namespaces = 1;
 }
 
 message CreateNamespaceRequest {
@@ -58,7 +45,7 @@ message CreateNamespaceRequest {
   common.MetadataMutable metadata = 100;
 }
 message CreateNamespaceResponse {
-  Namespace namespace = 1;
+  policy.Namespace namespace = 1;
 }
 
 message UpdateNamespaceRequest {
@@ -70,7 +57,7 @@ message UpdateNamespaceRequest {
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateNamespaceResponse {
-  Namespace namespace = 1;
+  policy.Namespace namespace = 1;
 }
 
 message DeactivateNamespaceRequest {

@@ -1,3 +1,8 @@
 # CODEOWNERS
 
-*  @opentdf/developers
+- @opentdf/developers
+
+# Suppresses generated files in diffs
+
+.gitattributes @biscoe916 @jrschumacher @strantalis @ttschampel
+.github/workflows/generate.yaml @biscoe916 @jrschumacher @strantalis @ttschampel

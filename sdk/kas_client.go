@@ -94,7 +94,7 @@ func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 		}
 	}
 
-	key, err := k.accessTokenSource.AsymDecryption().Decrypt(response.EntityWrappedKey)
+	key, err := k.accessTokenSource.AsymDecryption().Decrypt(response.GetEntityWrappedKey())
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}
@@ -186,5 +186,5 @@ func (k *KASClient) getPublicKey(kasInfo KASInfo) (string, error) {
 		return "", fmt.Errorf("error making request to KAS: %w", err)
 	}
 
-	return resp.PublicKey, nil
+	return resp.GetPublicKey(), nil
 }

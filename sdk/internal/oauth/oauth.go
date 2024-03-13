@@ -20,7 +20,7 @@ import (
 
 type ClientCredentials struct {
 	ClientAuth interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
-	ClientId   string
+	ClientID   string
 }
 
 func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
@@ -38,16 +38,16 @@ func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredenti
 
 	formData := url.Values{}
 	formData.Set("grant_type", "client_credentials")
-	formData.Set("client_id", clientCredentials.ClientId)
+	formData.Set("client_id", clientCredentials.ClientID)
 	if len(scopes) > 0 {
 		formData.Set("scope", strings.Join(scopes, " "))
 	}
 
 	switch ca := clientCredentials.ClientAuth.(type) {
 	case string:
-		req.SetBasicAuth(clientCredentials.ClientId, string(ca))
+		req.SetBasicAuth(clientCredentials.ClientID, ca)
 	case jwk.Key:
-		signedToken, err := getSignedToken(clientCredentials.ClientId, tokenEndpoint, ca)
+		signedToken, err := getSignedToken(clientCredentials.ClientID, tokenEndpoint, ca)
 		if err != nil {
 			return nil, fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
 		}

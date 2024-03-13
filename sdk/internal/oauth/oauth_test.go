@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -32,11 +33,11 @@ import (
 func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	ctx := context.Background()
 
-	wiremock, wiremockUrl := setupWiremock(t, ctx)
-	defer func() { require.NoError(t, wiremock.Terminate(ctx)) }()
+	wiremock, wiremockURL := setupWiremock(ctx, t)
+	defer func() { assert.NoError(t, wiremock.Terminate(ctx)) }()
 
-	keycloak, idpEndpoint := setupKeycloak(t, wiremockUrl, ctx)
-	defer func() { require.NoError(t, keycloak.Terminate(ctx)) }()
+	keycloak, idpEndpoint := setupKeycloak(t, wiremockURL, ctx)
+	defer func() { assert.NoError(t, keycloak.Terminate(ctx)) }()
 
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -50,7 +51,7 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientCredentials := oauth.ClientCredentials{
-		ClientId:   "testclient",
+		ClientID:   "testclient",
 		ClientAuth: "abcd1234",
 	}
 
@@ -120,7 +121,7 @@ func TestClientSecretNoNonce(t *testing.T) {
 	defer server.Close()
 
 	clientCredentials := oauth.ClientCredentials{
-		ClientId:   "theclient",
+		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
 	_, err = oauth.GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
@@ -142,7 +143,7 @@ func TestClientSecretWithNonce(t *testing.T) {
 	timesCalled := 0
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		timesCalled += 1
+		timesCalled++
 		assert.Equal(t, "/token", r.URL.Path, "surprise http request to mock oauth service")
 		err := r.ParseForm()
 		require.NoError(t, err, "error parsing oauth request")
@@ -151,7 +152,7 @@ func TestClientSecretWithNonce(t *testing.T) {
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte{})
 			require.NoError(t, err, "error writing response")
 			return
@@ -189,7 +190,7 @@ func TestClientSecretWithNonce(t *testing.T) {
 	defer server.Close()
 
 	clientCredentials := oauth.ClientCredentials{
-		ClientId:   "theclient",
+		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
 	_, err = oauth.GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
@@ -219,23 +220,23 @@ func TestSignedJWTWithNonce(t *testing.T) {
 	timesCalled := 0
 
 	var url string
-	getUrl := func() string {
+	getURL := func() string {
 		return url
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		timesCalled += 1
+		timesCalled++
 
 		if r.URL.Path != "/token" {
 			t.Errorf("Expected to request '/token', got: %s", r.URL.Path)
 		}
 		require.NoError(t, r.ParseForm())
 
-		validateClientAssertionAuth(r, t, getUrl, "theclient", clientPublicKey)
+		validateClientAssertionAuth(r, t, getURL, "theclient", clientPublicKey)
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			if _, err := w.Write([]byte{}); err != nil {
 				t.Errorf("error writing response: %v", err)
 			}
@@ -274,7 +275,7 @@ func TestSignedJWTWithNonce(t *testing.T) {
 	defer server.Close()
 
 	clientCredentials := oauth.ClientCredentials{
-		ClientId:   "theclient",
+		ClientID:   "theclient",
 		ClientAuth: clientAuthJWK,
 	}
 
@@ -292,7 +293,7 @@ the token endpoint is a string _but_ we only have the value after we create the 
 so we need a way get the value of the url after the server has started
 *
 */
-func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint func() string, clientId string, key jwk.Key) {
+func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint func() string, clientID string, key jwk.Key) {
 	if grant := r.Form.Get("grant_type"); grant != "client_credentials" {
 		t.Logf("got the wrong grant type: %s, expected client_credentials", grant)
 	}
@@ -316,11 +317,11 @@ func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint fu
 		t.Fatalf("error verifying client signature on token [%s]: %v", clientAssertion, err)
 	}
 
-	if tok.Subject() != clientId {
+	if tok.Subject() != clientID {
 		t.Fatalf("incorrect subject: %s", tok.Subject())
 	}
 
-	if tok.Issuer() != clientId {
+	if tok.Issuer() != clientID {
 		t.Fatalf("incorrect issuer: %s", tok.Issuer())
 	}
 
@@ -362,7 +363,7 @@ func extractDpopToken(r *http.Request, t *testing.T) jwt.Token {
 	return clientTok
 }
 
-func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context) (tc.Container, string) {
+func setupKeycloak(t *testing.T, claimsProviderURL *url.URL, ctx context.Context) (tc.Container, string) {
 	containerReq := tc.ContainerRequest{
 		Image:        "ghcr.io/opentdf/keycloak:sha-ce2f709",
 		ExposedPorts: []string{"8082/tcp"},
@@ -399,6 +400,7 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	if err != nil {
 		panic(err)
 	}
+	defer res.Body.Close()
 
 	var responseMap map[string]interface{}
 	decoder := json.NewDecoder(res.Body)
@@ -413,9 +415,9 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 		panic(err)
 	}
 
-	realmJson := strings.Replace(string(realmFile), "<claimsprovider url>", claimsProviderUrl.String(), -1)
+	realmJSON := strings.Replace(string(realmFile), "<claimsprovider url>", claimsProviderURL.String(), -1)
 
-	req, _ = http.NewRequest("POST", keycloakBase+"/admin/realms", strings.NewReader(realmJson))
+	req, _ = http.NewRequest("POST", keycloakBase+"/admin/realms", strings.NewReader(realmJSON))
 	req.Header.Add("authorization", "Bearer "+accessToken)
 	req.Header.Add("content-type", "application/json")
 
@@ -423,8 +425,9 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	if err != nil {
 		panic(err)
 	}
+	defer res.Body.Close()
 
-	if res.StatusCode != 201 {
+	if res.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(res.Body)
 		t.Fatalf("error creating realm: %s", string(body))
 	}
@@ -432,7 +435,7 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	return keycloak, keycloakBase + "/realms/test/protocol/openid-connect/token"
 }
 
-func setupWiremock(t *testing.T, ctx context.Context) (tc.Container, *url.URL) {
+func setupWiremock(ctx context.Context, t *testing.T) (tc.Container, *url.URL) {
 	listenPort, _ := nat.NewPort("tcp", "8181")
 	req := tc.ContainerRequest{
 		Image:      "wiremock/wiremock:3.3.1",
@@ -458,9 +461,9 @@ func setupWiremock(t *testing.T, ctx context.Context) (tc.Container, *url.URL) {
 		t.Fatalf("error getting endpoint from keycloak: %v", err)
 	}
 
-	wiremockUrl, err := url.Parse(fmt.Sprintf("http://%s:8181/claims", containerIP))
+	wiremockURL, err := url.Parse(fmt.Sprintf("http://%s/claims", net.JoinHostPort(containerIP, "8181")))
 	if err != nil {
 		panic(err)
 	}
-	return wiremock, wiremockUrl
+	return wiremock, wiremockURL
 }

@@ -70,13 +70,13 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("failed to create a rewrap request: %v", err)
 	}
 
-	if req.SignedRequestToken == "" {
+	if req.GetSignedRequestToken() == "" {
 		t.Fatalf("didn't produce a signed request token")
 	}
 
 	pubKey, _ := tokenSource.dPOPKey.PublicKey()
 
-	tok, err := jwt.ParseString(req.SignedRequestToken, jwt.WithKey(tokenSource.dPOPKey.Algorithm(), pubKey))
+	tok, err := jwt.ParseString(req.GetSignedRequestToken(), jwt.WithKey(tokenSource.dPOPKey.Algorithm(), pubKey))
 	if err != nil {
 		t.Fatalf("couldn't parse signed token: %v", err)
 	}

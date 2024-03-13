@@ -80,23 +80,23 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 
 	aDecrypt := fixtureActions[DECRYPT]
 	aTransmit := fixtureActions[TRANSMIT]
-	new := &subjectmapping.CreateSubjectMappingRequest{
+	createRequest := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValId,
 		ExistingSubjectConditionSetId: fixtureSCSId,
 		Actions:                       []*policy.Action{aDecrypt, aTransmit},
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, createRequest)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), created)
 
 	// verify the subject mapping was created
 	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.Id)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), new.AttributeValueId, sm.AttributeValue.Id)
-	assert.Equal(s.T(), new.ExistingSubjectConditionSetId, sm.SubjectConditionSet.Id)
+	assert.Equal(s.T(), createRequest.AttributeValueId, sm.AttributeValue.Id)
+	assert.Equal(s.T(), createRequest.ExistingSubjectConditionSetId, sm.SubjectConditionSet.Id)
 	assert.Equal(s.T(), 2, len(sm.Actions))
-	assert.Equal(s.T(), sm.GetActions(), new.Actions)
+	assert.Equal(s.T(), sm.GetActions(), createRequest.Actions)
 }
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet() {
@@ -122,13 +122,13 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 		},
 	}
 
-	new := &subjectmapping.CreateSubjectMappingRequest{
+	createRequest := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:       fixtureAttrValId,
 		Actions:                []*policy.Action{aTransmit},
 		NewSubjectConditionSet: scs,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, createRequest)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), created)
 
@@ -153,12 +153,12 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NoActions_Fails() {
 	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	new := &subjectmapping.CreateSubjectMappingRequest{
+	createRequest := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrVal.Id,
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, createRequest)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), created)
 	assert.ErrorIs(s.T(), err, db.ErrMissingValue)

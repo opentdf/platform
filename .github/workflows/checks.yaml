@@ -52,14 +52,14 @@ jobs:
       - run: go mod verify
       - name: golangci-lint on PR
         if: github.event_name == 'pull_request'
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804
         with:
           version: v1.56
           working-directory: ${{ matrix.directory }}
           only-new-issues: true
       - name: golangci-lint on push
         if: github.event_name == 'push' || github.event_name == 'merge_group'
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804
         with:
           version: v1.56
           working-directory: ${{ matrix.directory }}

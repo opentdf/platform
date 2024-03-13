@@ -10,7 +10,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	kas "github.com/opentdf/backend-go/pkg/access"
-	"github.com/opentdf/platform/sdk/internal/crypto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,7 +30,7 @@ type AccessTokenSource interface {
 	AccessToken() (AccessToken, error)
 	// probably better to use `crypto.AsymDecryption` here than roll our own since this should be
 	// more closely linked to what happens in KAS in terms of crypto params
-	AsymDecryption() crypto.AsymDecryption
+	DecryptWithDPoPKey(data []byte) ([]byte, error)
 	MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error)
 	DPOPPublicKeyPEM() string
 	RefreshAccessToken() error
@@ -94,7 +93,7 @@ func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 		}
 	}
 
-	key, err := k.accessTokenSource.AsymDecryption().Decrypt(response.EntityWrappedKey)
+	key, err := k.accessTokenSource.DecryptWithDPoPKey(response.EntityWrappedKey)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}

@@ -20,8 +20,8 @@ type FakeAccessTokenSource struct {
 func (fake FakeAccessTokenSource) AccessToken() (AccessToken, error) {
 	return AccessToken(fake.accessToken), nil
 }
-func (fake FakeAccessTokenSource) AsymDecryption() crypto.AsymDecryption {
-	return fake.asymDecryption
+func (fake FakeAccessTokenSource) DecryptWithDPoPKey(encrypted []byte) ([]byte, error) {
+	return fake.asymDecryption.Decrypt(encrypted)
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(fake.dPOPKey)

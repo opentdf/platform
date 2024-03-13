@@ -126,8 +126,8 @@ func (t *IDPAccessTokenSource) AccessToken() (AccessToken, error) {
 	return AccessToken(t.token.AccessToken), nil
 }
 
-func (t *IDPAccessTokenSource) AsymDecryption() crypto.AsymDecryption {
-	return t.asymDecryption
+func (t *IDPAccessTokenSource) DecryptWithDPoPKey(data []byte) ([]byte, error) {
+	return t.asymDecryption.Decrypt(data)
 }
 
 func (t *IDPAccessTokenSource) RefreshAccessToken() error {

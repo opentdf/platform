@@ -296,3 +296,19 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_CID_Expect_No_Error() {
 	err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))}, *s.auth)
 	assert.Nil(s.T(), err)
 }
+
+func (s *AuthSuite) Test_CheckValidDPoPToken_Expect_No_Error() {
+	tok := jwt.New()
+	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	tok.Set("iss", s.server.URL)
+	tok.Set("aud", "test")
+	tok.Set("cid", "client2")
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+
+	assert.NotNil(s.T(), signedTok)
+	assert.Nil(s.T(), err)
+
+	err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))}, *s.auth)
+	assert.Nil(s.T(), err)
+
+}

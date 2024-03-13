@@ -97,9 +97,9 @@ func Start(f ...StartOptions) error {
 		if service.Remote.Endpoint == "" && service.Enabled {
 			switch name {
 			case "policy":
-				sdkOptions = append(sdkOptions, sdk.WithCustomPolicyConnection(otdf.GrpcInProcess.Conn()))
+				sdkOptions = append(sdkOptions, sdk.WithCustomPolicyConnection(otdf.GRPCInProcess.Conn()))
 			case "authorization":
-				sdkOptions = append(sdkOptions, sdk.WithCustomAuthorizationConnection(otdf.GrpcInProcess.Conn()))
+				sdkOptions = append(sdkOptions, sdk.WithCustomAuthorizationConnection(otdf.GRPCInProcess.Conn()))
 			}
 		}
 	}
@@ -176,10 +176,10 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 			})
 
 			// Register the service with the gRPC server
-			otdf.GrpcServer.RegisterService(r.ServiceDesc, impl)
+			otdf.GRPCServer.RegisterService(r.ServiceDesc, impl)
 
 			// Register the service with in process gRPC server
-			otdf.GrpcInProcess.GetGrpcServer().RegisterService(r.ServiceDesc, impl)
+			otdf.GRPCInProcess.GetGrpcServer().RegisterService(r.ServiceDesc, impl)
 
 			// Register the service with the gRPC gateway
 			if err := handler(context.Background(), otdf.Mux, impl); err != nil {

@@ -51,12 +51,13 @@ jobs:
       - run: go mod download
       - run: go mod verify
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804
+        #uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804
+        uses: strantalis/golangci-lint-action@merge-group-support
         with:
           version: v1.56
           working-directory: ${{ matrix.directory }}
           skip-cache: true
-          only-new-issues: ${{ github.event_name == 'pull_request' }}
+          # only-new-issues: ${{ github.event_name == 'pull_request' }}
       - name: Install softHSM
         if: matrix.directory == '.'
         run: |-

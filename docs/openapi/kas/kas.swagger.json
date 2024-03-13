@@ -20,7 +20,7 @@
     "application/json"
   ],
   "paths": {
-    "/": {
+    "/kas": {
       "get": {
         "summary": "Get the current version of the service",
         "operationId": "AccessService_Info",
@@ -43,7 +43,7 @@
         ]
       }
     },
-    "/kas_public_key": {
+    "/kas/kas_public_key": {
       "get": {
         "summary": "buf:lint:ignore RPC_RESPONSE_STANDARD_NAME",
         "operationId": "AccessService_LegacyPublicKey",
@@ -74,7 +74,7 @@
         ]
       }
     },
-    "/v2/kas_public_key": {
+    "/kas/v2/kas_public_key": {
       "get": {
         "operationId": "AccessService_PublicKey",
         "responses": {
@@ -118,7 +118,7 @@
         ]
       }
     },
-    "/v2/rewrap": {
+    "/kas/v2/rewrap": {
       "post": {
         "operationId": "AccessService_Rewrap",
         "responses": {

@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/opentdf/platform/internal/security"
+
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
@@ -37,21 +39,23 @@ func (e Error) Error() string {
 }
 
 type Config struct {
-	Grpc                    GrpcConfig  `yaml:"grpc"`
-	HTTP                    HTTPConfig  `yaml:"http"`
-	TLS                     TLSConfig   `yaml:"tls"`
-	Auth                    auth.Config `yaml:"auth"`
+	Auth                    auth.Config        `yaml:"auth"`
+	GRPC                    GRPCConfig         `yaml:"grpc"`
+	HSM                     security.HSMConfig `yaml:"hsm"`
+	HTTP                    HTTPConfig         `yaml:"http"`
+	TLS                     TLSConfig          `yaml:"tls"`
 	WellKnownConfigRegister func(namespace string, config any) error
 }
 
-type GrpcConfig struct {
+type GRPCConfig struct {
 	Port              int  `yaml:"port" default:"9000"`
 	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
 }
 
 type HTTPConfig struct {
-	Enabled bool `yaml:"enabled" default:"true"`
-	Port    int  `yaml:"port" default:"8080"`
+	Enabled bool   `yaml:"enabled" default:"true"`
+	Port    int    `yaml:"port" default:"8080"`
+	Host    string `yaml:"host,omitempty"`
 }
 
 type TLSConfig struct {
@@ -63,10 +67,10 @@ type TLSConfig struct {
 type OpenTDFServer struct {
 	Mux               *runtime.ServeMux
 	HTTPServer        *http.Server
-	GrpcServer        *grpc.Server
-	grpcServerAddress string
-	GrpcInProcess     *inProcessServer
-	hsmSession        *hsmSession
+	GRPCServer        *grpc.Server
+	gRPCServerAddress string
+	GRPCInProcess     *inProcessServer
+	HSM               *security.HSMSession
 }
 
 /*
@@ -82,7 +86,7 @@ type inProcessServer struct {
 
 func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	var (
-		grpcOpts   []grpc.ServerOption
+		gRPCOpts   []grpc.ServerOption
 		httpServer *http.Server
 		tlsConfig  *tls.Config
 		err        error
@@ -100,7 +104,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 
 	// Add tls creds if tls is not nil
 	if tlsConfig != nil {
-		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+		gRPCOpts = append(gRPCOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
 	// Build interceptor chain and handler chain
@@ -150,22 +154,22 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		MaxAge:           maxAge,
 	}).Handler(handler)
 
-	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(
+	gRPCOpts = append(gRPCOpts, grpc.ChainUnaryInterceptor(
 		interceptors...,
 	))
 
 	grpcServer := grpc.NewServer(
-		grpcOpts...,
+		gRPCOpts...,
 	)
 
 	// Enable grpc reflection
-	if config.Grpc.ReflectionEnabled {
+	if config.GRPC.ReflectionEnabled {
 		reflection.Register(grpcServer)
 	}
 
 	if config.HTTP.Enabled {
 		httpServer = &http.Server{
-			Addr:         fmt.Sprintf(":%d", config.HTTP.Port),
+			Addr:         fmt.Sprintf("%s:%d", config.HTTP.Host, config.HTTP.Port),
 			WriteTimeout: writeTimeoutSeconds * time.Second,
 			ReadTimeout:  readTimeoutSeconds * time.Second,
 			// We need to make cors configurable
@@ -174,13 +178,22 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		}
 	}
 
-	return &OpenTDFServer{
+	o := OpenTDFServer{
 		Mux:               mux,
 		HTTPServer:        httpServer,
-		GrpcServer:        grpcServer,
-		grpcServerAddress: fmt.Sprintf(":%d", config.Grpc.Port),
-		GrpcInProcess:     grpcInprocess,
-	}, nil
+		GRPCServer:        grpcServer,
+		gRPCServerAddress: fmt.Sprintf(":%d", config.GRPC.Port),
+		GRPCInProcess:     grpcInprocess,
+	}
+
+	if config.HSM.Enabled {
+		o.HSM, err = security.New(&config.HSM)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize hsm: %w", err)
+		}
+	}
+
+	return &o, nil
 }
 
 func (s OpenTDFServer) Start() {
@@ -208,10 +221,10 @@ func (s OpenTDFServer) Stop() {
 	}
 
 	slog.Info("shutting down grpc server")
-	s.GrpcServer.GracefulStop()
+	s.GRPCServer.GracefulStop()
 
 	slog.Info("shutting down in process grpc server")
-	s.GrpcInProcess.srv.GracefulStop()
+	s.GRPCInProcess.srv.GracefulStop()
 
 	slog.Info("shutdown complete")
 }
@@ -237,13 +250,13 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 }
 
 func (s OpenTDFServer) startGrpcServer() {
-	slog.Info("starting grpc server", "address", s.grpcServerAddress)
-	listener, err := net.Listen("tcp", s.grpcServerAddress)
+	slog.Info("starting grpc server", "address", s.gRPCServerAddress)
+	listener, err := net.Listen("tcp", s.gRPCServerAddress)
 	if err != nil {
 		slog.Error("failed to create listener", slog.String("error", err.Error()))
 		panic(err)
 	}
-	if err := s.GrpcServer.Serve(listener); err != nil {
+	if err := s.GRPCServer.Serve(listener); err != nil {
 		slog.Error("failed to serve grpc", slog.String("error", err.Error()))
 		panic(err)
 	}
@@ -251,7 +264,7 @@ func (s OpenTDFServer) startGrpcServer() {
 
 func (s OpenTDFServer) startInProcessGrpcServer() {
 	slog.Info("starting in process grpc server")
-	if err := s.GrpcInProcess.srv.Serve(s.GrpcInProcess.ln); err != nil {
+	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
 		slog.Error("failed to serve in process grpc", slog.String("error", err.Error()))
 		panic(err)
 	}

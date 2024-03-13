@@ -117,7 +117,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
 
-	json.Unmarshal(inrec, &kcConfigInterface)
+	assert.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
 	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	assert.Nil(t, err)
 
@@ -162,7 +162,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
 
-	json.Unmarshal(inrec, &kcConfigInterface)
+	assert.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
 	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	assert.Nil(t, err)
 
@@ -210,7 +210,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
 
-	json.Unmarshal(inrec, &kcConfigInterface)
+	assert.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
 	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	assert.Nil(t, err)
 
@@ -256,7 +256,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
 
-	json.Unmarshal(inrec, &kcConfigInterface)
+	assert.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
 	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	assert.Nil(t, err)
 

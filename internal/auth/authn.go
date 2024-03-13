@@ -2,6 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -9,7 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -27,6 +32,18 @@ var (
 	allowedHTTPEndpoints = [...]string{
 		"/healthz",
 		"/.well-known/opentdf-configuration",
+	}
+	// only asymmetric algorithms and no 'none'
+	allowedSignatureAlgorithms = map[string]bool{
+		jwa.RS256.String(): true,
+		jwa.RS384.String(): true,
+		jwa.RS512.String(): true,
+		jwa.ES256.String(): true,
+		jwa.ES384.String(): true,
+		jwa.ES512.String(): true,
+		jwa.PS256.String(): true,
+		jwa.PS384.String(): true,
+		jwa.PS512.String(): true,
 	}
 )
 
@@ -72,6 +89,12 @@ func NewAuthenticator(cfg AuthNConfig) (*authentication, error) {
 	return a, nil
 }
 
+type dpopInfo struct {
+	headers []string
+	path    string
+	method  string
+}
+
 // verifyTokenHandler is a http handler that verifies the token
 func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +108,12 @@ func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		err := checkToken(r.Context(), header, a)
+		dpopInfo := dpopInfo{
+			headers: r.Header["Dpop"],
+			path:    r.URL.Path,
+			method:  r.Method,
+		}
+		err := checkToken(r.Context(), header, dpopInfo, a)
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
@@ -117,7 +145,13 @@ func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 
-	err := checkToken(ctx, header, a)
+	dpopInfo := dpopInfo{
+		headers: md["dpop"],
+		path:    info.FullMethod,
+		method:  "POST",
+	}
+
+	err := checkToken(ctx, header, dpopInfo, a)
 	if err != nil {
 		slog.Warn("failed to validate token", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
@@ -127,7 +161,7 @@ func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 }
 
 // checkToken is a helper function to verify the token.
-func checkToken(ctx context.Context, authHeader []string, auth authentication) error {
+func checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo, auth authentication) error {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -143,11 +177,6 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) e
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
 		return fmt.Errorf("not of type bearer or dpop")
-	}
-
-	// Future work is to validate DPoP proof if token type is DPoP
-	if tokenType == "DPoP" {
-		// Implement in the future here or as separate interceptor
 	}
 
 	// We have to get iss from the token first to verify the signature
@@ -181,7 +210,7 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) e
 	}
 
 	// Now we verify the token signature
-	_, err = jwt.Parse([]byte(tokenRaw),
+	accessToken, err := jwt.Parse([]byte(tokenRaw),
 		jwt.WithKeySet(keySet),
 		jwt.WithValidate(true),
 		jwt.WithIssuer(issuerStr),
@@ -190,6 +219,149 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) e
 	)
 	if err != nil {
 		return err
+	}
+
+	if tokenType == "Bearer" {
+		return nil
+	}
+
+	return validateDPoP(accessToken, tokenRaw, dpopInfo)
+}
+
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) error {
+	if len(dpopInfo.headers) != 1 {
+		return fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
+	}
+	dpopHeader := dpopInfo.headers[0]
+
+	cnf, ok := accessToken.Get("cnf")
+	if !ok {
+		return fmt.Errorf("did not get a `cnf` claim to verify the DPoP binding")
+	}
+
+	cnfDict, ok := cnf.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("got `cnf` in an invalid format")
+	}
+
+	jktI, ok := cnfDict["jkt"]
+	if !ok {
+		return fmt.Errorf("missing `jkt` field in `cnf` claim. only thumbprint JWK confirmation is supported")
+	}
+
+	jkt, ok := jktI.(string)
+	if !ok {
+		return fmt.Errorf("invalid `jkt` field in `cnf` claim: %v. the value must be a JWK thumbprint", jkt)
+	}
+
+	dpop, err := jws.Parse([]byte(dpopHeader))
+	if err != nil {
+		slog.Error("error parsing JWT: %w", err)
+		return fmt.Errorf("invalid DPoP JWT")
+	}
+	if len(dpop.Signatures()) != 1 {
+		return fmt.Errorf("expected one signature on DPoP JWT, got %d", len(dpop.Signatures()))
+	}
+	sig := dpop.Signatures()[0]
+	protectedHeaders := sig.ProtectedHeaders()
+	if typ, ok := protectedHeaders.Get("typ"); !ok || typ != "dpop+jwt" {
+		return fmt.Errorf("invalid typ on DPoP JWT")
+	}
+
+	alg, ok := protectedHeaders.Get("alg")
+	if !ok {
+		return fmt.Errorf("no `alg` specified in DPoP JWT")
+	}
+
+	algString, ok := alg.(string)
+	if !ok {
+		return fmt.Errorf("invalid `alg` field specified in DPoP JWT")
+	}
+
+	if _, exists := allowedSignatureAlgorithms[algString]; !exists {
+		return fmt.Errorf("unsupported algorithm specified: %v", algString)
+	}
+
+	keyI, ok := protectedHeaders.Get("jwk")
+	if !ok {
+		return fmt.Errorf("`jwk` not specified in DPoP JWT")
+	}
+
+	dpopKey, ok := keyI.(jwk.Key)
+	if !ok {
+		return fmt.Errorf("invalid key in `jwk` in DPoP JWT: %v", keyI)
+	}
+
+	isPrivate, err := jwk.IsPrivateKey(dpopKey)
+	if err != nil {
+		slog.Error("error checking if key is private", err)
+		return fmt.Errorf("invalid DPoP key specified")
+	}
+
+	if isPrivate {
+		return fmt.Errorf("cannot use a private key for DPoP")
+	}
+
+	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+	if err != nil {
+		slog.Error("error computing thumbprint for key", err)
+		return fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
+	}
+
+	if base64.URLEncoding.EncodeToString(thumbprint) != jkt {
+		return fmt.Errorf("the thumbprint of the `jkt` from the DPoP JWT didn't match the `jkt` from the access token")
+	}
+
+	_, err = jws.Verify([]byte(dpopHeader), jws.WithKey(jwa.SignatureAlgorithm(algString), dpopKey))
+
+	if err != nil {
+		slog.Error("error validating DPoP JWT", err)
+		return fmt.Errorf("failed to verify signature on DPoP JWT")
+	}
+
+	publicHeaders := sig.PublicHeaders()
+	iatI, ok := publicHeaders.Get("iat")
+	if !ok {
+		return fmt.Errorf("missing `iat` claim in the DPoP JWT")
+	}
+
+	iat, ok := iatI.(int64)
+	if !ok {
+		return fmt.Errorf("invalid `iat` in DPoP JWT: %v", iat)
+	}
+
+	issuedAt := time.Unix(iat, 0)
+	if time.Now().Add(time.Minute * 10).After(issuedAt) {
+		return fmt.Errorf("the DPoP JWT has expired")
+	}
+
+	htm, ok := publicHeaders.Get("htm")
+	if !ok {
+		return fmt.Errorf("`htm` claim missing in DPoP JWT")
+	}
+
+	if htm != dpopInfo.path {
+		return fmt.Errorf("incorrect `htm` claim in DPoP JWT")
+	}
+
+	htu, ok := publicHeaders.Get("htu")
+	if !ok {
+		return fmt.Errorf("`htu` claim missing in DPoP JWT")
+	}
+
+	if htu != dpopInfo.method {
+		return fmt.Errorf("incorrect `htu` claim in DPoP JWT")
+	}
+
+	ath, ok := publicHeaders.Get("ath")
+	if !ok {
+		return fmt.Errorf("missing `ath` claim in DPoP JWT")
+	}
+
+	h := sha256.New()
+	h.Write([]byte(acessTokenRaw))
+	if ath != base64.URLEncoding.EncodeToString(h.Sum(nil)) {
+		return fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
 
 	return nil

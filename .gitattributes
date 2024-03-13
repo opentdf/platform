@@ -1,4 +1,4 @@
-protocol/go/** linguist-generated
-sdkjava/** linguist-generated
-docs/grpc/** linguist-generated
-docs/openapi/** linguist-generated
+protocol/go/** linguist-generated=true
+sdkjava/** linguist-generated=true
+docs/grpc/** linguist-generated=true
+docs/openapi/** linguist-generated=true

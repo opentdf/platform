@@ -1,0 +1,4 @@
+protocol/go/** linguist-generated
+sdkjava/** linguist-generated
+docs/grpc/** linguist-generated
+docs/openapi/** linguist-generated

@@ -17,7 +17,18 @@ jobs:
       pull-requests: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.21.8'
       - run: |
+          # bring in dependencies
+          echo "Installing buf..."
+          GO111MODULE=on go install github.com/bufbuild/buf/cmd/buf@v1.30.0 
+          echo "Installing golangci-lint..."
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.56.2
+          echo "Installing protoc-gen-doc..."
+          go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
+          echo "Dependencies installed. Checking for tools..."
           make toolcheck
           make proto-generate
           git config user.name github-actions

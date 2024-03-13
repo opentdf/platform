@@ -40,6 +40,7 @@ func convertJSONToAttrVal(c PolicyDbClient, r json.RawMessage) (*policy.Value, e
 		Members []string `protobuf:"bytes,5,rep,name=members,proto3" json:"members,omitempty"`
 		// list of key access servers
 		Grants []*kasregistry.KeyAccessServer `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
+		// SubjectMappings []*policy.SubjectMapping `protobuf:"bytes,7,rep,name=subject_mappings,json=subjectMappings,proto3" json:"subject_mappings,omitempty"`
 		Fqn    string                         `protobuf:"bytes,7,opt,name=fqn,proto3" json:"fqn,omitempty"`
 		Active bool                           `protobuf:"bytes,8,opt,name=active,proto3" json:"active,omitempty"`
 	}

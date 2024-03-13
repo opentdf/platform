@@ -5,73 +5,9 @@ package policy.attributes;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
-import "google/protobuf/wrappers.proto";
-import "kasregistry/key_access_server_registry.proto";
-import "policy/namespaces/namespaces.proto";
 
-// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
-enum AttributeRuleTypeEnum {
-  ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED = 0;
-  ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF = 1;
-  ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF = 2;
-  ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY = 3;
-}
-
-message Attribute {
-  string id = 1;
-
-  // namespace of the attribute
-  namespaces.Namespace namespace = 2;
-
-  //attribute name
-  string name = 3;
-
-  // attribute rule enum
-  AttributeRuleTypeEnum rule = 4 [
-    (buf.validate.field).enum.defined_only = true,
-    (buf.validate.field).required = true
-  ];
-
-  repeated Value values = 5;
-
-  repeated kasregistry.KeyAccessServer grants = 6;
-
-  string fqn = 7;
-
-  // active by default until explicitly deactivated
-  google.protobuf.BoolValue active = 8;
-
-  // Common metadata
-  common.Metadata metadata = 100;
-}
-
-message Value {
-  // generated uuid in database
-  string id = 1;
-
-  Attribute attribute = 2;
-
-  string value = 3;
-
-  // list of attribute values that this value is related to (attribute group)
-  repeated string members = 4;
-
-  // list of key access servers
-  repeated kasregistry.KeyAccessServer grants = 5;
-
-  string fqn = 6;
-
-  // active by default until explicitly deactivated
-  google.protobuf.BoolValue active = 7;
-
-  // Common metadata
-  common.Metadata metadata = 100;
-}
-
-message AttributeAndValue {
-  Attribute attribute = 1;
-  Value value = 2;
-}
+import "policy/objects.proto";
+import "policy/selectors.proto";
 
 /*
    Key Access Server Grants
@@ -96,22 +32,14 @@ message ListAttributesRequest {
   common.ActiveStateEnum state = 1;
 }
 message ListAttributesResponse {
-  repeated Attribute attributes = 1;
+  repeated policy.Attribute attributes = 1;
 }
 
 message GetAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message GetAttributeResponse {
-  Attribute attribute = 1;
-}
-
-message GetAttributesByValueFqnsRequest {
-  repeated string fqns = 1 [(buf.validate.field).required = true];
-}
-message GetAttributesByValueFqnsResponse {
-  // map of fqns to complete attributes and the one selected value
-  map<string, AttributeAndValue> fqn_attribute_values = 1;
+  policy.Attribute attribute = 1;
 }
 
 message CreateAttributeRequest {
@@ -127,7 +55,7 @@ message CreateAttributeRequest {
   common.MetadataMutable metadata = 100;
 }
 message CreateAttributeResponse {
-  Attribute attribute = 1;
+  policy.Attribute attribute = 1;
 }
 
 message UpdateAttributeRequest {
@@ -139,14 +67,14 @@ message UpdateAttributeRequest {
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateAttributeResponse {
-  Attribute attribute = 1;
+  policy.Attribute attribute = 1;
 }
 
 message DeactivateAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message DeactivateAttributeResponse {
-  Attribute attribute = 1;
+  policy.Attribute attribute = 1;
 }
 
 ///
@@ -156,7 +84,7 @@ message GetAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message GetAttributeValueResponse {
-  Value value = 1;
+  policy.Value value = 1;
 }
 
 message ListAttributeValuesRequest {
@@ -165,7 +93,7 @@ message ListAttributeValuesRequest {
   common.ActiveStateEnum state = 2;
 }
 message ListAttributeValuesResponse {
-  repeated Value values = 1;
+  repeated policy.Value values = 1;
 }
 
 message CreateAttributeValueRequest {
@@ -180,7 +108,7 @@ message CreateAttributeValueRequest {
   common.MetadataMutable metadata = 100;
 }
 message CreateAttributeValueResponse {
-  Value value = 1;
+  policy.Value value = 1;
 }
 
 message UpdateAttributeValueRequest {
@@ -194,14 +122,28 @@ message UpdateAttributeValueRequest {
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateAttributeValueResponse {
-  Value value = 1;
+  policy.Value value = 1;
 }
 
 message DeactivateAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message DeactivateAttributeValueResponse {
-  Value value = 1;
+  policy.Value value = 1;
+}
+
+message GetAttributeValuesByFqnsRequest {
+  // Required
+  repeated string fqns = 1 [(buf.validate.field).required = true];
+  policy.AttributeValueSelector with_value = 2 [(buf.validate.field).required = true];
+}
+message GetAttributeValuesByFqnsResponse {
+  message AttributeAndValue {
+    policy.Attribute attribute = 1;
+    policy.Value value = 2;
+  }
+  // map of fqns to complete attributes and the one selected value
+  map<string, AttributeAndValue> fqn_attribute_values = 1;
 }
 
 /*
@@ -253,7 +195,7 @@ service AttributesService {
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};
   }
-  rpc GetAttributesByValueFqns(GetAttributesByValueFqnsRequest) returns (GetAttributesByValueFqnsResponse) {
+  rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
     option (google.api.http) = {get: "/attributes/*/fqn"};
   }
 

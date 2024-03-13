@@ -9,17 +9,17 @@ public interface DeactivateAttributeResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+   * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
    * @return Whether the attribute field is set.
    */
   boolean hasAttribute();
   /**
-   * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+   * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
    * @return The attribute.
    */
-  io.opentdf.platform.policy.attributes.Attribute getAttribute();
+  io.opentdf.platform.policy.Attribute getAttribute();
   /**
-   * <code>.policy.attributes.Attribute attribute = 1 [json_name = "attribute"];</code>
+   * <code>.policy.Attribute attribute = 1 [json_name = "attribute"];</code>
    */
-  io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributeOrBuilder();
+  io.opentdf.platform.policy.AttributeOrBuilder getAttributeOrBuilder();
 }

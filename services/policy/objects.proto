@@ -1,0 +1,229 @@
+syntax = "proto3";
+
+package policy;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/protobuf/wrappers.proto";
+
+import "kasregistry/key_access_server_registry.proto";
+
+message Namespace {
+  // generated uuid in database
+  string id = 1;
+  // used to partition Attribute Definitions, support by namespace AuthN and enable federation
+  string name = 2;
+
+  string fqn = 3;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 4;
+
+  common.Metadata metadata = 5;
+}
+
+message Attribute {
+  string id = 1;
+
+  // namespace of the attribute
+  Namespace namespace = 2;
+
+  //attribute name
+  string name = 3;
+
+  // attribute rule enum
+  AttributeRuleTypeEnum rule = 4 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  repeated Value values = 5;
+
+  repeated kasregistry.KeyAccessServer grants = 6;
+
+  string fqn = 7;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 8;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum AttributeRuleTypeEnum {
+  ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED = 0;
+  ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF = 1;
+  ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF = 2;
+  ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY = 3;
+}
+
+message Value {
+  // generated uuid in database
+  string id = 1;
+
+  Attribute attribute = 2;
+
+  string value = 3;
+
+  // list of attribute values that this value is related to (attribute group)
+  repeated string members = 4;
+
+  // list of key access servers
+  repeated kasregistry.KeyAccessServer grants = 5;
+
+  string fqn = 6;
+
+  // active by default until explicitly deactivated
+  google.protobuf.BoolValue active = 7;
+
+  // subject mapping
+  repeated SubjectMapping subject_mappings = 8;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+// An action an entity can take
+message Action {
+  // Standard actions supported by the platform
+  enum StandardAction {
+    STANDARD_ACTION_UNSPECIFIED = 0;
+    STANDARD_ACTION_DECRYPT = 1;
+    STANDARD_ACTION_TRANSMIT = 2;
+  }
+  oneof value {
+    StandardAction standard = 1;
+    string custom = 2;
+  }
+}
+
+/*
+    Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
+*/
+
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum SubjectMappingOperatorEnum {
+  SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0;
+  SUBJECT_MAPPING_OPERATOR_ENUM_IN = 1;
+  SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
+}
+
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum ConditionBooleanTypeEnum {
+  CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED = 0;
+  CONDITION_BOOLEAN_TYPE_ENUM_AND = 1;
+  CONDITION_BOOLEAN_TYPE_ENUM_OR = 2;
+}
+
+/*
+   Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination
+
+   Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one
+   with permitted actions TRANSMIT and DECRYPT
+   {
+    "id": "someid",
+    "attribute_value": {example_one_attribute_value...},
+    "subject_condition_set": {"subject_sets":[{subject_set_1},{subject_set_2}]...},
+    "actions": [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard": "STANDARD_ACTION_TRANSMIT"}]
+   }
+*/
+message SubjectMapping {
+  string id = 1;
+
+  // the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
+  Value attribute_value = 2;
+
+  // the reusable SubjectConditionSet mapped to the given Attribute Value
+  SubjectConditionSet subject_condition_set = 3;
+
+  // The actions permitted by subjects in this mapping
+  repeated Action actions = 4;
+  
+  common.Metadata metadata = 100;
+}
+
+
+/**
+    A Condition defines a rule of <subject external field name> <operator> <subject external values>
+
+   Example:  Subjects with field "division" and a value of "Accounting" or "Marketing":
+   {
+     "subject_external_field": "division",
+     "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
+     "subject_external_values" : ["Accounting", "Marketing"]
+   }
+
+   Example: Subjects that are not part of the Fantastic Four:
+   {
+     "subject_external_field": "superhero_name",
+     "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
+     "subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
+   }
+*/
+message Condition {
+  // externally known field name (such as from idP/LDAP)
+  string subject_external_field = 1;
+
+  // the evaluation operator of relation
+  SubjectMappingOperatorEnum operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  // list of comparison values for the subject_external_field, evaluated by the operator
+  repeated string subject_external_values = 3;
+}
+
+// A collection of Conditions evaluated by the boolean_operator provided
+message ConditionGroup {
+  repeated Condition conditions = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // the boolean evaluation type across the conditions
+  ConditionBooleanTypeEnum boolean_operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+// A collection of Condition Groups
+message SubjectSet {
+  // multiple Condition Groups are evaluated with AND logic
+  repeated ConditionGroup condition_groups = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+/*
+  A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet
+  are evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple
+  Subject Mappings / Attribute Values and is an independent unit.
+*/
+message SubjectConditionSet {
+  string id = 1;
+
+  repeated SubjectSet subject_sets = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  common.Metadata metadata = 100;
+}
+
+/*
+  A property of a Subject/Entity as a field->value pair.  This would mirror external user attributes retrieved
+  from an authoritative source such as an IDP (Identity Provider) or User Store.  Examples include such ADFS/LDAP, OKTA, etc.
+  For now, a valid property must contain both field & value. 
+*/
+message SubjectProperty {
+  string external_field = 1 [(buf.validate.field).required = true];
+  string external_value = 2 [(buf.validate.field).required = true];
+}
+
+/*
+   Resource Mappings (aka Access Control Resource Encodings aka ACRE) are structures supporting the mapping of Resources and Attribute Values
+*/
+message ResourceMapping {
+  string id = 1;
+
+  common.Metadata metadata = 2;
+
+  policy.Value attribute_value = 3 [(buf.validate.field).required = true];
+
+  repeated string terms = 4;
+}

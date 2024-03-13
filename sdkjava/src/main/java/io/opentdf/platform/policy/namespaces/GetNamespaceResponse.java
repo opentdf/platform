@@ -41,9 +41,9 @@ private static final long serialVersionUID = 0L;
 
   private int bitField0_;
   public static final int NAMESPACE_FIELD_NUMBER = 1;
-  private io.opentdf.platform.policy.namespaces.Namespace namespace_;
+  private io.opentdf.platform.policy.Namespace namespace_;
   /**
-   * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+   * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
    * @return Whether the namespace field is set.
    */
   @java.lang.Override
@@ -51,19 +51,19 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+   * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
    * @return The namespace.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.namespaces.Namespace getNamespace() {
-    return namespace_ == null ? io.opentdf.platform.policy.namespaces.Namespace.getDefaultInstance() : namespace_;
+  public io.opentdf.platform.policy.Namespace getNamespace() {
+    return namespace_ == null ? io.opentdf.platform.policy.Namespace.getDefaultInstance() : namespace_;
   }
   /**
-   * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+   * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.namespaces.NamespaceOrBuilder getNamespaceOrBuilder() {
-    return namespace_ == null ? io.opentdf.platform.policy.namespaces.Namespace.getDefaultInstance() : namespace_;
+  public io.opentdf.platform.policy.NamespaceOrBuilder getNamespaceOrBuilder() {
+    return namespace_ == null ? io.opentdf.platform.policy.Namespace.getDefaultInstance() : namespace_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -413,31 +413,31 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.policy.namespaces.Namespace namespace_;
+    private io.opentdf.platform.policy.Namespace namespace_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.namespaces.Namespace, io.opentdf.platform.policy.namespaces.Namespace.Builder, io.opentdf.platform.policy.namespaces.NamespaceOrBuilder> namespaceBuilder_;
+        io.opentdf.platform.policy.Namespace, io.opentdf.platform.policy.Namespace.Builder, io.opentdf.platform.policy.NamespaceOrBuilder> namespaceBuilder_;
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      * @return Whether the namespace field is set.
      */
     public boolean hasNamespace() {
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      * @return The namespace.
      */
-    public io.opentdf.platform.policy.namespaces.Namespace getNamespace() {
+    public io.opentdf.platform.policy.Namespace getNamespace() {
       if (namespaceBuilder_ == null) {
-        return namespace_ == null ? io.opentdf.platform.policy.namespaces.Namespace.getDefaultInstance() : namespace_;
+        return namespace_ == null ? io.opentdf.platform.policy.Namespace.getDefaultInstance() : namespace_;
       } else {
         return namespaceBuilder_.getMessage();
       }
     }
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      */
-    public Builder setNamespace(io.opentdf.platform.policy.namespaces.Namespace value) {
+    public Builder setNamespace(io.opentdf.platform.policy.Namespace value) {
       if (namespaceBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -451,10 +451,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      */
     public Builder setNamespace(
-        io.opentdf.platform.policy.namespaces.Namespace.Builder builderForValue) {
+        io.opentdf.platform.policy.Namespace.Builder builderForValue) {
       if (namespaceBuilder_ == null) {
         namespace_ = builderForValue.build();
       } else {
@@ -465,13 +465,13 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      */
-    public Builder mergeNamespace(io.opentdf.platform.policy.namespaces.Namespace value) {
+    public Builder mergeNamespace(io.opentdf.platform.policy.Namespace value) {
       if (namespaceBuilder_ == null) {
         if (((bitField0_ & 0x00000001) != 0) &&
           namespace_ != null &&
-          namespace_ != io.opentdf.platform.policy.namespaces.Namespace.getDefaultInstance()) {
+          namespace_ != io.opentdf.platform.policy.Namespace.getDefaultInstance()) {
           getNamespaceBuilder().mergeFrom(value);
         } else {
           namespace_ = value;
@@ -486,7 +486,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      */
     public Builder clearNamespace() {
       bitField0_ = (bitField0_ & ~0x00000001);
@@ -499,33 +499,33 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      */
-    public io.opentdf.platform.policy.namespaces.Namespace.Builder getNamespaceBuilder() {
+    public io.opentdf.platform.policy.Namespace.Builder getNamespaceBuilder() {
       bitField0_ |= 0x00000001;
       onChanged();
       return getNamespaceFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      */
-    public io.opentdf.platform.policy.namespaces.NamespaceOrBuilder getNamespaceOrBuilder() {
+    public io.opentdf.platform.policy.NamespaceOrBuilder getNamespaceOrBuilder() {
       if (namespaceBuilder_ != null) {
         return namespaceBuilder_.getMessageOrBuilder();
       } else {
         return namespace_ == null ?
-            io.opentdf.platform.policy.namespaces.Namespace.getDefaultInstance() : namespace_;
+            io.opentdf.platform.policy.Namespace.getDefaultInstance() : namespace_;
       }
     }
     /**
-     * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+     * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.namespaces.Namespace, io.opentdf.platform.policy.namespaces.Namespace.Builder, io.opentdf.platform.policy.namespaces.NamespaceOrBuilder> 
+        io.opentdf.platform.policy.Namespace, io.opentdf.platform.policy.Namespace.Builder, io.opentdf.platform.policy.NamespaceOrBuilder> 
         getNamespaceFieldBuilder() {
       if (namespaceBuilder_ == null) {
         namespaceBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.namespaces.Namespace, io.opentdf.platform.policy.namespaces.Namespace.Builder, io.opentdf.platform.policy.namespaces.NamespaceOrBuilder>(
+            io.opentdf.platform.policy.Namespace, io.opentdf.platform.policy.Namespace.Builder, io.opentdf.platform.policy.NamespaceOrBuilder>(
                 getNamespace(),
                 getParentForChildren(),
                 isClean());

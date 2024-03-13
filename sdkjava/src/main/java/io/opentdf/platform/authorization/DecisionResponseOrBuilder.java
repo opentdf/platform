@@ -53,7 +53,7 @@ public interface DecisionResponseOrBuilder extends
    * Action of the decision response
    * </pre>
    *
-   * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+   * <code>.policy.Action action = 3 [json_name = "action"];</code>
    * @return Whether the action field is set.
    */
   boolean hasAction();
@@ -62,18 +62,18 @@ public interface DecisionResponseOrBuilder extends
    * Action of the decision response
    * </pre>
    *
-   * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+   * <code>.policy.Action action = 3 [json_name = "action"];</code>
    * @return The action.
    */
-  io.opentdf.platform.authorization.Action getAction();
+  io.opentdf.platform.policy.Action getAction();
   /**
    * <pre>
    * Action of the decision response
    * </pre>
    *
-   * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+   * <code>.policy.Action action = 3 [json_name = "action"];</code>
    */
-  io.opentdf.platform.authorization.ActionOrBuilder getActionOrBuilder();
+  io.opentdf.platform.policy.ActionOrBuilder getActionOrBuilder();
 
   /**
    * <pre>

@@ -5,6 +5,8 @@ package authorization;
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 
+import "policy/objects.proto";
+
 // PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {
   string id = 1; // ephemeral id for tracking between request and response
@@ -28,20 +30,6 @@ message EntityCustom {
 message EntityChain {
   string id = 1; // ephemeral id for tracking between request and response
   repeated Entity entities = 2;
-}
-
-// An action an entity can take
-message Action {
-  // Standard actions supported by the platform
-  enum StandardAction {
-    STANDARD_ACTION_UNSPECIFIED = 0;
-    STANDARD_ACTION_DECRYPT = 1;
-    STANDARD_ACTION_TRANSMIT = 2;
-  }
-  oneof value {
-    StandardAction standard = 1;
-    string custom = 2;
-  }
 }
 
 /*
@@ -90,7 +78,7 @@ message Action {
 
 */
 message DecisionRequest {
-  repeated Action actions = 1;
+  repeated policy.Action actions = 1;
   repeated EntityChain entity_chains = 2;
   repeated ResourceAttribute resource_attributes = 3;
 }
@@ -141,7 +129,7 @@ message DecisionResponse {
   }
   string entity_chain_id = 1; // ephemeral entity chain id from the request
   string resource_attributes_id = 2; // ephemeral resource attributes id from the request
-  Action action = 3; // Action of the decision response
+  policy.Action action = 3; // Action of the decision response
   Decision decision = 4; // The decision response
   repeated string obligations = 5; //optional list of obligations represented in URI format
 }

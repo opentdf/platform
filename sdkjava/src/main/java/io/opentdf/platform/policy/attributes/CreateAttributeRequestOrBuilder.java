@@ -41,15 +41,15 @@ public interface CreateAttributeRequestOrBuilder extends
       getNameBytes();
 
   /**
-   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
    * @return The enum numeric value on the wire for rule.
    */
   int getRuleValue();
   /**
-   * <code>.policy.attributes.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
+   * <code>.policy.AttributeRuleTypeEnum rule = 3 [json_name = "rule", (.buf.validate.field) = { ... }</code>
    * @return The rule.
    */
-  io.opentdf.platform.policy.attributes.AttributeRuleTypeEnum getRule();
+  io.opentdf.platform.policy.AttributeRuleTypeEnum getRule();
 
   /**
    * <pre>

@@ -42,41 +42,41 @@ private static final long serialVersionUID = 0L;
 
   public static final int ATTRIBUTES_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.attributes.Attribute> attributes_;
+  private java.util.List<io.opentdf.platform.policy.Attribute> attributes_;
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.attributes.Attribute> getAttributesList() {
+  public java.util.List<io.opentdf.platform.policy.Attribute> getAttributesList() {
     return attributes_;
   }
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.policy.AttributeOrBuilder> 
       getAttributesOrBuilderList() {
     return attributes_;
   }
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
   @java.lang.Override
   public int getAttributesCount() {
     return attributes_.size();
   }
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.Attribute getAttributes(int index) {
+  public io.opentdf.platform.policy.Attribute getAttributes(int index) {
     return attributes_.get(index);
   }
   /**
-   * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+   * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributesOrBuilder(
+  public io.opentdf.platform.policy.AttributeOrBuilder getAttributesOrBuilder(
       int index) {
     return attributes_.get(index);
   }
@@ -426,9 +426,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.policy.attributes.Attribute m =
+              io.opentdf.platform.policy.Attribute m =
                   input.readMessage(
-                      io.opentdf.platform.policy.attributes.Attribute.parser(),
+                      io.opentdf.platform.policy.Attribute.parser(),
                       extensionRegistry);
               if (attributesBuilder_ == null) {
                 ensureAttributesIsMutable();
@@ -455,22 +455,22 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.policy.attributes.Attribute> attributes_ =
+    private java.util.List<io.opentdf.platform.policy.Attribute> attributes_ =
       java.util.Collections.emptyList();
     private void ensureAttributesIsMutable() {
       if (!((bitField0_ & 0x00000001) != 0)) {
-        attributes_ = new java.util.ArrayList<io.opentdf.platform.policy.attributes.Attribute>(attributes_);
+        attributes_ = new java.util.ArrayList<io.opentdf.platform.policy.Attribute>(attributes_);
         bitField0_ |= 0x00000001;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder> attributesBuilder_;
+        io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder> attributesBuilder_;
 
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.attributes.Attribute> getAttributesList() {
+    public java.util.List<io.opentdf.platform.policy.Attribute> getAttributesList() {
       if (attributesBuilder_ == null) {
         return java.util.Collections.unmodifiableList(attributes_);
       } else {
@@ -478,7 +478,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public int getAttributesCount() {
       if (attributesBuilder_ == null) {
@@ -488,9 +488,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Attribute getAttributes(int index) {
+    public io.opentdf.platform.policy.Attribute getAttributes(int index) {
       if (attributesBuilder_ == null) {
         return attributes_.get(index);
       } else {
@@ -498,10 +498,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public Builder setAttributes(
-        int index, io.opentdf.platform.policy.attributes.Attribute value) {
+        int index, io.opentdf.platform.policy.Attribute value) {
       if (attributesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -515,10 +515,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public Builder setAttributes(
-        int index, io.opentdf.platform.policy.attributes.Attribute.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.Attribute.Builder builderForValue) {
       if (attributesBuilder_ == null) {
         ensureAttributesIsMutable();
         attributes_.set(index, builderForValue.build());
@@ -529,9 +529,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public Builder addAttributes(io.opentdf.platform.policy.attributes.Attribute value) {
+    public Builder addAttributes(io.opentdf.platform.policy.Attribute value) {
       if (attributesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -545,10 +545,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public Builder addAttributes(
-        int index, io.opentdf.platform.policy.attributes.Attribute value) {
+        int index, io.opentdf.platform.policy.Attribute value) {
       if (attributesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -562,10 +562,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public Builder addAttributes(
-        io.opentdf.platform.policy.attributes.Attribute.Builder builderForValue) {
+        io.opentdf.platform.policy.Attribute.Builder builderForValue) {
       if (attributesBuilder_ == null) {
         ensureAttributesIsMutable();
         attributes_.add(builderForValue.build());
@@ -576,10 +576,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public Builder addAttributes(
-        int index, io.opentdf.platform.policy.attributes.Attribute.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.Attribute.Builder builderForValue) {
       if (attributesBuilder_ == null) {
         ensureAttributesIsMutable();
         attributes_.add(index, builderForValue.build());
@@ -590,10 +590,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public Builder addAllAttributes(
-        java.lang.Iterable<? extends io.opentdf.platform.policy.attributes.Attribute> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.policy.Attribute> values) {
       if (attributesBuilder_ == null) {
         ensureAttributesIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -605,7 +605,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public Builder clearAttributes() {
       if (attributesBuilder_ == null) {
@@ -618,7 +618,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
     public Builder removeAttributes(int index) {
       if (attributesBuilder_ == null) {
@@ -631,16 +631,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Attribute.Builder getAttributesBuilder(
+    public io.opentdf.platform.policy.Attribute.Builder getAttributesBuilder(
         int index) {
       return getAttributesFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public io.opentdf.platform.policy.attributes.AttributeOrBuilder getAttributesOrBuilder(
+    public io.opentdf.platform.policy.AttributeOrBuilder getAttributesOrBuilder(
         int index) {
       if (attributesBuilder_ == null) {
         return attributes_.get(index);  } else {
@@ -648,9 +648,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.policy.AttributeOrBuilder> 
          getAttributesOrBuilderList() {
       if (attributesBuilder_ != null) {
         return attributesBuilder_.getMessageOrBuilderList();
@@ -659,33 +659,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Attribute.Builder addAttributesBuilder() {
+    public io.opentdf.platform.policy.Attribute.Builder addAttributesBuilder() {
       return getAttributesFieldBuilder().addBuilder(
-          io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance());
+          io.opentdf.platform.policy.Attribute.getDefaultInstance());
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Attribute.Builder addAttributesBuilder(
+    public io.opentdf.platform.policy.Attribute.Builder addAttributesBuilder(
         int index) {
       return getAttributesFieldBuilder().addBuilder(
-          index, io.opentdf.platform.policy.attributes.Attribute.getDefaultInstance());
+          index, io.opentdf.platform.policy.Attribute.getDefaultInstance());
     }
     /**
-     * <code>repeated .policy.attributes.Attribute attributes = 1 [json_name = "attributes"];</code>
+     * <code>repeated .policy.Attribute attributes = 1 [json_name = "attributes"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.attributes.Attribute.Builder> 
+    public java.util.List<io.opentdf.platform.policy.Attribute.Builder> 
          getAttributesBuilderList() {
       return getAttributesFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder> 
+        io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder> 
         getAttributesFieldBuilder() {
       if (attributesBuilder_ == null) {
         attributesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.policy.attributes.Attribute, io.opentdf.platform.policy.attributes.Attribute.Builder, io.opentdf.platform.policy.attributes.AttributeOrBuilder>(
+            io.opentdf.platform.policy.Attribute, io.opentdf.platform.policy.Attribute.Builder, io.opentdf.platform.policy.AttributeOrBuilder>(
                 attributes_,
                 ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),

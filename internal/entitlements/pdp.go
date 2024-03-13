@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-func OpaInput(entity *authorization.Entity, ss *subjectmapping.SubjectSet) (map[string]interface{}, error) {
+func OpaInput(entity *authorization.Entity, ss *policy.SubjectSet) (map[string]interface{}, error) {
 	// OPA wants this as a generic map[string]interface{} and will not handle
 	// deserializing to concrete structs
 	inputUnstructured := make(map[string]interface{})

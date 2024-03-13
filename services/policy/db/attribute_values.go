@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -28,45 +29,45 @@ type attributeValueSelectOptions struct {
 	// withAttributeNamespace       bool
 }
 
-func getMembersFromStringArray(c PolicyDbClient, members []string) ([]*policy.Value, error) {
-	// Hydrate members
-	hydratedMemberIds := map[string]bool{}
-	var hydratedMembers []*policy.Value
+// func getMembersFromStringArray(c PolicyDbClient, members []string) ([]*policy.Value, error) {
+// 	// Hydrate members
+// 	hydratedMemberIds := map[string]bool{}
+// 	var hydratedMembers []*policy.Value
 
-	for _, member := range members {
-		var (
-			vm_id     string
-			value_id  string
-			member_id string
-		)
+// 	for _, member := range members {
+// 		var (
+// 			vm_id     string
+// 			value_id  string
+// 			member_id string
+// 		)
 
-		// Get member value from db
-		sql, args, err := getMemberSql(member)
-		if err != nil {
-			return nil, err
-		}
-		if r, err := c.QueryRow(context.TODO(), sql, args, err); err != nil {
-			return nil, err
-		} else if err := r.Scan(&vm_id, &value_id, &member_id); err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
-		}
-		attr, err := c.GetAttributeValue(context.TODO(), member_id)
-		if err != nil {
-			return nil, err
-		}
+// 		// Get member value from db
+// 		sql, args, err := getMemberSql(member)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		if r, err := c.QueryRow(context.TODO(), sql, args, err); err != nil {
+// 			return nil, err
+// 		} else if err := r.Scan(&vm_id, &value_id, &member_id); err != nil {
+// 			return nil, db.WrapIfKnownInvalidQueryErr(err)
+// 		}
+// 		attr, err := c.GetAttributeValue(context.TODO(), member_id)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		if hydratedMemberIds[member_id] {
-			slog.Info("attr val member may be duplicated", slog.String("member_id", member_id))
-			continue
-		}
+// 		if hydratedMemberIds[member_id] {
+// 			slog.Info("attr val member may be duplicated", slog.String("member_id", member_id))
+// 			continue
+// 		}
 
-		hydratedMemberIds[member_id] = true
-		hydratedMembers = append(hydratedMembers, attr)
-	}
-	return hydratedMembers, nil
-}
+// 		hydratedMemberIds[member_id] = true
+// 		hydratedMembers = append(hydratedMembers, attr)
+// 	}
+// 	return hydratedMembers, nil
+// }
 
-func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValueSelectOptions) (*policy.Value, error) {
+func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*policy.Value, error) {
 	var (
 		id           string
 		value        string
@@ -75,7 +76,6 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 		metadataJson []byte
 		attributeId  string
 		fqn          sql.NullString
-		memberUUIDs  []string
 		members      []*policy.Value
 	)
 	fields := []interface{}{
@@ -91,31 +91,17 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 		fields = append(fields, &fqn)
 	}
 	if err := row.Scan(fields...); err != nil {
-		fields := []interface{}{
-			&id,
-			&value,
-			&active,
-			&memberUUIDs,
-			&metadataJson,
-			&attributeId,
-		}
-		if opts.withFqn {
-			fields = append(fields, &fqn)
-		}
-
-		if err := row.Scan(fields...); err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
-		}
-		members, err = getMembersFromStringArray(c, memberUUIDs)
-		if err != nil {
-			return nil, err
-		}
+		fmt.Println("error scanning row: ", err)
 	} else {
+		fmt.Println("no error!")
 		if membersJson != nil {
-			members, err = attributesValuesProtojson(c, membersJson)
+			fmt.Println("membersJson: ", string(membersJson))
+			members, err = attributesValuesProtojson(membersJson)
 			if err != nil {
+				fmt.Println("error unmarshalling members: ", err)
 				return nil, err
 			}
+			fmt.Println("members: ", members)
 		}
 	}
 
@@ -132,15 +118,18 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 		Active:   &wrapperspb.BoolValue{Value: active},
 		Members:  members,
 		Metadata: m,
-		Fqn:      fqn.String,
+		Attribute: &policy.Attribute{
+			Id: attributeId,
+		},
+		Fqn: fqn.String,
 	}
 	return v, nil
 }
 
-func attributeValueHydrateItems(c PolicyDbClient, rows pgx.Rows, opts attributeValueSelectOptions) ([]*policy.Value, error) {
+func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions) ([]*policy.Value, error) {
 	list := make([]*policy.Value, 0)
 	for rows.Next() {
-		v, err := attributeValueHydrateItem(c, rows, opts)
+		v, err := attributeValueHydrateItem(rows, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -260,22 +249,22 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	return rV, nil
 }
 
-func getMemberSql(id string) (string, []interface{}, error) {
-	t := Tables.ValueMembers
-	fields := []string{
-		t.Field("id"),
-		t.Field("value_id"),
-		t.Field("member_id"),
-	}
+// func getMemberSql(id string) (string, []interface{}, error) {
+// 	t := Tables.ValueMembers
+// 	fields := []string{
+// 		t.Field("id"),
+// 		t.Field("value_id"),
+// 		t.Field("member_id"),
+// 	}
 
-	sb := db.NewStatementBuilder().
-		Select(fields...).
-		From(t.Name())
+// 	sb := db.NewStatementBuilder().
+// 		Select(fields...).
+// 		From(t.Name())
 
-	return sb.
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
-}
+// 	return sb.
+// 		Where(sq.Eq{t.Field("id"): id}).
+// 		ToSql()
+// }
 
 func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
@@ -285,8 +274,9 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		"'metadata', vmv.metadata ," +
-		"'attribute_id', vmv.attribute_definition_id "
+		"'metadata', vmv.metadata, " +
+		"'attribute', JSON_BUILD_OBJECT(" +
+		"'id', vmv.attribute_definition_id )" // TODO: get the rest of the attribute here from the JOIN?
 	if opts.withFqn {
 		members += ", 'fqn', " + "fqn1.fqn"
 	}
@@ -331,13 +321,14 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true}
 	sql, args, err := getAttributeValueSql(id, opts)
+	fmt.Println("\nsql: ", sql)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		slog.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	a, err := attributeValueHydrateItem(c, row, opts)
+	a, err := attributeValueHydrateItem(row, opts)
 	if err != nil {
 		slog.Error("error hydrating attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
@@ -388,7 +379,7 @@ func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id st
 		return nil, err
 	}
 	defer rows.Close()
-	return attributeValueHydrateItems(c, rows, opts)
+	return attributeValueHydrateItems(rows, opts)
 }
 
 func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []interface{}, error) {
@@ -425,7 +416,7 @@ func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string
 		return nil, err
 	}
 	defer rows.Close()
-	return attributeValueHydrateItems(c, rows, opts)
+	return attributeValueHydrateItems(rows, opts)
 }
 
 func updateAttributeValueSql(
@@ -510,14 +501,14 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		}
 	}
 
-	var members []*policy.Value
-	for _, member := range r.Members {
-		attr, err := c.GetAttributeValue(ctx, member)
-		if err != nil {
-			return nil, err
-		}
-		members = append(members, attr)
-	}
+	// var members []*policy.Value
+	// for _, member := range r.Members {
+	// 	attr, err := c.GetAttributeValue(ctx, member)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	members = append(members, attr)
+	// }
 
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: r.Id})

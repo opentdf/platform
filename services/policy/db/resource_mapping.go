@@ -14,11 +14,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func resourceMappingHydrateList(c PolicyDbClient, rows pgx.Rows) ([]*policy.ResourceMapping, error) {
+func resourceMappingHydrateList(rows pgx.Rows) ([]*policy.ResourceMapping, error) {
 	var list []*policy.ResourceMapping
 
 	for rows.Next() {
-		rm, err := resourceMappingHydrateItem(c, rows)
+		rm, err := resourceMappingHydrateItem(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -27,7 +27,7 @@ func resourceMappingHydrateList(c PolicyDbClient, rows pgx.Rows) ([]*policy.Reso
 	return list, nil
 }
 
-func resourceMappingHydrateItem(c PolicyDbClient, row pgx.Row) (*policy.ResourceMapping, error) {
+func resourceMappingHydrateItem(row pgx.Row) (*policy.ResourceMapping, error) {
 	var (
 		id                 string
 		metadataJSON       []byte
@@ -54,9 +54,12 @@ func resourceMappingHydrateItem(c PolicyDbClient, row pgx.Row) (*policy.Resource
 		}
 	}
 
-	attributeValue, err = convertJSONToAttrVal(c, attributeValueJSON)
-	if err != nil {
-		return nil, err
+	av := &policy.Value{}
+	if attributeValueJSON != nil {
+		if err := protojson.Unmarshal(attributeValueJSON, av); err != nil {
+			slog.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
+			return nil, err
+		}
 	}
 
 	return &policy.ResourceMapping{
@@ -157,7 +160,7 @@ func (c PolicyDbClient) GetResourceMapping(ctx context.Context, id string) (*pol
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rm, err := resourceMappingHydrateItem(c, row)
+	rm, err := resourceMappingHydrateItem(row)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -183,7 +186,7 @@ func (c PolicyDbClient) ListResourceMappings(ctx context.Context) ([]*policy.Res
 	}
 	defer rows.Close()
 
-	list, err := resourceMappingHydrateList(c, rows)
+	list, err := resourceMappingHydrateList(rows)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

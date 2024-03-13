@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -29,49 +30,50 @@ func attributesRuleTypeEnumTransformOut(value string) policy.AttributeRuleTypeEn
 	return policy.AttributeRuleTypeEnum(policy.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
 }
 
-func convertJSONToAttrVal(c PolicyDbClient, r json.RawMessage) (*policy.Value, error) {
-	type AttributeValueDBItem struct {
-		// generated uuid in database
-		Id          string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-		Metadata    *common.Metadata `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
-		AttributeId string           `protobuf:"bytes,3,opt,name=attribute_id,json=attributeId,proto3" json:"attribute_id,omitempty"`
-		Value       string           `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
-		// list of attribute values that this value is related to (attribute group)
-		Members []string `protobuf:"bytes,5,rep,name=members,proto3" json:"members,omitempty"`
-		// list of key access servers
-		Grants []*kasregistry.KeyAccessServer `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
-		// SubjectMappings []*policy.SubjectMapping `protobuf:"bytes,7,rep,name=subject_mappings,json=subjectMappings,proto3" json:"subject_mappings,omitempty"`
-		Fqn    string                         `protobuf:"bytes,7,opt,name=fqn,proto3" json:"fqn,omitempty"`
-		Active bool                           `protobuf:"bytes,8,opt,name=active,proto3" json:"active,omitempty"`
-	}
-	var item AttributeValueDBItem
-	if err := json.Unmarshal(r, &item); err != nil {
-		return nil, err
-	}
-	if item.Metadata == nil {
-		item.Metadata = &common.Metadata{}
-	}
+// func convertJSONToAttrVal(c PolicyDbClient, r json.RawMessage) (*policy.Value, error) {
+// 	type AttributeValueDBItem struct {
+// 		// generated uuid in database
+// 		Id          string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+// 		Metadata    *common.Metadata `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
+// 		AttributeId string           `protobuf:"bytes,3,opt,name=attribute_id,json=attributeId,proto3" json:"attribute_id,omitempty"`
+// 		Value       string           `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+// 		// list of attribute values that this value is related to (attribute group)
+// 		Members []string `protobuf:"bytes,5,rep,name=members,proto3" json:"members,omitempty"`
+// 		// list of key access servers
+// 		Grants          []*kasregistry.KeyAccessServer `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
+// 		SubjectMappings []*policy.SubjectMapping       `protobuf:"bytes,7,rep,name=subject_mappings,json=subjectMappings,proto3" json:"subject_mappings,omitempty"`
+// 		Fqn             string                         `protobuf:"bytes,7,opt,name=fqn,proto3" json:"fqn,omitempty"`
+// 		Active          bool                           `protobuf:"bytes,8,opt,name=active,proto3" json:"active,omitempty"`
+// 	}
+// 	var item AttributeValueDBItem
+// 	if err := json.Unmarshal(r, &item); err != nil {
+// 		return nil, err
+// 	}
+// 	if item.Metadata == nil {
+// 		item.Metadata = &common.Metadata{}
+// 	}
 
-	var members []*policy.Value
-	if len(item.Members) > 0 {
-		attr, err := c.GetAttributeValue(context.TODO(), item.Id)
-		if err != nil {
-			return nil, err
-		}
-		return attr, nil
-	}
-	return &policy.Value{
-		Id:       item.Id,
-		Value:    item.Value,
-		Members:  members,
-		Metadata: item.Metadata,
-		Fqn:      item.Fqn,
-		Grants:   item.Grants,
-		Active:   &wrapperspb.BoolValue{Value: item.Active},
-	}, nil
-}
+// 	var members []*policy.Value
+// 	if len(item.Members) > 0 {
+// 		attr, err := c.GetAttributeValue(context.TODO(), item.Id)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		return attr, nil
+// 	}
+// 	return &policy.Value{
+// 		Id:              item.Id,
+// 		Value:           item.Value,
+// 		Members:         members,
+// 		SubjectMappings: item.SubjectMappings,
+// 		Metadata:        item.Metadata,
+// 		Fqn:             item.Fqn,
+// 		Grants:          item.Grants,
+// 		Active:          &wrapperspb.BoolValue{Value: item.Active},
+// 	}, nil
+// }
 
-func attributesValuesProtojson(c PolicyDbClient, valuesJson []byte) ([]*policy.Value, error) {
+func attributesValuesProtojson(valuesJson []byte) ([]*policy.Value, error) {
 	var (
 		raw    []json.RawMessage
 		values []*policy.Value
@@ -90,12 +92,15 @@ func attributesValuesProtojson(c PolicyDbClient, valuesJson []byte) ([]*policy.V
 	}
 
 	for _, r := range raw {
-		value, err := convertJSONToAttrVal(c, r)
+		value := &policy.Value{}
+		err := protojson.Unmarshal(r, value)
 		if err != nil {
+			fmt.Println("error unmarshaling a value: ", err, string(r))
 			return nil, err
 		}
 		values = append(values, value)
 	}
+	fmt.Println("values: ", values)
 	return values, nil
 }
 
@@ -135,7 +140,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"JSON_BUILD_OBJECT(" +
 			"'id', " + avt.Field("id") + ", " +
 			"'value', " + avt.Field("value") + "," +
-			"'members', " + avt.Field("members") + "," +
+			"'members', " + avt.Field("members") + "," + // TODO: make sure we keep the same structure here to select all members
 			"'active', " + avt.Field("active")
 
 		// include the subject mapping / subject condition set for each value
@@ -219,7 +224,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	return sb.GroupBy(g...)
 }
 
-func attributesHydrateItem(c PolicyDbClient, row pgx.Row, opts attributesSelectOptions) (*policy.Attribute, error) {
+func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.Attribute, error) {
 	if opts.withKeyAccessGrants {
 		opts.withAttributeValues = true
 	}
@@ -263,7 +268,7 @@ func attributesHydrateItem(c PolicyDbClient, row pgx.Row, opts attributesSelectO
 
 	var v []*policy.Value
 	if valuesJson != nil {
-		v, err = attributesValuesProtojson(c, valuesJson)
+		v, err = attributesValuesProtojson(valuesJson)
 		if err != nil {
 			slog.Error("could not unmarshal values", slog.String("error", err.Error()))
 			return nil, err
@@ -293,10 +298,10 @@ func attributesHydrateItem(c PolicyDbClient, row pgx.Row, opts attributesSelectO
 	return attr, nil
 }
 
-func attributesHydrateList(c PolicyDbClient, rows pgx.Rows, opts attributesSelectOptions) ([]*policy.Attribute, error) {
+func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions) ([]*policy.Attribute, error) {
 	list := make([]*policy.Attribute, 0)
 	for rows.Next() {
-		attr, err := attributesHydrateItem(c, rows, opts)
+		attr, err := attributesHydrateItem(rows, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -336,7 +341,7 @@ func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(c, rows, opts)
+	list, err := attributesHydrateList(rows, opts)
 	if err != nil {
 		slog.Error("could not hydrate list", slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -360,7 +365,7 @@ func (c PolicyDbClient) ListAllAttributesWithout(ctx context.Context, state stri
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(c, rows, opts)
+	list, err := attributesHydrateList(rows, opts)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -379,15 +384,17 @@ func getAttributeSql(id string, opts attributesSelectOptions) (string, []interfa
 
 func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
 	opts := attributesSelectOptions{
-		withFqn: true,
+		withFqn:             true,
+		withAttributeValues: true,
 	}
 	sql, args, err := getAttributeSql(id, opts)
+	fmt.Println("\nget attribute sql: ", sql)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attribute, err := attributesHydrateItem(c, row, opts)
+	attribute, err := attributesHydrateItem(row, opts)
 	if err != nil {
 		slog.Error("could not hydrate item", slog.String("attributeId", id), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -420,7 +427,7 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attribute, err := attributesHydrateItem(c, row, opts)
+	attribute, err := attributesHydrateItem(row, opts)
 	if err != nil {
 		slog.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -446,7 +453,7 @@ func (c PolicyDbClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(c, rows, opts)
+	list, err := attributesHydrateList(rows, opts)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

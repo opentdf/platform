@@ -170,7 +170,7 @@ func subjectMappingSelect() sq.SelectBuilder {
 		GroupBy(scsT.Field("id"))
 }
 
-func subjectMappingHydrateItem(c PolicyDbClient, row pgx.Row) (*policy.SubjectMapping, error) {
+func subjectMappingHydrateItem(row pgx.Row) (*policy.SubjectMapping, error) {
 	var (
 		id                 string
 		actionsJSON        []byte
@@ -209,7 +209,7 @@ func subjectMappingHydrateItem(c PolicyDbClient, row pgx.Row) (*policy.SubjectMa
 
 	av := &policy.Value{}
 	if attributeValueJSON != nil {
-		if av, err = convertJSONToAttrVal(c, attributeValueJSON); err != nil {
+		if err := protojson.Unmarshal(attributeValueJSON, av); err != nil {
 			slog.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
 			return nil, err
 		}
@@ -240,10 +240,10 @@ func subjectMappingHydrateItem(c PolicyDbClient, row pgx.Row) (*policy.SubjectMa
 	}, nil
 }
 
-func subjectMappingHydrateList(c PolicyDbClient, rows pgx.Rows) ([]*policy.SubjectMapping, error) {
+func subjectMappingHydrateList(rows pgx.Rows) ([]*policy.SubjectMapping, error) {
 	list := make([]*policy.SubjectMapping, 0)
 	for rows.Next() {
-		s, err := subjectMappingHydrateItem(c, rows)
+		s, err := subjectMappingHydrateItem(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -531,7 +531,7 @@ func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 		return nil, err
 	}
 
-	return subjectMappingHydrateItem(c, row)
+	return subjectMappingHydrateItem(row)
 }
 
 func listSubjectMappingsSql() (string, []interface{}, error) {
@@ -553,7 +553,7 @@ func (c PolicyDbClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 	}
 	defer rows.Close()
 
-	subjectMappings, err := subjectMappingHydrateList(c, rows)
+	subjectMappings, err := subjectMappingHydrateList(rows)
 	if err != nil {
 		return nil, err
 	}
@@ -748,5 +748,5 @@ func (c PolicyDbClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 	}
 	defer rows.Close()
 
-	return subjectMappingHydrateList(c, rows)
+	return subjectMappingHydrateList(rows)
 }

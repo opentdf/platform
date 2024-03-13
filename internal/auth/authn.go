@@ -1,0 +1,410 @@
+package auth
+
+import (
+	"context"
+	"crypto"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+)
+
+var (
+	// Set of allowed gRPC endpoints that do not require authentication
+	allowedGRPCEndpoints = [...]string{
+		"/grpc.health.v1.Health/Check",
+		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
+	}
+	// Set of allowed HTTP endpoints that do not require authentication
+	allowedHTTPEndpoints = [...]string{
+		"/healthz",
+		"/.well-known/opentdf-configuration",
+	}
+	// only asymmetric algorithms and no 'none'
+	allowedSignatureAlgorithms = map[string]bool{
+		jwa.RS256.String(): true,
+		jwa.RS384.String(): true,
+		jwa.RS512.String(): true,
+		jwa.ES256.String(): true,
+		jwa.ES384.String(): true,
+		jwa.ES512.String(): true,
+		jwa.PS256.String(): true,
+		jwa.PS384.String(): true,
+		jwa.PS512.String(): true,
+	}
+)
+
+// Authentication holds a jwks cache and information about the openid configuration
+type authentication struct {
+	// cache holds the jwks cache
+	cache *jwk.Cache
+	// openidConfigurations holds the openid configuration for each issuer
+	oidcConfigurations map[string]AuthNConfig
+}
+
+// Creates new authN which is used to verify tokens for a set of given issuers
+func NewAuthenticator(cfg AuthNConfig) (*authentication, error) {
+	a := &authentication{}
+	a.oidcConfigurations = make(map[string]AuthNConfig)
+
+	ctx := context.Background()
+
+	a.cache = jwk.NewCache(ctx)
+
+	// Build new cache
+	// Discover OIDC Configuration
+	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.OIDCConfiguration = *oidcConfig
+
+	// Register the jwks_uri with the cache
+	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+		return nil, err
+	}
+
+	// Need to refresh the cache to verify jwks is available
+	_, err = a.cache.Refresh(ctx, cfg.JwksURI)
+	if err != nil {
+		return nil, err
+	}
+
+	a.oidcConfigurations[cfg.Issuer] = cfg
+
+	return a, nil
+}
+
+type dpopInfo struct {
+	headers []string
+	path    string
+	method  string
+}
+
+// verifyTokenHandler is a http handler that verifies the token
+func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
+			handler.ServeHTTP(w, r)
+			return
+		}
+		// Verify the token
+		header := r.Header["Authorization"]
+		if len(header) < 1 {
+			http.Error(w, "missing authorization header", http.StatusUnauthorized)
+			return
+		}
+		dpopInfo := dpopInfo{
+			headers: r.Header["Dpop"],
+			path:    r.URL.Path,
+			method:  r.Method,
+		}
+		err := checkToken(r.Context(), header, dpopInfo, a)
+		if err != nil {
+			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
+			http.Error(w, "unauthenticated", http.StatusUnauthorized)
+			return
+		}
+
+		handler.ServeHTTP(w, r)
+	})
+}
+
+// verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
+func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	// Allow health checks to pass through
+	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
+		return handler(ctx, req)
+	}
+
+	// Get the metadata from the context
+	// The keys within metadata.MD are normalized to lowercase.
+	// See: https://godoc.org/google.golang.org/grpc/metadata#New
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing metadata")
+	}
+
+	// Verify the token
+	header := md["authorization"]
+	if len(header) < 1 {
+		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
+	}
+
+	dpopInfo := dpopInfo{
+		headers: md["dpop"],
+		path:    info.FullMethod,
+		method:  "POST",
+	}
+
+	err := checkToken(ctx, header, dpopInfo, a)
+	if err != nil {
+		slog.Warn("failed to validate token", slog.String("error", err.Error()))
+		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
+	}
+
+	return handler(ctx, req)
+}
+
+// checkToken is a helper function to verify the token.
+func checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo, auth authentication) error {
+	var (
+		tokenRaw  string
+		tokenType string
+	)
+
+	// If we don't get a DPoP/Bearer token type, we can't proceed
+	switch {
+	case strings.HasPrefix(authHeader[0], "DPoP "):
+		tokenType = "DPoP"
+		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
+	case strings.HasPrefix(authHeader[0], "Bearer "):
+		tokenType = "Bearer"
+		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
+	default:
+		return fmt.Errorf("not of type bearer or dpop")
+	}
+
+	// We have to get iss from the token first to verify the signature
+	unverifiedToken, err := jwt.Parse([]byte(tokenRaw), jwt.WithVerify(false))
+	if err != nil {
+		return err
+	}
+
+	// Get issuer from unverified token
+	issuer, exists := unverifiedToken.Get("iss")
+	if !exists {
+		return fmt.Errorf("missing issuer")
+	}
+
+	// Get the openid configuration for the issuer
+	// Because we get an interface we need to cast it to a string
+	// and jwx expects it as a string so we should never hit this error if the token is valid
+	issuerStr, ok := issuer.(string)
+	if !ok {
+		return fmt.Errorf("invalid issuer")
+	}
+	oidc, exists := auth.oidcConfigurations[issuerStr]
+	if !exists {
+		return fmt.Errorf("invalid issuer")
+	}
+
+	// Get key set from cache that matches the jwks_uri
+	keySet, err := auth.cache.Get(ctx, oidc.JwksURI)
+	if err != nil {
+		return fmt.Errorf("failed to get jwks from cache")
+	}
+
+	// Now we verify the token signature
+	accessToken, err := jwt.Parse([]byte(tokenRaw),
+		jwt.WithKeySet(keySet),
+		jwt.WithValidate(true),
+		jwt.WithIssuer(issuerStr),
+		jwt.WithAudience(oidc.Audience),
+		jwt.WithValidator(jwt.ValidatorFunc(auth.claimsValidator)),
+	)
+	if err != nil {
+		return err
+	}
+
+	if tokenType == "Bearer" {
+		return nil
+	}
+
+	return validateDPoP(accessToken, tokenRaw, dpopInfo)
+}
+
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) error {
+	if len(dpopInfo.headers) != 1 {
+		return fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
+	}
+	dpopHeader := dpopInfo.headers[0]
+
+	cnf, ok := accessToken.Get("cnf")
+	if !ok {
+		return fmt.Errorf("did not get a `cnf` claim to verify the DPoP binding")
+	}
+
+	cnfDict, ok := cnf.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("got `cnf` in an invalid format")
+	}
+
+	jktI, ok := cnfDict["jkt"]
+	if !ok {
+		return fmt.Errorf("missing `jkt` field in `cnf` claim. only thumbprint JWK confirmation is supported")
+	}
+
+	jkt, ok := jktI.(string)
+	if !ok {
+		return fmt.Errorf("invalid `jkt` field in `cnf` claim: %v. the value must be a JWK thumbprint", jkt)
+	}
+
+	dpop, err := jws.Parse([]byte(dpopHeader))
+	if err != nil {
+		slog.Error("error parsing JWT: %w", err)
+		return fmt.Errorf("invalid DPoP JWT")
+	}
+	if len(dpop.Signatures()) != 1 {
+		return fmt.Errorf("expected one signature on DPoP JWT, got %d", len(dpop.Signatures()))
+	}
+	sig := dpop.Signatures()[0]
+	protectedHeaders := sig.ProtectedHeaders()
+	if typ, ok := protectedHeaders.Get("typ"); !ok || typ != "dpop+jwt" {
+		return fmt.Errorf("invalid typ on DPoP JWT")
+	}
+
+	alg, ok := protectedHeaders.Get("alg")
+	if !ok {
+		return fmt.Errorf("no `alg` specified in DPoP JWT")
+	}
+
+	algString, ok := alg.(string)
+	if !ok {
+		return fmt.Errorf("invalid `alg` field specified in DPoP JWT")
+	}
+
+	if _, exists := allowedSignatureAlgorithms[algString]; !exists {
+		return fmt.Errorf("unsupported algorithm specified: %v", algString)
+	}
+
+	keyI, ok := protectedHeaders.Get("jwk")
+	if !ok {
+		return fmt.Errorf("`jwk` not specified in DPoP JWT")
+	}
+
+	dpopKey, ok := keyI.(jwk.Key)
+	if !ok {
+		return fmt.Errorf("invalid key in `jwk` in DPoP JWT: %v", keyI)
+	}
+
+	isPrivate, err := jwk.IsPrivateKey(dpopKey)
+	if err != nil {
+		slog.Error("error checking if key is private", err)
+		return fmt.Errorf("invalid DPoP key specified")
+	}
+
+	if isPrivate {
+		return fmt.Errorf("cannot use a private key for DPoP")
+	}
+
+	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+	if err != nil {
+		slog.Error("error computing thumbprint for key", err)
+		return fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
+	}
+
+	if base64.URLEncoding.EncodeToString(thumbprint) != jkt {
+		return fmt.Errorf("the thumbprint of the `jkt` from the DPoP JWT didn't match the `jkt` from the access token")
+	}
+
+	_, err = jws.Verify([]byte(dpopHeader), jws.WithKey(jwa.SignatureAlgorithm(algString), dpopKey))
+
+	if err != nil {
+		slog.Error("error validating DPoP JWT", err)
+		return fmt.Errorf("failed to verify signature on DPoP JWT")
+	}
+
+	publicHeaders := sig.PublicHeaders()
+	iatI, ok := publicHeaders.Get("iat")
+	if !ok {
+		return fmt.Errorf("missing `iat` claim in the DPoP JWT")
+	}
+
+	iat, ok := iatI.(int64)
+	if !ok {
+		return fmt.Errorf("invalid `iat` in DPoP JWT: %v", iat)
+	}
+
+	issuedAt := time.Unix(iat, 0)
+	if time.Now().Add(time.Minute * 10).After(issuedAt) {
+		return fmt.Errorf("the DPoP JWT has expired")
+	}
+
+	htm, ok := publicHeaders.Get("htm")
+	if !ok {
+		return fmt.Errorf("`htm` claim missing in DPoP JWT")
+	}
+
+	if htm != dpopInfo.path {
+		return fmt.Errorf("incorrect `htm` claim in DPoP JWT")
+	}
+
+	htu, ok := publicHeaders.Get("htu")
+	if !ok {
+		return fmt.Errorf("`htu` claim missing in DPoP JWT")
+	}
+
+	if htu != dpopInfo.method {
+		return fmt.Errorf("incorrect `htu` claim in DPoP JWT")
+	}
+
+	ath, ok := publicHeaders.Get("ath")
+	if !ok {
+		return fmt.Errorf("missing `ath` claim in DPoP JWT")
+	}
+
+	h := sha256.New()
+	h.Write([]byte(acessTokenRaw))
+	if ath != base64.URLEncoding.EncodeToString(h.Sum(nil)) {
+		return fmt.Errorf("incorrect `ath` claim in DPoP JWT")
+	}
+
+	return nil
+}
+
+// claimsValidator is a custom validator to check extra claims in the token.
+// right now it only checks for client_id
+func (a authentication) claimsValidator(ctx context.Context, token jwt.Token) jwt.ValidationError {
+	var (
+		clientID string
+	)
+
+	// Need to check for cid and client_id as this claim seems to be different between idp's
+	cidClaim, cidExists := token.Get("cid")
+	clientIDClaim, clientIDExists := token.Get("client_id")
+
+	// Check to see if we have a client id claim
+	switch {
+	case cidExists:
+		if cid, ok := cidClaim.(string); ok {
+			clientID = cid
+			break
+		}
+	case clientIDExists:
+		if cid, ok := clientIDClaim.(string); ok {
+			clientID = cid
+			break
+		}
+	default:
+		return jwt.NewValidationError(fmt.Errorf("client id required"))
+	}
+
+	// Check if the client id is allowed in list of clients
+	foundClientID := false
+	for _, c := range a.oidcConfigurations[token.Issuer()].Clients {
+		if c == clientID {
+			foundClientID = true
+			break
+		}
+	}
+	if !foundClientID {
+		return jwt.NewValidationError(fmt.Errorf("invalid client id"))
+	}
+
+	return nil
+}

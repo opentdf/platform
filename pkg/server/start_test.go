@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/internal/auth"
 	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/server"
 	"github.com/opentdf/platform/pkg/serviceregistry"
@@ -48,6 +49,9 @@ func ServiceRegistrationTest() serviceregistry.Registration {
 func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	// Create new opentdf server
 	s, err := server.NewOpenTDFServer(server.Config{
+		Auth: auth.Config{
+			Enabled: false,
+		},
 		Grpc: server.GrpcConfig{
 			Port: 43482,
 		},
@@ -64,7 +68,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 
 	// Start services with test service
 	err = startServices(config.Config{
-		Services: map[string]config.ServiceConfig{
+		Services: map[string]serviceregistry.ServiceConfig{
 			"test": {
 				Enabled: true,
 			},

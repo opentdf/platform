@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/internal/auth"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -36,9 +37,11 @@ func (e Error) Error() string {
 }
 
 type Config struct {
-	Grpc GrpcConfig `yaml:"grpc"`
-	HTTP HTTPConfig `yaml:"http"`
-	TLS  TLSConfig  `yaml:"tls"`
+	Grpc                    GrpcConfig  `yaml:"grpc"`
+	HTTP                    HTTPConfig  `yaml:"http"`
+	TLS                     TLSConfig   `yaml:"tls"`
+	Auth                    auth.Config `yaml:"auth"`
+	WellKnownConfigRegister func(namespace string, config any) error
 }
 
 type GrpcConfig struct {
@@ -100,12 +103,10 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
-	grpcOpts = append(grpcOpts, grpc.UnaryInterceptor(
-		protovalidate_middleware.UnaryServerInterceptor(validator),
-	))
-
-	grpcServer := grpc.NewServer(
-		grpcOpts...,
+	// Build interceptor chain and handler chain
+	var (
+		interceptors []grpc.UnaryServerInterceptor
+		handler      http.Handler
 	)
 
 	grpcInprocess := &inProcessServer{
@@ -115,6 +116,46 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 
 	mux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
+	)
+
+	handler = mux
+
+	// Add authN interceptor
+	if config.Auth.Enabled {
+		authN, err := auth.NewAuthenticator(config.Auth.AuthNConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
+		}
+
+		interceptors = append(interceptors, authN.VerifyTokenInterceptor)
+		handler = authN.VerifyTokenHandler(mux)
+
+		// Try an register oidc issuer to wellknown service but don't return an error if it fails
+		if err := config.WellKnownConfigRegister("platform_issuer", config.Auth.Issuer); err != nil {
+			slog.Warn("failed to register platform issuer", slog.String("error", err.Error()))
+		}
+	}
+
+	// Add proto validation interceptor
+	interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
+
+	// Add CORS
+	// TODO(#305) We need to make cors configurable
+	handler = cors.New(cors.Options{
+		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           maxAge,
+	}).Handler(handler)
+
+	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(
+		interceptors...,
+	))
+
+	grpcServer := grpc.NewServer(
+		grpcOpts...,
 	)
 
 	// Enable grpc reflection
@@ -128,14 +169,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 			WriteTimeout: writeTimeoutSeconds * time.Second,
 			ReadTimeout:  readTimeoutSeconds * time.Second,
 			// We need to make cors configurable
-			Handler: cors.New(cors.Options{
-				AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-				AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-				AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
-				ExposedHeaders:   []string{"Link"},
-				AllowCredentials: true,
-				MaxAge:           maxAge,
-			}).Handler(mux),
+			Handler:   handler,
 			TLSConfig: tlsConfig,
 		}
 	}

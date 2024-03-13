@@ -30,8 +30,10 @@ jobs:
           go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
           echo "Dependencies installed. Running code & docs generation..."
           make proto-generate
+          echo "Code & docs generation complete. "
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
-          git commit -m "generated"
-          # git push
+          git commit -m "CI: Regenerate code & docs from .proto definitions."
+          git push
+          echo "Wrapping up 'generate' job."

@@ -415,12 +415,12 @@ func (x *DecisionRequest) GetActions() []*policy.Action {
 	return nil
 }
 
-func (x *DecisionRequest) GetEntityChains() []*EntityChain {
-	if x != nil {
-		return x.EntityChains
-	}
-	return nil
-}
+// func (x *DecisionRequest) GetEntityChains() []*EntityChain {
+// 	if x != nil {
+// 		return x.EntityChains
+// 	}
+// 	return nil
+// }
 
 func (x *DecisionRequest) GetResourceAttributes() []*ResourceAttribute {
 	if x != nil {

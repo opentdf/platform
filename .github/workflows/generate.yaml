@@ -25,7 +25,7 @@ jobs:
           echo "Installing buf..."
           GO111MODULE=on go install github.com/bufbuild/buf/cmd/buf@v1.30.0 
           echo "Installing golangci-lint..."
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.56.2
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55
           echo "Installing protoc-gen-doc..."
           go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
           echo "Dependencies installed. Checking for tools..."

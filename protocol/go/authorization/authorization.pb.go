@@ -429,39 +429,6 @@ func (x *DecisionRequest) GetResourceAttributes() []*ResourceAttribute {
 	return nil
 }
 
-// Example response for a Decision Request -  Do Bob (represented by entity chain ec1)
-// and Alice (represented by entity chain ec2) have TRANSMIT authorization for
-// 2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
-//
-// Results:
-// - bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation
-// - bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes
-// - alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes
-// - alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
-//
-// {
-// "entityChainId":  "ec1",
-// "resourceAttributesId":  "attr-set-1",
-// "decision":  "DECISION_PERMIT",
-// "obligations":  [
-// "http://www.example.org/obligation/watermark"
-// ]
-// },
-// {
-// "entityChainId":  "ec1",
-// "resourceAttributesId":  "attr-set-2",
-// "decision":  "DECISION_PERMIT"
-// },
-// {
-// "entityChainId":  "ec2",
-// "resourceAttributesId":  "attr-set-1",
-// "decision":  "DECISION_PERMIT"
-// },
-// {
-// "entityChainId":  "ec2",
-// "resourceAttributesId":  "attr-set-2",
-// "decision":  "DECISION_DENY"
-// }
 type DecisionResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

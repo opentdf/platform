@@ -18,38 +18,44 @@
 
 ### Prerequisites
 
-Docker [install instructions](https://www.docker.com/get-started/)
+#### Required
 
-[Air](https://github.com/cosmtrek/air) install with go 1.18 or higher:
+- Go (*see go.mod for specific version*)
+- Container runtime
+  - [Docker](https://www.docker.com/get-started/)
+  - [Podman](https://podman.io/docs/installation)
+- Compose - used to manage multi-container applications
+  - [Docker Compose](https://docs.docker.com/compose/install/)
+  - [Podman Compose](https://github.com/containers/podman-compose)
 
-`go install github.com/cosmtrek/air@v1.49.0`
+#### Optional
 
-Install buf, grpcurl and goose:
-
-- [Buf](https://buf.build/docs/ecosystem/cli-overview)
-- [grpcurl](https://github.com/fullstorydev/grpcurl)
-- [goose](https://github.com/pressly/goose)
+- [Air](https://github.com/cosmtrek/air) is used for hot-reload development
+  - install with `go install github.com/cosmtrek/air`
+- [Buf](https://buf.build/docs/ecosystem/cli-overview) is used for managing protobuf files
+  - install with `go install github.com/bufbuild/buf/cmd/buf`
+- [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
+  - install with `go install github.com/fullstorydev/grpcurl/cmd/grpcurl`
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 `brew install buf grpcurl goose`
 
-#### Logging into Github Container Registry
-
-Please configure `docker login ghcr.io` [with a Personal Access Token as decribed in
-the GitHub Packages documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-with-a-personal-access-token-classic).
-
 ### Run
 
+> [!NOTE]
+> Migrations are handled automatically by the server. This can be disabled via the config file, as
+> needed. They can also be run manually using the `migrate` command (`go run . migrate -h`).
+
 1. `docker-compose up`
-
-2. `goose -dir=./migrations postgres "postgres://postgres:changeme@localhost:5432/opentdf" up`
-
-3. `cp example-opentdf.yaml opentdf.yaml` and update the values
-
-4. `air`
-
-This should bring up a grpc server on port **9000** and http server on port **8080** (see [example-opentdf.yaml](https://github.com/opentdf/platform/blob/main/example-opentdf.yaml#L38-L43)). Air will watch for changes and restart the server.
+2. Create a OpenTDF config file `cp example-opentdf.yaml opentdf.yaml`
+   1. The example file is a good starting point, but you may need to modify it to match your environment.
+3. Provision keycloak `go run . provision keycloak`
+4. Run the server `go run . start`
+   1. *Alt* use the hot-reload development environment `air`
+5. The server is now running
+   1. The gRPC server will be available at `localhost:9000` (or the port specified in the config file)
+   2. The REST server will be available at `localhost:8080` (or the port specified in the config file)
 
 Note: support was added to provision a set of fixture data into the database. Run `go run . provision fixtures -h` for more information.
 

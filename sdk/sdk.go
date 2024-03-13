@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -29,6 +30,7 @@ func (c Error) Error() string {
 type SDK struct {
 	conn                    *grpc.ClientConn
 	unwrapper               Unwrapper
+	platformConfiguration   *wellknownconfiguration.GetWellKnownConfigurationResponse
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
@@ -65,10 +67,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	var (
-		defaultConn       *grpc.ClientConn
-		policyConn        *grpc.ClientConn
-		authorizationConn *grpc.ClientConn
-		wellknownConn     *grpc.ClientConn
+		defaultConn           *grpc.ClientConn
+		policyConn            *grpc.ClientConn
+		authorizationConn     *grpc.ClientConn
+		wellknownConn         *grpc.ClientConn
+		platformConfiguration *wellknownconfiguration.GetWellKnownConfigurationResponse
 	)
 
 	if platformEndpoint != "" {
@@ -97,8 +100,21 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		wellknownConn = defaultConn
 	}
 
+	if cfg.platformConfiguration == nil {
+		wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(wellknownConn)
+		response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &wellknownconfiguration.GetWellKnownConfigurationRequest{})
+
+		platformConfiguration = response
+		if err != nil {
+			return nil, errors.New("Unable to retrieve config information, and non was provided")
+		}
+	} else {
+		platformConfiguration = cfg.platformConfiguration
+	}
+
 	return &SDK{
 		conn:                    defaultConn,
+		platformConfiguration:   platformConfiguration,
 		unwrapper:               unwrapper,
 		Attributes:              attributes.NewAttributesServiceClient(policyConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
@@ -106,7 +122,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(policyConn),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
-		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(wellknownConn),
 	}, nil
 }
 

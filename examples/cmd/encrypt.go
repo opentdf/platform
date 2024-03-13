@@ -21,6 +21,7 @@ func init() {
 }
 
 func encrypt(cmd *cobra.Command, args []string) error {
+	cmd.Println("ENCRYPTING!!!")
 	if len(args) < 1 {
 		return cmd.Usage()
 	}

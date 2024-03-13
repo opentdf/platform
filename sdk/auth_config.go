@@ -65,10 +65,21 @@ func NewOIDCAuthConfig(ctx context.Context, host, realm, clientId, clientSecret,
 	}
 	return authConfig, nil
 }
+
 func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clientId, clientSecret, subjectToken string) (string, error) {
-	data := url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:token-exchange"}, "client_id": {clientId}, "client_secret": {clientSecret}, "subject_token": {subjectToken}, "requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"}}
+	data := url.Values{
+		"grant_type": {
+			"urn:ietf:params:oauth:grant-type:token-exchange",
+		},
+		"client_id":            {clientId},
+		"client_secret":        {clientSecret},
+		"subject_token":        {subjectToken},
+		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
+	}
 
 	body := strings.NewReader(data.Encode())
+
+	// TODO: This URL format is unique to keycloak. We must refactor.
 	kcURL := fmt.Sprintf("%s/auth/realms/%s/protocol/openid-connect/token", host, realm)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, kcURL, body)

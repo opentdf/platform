@@ -13,7 +13,7 @@ public interface DeleteSubjectConditionSetResponseOrBuilder extends
    * Only ID of deleted Subject Condition Set provided
    * </pre>
    *
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return Whether the subjectConditionSet field is set.
    */
   boolean hasSubjectConditionSet();
@@ -22,16 +22,16 @@ public interface DeleteSubjectConditionSetResponseOrBuilder extends
    * Only ID of deleted Subject Condition Set provided
    * </pre>
    *
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return The subjectConditionSet.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet();
+  io.opentdf.platform.policy.SubjectConditionSet getSubjectConditionSet();
   /**
    * <pre>
    * Only ID of deleted Subject Condition Set provided
    * </pre>
    *
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder();
+  io.opentdf.platform.policy.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder();
 }

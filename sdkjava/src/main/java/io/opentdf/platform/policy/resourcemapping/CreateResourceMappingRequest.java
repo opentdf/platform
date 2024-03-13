@@ -5,6 +5,36 @@
 package io.opentdf.platform.policy.resourcemapping;
 
 /**
+ * <pre>
+ *
+ *### Request
+ *
+ *grpcurl -plaintext -d &#64; localhost:9000 policy.resourcemapping.ResourceMappingService/CreateResourceMapping &lt;&lt;EOM
+ *{
+ *"mapping": {
+ *"name": "Classification",
+ *"attribute_value_id": "12345678-1234-1234-1234-123456789012",
+ *"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+ *}
+ *}
+ *EOM
+ *
+ *### Response
+ *
+ *{
+ *"mapping": {
+ *"metadata": {
+ *"id": "12345678-1234-1234-1234-123456789012",
+ *"created_at": "2020-01-01T00:00:00Z",
+ *"updated_at": "2020-01-01T00:00:00Z"
+ *},
+ *"name": "Classification",
+ *"attribute_value_id": "12345678-1234-1234-1234-123456789012",
+ *"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+ *}
+ *}
+ * </pre>
+ *
  * Protobuf type {@code policy.resourcemapping.CreateResourceMappingRequest}
  */
 public final class CreateResourceMappingRequest extends
@@ -355,6 +385,36 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
+   * <pre>
+   *
+   *### Request
+   *
+   *grpcurl -plaintext -d &#64; localhost:9000 policy.resourcemapping.ResourceMappingService/CreateResourceMapping &lt;&lt;EOM
+   *{
+   *"mapping": {
+   *"name": "Classification",
+   *"attribute_value_id": "12345678-1234-1234-1234-123456789012",
+   *"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+   *}
+   *}
+   *EOM
+   *
+   *### Response
+   *
+   *{
+   *"mapping": {
+   *"metadata": {
+   *"id": "12345678-1234-1234-1234-123456789012",
+   *"created_at": "2020-01-01T00:00:00Z",
+   *"updated_at": "2020-01-01T00:00:00Z"
+   *},
+   *"name": "Classification",
+   *"attribute_value_id": "12345678-1234-1234-1234-123456789012",
+   *"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
+   *}
+   *}
+   * </pre>
+   *
    * Protobuf type {@code policy.resourcemapping.CreateResourceMappingRequest}
    */
   public static final class Builder extends

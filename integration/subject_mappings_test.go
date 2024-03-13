@@ -7,8 +7,8 @@ import (
 
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/fixtures"
-	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -43,24 +43,24 @@ var (
 	CUSTOM_DOWNLOAD = "CUSTOM_DOWNLOAD"
 	CUSTOM_UPLOAD   = "CUSTOM_UPLOAD"
 
-	fixtureActions = map[string]*authorization.Action{
+	fixtureActions = map[string]*policy.Action{
 		"DECRYPT": {
-			Value: &authorization.Action_Standard{
-				Standard: authorization.Action_STANDARD_ACTION_DECRYPT,
+			Value: &policy.Action_Standard{
+				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
 			},
 		},
 		"TRANSMIT": {
-			Value: &authorization.Action_Standard{
-				Standard: authorization.Action_STANDARD_ACTION_TRANSMIT,
+			Value: &policy.Action_Standard{
+				Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 			},
 		},
 		"CUSTOM_DOWNLOAD": {
-			Value: &authorization.Action_Custom{
+			Value: &policy.Action_Custom{
 				Custom: "DOWNLOAD",
 			},
 		},
 		"CUSTOM_UPLOAD": {
-			Value: &authorization.Action_Custom{
+			Value: &policy.Action_Custom{
 				Custom: "UPLOAD",
 			},
 		},
@@ -83,7 +83,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 	new := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValId,
 		ExistingSubjectConditionSetId: fixtureSCSId,
-		Actions:                       []*authorization.Action{aDecrypt, aTransmit},
+		Actions:                       []*policy.Action{aDecrypt, aTransmit},
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, new)
@@ -104,15 +104,15 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 	aTransmit := fixtureActions[TRANSMIT]
 
 	scs := &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*subjectmapping.SubjectSet{
+		SubjectSets: []*policy.SubjectSet{
 			{
-				ConditionGroups: []*subjectmapping.ConditionGroup{
+				ConditionGroups: []*policy.ConditionGroup{
 					{
-						BooleanOperator: subjectmapping.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-						Conditions: []*subjectmapping.Condition{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
 							{
 								SubjectExternalField:  "email",
-								Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 								SubjectExternalValues: []string{"hello@email.com"},
 							},
 						},
@@ -124,7 +124,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 
 	new := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:       fixtureAttrValId,
-		Actions:                []*authorization.Action{aTransmit},
+		Actions:                []*policy.Action{aTransmit},
 		NewSubjectConditionSet: scs,
 	}
 
@@ -168,7 +168,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValu
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
 	aTransmit := fixtureActions[TRANSMIT]
 	new := &subjectmapping.CreateSubjectMappingRequest{
-		Actions:                       []*authorization.Action{aTransmit},
+		Actions:                       []*policy.Action{aTransmit},
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 		AttributeValueId:              nonExistentAttributeValueUuid,
 	}
@@ -184,7 +184,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 	aTransmit := fixtureActions[TRANSMIT]
 	new := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrVal.Id,
-		Actions:                       []*authorization.Action{aTransmit},
+		Actions:                       []*policy.Action{aTransmit},
 		ExistingSubjectConditionSetId: nonExistentSubjectSetId,
 	}
 
@@ -203,7 +203,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 
 	new := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValId,
-		Actions:                       []*authorization.Action{aTransmit, aCustomUpload},
+		Actions:                       []*policy.Action{aTransmit, aCustomUpload},
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
@@ -212,7 +212,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	assert.NotNil(s.T(), created)
 
 	// update the subject mapping
-	newActions := []*authorization.Action{aTransmit}
+	newActions := []*policy.Action{aTransmit}
 	update := &subjectmapping.UpdateSubjectMappingRequest{
 		Id:      created.Id,
 		Actions: newActions,
@@ -241,7 +241,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 
 	new := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValId,
-		Actions:                       []*authorization.Action{aTransmit},
+		Actions:                       []*policy.Action{aTransmit},
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
@@ -279,7 +279,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 
 	new := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValId,
-		Actions:                       []*authorization.Action{aTransmit},
+		Actions:                       []*policy.Action{aTransmit},
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
@@ -289,7 +289,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 
 	// update the subject mapping
 	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	newActions := []*authorization.Action{fixtureActions[CUSTOM_DOWNLOAD]}
+	newActions := []*policy.Action{fixtureActions[CUSTOM_DOWNLOAD]}
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{"key": "value"},
 	}
@@ -389,7 +389,7 @@ func (s *SubjectMappingsSuite) TestListSubjectMappings() {
 	found3 := false
 	assert.GreaterOrEqual(s.T(), len(list), 3)
 
-	assertEqual := func(sm *subjectmapping.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
+	assertEqual := func(sm *policy.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
 		assert.Equal(s.T(), fixture.AttributeValueId, sm.AttributeValue.Id)
 		assert.True(s.T(), sm.AttributeValue.Active.Value)
 		assert.Equal(s.T(), fixture.SubjectConditionSetId, sm.SubjectConditionSet.Id)
@@ -422,7 +422,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
 
 	new := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValId,
-		Actions:                       []*authorization.Action{aTransmit},
+		Actions:                       []*policy.Action{aTransmit},
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
 
@@ -451,15 +451,15 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 	// create a new subject mapping, delete it, and verify the subject condition set still exists
 	fixtureAttrValId := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").Id
 	newScs := &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*subjectmapping.SubjectSet{
+		SubjectSets: []*policy.SubjectSet{
 			{
-				ConditionGroups: []*subjectmapping.ConditionGroup{
+				ConditionGroups: []*policy.ConditionGroup{
 					{
-						BooleanOperator: subjectmapping.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-						Conditions: []*subjectmapping.Condition{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
 							{
 								SubjectExternalField:  "idp_field",
-								Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 								SubjectExternalValues: []string{"idp_value"},
 							},
 						},
@@ -472,7 +472,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 
 	new := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:       fixtureAttrValId,
-		Actions:                []*authorization.Action{aTransmit},
+		Actions:                []*policy.Action{aTransmit},
 		NewSubjectConditionSet: newScs,
 	}
 
@@ -500,15 +500,15 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 
 func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet() {
 	new := &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*subjectmapping.SubjectSet{
+		SubjectSets: []*policy.SubjectSet{
 			{
-				ConditionGroups: []*subjectmapping.ConditionGroup{
+				ConditionGroups: []*policy.ConditionGroup{
 					{
-						BooleanOperator: subjectmapping.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
-						Conditions: []*subjectmapping.Condition{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+						Conditions: []*policy.Condition{
 							{
 								SubjectExternalField:  "some_field",
-								Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+								Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
 								SubjectExternalValues: []string{"some_value"},
 							},
 						},
@@ -581,7 +581,7 @@ func (s *SubjectMappingsSuite) TestListSubjectConditionSet() {
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 	// create a new subject condition set, delete it, and verify get fails with not found
 	new := &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*subjectmapping.SubjectSet{},
+		SubjectSets: []*policy.SubjectSet{},
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
@@ -609,7 +609,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet_WithNonExistentId_F
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 	// create a new one, update nothing but the subject sets, and verify the solo update
 	new := &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*subjectmapping.SubjectSet{
+		SubjectSets: []*policy.SubjectSet{
 			{},
 		},
 	}
@@ -619,15 +619,15 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 	assert.NotNil(s.T(), created)
 
 	// update the subject condition set
-	ss := []*subjectmapping.SubjectSet{
+	ss := []*policy.SubjectSet{
 		{
-			ConditionGroups: []*subjectmapping.ConditionGroup{
+			ConditionGroups: []*policy.ConditionGroup{
 				{
-					BooleanOperator: subjectmapping.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
-					Conditions: []*subjectmapping.Condition{
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+					Conditions: []*policy.Condition{
 						{
 							SubjectExternalField:  "origin",
-							Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+							Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
 							SubjectExternalValues: []string{"USA", "Canada"},
 						},
 					},
@@ -659,7 +659,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() {
 	// create a new one, update it, and verify the update
 	new := &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*subjectmapping.SubjectSet{
+		SubjectSets: []*policy.SubjectSet{
 			{},
 		},
 	}
@@ -669,15 +669,15 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 	assert.NotNil(s.T(), created)
 
 	// update the subject condition set
-	ss := []*subjectmapping.SubjectSet{
+	ss := []*policy.SubjectSet{
 		{
-			ConditionGroups: []*subjectmapping.ConditionGroup{
+			ConditionGroups: []*policy.ConditionGroup{
 				{
-					BooleanOperator: subjectmapping.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
-					Conditions: []*subjectmapping.Condition{
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+					Conditions: []*policy.Condition{
 						{
 							SubjectExternalField:  "somewhere",
-							Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+							Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
 							SubjectExternalValues: []string{"neither here", "nor there"},
 						},
 					},
@@ -713,7 +713,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails() {
 	update := &subjectmapping.UpdateSubjectConditionSetRequest{
 		Id:          nonExistentSubjectSetId,
-		SubjectSets: []*subjectmapping.SubjectSet{},
+		SubjectSets: []*policy.SubjectSet{},
 	}
 
 	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
@@ -727,7 +727,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
 	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
 
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalField: externalField,
 			ExternalValue: externalValues[0],
@@ -745,7 +745,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInW
 	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
 
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalField: externalField,
 			ExternalValue: externalValues[0],
@@ -764,7 +764,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
 
 	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
 
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalField: externalField,
 			ExternalValue: "random_value",
@@ -780,7 +780,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInProperty_Fails() {
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalValue: "some_value",
 		},
@@ -792,7 +792,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInPrope
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInProperty_Fails() {
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalField: "some_field",
 		},
@@ -804,7 +804,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInPrope
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NoPropertiesProvided_Fails() {
-	props := []*subjectmapping.SubjectProperty{}
+	props := []*policy.SubjectProperty{}
 
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	assert.ErrorIs(s.T(), err, db.ErrMissingValue)
@@ -820,7 +820,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	otherExternalField := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	otherExternalValues := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
 
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalField: simpleExternalField,
 			ExternalValue: simpleExternalValues[0],
@@ -861,7 +861,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	otherExternalField1 := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[1].SubjectExternalField
 	otherExpectedMatchedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
 
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalField: externalField,
 			ExternalValue: "random_value_definitely_not_in_fixtures",
@@ -895,7 +895,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOneAndNotInASecon
 	otherExternalField := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
 	expectedMappedOtherFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
 
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalField: externalField,
 			ExternalValue: externalValues[0],
@@ -919,7 +919,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOneAndNotInASecon
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NonExistentField_ReturnsNoMappings() {
-	props := []*subjectmapping.SubjectProperty{
+	props := []*policy.SubjectProperty{
 		{
 			ExternalField: "non_existent_field",
 			ExternalValue: "non_existent_value",
@@ -952,7 +952,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*subjectmapping.SubjectSet{
+		SubjectSets: []*policy.SubjectSet{
 			{},
 		},
 		Metadata: &common.MetadataMutable{

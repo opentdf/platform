@@ -41,9 +41,9 @@ private static final long serialVersionUID = 0L;
 
   private int bitField0_;
   public static final int SUBJECT_CONDITION_SET_FIELD_NUMBER = 1;
-  private io.opentdf.platform.policy.subjectmapping.SubjectConditionSet subjectConditionSet_;
+  private io.opentdf.platform.policy.SubjectConditionSet subjectConditionSet_;
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return Whether the subjectConditionSet field is set.
    */
   @java.lang.Override
@@ -51,19 +51,19 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return The subjectConditionSet.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet() {
-    return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
+  public io.opentdf.platform.policy.SubjectConditionSet getSubjectConditionSet() {
+    return subjectConditionSet_ == null ? io.opentdf.platform.policy.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
   }
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder() {
-    return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
+  public io.opentdf.platform.policy.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder() {
+    return subjectConditionSet_ == null ? io.opentdf.platform.policy.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -413,31 +413,31 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.policy.subjectmapping.SubjectConditionSet subjectConditionSet_;
+    private io.opentdf.platform.policy.SubjectConditionSet subjectConditionSet_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> subjectConditionSetBuilder_;
+        io.opentdf.platform.policy.SubjectConditionSet, io.opentdf.platform.policy.SubjectConditionSet.Builder, io.opentdf.platform.policy.SubjectConditionSetOrBuilder> subjectConditionSetBuilder_;
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      * @return Whether the subjectConditionSet field is set.
      */
     public boolean hasSubjectConditionSet() {
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      * @return The subjectConditionSet.
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet() {
+    public io.opentdf.platform.policy.SubjectConditionSet getSubjectConditionSet() {
       if (subjectConditionSetBuilder_ == null) {
-        return subjectConditionSet_ == null ? io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
+        return subjectConditionSet_ == null ? io.opentdf.platform.policy.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
       } else {
         return subjectConditionSetBuilder_.getMessage();
       }
     }
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
-    public Builder setSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+    public Builder setSubjectConditionSet(io.opentdf.platform.policy.SubjectConditionSet value) {
       if (subjectConditionSetBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -451,10 +451,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     public Builder setSubjectConditionSet(
-        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder builderForValue) {
+        io.opentdf.platform.policy.SubjectConditionSet.Builder builderForValue) {
       if (subjectConditionSetBuilder_ == null) {
         subjectConditionSet_ = builderForValue.build();
       } else {
@@ -465,13 +465,13 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
-    public Builder mergeSubjectConditionSet(io.opentdf.platform.policy.subjectmapping.SubjectConditionSet value) {
+    public Builder mergeSubjectConditionSet(io.opentdf.platform.policy.SubjectConditionSet value) {
       if (subjectConditionSetBuilder_ == null) {
         if (((bitField0_ & 0x00000001) != 0) &&
           subjectConditionSet_ != null &&
-          subjectConditionSet_ != io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance()) {
+          subjectConditionSet_ != io.opentdf.platform.policy.SubjectConditionSet.getDefaultInstance()) {
           getSubjectConditionSetBuilder().mergeFrom(value);
         } else {
           subjectConditionSet_ = value;
@@ -486,7 +486,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     public Builder clearSubjectConditionSet() {
       bitField0_ = (bitField0_ & ~0x00000001);
@@ -499,33 +499,33 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder getSubjectConditionSetBuilder() {
+    public io.opentdf.platform.policy.SubjectConditionSet.Builder getSubjectConditionSetBuilder() {
       bitField0_ |= 0x00000001;
       onChanged();
       return getSubjectConditionSetFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder() {
+    public io.opentdf.platform.policy.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder() {
       if (subjectConditionSetBuilder_ != null) {
         return subjectConditionSetBuilder_.getMessageOrBuilder();
       } else {
         return subjectConditionSet_ == null ?
-            io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
+            io.opentdf.platform.policy.SubjectConditionSet.getDefaultInstance() : subjectConditionSet_;
       }
     }
     /**
-     * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+     * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+        io.opentdf.platform.policy.SubjectConditionSet, io.opentdf.platform.policy.SubjectConditionSet.Builder, io.opentdf.platform.policy.SubjectConditionSetOrBuilder> 
         getSubjectConditionSetFieldBuilder() {
       if (subjectConditionSetBuilder_ == null) {
         subjectConditionSetBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.subjectmapping.SubjectConditionSet, io.opentdf.platform.policy.subjectmapping.SubjectConditionSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder>(
+            io.opentdf.platform.policy.SubjectConditionSet, io.opentdf.platform.policy.SubjectConditionSet.Builder, io.opentdf.platform.policy.SubjectConditionSetOrBuilder>(
                 getSubjectConditionSet(),
                 getParentForChildren(),
                 isClean());

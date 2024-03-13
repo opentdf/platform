@@ -9,26 +9,26 @@ public interface ListSubjectConditionSetsResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
+   * <code>repeated .policy.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectConditionSet> 
+  java.util.List<io.opentdf.platform.policy.SubjectConditionSet> 
       getSubjectConditionSetsList();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
+   * <code>repeated .policy.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSets(int index);
+  io.opentdf.platform.policy.SubjectConditionSet getSubjectConditionSets(int index);
   /**
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
+   * <code>repeated .policy.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
    */
   int getSubjectConditionSetsCount();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
+   * <code>repeated .policy.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.SubjectConditionSetOrBuilder> 
       getSubjectConditionSetsOrBuilderList();
   /**
-   * <code>repeated .policy.subjectmapping.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
+   * <code>repeated .policy.SubjectConditionSet subject_condition_sets = 1 [json_name = "subjectConditionSets"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetsOrBuilder(
+  io.opentdf.platform.policy.SubjectConditionSetOrBuilder getSubjectConditionSetsOrBuilder(
       int index);
 }

@@ -55,24 +55,24 @@ public interface UpdateSubjectMappingRequestOrBuilder extends
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 3 [json_name = "actions"];</code>
    */
-  java.util.List<io.opentdf.platform.authorization.Action> 
+  java.util.List<io.opentdf.platform.policy.Action> 
       getActionsList();
   /**
    * <pre>
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 3 [json_name = "actions"];</code>
    */
-  io.opentdf.platform.authorization.Action getActions(int index);
+  io.opentdf.platform.policy.Action getActions(int index);
   /**
    * <pre>
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 3 [json_name = "actions"];</code>
    */
   int getActionsCount();
   /**
@@ -80,18 +80,18 @@ public interface UpdateSubjectMappingRequestOrBuilder extends
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 3 [json_name = "actions"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.ActionOrBuilder> 
       getActionsOrBuilderList();
   /**
    * <pre>
    * Replaces entire list of actions permitted by subjects
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 3 [json_name = "actions"];</code>
+   * <code>repeated .policy.Action actions = 3 [json_name = "actions"];</code>
    */
-  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+  io.opentdf.platform.policy.ActionOrBuilder getActionsOrBuilder(
       int index);
 
   /**

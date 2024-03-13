@@ -50,12 +50,12 @@
     },
     "/attributes/*/fqn": {
       "get": {
-        "operationId": "AttributesService_GetAttributesByValueFqns",
+        "operationId": "AttributesService_GetAttributeValuesByFqns",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesGetAttributesByValueFqnsResponse"
+              "$ref": "#/definitions/attributesGetAttributeValuesByFqnsResponse"
             }
           },
           "default": {
@@ -68,6 +68,7 @@
         "parameters": [
           {
             "name": "fqns",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "array",
@@ -75,6 +76,30 @@
               "type": "string"
             },
             "collectionFormat": "multi"
+          },
+          {
+            "name": "withValue.withKeyAccessGrants",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withSubjectMaps",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withResourceMaps",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withAttribute.withKeyAccessGrants",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -483,6 +508,30 @@
     }
   },
   "definitions": {
+    "ActionStandardAction": {
+      "type": "string",
+      "enum": [
+        "STANDARD_ACTION_UNSPECIFIED",
+        "STANDARD_ACTION_DECRYPT",
+        "STANDARD_ACTION_TRANSMIT"
+      ],
+      "default": "STANDARD_ACTION_UNSPECIFIED",
+      "title": "Standard actions supported by the platform"
+    },
+    "AttributeValueSelectorAttributeSelectorNamespaceSelector": {
+      "type": "object"
+    },
+    "GetAttributeValuesByFqnsResponseAttributeAndValue": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
+        },
+        "value": {
+          "$ref": "#/definitions/policyValue"
+        }
+      }
+    },
     "attributesAssignKeyAccessServerToAttributeResponse": {
       "type": "object",
       "properties": {
@@ -499,62 +548,6 @@
         }
       }
     },
-    "attributesAttribute": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "namespace": {
-          "$ref": "#/definitions/namespacesNamespace",
-          "title": "namespace of the attribute"
-        },
-        "name": {
-          "type": "string",
-          "title": "attribute name"
-        },
-        "rule": {
-          "$ref": "#/definitions/attributesAttributeRuleTypeEnum",
-          "title": "attribute rule enum"
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyattributesValue"
-          }
-        },
-        "grants": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/kasregistryKeyAccessServer"
-          }
-        },
-        "fqn": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean",
-          "title": "active by default until explicitly deactivated"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata"
-        }
-      }
-    },
-    "attributesAttributeAndValue": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
-        },
-        "value": {
-          "$ref": "#/definitions/policyattributesValue"
-        }
-      }
-    },
     "attributesAttributeKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -565,17 +558,6 @@
           "type": "string"
         }
       }
-    },
-    "attributesAttributeRuleTypeEnum": {
-      "type": "string",
-      "enum": [
-        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
-        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
-        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
-      ],
-      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
     "attributesCreateAttributeRequest": {
       "type": "object",
@@ -588,7 +570,7 @@
           "type": "string"
         },
         "rule": {
-          "$ref": "#/definitions/attributesAttributeRuleTypeEnum"
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -600,7 +582,7 @@
       "type": "object",
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         }
       }
     },
@@ -608,7 +590,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/policyattributesValue"
+          "$ref": "#/definitions/policyValue"
         }
       }
     },
@@ -616,7 +598,7 @@
       "type": "object",
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         }
       }
     },
@@ -624,7 +606,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/policyattributesValue"
+          "$ref": "#/definitions/policyValue"
         }
       }
     },
@@ -632,7 +614,7 @@
       "type": "object",
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         }
       }
     },
@@ -640,17 +622,17 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/policyattributesValue"
+          "$ref": "#/definitions/policyValue"
         }
       }
     },
-    "attributesGetAttributesByValueFqnsResponse": {
+    "attributesGetAttributeValuesByFqnsResponse": {
       "type": "object",
       "properties": {
         "fqnAttributeValues": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/attributesAttributeAndValue"
+            "$ref": "#/definitions/GetAttributeValuesByFqnsResponseAttributeAndValue"
           },
           "title": "map of fqns to complete attributes and the one selected value"
         }
@@ -663,7 +645,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyattributesValue"
+            "$ref": "#/definitions/policyValue"
           }
         }
       }
@@ -675,7 +657,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/attributesAttribute"
+            "$ref": "#/definitions/policyAttribute"
           }
         }
       }
@@ -700,7 +682,7 @@
       "type": "object",
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         }
       }
     },
@@ -708,7 +690,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/policyattributesValue"
+          "$ref": "#/definitions/policyValue"
         }
       }
     },
@@ -812,7 +794,152 @@
         }
       }
     },
-    "namespacesNamespace": {
+    "policyAction": {
+      "type": "object",
+      "properties": {
+        "standard": {
+          "$ref": "#/definitions/ActionStandardAction"
+        },
+        "custom": {
+          "type": "string"
+        }
+      },
+      "title": "An action an entity can take"
+    },
+    "policyAttribute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace",
+          "title": "namespace of the attribute"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyValue"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          }
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "policyAttributeRuleTypeEnum": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyAttributeValueSelector": {
+      "type": "object",
+      "properties": {
+        "withKeyAccessGrants": {
+          "type": "boolean"
+        },
+        "withSubjectMaps": {
+          "type": "boolean"
+        },
+        "withResourceMaps": {
+          "type": "boolean"
+        },
+        "withAttribute": {
+          "$ref": "#/definitions/policyAttributeValueSelectorAttributeSelector"
+        }
+      }
+    },
+    "policyAttributeValueSelectorAttributeSelector": {
+      "type": "object",
+      "properties": {
+        "withKeyAccessGrants": {
+          "type": "boolean"
+        },
+        "withNamespace": {
+          "$ref": "#/definitions/AttributeValueSelectorAttributeSelectorNamespaceSelector"
+        }
+      }
+    },
+    "policyCondition": {
+      "type": "object",
+      "properties": {
+        "subjectExternalField": {
+          "type": "string",
+          "title": "externally known field name (such as from idP/LDAP)"
+        },
+        "operator": {
+          "$ref": "#/definitions/policySubjectMappingOperatorEnum",
+          "title": "the evaluation operator of relation"
+        },
+        "subjectExternalValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of comparison values for the subject_external_field, evaluated by the operator"
+        }
+      },
+      "description": "Example:  Subjects with field \"division\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_field\": \"division\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four:\n{\n\"subject_external_field\": \"superhero_name\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
+      "title": "*\nA Condition defines a rule of \u003csubject external field name\u003e \u003coperator\u003e \u003csubject external values\u003e"
+    },
+    "policyConditionBooleanTypeEnum": {
+      "type": "string",
+      "enum": [
+        "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+        "CONDITION_BOOLEAN_TYPE_ENUM_AND",
+        "CONDITION_BOOLEAN_TYPE_ENUM_OR"
+      ],
+      "default": "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyConditionGroup": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyCondition"
+          }
+        },
+        "booleanOperator": {
+          "$ref": "#/definitions/policyConditionBooleanTypeEnum",
+          "title": "the boolean evaluation type across the conditions"
+        }
+      },
+      "title": "A collection of Conditions evaluated by the boolean_operator provided"
+    },
+    "policyNamespace": {
       "type": "object",
       "properties": {
         "id": {
@@ -835,7 +962,79 @@
         }
       }
     },
-    "policyattributesValue": {
+    "policySubjectConditionSet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "subjectSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectSet"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet\nare evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple\nSubject Mappings / Attribute Values and is an independent unit."
+    },
+    "policySubjectMapping": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "attributeValue": {
+          "$ref": "#/definitions/policyValue",
+          "title": "the Attribute Value mapped to; aka: \"The Entity Entitlement Attribute\""
+        },
+        "subjectConditionSet": {
+          "$ref": "#/definitions/policySubjectConditionSet",
+          "title": "the reusable SubjectConditionSet mapped to the given Attribute Value"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyAction"
+          },
+          "title": "The actions permitted by subjects in this mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\": {\"subject_sets\":[{subject_set_1},{subject_set_2}]...},\n\"actions\": [{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\": \"STANDARD_ACTION_TRANSMIT\"}]\n}",
+      "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination"
+    },
+    "policySubjectMappingOperatorEnum": {
+      "type": "string",
+      "enum": [
+        "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN"
+      ],
+      "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policySubjectSet": {
+      "type": "object",
+      "properties": {
+        "conditionGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyConditionGroup"
+          },
+          "title": "multiple Condition Groups are evaluated with AND logic"
+        }
+      },
+      "title": "A collection of Condition Groups"
+    },
+    "policyValue": {
       "type": "object",
       "properties": {
         "id": {
@@ -843,7 +1042,7 @@
           "title": "generated uuid in database"
         },
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         },
         "value": {
           "type": "string"
@@ -869,6 +1068,14 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "subjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectMapping"
+          },
+          "title": "subject mapping"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

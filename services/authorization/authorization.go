@@ -17,8 +17,8 @@ import (
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/services"
 )
@@ -52,7 +52,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 		for _, ra := range dr.ResourceAttributes {
 			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
 
-			attrs, err := as.sdk.Attributes.GetAttributesByValueFqns(ctx, &attr.GetAttributesByValueFqnsRequest{
+			attrs, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 				Fqns: ra.AttributeFqns,
 			})
 			if err != nil {
@@ -64,9 +64,9 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				decision := &authorization.DecisionResponse{
 					Decision:      authorization.DecisionResponse_DECISION_PERMIT,
 					EntityChainId: ec.Id,
-					Action: &authorization.Action{
-						Value: &authorization.Action_Standard{
-							Standard: authorization.Action_STANDARD_ACTION_TRANSMIT,
+					Action: &policy.Action{
+						Value: &policy.Action_Standard{
+							Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 						},
 					},
 					ResourceAttributesId: "resourceAttributesId_stub" + ra.String(),
@@ -82,14 +82,14 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	slog.Debug("getting entitlements")
 	// get subject mappings
 	// smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
-	subjectSets := []*subjectmapping.SubjectSet{
+	subjectSets := []*policy.SubjectSet{
 		{
-			ConditionGroups: []*subjectmapping.ConditionGroup{
+			ConditionGroups: []*policy.ConditionGroup{
 				{
-					Conditions: []*subjectmapping.Condition{
+					Conditions: []*policy.Condition{
 						{
 							SubjectExternalField:  "Department",
-							Operator:              subjectmapping.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+							Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 							SubjectExternalValues: []string{"Marketing", "Sales"},
 						},
 					},

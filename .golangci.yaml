@@ -182,7 +182,6 @@ linters:
 
 
 issues:
-  new: true
   # Maximum count of issues with the same text.
   # Set to 0 to disable.
   # Default: 3

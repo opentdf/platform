@@ -42,41 +42,41 @@ private static final long serialVersionUID = 0L;
 
   public static final int VALUES_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.attributes.Value> values_;
+  private java.util.List<io.opentdf.platform.policy.Value> values_;
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.attributes.Value> getValuesList() {
+  public java.util.List<io.opentdf.platform.policy.Value> getValuesList() {
     return values_;
   }
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.attributes.ValueOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.policy.ValueOrBuilder> 
       getValuesOrBuilderList() {
     return values_;
   }
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
   @java.lang.Override
   public int getValuesCount() {
     return values_.size();
   }
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.Value getValues(int index) {
+  public io.opentdf.platform.policy.Value getValues(int index) {
     return values_.get(index);
   }
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.ValueOrBuilder getValuesOrBuilder(
+  public io.opentdf.platform.policy.ValueOrBuilder getValuesOrBuilder(
       int index) {
     return values_.get(index);
   }
@@ -426,9 +426,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.policy.attributes.Value m =
+              io.opentdf.platform.policy.Value m =
                   input.readMessage(
-                      io.opentdf.platform.policy.attributes.Value.parser(),
+                      io.opentdf.platform.policy.Value.parser(),
                       extensionRegistry);
               if (valuesBuilder_ == null) {
                 ensureValuesIsMutable();
@@ -455,22 +455,22 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.policy.attributes.Value> values_ =
+    private java.util.List<io.opentdf.platform.policy.Value> values_ =
       java.util.Collections.emptyList();
     private void ensureValuesIsMutable() {
       if (!((bitField0_ & 0x00000001) != 0)) {
-        values_ = new java.util.ArrayList<io.opentdf.platform.policy.attributes.Value>(values_);
+        values_ = new java.util.ArrayList<io.opentdf.platform.policy.Value>(values_);
         bitField0_ |= 0x00000001;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder> valuesBuilder_;
+        io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder> valuesBuilder_;
 
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.attributes.Value> getValuesList() {
+    public java.util.List<io.opentdf.platform.policy.Value> getValuesList() {
       if (valuesBuilder_ == null) {
         return java.util.Collections.unmodifiableList(values_);
       } else {
@@ -478,7 +478,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public int getValuesCount() {
       if (valuesBuilder_ == null) {
@@ -488,9 +488,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Value getValues(int index) {
+    public io.opentdf.platform.policy.Value getValues(int index) {
       if (valuesBuilder_ == null) {
         return values_.get(index);
       } else {
@@ -498,10 +498,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public Builder setValues(
-        int index, io.opentdf.platform.policy.attributes.Value value) {
+        int index, io.opentdf.platform.policy.Value value) {
       if (valuesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -515,10 +515,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public Builder setValues(
-        int index, io.opentdf.platform.policy.attributes.Value.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.Value.Builder builderForValue) {
       if (valuesBuilder_ == null) {
         ensureValuesIsMutable();
         values_.set(index, builderForValue.build());
@@ -529,9 +529,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public Builder addValues(io.opentdf.platform.policy.attributes.Value value) {
+    public Builder addValues(io.opentdf.platform.policy.Value value) {
       if (valuesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -545,10 +545,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public Builder addValues(
-        int index, io.opentdf.platform.policy.attributes.Value value) {
+        int index, io.opentdf.platform.policy.Value value) {
       if (valuesBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -562,10 +562,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public Builder addValues(
-        io.opentdf.platform.policy.attributes.Value.Builder builderForValue) {
+        io.opentdf.platform.policy.Value.Builder builderForValue) {
       if (valuesBuilder_ == null) {
         ensureValuesIsMutable();
         values_.add(builderForValue.build());
@@ -576,10 +576,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public Builder addValues(
-        int index, io.opentdf.platform.policy.attributes.Value.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.Value.Builder builderForValue) {
       if (valuesBuilder_ == null) {
         ensureValuesIsMutable();
         values_.add(index, builderForValue.build());
@@ -590,10 +590,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public Builder addAllValues(
-        java.lang.Iterable<? extends io.opentdf.platform.policy.attributes.Value> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.policy.Value> values) {
       if (valuesBuilder_ == null) {
         ensureValuesIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -605,7 +605,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public Builder clearValues() {
       if (valuesBuilder_ == null) {
@@ -618,7 +618,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
     public Builder removeValues(int index) {
       if (valuesBuilder_ == null) {
@@ -631,16 +631,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Value.Builder getValuesBuilder(
+    public io.opentdf.platform.policy.Value.Builder getValuesBuilder(
         int index) {
       return getValuesFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public io.opentdf.platform.policy.attributes.ValueOrBuilder getValuesOrBuilder(
+    public io.opentdf.platform.policy.ValueOrBuilder getValuesOrBuilder(
         int index) {
       if (valuesBuilder_ == null) {
         return values_.get(index);  } else {
@@ -648,9 +648,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.attributes.ValueOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.policy.ValueOrBuilder> 
          getValuesOrBuilderList() {
       if (valuesBuilder_ != null) {
         return valuesBuilder_.getMessageOrBuilderList();
@@ -659,33 +659,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Value.Builder addValuesBuilder() {
+    public io.opentdf.platform.policy.Value.Builder addValuesBuilder() {
       return getValuesFieldBuilder().addBuilder(
-          io.opentdf.platform.policy.attributes.Value.getDefaultInstance());
+          io.opentdf.platform.policy.Value.getDefaultInstance());
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Value.Builder addValuesBuilder(
+    public io.opentdf.platform.policy.Value.Builder addValuesBuilder(
         int index) {
       return getValuesFieldBuilder().addBuilder(
-          index, io.opentdf.platform.policy.attributes.Value.getDefaultInstance());
+          index, io.opentdf.platform.policy.Value.getDefaultInstance());
     }
     /**
-     * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+     * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.attributes.Value.Builder> 
+    public java.util.List<io.opentdf.platform.policy.Value.Builder> 
          getValuesBuilderList() {
       return getValuesFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder> 
+        io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder> 
         getValuesFieldBuilder() {
       if (valuesBuilder_ == null) {
         valuesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder>(
+            io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder>(
                 values_,
                 ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),

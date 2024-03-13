@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	policydb "github.com/opentdf/platform/services/policy/db"
@@ -64,7 +65,7 @@ func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_no_metadata",
 		NamespaceId: fixtureNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
@@ -75,7 +76,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_metadata",
 		NamespaceId: fixtureNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{
 				"origin": "Some info about origin",
@@ -91,7 +92,7 @@ func (s *AttributesSuite) Test_CreateAttribute_SetsActiveStateTrueByDefault() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_active_state_default",
 		NamespaceId: fixtureNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
@@ -103,7 +104,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithInvalidNamespaceFails() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_invalid_namespace",
 		NamespaceId: nonExistentNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.NotNil(s.T(), err)
@@ -115,7 +116,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithNonUniqueNameConflictFails() 
 	attr := &attributes.CreateAttributeRequest{
 		Name:        s.f.GetAttributeKey("example.com/attr/attr1").Name,
 		NamespaceId: fixtureNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.NotNil(s.T(), err)
@@ -128,7 +129,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_any_of_rule_value",
 		NamespaceId: otherNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
@@ -137,7 +138,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 	attr = &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_all_of_rule_value",
 		NamespaceId: otherNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
@@ -146,7 +147,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 	attr = &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_unspecified_rule_value",
 		NamespaceId: otherNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
@@ -155,7 +156,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 	attr = &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_hierarchy_rule_value",
 		NamespaceId: otherNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
@@ -167,7 +168,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithInvalidRuleFails() {
 		Name:        "test__create_attribute_with_invalid_rule",
 		NamespaceId: fixtureNamespaceId,
 		// fake an enum value index far beyond reason
-		Rule: attributes.AttributeRuleTypeEnum(100),
+		Rule: policy.AttributeRuleTypeEnum(100),
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.NotNil(s.T(), err)
@@ -250,7 +251,7 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__update_attribute",
 		NamespaceId: fixtureNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
@@ -304,7 +305,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 	original := &attributes.CreateAttributeRequest{
 		Name:        "test__update_attribute_namespace_immutable",
 		NamespaceId: s.f.GetNamespaceKey("example.com").Id,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
 	assert.Nil(s.T(), err)
@@ -330,7 +331,7 @@ func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFa
 	original := &attributes.CreateAttributeRequest{
 		Name:        "test__update_attribute_with_same_name_and_namespace",
 		NamespaceId: fixtureData.NamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
 	assert.Nil(s.T(), err)
@@ -347,7 +348,7 @@ func (s *AttributesSuite) Test_DeleteAttribute() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__delete_attribute",
 		NamespaceId: fixtureNamespaceId,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
@@ -390,7 +391,7 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__cascading-deactivate-attr",
 		NamespaceId: n.Id,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)

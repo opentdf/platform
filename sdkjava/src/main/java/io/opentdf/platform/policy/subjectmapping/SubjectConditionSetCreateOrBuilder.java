@@ -13,24 +13,24 @@ public interface SubjectConditionSetCreateOrBuilder extends
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
-  java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> 
+  java.util.List<io.opentdf.platform.policy.SubjectSet> 
       getSubjectSetsList();
   /**
    * <pre>
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index);
+  io.opentdf.platform.policy.SubjectSet getSubjectSets(int index);
   /**
    * <pre>
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   int getSubjectSetsCount();
   /**
@@ -38,18 +38,18 @@ public interface SubjectConditionSetCreateOrBuilder extends
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.SubjectSetOrBuilder> 
       getSubjectSetsOrBuilderList();
   /**
    * <pre>
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+  io.opentdf.platform.policy.SubjectSetOrBuilder getSubjectSetsOrBuilder(
       int index);
 
   /**

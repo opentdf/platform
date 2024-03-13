@@ -43,16 +43,16 @@ private static final long serialVersionUID = 0L;
   private int bitField0_;
   public static final int SUBJECT_SETS_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_;
+  private java.util.List<io.opentdf.platform.policy.SubjectSet> subjectSets_;
   /**
    * <pre>
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
+  public java.util.List<io.opentdf.platform.policy.SubjectSet> getSubjectSetsList() {
     return subjectSets_;
   }
   /**
@@ -60,10 +60,10 @@ private static final long serialVersionUID = 0L;
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.policy.SubjectSetOrBuilder> 
       getSubjectSetsOrBuilderList() {
     return subjectSets_;
   }
@@ -72,7 +72,7 @@ private static final long serialVersionUID = 0L;
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
   public int getSubjectSetsCount() {
@@ -83,10 +83,10 @@ private static final long serialVersionUID = 0L;
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
+  public io.opentdf.platform.policy.SubjectSet getSubjectSets(int index) {
     return subjectSets_.get(index);
   }
   /**
@@ -94,10 +94,10 @@ private static final long serialVersionUID = 0L;
    * Required
    * </pre>
    *
-   * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+  public io.opentdf.platform.policy.SubjectSetOrBuilder getSubjectSetsOrBuilder(
       int index) {
     return subjectSets_.get(index);
   }
@@ -527,9 +527,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.policy.subjectmapping.SubjectSet m =
+              io.opentdf.platform.policy.SubjectSet m =
                   input.readMessage(
-                      io.opentdf.platform.policy.subjectmapping.SubjectSet.parser(),
+                      io.opentdf.platform.policy.SubjectSet.parser(),
                       extensionRegistry);
               if (subjectSetsBuilder_ == null) {
                 ensureSubjectSetsIsMutable();
@@ -563,26 +563,26 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> subjectSets_ =
+    private java.util.List<io.opentdf.platform.policy.SubjectSet> subjectSets_ =
       java.util.Collections.emptyList();
     private void ensureSubjectSetsIsMutable() {
       if (!((bitField0_ & 0x00000001) != 0)) {
-        subjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.subjectmapping.SubjectSet>(subjectSets_);
+        subjectSets_ = new java.util.ArrayList<io.opentdf.platform.policy.SubjectSet>(subjectSets_);
         bitField0_ |= 0x00000001;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> subjectSetsBuilder_;
+        io.opentdf.platform.policy.SubjectSet, io.opentdf.platform.policy.SubjectSet.Builder, io.opentdf.platform.policy.SubjectSetOrBuilder> subjectSetsBuilder_;
 
     /**
      * <pre>
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet> getSubjectSetsList() {
+    public java.util.List<io.opentdf.platform.policy.SubjectSet> getSubjectSetsList() {
       if (subjectSetsBuilder_ == null) {
         return java.util.Collections.unmodifiableList(subjectSets_);
       } else {
@@ -594,7 +594,7 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public int getSubjectSetsCount() {
       if (subjectSetsBuilder_ == null) {
@@ -608,9 +608,9 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet getSubjectSets(int index) {
+    public io.opentdf.platform.policy.SubjectSet getSubjectSets(int index) {
       if (subjectSetsBuilder_ == null) {
         return subjectSets_.get(index);
       } else {
@@ -622,10 +622,10 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder setSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
+        int index, io.opentdf.platform.policy.SubjectSet value) {
       if (subjectSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -643,10 +643,10 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder setSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.SubjectSet.Builder builderForValue) {
       if (subjectSetsBuilder_ == null) {
         ensureSubjectSetsIsMutable();
         subjectSets_.set(index, builderForValue.build());
@@ -661,9 +661,9 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public Builder addSubjectSets(io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
+    public Builder addSubjectSets(io.opentdf.platform.policy.SubjectSet value) {
       if (subjectSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -681,10 +681,10 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet value) {
+        int index, io.opentdf.platform.policy.SubjectSet value) {
       if (subjectSetsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -702,10 +702,10 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addSubjectSets(
-        io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
+        io.opentdf.platform.policy.SubjectSet.Builder builderForValue) {
       if (subjectSetsBuilder_ == null) {
         ensureSubjectSetsIsMutable();
         subjectSets_.add(builderForValue.build());
@@ -720,10 +720,10 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addSubjectSets(
-        int index, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.SubjectSet.Builder builderForValue) {
       if (subjectSetsBuilder_ == null) {
         ensureSubjectSetsIsMutable();
         subjectSets_.add(index, builderForValue.build());
@@ -738,10 +738,10 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder addAllSubjectSets(
-        java.lang.Iterable<? extends io.opentdf.platform.policy.subjectmapping.SubjectSet> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.policy.SubjectSet> values) {
       if (subjectSetsBuilder_ == null) {
         ensureSubjectSetsIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -757,7 +757,7 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder clearSubjectSets() {
       if (subjectSetsBuilder_ == null) {
@@ -774,7 +774,7 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
     public Builder removeSubjectSets(int index) {
       if (subjectSetsBuilder_ == null) {
@@ -791,9 +791,9 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder getSubjectSetsBuilder(
+    public io.opentdf.platform.policy.SubjectSet.Builder getSubjectSetsBuilder(
         int index) {
       return getSubjectSetsFieldBuilder().getBuilder(index);
     }
@@ -802,9 +802,9 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder getSubjectSetsOrBuilder(
+    public io.opentdf.platform.policy.SubjectSetOrBuilder getSubjectSetsOrBuilder(
         int index) {
       if (subjectSetsBuilder_ == null) {
         return subjectSets_.get(index);  } else {
@@ -816,9 +816,9 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.policy.SubjectSetOrBuilder> 
          getSubjectSetsOrBuilderList() {
       if (subjectSetsBuilder_ != null) {
         return subjectSetsBuilder_.getMessageOrBuilderList();
@@ -831,41 +831,41 @@ private static final long serialVersionUID = 0L;
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder() {
+    public io.opentdf.platform.policy.SubjectSet.Builder addSubjectSetsBuilder() {
       return getSubjectSetsFieldBuilder().addBuilder(
-          io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
+          io.opentdf.platform.policy.SubjectSet.getDefaultInstance());
     }
     /**
      * <pre>
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder addSubjectSetsBuilder(
+    public io.opentdf.platform.policy.SubjectSet.Builder addSubjectSetsBuilder(
         int index) {
       return getSubjectSetsFieldBuilder().addBuilder(
-          index, io.opentdf.platform.policy.subjectmapping.SubjectSet.getDefaultInstance());
+          index, io.opentdf.platform.policy.SubjectSet.getDefaultInstance());
     }
     /**
      * <pre>
      * Required
      * </pre>
      *
-     * <code>repeated .policy.subjectmapping.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
+     * <code>repeated .policy.SubjectSet subject_sets = 1 [json_name = "subjectSets", (.buf.validate.field) = { ... }</code>
      */
-    public java.util.List<io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder> 
+    public java.util.List<io.opentdf.platform.policy.SubjectSet.Builder> 
          getSubjectSetsBuilderList() {
       return getSubjectSetsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder> 
+        io.opentdf.platform.policy.SubjectSet, io.opentdf.platform.policy.SubjectSet.Builder, io.opentdf.platform.policy.SubjectSetOrBuilder> 
         getSubjectSetsFieldBuilder() {
       if (subjectSetsBuilder_ == null) {
         subjectSetsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.policy.subjectmapping.SubjectSet, io.opentdf.platform.policy.subjectmapping.SubjectSet.Builder, io.opentdf.platform.policy.subjectmapping.SubjectSetOrBuilder>(
+            io.opentdf.platform.policy.SubjectSet, io.opentdf.platform.policy.SubjectSet.Builder, io.opentdf.platform.policy.SubjectSetOrBuilder>(
                 subjectSets_,
                 ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),

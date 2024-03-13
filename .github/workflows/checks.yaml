@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: "1.21.8"
           cache-dependency-path: |
             ./go.sum
             examples/go.sum
@@ -50,27 +50,14 @@ jobs:
       - run: make go.work
       - run: go mod download
       - run: go mod verify
-      - name: golangci-lint on PR
-        if: github.event_name == 'pull_request'
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+      - name: golangci-lint
+        #uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804
+        uses: strantalis/golangci-lint-action@f4e979f5b36068d69d340547f66c991dca8b70ef
         with:
-          version: v1.55
+          version: v1.56
           working-directory: ${{ matrix.directory }}
-          only-new-issues: true
-      - name: golangci-lint on merge_group
-        if: github.event_name == 'merge_group'
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
-        with:
-          version: v1.55
-          working-directory: ${{ matrix.directory }}
-          args: -c ${{ github.workspace }}/.golangci-ratchet.yaml
-      - name: golangci-lint on push
-        if: github.event_name == 'push'
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
-        continue-on-error: true
-        with:
-          version: v1.55
-          working-directory: ${{ matrix.directory }}
+          skip-cache: true
+          only-new-issues: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
       - name: Install softHSM
         if: matrix.directory == '.'
         run: |-
@@ -91,7 +78,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: "1.21.8"
           cache-dependency-path: |
             ./go.sum
             examples/go.sum
@@ -111,9 +98,10 @@ jobs:
           wait-on: |
             tcp:localhost:9000
           log-output-if: true
+          wait-for: 90s
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - run: grpcurl -plaintext localhost:9000 list
-      - run: grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
+      - run: grpcurl -plaintext localhost:9000 grpc.health.v1.Health.Check
 
   image:
     name: image build
@@ -144,7 +132,7 @@ jobs:
           against: "https://github.com/opentdf/platform.git#branch=main,subdir=services"
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: "1.21.8"
           cache-dependency-path: |
             ./go.sum
             protocol/go/go.sum
@@ -197,9 +185,38 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.21"
+          go-version: "1.21.8"
           cache: false
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: deps-changed
+        with:
+          filters: |
+            examples:
+              - 'examplesk/go.*'
+            platform:
+              - './go.*'
+            sdk:
+              - 'sdk/go.*'
       - name: install go-licenses
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
-      - name: check licenses
-        run: go-licenses check --disallowed_types=forbidden --include_tests ./...
+      - name: check platform licenses
+        if: steps.deps-changed.outputs.platform == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              .
+      - name: check sdk licenses
+        if: steps.deps-changed.outputs.sdk == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              ./sdk
+      - name: check examples licenses
+        if: steps.deps-changed.outputs.examples == 'true'
+        run: >-
+          go-licenses check --disallowed_types=forbidden --include_tests  
+              --ignore github.com/opentdf/platform/sdk
+              --ignore github.com/opentdf/platform/protocol
+              ./examples

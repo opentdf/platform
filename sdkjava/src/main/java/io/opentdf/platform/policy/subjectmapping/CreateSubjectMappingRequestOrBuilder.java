@@ -35,24 +35,24 @@ public interface CreateSubjectMappingRequestOrBuilder extends
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
    */
-  java.util.List<io.opentdf.platform.authorization.Action> 
+  java.util.List<io.opentdf.platform.policy.Action> 
       getActionsList();
   /**
    * <pre>
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
    */
-  io.opentdf.platform.authorization.Action getActions(int index);
+  io.opentdf.platform.policy.Action getActions(int index);
   /**
    * <pre>
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
    */
   int getActionsCount();
   /**
@@ -60,18 +60,18 @@ public interface CreateSubjectMappingRequestOrBuilder extends
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
    */
-  java.util.List<? extends io.opentdf.platform.authorization.ActionOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.ActionOrBuilder> 
       getActionsOrBuilderList();
   /**
    * <pre>
    * The actions permitted by subjects in this mapping
    * </pre>
    *
-   * <code>repeated .authorization.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
+   * <code>repeated .policy.Action actions = 2 [json_name = "actions", (.buf.validate.field) = { ... }</code>
    */
-  io.opentdf.platform.authorization.ActionOrBuilder getActionsOrBuilder(
+  io.opentdf.platform.policy.ActionOrBuilder getActionsOrBuilder(
       int index);
 
   /**

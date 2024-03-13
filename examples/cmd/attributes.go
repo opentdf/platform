@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/sdk"
@@ -26,6 +27,7 @@ var AttributesExampleCmd = &cobra.Command{
 func init() {
 	ExamplesCmd.AddCommand(AttributesExampleCmd)
 }
+
 func attributesExample(examplesConfig *ExampleConfig) error {
 	s, err := sdk.New(examplesConfig.PlatformEndpoint, sdk.WithInsecureConn())
 	if err != nil {
@@ -34,7 +36,7 @@ func attributesExample(examplesConfig *ExampleConfig) error {
 	}
 	defer s.Close()
 
-	var exampleNamespace *namespaces.Namespace
+	var exampleNamespace *policy.Namespace
 	slog.Info("listing namespaces")
 	listResp, err := s.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
 	if err != nil {
@@ -63,7 +65,7 @@ func attributesExample(examplesConfig *ExampleConfig) error {
 	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "IntellectualProperty",
 		NamespaceId: exampleNamespace.Id,
-		Rule:        *attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
+		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
 		// Values: []*attributes.ValueCreateUpdate{
 		// 	{Value: "TradeSecret"},
 		// 	{Value: "Proprietary"},

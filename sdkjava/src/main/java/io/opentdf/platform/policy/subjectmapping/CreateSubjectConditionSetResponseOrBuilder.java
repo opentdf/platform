@@ -9,17 +9,17 @@ public interface CreateSubjectConditionSetResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return Whether the subjectConditionSet field is set.
    */
   boolean hasSubjectConditionSet();
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    * @return The subjectConditionSet.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSet getSubjectConditionSet();
+  io.opentdf.platform.policy.SubjectConditionSet getSubjectConditionSet();
   /**
-   * <code>.policy.subjectmapping.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
+   * <code>.policy.SubjectConditionSet subject_condition_set = 1 [json_name = "subjectConditionSet"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder();
+  io.opentdf.platform.policy.SubjectConditionSetOrBuilder getSubjectConditionSetOrBuilder();
 }

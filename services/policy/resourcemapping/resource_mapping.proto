@@ -3,23 +3,31 @@ syntax = "proto3";
 package policy.resourcemapping;
 
 import "buf/validate/validate.proto";
-import "common/common.proto";
 import "google/api/annotations.proto";
-import "policy/attributes/attributes.proto";
+
+import "common/common.proto";
+import "policy/objects.proto";
 
 /*
-   # Resource Mappings (aka Access Control Resource Encodings aka ACRE):  Structures supporting Resources and Attributes mappings
+   Resource Mappings
+*/
 
-   ## Examples
+message ListResourceMappingsRequest {}
 
-   ### Where
+message ListResourceMappingsResponse {
+  repeated policy.ResourceMapping resource_mappings = 1;
+}
 
-   attributeId is an id of the following attribute
+message GetResourceMappingRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
 
-     FQN: http://demo.com/attr/Classification/value/Confidential
-     UUID: 12345678-1234-1234-1234-123456789012
+message GetResourceMappingResponse {
+  policy.ResourceMapping resource_mapping = 1;
+}
 
-   ### Request
+/*
+ ### Request
 
      grpcurl -plaintext -d @ localhost:9000 policy.resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM
        {
@@ -47,34 +55,6 @@ import "policy/attributes/attributes.proto";
      }
 
 */
-message ResourceMapping {
-  string id = 1;
-
-  common.Metadata metadata = 2;
-
-  attributes.Value attribute_value = 3 [(buf.validate.field).required = true];
-
-  repeated string terms = 4;
-}
-
-/*
-   Resource Mappings
-*/
-
-message ListResourceMappingsRequest {}
-
-message ListResourceMappingsResponse {
-  repeated ResourceMapping resource_mappings = 1;
-}
-
-message GetResourceMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
-}
-
-message GetResourceMappingResponse {
-  ResourceMapping resource_mapping = 1;
-}
-
 message CreateResourceMappingRequest {
   // Required
   string attribute_value_id = 1 [(buf.validate.field).required = true];

@@ -38,6 +38,12 @@ services:
               - "msExchMailboxGuid"
               - "msExchMailboxSecurityDescriptor"
 server:
+  auth:
+    enabled: false
+    audience: "opentdf"
+    issuer: http://localhost:8888/auth/realms/opentdf
+    clients:
+      - "opentdf"
   grpc:
     port: 9000
     reflectionEnabled: true # Default is false

@@ -302,7 +302,7 @@ subject_condition_set:
                     subject_external_values:
                       - futbol
                       - soccer
-                  - subject_external_field: face_dessert
+                  - subject_external_field: fave_dessert
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - ice_cream

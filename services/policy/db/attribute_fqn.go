@@ -2,12 +2,14 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
@@ -149,19 +151,33 @@ func (c *PolicyDbClient) AttrFqnReindex() (res struct {
 	return res
 }
 
-func filterValues(values []*attributes.Value, fqn string) *attributes.Value {
+func filterValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.Value) {
 	val := strings.Split(fqn, "/value/")[1]
-	for _, v := range values {
+	for i, v := range values {
 		if v.Value == val {
-			return v
+			unaltered := &policy.Value{
+				Id:              v.Id,
+				Value:           v.Value,
+				Members:         v.Members,
+				Grants:          v.Grants,
+				Fqn:             v.Fqn,
+				Active:          v.Active,
+				SubjectMappings: v.SubjectMappings,
+				Metadata:        v.Metadata,
+			}
+			values[i].SubjectMappings = nil
+			return values, unaltered
 		}
 	}
-	return nil
+	return values, nil
 }
 
-func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []string) (map[string]*attributes.AttributeAndValue, error) {
-	list := make(map[string]*attributes.AttributeAndValue, len(fqns))
-	for _, fqn := range fqns {
+func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	if r.Fqns == nil || r.WithValue == nil {
+		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
+	}
+	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(r.Fqns))
+	for _, fqn := range r.Fqns {
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
 		if !strings.Contains(fqn, "/value/") {
 			return nil, db.ErrFqnMissingValue
@@ -171,14 +187,15 @@ func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, fqns []st
 			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
-		selected := filterValues(attr.Values, fqn)
+		filtered, selected := filterValues(attr.Values, fqn)
 		if selected == nil {
 			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN: %s", fqn)
 		}
-		list[fqn] = &attributes.AttributeAndValue{
+		attr.Values = filtered
+		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Attribute: attr,
-			Value:     filterValues(attr.Values, fqn),
+			Value:     selected,
 		}
 	}
 	return list, nil

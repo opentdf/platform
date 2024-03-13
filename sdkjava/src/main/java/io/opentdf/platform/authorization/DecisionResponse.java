@@ -295,13 +295,13 @@ private static final long serialVersionUID = 0L;
   }
 
   public static final int ACTION_FIELD_NUMBER = 3;
-  private io.opentdf.platform.authorization.Action action_;
+  private io.opentdf.platform.policy.Action action_;
   /**
    * <pre>
    * Action of the decision response
    * </pre>
    *
-   * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+   * <code>.policy.Action action = 3 [json_name = "action"];</code>
    * @return Whether the action field is set.
    */
   @java.lang.Override
@@ -313,23 +313,23 @@ private static final long serialVersionUID = 0L;
    * Action of the decision response
    * </pre>
    *
-   * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+   * <code>.policy.Action action = 3 [json_name = "action"];</code>
    * @return The action.
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.Action getAction() {
-    return action_ == null ? io.opentdf.platform.authorization.Action.getDefaultInstance() : action_;
+  public io.opentdf.platform.policy.Action getAction() {
+    return action_ == null ? io.opentdf.platform.policy.Action.getDefaultInstance() : action_;
   }
   /**
    * <pre>
    * Action of the decision response
    * </pre>
    *
-   * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+   * <code>.policy.Action action = 3 [json_name = "action"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.authorization.ActionOrBuilder getActionOrBuilder() {
-    return action_ == null ? io.opentdf.platform.authorization.Action.getDefaultInstance() : action_;
+  public io.opentdf.platform.policy.ActionOrBuilder getActionOrBuilder() {
+    return action_ == null ? io.opentdf.platform.policy.Action.getDefaultInstance() : action_;
   }
 
   public static final int DECISION_FIELD_NUMBER = 4;
@@ -1089,15 +1089,15 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private io.opentdf.platform.authorization.Action action_;
+    private io.opentdf.platform.policy.Action action_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> actionBuilder_;
+        io.opentdf.platform.policy.Action, io.opentdf.platform.policy.Action.Builder, io.opentdf.platform.policy.ActionOrBuilder> actionBuilder_;
     /**
      * <pre>
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      * @return Whether the action field is set.
      */
     public boolean hasAction() {
@@ -1108,12 +1108,12 @@ private static final long serialVersionUID = 0L;
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      * @return The action.
      */
-    public io.opentdf.platform.authorization.Action getAction() {
+    public io.opentdf.platform.policy.Action getAction() {
       if (actionBuilder_ == null) {
-        return action_ == null ? io.opentdf.platform.authorization.Action.getDefaultInstance() : action_;
+        return action_ == null ? io.opentdf.platform.policy.Action.getDefaultInstance() : action_;
       } else {
         return actionBuilder_.getMessage();
       }
@@ -1123,9 +1123,9 @@ private static final long serialVersionUID = 0L;
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      */
-    public Builder setAction(io.opentdf.platform.authorization.Action value) {
+    public Builder setAction(io.opentdf.platform.policy.Action value) {
       if (actionBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -1143,10 +1143,10 @@ private static final long serialVersionUID = 0L;
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      */
     public Builder setAction(
-        io.opentdf.platform.authorization.Action.Builder builderForValue) {
+        io.opentdf.platform.policy.Action.Builder builderForValue) {
       if (actionBuilder_ == null) {
         action_ = builderForValue.build();
       } else {
@@ -1161,13 +1161,13 @@ private static final long serialVersionUID = 0L;
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      */
-    public Builder mergeAction(io.opentdf.platform.authorization.Action value) {
+    public Builder mergeAction(io.opentdf.platform.policy.Action value) {
       if (actionBuilder_ == null) {
         if (((bitField0_ & 0x00000004) != 0) &&
           action_ != null &&
-          action_ != io.opentdf.platform.authorization.Action.getDefaultInstance()) {
+          action_ != io.opentdf.platform.policy.Action.getDefaultInstance()) {
           getActionBuilder().mergeFrom(value);
         } else {
           action_ = value;
@@ -1186,7 +1186,7 @@ private static final long serialVersionUID = 0L;
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      */
     public Builder clearAction() {
       bitField0_ = (bitField0_ & ~0x00000004);
@@ -1203,9 +1203,9 @@ private static final long serialVersionUID = 0L;
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      */
-    public io.opentdf.platform.authorization.Action.Builder getActionBuilder() {
+    public io.opentdf.platform.policy.Action.Builder getActionBuilder() {
       bitField0_ |= 0x00000004;
       onChanged();
       return getActionFieldBuilder().getBuilder();
@@ -1215,14 +1215,14 @@ private static final long serialVersionUID = 0L;
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      */
-    public io.opentdf.platform.authorization.ActionOrBuilder getActionOrBuilder() {
+    public io.opentdf.platform.policy.ActionOrBuilder getActionOrBuilder() {
       if (actionBuilder_ != null) {
         return actionBuilder_.getMessageOrBuilder();
       } else {
         return action_ == null ?
-            io.opentdf.platform.authorization.Action.getDefaultInstance() : action_;
+            io.opentdf.platform.policy.Action.getDefaultInstance() : action_;
       }
     }
     /**
@@ -1230,14 +1230,14 @@ private static final long serialVersionUID = 0L;
      * Action of the decision response
      * </pre>
      *
-     * <code>.authorization.Action action = 3 [json_name = "action"];</code>
+     * <code>.policy.Action action = 3 [json_name = "action"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder> 
+        io.opentdf.platform.policy.Action, io.opentdf.platform.policy.Action.Builder, io.opentdf.platform.policy.ActionOrBuilder> 
         getActionFieldBuilder() {
       if (actionBuilder_ == null) {
         actionBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.authorization.Action, io.opentdf.platform.authorization.Action.Builder, io.opentdf.platform.authorization.ActionOrBuilder>(
+            io.opentdf.platform.policy.Action, io.opentdf.platform.policy.Action.Builder, io.opentdf.platform.policy.ActionOrBuilder>(
                 getAction(),
                 getParentForChildren(),
                 isClean());

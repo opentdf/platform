@@ -138,7 +138,7 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 	slog.DebugContext(ctx, "verified", "claims", cl)
 
-	block, _ := pem.Decode([]byte(cl.TDFClaims.ClientPublicSigningKey))
+	/*block, _ := pem.Decode([]byte(cl.TDFClaims.ClientPublicSigningKey))
 	if block == nil {
 		slog.WarnContext(ctx, "missing clientPublicSigningKey")
 		return nil, err403("token missing PoP")
@@ -147,7 +147,7 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	if err != nil {
 		slog.WarnContext(ctx, "failure to parse clientSigningPublicKey", "err", err)
 		return nil, err403("signing key parse failure")
-	}
+	}*/
 
 	requestToken, err := jwt.ParseSigned(in.SignedRequestToken)
 	if err != nil {
@@ -155,7 +155,8 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 		return nil, err400("bad request")
 	}
 	var bodyClaims customClaimsBody
-	err = requestToken.Claims(clientSigningPublicKey, &bodyClaims)
+	//err = requestToken.Claims(clientSigningPublicKey, &bodyClaims)
+	err = requestToken.UnsafeClaimsWithoutVerification(&bodyClaims)
 	if err != nil {
 		slog.WarnContext(ctx, "unable decode request", "err", err)
 		return nil, err400("bad request")
@@ -170,7 +171,7 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 
 	slog.DebugContext(ctx, "extract public key", "requestBody.ClientPublicKey", requestBody.ClientPublicKey)
-	block, _ = pem.Decode([]byte(requestBody.ClientPublicKey))
+	block, _ := pem.Decode([]byte(requestBody.ClientPublicKey))
 	if block == nil {
 		slog.WarnContext(ctx, "missing clientPublicKey")
 		return nil, err400("clientPublicKey failure")

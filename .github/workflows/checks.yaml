@@ -57,7 +57,7 @@ jobs:
           version: v1.56
           working-directory: ${{ matrix.directory }}
           skip-cache: true
-          # only-new-issues: ${{ github.event_name == 'pull_request' }}
+          only-new-issues: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
       - name: Install softHSM
         if: matrix.directory == '.'
         run: |-

@@ -1,3 +1,7 @@
 # CODEOWNERS
 
-*  @opentdf/developers
+* @opentdf/developers
+
+# Suppresses generated files in diffs
+# TODO: change these to known groups instead of individuals
+.gitattributes @biscoe916 @jrschumacher @strantalis @ttschampel

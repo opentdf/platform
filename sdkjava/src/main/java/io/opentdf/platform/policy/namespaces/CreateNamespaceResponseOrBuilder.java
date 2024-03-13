@@ -9,17 +9,17 @@ public interface CreateNamespaceResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+   * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
    * @return Whether the namespace field is set.
    */
   boolean hasNamespace();
   /**
-   * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+   * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
    * @return The namespace.
    */
-  io.opentdf.platform.policy.namespaces.Namespace getNamespace();
+  io.opentdf.platform.policy.Namespace getNamespace();
   /**
-   * <code>.policy.namespaces.Namespace namespace = 1 [json_name = "namespace"];</code>
+   * <code>.policy.Namespace namespace = 1 [json_name = "namespace"];</code>
    */
-  io.opentdf.platform.policy.namespaces.NamespaceOrBuilder getNamespaceOrBuilder();
+  io.opentdf.platform.policy.NamespaceOrBuilder getNamespaceOrBuilder();
 }

@@ -52,7 +52,16 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
-	unwrapper := cfg.unwrapper
+	var unwrapper Unwrapper
+	if cfg.authConfig == nil {
+		uw, err := buildKASClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		unwrapper = &uw
+	} else {
+		unwrapper = cfg.authConfig
+	}
 
 	var (
 		defaultConn       *grpc.ClientConn
@@ -101,9 +110,10 @@ func buildKASClient(c *config) (KASClient, error) {
 		return KASClient{}, errors.New("either both or neither of client credentials and token endpoint must be specified")
 	}
 
-	// at this point we have either both client credentials and a token endpoint or none of the above
+	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
+	// any just return a KAS client that can only get public keys
 	if c.clientCredentials.ClientId == "" {
-		return KASClient{}, errors.New("cannot create an SDK with no client credentials")
+		return KASClient{}, nil
 	}
 
 	ts, err := NewIDPAccessTokenSource(
@@ -126,6 +136,9 @@ func buildKASClient(c *config) (KASClient, error) {
 
 // Close closes the underlying grpc.ClientConn.
 func (s SDK) Close() error {
+	if s.conn == nil {
+		return nil
+	}
 	if err := s.conn.Close(); err != nil {
 		return errors.Join(ErrShutdownFailed, err)
 	}
@@ -137,7 +150,7 @@ func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
 }
 
-// ExchangeToken exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
+// TokenExchange exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
 func (s SDK) TokenExchange(token string) (string, error) {
 	return "", nil
 }

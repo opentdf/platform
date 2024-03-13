@@ -18,7 +18,6 @@
   "paths": {
     "/attributes": {
       "post": {
-        "summary": "Create Attribute\nRequest:\ngrpcurl -plaintext -d '{\"attribute\": {\"namespace_id\": \"namespace_id\", \"name\": \"attribute_name\", \"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\"}}' localhost:9000 policy.attributes.AttributesService/CreateAttribute\nResponse\n{\n\"attribute\": {\n\"id\": \"e06f067b-d158-44bc-a814-1aa3f968dcf0\",\n\"metadata\": {\n\"createdAt\": \"2024-02-14T20:24:23.057404Z\",\n\"updatedAt\": \"2024-02-14T20:24:23.057404Z\"\n},\n\"namespace\": {\n\"id\": \"namespace_id\"\n},\n\"name\": \"attribute_name\",\n\"rule\": \"ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\",\n\"active\": true\n}\n}",
         "operationId": "AttributesService_CreateAttribute",
         "responses": {
           "200": {
@@ -36,11 +35,11 @@
         },
         "parameters": [
           {
-            "name": "attribute",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/attributesAttributeCreateUpdate"
+              "$ref": "#/definitions/attributesCreateAttributeRequest"
             }
           }
         ],
@@ -49,14 +48,14 @@
         ]
       }
     },
-    "/attributes/_/fqn": {
+    "/attributes/*/fqn": {
       "get": {
-        "operationId": "AttributesService_GetAttributesByValueFqns",
+        "operationId": "AttributesService_GetAttributeValuesByFqns",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesGetAttributesByValueFqnsResponse"
+              "$ref": "#/definitions/attributesGetAttributeValuesByFqnsResponse"
             }
           },
           "default": {
@@ -69,6 +68,7 @@
         "parameters": [
           {
             "name": "fqns",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "array",
@@ -76,6 +76,30 @@
               "type": "string"
             },
             "collectionFormat": "multi"
+          },
+          {
+            "name": "withValue.withKeyAccessGrants",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withSubjectMaps",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withResourceMaps",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withAttribute.withKeyAccessGrants",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -83,9 +107,9 @@
         ]
       }
     },
-    "/attributes/_/values/{id}": {
+    "/attributes/*/values/{id}": {
       "get": {
-        "summary": "* Attribute Value *",
+        "summary": "--------------------------------------*\nValue RPCs\n---------------------------------------",
         "operationId": "AttributesService_GetAttributeValue",
         "responses": {
           "200": {
@@ -140,12 +164,63 @@
         "tags": [
           "AttributesService"
         ]
+      },
+      "patch": {
+        "operationId": "AttributesService_UpdateAttributeValue",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesUpdateAttributeValueResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "members": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Optional"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
       }
     },
     "/attributes/keyaccessserver/assign": {
       "post": {
-        "summary": "Assign Key Access Server to Attribute",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
+        "summary": "--------------------------------------*\nAttribute \u003c\u003e Key Access Server RPCs\n---------------------------------------",
         "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
         "responses": {
           "200": {
@@ -178,8 +253,6 @@
     },
     "/attributes/keyaccessserver/remove": {
       "post": {
-        "summary": "Remove Key Access Server to Attribute",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/RemeoveKeyAccessServerFromAttribute\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"attribute_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
         "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
         "responses": {
           "200": {
@@ -212,8 +285,6 @@
     },
     "/attributes/values/keyaccessserver/assign": {
       "post": {
-        "summary": "Assign Key Access Server to Value",
-        "description": "grpcurl -plaintext -d '{\"attribute_key_access_server\": {\"attribute_id\": \"attribute_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/AssignKeyAccessServerToValue\n\nExample Request:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"attribute_key_access_server\": {\n\"value_id\": \"attribute_id\",\n\"key_access_server_id: \"key_access_server_id\"\n}",
         "operationId": "AttributesService_AssignKeyAccessServerToValue",
         "responses": {
           "200": {
@@ -246,8 +317,6 @@
     },
     "/attributes/values/keyaccessserver/remove": {
       "post": {
-        "summary": "Remove Key Access Server to Value\ngrpcurl -plaintext -d '{\"value_key_access_server\": {\"value_id\": \"value_id\", \"key_access_server_id\": \"key_access_server_id\"}}' localhost:9000 policy.attributes.AttributesService/RemoveKeyAccessServerFromValue",
-        "description": "Example Request:\n{\n\"value_key_access_server\": {\n\"value_id\": \"value_id\",\n\"key_access_server_id\n}\n\nExample Response:\n{\n\"value_key_access_server\": {\n\"value_id\": \"value_id\",\n\"key_access_server_id",
         "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
         "responses": {
           "200": {
@@ -280,7 +349,6 @@
     },
     "/attributes/{attributeId}/values": {
       "post": {
-        "summary": "Create Attribute Value\nExample:\n grpcurl -plaintext -d '{\"attribute_id\": \"attribute_id\", \"value\": {\"value\": \"value\"}}' localhost:9000 policy.attributes.AttributesService/CreateAttributeValue",
         "operationId": "AttributesService_CreateAttributeValue",
         "responses": {
           "200": {
@@ -299,60 +367,33 @@
         "parameters": [
           {
             "name": "attributeId",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "value",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/attributesValueCreateUpdate"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/{attributeId}/values/{id}": {
-      "post": {
-        "operationId": "AttributesService_UpdateAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesUpdateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeId",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "value",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesValueCreateUpdate"
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "members": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Optional"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                }
+              }
             }
           }
         ],
@@ -418,7 +459,7 @@
           "AttributesService"
         ]
       },
-      "post": {
+      "patch": {
         "operationId": "AttributesService_UpdateAttribute",
         "responses": {
           "200": {
@@ -437,16 +478,26 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "attribute",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/attributesAttributeCreateUpdate"
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Optional"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
             }
           }
         ],
@@ -457,6 +508,30 @@
     }
   },
   "definitions": {
+    "ActionStandardAction": {
+      "type": "string",
+      "enum": [
+        "STANDARD_ACTION_UNSPECIFIED",
+        "STANDARD_ACTION_DECRYPT",
+        "STANDARD_ACTION_TRANSMIT"
+      ],
+      "default": "STANDARD_ACTION_UNSPECIFIED",
+      "title": "Standard actions supported by the platform"
+    },
+    "AttributeValueSelectorAttributeSelectorNamespaceSelector": {
+      "type": "object"
+    },
+    "GetAttributeValuesByFqnsResponseAttributeAndValue": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
+        },
+        "value": {
+          "$ref": "#/definitions/policyValue"
+        }
+      }
+    },
     "attributesAssignKeyAccessServerToAttributeResponse": {
       "type": "object",
       "properties": {
@@ -473,91 +548,6 @@
         }
       }
     },
-    "attributesAttribute": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Optional metadata for the attribute definition"
-        },
-        "namespace": {
-          "$ref": "#/definitions/namespacesNamespace",
-          "title": "namespace of the attribute"
-        },
-        "name": {
-          "type": "string",
-          "title": "attribute name"
-        },
-        "rule": {
-          "$ref": "#/definitions/attributesAttributeRuleTypeEnum",
-          "title": "attribute rule enum"
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyattributesValue"
-          }
-        },
-        "grants": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/kasregistryKeyAccessServer"
-          }
-        },
-        "fqn": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean",
-          "title": "active by default until explicitly deactivated"
-        }
-      }
-    },
-    "attributesAttributeAndValue": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
-        },
-        "value": {
-          "$ref": "#/definitions/policyattributesValue"
-        }
-      }
-    },
-    "attributesAttributeCreateUpdate": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Optional metadata for the attribute definition"
-        },
-        "namespaceId": {
-          "type": "string",
-          "title": "namespace of the attribute"
-        },
-        "name": {
-          "type": "string",
-          "title": "attribute name"
-        },
-        "rule": {
-          "$ref": "#/definitions/attributesAttributeRuleTypeEnum",
-          "title": "attribute rule enum"
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/attributesValueCreateUpdate"
-          },
-          "title": "optional"
-        }
-      }
-    },
     "attributesAttributeKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -569,22 +559,30 @@
         }
       }
     },
-    "attributesAttributeRuleTypeEnum": {
-      "type": "string",
-      "enum": [
-        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
-        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
-        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
-      ],
-      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    "attributesCreateAttributeRequest": {
+      "type": "object",
+      "properties": {
+        "namespaceId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rule": {
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
+        }
+      }
     },
     "attributesCreateAttributeResponse": {
       "type": "object",
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         }
       }
     },
@@ -592,7 +590,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/policyattributesValue"
+          "$ref": "#/definitions/policyValue"
         }
       }
     },
@@ -600,7 +598,7 @@
       "type": "object",
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         }
       }
     },
@@ -608,7 +606,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/policyattributesValue"
+          "$ref": "#/definitions/policyValue"
         }
       }
     },
@@ -616,7 +614,7 @@
       "type": "object",
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         }
       }
     },
@@ -624,17 +622,17 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/policyattributesValue"
+          "$ref": "#/definitions/policyValue"
         }
       }
     },
-    "attributesGetAttributesByValueFqnsResponse": {
+    "attributesGetAttributeValuesByFqnsResponse": {
       "type": "object",
       "properties": {
         "fqnAttributeValues": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/attributesAttributeAndValue"
+            "$ref": "#/definitions/GetAttributeValuesByFqnsResponseAttributeAndValue"
           },
           "title": "map of fqns to complete attributes and the one selected value"
         }
@@ -647,7 +645,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyattributesValue"
+            "$ref": "#/definitions/policyValue"
           }
         }
       }
@@ -659,7 +657,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/attributesAttribute"
+            "$ref": "#/definitions/policyAttribute"
           }
         }
       }
@@ -684,7 +682,7 @@
       "type": "object",
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/attributesAttribute"
+          "$ref": "#/definitions/policyAttribute"
         }
       }
     },
@@ -692,25 +690,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "$ref": "#/definitions/policyattributesValue"
-        }
-      }
-    },
-    "attributesValueCreateUpdate": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
-        },
-        "value": {
-          "type": "string"
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "list of attribute values that this value is related to (attribute group)"
+          "$ref": "#/definitions/policyValue"
         }
       }
     },
@@ -755,10 +735,6 @@
             "type": "string"
           },
           "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
@@ -771,13 +747,19 @@
           "additionalProperties": {
             "type": "string"
           },
-          "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
+          "title": "optional labels"
         }
       }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "kasregistryKeyAccessServer": {
       "type": "object",
@@ -785,15 +767,16 @@
         "id": {
           "type": "string"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
         "uri": {
           "type": "string",
           "title": "Address of a KAS instance"
         },
         "publicKey": {
           "$ref": "#/definitions/kasregistryPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       },
       "title": "Descriptor for a KAS"
@@ -811,7 +794,152 @@
         }
       }
     },
-    "namespacesNamespace": {
+    "policyAction": {
+      "type": "object",
+      "properties": {
+        "standard": {
+          "$ref": "#/definitions/ActionStandardAction"
+        },
+        "custom": {
+          "type": "string"
+        }
+      },
+      "title": "An action an entity can take"
+    },
+    "policyAttribute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace",
+          "title": "namespace of the attribute"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyValue"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          }
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "policyAttributeRuleTypeEnum": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyAttributeValueSelector": {
+      "type": "object",
+      "properties": {
+        "withKeyAccessGrants": {
+          "type": "boolean"
+        },
+        "withSubjectMaps": {
+          "type": "boolean"
+        },
+        "withResourceMaps": {
+          "type": "boolean"
+        },
+        "withAttribute": {
+          "$ref": "#/definitions/policyAttributeValueSelectorAttributeSelector"
+        }
+      }
+    },
+    "policyAttributeValueSelectorAttributeSelector": {
+      "type": "object",
+      "properties": {
+        "withKeyAccessGrants": {
+          "type": "boolean"
+        },
+        "withNamespace": {
+          "$ref": "#/definitions/AttributeValueSelectorAttributeSelectorNamespaceSelector"
+        }
+      }
+    },
+    "policyCondition": {
+      "type": "object",
+      "properties": {
+        "subjectExternalField": {
+          "type": "string",
+          "title": "externally known field name (such as from idP/LDAP)"
+        },
+        "operator": {
+          "$ref": "#/definitions/policySubjectMappingOperatorEnum",
+          "title": "the evaluation operator of relation"
+        },
+        "subjectExternalValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of comparison values for the subject_external_field, evaluated by the operator"
+        }
+      },
+      "description": "Example:  Subjects with field \"division\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_field\": \"division\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four:\n{\n\"subject_external_field\": \"superhero_name\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
+      "title": "*\nA Condition defines a rule of \u003csubject external field name\u003e \u003coperator\u003e \u003csubject external values\u003e"
+    },
+    "policyConditionBooleanTypeEnum": {
+      "type": "string",
+      "enum": [
+        "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+        "CONDITION_BOOLEAN_TYPE_ENUM_AND",
+        "CONDITION_BOOLEAN_TYPE_ENUM_OR"
+      ],
+      "default": "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyConditionGroup": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyCondition"
+          }
+        },
+        "booleanOperator": {
+          "$ref": "#/definitions/policyConditionBooleanTypeEnum",
+          "title": "the boolean evaluation type across the conditions"
+        }
+      },
+      "title": "A collection of Conditions evaluated by the boolean_operator provided"
+    },
+    "policyNamespace": {
       "type": "object",
       "properties": {
         "id": {
@@ -828,21 +956,93 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
         }
       }
     },
-    "policyattributesValue": {
+    "policySubjectConditionSet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "subjectSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectSet"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet\nare evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple\nSubject Mappings / Attribute Values and is an independent unit."
+    },
+    "policySubjectMapping": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "attributeValue": {
+          "$ref": "#/definitions/policyValue",
+          "title": "the Attribute Value mapped to; aka: \"The Entity Entitlement Attribute\""
+        },
+        "subjectConditionSet": {
+          "$ref": "#/definitions/policySubjectConditionSet",
+          "title": "the reusable SubjectConditionSet mapped to the given Attribute Value"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyAction"
+          },
+          "title": "The actions permitted by subjects in this mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\": {\"subject_sets\":[{subject_set_1},{subject_set_2}]...},\n\"actions\": [{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\": \"STANDARD_ACTION_TRANSMIT\"}]\n}",
+      "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination"
+    },
+    "policySubjectMappingOperatorEnum": {
+      "type": "string",
+      "enum": [
+        "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN"
+      ],
+      "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policySubjectSet": {
+      "type": "object",
+      "properties": {
+        "conditionGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyConditionGroup"
+          },
+          "title": "multiple Condition Groups are evaluated with AND logic"
+        }
+      },
+      "title": "A collection of Condition Groups"
+    },
+    "policyValue": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
           "title": "generated uuid in database"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
-        "attributeId": {
-          "type": "string"
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
         },
         "value": {
           "type": "string"
@@ -868,6 +1068,18 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "subjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectMapping"
+          },
+          "title": "subject mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       }
     },

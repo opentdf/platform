@@ -59,11 +59,12 @@
         },
         "parameters": [
           {
-            "name": "resourceMapping",
+            "name": "body",
+            "description": "grpcurl -plaintext -d @ localhost:9000 policy.resourcemapping.ResourceMappingService/CreateResourceMapping \u003c\u003cEOM\n{\n\"mapping\": {\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}\nEOM\n\n### Response\n\n{\n\"mapping\": {\n\"metadata\": {\n\"id\": \"12345678-1234-1234-1234-123456789012\",\n\"created_at\": \"2020-01-01T00:00:00Z\",\n\"updated_at\": \"2020-01-01T00:00:00Z\"\n},\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/resourcemappingResourceMappingCreateUpdate"
+              "$ref": "#/definitions/resourcemappingCreateResourceMappingRequest"
             }
           }
         ],
@@ -154,16 +155,36 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "resourceMapping",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/resourcemappingResourceMappingCreateUpdate"
+              "type": "object",
+              "properties": {
+                "attributeValueId": {
+                  "type": "string",
+                  "title": "Optional"
+                },
+                "terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common Metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
             }
           }
         ],
@@ -174,6 +195,16 @@
     }
   },
   "definitions": {
+    "ActionStandardAction": {
+      "type": "string",
+      "enum": [
+        "STANDARD_ACTION_UNSPECIFIED",
+        "STANDARD_ACTION_DECRYPT",
+        "STANDARD_ACTION_TRANSMIT"
+      ],
+      "default": "STANDARD_ACTION_UNSPECIFIED",
+      "title": "Standard actions supported by the platform"
+    },
     "commonMetadata": {
       "type": "object",
       "properties": {
@@ -193,10 +224,6 @@
             "type": "string"
           },
           "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
@@ -209,13 +236,19 @@
           "additionalProperties": {
             "type": "string"
           },
-          "title": "optional short description"
-        },
-        "description": {
-          "type": "string",
-          "title": "optional long description"
+          "title": "optional labels"
         }
       }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "kasregistryKeyAccessServer": {
       "type": "object",
@@ -223,15 +256,16 @@
         "id": {
           "type": "string"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
         "uri": {
           "type": "string",
           "title": "Address of a KAS instance"
         },
         "publicKey": {
           "$ref": "#/definitions/kasregistryPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       },
       "title": "Descriptor for a KAS"
@@ -249,18 +283,248 @@
         }
       }
     },
-    "policyattributesValue": {
+    "policyAction": {
+      "type": "object",
+      "properties": {
+        "standard": {
+          "$ref": "#/definitions/ActionStandardAction"
+        },
+        "custom": {
+          "type": "string"
+        }
+      },
+      "title": "An action an entity can take"
+    },
+    "policyAttribute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace",
+          "title": "namespace of the attribute"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyValue"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServer"
+          }
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "policyAttributeRuleTypeEnum": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyCondition": {
+      "type": "object",
+      "properties": {
+        "subjectExternalField": {
+          "type": "string",
+          "title": "externally known field name (such as from idP/LDAP)"
+        },
+        "operator": {
+          "$ref": "#/definitions/policySubjectMappingOperatorEnum",
+          "title": "the evaluation operator of relation"
+        },
+        "subjectExternalValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of comparison values for the subject_external_field, evaluated by the operator"
+        }
+      },
+      "description": "Example:  Subjects with field \"division\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_field\": \"division\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four:\n{\n\"subject_external_field\": \"superhero_name\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
+      "title": "*\nA Condition defines a rule of \u003csubject external field name\u003e \u003coperator\u003e \u003csubject external values\u003e"
+    },
+    "policyConditionBooleanTypeEnum": {
+      "type": "string",
+      "enum": [
+        "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+        "CONDITION_BOOLEAN_TYPE_ENUM_AND",
+        "CONDITION_BOOLEAN_TYPE_ENUM_OR"
+      ],
+      "default": "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyConditionGroup": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyCondition"
+          }
+        },
+        "booleanOperator": {
+          "$ref": "#/definitions/policyConditionBooleanTypeEnum",
+          "title": "the boolean evaluation type across the conditions"
+        }
+      },
+      "title": "A collection of Conditions evaluated by the boolean_operator provided"
+    },
+    "policyNamespace": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
           "title": "generated uuid in database"
         },
+        "name": {
+          "type": "string",
+          "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      }
+    },
+    "policyResourceMapping": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
         },
-        "attributeId": {
+        "attributeValue": {
+          "$ref": "#/definitions/policyValue"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Resource Mappings (aka Access Control Resource Encodings aka ACRE) are structures supporting the mapping of Resources and Attribute Values"
+    },
+    "policySubjectConditionSet": {
+      "type": "object",
+      "properties": {
+        "id": {
           "type": "string"
+        },
+        "subjectSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectSet"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet\nare evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple\nSubject Mappings / Attribute Values and is an independent unit."
+    },
+    "policySubjectMapping": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "attributeValue": {
+          "$ref": "#/definitions/policyValue",
+          "title": "the Attribute Value mapped to; aka: \"The Entity Entitlement Attribute\""
+        },
+        "subjectConditionSet": {
+          "$ref": "#/definitions/policySubjectConditionSet",
+          "title": "the reusable SubjectConditionSet mapped to the given Attribute Value"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyAction"
+          },
+          "title": "The actions permitted by subjects in this mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\": {\"subject_sets\":[{subject_set_1},{subject_set_2}]...},\n\"actions\": [{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\": \"STANDARD_ACTION_TRANSMIT\"}]\n}",
+      "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination"
+    },
+    "policySubjectMappingOperatorEnum": {
+      "type": "string",
+      "enum": [
+        "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN"
+      ],
+      "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policySubjectSet": {
+      "type": "object",
+      "properties": {
+        "conditionGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyConditionGroup"
+          },
+          "title": "multiple Condition Groups are evaluated with AND logic"
+        }
+      },
+      "title": "A collection of Condition Groups"
+    },
+    "policyValue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
+        },
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
         },
         "value": {
           "type": "string"
@@ -286,6 +550,18 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "subjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectMapping"
+          },
+          "title": "subject mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       }
     },
@@ -300,11 +576,32 @@
       "additionalProperties": {},
       "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
     },
+    "resourcemappingCreateResourceMappingRequest": {
+      "type": "object",
+      "properties": {
+        "attributeValueId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
+        }
+      },
+      "description": "grpcurl -plaintext -d @ localhost:9000 policy.resourcemapping.ResourceMappingService/CreateResourceMapping \u003c\u003cEOM\n{\n\"mapping\": {\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}\nEOM\n\n### Response\n\n{\n\"mapping\": {\n\"metadata\": {\n\"id\": \"12345678-1234-1234-1234-123456789012\",\n\"created_at\": \"2020-01-01T00:00:00Z\",\n\"updated_at\": \"2020-01-01T00:00:00Z\"\n},\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}",
+      "title": "### Request"
+    },
     "resourcemappingCreateResourceMappingResponse": {
       "type": "object",
       "properties": {
         "resourceMapping": {
-          "$ref": "#/definitions/resourcemappingResourceMapping"
+          "$ref": "#/definitions/policyResourceMapping"
         }
       }
     },
@@ -312,7 +609,7 @@
       "type": "object",
       "properties": {
         "resourceMapping": {
-          "$ref": "#/definitions/resourcemappingResourceMapping"
+          "$ref": "#/definitions/policyResourceMapping"
         }
       }
     },
@@ -320,7 +617,7 @@
       "type": "object",
       "properties": {
         "resourceMapping": {
-          "$ref": "#/definitions/resourcemappingResourceMapping"
+          "$ref": "#/definitions/policyResourceMapping"
         }
       }
     },
@@ -331,46 +628,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/resourcemappingResourceMapping"
-          }
-        }
-      }
-    },
-    "resourcemappingResourceMapping": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
-        },
-        "attributeValue": {
-          "$ref": "#/definitions/policyattributesValue"
-        },
-        "terms": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "description": "## Examples\n\n### Where\n\nattributeId is an id of the following attribute\n\nFQN: http://demo.com/attr/Classification/value/Confidential\nUUID: 12345678-1234-1234-1234-123456789012\n\n### Request\n\ngrpcurl -plaintext -d @ localhost:9000 policy.resourcemapping.ResourceMappingService/CreateResourceMapping \u003c\u003cEOM\n{\n\"mapping\": {\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}\nEOM\n\n### Response\n\n{\n\"mapping\": {\n\"metadata\": {\n\"id\": \"12345678-1234-1234-1234-123456789012\",\n\"created_at\": \"2020-01-01T00:00:00Z\",\n\"updated_at\": \"2020-01-01T00:00:00Z\"\n},\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}",
-      "title": "# Resource Mappings (aka Access Control Resource Encodings aka ACRE):  Structures supporting Resources and Attributes mappings"
-    },
-    "resourcemappingResourceMappingCreateUpdate": {
-      "type": "object",
-      "properties": {
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
-        },
-        "attributeValueId": {
-          "type": "string"
-        },
-        "terms": {
-          "type": "array",
-          "items": {
-            "type": "string"
+            "$ref": "#/definitions/policyResourceMapping"
           }
         }
       }
@@ -379,7 +637,7 @@
       "type": "object",
       "properties": {
         "resourceMapping": {
-          "$ref": "#/definitions/resourcemappingResourceMapping"
+          "$ref": "#/definitions/policyResourceMapping"
         }
       }
     },

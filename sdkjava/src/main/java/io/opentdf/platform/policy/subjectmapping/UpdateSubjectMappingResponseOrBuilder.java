@@ -9,17 +9,29 @@ public interface UpdateSubjectMappingResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
+   * <pre>
+   * Only ID of the updated Subject Mapping provided
+   * </pre>
+   *
+   * <code>.policy.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
    * @return Whether the subjectMapping field is set.
    */
   boolean hasSubjectMapping();
   /**
-   * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
+   * <pre>
+   * Only ID of the updated Subject Mapping provided
+   * </pre>
+   *
+   * <code>.policy.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
    * @return The subjectMapping.
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMapping getSubjectMapping();
+  io.opentdf.platform.policy.SubjectMapping getSubjectMapping();
   /**
-   * <code>.policy.subjectmapping.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
+   * <pre>
+   * Only ID of the updated Subject Mapping provided
+   * </pre>
+   *
+   * <code>.policy.SubjectMapping subject_mapping = 1 [json_name = "subjectMapping"];</code>
    */
-  io.opentdf.platform.policy.subjectmapping.SubjectMappingOrBuilder getSubjectMappingOrBuilder();
+  io.opentdf.platform.policy.SubjectMappingOrBuilder getSubjectMappingOrBuilder();
 }

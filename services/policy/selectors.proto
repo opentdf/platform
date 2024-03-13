@@ -43,3 +43,7 @@ message AttributeValueSelector {
     }
 	AttributeSelector with_attribute = 10;
 }
+
+message DummyProto {
+	string hello_world = 1;
+}

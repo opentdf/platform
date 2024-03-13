@@ -60,6 +60,11 @@ public final class SelectorsProto {
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_AttributeValueSelector_AttributeSelector_NamespaceSelector_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_policy_DummyProto_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_policy_DummyProto_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -104,11 +109,12 @@ public final class SelectorsProto {
       "th_namespace\030\n \001(\0132B.policy.AttributeVal" +
       "ueSelector.AttributeSelector.NamespaceSe" +
       "lectorR\rwithNamespace\032\023\n\021NamespaceSelect" +
-      "orB\224\001\n\032io.opentdf.platform.policyB\016Selec" +
-      "torsProtoP\001Z.github.com/opentdf/platform" +
-      "/protocol/go/policy\242\002\003PXX\252\002\006Policy\312\002\006Pol" +
-      "icy\342\002\022Policy\\GPBMetadata\352\002\006Policyb\006proto" +
-      "3"
+      "or\"-\n\nDummyProto\022\037\n\013hello_world\030\001 \001(\tR\nh" +
+      "elloWorldB\224\001\n\032io.opentdf.platform.policy" +
+      "B\016SelectorsProtoP\001Z.github.com/opentdf/p" +
+      "latform/protocol/go/policy\242\002\003PXX\252\002\006Polic" +
+      "y\312\002\006Policy\342\002\022Policy\\GPBMetadata\352\002\006Policy" +
+      "b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -168,6 +174,12 @@ public final class SelectorsProto {
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_AttributeValueSelector_AttributeSelector_NamespaceSelector_descriptor,
         new java.lang.String[] { });
+    internal_static_policy_DummyProto_descriptor =
+      getDescriptor().getMessageTypes().get(3);
+    internal_static_policy_DummyProto_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_policy_DummyProto_descriptor,
+        new java.lang.String[] { "HelloWorld", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

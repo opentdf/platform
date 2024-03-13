@@ -47,13 +47,22 @@ func convertJSONToAttrVal(c PolicyDbClient, r json.RawMessage) (*attributes.Valu
 	if err := json.Unmarshal(r, &item); err != nil {
 		return nil, err
 	}
+	println("r JSON before", string(r))
+	var err error
+	r, err = json.Marshal(strings.Replace(string(r), "\"members\" : null", "\"members\" : []", 1))
+	// r, err = json.Marshal(strings.Replace(string(r), "\"members\": null", "\"members\" : []", 1))
+	// r, err = json.Marshal(strings.Replace(string(r), "\"members\":null", "\"members\" : []", 1))
+	if err != nil {
+		return nil, err
+	}
+	println("r JSON after", string(r))
 	if item.Metadata == nil {
 		item.Metadata = &common.Metadata{}
 	}
 
 	var members []*attributes.Value
 	if len(item.Members) > 0 {
-		attr, err := c.GetAttributeValue(context.TODO(), item.Id)
+		attr, err := c.GetAttributeValue(context.Background(), item.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -89,6 +98,9 @@ func attributesValuesProtojson(c PolicyDbClient, valuesJson []byte) ([]*attribut
 	}
 
 	for _, r := range raw {
+		if strings.Contains(string(r), "id\" : null") {
+			continue
+		}
 		value, err := convertJSONToAttrVal(c, r)
 		if err != nil {
 			return nil, err

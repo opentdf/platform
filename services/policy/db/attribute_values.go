@@ -129,6 +129,87 @@ func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValu
 	return v, nil
 }
 
+// func attributeValueHydrateItem(c PolicyDbClient, row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
+// 	var (
+// 		id           string
+// 		value        string
+// 		active       bool
+// 		members      []string
+// 		metadataJson []byte
+// 		attributeId  string
+// 		fqn          sql.NullString
+// 		// stringErr    error
+// 		// jsonErr      error
+// 		err error
+// 	)
+
+// 	fields := []interface{}{
+// 		&id,
+// 		&value,
+// 		&active,
+// 		&members,
+// 		&metadataJson,
+// 		&attributeId,
+// 	}
+// 	if opts.withFqn {
+// 		fields = append(fields, &fqn)
+// 	}
+// 	var newMembers []*attributes.Value
+// 	var membersJson []byte
+
+// 	if stringErr := row.Scan(fields...); stringErr != nil {
+// 		newFields := []interface{}{
+// 			&id,
+// 			&value,
+// 			&active,
+// 			&membersJson,
+// 			&metadataJson,
+// 			&attributeId,
+// 		}
+// 		if opts.withFqn {
+// 			newFields = append(fields, &fqn)
+// 		}
+
+// 		if jsonErr := row.Scan(newFields...); jsonErr != nil {
+// 			// log.Fatal("error unmarshalling json members")
+// 			return nil, db.WrapIfKnownInvalidQueryErr(jsonErr)
+
+// 		}
+// 		newMembers, err = attributesValuesProtojson(c, membersJson)
+
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	// return nil, db.WrapIfKnownInvalidQueryErr(err)
+
+// 	m := &common.Metadata{}
+// 	if metadataJson != nil {
+// 		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+// 			// log.Fatal("error unmarshalling metadata")
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if len(newMembers) == 0 && len(members) > 0 {
+// 		newMembers, err = getMembersFromStringArray(c, members)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+
+// 	v := &attributes.Value{
+// 		Id:       id,
+// 		Value:    value,
+// 		Active:   &wrapperspb.BoolValue{Value: active},
+// 		Members:  newMembers,
+// 		Metadata: m,
+// 		// TODO: get & hydrate full attribute
+// 		Fqn: fqn.String,
+// 	}
+// 	return v, nil
+// }
+
 func attributeValueHydrateItems(c PolicyDbClient, rows pgx.Rows, opts attributeValueSelectOptions) ([]*attributes.Value, error) {
 	list := make([]*attributes.Value, 0)
 	for rows.Next() {

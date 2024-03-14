@@ -109,7 +109,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
-func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) { //nolint:nilnil // not having credentials is not an error
+func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) {
 	if (c.clientCredentials.ClientId == "") != (c.clientCredentials.ClientAuth == nil) {
 		return nil,
 			errors.New("if specifying client credentials must specify both client id and authentication secret")
@@ -122,7 +122,7 @@ func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) { //nolint:ni
 	// any just return a KAS client that can only get public keys
 	if c.clientCredentials.ClientId == "" {
 		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
-		return nil, nil
+		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
 	ts, err := NewIDPAccessTokenSource(

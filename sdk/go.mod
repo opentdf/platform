@@ -8,7 +8,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/opentdf/backend-go v0.1.17
-	github.com/opentdf/platform v0.0.0-20240313175051-bb3ab7bf1ad4
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0

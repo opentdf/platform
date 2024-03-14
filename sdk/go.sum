@@ -110,8 +110,8 @@ github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQ
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
 github.com/opentdf/backend-go v0.1.17 h1:RA/9Mj7OKycnvOrkIZTJCsSyROCcioXzzqMUlnCxP48=
 github.com/opentdf/backend-go v0.1.17/go.mod h1:4RAZ3K19YOJkpxSh4jl6vtjOUkK3H/zqA32LeBf3CDQ=
-github.com/opentdf/platform v0.0.0-20240313175051-bb3ab7bf1ad4 h1:Fyn59ttNBjWi/1EYZFi+5Mym5kfUUxcDGv43xhN2ODo=
-github.com/opentdf/platform v0.0.0-20240313175051-bb3ab7bf1ad4/go.mod h1:0GfWuB8Jrc5rOeoSgQWE9grAI+egfsp18yY8bmHeIMo=
+github.com/opentdf/platform v0.0.0-20240314173526-1cb7d0c981a5 h1:H+DDuGTQQNARbA+2AkWumVMmdC5UUmgk5LkYFKOUFec=
+github.com/opentdf/platform v0.0.0-20240314173526-1cb7d0c981a5/go.mod h1:j9vXkvfr33rh0dLiTFWauWayUsDP9dtI9uhuBYukzd4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

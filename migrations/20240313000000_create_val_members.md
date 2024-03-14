@@ -14,7 +14,6 @@ erDiagram
         uuid         namespace_id            FK
         uuid         attribute_definition_id FK
         varchar      value
-        uuid[]       members                 FK "Optional grouping of values"
         jsonb        metadata
         compIdx      comp_key                UK "ns_id + ad_id + value"
         bool         active

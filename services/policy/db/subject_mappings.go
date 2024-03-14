@@ -169,18 +169,6 @@ func subjectMappingSelect() sq.SelectBuilder {
 			"'active', av.active"+
 			") AS attribute_value",
 	).
-		// LeftJoin(avT.Name() + " ON " + t.Field("attribute_value_id") + " = " + avT.Field("id")).
-		// GroupBy(t.Field("id")).
-		// GroupBy(avT.Field("id")).
-		// LeftJoin("(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		// 	"'id', vmv.id, " +
-		// 	"'value', vmv.value, " +
-		// 	"'active', vmv.active, " +
-		// 	"'members', vmv.members || ARRAY[]::UUID[], " +
-		// 	"'attribute', JSON_BUILD_OBJECT(" +
-		// 	"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avT.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avT.Name() + " vmv ON vm.member_id = vmv.id GROUP BY av.id) avt ON avt.id = " + t.Field("attribute_value_id")).
-		// GroupBy("avt.id").
-		// GroupBy(t.Field("id")).
 		LeftJoin(avT.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
 		LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id").
 		LeftJoin(avT.Name() + " vmv ON vm.member_id = vmv.id").
@@ -557,9 +545,6 @@ func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 
 func listSubjectMappingsSql() (string, []interface{}, error) {
 	t := Tables.SubjectMappings
-	// log.Fatal(subjectMappingSelect().
-	// 	From(t.Name()).
-	// 	ToSql())
 	return subjectMappingSelect().
 		From(t.Name()).
 		ToSql()

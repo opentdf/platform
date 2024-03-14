@@ -9,6 +9,8 @@ logger:
 #   user: postgres
 #   password: changeme
 services:
+  kas:
+    enabled: true
   policy:
     enabled: true
   entitlements:

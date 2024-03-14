@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-CREATE TABLE IF NOT EXISTS value_members
+CREATE TABLE IF NOT EXISTS attribute_value_members
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     value_id UUID NOT NULL REFERENCES attribute_values(id),
@@ -26,7 +26,7 @@ $$ language 'plpgsql';
 CREATE TRIGGER value_members_insert
     AFTER
         INSERT
-    ON value_members
+    ON attribute_value_members
     FOR EACH ROW
     EXECUTE PROCEDURE update_attribute_values_members();
 
@@ -47,7 +47,7 @@ $$ language 'plpgsql';
 CREATE TRIGGER value_members_delete
     AFTER
         DELETE
-    ON value_members
+    ON attribute_value_members
     FOR EACH ROW
     EXECUTE PROCEDURE delete_attribute_values_members();
 
@@ -58,9 +58,9 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'DELETE') THEN
         UPDATE attribute_values
-        SET members = array_remove(members, value_members.id)
-        FROM value_members
-        WHERE value_members.member_id = OLD.id;
+        SET members = array_remove(members, attribute_value_members.id)
+        FROM attribute_value_members
+        WHERE attribute_value_members.member_id = OLD.id;
     END IF;
     RETURN NULL;
 END
@@ -73,13 +73,13 @@ CREATE TRIGGER attribute_values_delete
     FOR EACH ROW
     EXECUTE PROCEDURE delete_attribute_values_members_on_attribute_value_delete();
 
--- trigger to update value_members when attribute_value is deleted
+-- trigger to update attribute_value_members when attribute_value is deleted
 CREATE OR REPLACE FUNCTION delete_value_members_on_attribute_value_delete()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'DELETE') THEN
-        DELETE FROM value_members
-        WHERE value_members.value_id = OLD.id OR value_members.member_id = OLD.id;
+        DELETE FROM attribute_value_members
+        WHERE attribute_value_members.value_id = OLD.id OR attribute_value_members.member_id = OLD.id;
     END IF;
     RETURN NULL;
 END
@@ -92,12 +92,12 @@ CREATE TRIGGER attribute_values_delete_value_members
     FOR EACH ROW
     EXECUTE PROCEDURE delete_value_members_on_attribute_value_delete();
 
--- trigger to update value_members when attribute_value is updated
+-- trigger to update attribute_value_members when attribute_value is updated
 CREATE OR REPLACE FUNCTION update_value_members_on_attribute_value_update()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'UPDATE') THEN
-        UPDATE value_members
+        UPDATE attribute_value_members
         SET value_id = NEW.id
         WHERE value_id = OLD.id;
     END IF;
@@ -117,5 +117,5 @@ CREATE TRIGGER attribute_values_update_value_members
 -- +goose Down
 
 -- +goose StatementBegin
-DROP TABLE IF EXISTS value_members;
+DROP TABLE IF EXISTS attribute_value_members;
 -- +goose StatementEnd

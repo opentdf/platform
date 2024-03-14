@@ -132,7 +132,7 @@ type FixtureData struct {
 	ValueMembers struct {
 		Metadata FixtureMetadata                   `yaml:"metadata"`
 		Data     map[string]FixtureDataValueMember `yaml:"data"`
-	} `yaml:"value_members"`
+	} `yaml:"attribute_value_members"`
 }
 
 func LoadFixtureData(file string) {
@@ -262,7 +262,7 @@ func (f *Fixtures) Provision() {
 		slog.Int64("namespaces", n),
 		slog.Int64("attributes", a),
 		slog.Int64("attribute_values", aV),
-		slog.Int64("value_members", vM),
+		slog.Int64("attribute_value_members", vM),
 		slog.Int64("subject_mappings", sM),
 		slog.Int64("subject_condition_set", sc),
 		slog.Int64("resource_mappings", rM),

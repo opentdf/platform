@@ -18,7 +18,7 @@ type PolicyDbClient struct {
 var (
 	TableAttributes                    = "attribute_definitions"
 	TableAttributeValues               = "attribute_values"
-	TableValueMembers                  = "value_members"
+	TableValueMembers                  = "attribute_value_members"
 	TableNamespaces                    = "attribute_namespaces"
 	TableAttrFqn                       = "attribute_fqns"
 	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"

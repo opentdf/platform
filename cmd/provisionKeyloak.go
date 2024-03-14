@@ -3,9 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/spf13/cobra"
-	"log/slog"
 )
 
 const (
@@ -86,6 +87,20 @@ var (
 
 			opentdfClientId := "opentdf"
 			opentdfSdkClientId := "opentdf-sdk"
+			protocolMappers := []gocloak.ProtocolMapperRepresentation{
+				{
+					Name:           gocloak.StringP("audience-mapper"),
+					Protocol:       gocloak.StringP("openid-connect"),
+					ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
+					Config: &map[string]string{
+						"included.client.audience": "http://localhost:9000",
+						"included.custom.audience": "custom_audience",
+						"access.token.claim":       "true",
+						"id.token.claim":           "true",
+					},
+				},
+			}
+
 			// Create OpenTDF Client
 			_, err = createClient(&kcConnectParams, gocloak.Client{
 				ClientID:                gocloak.StringP(opentdfClientId),
@@ -94,6 +109,7 @@ var (
 				ServiceAccountsEnabled:  gocloak.BoolP(true),
 				ClientAuthenticatorType: gocloak.StringP("client-secret"),
 				Secret:                  gocloak.StringP("secret"),
+				ProtocolMappers:         &protocolMappers,
 			})
 			if err != nil {
 				return err
@@ -107,6 +123,7 @@ var (
 				ServiceAccountsEnabled:  gocloak.BoolP(true),
 				ClientAuthenticatorType: gocloak.StringP("client-secret"),
 				Secret:                  gocloak.StringP("secret"),
+				ProtocolMappers:         &protocolMappers,
 			})
 			if err != nil {
 				return err

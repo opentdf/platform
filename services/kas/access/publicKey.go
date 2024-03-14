@@ -28,10 +28,16 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKe
 	var pem string
 	var err error
 	if algorithm == algorithmEc256 {
-		pem, err = exportCertificateAsPemStr(&p.CertificateEC)
+		if p.Session.EC == nil || p.Session.EC.Certificate == nil {
+			return nil, err404("not found")
+		}
+		pem, err = exportCertificateAsPemStr(p.Session.EC.Certificate)
 		slog.DebugContext(ctx, "Legacy EC Public Key Handler found", "cert", pem)
 	} else {
-		pem, err = exportCertificateAsPemStr(&p.Certificate)
+		if p.Session.RSA == nil || p.Session.RSA.Certificate == nil {
+			return nil, err404("not found")
+		}
+		pem, err = exportCertificateAsPemStr(p.Session.RSA.Certificate)
 		slog.DebugContext(ctx, "Legacy RSA CERT Handler found", "cert", pem)
 	}
 	if err != nil {
@@ -44,7 +50,10 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKe
 func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
 	algorithm := in.Algorithm
 	if algorithm == algorithmEc256 {
-		ecPublicKeyPem, err := exportEcPublicKeyAsPemStr(&p.PublicKeyEC)
+		if p.Session.EC == nil {
+			return nil, err404("not found")
+		}
+		ecPublicKeyPem, err := exportEcPublicKeyAsPemStr(p.Session.EC.PublicKey)
 		if err != nil {
 			slog.ErrorContext(ctx, "EC public key from PKCS11", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
@@ -53,8 +62,11 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 		return &kaspb.PublicKeyResponse{PublicKey: ecPublicKeyPem}, nil
 	}
 
+	if p.Session.RSA == nil {
+		return nil, err404("not found")
+	}
 	if in.Fmt == "jwk" {
-		rsaPublicKeyJwk, err := jwk.FromRaw(&p.PublicKeyRSA)
+		rsaPublicKeyJwk, err := jwk.FromRaw(p.Session.RSA.PublicKey)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to parse JWK", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
@@ -70,7 +82,7 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 	}
 
 	if in.Fmt == "pkcs8" {
-		certificatePem, err := exportCertificateAsPemStr(&p.Certificate)
+		certificatePem, err := exportCertificateAsPemStr(p.Session.RSA.Certificate)
 		if err != nil {
 			slog.ErrorContext(ctx, "RSA public key from PKCS11", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
@@ -79,7 +91,7 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 		return &kaspb.PublicKeyResponse{PublicKey: certificatePem}, nil
 	}
 
-	rsaPublicKeyPem, err := exportRsaPublicKeyAsPemStr(&p.PublicKeyRSA)
+	rsaPublicKeyPem, err := exportRsaPublicKeyAsPemStr(p.Session.RSA.PublicKey)
 	if err != nil {
 		slog.ErrorContext(ctx, "RSA public key export fail", "err", err)
 		return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))

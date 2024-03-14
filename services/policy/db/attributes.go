@@ -138,10 +138,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
 		valueSelect := "JSON_AGG(" +
 			"JSON_BUILD_OBJECT(" +
-			"'id', " + avt.Field("id") + ", " +
-			"'value', " + avt.Field("value") + "," +
-			"'members', " + avt.Field("members") + "," + // TODO: make sure we keep the same structure here to select all members
-			"'active', " + avt.Field("active")
+			"'id', avt.id," +
+			"'value', avt.value," +
+			"'members', avt.members," + // TODO: make sure we keep the same structure here to select all members
+			"'active', avt.active"
 
 		// include the subject mapping / subject condition set for each value
 		if opts.withOneValueByFqn != "" {
@@ -179,7 +179,13 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
 
 	if opts.withAttributeValues {
-		sb = sb.LeftJoin(avt.Name() + " ON " + avt.Field("attribute_definition_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin("(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+			"'id', vmv.id, " +
+			"'value', vmv.value, " +
+			"'active', vmv.active, " +
+			"'members', vmv.members || ARRAY[]::UUID[], " +
+			"'attribute', JSON_BUILD_OBJECT(" +
+			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id"))
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
@@ -214,7 +220,6 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"AND " + avt.Field("id") + " = " + fqnt.Field("value_id"),
 			)
 	}
-
 	g := []string{t.Field("id"), nt.Field("name")}
 
 	if opts.withFqn {

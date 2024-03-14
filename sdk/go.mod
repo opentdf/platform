@@ -13,6 +13,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.28.0
 	golang.org/x/oauth2 v0.16.0
 	google.golang.org/grpc v1.61.0
+	gotest.tools/v3 v3.5.0
 )
 
 replace github.com/opentdf/platform/protocol/go => ../protocol/go
@@ -41,6 +42,7 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.2 // indirect

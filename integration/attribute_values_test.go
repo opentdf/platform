@@ -192,7 +192,6 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), createdValue)
-	println(err.Error())
 	assert.ErrorIs(s.T(), err, db.ErrUniqueConstraintViolation)
 }
 

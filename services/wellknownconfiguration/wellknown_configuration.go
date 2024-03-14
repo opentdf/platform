@@ -28,7 +28,7 @@ func RegisterConfiguration(namespace string, config any) error {
 	if _, ok := wellKnownConfiguration[namespace]; ok {
 		return fmt.Errorf("namespace %s configuration already registered", namespace)
 	}
-	wellKnownConfiguration[namespace] = config.(interface{})
+	wellKnownConfiguration[namespace] = config
 	rwMutex.Unlock()
 	return nil
 }

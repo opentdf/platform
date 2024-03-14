@@ -38,7 +38,11 @@ func EntityResolution(ctx context.Context,
 		return nil, err
 	}
 	kcConfig := KeyCloakConfg{}
-	json.Unmarshal(jsonString, &kcConfig)
+	err = json.Unmarshal(jsonString, &kcConfig)
+	if err != nil {
+		return &authorization.IdpPluginResponse{},
+			status.Error(codes.Internal, services.ErrCreationFailed)
+	}
 	connector, err := getKCClient(kcConfig, ctx)
 	if err != nil {
 		return &authorization.IdpPluginResponse{},

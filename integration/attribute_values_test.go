@@ -187,6 +187,13 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 
 	assert.True(s.T(), len(got.Members) > 0)
 	equalMembers(s.T(), createdValue, got, true)
+
+	// test uniqueness
+	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), createdValue)
+	println(err.Error())
+	assert.ErrorIs(s.T(), err, db.ErrUniqueConstraintViolation)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {
@@ -200,7 +207,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails() {
-	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr2")
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
 			"name": "testing create with members",
@@ -219,7 +226,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails
 	assert.NotNil(s.T(), err)
 	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 
-	attrDef = s.f.GetAttributeKey("example.net/attr/attr2")
+	attrDef = s.f.GetAttributeKey("example.net/attr/attr3")
 	value.Members[0] = "not a uuid"
 	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
 	assert.Nil(s.T(), createdValue)

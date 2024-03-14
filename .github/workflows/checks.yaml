@@ -199,6 +199,7 @@ jobs:
         with:
           go-version: "1.21.8"
           cache: false
+      - run: make go.work
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: deps-changed
         with:
@@ -213,22 +214,22 @@ jobs:
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
       - name: check platform licenses
         if: steps.deps-changed.outputs.platform == 'true'
-        run: >-
+        run: >
           go-licenses check --disallowed_types=forbidden --include_tests  
-              --ignore github.com/opentdf/platform/sdk
-              --ignore github.com/opentdf/platform/protocol
-              .
+          --ignore github.com/opentdf/platform/sdk
+          --ignore github.com/opentdf/platform/protocol
+          .
       - name: check sdk licenses
         if: steps.deps-changed.outputs.sdk == 'true'
-        run: >-
-          go-licenses check --disallowed_types=forbidden --include_tests  
-              --ignore github.com/opentdf/platform/sdk
-              --ignore github.com/opentdf/platform/protocol
-              ./sdk
+        run: >
+          go-licenses check --disallowed_types=forbidden --include_tests
+          --ignore github.com/opentdf/platform/sdk  
+          --ignore github.com/opentdf/platform/protocol
+          ./sdk
       - name: check examples licenses
         if: steps.deps-changed.outputs.examples == 'true'
-        run: >-
+        run: >
           go-licenses check --disallowed_types=forbidden --include_tests  
-              --ignore github.com/opentdf/platform/sdk
-              --ignore github.com/opentdf/platform/protocol
-              ./examples
+          --ignore github.com/opentdf/platform/sdk
+          --ignore github.com/opentdf/platform/protocol
+          ./examples

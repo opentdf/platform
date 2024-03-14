@@ -112,7 +112,7 @@ jobs:
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 grpc.health.v1.Health.Check
-      - run: curl --show-error --fail --insecure localhost:8080/kas/v2/kas_public_key
+      - run: curl --show-error --fail --insecure localhost:9000/kas/v2/kas_public_key
 
   image:
     name: image build

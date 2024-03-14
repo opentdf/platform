@@ -52,13 +52,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 		Auth: auth.Config{
 			Enabled: false,
 		},
-		GRPC: server.GRPCConfig{
-			Port: 43482,
-		},
-		HTTP: server.HTTPConfig{
-			Enabled: true,
-			Port:    43481,
-		},
+		Port: 43481,
 	})
 	assert.NoError(t, err)
 

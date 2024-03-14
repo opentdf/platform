@@ -24,6 +24,7 @@ erDiagram
         uuid        id                      PK
         uuid        value_id                FK
         uuid        member_id               FK
+          compIdx comp_key UK "value_id + member_id"
     }
 
 ```

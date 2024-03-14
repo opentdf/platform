@@ -378,9 +378,9 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 
 	where := sq.Eq{}
 	if opts.state != "" && opts.state != StateAny {
-		where[t.Field("active")] = opts.state == StateActive
+		where["av.active"] = opts.state == StateActive
 	}
-	where[t.Field("attribute_definition_id")] = attribute_id
+	where["av.attribute_definition_id"] = attribute_id
 
 	return sb.
 		From(t.Name() + " av").

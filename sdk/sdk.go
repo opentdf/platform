@@ -123,7 +123,7 @@ func buildKASClient(c *config) (KASClient, error) {
 	)
 
 	if err != nil {
-		return KASClient{}, fmt.Errorf("error configuring IDP access: %w", err)
+		return KASClient{dialOptions: c.build()}, fmt.Errorf("error configuring IDP access: %w", err)
 	}
 
 	kasClient := KASClient{

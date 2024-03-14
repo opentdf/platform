@@ -93,9 +93,6 @@ func resourceMappingSelect() sq.SelectBuilder {
 		LeftJoin(at.Name() + " vmv ON vm.member_id = vmv.id").
 		GroupBy("av.id").
 		GroupBy(t.Field("id"))
-	// GroupBy(t.Field("id"), "av.id")
-	// LeftJoin(at.Name()+" ON "+at.Field("id")+" = "+t.Field("attribute_value_id")).
-	// GroupBy(t.Field("id"), at.Field("id"))
 }
 
 /*

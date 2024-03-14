@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -204,7 +203,6 @@ func subjectMappingHydrateItem(row pgx.Row) (*policy.SubjectMapping, error) {
 		slog.String("attributeValueJSON", string(attributeValueJSON)),
 	)
 	if err != nil {
-		log.Fatal("HERE")
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 

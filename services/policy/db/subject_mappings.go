@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -146,7 +147,12 @@ func subjectMappingSelect() sq.SelectBuilder {
 	t := Tables.SubjectMappings
 	avT := Tables.AttributeValues
 	scsT := Tables.SubjectConditionSet
-
+	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		"'id', vmv.id, " +
+		"'value', vmv.value, " +
+		"'active', vmv.active, " +
+		"'members', vmv.members || ARRAY[]::UUID[] " +
+		")) FILTER (WHERE vmv.id IS NOT NULL ), '[]')"
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("actions"),
@@ -157,15 +163,29 @@ func subjectMappingSelect() sq.SelectBuilder {
 			"'subject_sets', "+scsT.Field("condition")+
 			") AS subject_condition_set",
 		"JSON_BUILD_OBJECT("+
-			"'id', "+avT.Field("id")+", "+
-			"'value', "+avT.Field("value")+", "+
-			"'members', "+avT.Field("members")+", "+
-			"'active'", avT.Field("active")+
+			"'id', av.id,"+
+			"'value', av.value,"+
+			"'members', "+members+","+
+			"'active', av.active"+
 			") AS attribute_value",
 	).
-		LeftJoin(avT.Name() + " ON " + t.Field("attribute_value_id") + " = " + avT.Field("id")).
+		// LeftJoin(avT.Name() + " ON " + t.Field("attribute_value_id") + " = " + avT.Field("id")).
+		// GroupBy(t.Field("id")).
+		// GroupBy(avT.Field("id")).
+		// LeftJoin("(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		// 	"'id', vmv.id, " +
+		// 	"'value', vmv.value, " +
+		// 	"'active', vmv.active, " +
+		// 	"'members', vmv.members || ARRAY[]::UUID[], " +
+		// 	"'attribute', JSON_BUILD_OBJECT(" +
+		// 	"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avT.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avT.Name() + " vmv ON vm.member_id = vmv.id GROUP BY av.id) avt ON avt.id = " + t.Field("attribute_value_id")).
+		// GroupBy("avt.id").
+		// GroupBy(t.Field("id")).
+		LeftJoin(avT.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
+		LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id").
+		LeftJoin(avT.Name() + " vmv ON vm.member_id = vmv.id").
+		GroupBy("av.id").
 		GroupBy(t.Field("id")).
-		GroupBy(avT.Field("id")).
 		LeftJoin(scsT.Name() + " ON " + scsT.Field("id") + " = " + t.Field("subject_condition_set_id")).
 		GroupBy(scsT.Field("id"))
 }
@@ -196,6 +216,7 @@ func subjectMappingHydrateItem(row pgx.Row) (*policy.SubjectMapping, error) {
 		slog.String("attributeValueJSON", string(attributeValueJSON)),
 	)
 	if err != nil {
+		log.Fatal("HERE")
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -536,6 +557,9 @@ func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 
 func listSubjectMappingsSql() (string, []interface{}, error) {
 	t := Tables.SubjectMappings
+	// log.Fatal(subjectMappingSelect().
+	// 	From(t.Name()).
+	// 	ToSql())
 	return subjectMappingSelect().
 		From(t.Name()).
 		ToSql()

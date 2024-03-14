@@ -140,7 +140,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"JSON_BUILD_OBJECT(" +
 			"'id', avt.id," +
 			"'value', avt.value," +
-			"'members', avt.members," + // TODO: make sure we keep the same structure here to select all members
+			"'members', avt.members," +
 			"'active', avt.active"
 
 		// include the subject mapping / subject condition set for each value

@@ -192,7 +192,7 @@ func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 
 	conn, _ := grpc.DialContext(ctx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
-	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(oo.addCredentials))
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(oo.AddCredentials))
 
 	client := kas.NewAccessServiceClient(conn)
 

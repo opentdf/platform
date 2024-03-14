@@ -44,7 +44,7 @@ go-lint:
 	for m in $(MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
 
 proto-generate:
-	rm -rf sdkjava/src protocol/go/[a-fh-z]*
+	rm -rf sdkjava/src protocol/go/[a-fh-z]* docs/grpc docs/openapi
 	buf generate services
 	buf generate services --template buf.gen.grpc.docs.yaml
 	buf generate services --exclude-path $(EXCLUDE_JAVA) --template buf.gen.java.yaml

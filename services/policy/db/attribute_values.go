@@ -9,7 +9,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/internal/db"
-	"github.com/opentdf/platform/internal/set"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -206,23 +205,6 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	}
 	return rV, nil
 }
-
-// func getMemberSql(id string) (string, []interface{}, error) {
-// 	t := Tables.ValueMembers
-// 	fields := []string{
-// 		t.Field("id"),
-// 		t.Field("value_id"),
-// 		t.Field("member_id"),
-// 	}
-
-// 	sb := db.NewStatementBuilder().
-// 		Select(fields...).
-// 		From(t.Name())
-
-// 	return sb.
-// 		Where(sq.Eq{t.Field("id"): id}).
-// 		ToSql()
-// }
 
 func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
@@ -466,22 +448,35 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
-	prevMembersSet := set.NewSet()
+	prevMembersSet := map[string]bool{}
+
 	for _, member := range prev.Members {
-		prevMembersSet.Add(member.Id)
+		prevMembersSet[member.Id] = true
 	}
 
-	membersSet := set.NewSet()
+	membersSet := map[string]bool{}
 	for _, member := range r.Members {
-		membersSet.Add(member)
+		membersSet[member] = true
 	}
 
-	toRemove := prevMembersSet.Difference(membersSet).ToSlice()
-	toAdd := membersSet.Difference(prevMembersSet).ToSlice()
+	toRemove := map[string]bool{}
+	toAdd := map[string]bool{}
+
+	for member := range prevMembersSet {
+		if _, ok := membersSet[member]; !ok {
+			toRemove[member] = true
+		}
+	}
+
+	for member := range membersSet {
+		if _, ok := prevMembersSet[member]; !ok {
+			toAdd[member] = true
+		}
+	}
 
 	// Remove members
-	for _, member := range toRemove {
-		sql, args, err := removeMemberSql(r.Id, member.(string))
+	for member := range toRemove {
+		sql, args, err := removeMemberSql(r.Id, member)
 		if err != nil {
 			return nil, err
 		}
@@ -490,9 +485,8 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		}
 	}
 
-	// Add members
-	for _, member := range toAdd {
-		sql, args, err := addMemberSql(r.Id, member.(string))
+	for member := range toAdd {
+		sql, args, err := addMemberSql(r.Id, member)
 		if err != nil {
 			return nil, err
 		}
@@ -500,15 +494,6 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 			return nil, err
 		}
 	}
-
-	// var members []*policy.Value
-	// for _, member := range r.Members {
-	// 	attr, err := c.GetAttributeValue(ctx, member)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	members = append(members, attr)
-	// }
 
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: r.Id})

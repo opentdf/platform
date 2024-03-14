@@ -697,8 +697,6 @@ func runKas() (string, func(), *SDK) {
 	if clientID != "" && clientSecret != "" {
 		opts := make([]Option, 0)
 		opts = append(opts,
-			WithClientCredentials(clientID, clientSecret, []string{}),
-			WithTokenEndpoint("http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token"),
 			WithInsecureConn(),
 		)
 
@@ -707,7 +705,7 @@ func runKas() (string, func(), *SDK) {
 			panic(fmt.Sprintf("error creating SDK: %v", err))
 		}
 
-		return "grpc://localhost:9000", func() {}, sdk
+		return "http://localhost:9000", func() {}, sdk
 	}
 
 	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)

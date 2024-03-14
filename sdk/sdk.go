@@ -113,7 +113,7 @@ func buildKASClient(c *config) (KASClient, error) {
 	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
 	// any just return a KAS client that can only get public keys
 	if c.clientCredentials.ClientId == "" {
-		return KASClient{}, nil
+		return KASClient{dialOptions: c.build()}, nil
 	}
 
 	ts, err := NewIDPAccessTokenSource(
@@ -123,7 +123,7 @@ func buildKASClient(c *config) (KASClient, error) {
 	)
 
 	if err != nil {
-		return KASClient{}, fmt.Errorf("error configuring IDP access: %w", err)
+		return KASClient{dialOptions: c.build()}, fmt.Errorf("error configuring IDP access: %w", err)
 	}
 
 	kasClient := KASClient{

@@ -34,16 +34,16 @@ var (
 		"/.well-known/opentdf-configuration",
 	}
 	// only asymmetric algorithms and no 'none'
-	allowedSignatureAlgorithms = map[string]bool{
-		jwa.RS256.String(): true,
-		jwa.RS384.String(): true,
-		jwa.RS512.String(): true,
-		jwa.ES256.String(): true,
-		jwa.ES384.String(): true,
-		jwa.ES512.String(): true,
-		jwa.PS256.String(): true,
-		jwa.PS384.String(): true,
-		jwa.PS512.String(): true,
+	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{
+		jwa.RS256: true,
+		jwa.RS384: true,
+		jwa.RS512: true,
+		jwa.ES256: true,
+		jwa.ES384: true,
+		jwa.ES512: true,
+		jwa.PS256: true,
+		jwa.PS384: true,
+		jwa.PS512: true,
 	}
 )
 
@@ -236,7 +236,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 
 	cnf, ok := accessToken.Get("cnf")
 	if !ok {
-		return fmt.Errorf("did not get a `cnf` claim to verify the DPoP binding")
+		return fmt.Errorf("missing `cnf` claim in access token")
 	}
 
 	cnfDict, ok := cnf.(map[string]interface{})
@@ -264,32 +264,17 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 	}
 	sig := dpop.Signatures()[0]
 	protectedHeaders := sig.ProtectedHeaders()
-	if typ, ok := protectedHeaders.Get("typ"); !ok || typ != "dpop+jwt" {
-		return fmt.Errorf("invalid typ on DPoP JWT")
+	if protectedHeaders.Type() != "dpop+jwt" {
+		return fmt.Errorf("invalid typ on DPoP JWT: %v", protectedHeaders.Type())
 	}
 
-	alg, ok := protectedHeaders.Get("alg")
-	if !ok {
-		return fmt.Errorf("no `alg` specified in DPoP JWT")
+	if _, exists := allowedSignatureAlgorithms[protectedHeaders.Algorithm()]; !exists {
+		return fmt.Errorf("unsupported algorithm specified: %v", protectedHeaders.Algorithm())
 	}
 
-	algString, ok := alg.(string)
-	if !ok {
-		return fmt.Errorf("invalid `alg` field specified in DPoP JWT")
-	}
-
-	if _, exists := allowedSignatureAlgorithms[algString]; !exists {
-		return fmt.Errorf("unsupported algorithm specified: %v", algString)
-	}
-
-	keyI, ok := protectedHeaders.Get("jwk")
-	if !ok {
-		return fmt.Errorf("`jwk` not specified in DPoP JWT")
-	}
-
-	dpopKey, ok := keyI.(jwk.Key)
-	if !ok {
-		return fmt.Errorf("invalid key in `jwk` in DPoP JWT: %v", keyI)
+	dpopKey := protectedHeaders.JWK()
+	if dpopKey == nil {
+		return fmt.Errorf("JWK missing in DPoP JWT")
 	}
 
 	isPrivate, err := jwk.IsPrivateKey(dpopKey)
@@ -309,51 +294,46 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 	}
 
 	if base64.URLEncoding.EncodeToString(thumbprint) != jkt {
-		return fmt.Errorf("the thumbprint of the `jkt` from the DPoP JWT didn't match the `jkt` from the access token")
+		return fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token")
 	}
 
-	_, err = jws.Verify([]byte(dpopHeader), jws.WithKey(jwa.SignatureAlgorithm(algString), dpopKey))
+	// at this point we have the right key because its thumbprint matches the `jkt` claim
+	// in the validated access token
+	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey))
 
 	if err != nil {
 		slog.Error("error validating DPoP JWT", err)
 		return fmt.Errorf("failed to verify signature on DPoP JWT")
 	}
 
-	publicHeaders := sig.PublicHeaders()
-	iatI, ok := publicHeaders.Get("iat")
-	if !ok {
+	issuedAt := dpopToken.IssuedAt()
+	if issuedAt.IsZero() {
 		return fmt.Errorf("missing `iat` claim in the DPoP JWT")
 	}
 
-	iat, ok := iatI.(int64)
-	if !ok {
-		return fmt.Errorf("invalid `iat` in DPoP JWT: %v", iat)
-	}
-
-	issuedAt := time.Unix(iat, 0)
-	if time.Now().Add(time.Minute * 10).After(issuedAt) {
+	if issuedAt.Add(time.Minute * 60).Before(time.Now()) {
 		return fmt.Errorf("the DPoP JWT has expired")
 	}
 
-	htm, ok := publicHeaders.Get("htm")
+	htm, ok := dpopToken.Get("htm")
 	if !ok {
 		return fmt.Errorf("`htm` claim missing in DPoP JWT")
 	}
 
-	if htm != dpopInfo.path {
+	if htm != dpopInfo.method {
 		return fmt.Errorf("incorrect `htm` claim in DPoP JWT")
 	}
 
-	htu, ok := publicHeaders.Get("htu")
+	htu, ok := dpopToken.Get("htu")
 	if !ok {
 		return fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
 
-	if htu != dpopInfo.method {
+	if htu != dpopInfo.path {
 		return fmt.Errorf("incorrect `htu` claim in DPoP JWT")
 	}
 
-	ath, ok := publicHeaders.Get("ath")
+	ath, ok := dpopToken.Get("ath")
 	if !ok {
 		return fmt.Errorf("missing `ath` claim in DPoP JWT")
 	}

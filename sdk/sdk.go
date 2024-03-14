@@ -109,7 +109,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
-func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) //nolint:nilnil // not having credentials is not an error {
+func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) { //nolint:nilnil // not having credentials is not an error
 	if (c.clientCredentials.ClientId == "") != (c.clientCredentials.ClientAuth == nil) {
 		return nil,
 			errors.New("if specifying client credentials must specify both client id and authentication secret")

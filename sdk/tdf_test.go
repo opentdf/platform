@@ -692,8 +692,8 @@ func createFileName(buf []byte, filename string, size int64) {
 // in this case we return a GRPC rewrapper and authenticate against
 // keycloak
 func runKas() (string, func(), *SDK) {
-	clientID := os.Getenv("SDK_OIDC_CLIENT_ID")
-	clientSecret := os.Getenv("SDK_OIDC_CLIENT_SECRET")
+	clientID := "tdf-client"  //os.Getenv("SDK_OIDC_CLIENT_ID")
+	clientSecret := "123-456" // os.Getenv("SDK_OIDC_CLIENT_SECRET")
 	if clientID != "" && clientSecret != "" {
 		opts := make([]Option, 0)
 		opts = append(opts,

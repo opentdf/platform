@@ -21,15 +21,15 @@ const (
 	JWTExpirationMinutes = 10
 )
 
-func newOutgoingInterceptor(t AccessTokenSource) tokenAddingInterceptor {
-	return tokenAddingInterceptor{tokenSource: t}
+func NewTokenAddingInterceptor(t AccessTokenSource) TokenAddingInterceptor {
+	return TokenAddingInterceptor{tokenSource: t}
 }
 
-type tokenAddingInterceptor struct {
+type TokenAddingInterceptor struct {
 	tokenSource AccessTokenSource
 }
 
-func (i tokenAddingInterceptor) addCredentials(ctx context.Context,
+func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
 	method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	newMetadata := make([]string, 0)
 	accessToken, err := i.tokenSource.AccessToken()
@@ -55,7 +55,7 @@ func (i tokenAddingInterceptor) addCredentials(ctx context.Context,
 	return err
 }
 
-func (i tokenAddingInterceptor) getDPoPToken(path, accessToken string) (string, error) {
+func (i TokenAddingInterceptor) getDPoPToken(path, accessToken string) (string, error) {
 	tok, err := i.tokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
 		jtiBytes := make([]byte, JTILength)
 		_, err := rand.Read(jtiBytes)

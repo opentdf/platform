@@ -340,7 +340,7 @@ func (s *AuthSuite) Test_CheckValidDPoPToken_FromTokenInterceptor_Expect_No_Erro
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	tokenAddingInterceptor := tokenAddingInterceptor{
+	tokenAddingInterceptor := TokenAddingInterceptor{
 		tokenSource: s.accessTokenSource,
 	}
 
@@ -367,7 +367,7 @@ func (s *AuthSuite) Test_CheckDPoPTokenMissingCNF_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	tokenAddingInterceptor := tokenAddingInterceptor{
+	tokenAddingInterceptor := TokenAddingInterceptor{
 		tokenSource: s.accessTokenSource,
 	}
 
@@ -396,7 +396,7 @@ func (s *AuthSuite) Test_CheckDPoPTokenInvalidJKT_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	tokenAddingInterceptor := tokenAddingInterceptor{
+	tokenAddingInterceptor := TokenAddingInterceptor{
 		tokenSource: s.accessTokenSource,
 	}
 

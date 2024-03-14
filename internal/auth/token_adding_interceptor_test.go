@@ -47,7 +47,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		accessToken: "thisisafakeaccesstoken",
 	}
 	server := FakeAccessServiceServer{}
-	oo := newOutgoingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts)
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -117,7 +117,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 func Test_InvalidCredentials_StillSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil}
 	server := FakeAccessServiceServer{}
-	oo := newOutgoingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts)
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -178,7 +178,7 @@ func (*FakeTokenSource) RefreshAccessToken() error {
 }
 
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
-	f *FakeAccessServiceServer, oo tokenAddingInterceptor) (kas.AccessServiceClient, func()) {
+	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024
 	listener := bufconn.Listen(buffer)
 

@@ -412,7 +412,7 @@ func (s *AuthSuite) Test_CheckDPoPTokenInvalidJKT_Expect_Error() {
 	assert.Equal(s.T(), "the `jkt` from the DPoP JWT didn't match the thumbprint from the access token", err.Error())
 }
 
-type testCase struct {
+type dpopTestCase struct {
 	key              jwk.Key
 	actualSigningKey jwk.Key
 	alg              jwa.SignatureAlgorithm
@@ -465,7 +465,7 @@ func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 	}
 	otherKey.Set(jwk.AlgorithmKey, jwa.RS256)
 
-	testCases := []testCase{
+	testCases := []dpopTestCase{
 		{dpopPublic, dpopKey, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), ""},
 		{dpopPublic, dpopKey, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
 		{dpopKey, dpopKey, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
@@ -495,7 +495,7 @@ func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 	}
 }
 
-func makeDPoPToken(t *testing.T, accessToken string, tc testCase) string {
+func makeDPoPToken(t *testing.T, accessToken string, tc dpopTestCase) string {
 
 	jtiBytes := make([]byte, JTILength)
 	_, err := rand.Read(jtiBytes)

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/opentdf/platform/internal/security"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
@@ -43,20 +45,14 @@ type Config struct {
 	Auth                    auth.Config        `yaml:"auth"`
 	GRPC                    GRPCConfig         `yaml:"grpc"`
 	HSM                     security.HSMConfig `yaml:"hsm"`
-	HTTP                    HTTPConfig         `yaml:"http"`
 	TLS                     TLSConfig          `yaml:"tls"`
 	WellKnownConfigRegister func(namespace string, config any) error
+	Port                    int    `yaml:"port" default:"9000"`
+	Host                    string `yaml:"host,omitempty"`
 }
 
 type GRPCConfig struct {
-	Port              int  `yaml:"port" default:"9000"`
 	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
-}
-
-type HTTPConfig struct {
-	Enabled bool   `yaml:"enabled" default:"true"`
-	Port    int    `yaml:"port" default:"8080"`
-	Host    string `yaml:"host,omitempty"`
 }
 
 type TLSConfig struct {
@@ -66,13 +62,11 @@ type TLSConfig struct {
 }
 
 type OpenTDFServer struct {
-	Mux               *runtime.ServeMux
-	HTTPServer        *http.Server
-	GRPCServer        *grpc.Server
-	gRPCServerAddress string
-	GRPCInProcess     *inProcessServer
-	HSM               *security.HSMSession
-	WrappedServer     *http.Server
+	Mux           *runtime.ServeMux
+	HTTPServer    *http.Server
+	GRPCServer    *grpc.Server
+	GRPCInProcess *inProcessServer
+	HSM           *security.HSMSession
 }
 
 /*
@@ -169,32 +163,26 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		reflection.Register(grpcServer)
 	}
 
-	if config.HTTP.Enabled {
-		httpServer = &http.Server{
-			Addr:         fmt.Sprintf("%s:%d", config.HTTP.Host, config.HTTP.Port),
-			WriteTimeout: writeTimeoutSeconds * time.Second,
-			ReadTimeout:  readTimeoutSeconds * time.Second,
-			// We need to make cors configurable
-			Handler:   handler,
-			TLSConfig: tlsConfig,
-		}
+	// Combine grpc and http server
+	h2 := grpcHandlerFunc(grpcServer, handler)
+	if !config.TLS.Enabled {
+		h2 = h2c.NewHandler(h2, &http2.Server{})
 	}
 
-	server := &http.Server{
-		Addr:         ":9005",
+	httpServer = &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", config.Host, config.Port),
 		WriteTimeout: writeTimeoutSeconds * time.Second,
 		ReadTimeout:  readTimeoutSeconds * time.Second,
-		Handler:      grpcHandlerFunc(grpcServer, handler),
-		TLSConfig:    tlsConfig,
+		// We need to make cors configurable
+		Handler:   h2,
+		TLSConfig: tlsConfig,
 	}
 
 	o := OpenTDFServer{
-		Mux:               mux,
-		HTTPServer:        httpServer,
-		GRPCServer:        grpcServer,
-		gRPCServerAddress: fmt.Sprintf(":%d", config.GRPC.Port),
-		GRPCInProcess:     grpcInprocess,
-		WrappedServer:     server,
+		Mux:           mux,
+		HTTPServer:    httpServer,
+		GRPCServer:    grpcServer,
+		GRPCInProcess: grpcInprocess,
 	}
 
 	if config.HSM.Enabled {
@@ -209,7 +197,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 
 func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("http server", r.ProtoMajor, r.Header)
+		slog.Debug("grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
 		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
 			grpcServer.ServeHTTP(w, r)
 		} else {
@@ -219,31 +207,22 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 }
 
 func (s OpenTDFServer) Start() {
-	// // Start Grpc Server
-	// go s.startGrpcServer()
-	s.startHTTPServer()
+	// // Start Http Server
+	go s.startHTTPServer()
 	// Start In Process Grpc Server
 	go s.startInProcessGrpcServer()
 
-	// // Start Http Server
-	// if s.HTTPServer != nil {
-	// 	go s.startHTTPServer()
-	// }
 }
 
 func (s OpenTDFServer) Stop() {
-	if s.WrappedServer != nil {
-		slog.Info("shutting down http server")
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
-		defer cancel()
-		if err := s.WrappedServer.Shutdown(ctx); err != nil {
-			slog.Error("failed to shutdown http server", slog.String("error", err.Error()))
-			return
-		}
-	}
 
-	// slog.Info("shutting down grpc server")
-	// s.GRPCServer.GracefulStop()
+	slog.Info("shutting down http server")
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
+	defer cancel()
+	if err := s.HTTPServer.Shutdown(ctx); err != nil {
+		slog.Error("failed to shutdown http server", slog.String("error", err.Error()))
+		return
+	}
 
 	slog.Info("shutting down in process grpc server")
 	s.GRPCInProcess.srv.GracefulStop()
@@ -271,19 +250,6 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 	return conn
 }
 
-func (s OpenTDFServer) startGrpcServer() {
-	slog.Info("starting grpc server", "address", s.gRPCServerAddress)
-	listener, err := net.Listen("tcp", s.gRPCServerAddress)
-	if err != nil {
-		slog.Error("failed to create listener", slog.String("error", err.Error()))
-		panic(err)
-	}
-	if err := s.GRPCServer.Serve(listener); err != nil {
-		slog.Error("failed to serve grpc", slog.String("error", err.Error()))
-		panic(err)
-	}
-}
-
 func (s OpenTDFServer) startInProcessGrpcServer() {
 	slog.Info("starting in process grpc server")
 	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
@@ -295,20 +261,14 @@ func (s OpenTDFServer) startInProcessGrpcServer() {
 func (s OpenTDFServer) startHTTPServer() {
 	var err error
 
-	// if s.WrappedServer.TLSConfig != nil {
-	// 	slog.Info("starting https server", "address", s.WrappedServer.Addr)
-	// 	err = s.WrappedServer.ListenAndServeTLS("", "")
-	// } else {
-	// 	slog.Info("starting http server", "address", s.WrappedServer.Addr)
-	// 	err = s.WrappedServer.ListenAndServe()
-	// }
-
-	conn, err := net.Listen("tcp", fmt.Sprintf(":%d", 9005))
-	if err != nil {
-		panic(err)
+	if s.HTTPServer.TLSConfig != nil {
+		slog.Info("starting https server", "address", s.HTTPServer.Addr)
+		err = s.HTTPServer.ListenAndServeTLS("", "")
+	} else {
+		slog.Info("starting http server", "address", s.HTTPServer.Addr)
+		err = s.HTTPServer.ListenAndServe()
 	}
 
-	err = s.WrappedServer.Serve(tls.NewListener(conn, s.WrappedServer.TLSConfig))
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("failed to serve http", slog.String("error", err.Error()))
 		return

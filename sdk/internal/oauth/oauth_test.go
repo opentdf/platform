@@ -24,6 +24,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -32,10 +33,10 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	ctx := context.Background()
 
 	wiremock, wiremockUrl := setupWiremock(t, ctx)
-	defer func() { assert.NoError(t, wiremock.Terminate(ctx)) }()
+	defer func() { require.NoError(t, wiremock.Terminate(ctx)) }()
 
 	keycloak, idpEndpoint := setupKeycloak(t, wiremockUrl, ctx)
-	defer func() { assert.NoError(t, keycloak.Terminate(ctx)) }()
+	defer func() { require.NoError(t, keycloak.Terminate(ctx)) }()
 
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -44,9 +45,9 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	}
 
 	dpopJWK, err := jwk.FromRaw(dpopKey)
-	assert.NoError(t, err)
-	assert.NoError(t, dpopJWK.Set("use", "sig"))
-	assert.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
+	require.NoError(t, err)
+	require.NoError(t, dpopJWK.Set("use", "sig"))
+	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientCredentials := oauth.ClientCredentials{
 		ClientId:   "testclient",
@@ -77,9 +78,7 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 			hash, _ := pk.Thumbprint(crypto.SHA256)
 
 			expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
-			if expectedThumbprint != idpKeyFingerprint {
-				t.Fatalf("didn't get expected fingerprint [%s], got [%s]", expectedThumbprint, idpKeyFingerprint)
-			}
+			assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
 		}
 	} else {
 		t.Fatal("no cnf claim in token")
@@ -93,31 +92,30 @@ func TestClientSecretNoNonce(t *testing.T) {
 		t.Errorf("error generating dpop key: %v", err)
 	}
 
-	dpopJWK, _ := jwk.FromRaw(dpopKey)
-	dpopJWK.Set("use", "sig")
-	dpopJWK.Set("alg", jwa.RS256.String())
+	dpopJWK, err := jwk.FromRaw(dpopKey)
+	require.NoError(t, err)
+	require.NoError(t, dpopJWK.Set("use", "sig"))
+	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/token" {
-			t.Errorf("Expected to request '/token', got: %s", r.URL.Path)
-		}
-		r.ParseForm()
+		assert.Equal(t, "/token", r.URL.Path)
+		require.NoError(t, r.ParseForm())
 
 		validateBasicAuth(r, t)
 		extractDpopToken(r, t)
 
-		tok, _ := jwt.NewBuilder().
+		tok, err := jwt.NewBuilder().
 			Issuer("example.org/fake").
 			IssuedAt(time.Now()).
 			Build()
+		require.NoError(t, err)
 
 		responseBytes, err := json.Marshal(tok)
-		if err != nil {
-			t.Errorf("error writing response: %v", err)
-		}
+		require.NoError(t, err, "error writing response")
 
 		w.Header().Add("content-type", "application/json")
-		w.Write(responseBytes)
+		_, err = w.Write(responseBytes)
+		require.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -126,9 +124,7 @@ func TestClientSecretNoNonce(t *testing.T) {
 		ClientAuth: "thesecret",
 	}
 	_, err = oauth.GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
-	if err != nil {
-		t.Errorf("didn't get a token back from the IdP: %v", err)
-	}
+	require.NoError(t, err, "didn't get a token back from the IdP")
 }
 
 func TestClientSecretWithNonce(t *testing.T) {
@@ -138,27 +134,26 @@ func TestClientSecretWithNonce(t *testing.T) {
 		t.Errorf("error generating dpop key: %v", err)
 	}
 
-	dpopJWK, _ := jwk.FromRaw(dpopKey)
-	dpopJWK.Set("use", "sig")
-	dpopJWK.Set("alg", jwa.RS256.String())
+	dpopJWK, err := jwk.FromRaw(dpopKey)
+	require.NoError(t, err)
+	require.NoError(t, dpopJWK.Set("use", "sig"))
+	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	timesCalled := 0
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		timesCalled += 1
-		if r.URL.Path != "/token" {
-			t.Errorf("Expected to request '/token', got: %s", r.URL.Path)
-		}
-		r.ParseForm()
+		assert.Equal(t, "/token", r.URL.Path, "surprise http request to mock oauth service")
+		err := r.ParseForm()
+		require.NoError(t, err, "error parsing oauth request")
 
 		validateBasicAuth(r, t)
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
 			w.WriteHeader(400)
-			if _, err := w.Write([]byte{}); err != nil {
-				t.Errorf("error writing response: %v", err)
-			}
+			_, err := w.Write([]byte{})
+			require.NoError(t, err, "error writing response")
 			return
 		} else if timesCalled > 2 {
 			t.Logf("made more than two calls to the server: %d", timesCalled)
@@ -187,7 +182,9 @@ func TestClientSecretWithNonce(t *testing.T) {
 		}
 
 		w.Header().Add("content-type", "application/json")
-		w.Write(responseBytes)
+		l, err := w.Write(responseBytes)
+		assert.Equal(t, len(responseBytes), l)
+		require.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -204,24 +201,20 @@ func TestClientSecretWithNonce(t *testing.T) {
 func TestSignedJWTWithNonce(t *testing.T) {
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		t.Errorf("error generating dpop key: %v", err)
-	}
-	dpopJWK, _ := jwk.FromRaw(dpopKey)
-	dpopJWK.Set("use", "sig")
-	dpopJWK.Set("alg", jwa.RS256.String())
+	require.NoError(t, err, "error generating dpop key")
+	dpopJWK, err := jwk.FromRaw(dpopKey)
+	require.NoError(t, err)
+	require.NoError(t, dpopJWK.Set("use", "sig"))
+	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientAuthKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		t.Errorf("error generating dpop key: %v", err)
-	}
-	clientAuthJWK, _ := jwk.FromRaw(clientAuthKey)
-	clientAuthJWK.Set("use", "sig")
-	clientAuthJWK.Set("alg", jwa.RS256.String())
+	require.NoError(t, err, "error generating clientAuth key")
+	clientAuthJWK, err := jwk.FromRaw(clientAuthKey)
+	require.NoError(t, err, "error constructing raw JWK")
+	require.NoError(t, clientAuthJWK.Set("use", "sig"))
+	require.NoError(t, clientAuthJWK.Set("alg", jwa.RS256.String()))
 	clientPublicKey, err := clientAuthJWK.PublicKey()
-	if err != nil {
-		t.Fatalf("error getting public JWK from client auth JWK: %v", err)
-	}
+	require.NoError(t, err, "error getting public JWK from client auth JWK [%v]", clientAuthJWK)
 
 	timesCalled := 0
 
@@ -236,7 +229,7 @@ func TestSignedJWTWithNonce(t *testing.T) {
 		if r.URL.Path != "/token" {
 			t.Errorf("Expected to request '/token', got: %s", r.URL.Path)
 		}
-		r.ParseForm()
+		require.NoError(t, r.ParseForm())
 
 		validateClientAssertionAuth(r, t, getUrl, "theclient", clientPublicKey)
 
@@ -274,7 +267,9 @@ func TestSignedJWTWithNonce(t *testing.T) {
 		}
 
 		w.Header().Add("content-type", "application/json")
-		w.Write(responseBytes)
+		l, err := w.Write(responseBytes)
+		assert.Equal(t, len(responseBytes), l)
+		require.NoError(t, err)
 	}))
 	defer server.Close()
 

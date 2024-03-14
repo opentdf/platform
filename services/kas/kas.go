@@ -49,7 +49,7 @@ func (s *KasService) initProvider() error {
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
-		Namespace:   "policy",
+		Namespace:   "kas",
 		ServiceDesc: &kaspb.AccessService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			k := KasService{o: srp.OTDF}

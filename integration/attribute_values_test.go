@@ -165,7 +165,14 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	assert.Equal(s.T(), createdValue.Id, got.Id)
 	assert.Equal(s.T(), createdValue.Value, got.Value)
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
-	assert.EqualValues(s.T(), createdValue.Members, got.Members)
+	assert.Equal(s.T(), len(createdValue.Members), len(got.Members))
+	assert.True(s.T(), len(got.Members) > 0)
+	for idx, member := range got.Members {
+		assert.Equal(s.T(), member.Id, createdValue.Members[idx].Id)
+		assert.Equal(s.T(), member.Value, createdValue.Members[idx].Value)
+		assert.Equal(s.T(), member.Fqn, createdValue.Members[idx].Fqn)
+		assert.Equal(s.T(), member.Active.Value, createdValue.Members[idx].Active.Value)
+	}
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {

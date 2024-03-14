@@ -40,7 +40,7 @@ services:
 server:
   auth:
     enabled: false
-    audience: "opentdf"
+    audience: "http://localhost:9000"
     issuer: http://localhost:8888/auth/realms/opentdf
     clients:
       - "opentdf"

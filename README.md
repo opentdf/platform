@@ -147,6 +147,43 @@ For convenience, the `make pre-build` script checks if you have the necessary de
 
 ## Services
 
+### Key Access Service (KAS)
+
+A KAS controls access to TDF protected content.
+
+#### Configuration
+
+To enable KAS, you must have a working `PKCS #11` library on your system.
+For development, we use [the SoftHSM library](https://www.softhsm.org/),
+which presents a `PKCS #11` interface to on CPU cryptography libraries.
+
+```
+export OPENTDF_SERVER_HSM_PIN=12345
+export OPENTDF_SERVER_HSM_MODULEPATH=/lib/softhsm/libsofthsm2.so
+export OPENTDF_SERVER_HSM_KEYS_EC_LABEL=kas-ec
+export OPENTDF_SERVER_HSM_KEYS_RSA_LABEL=kas-rsa
+
+pkcs11-tool --module $PKCS11_MODULE_PATH \
+            --login --pin ${OPENTDF_SERVER_HSM_PIN} \
+            --write-object kas-private.pem --type privkey \
+            --label kas-rsa
+pkcs11-tool --module $PKCS11_MODULE_PATH \
+            --login --pin ${OPENTDF_SERVER_HSM_PIN} \
+            --write-object kas-cert.pem --type cert \
+            --label kas-rsa
+
+pkcs11-tool --module $PKCS11_MODULE_PATH \
+            --login --pin ${OPENTDF_SERVER_HSM_PIN} \
+            --write-object ec-private.pem --type privkey \
+            --label kas-ec
+pkcs11-tool --module $PKCS11_MODULE_PATH \
+            --login --pin ${OPENTDF_SERVER_HSM_PIN} \
+            --write-object ec-cert.pem --type cert \
+            --label kas-ec
+```
+
+To see how to generate key pairs that KAS can use, review the [the temp keys init script](.github/scripts/hsm-init-temporary-keys.sh).
+
 ### Policy
 
 The policy service is responsible for managing policy configurations. It provides a gRPC API for

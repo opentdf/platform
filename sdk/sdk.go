@@ -56,12 +56,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// once we change KAS to use standard DPOP we can put this all in the `build()` method
 	dialOptions := append([]grpc.DialOption{}, cfg.build()...)
 	accessTokenSource, err := buildIDPTokenSource(cfg)
-
-	if err == nil {
+	if err != nil {
+		return nil, err
+	}
+	if accessTokenSource != nil {
 		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
-	} else {
-		accessTokenSource = nil
 	}
 
 	var unwrapper Unwrapper
@@ -109,7 +109,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
-func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) {
+func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) //nolint:nilnil // not having credentials is not an error {
 	if (c.clientCredentials.ClientId == "") != (c.clientCredentials.ClientAuth == nil) {
 		return nil,
 			errors.New("if specifying client credentials must specify both client id and authentication secret")

@@ -18,6 +18,7 @@ type PolicyDbClient struct {
 var (
 	TableAttributes                    = "attribute_definitions"
 	TableAttributeValues               = "attribute_values"
+	TableValueMembers                  = "attribute_value_members"
 	TableNamespaces                    = "attribute_namespaces"
 	TableAttrFqn                       = "attribute_fqns"
 	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"
@@ -30,6 +31,7 @@ var (
 var Tables struct {
 	Attributes                    db.Table
 	AttributeValues               db.Table
+	ValueMembers                  db.Table
 	Namespaces                    db.Table
 	AttrFqn                       db.Table
 	AttributeKeyAccessGrants      db.Table
@@ -42,6 +44,7 @@ var Tables struct {
 func NewClient(c db.Client) *PolicyDbClient {
 	Tables.Attributes = db.NewTable(TableAttributes)
 	Tables.AttributeValues = db.NewTable(TableAttributeValues)
+	Tables.ValueMembers = db.NewTable(TableValueMembers)
 	Tables.Namespaces = db.NewTable(TableNamespaces)
 	Tables.AttrFqn = db.NewTable(TableAttrFqn)
 	Tables.AttributeKeyAccessGrants = db.NewTable(TableAttributeKeyAccessGrants)

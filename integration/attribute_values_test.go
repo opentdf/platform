@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
@@ -141,6 +142,12 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool) {
 	m1 := v1.Members
 	m2 := v2.Members
+	sort.Slice(m1, func(x, y int) bool {
+		return m1[x].Id < m1[y].Id
+	})
+	sort.Slice(m2, func(x, y int) bool {
+		return m2[x].Id < m2[y].Id
+	})
 	for idx := range m1 {
 		assert.Equal(t, m1[idx].Id, m2[idx].Id)
 		assert.Equal(t, m1[idx].Value, m2[idx].Value)

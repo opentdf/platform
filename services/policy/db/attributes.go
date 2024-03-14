@@ -340,7 +340,6 @@ func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		withAttributeValues: true,
 	}
 	sql, args, err := getAttributeSql(id, opts)
-	fmt.Println("\nget attribute sql: ", sql)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -34,16 +35,19 @@ func attributesValuesProtojson(valuesJson []byte) ([]*policy.Value, error) {
 		raw    []json.RawMessage
 		values []*policy.Value
 	)
+
 	if err := json.Unmarshal(valuesJson, &raw); err != nil {
 		return nil, err
 	}
 
 	for _, r := range raw {
-		value := policy.Value{}
-		if err := protojson.Unmarshal(r, &value); err != nil {
+		value := &policy.Value{}
+		err := protojson.Unmarshal(r, value)
+		if err != nil {
+			fmt.Println("error unmarshaling a value: ", err, string(r))
 			return nil, err
 		}
-		values = append(values, &value)
+		values = append(values, value)
 	}
 	return values, nil
 }
@@ -82,10 +86,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
 		valueSelect := "JSON_AGG(" +
 			"JSON_BUILD_OBJECT(" +
-			"'id', " + avt.Field("id") + ", " +
-			"'value', " + avt.Field("value") + "," +
-			"'members', " + avt.Field("members") + "," +
-			"'active', " + avt.Field("active")
+			"'id', avt.id," +
+			"'value', avt.value," +
+			"'members', avt.members," +
+			"'active', avt.active"
 
 		// include the subject mapping / subject condition set for each value
 		if opts.withOneValueByFqn != "" {
@@ -123,7 +127,13 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
 
 	if opts.withAttributeValues {
-		sb = sb.LeftJoin(avt.Name() + " ON " + avt.Field("attribute_definition_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin("(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+			"'id', vmv.id, " +
+			"'value', vmv.value, " +
+			"'active', vmv.active, " +
+			"'members', vmv.members || ARRAY[]::UUID[], " +
+			"'attribute', JSON_BUILD_OBJECT(" +
+			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id"))
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
@@ -154,11 +164,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
 				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
 				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
-				") AS val_sm_fqn_join ON " + avt.Field("id") + " = val_sm_fqn_join.av_id " +
-				"AND " + avt.Field("id") + " = " + fqnt.Field("value_id"),
+				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
+				"AND " + "avt.id" + " = " + fqnt.Field("value_id"),
 			)
 	}
-
 	g := []string{t.Field("id"), nt.Field("name")}
 
 	if opts.withFqn {
@@ -209,7 +218,6 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 			return nil, err
 		}
 	}
-
 	var v []*policy.Value
 	if valuesJson != nil {
 		v, err = attributesValuesProtojson(valuesJson)
@@ -328,7 +336,8 @@ func getAttributeSql(id string, opts attributesSelectOptions) (string, []interfa
 
 func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
 	opts := attributesSelectOptions{
-		withFqn: true,
+		withFqn:             true,
+		withAttributeValues: true,
 	}
 	sql, args, err := getAttributeSql(id, opts)
 	row, err := c.QueryRow(ctx, sql, args, err)

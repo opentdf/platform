@@ -140,10 +140,10 @@ attribute_values:
       attribute_definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
       value: value2
       members:
-        # example.com/attr/attr2/value/value1
-        - 0fd363db-27b1-4210-b77b-8c82fe044d41
-        # example.net/attr/attr1/value/value1
-        - 532e5957-28f7-466d-91e2-493e9431cd83
+        # pivots value: example.com/attr/attr2/value/value1
+        - bf461e97-a918-4aa5-83ad-9bb768a58d12
+        # pivots value: example.net/attr/attr1/value/value1
+        - ddd9c539-2a2b-47ba-aad3-95b54dd022ef
       active: true
 
     example.com/attr/attr2/value/value1:
@@ -187,6 +187,22 @@ attribute_value_key_access_servers:
   - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
     key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
 
+attribute_value_members:
+  metadata:
+    table_name: attribute_value_members
+    columns:
+      - id
+      - value_id
+      - member_id
+  data:
+    member1:
+      id: bf461e97-a918-4aa5-83ad-9bb768a58d12
+      value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      member_id: 0fd363db-27b1-4210-b77b-8c82fe044d41
+    member2:
+      id: ddd9c539-2a2b-47ba-aad3-95b54dd022ef
+      value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      member_id: 532e5957-28f7-466d-91e2-493e9431cd83
 ##
 # Subject Mappings -> 1 Group of Subject Condition Sets
 ##
@@ -386,6 +402,11 @@ resource_mappings:
       attribute_value_id: 04bd2657-de10-46bc-a88f-5d687de4816b
       terms:
         - helloworld
+    resource_mapping_to_attribute_value4:
+      id: f99d1c97-ad8a-40c8-8148-6539764e2743
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      terms:
+        - with_members
 
 ##
 # KAS Registry (key access server registry)

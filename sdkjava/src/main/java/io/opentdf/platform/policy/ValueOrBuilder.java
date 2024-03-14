@@ -60,18 +60,24 @@ public interface ValueOrBuilder extends
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 4 [json_name = "members"];</code>
-   * @return A list containing the members.
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
    */
-  java.util.List<java.lang.String>
+  java.util.List<io.opentdf.platform.policy.Value> 
       getMembersList();
   /**
    * <pre>
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 4 [json_name = "members"];</code>
-   * @return The count of members.
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+   */
+  io.opentdf.platform.policy.Value getMembers(int index);
+  /**
+   * <pre>
+   * list of attribute values that this value is related to (attribute group)
+   * </pre>
+   *
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
    */
   int getMembersCount();
   /**
@@ -79,22 +85,19 @@ public interface ValueOrBuilder extends
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 4 [json_name = "members"];</code>
-   * @param index The index of the element to return.
-   * @return The members at the given index.
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
    */
-  java.lang.String getMembers(int index);
+  java.util.List<? extends io.opentdf.platform.policy.ValueOrBuilder> 
+      getMembersOrBuilderList();
   /**
    * <pre>
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 4 [json_name = "members"];</code>
-   * @param index The index of the value to return.
-   * @return The bytes of the members at the given index.
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
    */
-  com.google.protobuf.ByteString
-      getMembersBytes(int index);
+  io.opentdf.platform.policy.ValueOrBuilder getMembersOrBuilder(
+      int index);
 
   /**
    * <pre>

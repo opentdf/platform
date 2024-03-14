@@ -29,44 +29,6 @@ type attributeValueSelectOptions struct {
 	// withAttributeNamespace       bool
 }
 
-// func getMembersFromStringArray(c PolicyDbClient, members []string) ([]*policy.Value, error) {
-// 	// Hydrate members
-// 	hydratedMemberIds := map[string]bool{}
-// 	var hydratedMembers []*policy.Value
-
-// 	for _, member := range members {
-// 		var (
-// 			vm_id     string
-// 			value_id  string
-// 			member_id string
-// 		)
-
-// 		// Get member value from db
-// 		sql, args, err := getMemberSql(member)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		if r, err := c.QueryRow(context.TODO(), sql, args, err); err != nil {
-// 			return nil, err
-// 		} else if err := r.Scan(&vm_id, &value_id, &member_id); err != nil {
-// 			return nil, db.WrapIfKnownInvalidQueryErr(err)
-// 		}
-// 		attr, err := c.GetAttributeValue(context.TODO(), member_id)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		if hydratedMemberIds[member_id] {
-// 			slog.Info("attr val member may be duplicated", slog.String("member_id", member_id))
-// 			continue
-// 		}
-
-// 		hydratedMemberIds[member_id] = true
-// 		hydratedMembers = append(hydratedMembers, attr)
-// 	}
-// 	return hydratedMembers, nil
-// }
-
 func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*policy.Value, error) {
 	var (
 		id           string

@@ -36,16 +36,8 @@ func attributesValuesProtojson(valuesJson []byte) ([]*policy.Value, error) {
 		values []*policy.Value
 	)
 
-	if valuesJson == nil {
-		return values, nil
-	}
-
 	if err := json.Unmarshal(valuesJson, &raw); err != nil {
 		return nil, err
-	}
-
-	if len(raw) == 0 {
-		return values, nil
 	}
 
 	for _, r := range raw {

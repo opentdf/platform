@@ -138,7 +138,18 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	assert.Equal(s.T(), len(createdValue.Members), len(got.Members))
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
 }
-
+func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool) {
+	m1 := v1.Members
+	m2 := v2.Members
+	for idx := range m1 {
+		assert.Equal(t, m1[idx].Id, m2[idx].Id)
+		assert.Equal(t, m1[idx].Value, m2[idx].Value)
+		if withFqn {
+			assert.Equal(t, m1[idx].Fqn, m2[idx].Fqn)
+		}
+		assert.Equal(t, m1[idx].Active.Value, m2[idx].Active.Value)
+	}
+}
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{
@@ -166,13 +177,9 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	assert.Equal(s.T(), createdValue.Value, got.Value)
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
 	assert.Equal(s.T(), len(createdValue.Members), len(got.Members))
+
 	assert.True(s.T(), len(got.Members) > 0)
-	for idx, member := range got.Members {
-		assert.Equal(s.T(), member.Id, createdValue.Members[idx].Id)
-		assert.Equal(s.T(), member.Value, createdValue.Members[idx].Value)
-		assert.Equal(s.T(), member.Fqn, createdValue.Members[idx].Fqn)
-		assert.Equal(s.T(), member.Active.Value, createdValue.Members[idx].Active.Value)
-	}
+	equalMembers(s.T(), createdValue, got, true)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {

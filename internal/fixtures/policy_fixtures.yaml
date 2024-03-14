@@ -402,6 +402,11 @@ resource_mappings:
       attribute_value_id: 04bd2657-de10-46bc-a88f-5d687de4816b
       terms:
         - helloworld
+    resource_mapping_to_attribute_value4:
+      id: f99d1c97-ad8a-40c8-8148-6539764e2743
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      terms:
+        - with_members
 
 ##
 # KAS Registry (key access server registry)

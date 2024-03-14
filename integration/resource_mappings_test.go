@@ -43,6 +43,7 @@ func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureD
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value1"),
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value2"),
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3"),
+		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value4"),
 	}
 }
 
@@ -115,13 +116,23 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 	// make sure we can get all fixtures
 	testData := s.getResourceMappingFixtures()
-	for _, testMapping := range testData {
+	testedMembers := false
+	for idx, testMapping := range testData {
 		mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, testMapping.Id)
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), mapping)
 		assert.Equal(s.T(), testMapping.Id, mapping.Id)
 		assert.Equal(s.T(), testMapping.AttributeValueId, mapping.AttributeValue.Id)
 		assert.Equal(s.T(), testMapping.Terms, mapping.Terms)
+		av, err := s.db.PolicyClient.GetAttributeValue(s.ctx, testMapping.AttributeValueId)
+		assert.Nil(s.T(), err)
+		if len(av.Members) > 0 {
+			testedMembers = true
+		}
+		if idx == len(testData)-1 {
+			assert.True(s.T(), testedMembers, "expected to test at least one attribute value member")
+		}
+		equalMembers(s.T(), av, mapping.AttributeValue, false)
 	}
 }
 

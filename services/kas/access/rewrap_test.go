@@ -2,13 +2,13 @@ package access
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"github.com/opentdf/platform/internal/security"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -17,7 +17,6 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/services/kas/p11"
 	"github.com/opentdf/platform/services/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -484,12 +483,7 @@ func TestHandlerAuthFailure0(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: rsa.PublicKey{},
-		PublicKeyEC:  ecdsa.PublicKey{},
-		Certificate:  x509.Certificate{},
-
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
 	}
 
@@ -505,12 +499,7 @@ func TestHandlerAuthFailure1(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: rsa.PublicKey{},
-		PublicKeyEC:  ecdsa.PublicKey{},
-		Certificate:  x509.Certificate{},
-
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
 	}
 
@@ -530,12 +519,7 @@ func TestHandlerAuthFailure2(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: rsa.PublicKey{},
-		PublicKeyEC:  ecdsa.PublicKey{},
-		Certificate:  x509.Certificate{},
-
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
 	}
 

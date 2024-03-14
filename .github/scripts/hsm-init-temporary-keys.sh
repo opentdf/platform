@@ -18,5 +18,6 @@ openssl ecparam -name prime256v1 >ecparams.tmp
 openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-ec-private.pem -out kas-ec-cert.pem -days 365
 pkcs11-tool --module $PKCS11_MODULE_PATH --login --pin 12345 --write-object kas-private.pem --type privkey --label development-rsa-kas
 pkcs11-tool --module $PKCS11_MODULE_PATH --login --pin 12345 --write-object kas-cert.pem --type cert --label development-rsa-kas
-pkcs11-tool --module $PKCS11_MODULE_PATH --login --pin 12345 --write-object kas-ec-private.pem --type privkey --label development-ec-kas
+# https://manpages.ubuntu.com/manpages/jammy/man1/pkcs11-tool.1.html --usage-derive
+pkcs11-tool --module $PKCS11_MODULE_PATH --login --pin 12345 --write-object kas-ec-private.pem --type privkey --label development-ec-kas --usage-derive
 pkcs11-tool --module $PKCS11_MODULE_PATH --login --pin 12345 --write-object kas-ec-cert.pem --type cert --label development-ec-kas

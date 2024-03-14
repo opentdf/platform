@@ -47,6 +47,16 @@ server:
   grpc:
     port: 9000
     reflectionEnabled: true # Default is false
+  hsm:
+    enabled: true
+    # As configured by hsm-init-temporary-keys.sh
+    pin: "12345"
+    slotlabel: "dev-token"
+    keys:
+      rsa:
+        label: development-rsa-kas
+      ec:
+        label: development-ec-kas
   http:
     port: 8080
 opa:

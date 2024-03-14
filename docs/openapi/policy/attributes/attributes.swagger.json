@@ -1050,7 +1050,8 @@
         "members": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "$ref": "#/definitions/policyValue"
           },
           "title": "list of attribute values that this value is related to (attribute group)"
         },

@@ -67,7 +67,7 @@ message Value {
   string value = 3;
 
   // list of attribute values that this value is related to (attribute group)
-  repeated string members = 4;
+  repeated Value members = 4;
 
   // list of key access servers
   repeated kasregistry.KeyAccessServer grants = 5;

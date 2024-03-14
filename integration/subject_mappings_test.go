@@ -346,7 +346,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentSubjectCondit
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
-	fixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
+	fixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
 
 	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, fixture.Id)
 	assert.Nil(s.T(), err)
@@ -367,6 +367,12 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 			assert.Equal(s.T(), "custom:\""+fixture.Actions[i].Custom+"\"", a.String())
 		}
 	}
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, fixture.AttributeValueId)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), got)
+	assert.Equal(s.T(), fixture.AttributeValueId, got.Id)
+	assert.True(s.T(), len(got.Members) > 0)
+	equalMembers(s.T(), got, sm.AttributeValue, false)
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectMapping_NonExistentId_Fails() {

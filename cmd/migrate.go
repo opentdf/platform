@@ -31,7 +31,6 @@ var (
 			fmt.Print("migration down applied successfully")
 		},
 	}
-
 	migrateUpCmd = &cobra.Command{
 		Use:   "up",
 		Short: "Run database migrations up to the latest version",

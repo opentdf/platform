@@ -19,18 +19,6 @@ type KasService struct {
 	p *access.Provider
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace:   "policy",
-		ServiceDesc: &kaspb.AccessService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &KasService{o: srp.OTDF}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				return kaspb.RegisterAccessServiceHandlerServer(ctx, mux, server.(kaspb.AccessServiceServer))
-			}
-		},
-	}
-}
-
 func (s *KasService) initProvider() error {
 	if s.p != nil {
 		slog.Info("KAS already initialized")
@@ -59,18 +47,34 @@ func (s *KasService) initProvider() error {
 	return nil
 }
 
+func NewRegistration() serviceregistry.Registration {
+	return serviceregistry.Registration{
+		Namespace:   "policy",
+		ServiceDesc: &kaspb.AccessService_ServiceDesc,
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			k := KasService{o: srp.OTDF}
+			err := k.initProvider()
+			if err != nil {
+				panic(err)
+			}
+			return &k, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+				kas, ok := server.(kaspb.AccessServiceServer)
+				if !ok {
+					panic("invalid kas server object")
+				}
+				return kaspb.RegisterAccessServiceHandlerServer(ctx, mux, kas)
+			}
+		},
+	}
+}
+
 func (s *KasService) Info(ctx context.Context, req *kaspb.InfoRequest) (*kaspb.InfoResponse, error) {
-	err := s.initProvider()
 	return &kaspb.InfoResponse{
 		Version: "1.0.0",
-	}, err
+	}, nil
 }
 
 func (s *KasService) PublicKey(ctx context.Context, req *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
-	err := s.initProvider()
-	if err != nil {
-		return nil, err
-	}
 	resp, err := s.p.PublicKey(ctx, &kaspb.PublicKeyRequest{})
 	if err != nil {
 		return nil, err
@@ -81,10 +85,6 @@ func (s *KasService) PublicKey(ctx context.Context, req *kaspb.PublicKeyRequest)
 }
 
 func (s KasService) Rewrap(ctx context.Context, req *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
-	err := s.initProvider()
-	if err != nil {
-		return nil, err
-	}
 	resp, err := s.p.Rewrap(ctx, &kaspb.RewrapRequest{})
 	if err != nil {
 		return nil, err

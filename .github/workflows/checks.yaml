@@ -167,10 +167,11 @@ jobs:
           mvn -f sdkjava/pom.xml clean install
   ci:
     needs:
-      - go
-      - integration
-      - image
       - buflint
+      - go
+      - image
+      - integration
+      - javasdk
       - pr
     runs-on: ubuntu-latest
     if: always()

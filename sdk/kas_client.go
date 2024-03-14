@@ -82,7 +82,7 @@ func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 		}
 	}
 
-	key, err := k.accessTokenSource.DecryptWithDPoPKey(response.EntityWrappedKey)
+	key, err := k.accessTokenSource.DecryptWithDPoPKey(response.GetEntityWrappedKey())
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}

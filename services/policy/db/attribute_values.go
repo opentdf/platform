@@ -91,21 +91,14 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		fields = append(fields, &fqn)
 	}
 	if err := row.Scan(fields...); err != nil {
-		// fmt.Println("error scanning row: ", err)
-		println("GOT HERE")
-		// return nil, err
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-		// members = make([]*policy.Value, 0)
 	} else {
 		fmt.Println("no error!")
 		if membersJson != nil {
-			fmt.Println("membersJson: ", string(membersJson))
 			members, err = attributesValuesProtojson(membersJson)
 			if err != nil {
-				fmt.Println("error unmarshalling members: ", err)
 				return nil, err
 			}
-			fmt.Println("members: ", members)
 		}
 	}
 
@@ -115,10 +108,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 			return nil, err
 		}
 	}
-	// if id != "" {
-	// 	return nil, nil
-	// }
-	println("GOT HERE2")
+
 	v := &policy.Value{
 		Id:       id,
 		Value:    value,

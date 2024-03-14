@@ -54,9 +54,7 @@ func resourceMappingHydrateItem(row pgx.Row) (*policy.ResourceMapping, error) {
 		}
 	}
 
-	// av := &policy.Value{}
 	if attributeValueJSON != nil {
-		println("attributeValueJSON", string(attributeValueJSON))
 		if err := protojson.Unmarshal(attributeValueJSON, attributeValue); err != nil {
 			slog.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
 			return nil, err

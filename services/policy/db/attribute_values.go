@@ -91,7 +91,11 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		fields = append(fields, &fqn)
 	}
 	if err := row.Scan(fields...); err != nil {
-		fmt.Println("error scanning row: ", err)
+		// fmt.Println("error scanning row: ", err)
+		println("GOT HERE")
+		// return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		// members = make([]*policy.Value, 0)
 	} else {
 		fmt.Println("no error!")
 		if membersJson != nil {
@@ -111,7 +115,10 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 			return nil, err
 		}
 	}
-
+	// if id != "" {
+	// 	return nil, nil
+	// }
+	println("GOT HERE2")
 	v := &policy.Value{
 		Id:       id,
 		Value:    value,
@@ -338,25 +345,46 @@ func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*poli
 
 func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
+	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		"'id', vmv.id, " +
+		"'value', vmv.value, " +
+		"'active', vmv.active, " +
+		"'members', vmv.members || ARRAY[]::UUID[], " +
+		"'metadata', vmv.metadata, " +
+		"'attribute', JSON_BUILD_OBJECT(" +
+		"'id', vmv.attribute_definition_id )"
+	if opts.withFqn {
+		members += ", 'fqn', " + "fqn1.fqn"
+	}
+	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
-		t.Field("id"),
-		t.Field("value"),
-		t.Field("active"),
-		t.Field("members"),
-		t.Field("metadata"),
-		t.Field("attribute_definition_id"),
+		"av.id",
+		"av.value",
+		"av.active",
+		members,
+		"av.metadata",
+		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "fqn")
+		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
 	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...)
 
+	// join members
+	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
+
+	// join attribute values
+	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
+
 	if opts.withFqn {
 		fqnT := Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
+
+	sb = sb.GroupBy("av.id")
 
 	where := sq.Eq{}
 	if opts.state != "" && opts.state != StateAny {
@@ -365,7 +393,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 	where[t.Field("attribute_definition_id")] = attribute_id
 
 	return sb.
-		From(t.Name()).
+		From(t.Name() + " av").
 		Where(where).
 		ToSql()
 }
@@ -384,27 +412,48 @@ func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id st
 
 func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
+	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		"'id', vmv.id, " +
+		"'value', vmv.value, " +
+		"'active', vmv.active, " +
+		"'members', vmv.members || ARRAY[]::UUID[], " +
+		"'metadata', vmv.metadata, " +
+		"'attribute', JSON_BUILD_OBJECT(" +
+		"'id', vmv.attribute_definition_id )"
+	if opts.withFqn {
+		members += ", 'fqn', " + "fqn1.fqn"
+	}
+	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
-		t.Field("id"),
-		t.Field("value"),
-		t.Field("active"),
-		t.Field("members"),
-		t.Field("metadata"),
-		t.Field("attribute_definition_id"),
+		"av.id",
+		"av.value",
+		"av.active",
+		members,
+		"av.metadata",
+		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "fqn")
+		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
 	}
 	sb := db.NewStatementBuilder().
 		Select(fields...)
 
+	// join members
+	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
+
+	// join attribute values
+	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
+
 	if opts.withFqn {
 		fqnT := Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
 
+	sb = sb.GroupBy("av.id")
+
 	return sb.
-		From(t.Name()).
+		From(t.Name() + " av").
 		ToSql()
 }
 

@@ -216,8 +216,8 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
 				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
 				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
-				") AS val_sm_fqn_join ON " + avt.Field("id") + " = val_sm_fqn_join.av_id " +
-				"AND " + avt.Field("id") + " = " + fqnt.Field("value_id"),
+				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
+				"AND " + "avt.id" + " = " + fqnt.Field("value_id"),
 			)
 	}
 	g := []string{t.Field("id"), nt.Field("name")}
@@ -270,7 +270,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 			return nil, err
 		}
 	}
-
+	// println("valuesJson: ", string(valuesJson))
 	var v []*policy.Value
 	if valuesJson != nil {
 		v, err = attributesValuesProtojson(valuesJson)
@@ -427,6 +427,7 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		opts.withFqn = true
 	}
 	sql, args, err := getAttributeByFqnSql(fqn, opts)
+	// println("sql", sql)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

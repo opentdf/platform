@@ -39,7 +39,7 @@
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
-`brew install buf grpcurl goose softhsm`
+`brew install buf grpcurl goose openssl pkcs11-tools softhsm`
 
 ### Run
 

@@ -186,19 +186,15 @@ func checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo, aut
 	}
 
 	// Get issuer from unverified token
-	issuer, exists := unverifiedToken.Get("iss")
-	if !exists {
+	issuer := unverifiedToken.Issuer()
+	if issuer == "" {
 		return fmt.Errorf("missing issuer")
 	}
 
 	// Get the openid configuration for the issuer
 	// Because we get an interface we need to cast it to a string
 	// and jwx expects it as a string so we should never hit this error if the token is valid
-	issuerStr, ok := issuer.(string)
-	if !ok {
-		return fmt.Errorf("invalid issuer")
-	}
-	oidc, exists := auth.oidcConfigurations[issuerStr]
+	oidc, exists := auth.oidcConfigurations[issuer]
 	if !exists {
 		return fmt.Errorf("invalid issuer")
 	}
@@ -213,16 +209,20 @@ func checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo, aut
 	accessToken, err := jwt.Parse([]byte(tokenRaw),
 		jwt.WithKeySet(keySet),
 		jwt.WithValidate(true),
-		jwt.WithIssuer(issuerStr),
+		jwt.WithIssuer(issuer),
 		jwt.WithAudience(oidc.Audience),
 		jwt.WithValidator(jwt.ValidatorFunc(auth.claimsValidator)),
 	)
+
 	if err != nil {
 		return err
 	}
 
 	if tokenType == "Bearer" {
-		return nil
+		if _, ok := accessToken.Get("cnf"); !ok {
+			return nil
+		}
+		slog.Warn("presented token with `cnf` claim as a bearer token. validating as DPoP")
 	}
 
 	return validateDPoP(accessToken, tokenRaw, dpopInfo)

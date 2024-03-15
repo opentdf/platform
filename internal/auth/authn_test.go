@@ -323,6 +323,26 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_Expect_No_Error() {
 	assert.Nil(s.T(), err)
 }
 
+func (s *AuthSuite) Test_CheckToken_When_Valid_CNFAndNoDPoP_Expect_Error() {
+	tok := jwt.New()
+	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	tok.Set("iss", s.server.URL)
+	tok.Set("aud", "test")
+	tok.Set("client_id", "client1")
+	cnf := map[string]string{
+		"jkt": "whatever",
+	}
+	tok.Set("cnf", cnf)
+
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+
+	assert.NotNil(s.T(), signedTok)
+	assert.Nil(s.T(), err)
+
+	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, *s.auth)
+	assert.Equal(s.T(), "got 0 dpop headers, should have 1", err.Error())
+}
+
 func (s *AuthSuite) Test_CheckValidDPoPToken_FromTokenInterceptor_Expect_No_Error() {
 	tok := jwt.New()
 	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))

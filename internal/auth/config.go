@@ -1,8 +1,10 @@
 package auth
 
+import "fmt"
+
 // AuthConfig pulls AuthN and AuthZ together
 type Config struct {
-	Enabled     bool `yaml:"enabled" default:"true" `
+	Enabled     bool `yaml:"enabled"`
 	AuthNConfig `mapstructure:",squash"`
 }
 
@@ -12,4 +14,28 @@ type AuthNConfig struct {
 	Audience          string   `yaml:"audience" json:"audience"`
 	Clients           []string `yaml:"clients" json:"clients"`
 	OIDCConfiguration `yaml:"-" json:"-"`
+	Policy            PolicyConfig `yaml:"policy" json:"policy"`
+}
+
+type PolicyConfig struct {
+	Default string            `yaml:"default" json:"default"`
+	RoleMap map[string]string `yaml:"roleMap" json:"roleMap"`
+	Csv     string            `yaml:"csv" json:"csv"`
+	Model   string            `yaml:"model" json:"model"`
+}
+
+func (c AuthNConfig) validateAuthNConfig() error {
+	if c.Issuer == "" {
+		return fmt.Errorf("config Auth.Issuer is required")
+	}
+
+	if c.Audience == "" {
+		return fmt.Errorf("config Auth.Audience is required")
+	}
+
+	if len(c.Clients) == 0 {
+		return fmt.Errorf("config Auth.Clients is required")
+	}
+
+	return nil
 }

@@ -15,6 +15,7 @@ import (
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/internal/auth"
+	"github.com/opentdf/platform/internal/db"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -80,7 +81,7 @@ type inProcessServer struct {
 	srv *grpc.Server
 }
 
-func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 	var (
 		grpcOpts   []grpc.ServerOption
 		httpServer *http.Server
@@ -106,7 +107,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	// Build interceptor chain and handler chain
 	var (
 		interceptors []grpc.UnaryServerInterceptor
-		handler      http.Handler
+		httpHandlers []func(http.Handler) http.Handler
 	)
 
 	grpcInprocess := &inProcessServer{
@@ -114,21 +115,17 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		srv: grpc.NewServer(),
 	}
 
-	mux := runtime.NewServeMux(
-		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
-	)
-
-	handler = mux
-
 	// Add authN interceptor
+	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
 	if config.Auth.Enabled {
-		authN, err := auth.NewAuthenticator(config.Auth.AuthNConfig)
+		slog.Info("authentication enabled")
+		authN, err := auth.NewAuthenticator(config.Auth.AuthNConfig, d)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
 
-		interceptors = append(interceptors, authN.VerifyTokenInterceptor)
-		handler = authN.VerifyTokenHandler(mux)
+		interceptors = append(interceptors, authN.UnaryServerInterceptor)
+		httpHandlers = append(httpHandlers, authN.MuxHandler)
 
 		// Try an register oidc issuer to wellknown service but don't return an error if it fails
 		if err := config.WellKnownConfigRegister("platform_issuer", config.Auth.Issuer); err != nil {
@@ -140,15 +137,15 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
 
 	// Add CORS
-	// TODO(#305) We need to make cors configurable
-	handler = cors.New(cors.Options{
+	// TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
+	httpHandlers = append(httpHandlers, cors.New(cors.Options{
 		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           maxAge,
-	}).Handler(handler)
+	}).Handler)
 
 	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(
 		interceptors...,
@@ -163,13 +160,25 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		reflection.Register(grpcServer)
 	}
 
+	var mux *runtime.ServeMux
 	if config.HTTP.Enabled {
+		var httpHandler http.Handler
+		mux = runtime.NewServeMux(
+			runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
+		)
+		httpHandler = mux
+
+		// Chain the http handlers
+		for _, h := range httpHandlers {
+			httpHandler = h(httpHandler)
+		}
+
 		httpServer = &http.Server{
 			Addr:         fmt.Sprintf(":%d", config.HTTP.Port),
 			WriteTimeout: writeTimeoutSeconds * time.Second,
 			ReadTimeout:  readTimeoutSeconds * time.Second,
 			// We need to make cors configurable
-			Handler:   handler,
+			Handler:   httpHandler,
 			TLSConfig: tlsConfig,
 		}
 	}

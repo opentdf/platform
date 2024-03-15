@@ -6,6 +6,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bufbuild/protovalidate-go v0.4.3
+	github.com/casbin/casbin/v2 v2.84.0
 	github.com/coreos/go-oidc/v3 v3.9.0
 	github.com/creasty/defaults v1.7.0
 	github.com/go-chi/cors v1.2.1
@@ -52,6 +53,7 @@ require (
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytecodealliance/wasmtime-go/v3 v3.0.2 // indirect
+	github.com/casbin/govaluate v1.1.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/containerd v1.7.12 // indirect

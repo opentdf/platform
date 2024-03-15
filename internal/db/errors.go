@@ -50,7 +50,7 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 			}
 			return errors.Join(ErrEnumValueInvalid, e)
 		default:
-			fmt.Println("Unknown error code", e.Code)
+			slog.Error("Unknown error code", slog.String("error", e.Message), slog.String("code", e.Code))
 			return e
 		}
 	}

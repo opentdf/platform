@@ -247,8 +247,12 @@ service AttributesService {
   /*--------------------------------------*
    * Attribute RPCs
    *---------------------------------------*/
-  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
-  rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {}
+  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
+    option (google.api.http) = {get: "/attributes"};
+  }
+  rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {
+    option (google.api.http) = {get: "/attributes/{*}/values"};
+  }
 
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};

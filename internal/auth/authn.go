@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/casbin/casbin/v2"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/internal/db"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -36,12 +38,19 @@ type authentication struct {
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
 	oidcConfigurations map[string]AuthNConfig
+	// Casbin enforcer
+	casbinEnforcer *casbin.Enforcer
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(cfg AuthNConfig) (*authentication, error) {
+func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*authentication, error) {
 	a := &authentication{}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
+
+	// validate the configuration
+	if err := cfg.validateAuthNConfig(); err != nil {
+		return nil, err
+	}
 
 	ctx := context.Background()
 
@@ -61,6 +70,11 @@ func NewAuthenticator(cfg AuthNConfig) (*authentication, error) {
 		return nil, err
 	}
 
+	slog.Info("initializing casbin enforcer")
+	if a.casbinEnforcer, err = newCasbinEnforcer(d.SqlDB); err != nil {
+		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
+	}
+
 	// Need to refresh the cache to verify jwks is available
 	_, err = a.cache.Refresh(ctx, cfg.JwksURI)
 	if err != nil {
@@ -72,8 +86,8 @@ func NewAuthenticator(cfg AuthNConfig) (*authentication, error) {
 	return a, nil
 }
 
-// verifyTokenHandler is a http handler that verifies the token
-func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
+// MuxHandler is a http handler that verifies the token
+func (a authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
 			handler.ServeHTTP(w, r)
@@ -85,19 +99,22 @@ func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		err := checkToken(r.Context(), header, a)
+		_, err := checkToken(r.Context(), header, a)
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
 
+		// TODO enforce policy
+		fmt.Printf("enforce policy %v\n", r.URL.Path)
+
 		handler.ServeHTTP(w, r)
 	})
 }
 
-// verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
+func (a authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
 	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
 		return handler(ctx, req)
@@ -117,17 +134,36 @@ func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 
-	err := checkToken(ctx, header, a)
+	// parse the rpc method
+	p := strings.Split(info.FullMethod, "/")
+	resource := p[1]
+	action := ""
+	if strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get") {
+		action = "read"
+	}
+	if strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update") {
+		action = "write"
+	}
+
+	token, err := checkToken(ctx, header, a)
 	if err != nil {
 		slog.Warn("failed to validate token", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
+	}
+
+	if err := a.casbinEnforce(ctx, token, resource, action); err != nil {
+		if err.Error() == "permission denied" {
+			slog.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
+			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+		}
+		return nil, err
 	}
 
 	return handler(ctx, req)
 }
 
 // checkToken is a helper function to verify the token.
-func checkToken(ctx context.Context, authHeader []string, auth authentication) error {
+func checkToken(ctx context.Context, authHeader []string, auth authentication) (jwt.Token, error) {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -142,7 +178,7 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) e
 		tokenType = "Bearer"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
-		return fmt.Errorf("not of type bearer or dpop")
+		return nil, fmt.Errorf("not of type bearer or dpop")
 	}
 
 	// Future work is to validate DPoP proof if token type is DPoP
@@ -153,13 +189,13 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) e
 	// We have to get iss from the token first to verify the signature
 	unverifiedToken, err := jwt.Parse([]byte(tokenRaw), jwt.WithVerify(false))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Get issuer from unverified token
 	issuer, exists := unverifiedToken.Get("iss")
 	if !exists {
-		return fmt.Errorf("missing issuer")
+		return nil, fmt.Errorf("missing issuer")
 	}
 
 	// Get the openid configuration for the issuer
@@ -167,21 +203,21 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) e
 	// and jwx expects it as a string so we should never hit this error if the token is valid
 	issuerStr, ok := issuer.(string)
 	if !ok {
-		return fmt.Errorf("invalid issuer")
+		return nil, fmt.Errorf("invalid issuer")
 	}
 	oidc, exists := auth.oidcConfigurations[issuerStr]
 	if !exists {
-		return fmt.Errorf("invalid issuer")
+		return nil, fmt.Errorf("invalid issuer")
 	}
 
 	// Get key set from cache that matches the jwks_uri
 	keySet, err := auth.cache.Get(ctx, oidc.JwksURI)
 	if err != nil {
-		return fmt.Errorf("failed to get jwks from cache")
+		return nil, fmt.Errorf("failed to get jwks from cache")
 	}
 
 	// Now we verify the token signature
-	_, err = jwt.Parse([]byte(tokenRaw),
+	token, err := jwt.Parse([]byte(tokenRaw),
 		jwt.WithKeySet(keySet),
 		jwt.WithValidate(true),
 		jwt.WithIssuer(issuerStr),
@@ -189,10 +225,10 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) e
 		jwt.WithValidator(jwt.ValidatorFunc(auth.claimsValidator)),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return token, nil
 }
 
 // claimsValidator is a custom validator to check extra claims in the token.

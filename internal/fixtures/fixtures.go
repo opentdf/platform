@@ -3,7 +3,6 @@ package fixtures
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -145,7 +144,6 @@ func LoadFixtureData(file string) {
 		slog.Error("could not unmarshal "+fixtureFilename, slog.String("error", err.Error()))
 		panic(err)
 	}
-	fmt.Println(fixtureData)
 }
 
 type Fixtures struct {

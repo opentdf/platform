@@ -44,6 +44,40 @@ server:
     issuer: http://localhost:8888/auth/realms/opentdf
     clients:
       - "opentdf"
+    policy:
+      ## Default policy for all requests
+      default: #"role:readonly"
+      ## Role map is used to map external roles to opentdf roles (opentdf_role:idp_role) the benefit of this is that you
+      ## can use the builtin policy if desired
+      roles:
+        claim: # realm_access.roles
+        map:
+        #  readonly: opentdf-readonly
+        #  admin: opentdf-admin
+        #  org-admin: opentdf-org-admin
+      ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
+      csv: #|
+      #  p, role:org-admin, policy:attributes, *, *, allow
+      #  p, role:org-admin, policy:subject-mappings, *, *, allow
+      #  p, role:org-admin, policy:resource-mappings, *, *, allow
+      #  p, role:org-admin, policy:kas-registry, *, *, allow
+      ## Custom model (see https://casbin.org/docs/syntax-for-models/)
+      model: #|
+      #  [request_definition]
+      #  r = sub, res, act, obj
+      #
+      #  [policy_definition]
+      #  p = sub, res, act, obj, eft
+      #
+      #  [role_definition]
+      #  g = _, _
+      #
+      #  [policy_effect]
+      #  e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
+      #
+      #  [matchers]
+      #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
+
   grpc:
     port: 9000
     reflectionEnabled: true # Default is false

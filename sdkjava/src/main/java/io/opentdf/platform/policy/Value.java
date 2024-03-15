@@ -19,8 +19,7 @@ private static final long serialVersionUID = 0L;
   private Value() {
     id_ = "";
     value_ = "";
-    members_ =
-        com.google.protobuf.LazyStringArrayList.emptyList();
+    members_ = java.util.Collections.emptyList();
     grants_ = java.util.Collections.emptyList();
     fqn_ = "";
     subjectMappings_ = java.util.Collections.emptyList();
@@ -161,18 +160,16 @@ private static final long serialVersionUID = 0L;
 
   public static final int MEMBERS_FIELD_NUMBER = 4;
   @SuppressWarnings("serial")
-  private com.google.protobuf.LazyStringArrayList members_ =
-      com.google.protobuf.LazyStringArrayList.emptyList();
+  private java.util.List<io.opentdf.platform.policy.Value> members_;
   /**
    * <pre>
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 4 [json_name = "members"];</code>
-   * @return A list containing the members.
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
    */
-  public com.google.protobuf.ProtocolStringList
-      getMembersList() {
+  @java.lang.Override
+  public java.util.List<io.opentdf.platform.policy.Value> getMembersList() {
     return members_;
   }
   /**
@@ -180,9 +177,21 @@ private static final long serialVersionUID = 0L;
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 4 [json_name = "members"];</code>
-   * @return The count of members.
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
    */
+  @java.lang.Override
+  public java.util.List<? extends io.opentdf.platform.policy.ValueOrBuilder> 
+      getMembersOrBuilderList() {
+    return members_;
+  }
+  /**
+   * <pre>
+   * list of attribute values that this value is related to (attribute group)
+   * </pre>
+   *
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+   */
+  @java.lang.Override
   public int getMembersCount() {
     return members_.size();
   }
@@ -191,11 +200,10 @@ private static final long serialVersionUID = 0L;
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 4 [json_name = "members"];</code>
-   * @param index The index of the element to return.
-   * @return The members at the given index.
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
    */
-  public java.lang.String getMembers(int index) {
+  @java.lang.Override
+  public io.opentdf.platform.policy.Value getMembers(int index) {
     return members_.get(index);
   }
   /**
@@ -203,13 +211,12 @@ private static final long serialVersionUID = 0L;
    * list of attribute values that this value is related to (attribute group)
    * </pre>
    *
-   * <code>repeated string members = 4 [json_name = "members"];</code>
-   * @param index The index of the value to return.
-   * @return The bytes of the members at the given index.
+   * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
    */
-  public com.google.protobuf.ByteString
-      getMembersBytes(int index) {
-    return members_.getByteString(index);
+  @java.lang.Override
+  public io.opentdf.platform.policy.ValueOrBuilder getMembersOrBuilder(
+      int index) {
+    return members_.get(index);
   }
 
   public static final int GRANTS_FIELD_NUMBER = 5;
@@ -473,7 +480,7 @@ private static final long serialVersionUID = 0L;
       com.google.protobuf.GeneratedMessageV3.writeString(output, 3, value_);
     }
     for (int i = 0; i < members_.size(); i++) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 4, members_.getRaw(i));
+      output.writeMessage(4, members_.get(i));
     }
     for (int i = 0; i < grants_.size(); i++) {
       output.writeMessage(5, grants_.get(i));
@@ -509,13 +516,9 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(value_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, value_);
     }
-    {
-      int dataSize = 0;
-      for (int i = 0; i < members_.size(); i++) {
-        dataSize += computeStringSizeNoTag(members_.getRaw(i));
-      }
-      size += dataSize;
-      size += 1 * getMembersList().size();
+    for (int i = 0; i < members_.size(); i++) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(4, members_.get(i));
     }
     for (int i = 0; i < grants_.size(); i++) {
       size += com.google.protobuf.CodedOutputStream
@@ -750,6 +753,7 @@ private static final long serialVersionUID = 0L;
       if (com.google.protobuf.GeneratedMessageV3
               .alwaysUseFieldBuilders) {
         getAttributeFieldBuilder();
+        getMembersFieldBuilder();
         getGrantsFieldBuilder();
         getActiveFieldBuilder();
         getSubjectMappingsFieldBuilder();
@@ -767,8 +771,13 @@ private static final long serialVersionUID = 0L;
         attributeBuilder_ = null;
       }
       value_ = "";
-      members_ =
-          com.google.protobuf.LazyStringArrayList.emptyList();
+      if (membersBuilder_ == null) {
+        members_ = java.util.Collections.emptyList();
+      } else {
+        members_ = null;
+        membersBuilder_.clear();
+      }
+      bitField0_ = (bitField0_ & ~0x00000008);
       if (grantsBuilder_ == null) {
         grants_ = java.util.Collections.emptyList();
       } else {
@@ -827,6 +836,15 @@ private static final long serialVersionUID = 0L;
     }
 
     private void buildPartialRepeatedFields(io.opentdf.platform.policy.Value result) {
+      if (membersBuilder_ == null) {
+        if (((bitField0_ & 0x00000008) != 0)) {
+          members_ = java.util.Collections.unmodifiableList(members_);
+          bitField0_ = (bitField0_ & ~0x00000008);
+        }
+        result.members_ = members_;
+      } else {
+        result.members_ = membersBuilder_.build();
+      }
       if (grantsBuilder_ == null) {
         if (((bitField0_ & 0x00000010) != 0)) {
           grants_ = java.util.Collections.unmodifiableList(grants_);
@@ -861,10 +879,6 @@ private static final long serialVersionUID = 0L;
       }
       if (((from_bitField0_ & 0x00000004) != 0)) {
         result.value_ = value_;
-      }
-      if (((from_bitField0_ & 0x00000008) != 0)) {
-        members_.makeImmutable();
-        result.members_ = members_;
       }
       if (((from_bitField0_ & 0x00000020) != 0)) {
         result.fqn_ = fqn_;
@@ -941,15 +955,31 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00000004;
         onChanged();
       }
-      if (!other.members_.isEmpty()) {
-        if (members_.isEmpty()) {
-          members_ = other.members_;
-          bitField0_ |= 0x00000008;
-        } else {
-          ensureMembersIsMutable();
-          members_.addAll(other.members_);
+      if (membersBuilder_ == null) {
+        if (!other.members_.isEmpty()) {
+          if (members_.isEmpty()) {
+            members_ = other.members_;
+            bitField0_ = (bitField0_ & ~0x00000008);
+          } else {
+            ensureMembersIsMutable();
+            members_.addAll(other.members_);
+          }
+          onChanged();
         }
-        onChanged();
+      } else {
+        if (!other.members_.isEmpty()) {
+          if (membersBuilder_.isEmpty()) {
+            membersBuilder_.dispose();
+            membersBuilder_ = null;
+            members_ = other.members_;
+            bitField0_ = (bitField0_ & ~0x00000008);
+            membersBuilder_ = 
+              com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders ?
+                 getMembersFieldBuilder() : null;
+          } else {
+            membersBuilder_.addAllMessages(other.members_);
+          }
+        }
       }
       if (grantsBuilder_ == null) {
         if (!other.grants_.isEmpty()) {
@@ -1058,9 +1088,16 @@ private static final long serialVersionUID = 0L;
               break;
             } // case 26
             case 34: {
-              java.lang.String s = input.readStringRequireUtf8();
-              ensureMembersIsMutable();
-              members_.add(s);
+              io.opentdf.platform.policy.Value m =
+                  input.readMessage(
+                      io.opentdf.platform.policy.Value.parser(),
+                      extensionRegistry);
+              if (membersBuilder_ == null) {
+                ensureMembersIsMutable();
+                members_.add(m);
+              } else {
+                membersBuilder_.addMessage(m);
+              }
               break;
             } // case 34
             case 42: {
@@ -1410,80 +1447,79 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private com.google.protobuf.LazyStringArrayList members_ =
-        com.google.protobuf.LazyStringArrayList.emptyList();
+    private java.util.List<io.opentdf.platform.policy.Value> members_ =
+      java.util.Collections.emptyList();
     private void ensureMembersIsMutable() {
-      if (!members_.isModifiable()) {
-        members_ = new com.google.protobuf.LazyStringArrayList(members_);
-      }
-      bitField0_ |= 0x00000008;
+      if (!((bitField0_ & 0x00000008) != 0)) {
+        members_ = new java.util.ArrayList<io.opentdf.platform.policy.Value>(members_);
+        bitField0_ |= 0x00000008;
+       }
     }
+
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder> membersBuilder_;
+
     /**
      * <pre>
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @return A list containing the members.
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
      */
-    public com.google.protobuf.ProtocolStringList
-        getMembersList() {
-      members_.makeImmutable();
-      return members_;
+    public java.util.List<io.opentdf.platform.policy.Value> getMembersList() {
+      if (membersBuilder_ == null) {
+        return java.util.Collections.unmodifiableList(members_);
+      } else {
+        return membersBuilder_.getMessageList();
+      }
     }
     /**
      * <pre>
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @return The count of members.
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
      */
     public int getMembersCount() {
-      return members_.size();
+      if (membersBuilder_ == null) {
+        return members_.size();
+      } else {
+        return membersBuilder_.getCount();
+      }
     }
     /**
      * <pre>
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @param index The index of the element to return.
-     * @return The members at the given index.
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
      */
-    public java.lang.String getMembers(int index) {
-      return members_.get(index);
+    public io.opentdf.platform.policy.Value getMembers(int index) {
+      if (membersBuilder_ == null) {
+        return members_.get(index);
+      } else {
+        return membersBuilder_.getMessage(index);
+      }
     }
     /**
      * <pre>
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @param index The index of the value to return.
-     * @return The bytes of the members at the given index.
-     */
-    public com.google.protobuf.ByteString
-        getMembersBytes(int index) {
-      return members_.getByteString(index);
-    }
-    /**
-     * <pre>
-     * list of attribute values that this value is related to (attribute group)
-     * </pre>
-     *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @param index The index to set the value at.
-     * @param value The members to set.
-     * @return This builder for chaining.
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
      */
     public Builder setMembers(
-        int index, java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      ensureMembersIsMutable();
-      members_.set(index, value);
-      bitField0_ |= 0x00000008;
-      onChanged();
+        int index, io.opentdf.platform.policy.Value value) {
+      if (membersBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureMembersIsMutable();
+        members_.set(index, value);
+        onChanged();
+      } else {
+        membersBuilder_.setMessage(index, value);
+      }
       return this;
     }
     /**
@@ -1491,17 +1527,58 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @param value The members to add.
-     * @return This builder for chaining.
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public Builder setMembers(
+        int index, io.opentdf.platform.policy.Value.Builder builderForValue) {
+      if (membersBuilder_ == null) {
+        ensureMembersIsMutable();
+        members_.set(index, builderForValue.build());
+        onChanged();
+      } else {
+        membersBuilder_.setMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public Builder addMembers(io.opentdf.platform.policy.Value value) {
+      if (membersBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureMembersIsMutable();
+        members_.add(value);
+        onChanged();
+      } else {
+        membersBuilder_.addMessage(value);
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
      */
     public Builder addMembers(
-        java.lang.String value) {
-      if (value == null) { throw new NullPointerException(); }
-      ensureMembersIsMutable();
-      members_.add(value);
-      bitField0_ |= 0x00000008;
-      onChanged();
+        int index, io.opentdf.platform.policy.Value value) {
+      if (membersBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureMembersIsMutable();
+        members_.add(index, value);
+        onChanged();
+      } else {
+        membersBuilder_.addMessage(index, value);
+      }
       return this;
     }
     /**
@@ -1509,17 +1586,54 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @param values The members to add.
-     * @return This builder for chaining.
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public Builder addMembers(
+        io.opentdf.platform.policy.Value.Builder builderForValue) {
+      if (membersBuilder_ == null) {
+        ensureMembersIsMutable();
+        members_.add(builderForValue.build());
+        onChanged();
+      } else {
+        membersBuilder_.addMessage(builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public Builder addMembers(
+        int index, io.opentdf.platform.policy.Value.Builder builderForValue) {
+      if (membersBuilder_ == null) {
+        ensureMembersIsMutable();
+        members_.add(index, builderForValue.build());
+        onChanged();
+      } else {
+        membersBuilder_.addMessage(index, builderForValue.build());
+      }
+      return this;
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
      */
     public Builder addAllMembers(
-        java.lang.Iterable<java.lang.String> values) {
-      ensureMembersIsMutable();
-      com.google.protobuf.AbstractMessageLite.Builder.addAll(
-          values, members_);
-      bitField0_ |= 0x00000008;
-      onChanged();
+        java.lang.Iterable<? extends io.opentdf.platform.policy.Value> values) {
+      if (membersBuilder_ == null) {
+        ensureMembersIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, members_);
+        onChanged();
+      } else {
+        membersBuilder_.addAllMessages(values);
+      }
       return this;
     }
     /**
@@ -1527,14 +1641,16 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @return This builder for chaining.
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
      */
     public Builder clearMembers() {
-      members_ =
-        com.google.protobuf.LazyStringArrayList.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000008);;
-      onChanged();
+      if (membersBuilder_ == null) {
+        members_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000008);
+        onChanged();
+      } else {
+        membersBuilder_.clear();
+      }
       return this;
     }
     /**
@@ -1542,19 +1658,105 @@ private static final long serialVersionUID = 0L;
      * list of attribute values that this value is related to (attribute group)
      * </pre>
      *
-     * <code>repeated string members = 4 [json_name = "members"];</code>
-     * @param value The bytes of the members to add.
-     * @return This builder for chaining.
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
      */
-    public Builder addMembersBytes(
-        com.google.protobuf.ByteString value) {
-      if (value == null) { throw new NullPointerException(); }
-      checkByteStringIsUtf8(value);
-      ensureMembersIsMutable();
-      members_.add(value);
-      bitField0_ |= 0x00000008;
-      onChanged();
+    public Builder removeMembers(int index) {
+      if (membersBuilder_ == null) {
+        ensureMembersIsMutable();
+        members_.remove(index);
+        onChanged();
+      } else {
+        membersBuilder_.remove(index);
+      }
       return this;
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public io.opentdf.platform.policy.Value.Builder getMembersBuilder(
+        int index) {
+      return getMembersFieldBuilder().getBuilder(index);
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public io.opentdf.platform.policy.ValueOrBuilder getMembersOrBuilder(
+        int index) {
+      if (membersBuilder_ == null) {
+        return members_.get(index);  } else {
+        return membersBuilder_.getMessageOrBuilder(index);
+      }
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public java.util.List<? extends io.opentdf.platform.policy.ValueOrBuilder> 
+         getMembersOrBuilderList() {
+      if (membersBuilder_ != null) {
+        return membersBuilder_.getMessageOrBuilderList();
+      } else {
+        return java.util.Collections.unmodifiableList(members_);
+      }
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public io.opentdf.platform.policy.Value.Builder addMembersBuilder() {
+      return getMembersFieldBuilder().addBuilder(
+          io.opentdf.platform.policy.Value.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public io.opentdf.platform.policy.Value.Builder addMembersBuilder(
+        int index) {
+      return getMembersFieldBuilder().addBuilder(
+          index, io.opentdf.platform.policy.Value.getDefaultInstance());
+    }
+    /**
+     * <pre>
+     * list of attribute values that this value is related to (attribute group)
+     * </pre>
+     *
+     * <code>repeated .policy.Value members = 4 [json_name = "members"];</code>
+     */
+    public java.util.List<io.opentdf.platform.policy.Value.Builder> 
+         getMembersBuilderList() {
+      return getMembersFieldBuilder().getBuilderList();
+    }
+    private com.google.protobuf.RepeatedFieldBuilderV3<
+        io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder> 
+        getMembersFieldBuilder() {
+      if (membersBuilder_ == null) {
+        membersBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
+            io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder>(
+                members_,
+                ((bitField0_ & 0x00000008) != 0),
+                getParentForChildren(),
+                isClean());
+        members_ = null;
+      }
+      return membersBuilder_;
     }
 
     private java.util.List<io.opentdf.platform.kasregistry.KeyAccessServer> grants_ =

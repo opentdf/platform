@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
@@ -138,7 +139,24 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	assert.Equal(s.T(), len(createdValue.Members), len(got.Members))
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
 }
-
+func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool) {
+	m1 := v1.Members
+	m2 := v2.Members
+	sort.Slice(m1, func(x, y int) bool {
+		return m1[x].Id < m1[y].Id
+	})
+	sort.Slice(m2, func(x, y int) bool {
+		return m2[x].Id < m2[y].Id
+	})
+	for idx := range m1 {
+		assert.Equal(t, m1[idx].Id, m2[idx].Id)
+		assert.Equal(t, m1[idx].Value, m2[idx].Value)
+		if withFqn {
+			assert.Equal(t, m1[idx].Fqn, m2[idx].Fqn)
+		}
+		assert.Equal(t, m1[idx].Active.Value, m2[idx].Active.Value)
+	}
+}
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{
@@ -165,7 +183,16 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	assert.Equal(s.T(), createdValue.Id, got.Id)
 	assert.Equal(s.T(), createdValue.Value, got.Value)
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
-	assert.EqualValues(s.T(), createdValue.Members, got.Members)
+	assert.Equal(s.T(), len(createdValue.Members), len(got.Members))
+
+	assert.True(s.T(), len(got.Members) > 0)
+	equalMembers(s.T(), createdValue, got, true)
+
+	// test uniqueness
+	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), createdValue)
+	assert.ErrorIs(s.T(), err, db.ErrUniqueConstraintViolation)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {
@@ -176,6 +203,34 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), createdValue)
 	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails() {
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr2")
+	metadata := &common.MetadataMutable{
+		Labels: map[string]string{
+			"name": "testing create with members",
+		},
+	}
+
+	value := &attributes.CreateAttributeValueRequest{
+		Value: "value3",
+		Members: []string{
+			nonExistentAttributeValueUuid,
+		},
+		Metadata: metadata,
+	}
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	assert.Nil(s.T(), createdValue)
+	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
+
+	attrDef = s.f.GetAttributeKey("example.net/attr/attr3")
+	value.Members[0] = "not a uuid"
+	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	assert.Nil(s.T(), createdValue)
+	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrUuidInvalid)
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {

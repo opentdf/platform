@@ -54,9 +54,11 @@ func resourceMappingHydrateItem(row pgx.Row) (*policy.ResourceMapping, error) {
 		}
 	}
 
-	err = protojson.Unmarshal(attributeValueJSON, attributeValue)
-	if err != nil {
-		return nil, err
+	if attributeValueJSON != nil {
+		if err := protojson.Unmarshal(attributeValueJSON, attributeValue); err != nil {
+			slog.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
+			return nil, err
+		}
 	}
 
 	return &policy.ResourceMapping{
@@ -70,19 +72,27 @@ func resourceMappingHydrateItem(row pgx.Row) (*policy.ResourceMapping, error) {
 func resourceMappingSelect() sq.SelectBuilder {
 	t := Tables.ResourceMappings
 	at := Tables.AttributeValues
+	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		"'id', vmv.id, " +
+		"'value', vmv.value, " +
+		"'active', vmv.active, " +
+		"'members', vmv.members || ARRAY[]::UUID[] " +
+		")) FILTER (WHERE vmv.id IS NOT NULL ), '[]')"
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("metadata"),
 		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
-			"'id', "+at.Field("id")+", "+
-			"'value', "+at.Field("value")+","+
-			"'members', "+at.Field("members")+
-			")"+
-			" AS attribute_value",
+			"'id', av.id,"+
+			"'value', av.value,"+
+			"'members', "+members+
+			") AS attribute_value",
 	).
-		LeftJoin(at.Name()+" ON "+at.Field("id")+" = "+t.Field("attribute_value_id")).
-		GroupBy(t.Field("id"), at.Field("id"))
+		LeftJoin(at.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
+		LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id").
+		LeftJoin(at.Name() + " vmv ON vm.member_id = vmv.id").
+		GroupBy("av.id").
+		GroupBy(t.Field("id"))
 }
 
 /*

@@ -39,7 +39,7 @@
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
-`brew install buf grpcurl goose`
+`brew install buf grpcurl goose softhsm`
 
 ### Run
 

@@ -1,8 +1,9 @@
 package access
 
 import (
-	"github.com/opentdf/platform/internal/security"
 	"net/url"
+
+	"github.com/opentdf/platform/internal/security"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"

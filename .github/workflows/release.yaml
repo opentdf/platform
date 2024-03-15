@@ -1,0 +1,22 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate a token
+        id: generate_token
+        uses: actions/create-github-app-token@f2acddfb5195534d487896a656232b016a682f3c # v1.9.0
+        with:
+          app-id: '${{ secrets.APP_ID }}'
+          private-key: '${{ secrets.AUTOMATION_KEY }}'
+      - uses: google-github-actions/release-please-action@v4
+        with:
+          token: '${{ steps.generate_token.outputs.token }}'
+          config-file: release-please.json
+          manifest-file: .release-please-manifest.json

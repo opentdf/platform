@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "go",
+  "separate-pull-requests": true,
+  "include-component-in-tag": true,
+  "tag-separator": "/",
+  "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
+  "packages": {
+    ".":{
+      "exclude-paths": [
+        "sdk",
+        "protocol"
+      ]
+    },
+    "sdk":{
+      "component": "sdk",
+      "separate-pull-requests": true,
+      "include-component-in-tag": true
+    },
+    "protocol":{
+      "component": "protocol",
+      "separate-pull-requests": true,
+      "include-component-in-tag": true
+    }
+  }
+}

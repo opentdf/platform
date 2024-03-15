@@ -85,7 +85,7 @@ func (s *KasService) PublicKey(ctx context.Context, req *kaspb.PublicKeyRequest)
 }
 
 func (s KasService) Rewrap(ctx context.Context, req *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
-	resp, err := s.p.Rewrap(ctx, &kaspb.RewrapRequest{})
+	resp, err := s.p.Rewrap(ctx, req)
 	if err != nil {
 		return nil, err
 	}

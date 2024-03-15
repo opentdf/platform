@@ -75,7 +75,7 @@ func (s *KasService) Info(ctx context.Context, req *kaspb.InfoRequest) (*kaspb.I
 }
 
 func (s *KasService) PublicKey(ctx context.Context, req *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
-	resp, err := s.p.PublicKey(ctx, &kaspb.PublicKeyRequest{})
+	resp, err := s.p.PublicKey(ctx, req)
 	if err != nil {
 		return nil, err
 	}

@@ -188,11 +188,17 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	assert.True(s.T(), len(got.Members) > 0)
 	equalMembers(s.T(), createdValue, got, true)
 
-	// test uniqueness
-	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	// members must exist
+	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, &attributes.CreateAttributeValueRequest{
+		Value: "value4",
+		Members: []string{
+			nonExistentAttributeValueUuid,
+		},
+	},
+	)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), createdValue)
-	assert.ErrorIs(s.T(), err, db.ErrUniqueConstraintViolation)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {

@@ -9,17 +9,17 @@ public interface DeleteResourceMappingResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>.policy.resourcemapping.ResourceMapping resource_mapping = 1 [json_name = "resourceMapping"];</code>
+   * <code>.policy.ResourceMapping resource_mapping = 1 [json_name = "resourceMapping"];</code>
    * @return Whether the resourceMapping field is set.
    */
   boolean hasResourceMapping();
   /**
-   * <code>.policy.resourcemapping.ResourceMapping resource_mapping = 1 [json_name = "resourceMapping"];</code>
+   * <code>.policy.ResourceMapping resource_mapping = 1 [json_name = "resourceMapping"];</code>
    * @return The resourceMapping.
    */
-  io.opentdf.platform.policy.resourcemapping.ResourceMapping getResourceMapping();
+  io.opentdf.platform.policy.ResourceMapping getResourceMapping();
   /**
-   * <code>.policy.resourcemapping.ResourceMapping resource_mapping = 1 [json_name = "resourceMapping"];</code>
+   * <code>.policy.ResourceMapping resource_mapping = 1 [json_name = "resourceMapping"];</code>
    */
-  io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder getResourceMappingOrBuilder();
+  io.opentdf.platform.policy.ResourceMappingOrBuilder getResourceMappingOrBuilder();
 }

@@ -12,25 +12,16 @@ import (
 	"github.com/opentdf/platform/internal/logger"
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/internal/server"
+	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/spf13/viper"
 )
 
-type ServiceConfig struct {
-	Enabled    bool                   `yaml:"enabled"`
-	Remote     RemoteServiceConfig    `yaml:"remote"`
-	ExtraProps map[string]interface{} `json:"-"`
-}
-
-type RemoteServiceConfig struct {
-	Endpoint string `yaml:"endpoint"`
-}
-
 type Config struct {
-	DB       db.Config                `yaml:"db"`
-	OPA      opa.Config               `yaml:"opa"`
-	Server   server.Config            `yaml:"server"`
-	Logger   logger.Config            `yaml:"logger"`
-	Services map[string]ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}}"`
+	DB       db.Config                                `yaml:"db"`
+	OPA      opa.Config                               `yaml:"opa"`
+	Server   server.Config                            `yaml:"server"`
+	Logger   logger.Config                            `yaml:"logger"`
+	Services map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}}"`
 }
 
 type Error string

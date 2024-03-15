@@ -9,26 +9,26 @@ public interface ListAttributeValuesResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.attributes.Value> 
+  java.util.List<io.opentdf.platform.policy.Value> 
       getValuesList();
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
-  io.opentdf.platform.policy.attributes.Value getValues(int index);
+  io.opentdf.platform.policy.Value getValues(int index);
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
   int getValuesCount();
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.attributes.ValueOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.ValueOrBuilder> 
       getValuesOrBuilderList();
   /**
-   * <code>repeated .policy.attributes.Value values = 1 [json_name = "values"];</code>
+   * <code>repeated .policy.Value values = 1 [json_name = "values"];</code>
    */
-  io.opentdf.platform.policy.attributes.ValueOrBuilder getValuesOrBuilder(
+  io.opentdf.platform.policy.ValueOrBuilder getValuesOrBuilder(
       int index);
 }

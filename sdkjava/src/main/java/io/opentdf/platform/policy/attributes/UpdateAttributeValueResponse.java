@@ -41,9 +41,9 @@ private static final long serialVersionUID = 0L;
 
   private int bitField0_;
   public static final int VALUE_FIELD_NUMBER = 1;
-  private io.opentdf.platform.policy.attributes.Value value_;
+  private io.opentdf.platform.policy.Value value_;
   /**
-   * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+   * <code>.policy.Value value = 1 [json_name = "value"];</code>
    * @return Whether the value field is set.
    */
   @java.lang.Override
@@ -51,19 +51,19 @@ private static final long serialVersionUID = 0L;
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+   * <code>.policy.Value value = 1 [json_name = "value"];</code>
    * @return The value.
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.Value getValue() {
-    return value_ == null ? io.opentdf.platform.policy.attributes.Value.getDefaultInstance() : value_;
+  public io.opentdf.platform.policy.Value getValue() {
+    return value_ == null ? io.opentdf.platform.policy.Value.getDefaultInstance() : value_;
   }
   /**
-   * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+   * <code>.policy.Value value = 1 [json_name = "value"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.attributes.ValueOrBuilder getValueOrBuilder() {
-    return value_ == null ? io.opentdf.platform.policy.attributes.Value.getDefaultInstance() : value_;
+  public io.opentdf.platform.policy.ValueOrBuilder getValueOrBuilder() {
+    return value_ == null ? io.opentdf.platform.policy.Value.getDefaultInstance() : value_;
   }
 
   private byte memoizedIsInitialized = -1;
@@ -413,31 +413,31 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private io.opentdf.platform.policy.attributes.Value value_;
+    private io.opentdf.platform.policy.Value value_;
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder> valueBuilder_;
+        io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder> valueBuilder_;
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      * @return Whether the value field is set.
      */
     public boolean hasValue() {
       return ((bitField0_ & 0x00000001) != 0);
     }
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      * @return The value.
      */
-    public io.opentdf.platform.policy.attributes.Value getValue() {
+    public io.opentdf.platform.policy.Value getValue() {
       if (valueBuilder_ == null) {
-        return value_ == null ? io.opentdf.platform.policy.attributes.Value.getDefaultInstance() : value_;
+        return value_ == null ? io.opentdf.platform.policy.Value.getDefaultInstance() : value_;
       } else {
         return valueBuilder_.getMessage();
       }
     }
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      */
-    public Builder setValue(io.opentdf.platform.policy.attributes.Value value) {
+    public Builder setValue(io.opentdf.platform.policy.Value value) {
       if (valueBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -451,10 +451,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      */
     public Builder setValue(
-        io.opentdf.platform.policy.attributes.Value.Builder builderForValue) {
+        io.opentdf.platform.policy.Value.Builder builderForValue) {
       if (valueBuilder_ == null) {
         value_ = builderForValue.build();
       } else {
@@ -465,13 +465,13 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      */
-    public Builder mergeValue(io.opentdf.platform.policy.attributes.Value value) {
+    public Builder mergeValue(io.opentdf.platform.policy.Value value) {
       if (valueBuilder_ == null) {
         if (((bitField0_ & 0x00000001) != 0) &&
           value_ != null &&
-          value_ != io.opentdf.platform.policy.attributes.Value.getDefaultInstance()) {
+          value_ != io.opentdf.platform.policy.Value.getDefaultInstance()) {
           getValueBuilder().mergeFrom(value);
         } else {
           value_ = value;
@@ -486,7 +486,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      */
     public Builder clearValue() {
       bitField0_ = (bitField0_ & ~0x00000001);
@@ -499,33 +499,33 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      */
-    public io.opentdf.platform.policy.attributes.Value.Builder getValueBuilder() {
+    public io.opentdf.platform.policy.Value.Builder getValueBuilder() {
       bitField0_ |= 0x00000001;
       onChanged();
       return getValueFieldBuilder().getBuilder();
     }
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      */
-    public io.opentdf.platform.policy.attributes.ValueOrBuilder getValueOrBuilder() {
+    public io.opentdf.platform.policy.ValueOrBuilder getValueOrBuilder() {
       if (valueBuilder_ != null) {
         return valueBuilder_.getMessageOrBuilder();
       } else {
         return value_ == null ?
-            io.opentdf.platform.policy.attributes.Value.getDefaultInstance() : value_;
+            io.opentdf.platform.policy.Value.getDefaultInstance() : value_;
       }
     }
     /**
-     * <code>.policy.attributes.Value value = 1 [json_name = "value"];</code>
+     * <code>.policy.Value value = 1 [json_name = "value"];</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder> 
+        io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder> 
         getValueFieldBuilder() {
       if (valueBuilder_ == null) {
         valueBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            io.opentdf.platform.policy.attributes.Value, io.opentdf.platform.policy.attributes.Value.Builder, io.opentdf.platform.policy.attributes.ValueOrBuilder>(
+            io.opentdf.platform.policy.Value, io.opentdf.platform.policy.Value.Builder, io.opentdf.platform.policy.ValueOrBuilder>(
                 getValue(),
                 getParentForChildren(),
                 isClean());

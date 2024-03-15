@@ -84,23 +84,23 @@ public final class KasProto {
       "(\tR\020sessionPublicKey\022%\n\016schema_version\030\004" +
       " \001(\tR\rschemaVersion\032S\n\rMetadataEntry\022\020\n\003" +
       "key\030\001 \001(\tR\003key\022,\n\005value\030\002 \001(\0132\026.google.p" +
-      "rotobuf.ValueR\005value:\0028\0012\200\003\n\rAccessServi" +
-      "ce\022B\n\004Info\022\020.kas.InfoRequest\032\021.kas.InfoR" +
-      "esponse\"\025\222A\tJ\007\n\003200\022\000\202\323\344\223\002\003\022\001/\022b\n\tPublic" +
-      "Key\022\025.kas.PublicKeyRequest\032\026.kas.PublicK" +
-      "eyResponse\"&\222A\tJ\007\n\003200\022\000\202\323\344\223\002\024\022\022/v2/kas_" +
-      "public_key\022q\n\017LegacyPublicKey\022\033.kas.Lega" +
-      "cyPublicKeyRequest\032\034.google.protobuf.Str" +
-      "ingValue\"#\222A\tJ\007\n\003200\022\000\202\323\344\223\002\021\022\017/kas_publi" +
-      "c_key\022T\n\006Rewrap\022\022.kas.RewrapRequest\032\023.ka" +
-      "s.RewrapResponse\"!\222A\tJ\007\n\003200\022\000\202\323\344\223\002\017\"\n/v" +
-      "2/rewrap:\001*B\362\001\n\027io.opentdf.platform.kasB" +
-      "\010KasProtoP\001Z+github.com/opentdf/platform" +
-      "/protocol/go/kas\242\002\003KXX\252\002\003Kas\312\002\003Kas\342\002\017Kas" +
-      "\\GPBMetadata\352\002\003Kas\222As\022q\n\032OpenTDF Key Acc" +
-      "ess Service*L\n\022BSD 3-Clause Clear\0226https" +
-      "://github.com/opentdf/backend/blob/maste" +
-      "r/LICENSE2\0051.5.0b\006proto3"
+      "rotobuf.ValueR\005value:\0028\0012\217\003\n\rAccessServi" +
+      "ce\022E\n\004Info\022\020.kas.InfoRequest\032\021.kas.InfoR" +
+      "esponse\"\030\222A\tJ\007\n\003200\022\000\202\323\344\223\002\006\022\004/kas\022f\n\tPub" +
+      "licKey\022\025.kas.PublicKeyRequest\032\026.kas.Publ" +
+      "icKeyResponse\"*\222A\tJ\007\n\003200\022\000\202\323\344\223\002\030\022\026/kas/" +
+      "v2/kas_public_key\022u\n\017LegacyPublicKey\022\033.k" +
+      "as.LegacyPublicKeyRequest\032\034.google.proto" +
+      "buf.StringValue\"\'\222A\tJ\007\n\003200\022\000\202\323\344\223\002\025\022\023/ka" +
+      "s/kas_public_key\022X\n\006Rewrap\022\022.kas.RewrapR" +
+      "equest\032\023.kas.RewrapResponse\"%\222A\tJ\007\n\003200\022" +
+      "\000\202\323\344\223\002\023\"\016/kas/v2/rewrap:\001*B\362\001\n\027io.opentd" +
+      "f.platform.kasB\010KasProtoP\001Z+github.com/o" +
+      "pentdf/platform/protocol/go/kas\242\002\003KXX\252\002\003" +
+      "Kas\312\002\003Kas\342\002\017Kas\\GPBMetadata\352\002\003Kas\222As\022q\n\032" +
+      "OpenTDF Key Access Service*L\n\022BSD 3-Clau" +
+      "se Clear\0226https://github.com/opentdf/bac" +
+      "kend/blob/master/LICENSE2\0051.5.0b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

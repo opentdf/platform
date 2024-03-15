@@ -9,26 +9,26 @@ public interface ListNamespacesResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.namespaces.Namespace> 
+  java.util.List<io.opentdf.platform.policy.Namespace> 
       getNamespacesList();
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
-  io.opentdf.platform.policy.namespaces.Namespace getNamespaces(int index);
+  io.opentdf.platform.policy.Namespace getNamespaces(int index);
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
   int getNamespacesCount();
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.namespaces.NamespaceOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.NamespaceOrBuilder> 
       getNamespacesOrBuilderList();
   /**
-   * <code>repeated .policy.namespaces.Namespace namespaces = 1 [json_name = "namespaces"];</code>
+   * <code>repeated .policy.Namespace namespaces = 1 [json_name = "namespaces"];</code>
    */
-  io.opentdf.platform.policy.namespaces.NamespaceOrBuilder getNamespacesOrBuilder(
+  io.opentdf.platform.policy.NamespaceOrBuilder getNamespacesOrBuilder(
       int index);
 }

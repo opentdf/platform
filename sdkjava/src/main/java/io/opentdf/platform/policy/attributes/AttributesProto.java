@@ -16,21 +16,6 @@ public final class AttributesProto {
         (com.google.protobuf.ExtensionRegistryLite) registry);
   }
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_policy_attributes_Attribute_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_policy_attributes_Attribute_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_policy_attributes_Value_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_policy_attributes_Value_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_policy_attributes_AttributeAndValue_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_policy_attributes_AttributeAndValue_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_attributes_AttributeKeyAccessServer_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
@@ -60,21 +45,6 @@ public final class AttributesProto {
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_attributes_GetAttributeResponse_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_policy_attributes_GetAttributesByValueFqnsRequest_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_policy_attributes_GetAttributesByValueFqnsRequest_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_policy_attributes_GetAttributesByValueFqnsResponse_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_policy_attributes_GetAttributesByValueFqnsResponse_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_policy_attributes_GetAttributesByValueFqnsResponse_FqnAttributeValuesEntry_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_policy_attributes_GetAttributesByValueFqnsResponse_FqnAttributeValuesEntry_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_attributes_CreateAttributeRequest_descriptor;
   static final 
@@ -156,6 +126,26 @@ public final class AttributesProto {
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_policy_attributes_DeactivateAttributeValueResponse_fieldAccessorTable;
   static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_AttributeAndValue_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_AttributeAndValue_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_FqnAttributeValuesEntry_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_FqnAttributeValuesEntry_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
     internal_static_policy_attributes_AssignKeyAccessServerToAttributeRequest_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
@@ -207,97 +197,76 @@ public final class AttributesProto {
       "\n\"policy/attributes/attributes.proto\022\021po" +
       "licy.attributes\032\033buf/validate/validate.p" +
       "roto\032\023common/common.proto\032\034google/api/an" +
-      "notations.proto\032\036google/protobuf/wrapper" +
-      "s.proto\032,kasregistry/key_access_server_r" +
-      "egistry.proto\032\"policy/namespaces/namespa" +
-      "ces.proto\"\222\003\n\tAttribute\022\016\n\002id\030\001 \001(\tR\002id\022" +
-      ":\n\tnamespace\030\002 \001(\0132\034.policy.namespaces.N" +
-      "amespaceR\tnamespace\022\022\n\004name\030\003 \001(\tR\004name\022" +
-      "I\n\004rule\030\004 \001(\0162(.policy.attributes.Attrib" +
-      "uteRuleTypeEnumB\013\272H\010\202\001\002\020\001\310\001\001R\004rule\0220\n\006va" +
-      "lues\030\005 \003(\0132\030.policy.attributes.ValueR\006va" +
-      "lues\0224\n\006grants\030\006 \003(\0132\034.kasregistry.KeyAc" +
-      "cessServerR\006grants\022\020\n\003fqn\030\007 \001(\tR\003fqn\0222\n\006" +
-      "active\030\010 \001(\0132\032.google.protobuf.BoolValue" +
-      "R\006active\022,\n\010metadata\030d \001(\0132\020.common.Meta" +
-      "dataR\010metadata\"\307\002\n\005Value\022\016\n\002id\030\001 \001(\tR\002id" +
-      "\022:\n\tattribute\030\002 \001(\0132\034.policy.attributes." +
-      "AttributeR\tattribute\022\024\n\005value\030\003 \001(\tR\005val" +
-      "ue\0222\n\007members\030\004 \003(\0132\030.policy.attributes." +
-      "ValueR\007members\0224\n\006grants\030\005 \003(\0132\034.kasregi" +
-      "stry.KeyAccessServerR\006grants\022\020\n\003fqn\030\006 \001(" +
-      "\tR\003fqn\0222\n\006active\030\007 \001(\0132\032.google.protobuf" +
-      ".BoolValueR\006active\022,\n\010metadata\030d \001(\0132\020.c" +
-      "ommon.MetadataR\010metadata\"\177\n\021AttributeAnd" +
-      "Value\022:\n\tattribute\030\001 \001(\0132\034.policy.attrib" +
-      "utes.AttributeR\tattribute\022.\n\005value\030\002 \001(\013" +
-      "2\030.policy.attributes.ValueR\005value\"n\n\030Att" +
-      "ributeKeyAccessServer\022!\n\014attribute_id\030\001 " +
-      "\001(\tR\013attributeId\022/\n\024key_access_server_id" +
-      "\030\002 \001(\tR\021keyAccessServerId\"b\n\024ValueKeyAcc" +
-      "essServer\022\031\n\010value_id\030\001 \001(\tR\007valueId\022/\n\024" +
-      "key_access_server_id\030\002 \001(\tR\021keyAccessSer" +
-      "verId\"F\n\025ListAttributesRequest\022-\n\005state\030" +
-      "\001 \001(\0162\027.common.ActiveStateEnumR\005state\"V\n" +
-      "\026ListAttributesResponse\022<\n\nattributes\030\001 " +
-      "\003(\0132\034.policy.attributes.AttributeR\nattri" +
-      "butes\"-\n\023GetAttributeRequest\022\026\n\002id\030\001 \001(\t" +
-      "B\006\272H\003\310\001\001R\002id\"R\n\024GetAttributeResponse\022:\n\t" +
-      "attribute\030\001 \001(\0132\034.policy.attributes.Attr" +
-      "ibuteR\tattribute\"=\n\037GetAttributesByValue" +
-      "FqnsRequest\022\032\n\004fqns\030\001 \003(\tB\006\272H\003\310\001\001R\004fqns\"" +
-      "\216\002\n GetAttributesByValueFqnsResponse\022}\n\024" +
-      "fqn_attribute_values\030\001 \003(\0132K.policy.attr" +
-      "ibutes.GetAttributesByValueFqnsResponse." +
-      "FqnAttributeValuesEntryR\022fqnAttributeVal" +
-      "ues\032k\n\027FqnAttributeValuesEntry\022\020\n\003key\030\001 " +
-      "\001(\tR\003key\022:\n\005value\030\002 \001(\0132$.policy.attribu" +
-      "tes.AttributeAndValueR\005value:\0028\001\"\337\001\n\026Cre" +
-      "ateAttributeRequest\022)\n\014namespace_id\030\001 \001(" +
-      "\tB\006\272H\003\310\001\001R\013namespaceId\022\032\n\004name\030\002 \001(\tB\006\272H" +
-      "\003\310\001\001R\004name\022I\n\004rule\030\003 \001(\0162(.policy.attrib" +
-      "utes.AttributeRuleTypeEnumB\013\272H\010\202\001\002\020\001\310\001\001R" +
-      "\004rule\0223\n\010metadata\030d \001(\0132\027.common.Metadat" +
-      "aMutableR\010metadata\"U\n\027CreateAttributeRes" +
-      "ponse\022:\n\tattribute\030\001 \001(\0132\034.policy.attrib" +
-      "utes.AttributeR\tattribute\"\273\001\n\026UpdateAttr" +
-      "ibuteRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\0223\n\010" +
+      "notations.proto\032\024policy/objects.proto\032\026p" +
+      "olicy/selectors.proto\"n\n\030AttributeKeyAcc" +
+      "essServer\022!\n\014attribute_id\030\001 \001(\tR\013attribu" +
+      "teId\022/\n\024key_access_server_id\030\002 \001(\tR\021keyA" +
+      "ccessServerId\"b\n\024ValueKeyAccessServer\022\031\n" +
+      "\010value_id\030\001 \001(\tR\007valueId\022/\n\024key_access_s" +
+      "erver_id\030\002 \001(\tR\021keyAccessServerId\"F\n\025Lis" +
+      "tAttributesRequest\022-\n\005state\030\001 \001(\0162\027.comm" +
+      "on.ActiveStateEnumR\005state\"K\n\026ListAttribu" +
+      "tesResponse\0221\n\nattributes\030\001 \003(\0132\021.policy" +
+      ".AttributeR\nattributes\"-\n\023GetAttributeRe" +
+      "quest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"G\n\024GetAttr" +
+      "ibuteResponse\022/\n\tattribute\030\001 \001(\0132\021.polic" +
+      "y.AttributeR\tattribute\"\324\001\n\026CreateAttribu" +
+      "teRequest\022)\n\014namespace_id\030\001 \001(\tB\006\272H\003\310\001\001R" +
+      "\013namespaceId\022\032\n\004name\030\002 \001(\tB\006\272H\003\310\001\001R\004name" +
+      "\022>\n\004rule\030\003 \001(\0162\035.policy.AttributeRuleTyp" +
+      "eEnumB\013\272H\010\202\001\002\020\001\310\001\001R\004rule\0223\n\010metadata\030d \001" +
+      "(\0132\027.common.MetadataMutableR\010metadata\"J\n" +
+      "\027CreateAttributeResponse\022/\n\tattribute\030\001 " +
+      "\001(\0132\021.policy.AttributeR\tattribute\"\273\001\n\026Up" +
+      "dateAttributeRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001" +
+      "R\002id\0223\n\010metadata\030d \001(\0132\027.common.Metadata" +
+      "MutableR\010metadata\022T\n\030metadata_update_beh" +
+      "avior\030e \001(\0162\032.common.MetadataUpdateEnumR" +
+      "\026metadataUpdateBehavior\"J\n\027UpdateAttribu" +
+      "teResponse\022/\n\tattribute\030\001 \001(\0132\021.policy.A" +
+      "ttributeR\tattribute\"4\n\032DeactivateAttribu" +
+      "teRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"N\n\033Dea" +
+      "ctivateAttributeResponse\022/\n\tattribute\030\001 " +
+      "\001(\0132\021.policy.AttributeR\tattribute\"2\n\030Get" +
+      "AttributeValueRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001" +
+      "\001R\002id\"@\n\031GetAttributeValueResponse\022#\n\005va" +
+      "lue\030\001 \001(\0132\r.policy.ValueR\005value\"v\n\032ListA" +
+      "ttributeValuesRequest\022)\n\014attribute_id\030\001 " +
+      "\001(\tB\006\272H\003\310\001\001R\013attributeId\022-\n\005state\030\002 \001(\0162" +
+      "\027.common.ActiveStateEnumR\005state\"D\n\033ListA" +
+      "ttributeValuesResponse\022%\n\006values\030\001 \003(\0132\r" +
+      ".policy.ValueR\006values\"\265\001\n\033CreateAttribut" +
+      "eValueRequest\022)\n\014attribute_id\030\001 \001(\tB\006\272H\003" +
+      "\310\001\001R\013attributeId\022\034\n\005value\030\002 \001(\tB\006\272H\003\310\001\001R" +
+      "\005value\022\030\n\007members\030\003 \003(\tR\007members\0223\n\010meta" +
+      "data\030d \001(\0132\027.common.MetadataMutableR\010met" +
+      "adata\"C\n\034CreateAttributeValueResponse\022#\n" +
+      "\005value\030\001 \001(\0132\r.policy.ValueR\005value\"\332\001\n\033U" +
+      "pdateAttributeValueRequest\022\026\n\002id\030\001 \001(\tB\006" +
+      "\272H\003\310\001\001R\002id\022\030\n\007members\030\004 \003(\tR\007members\0223\n\010" +
       "metadata\030d \001(\0132\027.common.MetadataMutableR" +
       "\010metadata\022T\n\030metadata_update_behavior\030e " +
       "\001(\0162\032.common.MetadataUpdateEnumR\026metadat" +
-      "aUpdateBehavior\"U\n\027UpdateAttributeRespon" +
-      "se\022:\n\tattribute\030\001 \001(\0132\034.policy.attribute" +
-      "s.AttributeR\tattribute\"4\n\032DeactivateAttr" +
-      "ibuteRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"Y\n\033" +
-      "DeactivateAttributeResponse\022:\n\tattribute" +
-      "\030\001 \001(\0132\034.policy.attributes.AttributeR\tat" +
-      "tribute\"2\n\030GetAttributeValueRequest\022\026\n\002i" +
-      "d\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"K\n\031GetAttributeValue" +
-      "Response\022.\n\005value\030\001 \001(\0132\030.policy.attribu" +
-      "tes.ValueR\005value\"v\n\032ListAttributeValuesR" +
-      "equest\022)\n\014attribute_id\030\001 \001(\tB\006\272H\003\310\001\001R\013at" +
-      "tributeId\022-\n\005state\030\002 \001(\0162\027.common.Active" +
-      "StateEnumR\005state\"O\n\033ListAttributeValuesR" +
-      "esponse\0220\n\006values\030\001 \003(\0132\030.policy.attribu" +
-      "tes.ValueR\006values\"\265\001\n\033CreateAttributeVal" +
-      "ueRequest\022)\n\014attribute_id\030\001 \001(\tB\006\272H\003\310\001\001R" +
-      "\013attributeId\022\034\n\005value\030\002 \001(\tB\006\272H\003\310\001\001R\005val" +
-      "ue\022\030\n\007members\030\003 \003(\tR\007members\0223\n\010metadata" +
-      "\030d \001(\0132\027.common.MetadataMutableR\010metadat" +
-      "a\"N\n\034CreateAttributeValueResponse\022.\n\005val" +
-      "ue\030\001 \001(\0132\030.policy.attributes.ValueR\005valu" +
-      "e\"\332\001\n\033UpdateAttributeValueRequest\022\026\n\002id\030" +
-      "\001 \001(\tB\006\272H\003\310\001\001R\002id\022\030\n\007members\030\004 \003(\tR\007memb" +
-      "ers\0223\n\010metadata\030d \001(\0132\027.common.MetadataM" +
-      "utableR\010metadata\022T\n\030metadata_update_beha" +
-      "vior\030e \001(\0162\032.common.MetadataUpdateEnumR\026" +
-      "metadataUpdateBehavior\"N\n\034UpdateAttribut" +
-      "eValueResponse\022.\n\005value\030\001 \001(\0132\030.policy.a" +
-      "ttributes.ValueR\005value\"9\n\037DeactivateAttr" +
-      "ibuteValueRequest\022\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002i" +
-      "d\"R\n DeactivateAttributeValueResponse\022.\n" +
-      "\005value\030\001 \001(\0132\030.policy.attributes.ValueR\005" +
-      "value\"\225\001\n\'AssignKeyAccessServerToAttribu" +
+      "aUpdateBehavior\"C\n\034UpdateAttributeValueR" +
+      "esponse\022#\n\005value\030\001 \001(\0132\r.policy.ValueR\005v" +
+      "alue\"9\n\037DeactivateAttributeValueRequest\022" +
+      "\026\n\002id\030\001 \001(\tB\006\272H\003\310\001\001R\002id\"G\n DeactivateAtt" +
+      "ributeValueResponse\022#\n\005value\030\001 \001(\0132\r.pol" +
+      "icy.ValueR\005value\"\204\001\n\037GetAttributeValuesB" +
+      "yFqnsRequest\022\032\n\004fqns\030\001 \003(\tB\006\272H\003\310\001\001R\004fqns" +
+      "\022E\n\nwith_value\030\002 \001(\0132\036.policy.AttributeV" +
+      "alueSelectorB\006\272H\003\310\001\001R\twithValue\"\233\003\n GetA" +
+      "ttributeValuesByFqnsResponse\022}\n\024fqn_attr" +
+      "ibute_values\030\001 \003(\0132K.policy.attributes.G" +
+      "etAttributeValuesByFqnsResponse.FqnAttri" +
+      "buteValuesEntryR\022fqnAttributeValues\032i\n\021A" +
+      "ttributeAndValue\022/\n\tattribute\030\001 \001(\0132\021.po" +
+      "licy.AttributeR\tattribute\022#\n\005value\030\002 \001(\013" +
+      "2\r.policy.ValueR\005value\032\214\001\n\027FqnAttributeV" +
+      "aluesEntry\022\020\n\003key\030\001 \001(\tR\003key\022[\n\005value\030\002 " +
+      "\001(\0132E.policy.attributes.GetAttributeValu" +
+      "esByFqnsResponse.AttributeAndValueR\005valu" +
+      "e:\0028\001\"\225\001\n\'AssignKeyAccessServerToAttribu" +
       "teRequest\022j\n\033attribute_key_access_server" +
       "\030\001 \001(\0132+.policy.attributes.AttributeKeyA" +
       "ccessServerR\030attributeKeyAccessServer\"\226\001" +
@@ -326,80 +295,75 @@ public final class AttributesProto {
       "eKeyAccessServerFromValueResponse\022^\n\027val" +
       "ue_key_access_server\030\001 \001(\0132\'.policy.attr" +
       "ibutes.ValueKeyAccessServerR\024valueKeyAcc" +
-      "essServer*\263\001\n\025AttributeRuleTypeEnum\022(\n$A" +
-      "TTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED\020\000\022#\n" +
-      "\037ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF\020\001\022#\n\037AT" +
-      "TRIBUTE_RULE_TYPE_ENUM_ANY_OF\020\002\022&\n\"ATTRI" +
-      "BUTE_RULE_TYPE_ENUM_HIERARCHY\020\0032\307\023\n\021Attr" +
-      "ibutesService\022g\n\016ListAttributes\022(.policy" +
-      ".attributes.ListAttributesRequest\032).poli" +
-      "cy.attributes.ListAttributesResponse\"\000\022v" +
-      "\n\023ListAttributeValues\022-.policy.attribute" +
-      "s.ListAttributeValuesRequest\032..policy.at" +
-      "tributes.ListAttributeValuesResponse\"\000\022y" +
-      "\n\014GetAttribute\022&.policy.attributes.GetAt" +
-      "tributeRequest\032\'.policy.attributes.GetAt" +
-      "tributeResponse\"\030\202\323\344\223\002\022\022\020/attributes/{id" +
-      "}\022\236\001\n\030GetAttributesByValueFqns\0222.policy." +
-      "attributes.GetAttributesByValueFqnsReque" +
-      "st\0323.policy.attributes.GetAttributesByVa" +
-      "lueFqnsResponse\"\031\202\323\344\223\002\023\022\021/attributes/*/f" +
-      "qn\022\200\001\n\017CreateAttribute\022).policy.attribut" +
-      "es.CreateAttributeRequest\032*.policy.attri" +
-      "butes.CreateAttributeResponse\"\026\202\323\344\223\002\020\"\013/" +
-      "attributes:\001*\022\205\001\n\017UpdateAttribute\022).poli" +
-      "cy.attributes.UpdateAttributeRequest\032*.p" +
-      "olicy.attributes.UpdateAttributeResponse" +
-      "\"\033\202\323\344\223\002\0252\020/attributes/{id}:\001*\022\216\001\n\023Deacti" +
-      "vateAttribute\022-.policy.attributes.Deacti" +
-      "vateAttributeRequest\032..policy.attributes" +
-      ".DeactivateAttributeResponse\"\030\202\323\344\223\002\022*\020/a" +
-      "ttributes/{id}\022\221\001\n\021GetAttributeValue\022+.p" +
-      "olicy.attributes.GetAttributeValueReques" +
-      "t\032,.policy.attributes.GetAttributeValueR" +
-      "esponse\"!\202\323\344\223\002\033\022\031/attributes/*/values/{i" +
-      "d}\022\245\001\n\024CreateAttributeValue\022..policy.att" +
-      "ributes.CreateAttributeValueRequest\032/.po" +
-      "licy.attributes.CreateAttributeValueResp" +
-      "onse\",\202\323\344\223\002&\"!/attributes/{attribute_id}" +
-      "/values:\001*\022\235\001\n\024UpdateAttributeValue\022..po" +
-      "licy.attributes.UpdateAttributeValueRequ" +
-      "est\032/.policy.attributes.UpdateAttributeV" +
-      "alueResponse\"$\202\323\344\223\002\0362\031/attributes/*/valu" +
-      "es/{id}:\001*\022\246\001\n\030DeactivateAttributeValue\022" +
-      "2.policy.attributes.DeactivateAttributeV" +
-      "alueRequest\0323.policy.attributes.Deactiva" +
-      "teAttributeValueResponse\"!\202\323\344\223\002\033*\031/attri" +
-      "butes/*/values/{id}\022\344\001\n AssignKeyAccessS" +
-      "erverToAttribute\022:.policy.attributes.Ass" +
-      "ignKeyAccessServerToAttributeRequest\032;.p" +
-      "olicy.attributes.AssignKeyAccessServerTo" +
-      "AttributeResponse\"G\202\323\344\223\002A\"\"/attributes/k" +
-      "eyaccessserver/assign:\033attribute_key_acc" +
-      "ess_server\022\352\001\n\"RemoveKeyAccessServerFrom" +
-      "Attribute\022<.policy.attributes.RemoveKeyA" +
-      "ccessServerFromAttributeRequest\032=.policy" +
-      ".attributes.RemoveKeyAccessServerFromAtt" +
-      "ributeResponse\"G\202\323\344\223\002A\"\"/attributes/keya" +
-      "ccessserver/remove:\033attribute_key_access" +
-      "_server\022\333\001\n\034AssignKeyAccessServerToValue" +
-      "\0226.policy.attributes.AssignKeyAccessServ" +
-      "erToValueRequest\0327.policy.attributes.Ass" +
-      "ignKeyAccessServerToValueResponse\"J\202\323\344\223\002" +
-      "D\")/attributes/values/keyaccessserver/as" +
-      "sign:\027value_key_access_server\022\341\001\n\036Remove" +
-      "KeyAccessServerFromValue\0228.policy.attrib" +
-      "utes.RemoveKeyAccessServerFromValueReque" +
-      "st\0329.policy.attributes.RemoveKeyAccessSe" +
-      "rverFromValueResponse\"J\202\323\344\223\002D\")/attribut" +
-      "es/values/keyaccessserver/remove:\027value_" +
-      "key_access_serverB\330\001\n%io.opentdf.platfor" +
-      "m.policy.attributesB\017AttributesProtoP\001Z9" +
-      "github.com/opentdf/platform/protocol/go/" +
-      "policy/attributes\242\002\003PAX\252\002\021Policy.Attribu" +
-      "tes\312\002\021Policy\\Attributes\342\002\035Policy\\Attribu" +
-      "tes\\GPBMetadata\352\002\022Policy::Attributesb\006pr" +
-      "oto3"
+      "essServer2\307\023\n\021AttributesService\022g\n\016ListA" +
+      "ttributes\022(.policy.attributes.ListAttrib" +
+      "utesRequest\032).policy.attributes.ListAttr" +
+      "ibutesResponse\"\000\022v\n\023ListAttributeValues\022" +
+      "-.policy.attributes.ListAttributeValuesR" +
+      "equest\032..policy.attributes.ListAttribute" +
+      "ValuesResponse\"\000\022y\n\014GetAttribute\022&.polic" +
+      "y.attributes.GetAttributeRequest\032\'.polic" +
+      "y.attributes.GetAttributeResponse\"\030\202\323\344\223\002" +
+      "\022\022\020/attributes/{id}\022\236\001\n\030GetAttributeValu" +
+      "esByFqns\0222.policy.attributes.GetAttribut" +
+      "eValuesByFqnsRequest\0323.policy.attributes" +
+      ".GetAttributeValuesByFqnsResponse\"\031\202\323\344\223\002" +
+      "\023\022\021/attributes/*/fqn\022\200\001\n\017CreateAttribute" +
+      "\022).policy.attributes.CreateAttributeRequ" +
+      "est\032*.policy.attributes.CreateAttributeR" +
+      "esponse\"\026\202\323\344\223\002\020\"\013/attributes:\001*\022\205\001\n\017Upda" +
+      "teAttribute\022).policy.attributes.UpdateAt" +
+      "tributeRequest\032*.policy.attributes.Updat" +
+      "eAttributeResponse\"\033\202\323\344\223\002\0252\020/attributes/" +
+      "{id}:\001*\022\216\001\n\023DeactivateAttribute\022-.policy" +
+      ".attributes.DeactivateAttributeRequest\032." +
+      ".policy.attributes.DeactivateAttributeRe" +
+      "sponse\"\030\202\323\344\223\002\022*\020/attributes/{id}\022\221\001\n\021Get" +
+      "AttributeValue\022+.policy.attributes.GetAt" +
+      "tributeValueRequest\032,.policy.attributes." +
+      "GetAttributeValueResponse\"!\202\323\344\223\002\033\022\031/attr" +
+      "ibutes/*/values/{id}\022\245\001\n\024CreateAttribute" +
+      "Value\022..policy.attributes.CreateAttribut" +
+      "eValueRequest\032/.policy.attributes.Create" +
+      "AttributeValueResponse\",\202\323\344\223\002&\"!/attribu" +
+      "tes/{attribute_id}/values:\001*\022\235\001\n\024UpdateA" +
+      "ttributeValue\022..policy.attributes.Update" +
+      "AttributeValueRequest\032/.policy.attribute" +
+      "s.UpdateAttributeValueResponse\"$\202\323\344\223\002\0362\031" +
+      "/attributes/*/values/{id}:\001*\022\246\001\n\030Deactiv" +
+      "ateAttributeValue\0222.policy.attributes.De" +
+      "activateAttributeValueRequest\0323.policy.a" +
+      "ttributes.DeactivateAttributeValueRespon" +
+      "se\"!\202\323\344\223\002\033*\031/attributes/*/values/{id}\022\344\001" +
+      "\n AssignKeyAccessServerToAttribute\022:.pol" +
+      "icy.attributes.AssignKeyAccessServerToAt" +
+      "tributeRequest\032;.policy.attributes.Assig" +
+      "nKeyAccessServerToAttributeResponse\"G\202\323\344" +
+      "\223\002A\"\"/attributes/keyaccessserver/assign:" +
+      "\033attribute_key_access_server\022\352\001\n\"RemoveK" +
+      "eyAccessServerFromAttribute\022<.policy.att" +
+      "ributes.RemoveKeyAccessServerFromAttribu" +
+      "teRequest\032=.policy.attributes.RemoveKeyA" +
+      "ccessServerFromAttributeResponse\"G\202\323\344\223\002A" +
+      "\"\"/attributes/keyaccessserver/remove:\033at" +
+      "tribute_key_access_server\022\333\001\n\034AssignKeyA" +
+      "ccessServerToValue\0226.policy.attributes.A" +
+      "ssignKeyAccessServerToValueRequest\0327.pol" +
+      "icy.attributes.AssignKeyAccessServerToVa" +
+      "lueResponse\"J\202\323\344\223\002D\")/attributes/values/" +
+      "keyaccessserver/assign:\027value_key_access" +
+      "_server\022\341\001\n\036RemoveKeyAccessServerFromVal" +
+      "ue\0228.policy.attributes.RemoveKeyAccessSe" +
+      "rverFromValueRequest\0329.policy.attributes" +
+      ".RemoveKeyAccessServerFromValueResponse\"" +
+      "J\202\323\344\223\002D\")/attributes/values/keyaccessser" +
+      "ver/remove:\027value_key_access_serverB\330\001\n%" +
+      "io.opentdf.platform.policy.attributesB\017A" +
+      "ttributesProtoP\001Z9github.com/opentdf/pla" +
+      "tform/protocol/go/policy/attributes\242\002\003PA" +
+      "X\252\002\021Policy.Attributes\312\002\021Policy\\Attribute" +
+      "s\342\002\035Policy\\Attributes\\GPBMetadata\352\002\022Poli" +
+      "cy::Attributesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -407,222 +371,209 @@ public final class AttributesProto {
           build.buf.validate.ValidateProto.getDescriptor(),
           io.opentdf.platform.common.CommonProto.getDescriptor(),
           com.google.api.AnnotationsProto.getDescriptor(),
-          com.google.protobuf.WrappersProto.getDescriptor(),
-          io.opentdf.platform.kasregistry.KeyAccessServerRegistryProto.getDescriptor(),
-          io.opentdf.platform.policy.namespaces.NamespacesProto.getDescriptor(),
+          io.opentdf.platform.policy.ObjectsProto.getDescriptor(),
+          io.opentdf.platform.policy.SelectorsProto.getDescriptor(),
         });
-    internal_static_policy_attributes_Attribute_descriptor =
-      getDescriptor().getMessageTypes().get(0);
-    internal_static_policy_attributes_Attribute_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_policy_attributes_Attribute_descriptor,
-        new java.lang.String[] { "Id", "Namespace", "Name", "Rule", "Values", "Grants", "Fqn", "Active", "Metadata", });
-    internal_static_policy_attributes_Value_descriptor =
-      getDescriptor().getMessageTypes().get(1);
-    internal_static_policy_attributes_Value_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_policy_attributes_Value_descriptor,
-        new java.lang.String[] { "Id", "Attribute", "Value", "Members", "Grants", "Fqn", "Active", "Metadata", });
-    internal_static_policy_attributes_AttributeAndValue_descriptor =
-      getDescriptor().getMessageTypes().get(2);
-    internal_static_policy_attributes_AttributeAndValue_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_policy_attributes_AttributeAndValue_descriptor,
-        new java.lang.String[] { "Attribute", "Value", });
     internal_static_policy_attributes_AttributeKeyAccessServer_descriptor =
-      getDescriptor().getMessageTypes().get(3);
+      getDescriptor().getMessageTypes().get(0);
     internal_static_policy_attributes_AttributeKeyAccessServer_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_AttributeKeyAccessServer_descriptor,
         new java.lang.String[] { "AttributeId", "KeyAccessServerId", });
     internal_static_policy_attributes_ValueKeyAccessServer_descriptor =
-      getDescriptor().getMessageTypes().get(4);
+      getDescriptor().getMessageTypes().get(1);
     internal_static_policy_attributes_ValueKeyAccessServer_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_ValueKeyAccessServer_descriptor,
         new java.lang.String[] { "ValueId", "KeyAccessServerId", });
     internal_static_policy_attributes_ListAttributesRequest_descriptor =
-      getDescriptor().getMessageTypes().get(5);
+      getDescriptor().getMessageTypes().get(2);
     internal_static_policy_attributes_ListAttributesRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_ListAttributesRequest_descriptor,
         new java.lang.String[] { "State", });
     internal_static_policy_attributes_ListAttributesResponse_descriptor =
-      getDescriptor().getMessageTypes().get(6);
+      getDescriptor().getMessageTypes().get(3);
     internal_static_policy_attributes_ListAttributesResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_ListAttributesResponse_descriptor,
         new java.lang.String[] { "Attributes", });
     internal_static_policy_attributes_GetAttributeRequest_descriptor =
-      getDescriptor().getMessageTypes().get(7);
+      getDescriptor().getMessageTypes().get(4);
     internal_static_policy_attributes_GetAttributeRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_GetAttributeRequest_descriptor,
         new java.lang.String[] { "Id", });
     internal_static_policy_attributes_GetAttributeResponse_descriptor =
-      getDescriptor().getMessageTypes().get(8);
+      getDescriptor().getMessageTypes().get(5);
     internal_static_policy_attributes_GetAttributeResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_GetAttributeResponse_descriptor,
         new java.lang.String[] { "Attribute", });
-    internal_static_policy_attributes_GetAttributesByValueFqnsRequest_descriptor =
-      getDescriptor().getMessageTypes().get(9);
-    internal_static_policy_attributes_GetAttributesByValueFqnsRequest_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_policy_attributes_GetAttributesByValueFqnsRequest_descriptor,
-        new java.lang.String[] { "Fqns", });
-    internal_static_policy_attributes_GetAttributesByValueFqnsResponse_descriptor =
-      getDescriptor().getMessageTypes().get(10);
-    internal_static_policy_attributes_GetAttributesByValueFqnsResponse_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_policy_attributes_GetAttributesByValueFqnsResponse_descriptor,
-        new java.lang.String[] { "FqnAttributeValues", });
-    internal_static_policy_attributes_GetAttributesByValueFqnsResponse_FqnAttributeValuesEntry_descriptor =
-      internal_static_policy_attributes_GetAttributesByValueFqnsResponse_descriptor.getNestedTypes().get(0);
-    internal_static_policy_attributes_GetAttributesByValueFqnsResponse_FqnAttributeValuesEntry_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_policy_attributes_GetAttributesByValueFqnsResponse_FqnAttributeValuesEntry_descriptor,
-        new java.lang.String[] { "Key", "Value", });
     internal_static_policy_attributes_CreateAttributeRequest_descriptor =
-      getDescriptor().getMessageTypes().get(11);
+      getDescriptor().getMessageTypes().get(6);
     internal_static_policy_attributes_CreateAttributeRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_CreateAttributeRequest_descriptor,
         new java.lang.String[] { "NamespaceId", "Name", "Rule", "Metadata", });
     internal_static_policy_attributes_CreateAttributeResponse_descriptor =
-      getDescriptor().getMessageTypes().get(12);
+      getDescriptor().getMessageTypes().get(7);
     internal_static_policy_attributes_CreateAttributeResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_CreateAttributeResponse_descriptor,
         new java.lang.String[] { "Attribute", });
     internal_static_policy_attributes_UpdateAttributeRequest_descriptor =
-      getDescriptor().getMessageTypes().get(13);
+      getDescriptor().getMessageTypes().get(8);
     internal_static_policy_attributes_UpdateAttributeRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_UpdateAttributeRequest_descriptor,
         new java.lang.String[] { "Id", "Metadata", "MetadataUpdateBehavior", });
     internal_static_policy_attributes_UpdateAttributeResponse_descriptor =
-      getDescriptor().getMessageTypes().get(14);
+      getDescriptor().getMessageTypes().get(9);
     internal_static_policy_attributes_UpdateAttributeResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_UpdateAttributeResponse_descriptor,
         new java.lang.String[] { "Attribute", });
     internal_static_policy_attributes_DeactivateAttributeRequest_descriptor =
-      getDescriptor().getMessageTypes().get(15);
+      getDescriptor().getMessageTypes().get(10);
     internal_static_policy_attributes_DeactivateAttributeRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_DeactivateAttributeRequest_descriptor,
         new java.lang.String[] { "Id", });
     internal_static_policy_attributes_DeactivateAttributeResponse_descriptor =
-      getDescriptor().getMessageTypes().get(16);
+      getDescriptor().getMessageTypes().get(11);
     internal_static_policy_attributes_DeactivateAttributeResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_DeactivateAttributeResponse_descriptor,
         new java.lang.String[] { "Attribute", });
     internal_static_policy_attributes_GetAttributeValueRequest_descriptor =
-      getDescriptor().getMessageTypes().get(17);
+      getDescriptor().getMessageTypes().get(12);
     internal_static_policy_attributes_GetAttributeValueRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_GetAttributeValueRequest_descriptor,
         new java.lang.String[] { "Id", });
     internal_static_policy_attributes_GetAttributeValueResponse_descriptor =
-      getDescriptor().getMessageTypes().get(18);
+      getDescriptor().getMessageTypes().get(13);
     internal_static_policy_attributes_GetAttributeValueResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_GetAttributeValueResponse_descriptor,
         new java.lang.String[] { "Value", });
     internal_static_policy_attributes_ListAttributeValuesRequest_descriptor =
-      getDescriptor().getMessageTypes().get(19);
+      getDescriptor().getMessageTypes().get(14);
     internal_static_policy_attributes_ListAttributeValuesRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_ListAttributeValuesRequest_descriptor,
         new java.lang.String[] { "AttributeId", "State", });
     internal_static_policy_attributes_ListAttributeValuesResponse_descriptor =
-      getDescriptor().getMessageTypes().get(20);
+      getDescriptor().getMessageTypes().get(15);
     internal_static_policy_attributes_ListAttributeValuesResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_ListAttributeValuesResponse_descriptor,
         new java.lang.String[] { "Values", });
     internal_static_policy_attributes_CreateAttributeValueRequest_descriptor =
-      getDescriptor().getMessageTypes().get(21);
+      getDescriptor().getMessageTypes().get(16);
     internal_static_policy_attributes_CreateAttributeValueRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_CreateAttributeValueRequest_descriptor,
         new java.lang.String[] { "AttributeId", "Value", "Members", "Metadata", });
     internal_static_policy_attributes_CreateAttributeValueResponse_descriptor =
-      getDescriptor().getMessageTypes().get(22);
+      getDescriptor().getMessageTypes().get(17);
     internal_static_policy_attributes_CreateAttributeValueResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_CreateAttributeValueResponse_descriptor,
         new java.lang.String[] { "Value", });
     internal_static_policy_attributes_UpdateAttributeValueRequest_descriptor =
-      getDescriptor().getMessageTypes().get(23);
+      getDescriptor().getMessageTypes().get(18);
     internal_static_policy_attributes_UpdateAttributeValueRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_UpdateAttributeValueRequest_descriptor,
         new java.lang.String[] { "Id", "Members", "Metadata", "MetadataUpdateBehavior", });
     internal_static_policy_attributes_UpdateAttributeValueResponse_descriptor =
-      getDescriptor().getMessageTypes().get(24);
+      getDescriptor().getMessageTypes().get(19);
     internal_static_policy_attributes_UpdateAttributeValueResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_UpdateAttributeValueResponse_descriptor,
         new java.lang.String[] { "Value", });
     internal_static_policy_attributes_DeactivateAttributeValueRequest_descriptor =
-      getDescriptor().getMessageTypes().get(25);
+      getDescriptor().getMessageTypes().get(20);
     internal_static_policy_attributes_DeactivateAttributeValueRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_DeactivateAttributeValueRequest_descriptor,
         new java.lang.String[] { "Id", });
     internal_static_policy_attributes_DeactivateAttributeValueResponse_descriptor =
-      getDescriptor().getMessageTypes().get(26);
+      getDescriptor().getMessageTypes().get(21);
     internal_static_policy_attributes_DeactivateAttributeValueResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_DeactivateAttributeValueResponse_descriptor,
         new java.lang.String[] { "Value", });
+    internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_descriptor =
+      getDescriptor().getMessageTypes().get(22);
+    internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_policy_attributes_GetAttributeValuesByFqnsRequest_descriptor,
+        new java.lang.String[] { "Fqns", "WithValue", });
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_descriptor =
+      getDescriptor().getMessageTypes().get(23);
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_descriptor,
+        new java.lang.String[] { "FqnAttributeValues", });
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_AttributeAndValue_descriptor =
+      internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_descriptor.getNestedTypes().get(0);
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_AttributeAndValue_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_AttributeAndValue_descriptor,
+        new java.lang.String[] { "Attribute", "Value", });
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_FqnAttributeValuesEntry_descriptor =
+      internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_descriptor.getNestedTypes().get(1);
+    internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_FqnAttributeValuesEntry_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_policy_attributes_GetAttributeValuesByFqnsResponse_FqnAttributeValuesEntry_descriptor,
+        new java.lang.String[] { "Key", "Value", });
     internal_static_policy_attributes_AssignKeyAccessServerToAttributeRequest_descriptor =
-      getDescriptor().getMessageTypes().get(27);
+      getDescriptor().getMessageTypes().get(24);
     internal_static_policy_attributes_AssignKeyAccessServerToAttributeRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_AssignKeyAccessServerToAttributeRequest_descriptor,
         new java.lang.String[] { "AttributeKeyAccessServer", });
     internal_static_policy_attributes_AssignKeyAccessServerToAttributeResponse_descriptor =
-      getDescriptor().getMessageTypes().get(28);
+      getDescriptor().getMessageTypes().get(25);
     internal_static_policy_attributes_AssignKeyAccessServerToAttributeResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_AssignKeyAccessServerToAttributeResponse_descriptor,
         new java.lang.String[] { "AttributeKeyAccessServer", });
     internal_static_policy_attributes_RemoveKeyAccessServerFromAttributeRequest_descriptor =
-      getDescriptor().getMessageTypes().get(29);
+      getDescriptor().getMessageTypes().get(26);
     internal_static_policy_attributes_RemoveKeyAccessServerFromAttributeRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_RemoveKeyAccessServerFromAttributeRequest_descriptor,
         new java.lang.String[] { "AttributeKeyAccessServer", });
     internal_static_policy_attributes_RemoveKeyAccessServerFromAttributeResponse_descriptor =
-      getDescriptor().getMessageTypes().get(30);
+      getDescriptor().getMessageTypes().get(27);
     internal_static_policy_attributes_RemoveKeyAccessServerFromAttributeResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_RemoveKeyAccessServerFromAttributeResponse_descriptor,
         new java.lang.String[] { "AttributeKeyAccessServer", });
     internal_static_policy_attributes_AssignKeyAccessServerToValueRequest_descriptor =
-      getDescriptor().getMessageTypes().get(31);
+      getDescriptor().getMessageTypes().get(28);
     internal_static_policy_attributes_AssignKeyAccessServerToValueRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_AssignKeyAccessServerToValueRequest_descriptor,
         new java.lang.String[] { "ValueKeyAccessServer", });
     internal_static_policy_attributes_AssignKeyAccessServerToValueResponse_descriptor =
-      getDescriptor().getMessageTypes().get(32);
+      getDescriptor().getMessageTypes().get(29);
     internal_static_policy_attributes_AssignKeyAccessServerToValueResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_AssignKeyAccessServerToValueResponse_descriptor,
         new java.lang.String[] { "ValueKeyAccessServer", });
     internal_static_policy_attributes_RemoveKeyAccessServerFromValueRequest_descriptor =
-      getDescriptor().getMessageTypes().get(33);
+      getDescriptor().getMessageTypes().get(30);
     internal_static_policy_attributes_RemoveKeyAccessServerFromValueRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_RemoveKeyAccessServerFromValueRequest_descriptor,
         new java.lang.String[] { "ValueKeyAccessServer", });
     internal_static_policy_attributes_RemoveKeyAccessServerFromValueResponse_descriptor =
-      getDescriptor().getMessageTypes().get(34);
+      getDescriptor().getMessageTypes().get(31);
     internal_static_policy_attributes_RemoveKeyAccessServerFromValueResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_policy_attributes_RemoveKeyAccessServerFromValueResponse_descriptor,
@@ -636,9 +587,8 @@ public final class AttributesProto {
     build.buf.validate.ValidateProto.getDescriptor();
     io.opentdf.platform.common.CommonProto.getDescriptor();
     com.google.api.AnnotationsProto.getDescriptor();
-    com.google.protobuf.WrappersProto.getDescriptor();
-    io.opentdf.platform.kasregistry.KeyAccessServerRegistryProto.getDescriptor();
-    io.opentdf.platform.policy.namespaces.NamespacesProto.getDescriptor();
+    io.opentdf.platform.policy.ObjectsProto.getDescriptor();
+    io.opentdf.platform.policy.SelectorsProto.getDescriptor();
   }
 
   // @@protoc_insertion_point(outer_class_scope)

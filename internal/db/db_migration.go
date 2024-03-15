@@ -18,7 +18,10 @@ func migrationInit(c *Client, ctx context.Context) (*goose.Provider, func(), err
 		return nil, nil, fmt.Errorf("migrations are disabled")
 	}
 
-	c.Pgx.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.config.Schema))
+	if tag, err := c.Pgx.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.config.Schema)); err != nil {
+		slog.Error("migration error", "err", err, "tag", tag)
+		return nil, nil, fmt.Errorf("failed to SET search_path [%w]", err)
+	}
 
 	pool, ok := c.Pgx.(*pgxpool.Pool)
 	if !ok || pool == nil {
@@ -118,7 +121,10 @@ func (c *Client) MigrationDown(ctx context.Context) error {
 		return nil
 	}
 
-	c.Pgx.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.config.Schema))
+	if tag, err := c.Pgx.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.config.Schema)); err != nil {
+		slog.Error("migration error", "err", err, "tag", tag)
+		return fmt.Errorf("failed to SET search_path [%w]", err)
+	}
 
 	pool, ok := c.Pgx.(*pgxpool.Pool)
 	if !ok || pool == nil {

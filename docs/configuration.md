@@ -42,6 +42,11 @@ The server configuration is used to define how the application runs its server.
   - `enabled`: Enable tls. `(default: false)`
   - `cert`: The path to the tls certificate.
   - `key`: The path to the tls key.
+- `auth`: The configuration for your trusted IDP.
+  - `enabled`: Enable authentication. `(default: true)`
+  - `audience`: The audience for the IDP.
+  - `issuer`: The issuer for the IDP.
+  - `clients`: A list of client id's that are allowed
 
 Example:
 
@@ -56,6 +61,13 @@ server:
     enabled: true
     cert: /path/to/cert
     key: /path/to/key
+  auth:
+    enabled: true
+    audience: https://example.com
+    issuer: https://example.com
+    clients:
+      - client_id
+      - client_id2
 ```
 
 ## Database Configuration

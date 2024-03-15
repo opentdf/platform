@@ -93,18 +93,6 @@
       ],
       "default": "DECISION_UNSPECIFIED"
     },
-    "authorizationAction": {
-      "type": "object",
-      "properties": {
-        "standard": {
-          "$ref": "#/definitions/ActionStandardAction"
-        },
-        "custom": {
-          "type": "string"
-        }
-      },
-      "title": "An action an entity can take"
-    },
     "authorizationDecisionRequest": {
       "type": "object",
       "properties": {
@@ -112,7 +100,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationAction"
+            "$ref": "#/definitions/policyAction"
           }
         },
         "entityChains": {
@@ -145,7 +133,7 @@
           "title": "ephemeral resource attributes id from the request"
         },
         "action": {
-          "$ref": "#/definitions/authorizationAction",
+          "$ref": "#/definitions/policyAction",
           "title": "Action of the decision response"
         },
         "decision": {
@@ -268,6 +256,18 @@
         }
       },
       "title": "A logical bucket of attributes belonging to a \"Resource\""
+    },
+    "policyAction": {
+      "type": "object",
+      "properties": {
+        "standard": {
+          "$ref": "#/definitions/ActionStandardAction"
+        },
+        "custom": {
+          "type": "string"
+        }
+      },
+      "title": "An action an entity can take"
     },
     "protobufAny": {
       "type": "object",

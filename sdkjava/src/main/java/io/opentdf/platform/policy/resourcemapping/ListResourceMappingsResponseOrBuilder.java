@@ -9,26 +9,26 @@ public interface ListResourceMappingsResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
-  java.util.List<io.opentdf.platform.policy.resourcemapping.ResourceMapping> 
+  java.util.List<io.opentdf.platform.policy.ResourceMapping> 
       getResourceMappingsList();
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
-  io.opentdf.platform.policy.resourcemapping.ResourceMapping getResourceMappings(int index);
+  io.opentdf.platform.policy.ResourceMapping getResourceMappings(int index);
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
   int getResourceMappingsCount();
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
-  java.util.List<? extends io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder> 
+  java.util.List<? extends io.opentdf.platform.policy.ResourceMappingOrBuilder> 
       getResourceMappingsOrBuilderList();
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
-  io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder getResourceMappingsOrBuilder(
+  io.opentdf.platform.policy.ResourceMappingOrBuilder getResourceMappingsOrBuilder(
       int index);
 }

@@ -187,9 +187,9 @@ attribute_value_key_access_servers:
   - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
     key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
 
-value_members:
+attribute_value_members:
   metadata:
-    table_name: value_members
+    table_name: attribute_value_members
     columns:
       - id
       - value_id
@@ -318,7 +318,7 @@ subject_condition_set:
                     subject_external_values:
                       - futbol
                       - soccer
-                  - subject_external_field: face_dessert
+                  - subject_external_field: fave_dessert
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - ice_cream
@@ -402,6 +402,11 @@ resource_mappings:
       attribute_value_id: 04bd2657-de10-46bc-a88f-5d687de4816b
       terms:
         - helloworld
+    resource_mapping_to_attribute_value4:
+      id: f99d1c97-ad8a-40c8-8148-6539764e2743
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      terms:
+        - with_members
 
 ##
 # KAS Registry (key access server registry)

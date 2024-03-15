@@ -42,41 +42,41 @@ private static final long serialVersionUID = 0L;
 
   public static final int RESOURCE_MAPPINGS_FIELD_NUMBER = 1;
   @SuppressWarnings("serial")
-  private java.util.List<io.opentdf.platform.policy.resourcemapping.ResourceMapping> resourceMappings_;
+  private java.util.List<io.opentdf.platform.policy.ResourceMapping> resourceMappings_;
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.opentdf.platform.policy.resourcemapping.ResourceMapping> getResourceMappingsList() {
+  public java.util.List<io.opentdf.platform.policy.ResourceMapping> getResourceMappingsList() {
     return resourceMappings_;
   }
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
   @java.lang.Override
-  public java.util.List<? extends io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder> 
+  public java.util.List<? extends io.opentdf.platform.policy.ResourceMappingOrBuilder> 
       getResourceMappingsOrBuilderList() {
     return resourceMappings_;
   }
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
   @java.lang.Override
   public int getResourceMappingsCount() {
     return resourceMappings_.size();
   }
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.resourcemapping.ResourceMapping getResourceMappings(int index) {
+  public io.opentdf.platform.policy.ResourceMapping getResourceMappings(int index) {
     return resourceMappings_.get(index);
   }
   /**
-   * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+   * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
    */
   @java.lang.Override
-  public io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder getResourceMappingsOrBuilder(
+  public io.opentdf.platform.policy.ResourceMappingOrBuilder getResourceMappingsOrBuilder(
       int index) {
     return resourceMappings_.get(index);
   }
@@ -426,9 +426,9 @@ private static final long serialVersionUID = 0L;
               done = true;
               break;
             case 10: {
-              io.opentdf.platform.policy.resourcemapping.ResourceMapping m =
+              io.opentdf.platform.policy.ResourceMapping m =
                   input.readMessage(
-                      io.opentdf.platform.policy.resourcemapping.ResourceMapping.parser(),
+                      io.opentdf.platform.policy.ResourceMapping.parser(),
                       extensionRegistry);
               if (resourceMappingsBuilder_ == null) {
                 ensureResourceMappingsIsMutable();
@@ -455,22 +455,22 @@ private static final long serialVersionUID = 0L;
     }
     private int bitField0_;
 
-    private java.util.List<io.opentdf.platform.policy.resourcemapping.ResourceMapping> resourceMappings_ =
+    private java.util.List<io.opentdf.platform.policy.ResourceMapping> resourceMappings_ =
       java.util.Collections.emptyList();
     private void ensureResourceMappingsIsMutable() {
       if (!((bitField0_ & 0x00000001) != 0)) {
-        resourceMappings_ = new java.util.ArrayList<io.opentdf.platform.policy.resourcemapping.ResourceMapping>(resourceMappings_);
+        resourceMappings_ = new java.util.ArrayList<io.opentdf.platform.policy.ResourceMapping>(resourceMappings_);
         bitField0_ |= 0x00000001;
        }
     }
 
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.resourcemapping.ResourceMapping, io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder, io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder> resourceMappingsBuilder_;
+        io.opentdf.platform.policy.ResourceMapping, io.opentdf.platform.policy.ResourceMapping.Builder, io.opentdf.platform.policy.ResourceMappingOrBuilder> resourceMappingsBuilder_;
 
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.resourcemapping.ResourceMapping> getResourceMappingsList() {
+    public java.util.List<io.opentdf.platform.policy.ResourceMapping> getResourceMappingsList() {
       if (resourceMappingsBuilder_ == null) {
         return java.util.Collections.unmodifiableList(resourceMappings_);
       } else {
@@ -478,7 +478,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public int getResourceMappingsCount() {
       if (resourceMappingsBuilder_ == null) {
@@ -488,9 +488,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public io.opentdf.platform.policy.resourcemapping.ResourceMapping getResourceMappings(int index) {
+    public io.opentdf.platform.policy.ResourceMapping getResourceMappings(int index) {
       if (resourceMappingsBuilder_ == null) {
         return resourceMappings_.get(index);
       } else {
@@ -498,10 +498,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public Builder setResourceMappings(
-        int index, io.opentdf.platform.policy.resourcemapping.ResourceMapping value) {
+        int index, io.opentdf.platform.policy.ResourceMapping value) {
       if (resourceMappingsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -515,10 +515,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public Builder setResourceMappings(
-        int index, io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.ResourceMapping.Builder builderForValue) {
       if (resourceMappingsBuilder_ == null) {
         ensureResourceMappingsIsMutable();
         resourceMappings_.set(index, builderForValue.build());
@@ -529,9 +529,9 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public Builder addResourceMappings(io.opentdf.platform.policy.resourcemapping.ResourceMapping value) {
+    public Builder addResourceMappings(io.opentdf.platform.policy.ResourceMapping value) {
       if (resourceMappingsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -545,10 +545,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public Builder addResourceMappings(
-        int index, io.opentdf.platform.policy.resourcemapping.ResourceMapping value) {
+        int index, io.opentdf.platform.policy.ResourceMapping value) {
       if (resourceMappingsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
@@ -562,10 +562,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public Builder addResourceMappings(
-        io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder builderForValue) {
+        io.opentdf.platform.policy.ResourceMapping.Builder builderForValue) {
       if (resourceMappingsBuilder_ == null) {
         ensureResourceMappingsIsMutable();
         resourceMappings_.add(builderForValue.build());
@@ -576,10 +576,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public Builder addResourceMappings(
-        int index, io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder builderForValue) {
+        int index, io.opentdf.platform.policy.ResourceMapping.Builder builderForValue) {
       if (resourceMappingsBuilder_ == null) {
         ensureResourceMappingsIsMutable();
         resourceMappings_.add(index, builderForValue.build());
@@ -590,10 +590,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public Builder addAllResourceMappings(
-        java.lang.Iterable<? extends io.opentdf.platform.policy.resourcemapping.ResourceMapping> values) {
+        java.lang.Iterable<? extends io.opentdf.platform.policy.ResourceMapping> values) {
       if (resourceMappingsBuilder_ == null) {
         ensureResourceMappingsIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -605,7 +605,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public Builder clearResourceMappings() {
       if (resourceMappingsBuilder_ == null) {
@@ -618,7 +618,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
     public Builder removeResourceMappings(int index) {
       if (resourceMappingsBuilder_ == null) {
@@ -631,16 +631,16 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder getResourceMappingsBuilder(
+    public io.opentdf.platform.policy.ResourceMapping.Builder getResourceMappingsBuilder(
         int index) {
       return getResourceMappingsFieldBuilder().getBuilder(index);
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder getResourceMappingsOrBuilder(
+    public io.opentdf.platform.policy.ResourceMappingOrBuilder getResourceMappingsOrBuilder(
         int index) {
       if (resourceMappingsBuilder_ == null) {
         return resourceMappings_.get(index);  } else {
@@ -648,9 +648,9 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public java.util.List<? extends io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder> 
+    public java.util.List<? extends io.opentdf.platform.policy.ResourceMappingOrBuilder> 
          getResourceMappingsOrBuilderList() {
       if (resourceMappingsBuilder_ != null) {
         return resourceMappingsBuilder_.getMessageOrBuilderList();
@@ -659,33 +659,33 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder addResourceMappingsBuilder() {
+    public io.opentdf.platform.policy.ResourceMapping.Builder addResourceMappingsBuilder() {
       return getResourceMappingsFieldBuilder().addBuilder(
-          io.opentdf.platform.policy.resourcemapping.ResourceMapping.getDefaultInstance());
+          io.opentdf.platform.policy.ResourceMapping.getDefaultInstance());
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder addResourceMappingsBuilder(
+    public io.opentdf.platform.policy.ResourceMapping.Builder addResourceMappingsBuilder(
         int index) {
       return getResourceMappingsFieldBuilder().addBuilder(
-          index, io.opentdf.platform.policy.resourcemapping.ResourceMapping.getDefaultInstance());
+          index, io.opentdf.platform.policy.ResourceMapping.getDefaultInstance());
     }
     /**
-     * <code>repeated .policy.resourcemapping.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
+     * <code>repeated .policy.ResourceMapping resource_mappings = 1 [json_name = "resourceMappings"];</code>
      */
-    public java.util.List<io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder> 
+    public java.util.List<io.opentdf.platform.policy.ResourceMapping.Builder> 
          getResourceMappingsBuilderList() {
       return getResourceMappingsFieldBuilder().getBuilderList();
     }
     private com.google.protobuf.RepeatedFieldBuilderV3<
-        io.opentdf.platform.policy.resourcemapping.ResourceMapping, io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder, io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder> 
+        io.opentdf.platform.policy.ResourceMapping, io.opentdf.platform.policy.ResourceMapping.Builder, io.opentdf.platform.policy.ResourceMappingOrBuilder> 
         getResourceMappingsFieldBuilder() {
       if (resourceMappingsBuilder_ == null) {
         resourceMappingsBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-            io.opentdf.platform.policy.resourcemapping.ResourceMapping, io.opentdf.platform.policy.resourcemapping.ResourceMapping.Builder, io.opentdf.platform.policy.resourcemapping.ResourceMappingOrBuilder>(
+            io.opentdf.platform.policy.ResourceMapping, io.opentdf.platform.policy.ResourceMapping.Builder, io.opentdf.platform.policy.ResourceMappingOrBuilder>(
                 resourceMappings_,
                 ((bitField0_ & 0x00000001) != 0),
                 getParentForChildren(),

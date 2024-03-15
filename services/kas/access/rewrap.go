@@ -19,13 +19,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/opentdf/platform/internal/security"
 	"io"
 	"log/slog"
 	"strings"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/nanotdf"
-	"github.com/opentdf/platform/services/kas/p11"
 	"github.com/opentdf/platform/services/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -70,6 +70,10 @@ func err401(s string) error {
 
 func err403(s string) error {
 	return errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
+}
+
+func err404(s string) error {
+	return errors.Join(ErrUser, status.Error(codes.NotFound, s))
 }
 
 func err503(s string) error {
@@ -250,14 +254,14 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.requestBody.Algorithm == "ec:secp256r1" {
-		return nanoTDFRewrap(*body, &p.Session, &p.PrivateKeyEC)
+		return nanoTDFRewrap(*body, &p.Session, p.Session.EC.PrivateKey)
 	}
 	return p.tdf3Rewrap(ctx, body)
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kaspb.RewrapResponse, error) {
-	symmetricKey, err := p11.DecryptOAEP(&p.Session, &p.PrivateKey,
-		body.requestBody.KeyAccess.WrappedKey, crypto.SHA1, nil)
+	symmetricKey, err := p.Session.DecryptOAEP(
+		&p.Session.RSA.PrivateKey, body.requestBody.KeyAccess.WrappedKey, crypto.SHA1, nil)
 	if err != nil {
 		slog.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")
@@ -309,7 +313,11 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}, nil
 }
 
-func nanoTDFRewrap(body verifiedRequest, session *p11.Pkcs11Session, key *p11.Pkcs11PrivateKeyEC) (*kaspb.RewrapResponse, error) {
+func nanoTDFRewrap(
+	body verifiedRequest,
+	session *security.HSMSession,
+	key security.PrivateKeyEC,
+) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
 
 	header, err := nanotdf.ReadNanoTDFHeader(headerReader)
@@ -317,7 +325,7 @@ func nanoTDFRewrap(body verifiedRequest, session *p11.Pkcs11Session, key *p11.Pk
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	symmetricKey, err := p11.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key, session, key)
+	symmetricKey, err := session.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
@@ -334,11 +342,11 @@ func nanoTDFRewrap(body verifiedRequest, session *p11.Pkcs11Session, key *p11.Pk
 		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
 	}
 
-	privateKeyHandle, publicKeyHandle, err := p11.GenerateEphemeralKasKeys(session)
+	privateKeyHandle, publicKeyHandle, err := session.GenerateEphemeralKasKeys()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-	sessionKey, err := p11.GenerateNanoTDFSessionKey(session, privateKeyHandle, pubKeyBytes)
+	sessionKey, err := session.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}

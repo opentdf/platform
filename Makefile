@@ -6,7 +6,6 @@
 MODS=protocol/go sdk . examples
 
 EXCLUDE_OPENAPI=./services/authorization/idp_plugin.proto
-EXCLUDE_JAVA=./services/authorization/idp_plugin.proto
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -45,19 +44,14 @@ go-lint:
 	for m in $(MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
 
 proto-generate:
-	rm -rf sdkjava/src protocol/go/[a-fh-z]* docs/grpc docs/openapi
+	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
 	buf generate services
 	buf generate services --template buf.gen.grpc.docs.yaml
-	buf generate services --exclude-path $(EXCLUDE_JAVA) --template buf.gen.java.yaml
 	buf generate services --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
 	
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
-	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.java.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
-	
-	cp -r tmp-gen/sdkjava/src/main/java/grpc sdkjava/src/main/java/grpc
-	rm -rf tmp-gen
 
 test:
 	go test ./... -race

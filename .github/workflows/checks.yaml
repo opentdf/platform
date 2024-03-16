@@ -114,6 +114,7 @@ jobs:
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 grpc.health.v1.Health.Check
       - run: curl --show-error --fail --insecure localhost:9000/kas/v2/kas_public_key
+      - run: go run examples/main.go encrypt "Hello Virtru"
 
   image:
     name: image build

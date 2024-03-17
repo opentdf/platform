@@ -25,7 +25,8 @@ attributes := [attribute |
  	some subject_mapping in input.attribute_mappings[attribute].value.subject_mappings
     some subject_set in subject_mapping.subject_condition_set.subject_sets
 	some condition_group in subject_set.condition_groups
-	condition_group.boolean_operator == 1 # AND
+    cgbool_evaluate(true, condition_group.boolean_operator, condition_group.conditions)
+
 	# get IdP entity
 	res := keycloak.resolve.entities(req, config)
 	# TODO check conditions against subject_external
@@ -40,3 +41,11 @@ entities := [entity |
     # attribute map TODO handle
     entity = prop.attributes
 ]
+
+cgbool_evaluate(external_property, operator, conditions) if {
+	operator == 1
+	external_property in conditions
+} else if {
+	operator == 2
+	not external_property in conditions
+}

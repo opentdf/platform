@@ -24,10 +24,11 @@ func (s *KasService) initProvider() error {
 		slog.Info("KAS already initialized")
 		return nil
 	}
-	if s.o.HSM == nil {
-		slog.Error("hsm not enabled")
-		return fmt.Errorf("hsm not enabled")
-	}
+	//if s.o.CryptoSession == nil {
+	//	slog.Error("hsm not enabled")
+	//	return fmt.Errorf("hsm not enabled")
+	//}
+
 	kasURLString := "https://" + s.o.HTTPServer.Addr
 	kasURI, err := url.Parse(kasURLString)
 	if err != nil {
@@ -37,7 +38,7 @@ func (s *KasService) initProvider() error {
 	s.p = &access.Provider{
 		URI:          *kasURI,
 		AttributeSvc: nil,
-		Session:      *s.o.HSM,
+		Session:      s.o.CryptoSession,
 		OIDCVerifier: nil,
 	}
 
@@ -75,7 +76,7 @@ func (s *KasService) Info(ctx context.Context, req *kaspb.InfoRequest) (*kaspb.I
 }
 
 func (s *KasService) PublicKey(ctx context.Context, req *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
-	resp, err := s.p.PublicKey(ctx, &kaspb.PublicKeyRequest{})
+	resp, err := s.p.PublicKey(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +86,7 @@ func (s *KasService) PublicKey(ctx context.Context, req *kaspb.PublicKeyRequest)
 }
 
 func (s KasService) Rewrap(ctx context.Context, req *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
-	resp, err := s.p.Rewrap(ctx, &kaspb.RewrapRequest{})
+	resp, err := s.p.Rewrap(ctx, req)
 	if err != nil {
 		return nil, err
 	}

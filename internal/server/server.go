@@ -61,12 +61,14 @@ type TLSConfig struct {
 	Key     string `yaml:"key"`
 }
 
+type CryptoSession interface{}
+
 type OpenTDFServer struct {
 	Mux           *runtime.ServeMux
 	HTTPServer    *http.Server
 	GRPCServer    *grpc.Server
 	GRPCInProcess *inProcessServer
-	HSM           *security.HSMSession
+	CryptoSession interface{}
 }
 
 /*
@@ -186,10 +188,12 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	}
 
 	if config.HSM.Enabled {
-		o.HSM, err = security.New(&config.HSM)
+		o.CryptoSession, err = security.NewHSMSession(&config.HSM)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize hsm: %w", err)
 		}
+	} else {
+		o.CryptoSession, err = security.NewStandardSession()
 	}
 
 	return &o, nil

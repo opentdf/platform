@@ -19,11 +19,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/internal/security"
 	"io"
 	"log/slog"
 	"strings"
 
+	"github.com/opentdf/platform/internal/security"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/nanotdf"
 	"github.com/opentdf/platform/services/kas/tdf3"
@@ -254,8 +254,9 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.requestBody.Algorithm == "ec:secp256r1" {
-		return nanoTDFRewrap(*body, &p.Session, p.Session.EC.PrivateKey)
+		return nanoTDFRewrap(*body, p.Session, p.Session.EC.PrivateKey)
 	}
+
 	return p.tdf3Rewrap(ctx, body)
 }
 
@@ -315,8 +316,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 
 func nanoTDFRewrap(
 	body verifiedRequest,
-	session *security.HSMSession,
-	key security.PrivateKeyEC,
+	session *security.CryptoSession,
+	key *ecdh.PrivateKey,
 ) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
 
@@ -325,28 +326,22 @@ func nanoTDFRewrap(
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	symmetricKey, err := session.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key, key)
+	symmetricKey, err := session.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
 
-	pub, ok := body.publicKey.(*ecdsa.PublicKey)
+	pub, ok := body.publicKey.(*ecdh.PublicKey)
 	if !ok {
 		return nil, fmt.Errorf("failed to extract public key: %w", err)
 	}
 
-	// Convert public key to 65-bytes format
-	pubKeyBytes := make([]byte, 1+len(pub.X.Bytes())+len(pub.Y.Bytes()))
-	pubKeyBytes[0] = 0x4 // ID for uncompressed format
-	if copy(pubKeyBytes[1:33], pub.X.Bytes()) != 32 || copy(pubKeyBytes[33:], pub.Y.Bytes()) != 32 {
-		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
-	}
+	privateKey, publicKey, err := session.GenerateEphemeralKasKeys()
 
-	privateKeyHandle, publicKeyHandle, err := session.GenerateEphemeralKasKeys()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-	sessionKey, err := session.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
+	sessionKey, err := session.GenerateNanoTDFSessionKey(privateKey, pub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
@@ -358,12 +353,11 @@ func nanoTDFRewrap(
 
 	// see explanation why Public Key starts at position 2
 	//https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
-	pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle[2:])
 	if err != nil {
 		return nil, fmt.Errorf("failed to make public key") // Handle error, e.g., invalid public key format
 	}
 
-	pbk, err := x509.MarshalPKIXPublicKey(pubGoKey)
+	pbk, err := x509.MarshalPKIXPublicKey(publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert public Key to PKIX")
 	}

@@ -225,7 +225,7 @@ func lookupSlotWithLabel(ctx *pkcs11.Ctx, label string) (uint, error) {
 	return 0, ErrHSMUnexpected
 }
 
-func New(c *HSMConfig) (*HSMSession, error) {
+func NewHSMSession(c *HSMConfig) (*HSMSession, error) {
 	pkcs11Lib := findHSMLibrary(
 		c.ModulePath,
 		"/usr/lib/softhsm/libsofthsm2.so",
@@ -493,7 +493,7 @@ func (h *HSMSession) LoadECKey(info KeyInfo) (*ECKeyPair, error) {
 	return &pair, nil
 }
 
-func (session *HSMSession) DecryptOAEP(key *PrivateKeyRSA, ciphertext []byte, hashFunction crypto.Hash, label []byte) ([]byte, error) {
+func (session *HSMSession) DecryptOAEP(key RSAPrivateKey, ciphertext []byte, hashFunction crypto.Hash, label []byte) ([]byte, error) {
 	hashAlg, mgfAlg, _, err := hashToPKCS11(hashFunction)
 	if err != nil {
 		return nil, errors.Join(ErrHSMDecrypt, err)
@@ -529,7 +529,7 @@ func hashToPKCS11(hashFunction crypto.Hash) (hashAlg uint, mgfAlg uint, hashLen 
 	}
 }
 
-func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte, key PrivateKeyEC) ([]byte, error) {
+func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKey ECPublicKey, privateKey ECPrivateKey) ([]byte, error) {
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
@@ -541,6 +541,11 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte,
 		pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
 		pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
 	}
+	ephemeralPublicKeyBytes, err := x509.MarshalPKIXPublicKey(ephemeralPublicKey)
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to convert ephemeral public key to bytes: %w", err)
+	}
 
 	params := pkcs11.ECDH1DeriveParams{KDF: pkcs11.CKD_NULL, PublicKeyData: ephemeralPublicKeyBytes}
 
@@ -548,7 +553,7 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte,
 		pkcs11.NewMechanism(pkcs11.CKM_ECDH1_DERIVE, &params),
 	}
 
-	handle, err := h.ctx.DeriveKey(h.sh, mech, pkcs11.ObjectHandle(key), template)
+	handle, err := h.ctx.DeriveKey(h.sh, mech, privateKey.(pkcs11.ObjectHandle), template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive symmetric key: %w", err)
 	}
@@ -576,8 +581,8 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte,
 }
 
 func (h *HSMSession) GenerateNanoTDFSessionKey(
-	privateKeyHandle PrivateKeyEC,
-	ephemeralPublicKey []byte,
+	privateKeyHandle ECPrivateKey,
+	ephemeralPublicKey ECPublicKey,
 ) ([]byte, error) {
 
 	template := []*pkcs11.Attribute{
@@ -591,14 +596,18 @@ func (h *HSMSession) GenerateNanoTDFSessionKey(
 		pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
 		pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
 	}
+	ephemeralPublicKeyBytes, err := x509.MarshalPKIXPublicKey(ephemeralPublicKey)
 
-	params := pkcs11.ECDH1DeriveParams{KDF: pkcs11.CKD_NULL, PublicKeyData: ephemeralPublicKey}
+	if err != nil {
+		return nil, fmt.Errorf("Failed to convert ephemeral public key to bytes: %w", err)
+	}
+	params := pkcs11.ECDH1DeriveParams{KDF: pkcs11.CKD_NULL, PublicKeyData: ephemeralPublicKeyBytes}
 
 	mech := []*pkcs11.Mechanism{
 		pkcs11.NewMechanism(pkcs11.CKM_ECDH1_DERIVE, &params),
 	}
 
-	handle, err := h.ctx.DeriveKey(h.sh, mech, pkcs11.ObjectHandle(privateKeyHandle), template)
+	handle, err := h.ctx.DeriveKey(h.sh, mech, privateKeyHandle.(pkcs11.ObjectHandle), template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive session key: %w", err)
 	}
@@ -624,7 +633,7 @@ func (h *HSMSession) GenerateNanoTDFSessionKey(
 	return derivedKey, nil
 }
 
-func (h *HSMSession) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
+func (h *HSMSession) GenerateEphemeralKasKeys() (ECPrivateKey, ECPublicKey, error) {
 	pubKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
@@ -657,7 +666,7 @@ func (h *HSMSession) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
 	}
 	publicKeyBytes := pubBytes[0].Value
 
-	return PrivateKeyEC(prvHandle), publicKeyBytes, nil
+	return ECPrivateKey(prvHandle), publicKeyBytes, nil
 }
 
 func versionSalt() []byte {

@@ -137,7 +137,7 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		Session:      security.HSMSession{},
+		Session:      security.CryptoSession{},
 		OIDCVerifier: nil,
 	}
 

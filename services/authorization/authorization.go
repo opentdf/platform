@@ -102,12 +102,14 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 		return nil, err
 	}
 	slog.Debug("entitlements", "input", fmt.Sprintf("%+v", in))
-	if err := json.NewEncoder(os.Stdout).Encode(in); err != nil {
-		panic(err)
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+		if err := json.NewEncoder(os.Stdout).Encode(in); err != nil {
+			panic(err)
+		}
 	}
 	options := sdk.DecisionOptions{
 		Now:                 time.Now(),
-		Path:                "opentdf/entitlements/entities", // FIXME attributes
+		Path:                "opentdf/entitlements/attributes", // change to /resolve_entities to get output of idp_plugin
 		Input:               in,
 		NDBCache:            nil,
 		StrictBuiltinErrors: true,
@@ -123,6 +125,11 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	slog.DebugContext(ctx, "opa", "result", fmt.Sprintf("%+v", decision.Result))
 	slog.DebugContext(ctx, "opa", "type", fmt.Sprintf("%T", decision.Result))
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+		if err := json.NewEncoder(os.Stdout).Encode(decision.Result); err != nil {
+			slog.DebugContext(ctx, "opa", "type", fmt.Sprintf("%T", decision.Result))
+		}
+	}
 	results, ok := decision.Result.([]interface{})
 	if !ok {
 		slog.DebugContext(ctx, "not ok", "decision.Result", fmt.Sprintf("%+v", decision.Result))

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	fixtureFilename = "fixtures.yaml"
+	fixtureFilename = "policy_fixtures.yaml"
 	fixtureData     FixtureData
 )
 
@@ -46,27 +46,29 @@ type FixtureDataAttributeValue struct {
 	Active                bool     `yaml:"active"`
 }
 
+type FixtureDataValueMember struct {
+	Id       string `yaml:"id"`
+	ValueID  string `yaml:"value_id"`
+	MemberID string `yaml:"member_id"`
+}
+
 type FixtureDataAttributeValueKeyAccessServer struct {
 	ValueID           string `yaml:"value_id"`
 	KeyAccessServerID string `yaml:"key_access_server_id"`
 }
 
 type FixtureDataSubjectMapping struct {
-	Id                          string   `yaml:"id"`
-	AttributeValueId            string   `yaml:"attribute_value_id"`
-	Actions                     []string `yaml:"actions"`
-	SubjectConditionSetPivotIds []string `yaml:"subject_condition_set_pivot_ids"`
-}
-
-type FixtureSubjectMappingConditionSetPivot struct {
-	Id                    string `yaml:"id"`
-	SubjectMappingId      string `yaml:"subject_mapping_id"`
+	Id               string `yaml:"id"`
+	AttributeValueId string `yaml:"attribute_value_id"`
+	Actions          []struct {
+		Standard string `yaml:"standard" json:"standard,omitempty"`
+		Custom   string `yaml:"custom" json:"custom,omitempty"`
+	} `yaml:"actions"`
 	SubjectConditionSetId string `yaml:"subject_condition_set_id"`
 }
 
 type SubjectConditionSet struct {
 	Id        string `yaml:"id"`
-	Name      string `yaml:"name"`
 	Condition struct {
 		SubjectSets []struct {
 			ConditionGroups []struct {
@@ -115,10 +117,6 @@ type FixtureData struct {
 		Metadata FixtureMetadata                      `yaml:"metadata"`
 		Data     map[string]FixtureDataSubjectMapping `yaml:"data"`
 	} `yaml:"subject_mappings"`
-	SubjectMappingConditionSetPivot struct {
-		Metadata FixtureMetadata                                   `yaml:"metadata"`
-		Data     map[string]FixtureSubjectMappingConditionSetPivot `yaml:"data"`
-	} `yaml:"subject_mapping_condition_set_pivot"`
 	SubjectConditionSet struct {
 		Metadata FixtureMetadata                `yaml:"metadata"`
 		Data     map[string]SubjectConditionSet `yaml:"data"`
@@ -131,6 +129,10 @@ type FixtureData struct {
 		Metadata FixtureMetadata                   `yaml:"metadata"`
 		Data     map[string]FixtureDataKasRegistry `yaml:"data"`
 	} `yaml:"kas_registry"`
+	ValueMembers struct {
+		Metadata FixtureMetadata                   `yaml:"metadata"`
+		Data     map[string]FixtureDataValueMember `yaml:"data"`
+	} `yaml:"attribute_value_members"`
 }
 
 func LoadFixtureData(file string) {
@@ -144,6 +146,7 @@ func LoadFixtureData(file string) {
 		slog.Error("could not unmarshal "+fixtureFilename, slog.String("error", err.Error()))
 		panic(err)
 	}
+	slog.Info("Fully loaded fixtures", slog.Any("fixtureData", fixtureData))
 }
 
 type Fixtures struct {
@@ -157,51 +160,74 @@ func NewFixture(db DBInterface) Fixtures {
 }
 
 func (f *Fixtures) GetNamespaceKey(key string) FixtureDataNamespace {
-	if fixtureData.Namespaces.Data[key].Id == "" {
+	ns, ok := fixtureData.Namespaces.Data[key]
+	if !ok || ns.Id == "" {
 		slog.Error("could not find namespace", slog.String("id", key))
-		panic("could not find namespace")
+		panic("could not find namespace fixture: " + key)
 	}
-	return fixtureData.Namespaces.Data[key]
+	return ns
 }
 
 func (f *Fixtures) GetAttributeKey(key string) FixtureDataAttribute {
-	if fixtureData.Attributes.Data[key].Id == "" {
+	a, ok := fixtureData.Attributes.Data[key]
+	if !ok || a.Id == "" {
 		slog.Error("could not find attributes", slog.String("id", key))
-		panic("could not find attributes")
+		panic("could not find attribute fixture: " + key)
 	}
-	return fixtureData.Attributes.Data[key]
+	return a
 }
 
 func (f *Fixtures) GetAttributeValueKey(key string) FixtureDataAttributeValue {
-	if fixtureData.AttributeValues.Data[key].Id == "" {
+	av, ok := fixtureData.AttributeValues.Data[key]
+	if !ok || av.Id == "" {
 		slog.Error("could not find attribute-values", slog.String("id", key))
-		panic("could not find attribute-values")
+		panic("could not find attribute-value fixture: " + key)
 	}
-	return fixtureData.AttributeValues.Data[key]
+	return av
+}
+
+func (f *Fixtures) GetValueMemberKey(key string) FixtureDataValueMember {
+	if fixtureData.ValueMembers.Data[key].Id == "" {
+		slog.Error("could not find value-members", slog.String("id", key))
+		panic("could not find value-members")
+	}
+	return fixtureData.ValueMembers.Data[key]
 }
 
 func (f *Fixtures) GetSubjectMappingKey(key string) FixtureDataSubjectMapping {
-	if fixtureData.SubjectMappings.Data[key].Id == "" {
+	sm, ok := fixtureData.SubjectMappings.Data[key]
+	if !ok || sm.Id == "" {
 		slog.Error("could not find subject-mappings", slog.String("id", key))
-		panic("could not find subject-mappings")
+		panic("could not find subject-mapping fixture: " + key)
 	}
-	return fixtureData.SubjectMappings.Data[key]
+	return sm
+}
+
+func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
+	scs, ok := fixtureData.SubjectConditionSet.Data[key]
+	if !ok || scs.Id == "" {
+		slog.Error("could not find subject-condition-set", slog.String("id", key))
+		panic("could not find subject-condition-set fixture: " + key)
+	}
+	return scs
 }
 
 func (f *Fixtures) GetResourceMappingKey(key string) FixtureDataResourceMapping {
-	if fixtureData.ResourceMappings.Data[key].Id == "" {
+	rm, ok := fixtureData.ResourceMappings.Data[key]
+	if !ok || rm.Id == "" {
 		slog.Error("could not find resource-mappings", slog.String("id", key))
-		panic("could not find resource-mappings")
+		panic("could not find resource-mapping fixture: " + key)
 	}
-	return fixtureData.ResourceMappings.Data[key]
+	return rm
 }
 
 func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
-	if fixtureData.KasRegistries.Data[key].Id == "" {
+	kasr, ok := fixtureData.KasRegistries.Data[key]
+	if !ok || kasr.Id == "" {
 		slog.Error("could not find kas-registry", slog.String("id", key))
-		panic("could not find kas-registry")
+		panic("could not find kas-registry fixture: " + key)
 	}
-	return fixtureData.KasRegistries.Data[key]
+	return kasr
 }
 
 func (f *Fixtures) Provision() {
@@ -217,12 +243,12 @@ func (f *Fixtures) Provision() {
 	a := f.provisionAttribute()
 	slog.Info("📦 provisioning attribute value data")
 	aV := f.provisionAttributeValues()
-	slog.Info("📦 provisioning subject mapping data")
-	sM := f.provisionSubjectMappings()
+	slog.Info("📦 provisioning value member data")
+	vM := f.provisionValueMembers()
 	slog.Info("📦 provisioning subject condition set data")
 	sc := f.provisionSubjectConditionSet()
-	slog.Info("📦 provisioning subject mapping condition set pivot data")
-	smPivot := f.provisionSubjectMappingConditionSetPivot()
+	slog.Info("📦 provisioning subject mapping data")
+	sM := f.provisionSubjectMappings()
 	slog.Info("📦 provisioning resource mapping data")
 	rM := f.provisionResourceMappings()
 	slog.Info("📦 provisioning kas registry data")
@@ -236,8 +262,8 @@ func (f *Fixtures) Provision() {
 		slog.Int64("namespaces", n),
 		slog.Int64("attributes", a),
 		slog.Int64("attribute_values", aV),
+		slog.Int64("attribute_value_members", vM),
 		slog.Int64("subject_mappings", sM),
-		slog.Int64("subject_mapping_condition_set_pivot", smPivot),
 		slog.Int64("subject_condition_set", sc),
 		slog.Int64("resource_mappings", rM),
 		slog.Int64("kas_registry", kas),
@@ -299,48 +325,54 @@ func (f *Fixtures) provisionAttributeValues() int64 {
 	return f.provision(fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionSubjectMappings() int64 {
-	values := make([][]string, 0, len(fixtureData.SubjectMappings.Data))
-	for _, d := range fixtureData.SubjectMappings.Data {
+func (f *Fixtures) provisionValueMembers() int64 {
+	values := make([][]string, 0, len(fixtureData.ValueMembers.Data))
+	for _, d := range fixtureData.ValueMembers.Data {
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
-			f.db.UUIDWrap(d.AttributeValueId),
-			f.db.StringArrayWrap(d.Actions),
-			f.db.UUIDArrayWrap(d.SubjectConditionSetPivotIds),
+			f.db.StringWrap(d.ValueID),
+			f.db.StringWrap(d.MemberID),
 		})
 	}
-	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
-}
-
-func (f *Fixtures) provisionSubjectMappingConditionSetPivot() int64 {
-	values := make([][]string, 0, len(fixtureData.SubjectMappingConditionSetPivot.Data))
-	for _, d := range fixtureData.SubjectMappingConditionSetPivot.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.SubjectMappingId),
-			f.db.StringWrap(d.SubjectConditionSetId),
-		})
-	}
-	return f.provision(fixtureData.SubjectMappingConditionSetPivot.Metadata.TableName, fixtureData.SubjectMappingConditionSetPivot.Metadata.Columns, values)
+	return f.provision(fixtureData.ValueMembers.Metadata.TableName, fixtureData.ValueMembers.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provisionSubjectConditionSet() int64 {
 	values := make([][]string, 0, len(fixtureData.SubjectConditionSet.Data))
 	for _, d := range fixtureData.SubjectConditionSet.Data {
 		var conditionJSON []byte
-		conditionJSON, err := json.Marshal(d.Condition)
+		conditionJSON, err := json.Marshal(d.Condition.SubjectSets)
 		if err != nil {
-			slog.Error("⛔️ 📦 issue with subject condition set JSON - check fixtures.yaml for issues")
+			slog.Error("⛔️ 📦 issue with subject condition set JSON - check policy_fixtures.yaml for issues")
 			panic("issue with subject condition set JSON")
 		}
 
 		values = append(values, []string{
 			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.Name),
 			f.db.StringWrap(string(conditionJSON)),
 		})
 	}
 	return f.provision(fixtureData.SubjectConditionSet.Metadata.TableName, fixtureData.SubjectConditionSet.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionSubjectMappings() int64 {
+	values := make([][]string, 0, len(fixtureData.SubjectMappings.Data))
+	for _, d := range fixtureData.SubjectMappings.Data {
+		var actionsJSON []byte
+		actionsJSON, err := json.Marshal(d.Actions)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with subject mapping actions JSON - check policy_fixtures.yaml for issues")
+			panic("issue with subject mapping actions JSON")
+		}
+
+		values = append(values, []string{
+			f.db.StringWrap(d.Id),
+			f.db.UUIDWrap(d.AttributeValueId),
+			f.db.UUIDWrap(d.SubjectConditionSetId),
+			f.db.StringWrap(string(actionsJSON)),
+		})
+	}
+	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provisionResourceMappings() int64 {
@@ -364,7 +396,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 		}
 
 		if pubKeyJSON, err := json.Marshal(d.PubKey); err != nil {
-			slog.Error("⛔️ 📦 issue with KAS registry public key JSON - check fixtures.yaml for issues")
+			slog.Error("⛔️ 📦 issue with KAS registry public key JSON - check policy_fixtures.yaml for issues")
 			panic("issue with KAS registry public key JSON")
 		} else {
 			v = append(v, f.db.StringWrap(string(pubKeyJSON)))
@@ -399,15 +431,15 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
 	rows, err := f.db.ExecInsert(t, c, v...)
 	if err != nil {
-		slog.Error("⛔️ 📦 issue with insert into table - check fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
+		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
 		panic("issue with insert into table")
 	}
 	if rows == 0 {
-		slog.Error("⛔️ 📦 no rows provisioned - check fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)))
+		slog.Error("⛔️ 📦 no rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)))
 		panic("no rows provisioned")
 	}
 	if rows != int64(len(v)) {
-		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
+		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
 		panic("incorrect number of rows provisioned")
 	}
 	return rows

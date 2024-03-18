@@ -21,8 +21,15 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: changeme
       KC_FEATURES: "preview,token-exchange"
+      KC_HEALTH_ENABLED: "true"
     ports:
       - "8888:8888"
+    healthcheck:
+      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8888/auth/health/live']
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 2m
   keycloakdb:
     image: postgres
     restart: always
@@ -33,7 +40,7 @@ services:
       POSTGRES_DB: keycloak
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
-      interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 10
   opentdfdb:
@@ -46,7 +53,7 @@ services:
       POSTGRES_DB: opentdf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
-      interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 10
     ports:

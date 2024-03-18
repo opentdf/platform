@@ -3,11 +3,13 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"testing"
 
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/fixtures"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	policydb "github.com/opentdf/platform/services/policy/db"
@@ -137,7 +139,24 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	assert.Equal(s.T(), len(createdValue.Members), len(got.Members))
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
 }
-
+func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool) {
+	m1 := v1.Members
+	m2 := v2.Members
+	sort.Slice(m1, func(x, y int) bool {
+		return m1[x].Id < m1[y].Id
+	})
+	sort.Slice(m2, func(x, y int) bool {
+		return m2[x].Id < m2[y].Id
+	})
+	for idx := range m1 {
+		assert.Equal(t, m1[idx].Id, m2[idx].Id)
+		assert.Equal(t, m1[idx].Value, m2[idx].Value)
+		if withFqn {
+			assert.Equal(t, m1[idx].Fqn, m2[idx].Fqn)
+		}
+		assert.Equal(t, m1[idx].Active.Value, m2[idx].Active.Value)
+	}
+}
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{
@@ -164,7 +183,22 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	assert.Equal(s.T(), createdValue.Id, got.Id)
 	assert.Equal(s.T(), createdValue.Value, got.Value)
 	assert.EqualValues(s.T(), createdValue.Metadata.Labels, got.Metadata.Labels)
-	assert.EqualValues(s.T(), createdValue.Members, got.Members)
+	assert.Equal(s.T(), len(createdValue.Members), len(got.Members))
+
+	assert.True(s.T(), len(got.Members) > 0)
+	equalMembers(s.T(), createdValue, got, true)
+
+	// members must exist
+	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, &attributes.CreateAttributeValueRequest{
+		Value: "value4",
+		Members: []string{
+			nonExistentAttributeValueUuid,
+		},
+	},
+	)
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), createdValue)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {
@@ -175,6 +209,34 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), createdValue)
 	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails() {
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr2")
+	metadata := &common.MetadataMutable{
+		Labels: map[string]string{
+			"name": "testing create with members",
+		},
+	}
+
+	value := &attributes.CreateAttributeValueRequest{
+		Value: "value3",
+		Members: []string{
+			nonExistentAttributeValueUuid,
+		},
+		Metadata: metadata,
+	}
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	assert.Nil(s.T(), createdValue)
+	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrForeignKeyViolation)
+
+	attrDef = s.f.GetAttributeKey("example.net/attr/attr3")
+	value.Members[0] = "not a uuid"
+	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
+	assert.Nil(s.T(), createdValue)
+	assert.NotNil(s.T(), err)
+	assert.ErrorIs(s.T(), err, db.ErrUuidInvalid)
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
@@ -209,17 +271,20 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	assert.NotNil(s.T(), created)
 
 	// update with no changes
-	updatedWithoutChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, created.Id, &attributes.UpdateAttributeValueRequest{})
+	updatedWithoutChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, &attributes.UpdateAttributeValueRequest{
+		Id: created.Id,
+	})
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updatedWithoutChange)
 	assert.Equal(s.T(), created.Id, updatedWithoutChange.Id)
 
 	// update with changes
-	updatedWithChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, created.Id, &attributes.UpdateAttributeValueRequest{
+	updatedWithChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, &attributes.UpdateAttributeValueRequest{
 		Metadata: &common.MetadataMutable{
 			Labels: updateLabels,
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+		Id:                     created.Id,
 	})
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), updatedWithChange)
@@ -234,7 +299,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
-	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, nonExistentAttributeValueUuid, &attributes.UpdateAttributeValueRequest{
+	updated, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, &attributes.UpdateAttributeValueRequest{
 		// some data is required to ensure the request reaches the db
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{
@@ -242,6 +307,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
 			},
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+		Id:                     nonExistentAttributeValueUuid,
 	})
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), updated)
@@ -289,13 +355,13 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 		Name: "cascading-deactivate-attribute-value.com",
 	})
 	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "", n)
+	assert.NotZero(s.T(), n.Id)
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__cascading-deactivate-attr-value",
 		NamespaceId: n.Id,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)

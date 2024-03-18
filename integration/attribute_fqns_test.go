@@ -8,6 +8,7 @@ import (
 
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/fixtures"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 
@@ -78,7 +79,7 @@ func (s *AttributeFqnSuite) TestCreateAttribute() {
 	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
 		NamespaceId: n.Id,
 		Name:        name,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	})
 	s.NoError(err)
 	// Verify FQN
@@ -92,7 +93,7 @@ func (s *AttributeFqnSuite) TestCreateAttribute() {
 func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 	a := s.f.GetAttributeKey("example.com/attr/attr1")
 	n := s.f.GetNamespaceKey("example.com")
-	name := "test_namespace"
+	name := "test_new_value"
 	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.CreateAttributeValueRequest{
 		Value: name,
 	})
@@ -112,15 +113,22 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.NoError(err)
+	s.NotNil(attr)
+	s.Equal(valueFixture.AttributeDefinitionId, attr.Id)
 
-	// there should be only one value
-	s.Equal(1, len(attr.Values))
+	// there should be more than one value on the attribute
+	s.Greater(len(attr.Values), 1)
 
-	// the value should match the fixture
-	av := attr.Values[0]
-	s.Equal(attr.Id, valueFixture.AttributeDefinitionId)
-	s.Equal(av.Id, valueFixture.Id)
-	s.Equal(av.Value, valueFixture.Value)
+	// the value should match the fixture (verify by looping through and matching the fqn)
+	for _, v := range attr.Values {
+		if v.Id == valueFixture.Id {
+			s.Equal(fullFqn, v.Fqn)
+			s.Equal(valueFixture.Id, v.Id)
+			s.Equal(valueFixture.Value, v.Value)
+			// the value should contain subject mappings
+			s.GreaterOrEqual(len(v.SubjectMappings), 3)
+		}
+	}
 }
 
 // Test Get one attribute by the FQN of the attribute definition
@@ -161,7 +169,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
 		NamespaceId: n.Id,
 		Name:        attr,
-		Rule:        attributes.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	})
 	assert.NoError(s.T(), err)
 
@@ -173,7 +181,12 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 
 	// Get attributes by fqns with a solo value
 	fqns := []string{fqn1}
-	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, fqns)
+	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
 	assert.NoError(s.T(), err)
 
 	// Verify attribute1 is sole attribute
@@ -196,7 +209,12 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 
 	// Get attributes by fqns with two values
 	fqns = []string{fqn1, fqn2}
-	attributeAndValue, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, fqns)
+	attributeAndValue, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), attributeAndValue, 2)
 
@@ -220,12 +238,22 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns() {
 	nsFqn := fqnBuilder("example.com", "", "")
 	attrFqn := fqnBuilder("example.com", "attr1", "")
-	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, []string{nsFqn})
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{nsFqn},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), v)
 	assert.ErrorIs(s.T(), err, db.ErrFqnMissingValue)
 
-	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, []string{attrFqn})
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{attrFqn},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), v)
 	assert.ErrorIs(s.T(), err, db.ErrFqnMissingValue)

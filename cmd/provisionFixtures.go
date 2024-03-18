@@ -48,7 +48,7 @@ You can clear/recycle your database with 'docker-compose down' and 'docker-compo
 
 			dbI := fixtures.NewDBInterface(*cfg)
 			f := fixtures.NewFixture(dbI)
-			fixtures.LoadFixtureData("./internal/fixtures/fixtures.yaml")
+			fixtures.LoadFixtureData("./internal/fixtures/policy_fixtures.yaml")
 			f.Provision()
 
 			fmt.Print("fixtures provision fully applied")

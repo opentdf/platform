@@ -44,7 +44,7 @@ func MarshalUpdateMetadata(m *common.MetadataMutable, b common.MetadataUpdateEnu
 		if err != nil {
 			return nil, nil, err
 		}
-		if existing == nil {
+		if existing == nil || existing.Labels == nil {
 			return marshalMetadata(m)
 		}
 

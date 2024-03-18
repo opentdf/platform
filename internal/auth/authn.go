@@ -106,15 +106,12 @@ func (a authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		// TODO enforce policy
-		fmt.Printf("enforce policy %v\n", r.URL.Path)
-
 		handler.ServeHTTP(w, r)
 	})
 }
 
-// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+// verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
+func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
 	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
 		return handler(ctx, req)

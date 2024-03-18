@@ -4,7 +4,7 @@ import "fmt"
 
 // AuthConfig pulls AuthN and AuthZ together
 type Config struct {
-	Enabled     bool `yaml:"enabled"`
+	Enabled     bool `yaml:"enabled" default:"true" `
 	AuthNConfig `mapstructure:",squash"`
 }
 

@@ -69,7 +69,7 @@ func TestMain(m *testing.M) {
 	req := tc.GenericContainerRequest{
 		ProviderType: providerType,
 		ContainerRequest: tc.ContainerRequest{
-			Image:        "public.ecr.aws/docker/library/postgres:15-alpine",
+			Image:        "postgres:15-alpine",
 			Name:         "testcontainer-postgres",
 			ExposedPorts: []string{"5432/tcp"},
 
@@ -112,10 +112,6 @@ func TestMain(m *testing.M) {
 	conf.DB.Port = port.Int()
 
 	db := fixtures.NewDBInterface(*Config)
-	if err != nil {
-		slog.Error("issue creating database client", slog.String("error", err.Error()))
-		panic(err)
-	}
 
 	slog.Info("🚚 applying migrations")
 	applied, err := db.Client.RunMigrations(ctx)
@@ -126,7 +122,7 @@ func TestMain(m *testing.M) {
 	slog.Info("🚚 applied migrations", slog.Int("count", applied))
 
 	slog.Info("🏠 loading fixtures")
-	fixtures.LoadFixtureData("../internal/fixtures/fixtures.yaml")
+	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
 
 	slog.Info("📚 indexing FQNs for test fixtures")
 	db.PolicyClient.AttrFqnReindex()

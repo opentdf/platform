@@ -78,7 +78,11 @@ func isPgError(err error) *pgconn.PgError {
 }
 
 func IsQueryBuilderSetClauseError(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "at least one Set clause")
+	if err != nil && strings.Contains(err.Error(), "at least one Set clause") {
+		slog.Error("update SET clause error: no columns updated", slog.String("error", err.Error()))
+		return true
+	}
+	return false
 }
 
 func NewUniqueAlreadyExistsError(value string) error {

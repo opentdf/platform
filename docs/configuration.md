@@ -32,12 +32,10 @@ logger:
 
 The server configuration is used to define how the application runs its server.
 
+- `port`: The port number for the server. `(default: 9000)`
+- `host`: The host address for the server. `(default: "")`
 - `grpc`: The configuration for the grpc server.
-  - `port`: The port number for the grpc server. `(default: 9000)`
   - `reflection`: Whether to enable reflection for the grpc server. `(default: true)`
-- `http`: The configuration for the http server.
-  - `enabled`: Whether to enable the http server. `(default: true)`
-  - `port`: The port number for the http server. `(default: 8080)`
 - `tls`: The configuration for the tls server.
   - `enabled`: Enable tls. `(default: false)`
   - `cert`: The path to the tls certificate.

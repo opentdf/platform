@@ -57,7 +57,7 @@ message RewrapResponse {
 service AccessService {
   // Get the current version of the service
   rpc Info(InfoRequest) returns (InfoResponse) {
-    option (google.api.http) = {get: "/"};
+    option (google.api.http) = {get: "/kas"};
 
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       responses: {key: "200"}
@@ -65,7 +65,7 @@ service AccessService {
   }
 
   rpc PublicKey(PublicKeyRequest) returns (PublicKeyResponse) {
-    option (google.api.http) = {get: "/v2/kas_public_key"};
+    option (google.api.http) = {get: "/kas/v2/kas_public_key"};
 
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       responses: {key: "200"}
@@ -74,7 +74,7 @@ service AccessService {
 
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc LegacyPublicKey(LegacyPublicKeyRequest) returns (google.protobuf.StringValue) {
-    option (google.api.http) = {get: "/kas_public_key"};
+    option (google.api.http) = {get: "/kas/kas_public_key"};
 
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       responses: {key: "200"}
@@ -83,7 +83,7 @@ service AccessService {
 
   rpc Rewrap(RewrapRequest) returns (RewrapResponse) {
     option (google.api.http) = {
-      post: "/v2/rewrap"
+      post: "/kas/v2/rewrap"
       body: "*";
     };
 

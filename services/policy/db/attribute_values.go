@@ -3,47 +3,63 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type attributeValueSelectOptions struct {
-	withFqn bool
 	state   string
+	withFqn bool
+	// withKeyAccessGrants  bool
+	// withSubjectMappings  bool
+	// withResourceMappings bool
+
+	// withAttribute                bool
+	// withAttributeKeyAccessGrants bool
+	// withAttributeNamespace       bool
 }
 
-func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*attributes.Value, error) {
+func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*policy.Value, error) {
 	var (
 		id           string
 		value        string
 		active       bool
-		members      []string
+		membersJson  []byte
 		metadataJson []byte
 		attributeId  string
 		fqn          sql.NullString
+		members      []*policy.Value
 	)
-
 	fields := []interface{}{
 		&id,
 		&value,
 		&active,
-		&members,
+		&membersJson,
 		&metadataJson,
 		&attributeId,
 	}
+
 	if opts.withFqn {
 		fields = append(fields, &fqn)
 	}
-
 	if err := row.Scan(fields...); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	} else {
+		if membersJson != nil {
+			members, err = attributesValuesProtojson(membersJson)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	m := &common.Metadata{}
@@ -53,20 +69,22 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		}
 	}
 
-	v := &attributes.Value{
+	v := &policy.Value{
 		Id:       id,
 		Value:    value,
 		Active:   &wrapperspb.BoolValue{Value: active},
 		Members:  members,
 		Metadata: m,
-		// TODO: get & hydrate full attribute
+		Attribute: &policy.Attribute{
+			Id: attributeId,
+		},
 		Fqn: fqn.String,
 	}
 	return v, nil
 }
 
-func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions) ([]*attributes.Value, error) {
-	list := make([]*attributes.Value, 0)
+func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions) ([]*policy.Value, error) {
+	list := make([]*policy.Value, 0)
 	for rows.Next() {
 		v, err := attributeValueHydrateItem(rows, opts)
 		if err != nil {
@@ -81,32 +99,57 @@ func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions)
 /// CRUD
 ///
 
+func addMemberSql(value_id string, member_id string) (string, []interface{}, error) {
+	t := Tables.ValueMembers
+	return db.NewStatementBuilder().
+		Insert(t.Name()).
+		Columns(
+			"value_id",
+			"member_id",
+		).
+		Values(
+			value_id,
+			member_id,
+		).
+		Suffix("RETURNING id").
+		ToSql()
+}
+
+func removeMemberSql(value_id string, member_id string) (string, []interface{}, error) {
+	t := Tables.ValueMembers
+	return db.NewStatementBuilder().
+		Delete(t.Name()).
+		Where(sq.Eq{
+			t.Field("value_id"):  value_id,
+			t.Field("member_id"): member_id,
+		}).
+		Suffix("RETURNING id").
+		ToSql()
+}
+
 func createAttributeValueSql(
 	attribute_id string,
 	value string,
-	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns(
 			"attribute_definition_id",
 			"value",
-			"members",
 			"metadata",
 		).
 		Values(
 			attribute_id,
 			value,
-			members,
 			metadata,
 		).
 		Suffix("RETURNING id").
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.CreateAttributeValueRequest) (*attributes.Value, error) {
+func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
 	metadataJson, metadata, err := db.MarshalCreateMetadata(v.Metadata)
 	if err != nil {
 		return nil, err
@@ -115,7 +158,6 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	sql, args, err := createAttributeValueSql(
 		attributeId,
 		v.Value,
-		v.Members,
 		metadataJson,
 	)
 	if err != nil {
@@ -129,14 +171,35 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	var members []*policy.Value
+
+	// Add members
+	for _, member := range v.Members {
+		var vm_id string
+		sql, args, err := addMemberSql(id, member)
+		if err != nil {
+			return nil, err
+		}
+		if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
+			return nil, err
+		} else if err := r.Scan(&vm_id); err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attr, err := c.GetAttributeValue(ctx, member)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, attr)
+	}
+
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
 
-	rV := &attributes.Value{
+	rV := &policy.Value{
 		Id:        id,
-		Attribute: &attributes.Attribute{Id: attributeId},
+		Attribute: &policy.Attribute{Id: attributeId},
 		Value:     v.Value,
-		Members:   v.Members,
+		Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
 	}
@@ -144,35 +207,61 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 }
 
 func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
+	fqnT := Tables.AttrFqn
+	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		"'id', vmv.id, " +
+		"'value', vmv.value, " +
+		"'active', vmv.active, " +
+		"'members', vmv.members || ARRAY[]::UUID[], " +
+		"'metadata', vmv.metadata, " +
+		"'attribute', JSON_BUILD_OBJECT(" +
+		"'id', vmv.attribute_definition_id )" // TODO: get the rest of the attribute here from the JOIN?
+	if opts.withFqn {
+		members += ", 'fqn', " + "fqn1.fqn"
+	}
+	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
-		t.Field("id"),
-		t.Field("value"),
-		t.Field("active"),
-		t.Field("members"),
-		t.Field("metadata"),
-		t.Field("attribute_definition_id"),
+		"av.id",
+		"av.value",
+		"av.active",
+		members,
+		"av.metadata",
+		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, db.Tables.AttrFqn.Field("fqn"))
+		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
 	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...).
-		From(t.Name())
+		From(t.Name() + " av")
+
+	// join members
+	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
+
+	// join attribute values
+	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
 
 	if opts.withFqn {
-		fqnT := db.Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
 
-	return sb.Where(sq.Eq{t.Field("id"): id}).
+	return sb.Where(sq.Eq{
+		"av.id": id,
+	}).
+		GroupBy(
+			"av.id",
+			// fqnT.Field("fqn"),
+		).
 		ToSql()
 }
 
-func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
+func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true}
 	sql, args, err := getAttributeValueSql(id, opts)
+	fmt.Println("\nsql: ", sql)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		slog.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
@@ -188,40 +277,61 @@ func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*attr
 }
 
 func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
+	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		"'id', vmv.id, " +
+		"'value', vmv.value, " +
+		"'active', vmv.active, " +
+		"'members', vmv.members || ARRAY[]::UUID[], " +
+		"'metadata', vmv.metadata, " +
+		"'attribute', JSON_BUILD_OBJECT(" +
+		"'id', vmv.attribute_definition_id )"
+	if opts.withFqn {
+		members += ", 'fqn', " + "fqn1.fqn"
+	}
+	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
-		t.Field("id"),
-		t.Field("value"),
-		t.Field("active"),
-		t.Field("members"),
-		t.Field("metadata"),
-		t.Field("attribute_definition_id"),
+		"av.id",
+		"av.value",
+		"av.active",
+		members,
+		"av.metadata",
+		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "fqn")
+		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
 	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...)
 
+	// join members
+	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
+
+	// join attribute values
+	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
+
 	if opts.withFqn {
-		fqnT := db.Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
+		fqnT := Tables.AttrFqn
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
+
+	sb = sb.GroupBy("av.id")
 
 	where := sq.Eq{}
 	if opts.state != "" && opts.state != StateAny {
-		where[t.Field("active")] = opts.state == StateActive
+		where["av.active"] = opts.state == StateActive
 	}
-	where[t.Field("attribute_definition_id")] = attribute_id
+	where["av.attribute_definition_id"] = attribute_id
 
 	return sb.
-		From(t.Name()).
+		From(t.Name() + " av").
 		Where(where).
 		ToSql()
 }
 
-func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*attributes.Value, error) {
+func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true, state: state}
 
 	sql, args, err := listAttributeValuesSql(attribute_id, opts)
@@ -234,32 +344,53 @@ func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id st
 }
 
 func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
+	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		"'id', vmv.id, " +
+		"'value', vmv.value, " +
+		"'active', vmv.active, " +
+		"'members', vmv.members || ARRAY[]::UUID[], " +
+		"'metadata', vmv.metadata, " +
+		"'attribute', JSON_BUILD_OBJECT(" +
+		"'id', vmv.attribute_definition_id )"
+	if opts.withFqn {
+		members += ", 'fqn', " + "fqn1.fqn"
+	}
+	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
 	fields := []string{
-		t.Field("id"),
-		t.Field("value"),
-		t.Field("active"),
-		t.Field("members"),
-		t.Field("metadata"),
-		t.Field("attribute_definition_id"),
+		"av.id",
+		"av.value",
+		"av.active",
+		members,
+		"av.metadata",
+		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "fqn")
+		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
 	}
 	sb := db.NewStatementBuilder().
 		Select(fields...)
 
+	// join members
+	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
+
+	// join attribute values
+	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
+
 	if opts.withFqn {
-		fqnT := db.Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = " + t.Field("id"))
+		fqnT := Tables.AttrFqn
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
+		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
 
+	sb = sb.GroupBy("av.id")
+
 	return sb.
-		From(t.Name()).
+		From(t.Name() + " av").
 		ToSql()
 }
 
-func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string) ([]*attributes.Value, error) {
+func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string) ([]*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true, state: state}
 	sql, args, err := listAllAttributeValuesSql(opts)
 	rows, err := c.Query(ctx, sql, args, err)
@@ -272,26 +403,21 @@ func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string
 
 func updateAttributeValueSql(
 	id string,
-	members []string,
 	metadata []byte,
 ) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	sb := db.NewStatementBuilder().Update(t.Name())
 
 	if metadata != nil {
 		sb = sb.Set("metadata", metadata)
 	}
 
-	if members != nil {
-		sb = sb.Set("members", members)
-	}
-
 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
-func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *attributes.UpdateAttributeValueRequest) (*attributes.Value, error) {
+func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {
 	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
-		v, err := c.GetAttributeValue(ctx, id)
+		v, err := c.GetAttributeValue(ctx, r.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -302,15 +428,19 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *
 	}
 
 	sql, args, err := updateAttributeValueSql(
-		id,
-		r.Members,
+		r.Id,
 		metadataJson,
 	)
 	if db.IsQueryBuilderSetClauseError(err) {
-		return &attributes.Value{
-			Id: id,
+		return &policy.Value{
+			Id: r.Id,
 		}, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	prev, err := c.GetAttributeValue(ctx, r.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -318,17 +448,63 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, id string, r *
 	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
+	prevMembersSet := map[string]bool{}
+
+	for _, member := range prev.Members {
+		prevMembersSet[member.Id] = true
+	}
+
+	membersSet := map[string]bool{}
+	for _, member := range r.Members {
+		membersSet[member] = true
+	}
+
+	toRemove := map[string]bool{}
+	toAdd := map[string]bool{}
+
+	for member := range prevMembersSet {
+		if _, ok := membersSet[member]; !ok {
+			toRemove[member] = true
+		}
+	}
+
+	for member := range membersSet {
+		if _, ok := prevMembersSet[member]; !ok {
+			toAdd[member] = true
+		}
+	}
+
+	// Remove members
+	for member := range toRemove {
+		sql, args, err := removeMemberSql(r.Id, member)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Exec(ctx, sql, args); err != nil {
+			return nil, err
+		}
+	}
+
+	for member := range toAdd {
+		sql, args, err := addMemberSql(r.Id, member)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Exec(ctx, sql, args); err != nil {
+			return nil, err
+		}
+	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: r.Id})
 
-	return &attributes.Value{
-		Id: id,
+	return &policy.Value{
+		Id: r.Id,
 	}, nil
 }
 
 func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	return db.NewStatementBuilder().
 		Update(t.Name()).
 		Set("active", false).
@@ -337,7 +513,7 @@ func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) DeactivateAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
+func (c PolicyDbClient) DeactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	sql, args, err := deactivateAttributeValueSql(id)
 	if err != nil {
 		return nil, err
@@ -350,14 +526,14 @@ func (c PolicyDbClient) DeactivateAttributeValue(ctx context.Context, id string)
 }
 
 func deleteAttributeValueSql(id string) (string, []interface{}, error) {
-	t := db.Tables.AttributeValues
+	t := Tables.AttributeValues
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
 		ToSql()
 }
 
-func (c PolicyDbClient) DeleteAttributeValue(ctx context.Context, id string) (*attributes.Value, error) {
+func (c PolicyDbClient) DeleteAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {
 		return nil, err
@@ -376,7 +552,7 @@ func (c PolicyDbClient) DeleteAttributeValue(ctx context.Context, id string) (*a
 }
 
 func assignKeyAccessServerToValueSql(valueID, keyAccessServerID string) (string, []interface{}, error) {
-	t := db.Tables.AttributeValueKeyAccessGrants
+	t := Tables.AttributeValueKeyAccessGrants
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("attribute_value_id", "key_access_server_id").
@@ -398,7 +574,7 @@ func (c PolicyDbClient) AssignKeyAccessServerToValue(ctx context.Context, k *att
 }
 
 func removeKeyAccessServerFromValueSql(valueID, keyAccessServerID string) (string, []interface{}, error) {
-	t := db.Tables.AttributeValueKeyAccessGrants
+	t := Tables.AttributeValueKeyAccessGrants
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("attribute_value_id"): valueID, t.Field("key_access_server_id"): keyAccessServerID}).

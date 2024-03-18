@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/opentdf/platform/internal/security"
 	"math/big"
 	"net/url"
 	"os"
@@ -17,7 +18,7 @@ import (
 	"testing"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/services/kas/p11"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExportRsaPublicKeyAsPemStrSuccess(t *testing.T) {
@@ -93,9 +94,7 @@ func TestExportCertificateAsPemStrSuccess(t *testing.T) {
 	}
 
 	mockCert, err := x509.ParseCertificate(certBytes)
-	if err != nil {
-		t.Errorf("Failed to parse certificate in test: %v", err)
-	}
+	assert.NoError(t, err, "Failed to parse certificate in test")
 
 	pemStr, err := exportCertificateAsPemStr(mockCert)
 	if err != nil {
@@ -134,25 +133,17 @@ func TestError(t *testing.T) {
 
 const hostname = "localhost"
 
-func TestCertificateHandler(t *testing.T) {
+func TestCertificateHandlerEmpty(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: rsa.PublicKey{},
-		PublicKeyEC:  ecdsa.PublicKey{},
-		Certificate:  x509.Certificate{},
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
-	if err != nil {
-		t.Errorf("got %s, but should be nil", err)
-	}
-	if result == nil || !strings.Contains(result.PublicKey, "BEGIN CERTIFICATE") {
-		t.Errorf("got %s, but should be certificate", result)
-	}
+	assert.Error(t, err, "not found")
+	assert.Nil(t, result)
 }
 
 func TestCertificateHandlerWithEc256(t *testing.T) {
@@ -164,14 +155,13 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:           *kasURI,
-		PrivateKey:    p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA:  rsa.PublicKey{},
-		PublicKeyEC:   privateKey.PublicKey,
-		Certificate:   x509.Certificate{},
-		CertificateEC: x509.Certificate{},
-		Session:       p11.Pkcs11Session{},
-		OIDCVerifier:  nil,
+		URI:          *kasURI,
+		Session:      security.HSMSession{},
+		OIDCVerifier: nil,
+	}
+	kas.Session.EC = &security.ECKeyPair{
+		PublicKey:   &privateKey.PublicKey,
+		Certificate: &x509.Certificate{},
 	}
 
 	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
@@ -193,13 +183,11 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: rsa.PublicKey{},
-		PublicKeyEC:  privateKey.PublicKey,
-		Certificate:  x509.Certificate{},
-
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
+	}
+	kas.Session.EC = &security.ECKeyPair{
+		PublicKey: &privateKey.PublicKey,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1"})
@@ -226,13 +214,15 @@ func TestPublicKeyHandlerV2(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: mockPublicKeyRsa,
-		PublicKeyEC:  privateKey.PublicKey,
-		Certificate:  x509.Certificate{},
-
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
+	}
+	kas.Session.EC = &security.ECKeyPair{
+		PublicKey: &privateKey.PublicKey,
+	}
+	kas.Session.RSA = &security.RSAKeyPair{
+		Certificate: &x509.Certificate{},
+		PublicKey:   &mockPublicKeyRsa,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
@@ -254,13 +244,11 @@ func TestPublicKeyHandlerV2Failure(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: rsa.PublicKey{},
-		PublicKeyEC:  privateKey.PublicKey,
-		Certificate:  x509.Certificate{},
-
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
+	}
+	kas.Session.EC = &security.ECKeyPair{
+		PublicKey: &privateKey.PublicKey,
 	}
 
 	_, err = kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
@@ -283,13 +271,15 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: mockPublicKeyRsa,
-		PublicKeyEC:  privateKey.PublicKey,
-		Certificate:  x509.Certificate{},
-
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
+	}
+	kas.Session.EC = &security.ECKeyPair{
+		PublicKey: &privateKey.PublicKey,
+	}
+	kas.Session.RSA = &security.RSAKeyPair{
+		Certificate: &x509.Certificate{},
+		PublicKey:   &mockPublicKeyRsa,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1",
@@ -316,13 +306,15 @@ func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		PrivateKey:   p11.Pkcs11PrivateKeyRSA{},
-		PublicKeyRSA: mockPublicKeyRsa,
-		PublicKeyEC:  privateKey.PublicKey,
-		Certificate:  x509.Certificate{},
-
-		Session:      p11.Pkcs11Session{},
+		Session:      security.HSMSession{},
 		OIDCVerifier: nil,
+	}
+	kas.Session.EC = &security.ECKeyPair{
+		PublicKey: &privateKey.PublicKey,
+	}
+	kas.Session.RSA = &security.RSAKeyPair{
+		Certificate: &x509.Certificate{},
+		PublicKey:   &mockPublicKeyRsa,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{

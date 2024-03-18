@@ -7,25 +7,6 @@ run:
     - ".*\\.pb\\.gw.go"
 
 linters-settings:
-  ireturn:
-    allow:
-     - auth
-     - error
-     - Row
-     - Rows
-     - Leveler
-     - Writer
-     - Logger
-     - Handler
-  cyclop:
-    # The maximal code complexity to report.
-    # Default: 10
-    max-complexity: 30
-    # The maximal average package complexity.
-    # If it's higher than 0.0 (float) the check is enabled
-    # Default: 0.0
-    package-average: 10.0
-
   errcheck:
     # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
     # Such cases aren't reported by default.
@@ -38,21 +19,6 @@ linters-settings:
     check:
       - switch
       - map
-
-  funlen:
-    # Checks the number of lines in a function.
-    # If lower than 0, disable the check.
-    # Default: 60
-    lines: 100
-    # Checks the number of statements in a function.
-    # If lower than 0, disable the check.
-    # Default: 40
-    statements: 50
-
-  gocognit:
-    # Minimal code complexity to report.
-    # Default: 30 (but we recommend 10-20)
-    min-complexity: 20
 
   gocritic:
     # Settings passed to gocritic.
@@ -83,7 +49,6 @@ linters-settings:
       - prometheus.ExponentialBuckets
       - prometheus.ExponentialBucketsRange
       - prometheus.LinearBuckets
-      - wg.Add
 
   gomodguard:
     blocked:
@@ -127,7 +92,7 @@ linters-settings:
   nolintlint:
     # Exclude following linters from requiring an explanation.
     # Default: []
-    allow-no-explanation: [ funlen, gocognit, lll ]
+    allow-no-explanation: []
     # Enable to require an explanation of nonzero length after each nolint directive.
     # Default: false
     require-explanation: true
@@ -147,21 +112,6 @@ linters-settings:
     # Default: false
     all: true
 
-  lll:
-    line-length: 120
-
-  wrapcheck:
-    ignoreSigs:
-      - "status.Error("
-      - ".Errorf("
-      - "errors.New("
-      - "errors.Unwrap("
-      - "errors.Join("
-      - ".Wrap("
-      - ".Wrapf("
-      - ".WithMessage("
-      - ".WithMessagef("
-      - ".WithStack("
 linters:
   disable-all: true
   enable:
@@ -178,8 +128,9 @@ linters:
     - asciicheck # checks that your code does not contain non-ASCII identifiers
     - bidichk # checks for dangerous unicode character sequences
     - bodyclose # checks whether HTTP response body is closed successfully
-    - cyclop # checks function and package cyclomatic complexity
-    - dupl # tool for code clone detection
+    - containedctx # Containedctx is a linter that detects struct contained context.Context field.
+    - contextcheck # checks the function whether use a non-inherited context
+    #- copyloopvar # checks for copying a loop variable to a function literal (1.57)
     - durationcheck # checks for two durations multiplied together
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
@@ -187,22 +138,16 @@ linters:
     - exhaustive # checks exhaustiveness of enum switch statements
     - exportloopref # checks for pointers to enclosing loop variables
     - forbidigo # forbids identifiers
-    - funlen # tool for detection of long functions
+    - forcetypeassert # finds forced type assertions
     - gocheckcompilerdirectives # validates go compiler directive comments (//go:)
-    - gochecknoglobals # checks that no global variables exist
-    #- gochecknoinits # checks that no init functions are present in Go code
-    - gocognit # computes and checks the cognitive complexity of functions
     - goconst # finds repeated strings that could be replaced by a constant
     - gocritic # provides diagnostics that check for bugs, performance and style issues
-    - gocyclo # computes and checks the cyclomatic complexity of functions
-    # - godot # checks if comments end in a period
+    - gofmt # checks whether code was gofmt-ed
     - goimports # in addition to fixing imports, goimports also formats your code in the same style as gofmt
     - gomnd # detects magic numbers
-    # - gomoddirectives # manages the use of 'replace', 'retract', and 'excludes' directives in go.mod
     - gomodguard # allow and block lists linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations
     - goprintffuncname # checks that printf-like functions are named with f at the end
     - gosec # inspects source code for security problems
-    - lll # reports long lines
     - loggercheck # checks key value pairs for common logger libraries (kitlog,klog,logr,zap)
     - makezero # finds slice declarations with non-zero initial length
     - musttag # enforces field tags in (un)marshaled structs
@@ -216,13 +161,17 @@ linters:
     - nosprintfhostport # checks for misuse of Sprintf to construct a host with port in a URL
     - predeclared # finds code that shadows one of Go's predeclared identifiers
     - promlinter # checks Prometheus metrics naming via promlint
+    - protogetter # Reports direct reads from proto message fields when getters should be used.
     - reassign # checks that package variables are not reassigned
     - revive # fast, configurable, extensible, flexible, and beautiful linter for Go, drop-in replacement of golint
     - rowserrcheck # checks whether Err of rows is checked successfully
+    - sloglint # Ensure consistent code style when using log/slog.
+    - spancheck # checks for incorrect usage of opentracing.Span
     - sqlclosecheck # checks that sql.Rows and sql.Stmt are closed
     - stylecheck # is a replacement for golint
     - tenv # detects using os.Setenv instead of t.Setenv since Go1.17
     - testableexamples # checks if examples are testable (have an expected output)
+    - testifylint
     #- testpackage # makes you use a separate _test package
     - tparallel # detects inappropriate usage of t.Parallel() method in your Go test codes
     - unconvert # removes unnecessary type conversions
@@ -230,51 +179,6 @@ linters:
     - usestdlibvars # detects the possibility to use variables/constants from the Go standard library
     - wastedassign # finds wasted assignment statements
     - whitespace # detects leading and trailing whitespace
-
-    ## you may want to enable
-    #- decorder # checks declaration order and count of types, constants, variables and functions
-    #- gci # controls golang package import order and makes it always deterministic
-    #- ginkgolinter # [if you use ginkgo/gomega] enforces standards of using ginkgo and gomega
-    - godox # detects FIXME, TODO and other comment keywords
-    #- goheader # checks is file header matches to pattern
-    - interfacebloat # checks the number of methods inside an interface
-    - ireturn # accept interfaces, return concrete types
-    - prealloc # [premature optimization, but can be used in some cases] finds slice declarations that could potentially be preallocated
-    #- varnamelen # [great idea, but too many false positives] checks that the length of a variable's name matches its scope
-    - wrapcheck # checks that errors returned from external packages are wrapped
-
-    ## disabled
-    #- containedctx # detects struct contained context.Context field
-    #- contextcheck # [too many false positives] checks the function whether use a non-inherited context
-    #- depguard # [replaced by gomodguard] checks if package imports are in a list of acceptable packages
-    #- dogsled # checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
-    #- dupword # [useless without config] checks for duplicate words in the source code
-    #- errchkjson # [don't see profit + I'm against of omitting errors like in the first example https://github.com/breml/errchkjson] checks types passed to the json encoding functions. Reports unsupported types and optionally reports occasions, where the check for the returned error can be omitted
-    #- forcetypeassert # [replaced by errcheck] finds forced type assertions
-    #- goerr113 # [too strict] checks the errors handling expressions
-    #- gofmt # [replaced by goimports] checks whether code was gofmt-ed
-    #- gofumpt # [replaced by goimports, gofumports is not available yet] checks whether code was gofumpt-ed
-    #- grouper # analyzes expression groups
-    #- importas # enforces consistent import aliases
-    #- maintidx # measures the maintainability index of each function
-    #- misspell # [useless] finds commonly misspelled English words in comments
-    #- nlreturn # [too strict and mostly code is not more readable] checks for a new line before return and branch statements to increase code clarity
-    #- paralleltest # [too many false positives] detects missing usage of t.Parallel() method in your Go test
-    #- tagliatelle # checks the struct tags
-    #- thelper # detects golang test helpers without t.Helper() call and checks the consistency of test helpers
-    #- wsl # [too strict and mostly code is not more readable] whitespace linter forces you to use empty lines
-
-    ## deprecated
-    #- deadcode # [deprecated, replaced by unused] finds unused code
-    #- exhaustivestruct # [deprecated, replaced by exhaustruct] checks if all struct's fields are initialized
-    #- golint # [deprecated, replaced by revive] golint differs from gofmt. Gofmt reformats Go source code, whereas golint prints out style mistakes
-    #- ifshort # [deprecated] checks that your code uses short syntax for if-statements whenever possible
-    #- interfacer # [deprecated] suggests narrower interface types
-    #- maligned # [deprecated, replaced by govet fieldalignment] detects Go structs that would take less memory if their fields were sorted
-    #- nosnakecase # [deprecated, replaced by revive var-naming] detects snake case of variable naming and function name
-    #- scopelint # [deprecated, replaced by exportloopref] checks for unpinned variables in go programs
-    #- structcheck # [deprecated, replaced by unused] finds unused struct fields
-    #- varcheck # [deprecated, replaced by unused] finds unused global variables and constants
 
 
 issues:
@@ -311,12 +215,3 @@ issues:
     - text: "http://www.apache.org/licenses/LICENSE-2.0"
       linters:
         - goimport
-
-severity:
-  default-severity: error
-  rules:
-    - linters:
-        - dupl
-        - godot
-        - lll
-      severity: info

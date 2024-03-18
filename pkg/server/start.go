@@ -80,7 +80,8 @@ func Start(f ...StartOptions) error {
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
-	otdf, err := server.NewOpenTDFServer(conf.Server, dbClient)
+	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
+	otdf, err := server.NewOpenTDFServer(conf.Server)
 	if err != nil {
 		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
@@ -99,9 +100,9 @@ func Start(f ...StartOptions) error {
 		if service.Remote.Endpoint == "" && service.Enabled {
 			switch name {
 			case "policy":
-				sdkOptions = append(sdkOptions, sdk.WithCustomPolicyConnection(otdf.GrpcInProcess.Conn()))
+				sdkOptions = append(sdkOptions, sdk.WithCustomPolicyConnection(otdf.GRPCInProcess.Conn()))
 			case "authorization":
-				sdkOptions = append(sdkOptions, sdk.WithCustomAuthorizationConnection(otdf.GrpcInProcess.Conn()))
+				sdkOptions = append(sdkOptions, sdk.WithCustomAuthorizationConnection(otdf.GRPCInProcess.Conn()))
 			}
 		}
 	}
@@ -160,10 +161,10 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 			})
 
 			// Register the service with the gRPC server
-			otdf.GrpcServer.RegisterService(r.ServiceDesc, impl)
+			otdf.GRPCServer.RegisterService(r.ServiceDesc, impl)
 
 			// Register the service with in process gRPC server
-			otdf.GrpcInProcess.GetGrpcServer().RegisterService(r.ServiceDesc, impl)
+			otdf.GRPCInProcess.GetGrpcServer().RegisterService(r.ServiceDesc, impl)
 
 			// Register the service with the gRPC gateway
 			if err := handler(context.Background(), otdf.Mux, impl); err != nil {

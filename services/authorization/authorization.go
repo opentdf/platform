@@ -13,6 +13,7 @@ import (
 	"github.com/open-policy-agent/opa/metrics"
 	"github.com/open-policy-agent/opa/profiler"
 	"github.com/open-policy-agent/opa/sdk"
+	"github.com/opentdf/platform/internal/access"
 	"github.com/opentdf/platform/internal/entitlements"
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/pkg/serviceregistry"
@@ -52,17 +53,89 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 		for _, ra := range dr.ResourceAttributes {
 			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
 
-			attrs, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
+			// get attribute definisions
+			getAttrsRes, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 				Fqns: ra.AttributeFqns,
 			})
 			if err != nil {
 				// TODO: should all decisions in a request fail if one FQN lookup fails?
 				return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", strings.Join(ra.AttributeFqns, ", ")))
 			}
+			// get list of attributes from response
+			var attrDefs []*policy.Attribute
+			for _, v := range getAttrsRes.GetFqnAttributeValues() {
+				attrDefs = append(attrDefs, v.GetAttribute())
+			}
+
+			// format resource fqns as attribute instances for accesspdp
+			var dataAttrs []access.AttributeInstance
+			for _, x := range ra.AttributeFqns {
+				inst, err := access.ParseInstanceFromURI(x)
+				if err != nil {
+					// TODO: should all decisions in a request fail if one FQDN to attributeinstance conversion fails?
+					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("attribute instance conversion failed for resource fqn ", x))
+				}
+				dataAttrs = append(dataAttrs, inst)
+			}
+
 			for _, ec := range dr.EntityChains {
 				fmt.Printf("\nTODO: make access decision here with these fully qualified attributes: %+v\n", attrs)
-				decision := &authorization.DecisionResponse{
-					Decision:      authorization.DecisionResponse_DECISION_PERMIT,
+				// get the entities entitlements
+				entities := ec.GetEntities()
+				req := authorization.GetEntitlementsRequest{Entities: entities}
+				ecEntitlements, err := as.GetEntitlements(ctx, &req)
+				if err != nil {
+					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
+					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("getEntitlements request failed ", req.toString()))
+				}
+
+				// format subject fqns as attribute instances for accesspdp
+				// if an entity chain has more than one entity in it
+				// -- so get entitlements will return a list or more than 1 EntityEntitlement objects
+				// then should i just concatenate them? or get decisions for each entity in the chain
+				// basically are we making decisions for each entity in a chain? or the chain itself?
+				// what about groups? like keycloak supports group emails which we expand in the plugin
+				// to multiple users, should we make a decision for each of those users or should we combine
+				// them and make a decsion for the group? how should we combine them? if we just concatonate
+				// their attributes togethor and one user has access and the other doesnt then the whole concatonated
+				// list will have access, same goes for entity chains
+				var entityAttrs map[string][]access.AttributeInstance
+				for _, e := range ecEntitlements.Entitlements {
+					// currently just adding each entity retuned to same list
+					var thisEntityAttrs []access.AttributeInstance
+					for _, x := range e.GetAttributeId() {
+						inst, err := access.ParseInstanceFromURI(x)
+						if err != nil {
+							// TODO: should all decisions in a request fail if one FQDN to attributeinstance conversion fails?
+							return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("attribute instance conversion failed for subject fqn ", x))
+						}
+						thisEntityAttrs = append(thisEntityAttrs, inst)
+					}
+					entityAttrs[e.EntityId] = thisEntityAttrs
+				}
+
+				// call access-pdp
+				accessPDP := access.NewPdp()
+				decisions, err := accessPDP.DetermineAccess(
+					ctx,
+					dataAttrs,
+					entityAttrs,
+					attrDefs,
+				)
+				if err != nil {
+					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
+					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("determinsAccess request to accesspdp failed", ""))
+				}
+				// check the decisions
+				decision := authorization.DecisionResponse_DECISION_PERMIT
+				for _, d := range decisions {
+					if !d.Access {
+						decision = authorization.DecisionResponse_DECISION_DENY
+					}
+				}
+
+				decisionResp := &authorization.DecisionResponse{
+					Decision:      decision,
 					EntityChainId: ec.Id,
 					Action: &policy.Action{
 						Value: &policy.Action_Standard{
@@ -71,7 +144,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 					},
 					ResourceAttributesId: "resourceAttributesId_stub" + ra.String(),
 				}
-				rsp.DecisionResponses = append(rsp.DecisionResponses, decision)
+				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}
 		}
 	}

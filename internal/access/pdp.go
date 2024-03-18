@@ -20,8 +20,8 @@ func NewPdp() *Pdp {
 // result for each entity, as well as a detailed breakdown of every data attributeInstance comparison.
 func (pdp *Pdp) DetermineAccess(
 	ctx context.Context,
-	dataAttributes []attributeInstance,
-	entityAttributeSets map[string][]attributeInstance,
+	dataAttributes []AttributeInstance,
+	entityAttributeSets map[string][]AttributeInstance,
 	attributeDefinitions []*policy.Attribute,
 ) (map[string]*Decision, error) {
 	slog.DebugContext(ctx, "DetermineAccess")
@@ -113,7 +113,7 @@ func (pdp *Pdp) DetermineAccess(
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance) map[string]DataRuleResult {
+func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	// All of the data AttributeInstances in the arg have the same canonical name.
@@ -169,7 +169,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
 // Returns a map of DataRuleResults keyed by EntityID
-func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance) map[string]DataRuleResult {
+func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	dvCanonicalName := dataAttrsBySingleCanonicalName[0].GetCanonicalName()
@@ -231,7 +231,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 //
 // If multiple entity AttributeInstances (that is, values) for a hierarchy AttributeDefinition are present for the same canonical name, the lowest will be chosen,
 // and the others ignored.
-func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []attributeInstance, entityAttributes map[string][]attributeInstance, order []*policy.Value) map[string]DataRuleResult {
+func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance, order []*policy.Value) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
 	highestDataInstance := pdp.getHighestRankedInstanceFromDataAttributes(ctx, order, dataAttrsBySingleCanonicalName)
@@ -300,11 +300,11 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrsBySingleCanonicalNam
 // present in the set of data AttributeInstances, and use that as the point of comparison, ignoring the "lower-ranked" data values.
 // If we find a data value that does not exist in the attribute definition's list of valid values, we will skip it
 // If NONE of the data values exist in the attribute definitions list of valid values, return a nil instance
-func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, order []*policy.Value, dataAttributeCluster []attributeInstance) *attributeInstance {
+func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, order []*policy.Value, dataAttributeCluster []AttributeInstance) *AttributeInstance {
 	// For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
 	// So initialize with the LEAST privileged rank in the defined order
 	highestDVIndex := len(order) - 1
-	var highestRankedInstance *attributeInstance
+	var highestRankedInstance *AttributeInstance
 	for _, dataAttr := range dataAttributeCluster {
 		foundRank := getOrderOfValue(order, dataAttr.Value)
 		if foundRank == -1 {
@@ -328,7 +328,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 	return highestRankedInstance
 }
 
-func findInstanceValueInClusterAI(a *attributeInstance, instances []attributeInstance) bool {
+func findInstanceValueInClusterAI(a *AttributeInstance, instances []AttributeInstance) bool {
 	for _, ai := range instances {
 		if ai.Value == a.Value && ai.GetCanonicalName() == GetCanonicalName(*a) {
 			return true
@@ -341,7 +341,7 @@ func findInstanceValueInClusterAI(a *attributeInstance, instances []attributeIns
 // determine if the entity AttributeInstances include a ranked value that equals or exceeds
 // the rank of the data attributeInstance value.
 // For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
-func entityRankGreaterThanOrEqualToDataRank(order []*policy.Value, dataAttribute *attributeInstance, entityAttributeCluster []attributeInstance) bool {
+func entityRankGreaterThanOrEqualToDataRank(order []*policy.Value, dataAttribute *AttributeInstance, entityAttributeCluster []AttributeInstance) bool {
 	// default to least-perm
 	result := false
 	dvIndex := getOrderOfValue(order, dataAttribute.Value)
@@ -451,7 +451,7 @@ type DataRuleResult struct {
 // it is up to the rule itself (anyof/allof/hierarchy) to translate this into an overall failure or not.
 type ValueFailure struct {
 	// The data attribute w/value that "caused" the denial
-	DataAttribute *attributeInstance `json:"data_attribute"`
+	DataAttribute *AttributeInstance `json:"data_attribute"`
 	// Optional denial message
 	Message string `json:"message" example:"Criteria NOT satisfied for entity: {entity_id} - lacked attribute value: {attribute}"`
 }
@@ -465,7 +465,7 @@ type Clusterable interface {
 	// GetAuthority Returns the authority of this clusterable thing, in the format
 	//  <scheme>://<hostname>
 	GetAuthority() string
-	GroupBy() *attributeInstance
+	GroupBy() *AttributeInstance
 	Rule() policy.AttributeRuleTypeEnum
 	Order() []string
 }
@@ -509,8 +509,8 @@ func ClusterByCanonicalNameAD(ads []*policy.Attribute) map[string][]*policy.Attr
 	return clusters
 }
 
-func ClusterByCanonicalNameAI(attributes []attributeInstance) map[string][]attributeInstance {
-	clusters := make(map[string][]attributeInstance)
+func ClusterByCanonicalNameAI(attributes []AttributeInstance) map[string][]AttributeInstance {
+	clusters := make(map[string][]AttributeInstance)
 	for _, a := range attributes {
 		clusters[a.GetCanonicalName()] = append(clusters[a.GetCanonicalName()], a)
 	}
@@ -520,7 +520,7 @@ func ClusterByCanonicalNameAI(attributes []attributeInstance) map[string][]attri
 // GetCanonicalName Returns the canonical URI representation of this AttributeDefinition:
 //
 //	<scheme>://<hostname>/attr/<name>
-func GetCanonicalName(ai attributeInstance) string {
+func GetCanonicalName(ai AttributeInstance) string {
 	return fmt.Sprintf("%s/attr/%s",
 		ai.Authority,
 		ai.Name,
@@ -537,6 +537,6 @@ func GetCanonicalNameADV(instance *policy.Attribute) string {
 // GetAuthority Returns the authority of this AttributeDefinition:
 //
 //	<scheme>://<hostname>
-func GetAuthority(attrdef attributeInstance) string {
+func GetAuthority(attrdef AttributeInstance) string {
 	return attrdef.Authority
 }

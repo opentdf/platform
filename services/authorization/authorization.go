@@ -42,6 +42,16 @@ func NewRegistration() serviceregistry.Registration {
 	}
 }
 
+var RetrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, as AuthorizationService) (*attr.GetAttributeValuesByFqnsResponse, error) {
+	return as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
+		Fqns: ra.AttributeFqns,
+	})
+}
+
+var RetrieveEntitlements = func(ctx context.Context, req *authorization.GetEntitlementsRequest, as AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
+	return as.GetEntitlements(ctx, req)
+}
+
 func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
 	slog.DebugContext(ctx, "getting decisions")
 
@@ -54,9 +64,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
 
 			// get attribute definisions
-			getAttrsRes, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-				Fqns: ra.AttributeFqns,
-			})
+			getAttrsRes, err := RetrieveAttributeDefinitions(ctx, ra, as)
 			if err != nil {
 				// TODO: should all decisions in a request fail if one FQN lookup fails?
 				return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", strings.Join(ra.AttributeFqns, ", ")))
@@ -83,7 +91,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				// get the entities entitlements
 				entities := ec.GetEntities()
 				req := authorization.GetEntitlementsRequest{Entities: entities}
-				ecEntitlements, err := as.GetEntitlements(ctx, &req)
+				ecEntitlements, err := RetrieveEntitlements(ctx, &req, as)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
 					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("getEntitlements request failed ", req.String()))
@@ -99,7 +107,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				// them and make a decsion for the group? how should we combine them? if we just concatonate
 				// their attributes togethor and one user has access and the other doesnt then the whole concatonated
 				// list will have access, same goes for entity chains
-				var entityAttrs map[string][]access.AttributeInstance
+				entityAttrs := make(map[string][]access.AttributeInstance)
 				for _, e := range ecEntitlements.Entitlements {
 					// currently just adding each entity retuned to same list
 					var thisEntityAttrs []access.AttributeInstance

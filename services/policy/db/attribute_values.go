@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -216,7 +215,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"'members', vmv.members || ARRAY[]::UUID[], " +
 		"'metadata', vmv.metadata, " +
 		"'attribute', JSON_BUILD_OBJECT(" +
-		"'id', vmv.attribute_definition_id )" // TODO: get the rest of the attribute here from the JOIN?
+		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
 		members += ", 'fqn', " + "fqn1.fqn"
 	}
@@ -248,20 +247,12 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
 
-	return sb.Where(sq.Eq{
-		"av.id": id,
-	}).
-		GroupBy(
-			"av.id",
-			// fqnT.Field("fqn"),
-		).
-		ToSql()
+	return sb.Where(sq.Eq{"av.id": id}).GroupBy("av.id").ToSql()
 }
 
 func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true}
 	sql, args, err := getAttributeValueSql(id, opts)
-	fmt.Println("\nsql: ", sql)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		slog.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))

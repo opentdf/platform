@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -135,7 +136,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	for k, v := range results {
 		str, okk := v.(string)
 		if !okk {
-			slog.DebugContext(ctx, "not ok", k, fmt.Sprintf("%+v", v))
+			slog.DebugContext(ctx, "not ok", slog.String(strconv.Itoa(k), fmt.Sprintf("%+v", v)))
 		}
 		saa[k] = str
 	}

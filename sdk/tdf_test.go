@@ -707,7 +707,7 @@ func runKas() (string, func(), *SDK) {
 			panic(fmt.Sprintf("error creating SDK: %v", err))
 		}
 
-		return "grpc://localhost:9000", func() {}, sdk
+		return "grpc://localhost:8080", func() {}, sdk
 	}
 
 	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)

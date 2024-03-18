@@ -31,7 +31,7 @@ examples completion fish [flags]
 ### Options inherited from parent commands
 
 ```
-  -e, --platformEndpoint string   Platform Endpoint (default "localhost:9000")
+  -e, --platformEndpoint string   Platform Endpoint (default "localhost:8080")
 ```
 
 ### SEE ALSO

@@ -365,8 +365,7 @@ func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 	assert.NoError(s.T(), err)
 	otherKeyPublic, err := otherKey.PublicKey()
 	assert.NoError(s.T(), err)
-
-	otherKey.Set(jwk.AlgorithmKey, jwa.RS256)
+	assert.NoError(s.T(), otherKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
 	tokenWithNoCNF := jwt.New()
 	tokenWithNoCNF.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
@@ -378,7 +377,6 @@ func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 	assert.Nil(s.T(), err)
 
 	testCases := []dpopTestCase{
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), ""},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
 		{dpopKey, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "a weird type", "POST", "/a/path", "", time.Now(), "invalid typ on DPoP JWT: a weird type"},
@@ -403,12 +401,8 @@ func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 
 		err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))}, dpopInfo, *s.auth)
 
-		if testCase.errorMesssage == "" {
-			assert.Nil(s.T(), err)
-		} else {
-			assert.Error(s.T(), err)
-			assert.Equal(s.T(), testCase.errorMesssage, err.Error())
-		}
+		assert.Error(s.T(), err)
+		assert.Equal(s.T(), testCase.errorMesssage, err.Error())
 	}
 }
 

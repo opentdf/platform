@@ -19,10 +19,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/internal/security"
 	"io"
 	"log/slog"
 	"strings"
+
+	"github.com/opentdf/platform/internal/security"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/nanotdf"
@@ -232,7 +233,6 @@ func (p *Provider) verifyAndParsePolicy(ctx context.Context, requestBody *Reques
 
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	slog.DebugContext(ctx, "REWRAP")
-
 	bearer, err := legacyBearerToken(ctx, in.Bearer)
 	if err != nil {
 		return nil, err

@@ -36,7 +36,7 @@ func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {
-		slog.Error("error getting access token: %w. Request will be unauthenticated", err)
+		slog.Error("error getting access token: %w. request will be unauthenticated", err)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 

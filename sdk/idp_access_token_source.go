@@ -12,7 +12,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/opentdf/platform/internal/auth"
+	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"golang.org/x/oauth2"

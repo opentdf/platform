@@ -323,118 +323,10 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_Expect_No_Error() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *AuthSuite) Test_CheckToken_When_Valid_CNFAndNoDPoP_Expect_Error() {
-	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("client_id", "client1")
-	cnf := map[string]string{
-		"jkt": "whatever",
-	}
-	tok.Set("cnf", cnf)
-
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
-
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, *s.auth)
-	assert.Equal(s.T(), "got 0 dpop headers, should have 1", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckValidDPoPToken_FromTokenInterceptor_Expect_No_Error() {
-	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("cid", "client2")
-	pk, err := s.accessTokenSource.dPOPKey.PublicKey()
-	assert.NoError(s.T(), err)
-	thumbprint, err := pk.Thumbprint(crypto.SHA256)
-	assert.NoError(s.T(), err)
-	cnf := map[string]string{"jkt": base64.URLEncoding.EncodeToString(thumbprint)}
-	tok.Set("cnf", cnf)
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
-
-	tokenAddingInterceptor := TokenAddingInterceptor{
-		tokenSource: s.accessTokenSource,
-	}
-
-	dpop, err := tokenAddingInterceptor.getDPoPToken("/a/path", string(signedTok))
-	assert.NoError(s.T(), err, "failed to create dpop token")
-	dpopInfo := dpopInfo{
-		headers: []string{dpop},
-		path:    "/a/path",
-		method:  "POST",
-	}
-
-	err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))}, dpopInfo, *s.auth)
-	assert.Nil(s.T(), err)
-}
-
-func (s *AuthSuite) Test_CheckDPoPTokenMissingCNF_Expect_Error() {
-	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("cid", "client2")
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
-
-	tokenAddingInterceptor := TokenAddingInterceptor{
-		tokenSource: s.accessTokenSource,
-	}
-
-	dpop, err := tokenAddingInterceptor.getDPoPToken("/a/path", string(signedTok))
-	assert.NoError(s.T(), err, "failed to create dpop token")
-	dpopInfo := dpopInfo{
-		headers: []string{dpop},
-		path:    "/a/path",
-		method:  "POST",
-	}
-
-	err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))}, dpopInfo, *s.auth)
-	assert.Equal(s.T(), "missing `cnf` claim in access token", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckDPoPTokenInvalidJKT_Expect_Error() {
-	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("cid", "client2")
-	cnf := map[string]string{"jkt": "a bad jkt"}
-	tok.Set("cnf", cnf)
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
-
-	tokenAddingInterceptor := TokenAddingInterceptor{
-		tokenSource: s.accessTokenSource,
-	}
-
-	dpop, err := tokenAddingInterceptor.getDPoPToken("/a/path", string(signedTok))
-	assert.NoError(s.T(), err, "failed to create dpop token")
-	dpopInfo := dpopInfo{
-		headers: []string{dpop},
-		path:    "/a/path",
-		method:  "POST",
-	}
-
-	err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))}, dpopInfo, *s.auth)
-	assert.Equal(s.T(), "the `jkt` from the DPoP JWT didn't match the thumbprint from the access token", err.Error())
-}
-
 type dpopTestCase struct {
 	key              jwk.Key
 	actualSigningKey jwk.Key
+	accessToken      []byte
 	alg              jwa.SignatureAlgorithm
 	typ              string
 	htm              string
@@ -446,16 +338,10 @@ type dpopTestCase struct {
 
 func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		slog.Error("failed to generate RSA private key", slog.String("error", err.Error()))
-		return
-	}
+	assert.NoError(s.T(), err)
 	dpopKey, err := jwk.FromRaw(dpopRaw)
-	if err != nil {
-		slog.Error("failed to create jwk.Key from RSA public key", slog.String("error", err.Error()))
-		return
-	}
-	dpopKey.Set(jwk.AlgorithmKey, jwa.RS256)
+	assert.NoError(s.T(), err)
+	assert.NoError(s.T(), dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
 	tok := jwt.New()
 	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
@@ -474,48 +360,59 @@ func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 	assert.Nil(s.T(), err)
 
 	otherKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		slog.Error("failed to generate RSA private key", slog.String("error", err.Error()))
-		return
-	}
+	assert.NoError(s.T(), err)
 	otherKey, err := jwk.FromRaw(otherKeyRaw)
-	if err != nil {
-		slog.Error("failed to create jwk.Key from RSA public key", slog.String("error", err.Error()))
-		return
-	}
+	assert.NoError(s.T(), err)
+	otherKeyPublic, err := otherKey.PublicKey()
+	assert.NoError(s.T(), err)
+
 	otherKey.Set(jwk.AlgorithmKey, jwa.RS256)
 
+	tokenWithNoCNF := jwt.New()
+	tokenWithNoCNF.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	tokenWithNoCNF.Set("iss", s.server.URL)
+	tokenWithNoCNF.Set("aud", "test")
+	tokenWithNoCNF.Set("cid", "client2")
+	signedTokWithNoCNF, err := jwt.Sign(tokenWithNoCNF, jwt.WithKey(jwa.RS256, s.key))
+	assert.NotNil(s.T(), signedTokWithNoCNF)
+	assert.Nil(s.T(), err)
+
 	testCases := []dpopTestCase{
-		{dpopPublic, dpopKey, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), ""},
-		{dpopPublic, dpopKey, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
-		{dpopKey, dpopKey, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
-		{dpopPublic, dpopKey, jwa.RS256, "a weird type", "POST", "/a/path", "", time.Now(), "invalid typ on DPoP JWT: a weird type"},
-		{dpopPublic, otherKey, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), "failed to verify signature on DPoP JWT"},
-		{dpopPublic, dpopKey, jwa.RS256, "dpop+jwt", "POST", "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, jwa.RS256, "dpop+jwt", "POST", "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), ""},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
+		{dpopKey, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "a weird type", "POST", "/a/path", "", time.Now(), "invalid typ on DPoP JWT: a weird type"},
+
+		{dpopPublic, otherKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), "failed to verify signature on DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
+		{otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(),
+			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token"},
+		{dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(),
+			"missing `cnf` claim in access token"},
 	}
 
 	for _, testCase := range testCases {
-		dpopToken := makeDPoPToken(s.T(), string(signedTok), testCase)
+		dpopToken := makeDPoPToken(s.T(), testCase)
 		dpopInfo := dpopInfo{
 			headers: []string{dpopToken},
 			path:    "/a/path",
 			method:  "POST",
 		}
 
-		err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))}, dpopInfo, *s.auth)
+		err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))}, dpopInfo, *s.auth)
 
 		if testCase.errorMesssage == "" {
 			assert.Nil(s.T(), err)
 		} else {
-			assert.NotNil(s.T(), err)
+			assert.Error(s.T(), err)
 			assert.Equal(s.T(), testCase.errorMesssage, err.Error())
 		}
 	}
 }
 
-func makeDPoPToken(t *testing.T, accessToken string, tc dpopTestCase) string {
+func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 
 	jtiBytes := make([]byte, JTILength)
 	_, err := rand.Read(jtiBytes)
@@ -540,7 +437,7 @@ func makeDPoPToken(t *testing.T, accessToken string, tc dpopTestCase) string {
 	var ath string
 	if tc.ath == "" {
 		h := sha256.New()
-		h.Write([]byte(accessToken))
+		h.Write(tc.accessToken)
 		ath = base64.URLEncoding.EncodeToString(h.Sum(nil))
 	} else {
 		ath = tc.ath

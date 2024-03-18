@@ -216,7 +216,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"'members', vmv.members || ARRAY[]::UUID[], " +
 		"'metadata', vmv.metadata, " +
 		"'attribute', JSON_BUILD_OBJECT(" +
-		"'id', vmv.attribute_definition_id )" // TODO: get the rest of the attribute here from the JOIN?
+		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
 		members += ", 'fqn', " + "fqn1.fqn"
 	}
@@ -248,14 +248,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
 
-	return sb.Where(sq.Eq{
-		"av.id": id,
-	}).
-		GroupBy(
-			"av.id",
-			// fqnT.Field("fqn"),
-		).
-		ToSql()
+	return sb.Where(sq.Eq{"av.id": id}).GroupBy("av.id").ToSql()
 }
 
 func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {

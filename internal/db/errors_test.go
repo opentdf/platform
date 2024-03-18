@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Is_Postgres_Invalid_Query_Error(t *testing.T) {
@@ -29,5 +29,5 @@ func Test_Is_Postgres_Invalid_Query_Error(t *testing.T) {
 func Test_Is_Pg_Error(t *testing.T) {
 	pgError := &pgconn.PgError{Code: pgerrcode.UniqueViolation}
 	assert.ErrorIs(t, isPgError(pgError), pgError)
-	assert.Assert(t, isPgError(errors.New("test error")) == nil)
+	assert.Nil(t, isPgError(errors.New("test error")))
 }

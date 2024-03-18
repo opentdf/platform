@@ -3,6 +3,7 @@ package wellknownconfiguration
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -49,6 +50,7 @@ func (s WellKnownService) GetWellKnownConfiguration(context.Context, *wellknown.
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {
+		slog.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
 	}
 	return &wellknown.GetWellKnownConfigurationResponse{

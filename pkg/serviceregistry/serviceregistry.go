@@ -8,15 +8,24 @@ import (
 	"github.com/opentdf/platform/sdk"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/internal/config"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/opa"
 	"github.com/opentdf/platform/internal/server"
 	"google.golang.org/grpc"
 )
 
+type ServiceConfig struct {
+	Enabled    bool                   `yaml:"enabled"`
+	Remote     RemoteServiceConfig    `yaml:"remote"`
+	ExtraProps map[string]interface{} `json:"-"`
+}
+
+type RemoteServiceConfig struct {
+	Endpoint string `yaml:"endpoint"`
+}
+
 type RegistrationParams struct {
-	Config          config.ServiceConfig
+	Config          ServiceConfig
 	OTDF            *server.OpenTDFServer
 	DBClient        *db.Client
 	Engine          *opa.Engine

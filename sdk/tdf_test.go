@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
@@ -353,7 +353,7 @@ func TestSimpleTDF(t *testing.T) {
 			t.Fatalf("Fail to get meta data from tdf:%v", err)
 		}
 
-		assert.DeepEqual(t, metaData, unencryptedMetaData)
+		assert.EqualValues(t, metaData, unencryptedMetaData)
 
 		dataAttributes, err := r.DataAttributes()
 		if err != nil {

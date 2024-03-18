@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/services"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -117,7 +118,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
 
-	json.Unmarshal(inrec, &kcConfigInterface)
+	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
 	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	assert.Nil(t, err)
 
@@ -162,7 +163,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
 
-	json.Unmarshal(inrec, &kcConfigInterface)
+	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
 	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	assert.Nil(t, err)
 
@@ -210,7 +211,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
 
-	json.Unmarshal(inrec, &kcConfigInterface)
+	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
 	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	assert.Nil(t, err)
 
@@ -256,7 +257,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
 
-	json.Unmarshal(inrec, &kcConfigInterface)
+	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
 	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	assert.Nil(t, err)
 

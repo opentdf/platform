@@ -9,6 +9,8 @@ logger:
 #   user: postgres
 #   password: changeme
 services:
+  kas:
+    enabled: true
   policy:
     enabled: true
   entitlements:
@@ -38,9 +40,25 @@ services:
               - "msExchMailboxGuid"
               - "msExchMailboxSecurityDescriptor"
 server:
+  auth:
+    enabled: false
+    audience: "http://localhost:9000"
+    issuer: http://localhost:8888/auth/realms/opentdf
+    clients:
+      - "opentdf"
   grpc:
     port: 9000
     reflectionEnabled: true # Default is false
+  hsm:
+    enabled: true
+    # As configured by hsm-init-temporary-keys.sh
+    pin: "12345"
+    slotlabel: "dev-token"
+    keys:
+      rsa:
+        label: development-rsa-kas
+      ec:
+        label: development-ec-kas
   http:
     port: 8080
 opa:

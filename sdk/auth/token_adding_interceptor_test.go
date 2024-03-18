@@ -97,11 +97,11 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 
 	parsedToken, _ := jwt.Parse([]byte(dpopToken), jwt.WithVerify(false))
 
-	if method, _ := parsedToken.Get("htm"); method.(string) != "POST" {
+	if method, _ := parsedToken.Get("htm"); method != "POST" {
 		t.Fatalf("we got a bad method: %v", method)
 	}
 
-	if path, _ := parsedToken.Get("htu"); path.(string) != "/access.AccessService/Info" {
+	if path, _ := parsedToken.Get("htu"); path != "/access.AccessService/Info" {
 		t.Fatalf("we got a bad method: %v", path)
 	}
 
@@ -109,7 +109,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	h.Write([]byte("thisisafakeaccesstoken"))
 	expectedHash := base64.URLEncoding.EncodeToString(h.Sum(nil))
 
-	if ath, _ := parsedToken.Get("ath"); ath.(string) != expectedHash {
+	if ath, _ := parsedToken.Get("ath"); ath != expectedHash {
 		t.Fatalf("got invalid ath claim in token: %v", ath)
 	}
 }

@@ -87,7 +87,7 @@ jobs:
       - run: make go.work
       - run: go mod download
       - run: go mod verify
-      - run: go test ./integration -race
+      - run: go test ./integration -race -failfast
       - name: Install softHSM
         run: |-
           sudo apt-get install -y softhsm opensc openssl

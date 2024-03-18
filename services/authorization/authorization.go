@@ -79,14 +79,14 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 			}
 
 			for _, ec := range dr.EntityChains {
-				fmt.Printf("\nTODO: make access decision here with these fully qualified attributes: %+v\n", attrs)
+				// fmt.Printf("\nTODO: make access decision here with these fully qualified attributes: %+v\n", attrs)
 				// get the entities entitlements
 				entities := ec.GetEntities()
 				req := authorization.GetEntitlementsRequest{Entities: entities}
 				ecEntitlements, err := as.GetEntitlements(ctx, &req)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("getEntitlements request failed ", req.toString()))
+					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("getEntitlements request failed ", req.String()))
 				}
 
 				// format subject fqns as attribute instances for accesspdp

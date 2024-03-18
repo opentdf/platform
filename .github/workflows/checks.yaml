@@ -100,6 +100,7 @@ jobs:
       - run: .github/scripts/hsm-init-temporary-keys.sh
       - run: docker compose up -d --wait --wait-timeout 240
       - run: cp example-opentdf.yaml opentdf.yaml
+      - run: go run . provision keycloak
       - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
         name: start server in background
         with:
@@ -113,6 +114,8 @@ jobs:
       - run: grpcurl -plaintext localhost:9000 list
       - run: grpcurl -plaintext localhost:9000 grpc.health.v1.Health.Check
       - run: curl --show-error --fail --insecure localhost:9000/kas/v2/kas_public_key
+      - run: go run examples/main.go encrypt "Hello Virtru"
+      - run: go run examples/main.go decrypt sensitive.txt.tdf
 
   image:
     name: image build

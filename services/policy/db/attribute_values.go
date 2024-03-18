@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -254,7 +253,6 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true}
 	sql, args, err := getAttributeValueSql(id, opts)
-	fmt.Println("\nsql: ", sql)
 	row, err := c.QueryRow(ctx, sql, args, err)
 	if err != nil {
 		slog.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))

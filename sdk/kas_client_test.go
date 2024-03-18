@@ -94,10 +94,10 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("error unmarshaling request body: %v", err)
 	}
 
-	if requestBody["clientPublicKey"].(string) != "this is the PEM" {
+	if requestBody["clientPublicKey"] != "this is the PEM" {
 		t.Fatalf("incorrect public key included")
 	}
-	if requestBody["policy"].(string) != "a policy" {
+	if requestBody["policy"] != "a policy" {
 		t.Fatalf("incorrect policy")
 	}
 

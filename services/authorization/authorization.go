@@ -98,15 +98,6 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				}
 
 				// format subject fqns as attribute instances for accesspdp
-				// if an entity chain has more than one entity in it
-				// -- so get entitlements will return a list or more than 1 EntityEntitlement objects
-				// then should i just concatenate them? or get decisions for each entity in the chain
-				// basically are we making decisions for each entity in a chain? or the chain itself?
-				// what about groups? like keycloak supports group emails which we expand in the plugin
-				// to multiple users, should we make a decision for each of those users or should we combine
-				// them and make a decsion for the group? how should we combine them? if we just concatonate
-				// their attributes togethor and one user has access and the other doesnt then the whole concatonated
-				// list will have access, same goes for entity chains
 				entityAttrs := make(map[string][]access.AttributeInstance)
 				for _, e := range ecEntitlements.Entitlements {
 					// currently just adding each entity retuned to same list

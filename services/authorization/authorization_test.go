@@ -28,19 +28,6 @@ var MockRetrieveEntitlements = func(ctx context.Context, req *authorization.GetE
 	return &entitlementsResponse, nil
 }
 
-// // mock get entitlements
-// func (as AuthorizationServiceMock) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-// 	fmt.Print("Using mocked GetEntitlements")
-// 	return &entitlementsResponse, nil
-// }
-
-// func TestSdkMock(t *testing.T) {
-// 	as := AuthorizationServiceMock{sdk: &MockSDK{Attributes: MockAttributes{}}}
-// 	var ctxb = context.Background()
-// 	req := attributes.GetAttributeValuesByFqnsRequest{}
-// 	as.sdk.Attributes.GetAttributeValuesByFqns(ctxb, &req)
-// }
-
 func TestGetDecisionsAllOfPass(t *testing.T) {
 	logLevel := &slog.LevelVar{} // INFO
 	logLevel.Set(slog.LevelDebug)
@@ -123,6 +110,7 @@ func TestGetDecisionsAllOfFail(t *testing.T) {
 
 	authorizationSvc.RetrieveAttributeDefinitions = MockRetrieveAttributeDefinitions
 	authorizationSvc.RetrieveEntitlements = MockRetrieveEntitlements
+
 	// set entitlementsResponse and getAttributesByValueFqnsResponse
 	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
 		{

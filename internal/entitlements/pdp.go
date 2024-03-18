@@ -11,24 +11,18 @@ func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttrib
 	inputUnstructured := make(map[string]interface{})
 	// SubjectMapping
 	inputUnstructured["attribute_mappings"] = sms
+	// Entity
 	ea := make(map[string]interface{})
 	ea["id"] = entity.Id
-	//ea["claims"] = []string{"CoolTool", "RadService", "ShinyThing"}
+	ea["email_address"] = entity.GetEmailAddress()
 	inputUnstructured["entity"] = ea
-	// idp plugin
-	es := make(map[string]interface{})
-	es["entities"] = []interface{}{entity}
-	//ir := authorization.IdpPluginRequest{
-	//	Entities: make([]*authorization.Entity, 1),
-	//}
-	//ir.Entities[0] = entity
-	//inputUnstructured["req"] = ir
-	//inputUnstructured["config"] = idpplugin.KeyCloakConfg{
-	//	Url:            "https://platform.virtru.us",
-	//	ClientId:       "tdf-entity-resolution-service",
-	//	ClientSecret:   "123-456",
-	//	Realm:          "tdf",
-	//	LegacyKeycloak: true,
-	//}
+	// idp plugin KeyCloakConfig
+	idp := make(map[string]interface{})
+	idp["url"] = "http://localhost:8888"
+	idp["client"] = "tdf-entity-resolution-service"
+	idp["secret"] = "5Byk7Hh6l0E1hJDZfF8CQbG9vqh2FeIe"
+	idp["realm"] = "tdf"
+	idp["legacy"] = true
+	inputUnstructured["idp"] = idp
 	return inputUnstructured, nil
 }

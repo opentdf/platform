@@ -15,7 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type KeyCloakConfg struct {
+type KeyCloakConfig struct {
 	Url            string `json:"url"`
 	Realm          string `json:"realm"`
 	ClientId       string `json:"clientid"`
@@ -38,7 +38,7 @@ func EntityResolution(ctx context.Context,
 		slog.Error("Error marshalling keycloak config!", "error", err)
 		return nil, err
 	}
-	kcConfig := KeyCloakConfg{}
+	kcConfig := KeyCloakConfig{}
 	json.Unmarshal(jsonString, &kcConfig)
 	connector, err := getKCClient(kcConfig, ctx)
 	if err != nil {
@@ -175,7 +175,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable) (map[string]
 	return genericMap, nil
 }
 
-func getKCClient(kcConfig KeyCloakConfg, ctx context.Context) (*KeyCloakConnector, error) {
+func getKCClient(kcConfig KeyCloakConfig, ctx context.Context) (*KeyCloakConnector, error) {
 	var client gocloak.GoCloak
 	if kcConfig.LegacyKeycloak {
 		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
@@ -202,7 +202,7 @@ func getKCClient(kcConfig KeyCloakConfg, ctx context.Context) (*KeyCloakConnecto
 	return &keycloakConnector, nil
 }
 
-func expandGroup(groupID string, kcConnector *KeyCloakConnector, kcConfig *KeyCloakConfg, ctx context.Context) ([]*gocloak.User, error) {
+func expandGroup(groupID string, kcConnector *KeyCloakConnector, kcConfig *KeyCloakConfig, ctx context.Context) ([]*gocloak.User, error) {
 	slog.Info("expandGroup invoked: ", groupID, kcConnector, kcConfig.Url, ctx)
 	var entityRepresentations []*gocloak.User
 

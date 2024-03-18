@@ -94,18 +94,13 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	subjectMappings := avf.GetFqnAttributeValues()
 	slog.InfoContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	// OPA
-	if req.Scope != nil {
-
-	}
 	in, err := entitlements.OpaInput(req.Entities[0], subjectMappings)
 	if err != nil {
 		return nil, err
 	}
 	slog.Debug("entitlements", "input", fmt.Sprintf("%+v", in))
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		if err := json.NewEncoder(os.Stdout).Encode(in); err != nil {
-			panic(err)
-		}
+		_ = json.NewEncoder(os.Stdout).Encode(in)
 	}
 	options := sdk.DecisionOptions{
 		Now:                 time.Now(),
@@ -123,12 +118,9 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	if err != nil {
 		return nil, err
 	}
-	slog.DebugContext(ctx, "opa", "result", fmt.Sprintf("%+v", decision.Result))
-	slog.DebugContext(ctx, "opa", "type", fmt.Sprintf("%T", decision.Result))
+	slog.DebugContext(ctx, "opa", "result", fmt.Sprintf("%+v", decision.Result), "type", fmt.Sprintf("%T", decision.Result))
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		if err := json.NewEncoder(os.Stdout).Encode(decision.Result); err != nil {
-			slog.DebugContext(ctx, "opa", "type", fmt.Sprintf("%T", decision.Result))
-		}
+		_ = json.NewEncoder(os.Stdout).Encode(decision.Result)
 	}
 	results, ok := decision.Result.([]interface{})
 	if !ok {

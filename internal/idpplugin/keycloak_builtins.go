@@ -1,10 +1,9 @@
 package idpplugin
 
 import (
-
-	// "github.com/okta/okta-sdk-golang/v2/okta"
 	"bytes"
 	"encoding/json"
+
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"

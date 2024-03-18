@@ -2,28 +2,22 @@ package opentdf.entitlements
 
 import rego.v1
 
-config = {
-"config":{
-            "url": "http://localhost:8888",
-            "realm": "tdf",
-            "clientid":"tdf-entity-resolution-service",
-            "clientsecret": "5Byk7Hh6l0E1hJDZfF8CQbG9vqh2FeIe",
-            "legacykeycloak": true
-        }
-}
-req = {
-  "entities": [
-              {
-                "id": "e1",
-                "emailAddress": "a@a.af"
-              }
-            ]
-}
+idp_config = {"config": {
+	"url": input.idp.url,
+	"realm": input.idp.realm,
+	"clientid": input.idp.client,
+	"clientsecret": input.idp.secret,
+	"legacykeycloak": input.idp.legacy,
+}}
+idp_request = {"entities": [{
+	"id": input.entity.id,
+	"emailAddress": input.entity.email_address,
+}]}
 
 
 attributes := [attribute |
 	# external entity
-	response := keycloak.resolve.entities(req, config)
+	response := keycloak.resolve.entities(idp_request, idp_config)
 	entity_representations := response.entityRepresentations
 	some entity_representation in entity_representations
 	some prop in entity_representation.additionalProps
@@ -68,4 +62,4 @@ cbool_evaluate(properties, operator, values) if {
 }
 
 # get IdP entity
-resolve_entities := keycloak.resolve.entities(req, config)
+resolve_entities := keycloak.resolve.entities(idp_request, idp_config)

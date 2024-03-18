@@ -49,7 +49,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		//sdk.WithDataAttributes("https://example.com/attributes/1", "https://example.com/attributes/2"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				URL:       "http://127.0.0.1:9000",
+				URL:       "http://localhost:9000",
 				PublicKey: "",
 			}))
 	if err != nil {

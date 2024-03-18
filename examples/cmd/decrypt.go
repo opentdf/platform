@@ -1,20 +1,21 @@
 package cmd
 
 import (
-	"github.com/opentdf/platform/sdk"
-	"github.com/spf13/cobra"
 	"io"
 	"os"
+	"strings"
+
+	"github.com/opentdf/platform/sdk"
+	"github.com/spf13/cobra"
 )
 
-var decryptCmd = &cobra.Command{
-	Use:   "decrypt",
-	Short: "Decrypt TDF file",
-	RunE:  decrypt,
-	Args:  cobra.MinimumNArgs(1),
-}
-
 func init() {
+	var decryptCmd = &cobra.Command{
+		Use:   "decrypt",
+		Short: "Decrypt TDF file",
+		RunE:  decrypt,
+		Args:  cobra.MinimumNArgs(1),
+	}
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -41,22 +42,17 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	defer file.Close()
 
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	buf := make([]byte, fileInfo.Size())
-
 	tdfreader, err := client.LoadTDF(file)
 	if err != nil {
 		return err
 	}
-	n, err := tdfreader.ReadAt(buf, 0)
+	buf := new(strings.Builder)
+	_, err = io.Copy(buf, tdfreader)
 	if err != nil && err != io.EOF {
 		return err
 	}
 
 	//Print decrypted string
-	cmd.Println(string(buf[:n]))
+	cmd.Println(buf.String())
 	return nil
 }

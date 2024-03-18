@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 
@@ -64,20 +63,5 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	// Print Manifest
 	cmd.Println(string(manifestJSON))
-	file, err := os.Open("sensitive.txt.tdf")
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	tdfreader, err := client.LoadTDF(file)
-	cmd.Println(tdfreader)
-	fileWriter, err := os.Create("sensitive.txt")
-	cmd.Println(fileWriter)
-	buf := make([]byte, 32)
-
-	offset := 0
-	n, err := tdfreader.ReadAt(buf, int64(offset))
-
-	fmt.Println(string(buf[:n]))
 	return nil
 }

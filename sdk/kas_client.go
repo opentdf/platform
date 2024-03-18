@@ -9,7 +9,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	kas "github.com/opentdf/backend-go/pkg/access"
+	kas "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -124,7 +124,6 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		KeyAccess:       keyAccess,
 		ClientPublicKey: k.accessTokenSource.DPOPPublicKeyPEM(),
 	}
-
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)

@@ -37,13 +37,13 @@ p, role:org-admin, ^(policy\.attributes|/attributes).*, .*, allow
 p, role:org-admin, ^(policy\.namespaces).*, .*, allow
 p, role:org-admin, ^(policy\.subjectmappings|/subject-mappings).*, .*, allow
 p, role:org-admin, ^(policy\.resourcemappings|/resource-mappings).*, .*, allow
-p, role:org-admin, ^(policy\.kasregistry|/key-access-servers).*, .*, allow
+p, role:org-admin, ^(kasregistry|/key-access-servers).*, .*, allow
 
 p, role:readonly, ^(policy\.attributes|/attributes).*, read, allow
 p, role:readonly, ^(policy\.namespaces).*, read, allow
 p, role:readonly, ^(policy\.subjectmappings|/subject-mappings).*, read, allow
 p, role:readonly, ^(policy\.resourcemappings|/resource-mappings).*, read, allow
-p, role:readonly, ^(policy\.kasregistry|/key-access-servers).*, read, allow
+p, role:readonly, ^(kasregistry|/key-access-servers).*, read, allow
 `
 
 var defaultModel = `
@@ -91,7 +91,7 @@ func newCasbinEnforcer(d *sql.DB) (*casbin.Enforcer, error) {
 
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
-func (a authentication) casbinEnforce(_ context.Context, token jwt.Token, resource string, action string) error {
+func (a Authentication) casbinEnforce(_ context.Context, token jwt.Token, resource string, action string) error {
 	var err error
 	permDeniedError := fmt.Errorf("permission denied")
 
@@ -163,6 +163,10 @@ func extractRolesFromToken(token jwt.Token) ([]string, error) {
 				fRoles = append(fRoles, m)
 			}
 		}
+	}
+
+	if len(fRoles) == 0 {
+		fRoles = append(fRoles, defaultRole)
 	}
 
 	return fRoles, nil

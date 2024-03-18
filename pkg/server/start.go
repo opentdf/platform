@@ -81,7 +81,7 @@ func Start(f ...StartOptions) error {
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	otdf, err := server.NewOpenTDFServer(conf.Server)
+	otdf, err := server.NewOpenTDFServer(conf.Server, dbClient)
 	if err != nil {
 		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)

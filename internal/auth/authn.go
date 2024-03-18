@@ -33,7 +33,7 @@ var (
 )
 
 // Authentication holds a jwks cache and information about the openid configuration
-type authentication struct {
+type Authentication struct {
 	// cache holds the jwks cache
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
@@ -43,8 +43,8 @@ type authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*authentication, error) {
-	a := &authentication{}
+func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
+	a := &Authentication{}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	// validate the configuration
@@ -87,7 +87,7 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*authentication, error) {
 }
 
 // MuxHandler is a http handler that verifies the token
-func (a authentication) MuxHandler(handler http.Handler) http.Handler {
+func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
 			handler.ServeHTTP(w, r)
@@ -111,7 +111,7 @@ func (a authentication) MuxHandler(handler http.Handler) http.Handler {
 }
 
 // verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
 	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
 		return handler(ctx, req)
@@ -160,7 +160,7 @@ func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 }
 
 // checkToken is a helper function to verify the token.
-func checkToken(ctx context.Context, authHeader []string, auth authentication) (jwt.Token, error) {
+func checkToken(ctx context.Context, authHeader []string, auth Authentication) (jwt.Token, error) {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -230,7 +230,7 @@ func checkToken(ctx context.Context, authHeader []string, auth authentication) (
 
 // claimsValidator is a custom validator to check extra claims in the token.
 // right now it only checks for client_id
-func (a authentication) claimsValidator(ctx context.Context, token jwt.Token) jwt.ValidationError {
+func (a Authentication) claimsValidator(ctx context.Context, token jwt.Token) jwt.ValidationError {
 	var (
 		clientID string
 	)

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,20 +21,22 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	kas "github.com/opentdf/backend-go/pkg/access"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 type AuthSuite struct {
 	suite.Suite
-	server            *httptest.Server
-	key               jwk.Key
-	auth              *authentication
-	accessTokenSource FakeAccessTokenSource
+	server *httptest.Server
+	key    jwk.Key
+	auth   *authentication
 }
 
 type FakeAccessTokenSource struct {
@@ -87,21 +90,6 @@ func (s *AuthSuite) SetupTest() {
 	key.Set(jws.KeyIDKey, "test")
 
 	s.key = key
-
-	privDPoPKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		slog.Error("failed to generate RSA private key", slog.String("error", err.Error()))
-		return
-	}
-	privDPoPJWK, err := jwk.FromRaw(privDPoPKey)
-	if err != nil {
-		slog.Error("failed to create jwk.Key from RSA public key", slog.String("error", err.Error()))
-		return
-	}
-	privDPoPJWK.Set(jwk.AlgorithmKey, jwa.RS256)
-	s.accessTokenSource = FakeAccessTokenSource{
-		dPOPKey: privDPoPJWK,
-	}
 
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -380,7 +368,6 @@ func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
 		{dpopKey, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "a weird type", "POST", "/a/path", "", time.Now(), "invalid typ on DPoP JWT: a weird type"},
-
 		{dpopPublic, otherKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now(), "failed to verify signature on DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
@@ -404,6 +391,52 @@ func (s *AuthSuite) TestInvalid_DPOP_Cases() {
 		assert.Error(s.T(), err)
 		assert.Equal(s.T(), testCase.errorMesssage, err.Error())
 	}
+}
+
+func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
+	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(s.T(), err)
+	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
+	assert.NoError(s.T(), err)
+	assert.NoError(s.T(), dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+
+	tok := jwt.New()
+	assert.NoError(s.T(), tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	assert.NoError(s.T(), tok.Set("iss", s.server.URL))
+	assert.NoError(s.T(), tok.Set("aud", "test"))
+	assert.NoError(s.T(), tok.Set("cid", "client2"))
+	assert.NoError(s.T(), err)
+	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+	assert.NoError(s.T(), err)
+	cnf := map[string]string{"jkt": base64.URLEncoding.EncodeToString(thumbprint)}
+	tok.Set("cnf", cnf)
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	assert.NoError(s.T(), err)
+
+	buffer := 1024 * 1024
+	listener := bufconn.Listen(buffer)
+
+	server := grpc.NewServer(grpc.UnaryInterceptor(s.auth.VerifyTokenInterceptor))
+	defer server.Stop()
+
+	kas.RegisterAccessServiceServer(server, &FakeAccessServiceServer{})
+	go func() {
+		assert.NoError(s.T(), server.Serve(listener))
+	}()
+
+	addingInterceptor := NewTokenAddingInterceptor(&FakeTokenSource{
+		key:         dpopKey,
+		accessToken: string(signedTok),
+	})
+
+	conn, _ := grpc.DialContext(context.Background(), "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+		return listener.Dial()
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(addingInterceptor.AddCredentials))
+
+	client := kas.NewAccessServiceClient(conn)
+
+	_, err = client.LegacyPublicKey(context.Background(), &kas.LegacyPublicKeyRequest{})
+	assert.NoError(s.T(), err)
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {

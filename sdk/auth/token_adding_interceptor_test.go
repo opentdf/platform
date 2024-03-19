@@ -16,8 +16,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	kas "github.com/opentdf/backend-go/pkg/access"
-
+	"github.com/opentdf/platform/protocol/go/kas"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -101,7 +100,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		t.Fatalf("we got a bad method: %v", method)
 	}
 
-	if path, _ := parsedToken.Get("htu"); path != "/access.AccessService/Info" {
+	if path, _ := parsedToken.Get("htu"); path != "/kas.AccessService/Info" {
 		t.Fatalf("we got a bad method: %v", path)
 	}
 

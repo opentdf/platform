@@ -18,10 +18,11 @@ type AuthNConfig struct {
 }
 
 type PolicyConfig struct {
-	Default string            `yaml:"default" json:"default"`
-	RoleMap map[string]string `yaml:"roleMap" json:"roleMap"`
-	Csv     string            `yaml:"csv" json:"csv"`
-	Model   string            `yaml:"model" json:"model"`
+	Default   string            `yaml:"default" json:"default"`
+	RoleClaim string            `yaml:"claim" json:"claim"`
+	RoleMap   map[string]string `yaml:"map" json:"map"`
+	Csv       string            `yaml:"csv" json:"csv"`
+	Model     string            `yaml:"model" json:"model"`
 }
 
 func (c AuthNConfig) validateAuthNConfig() error {

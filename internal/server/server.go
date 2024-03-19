@@ -144,6 +144,7 @@ func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	var tc *tls.Config
 
 	// Add authN interceptor
+	// TODO check if this is needed or if it is handled by gRPC
 	if c.Auth.Enabled {
 		h = a.MuxHandler(h)
 	}

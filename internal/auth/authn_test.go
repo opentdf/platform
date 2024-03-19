@@ -28,7 +28,7 @@ type AuthSuite struct {
 	suite.Suite
 	server *httptest.Server
 	key    jwk.Key
-	auth   *authentication
+	auth   *Authentication
 }
 
 func (s *AuthSuite) SetupTest() {
@@ -78,7 +78,7 @@ func (s *AuthSuite) SetupTest() {
 		Issuer:   s.server.URL,
 		Audience: "test",
 		Clients:  []string{"client1", "client2", "client3"},
-	})
+	}, nil)
 
 	assert.Nil(s.T(), err)
 
@@ -102,23 +102,24 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "\"exp\" not satisfied", err.Error())
 }
 
-func (s *AuthSuite) Test_VerifyTokenHandler_When_Authorization_Header_Missing_Expect_Error() {
-	handler := s.auth.VerifyTokenHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Error() {
+	handler := s.auth.MuxHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	assert.Equal(s.T(), http.StatusUnauthorized, rec.Code)
 	assert.Equal(s.T(), "missing authorization header\n", rec.Body.String())
 }
 
-func (s *AuthSuite) Test_VerifyTokenInterceptor_When_Authorization_Header_Missing_Expect_Error() {
+func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missing_Expect_Error() {
 	md := metadata.New(map[string]string{})
 	ctx := metadata.NewIncomingContext(context.Background(), md)
-	_, err := s.auth.VerifyTokenInterceptor(ctx, "test", &grpc.UnaryServerInfo{
+	_, err := s.auth.UnaryServerInterceptor(ctx, "test", &grpc.UnaryServerInfo{
 		FullMethod: "/test",
 	}, nil)
 	assert.NotNil(s.T(), err)
@@ -126,8 +127,9 @@ func (s *AuthSuite) Test_VerifyTokenInterceptor_When_Authorization_Header_Missin
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	err := checkToken(context.Background(), []string{"BPOP "}, *s.auth)
+	tok, err := s.auth.checkToken(context.Background(), []string{"BPOP "})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "not of type bearer or dpop", err.Error())
 }
 
@@ -140,8 +142,9 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "missing issuer", err.Error())
 }
 
@@ -155,8 +158,9 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "invalid issuer", err.Error())
 }
 
@@ -170,8 +174,9 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_INT_Value_Expect_Error()
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "missing issuer", err.Error())
 }
 
@@ -184,8 +189,9 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "claim \"aud\" not found", err.Error())
 }
 
@@ -199,8 +205,9 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "\"aud\" not satisfied", err.Error())
 }
 
@@ -214,8 +221,9 @@ func (s *AuthSuite) Test_CheckToken_When_ClientID_Missing_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "client id required", err.Error())
 }
 
@@ -230,8 +238,9 @@ func (s *AuthSuite) Test_CheckToken_When_ClientID_Invalid_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "invalid client id", err.Error())
 }
 
@@ -246,8 +255,9 @@ func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "invalid client id", err.Error())
 }
 
@@ -262,37 +272,52 @@ func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_INT_Expect_Error() {
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), tok)
 	assert.Equal(s.T(), "invalid client id", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Valid_Expect_No_Error() {
+	aud := "test"
+	iss := s.server.URL
+	clientId := "client1"
 	tok := jwt.New()
 	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("client_id", "client1")
+	tok.Set("iss", iss)
+	tok.Set("aud", aud)
+	tok.Set("client_id", clientId)
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))})
 	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), tok)
+	assert.Equal(s.T(), clientId, tok.Subject())
+	assert.Equal(s.T(), aud, tok.Audience())
+	assert.Equal(s.T(), iss, tok.Issuer())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Valid_CID_Expect_No_Error() {
+	aud := "test"
+	iss := s.server.URL
+	clientId := "client2"
 	tok := jwt.New()
 	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("cid", "client2")
+	tok.Set("iss", iss)
+	tok.Set("aud", aud)
+	tok.Set("cid", clientId)
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
 	assert.NotNil(s.T(), signedTok)
 	assert.Nil(s.T(), err)
 
-	err = checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))}, *s.auth)
+	tok, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(signedTok))})
 	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), tok)
+	assert.Equal(s.T(), clientId, tok.Subject())
+	assert.Equal(s.T(), aud, tok.Audience())
+	assert.Equal(s.T(), iss, tok.Issuer())
 }

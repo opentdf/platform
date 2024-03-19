@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/casbin/casbin/v2"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/internal/db"
@@ -39,7 +38,7 @@ type Authentication struct {
 	// openidConfigurations holds the openid configuration for each issuer
 	oidcConfigurations map[string]AuthNConfig
 	// Casbin enforcer
-	casbinEnforcer *casbin.Enforcer
+	enforcer *Enforcer
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
@@ -71,7 +70,11 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 	}
 
 	slog.Info("initializing casbin enforcer")
-	if a.casbinEnforcer, err = newCasbinEnforcer(d.SqlDB); err != nil {
+
+	if a.enforcer, err = NewCasbinEnforcer(CasbinConfig{
+		PolicyConfig: cfg.Policy,
+		Db:           d.SqlDB,
+	}); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
@@ -99,10 +102,24 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		_, err := checkToken(r.Context(), header, a)
+		tok, err := a.checkToken(r.Context(), header)
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
+			return
+		}
+
+		if allow, err := a.enforcer.Enforce(tok, r.URL.Path, r.Method); err != nil {
+			if err.Error() == "permission denied" {
+				slog.WarnContext(r.Context(), "permission denied", slog.String("azp", tok.Subject()), slog.String("error", err.Error()))
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		} else if !allow {
+			slog.WarnContext(r.Context(), "permission denied", slog.String("azp", tok.Subject()))
+			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
@@ -142,25 +159,28 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		action = "write"
 	}
 
-	token, err := checkToken(ctx, header, a)
+	token, err := a.checkToken(ctx, header)
 	if err != nil {
 		slog.Warn("failed to validate token", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
-	if err := a.casbinEnforce(ctx, token, resource, action); err != nil {
+	if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
 		if err.Error() == "permission denied" {
 			slog.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
 			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 		}
 		return nil, err
+	} else if !allowed {
+		slog.Warn("permission denied", slog.String("azp", token.Subject()))
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 
 	return handler(ctx, req)
 }
 
 // checkToken is a helper function to verify the token.
-func checkToken(ctx context.Context, authHeader []string, auth Authentication) (jwt.Token, error) {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string) (jwt.Token, error) {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -202,13 +222,13 @@ func checkToken(ctx context.Context, authHeader []string, auth Authentication) (
 	if !ok {
 		return nil, fmt.Errorf("invalid issuer")
 	}
-	oidc, exists := auth.oidcConfigurations[issuerStr]
+	oidc, exists := a.oidcConfigurations[issuerStr]
 	if !exists {
 		return nil, fmt.Errorf("invalid issuer")
 	}
 
 	// Get key set from cache that matches the jwks_uri
-	keySet, err := auth.cache.Get(ctx, oidc.JwksURI)
+	keySet, err := a.cache.Get(ctx, oidc.JwksURI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jwks from cache")
 	}
@@ -219,7 +239,7 @@ func checkToken(ctx context.Context, authHeader []string, auth Authentication) (
 		jwt.WithValidate(true),
 		jwt.WithIssuer(issuerStr),
 		jwt.WithAudience(oidc.Audience),
-		jwt.WithValidator(jwt.ValidatorFunc(auth.claimsValidator)),
+		jwt.WithValidator(jwt.ValidatorFunc(a.claimsValidator)),
 	)
 	if err != nil {
 		return nil, err

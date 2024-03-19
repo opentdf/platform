@@ -22,7 +22,7 @@ const (
 	dpopKeySize = 2048
 )
 
-func GenerateKeyPair() (string, string, jwk.Key, error) {
+func generateKeyPair() (string, string, jwk.Key, error) {
 	rawPrivateKey, err := rsa.GenerateKey(rand.Reader, dpopKeySize)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("error creating DPoP keypair: %w", err)
@@ -93,12 +93,12 @@ func NewIDPAccessTokenSource(
 		return IDPAccessTokenSource{}, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
 	}
 
-	dpopPublicKeyPem, _, dpopKey, err := GenerateKeyPair()
+	dpopPublicKeyPem, _, dpopKey, err := generateKeyPair()
 	if err != nil {
 		return IDPAccessTokenSource{}, err
 	}
 
-	encryptionPublicKeyPem, encryptionPrivateKeyPem, _, err := GenerateKeyPair()
+	encryptionPublicKeyPem, encryptionPrivateKeyPem, _, err := generateKeyPair()
 	if err != nil {
 		return IDPAccessTokenSource{}, err
 	}

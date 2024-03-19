@@ -11,7 +11,7 @@ import (
 
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
-	Short: "Create encrypted TDF from string",
+	Short: "Create encrypted TDF",
 	RunE:  encrypt,
 	Args:  cobra.MinimumNArgs(1),
 }
@@ -49,7 +49,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		//sdk.WithDataAttributes("https://example.com/attributes/1", "https://example.com/attributes/2"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				URL:       "http://localhost:9000",
+				URL:       "http://localhost:8080",
 				PublicKey: "",
 			}))
 	if err != nil {

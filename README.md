@@ -53,16 +53,15 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 3. Provision keycloak `go run . provision keycloak`
 4. Run the server `go run . start`
    1. *Alt* use the hot-reload development environment `air`
-5. The server is now running
-   1. The gRPC server will be available at `localhost:9000` (or the port specified in the config file)
-   2. The REST server will be available at `localhost:8080` (or the port specified in the config file)
+5. The server is now running on `localhost:8080` (or the port specified in the config file)
 
-Note: support was added to provision a set of fixture data into the database. Run `go run . provision fixtures -h` for more information.
+Note: support was added to provision a set of fixture data into the database.
+Run `go run . provision fixtures -h` for more information.
 
 ### Test
 
 ```bash
-  grpcurl -plaintext localhost:9000 list
+  grpcurl -plaintext localhost:8080 list
 
   authorization.AuthorizationService
   grpc.reflection.v1.ServerReflection
@@ -73,7 +72,7 @@ Note: support was added to provision a set of fixture data into the database. Ru
   policy.resourcemapping.ResourceMappingService
   policy.subjectmapping.SubjectMappingService
 
-  grpcurl -plaintext localhost:9000 list policy.attributes.AttributesService
+  grpcurl -plaintext localhost:8080 list policy.attributes.AttributesService
 
   policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
   policy.attributes.AttributesService.AssignKeyAccessServerToValue
@@ -95,7 +94,7 @@ Note: support was added to provision a set of fixture data into the database. Ru
 Create Attribute
 
 ```bash
-grpcurl -plaintext -d @ localhost:9000 attributes.v1.AttributesService/CreateAttribute <<EOM
+grpcurl -plaintext -d @ localhost:8080 attributes.v1.AttributesService/CreateAttribute <<EOM
 {
     "definition": {
         "name": "relto",
@@ -133,7 +132,7 @@ EOM
 List Attributes
 
 ```bash
-grpcurl -plaintext localhost:9000 attributes.v1.AttributesService/ListAttributes
+grpcurl -plaintext localhost:8080 attributes.v1.AttributesService/ListAttributes
 ```
 
 ### Generation

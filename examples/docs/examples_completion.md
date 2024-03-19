@@ -17,7 +17,7 @@ See each sub-command's help for details on how to use the generated script.
 ### Options inherited from parent commands
 
 ```
-  -e, --platformEndpoint string   Platform Endpoint (default "localhost:9000")
+  -e, --platformEndpoint string   Platform Endpoint (default "localhost:8080")
 ```
 
 ### SEE ALSO

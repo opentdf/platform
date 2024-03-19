@@ -3,7 +3,7 @@ package sdk
 import (
 	"crypto/tls"
 	"errors"
-	"fmt"
+	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/kasregistry"
@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -52,13 +53,20 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
+	// once we change KAS to use standard DPoP we can put this all in the `build()` method
+	dialOptions := append([]grpc.DialOption{}, cfg.build()...)
+	accessTokenSource, err := buildIDPTokenSource(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if accessTokenSource != nil {
+		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
+	}
+
 	var unwrapper Unwrapper
 	if cfg.authConfig == nil {
-		uw, err := buildKASClient(cfg)
-		if err != nil {
-			return nil, err
-		}
-		unwrapper = &uw
+		unwrapper = &KASClient{dialOptions: dialOptions, accessTokenSource: accessTokenSource}
 	} else {
 		unwrapper = cfg.authConfig
 	}
@@ -71,7 +79,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	if platformEndpoint != "" {
 		var err error
-		defaultConn, err = grpc.Dial(platformEndpoint, cfg.build()...)
+		defaultConn, err = grpc.Dial(platformEndpoint, dialOptions...)
 		if err != nil {
 			return nil, errors.Join(ErrGrpcDialFailed, err)
 		}
@@ -101,19 +109,20 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
-func buildKASClient(c *config) (KASClient, error) {
+func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) {
 	if (c.clientCredentials.ClientId == "") != (c.clientCredentials.ClientAuth == nil) {
-		return KASClient{},
+		return nil,
 			errors.New("if specifying client credentials must specify both client id and authentication secret")
 	}
 	if (c.clientCredentials.ClientId == "") != (c.tokenEndpoint == "") {
-		return KASClient{}, errors.New("either both or neither of client credentials and token endpoint must be specified")
+		return nil, errors.New("either both or neither of client credentials and token endpoint must be specified")
 	}
 
 	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
 	// any just return a KAS client that can only get public keys
 	if c.clientCredentials.ClientId == "" {
-		return KASClient{dialOptions: c.build()}, nil
+		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
+		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
 	ts, err := NewIDPAccessTokenSource(
@@ -122,16 +131,7 @@ func buildKASClient(c *config) (KASClient, error) {
 		c.scopes,
 	)
 
-	if err != nil {
-		return KASClient{}, fmt.Errorf("error configuring IDP access: %w", err)
-	}
-
-	kasClient := KASClient{
-		accessTokenSource: &ts,
-		dialOptions:       c.build(),
-	}
-
-	return kasClient, nil
+	return &ts, err
 }
 
 // Close closes the underlying grpc.ClientConn.

@@ -102,7 +102,7 @@ func TestClientSecretNoNonce(t *testing.T) {
 		require.NoError(t, r.ParseForm())
 
 		validateBasicAuth(r, t)
-		extractDpopToken(r, t)
+		extractDPoPToken(r, t)
 
 		tok, err := jwt.NewBuilder().
 			Issuer("example.org/fake").
@@ -161,7 +161,7 @@ func TestClientSecretWithNonce(t *testing.T) {
 		}
 
 		// get the key we used to sign the DPoP token from the header
-		clientTok := extractDpopToken(r, t)
+		clientTok := extractDPoPToken(r, t)
 
 		if nonce, ok := clientTok.Get("nonce"); ok {
 			if nonce.(string) != "dfdffdfddf" {
@@ -246,7 +246,7 @@ func TestSignedJWTWithNonce(t *testing.T) {
 		}
 
 		// get the key we used to sign the DPoP token from the header
-		clientTok := extractDpopToken(r, t)
+		clientTok := extractDPoPToken(r, t)
 
 		if nonce, ok := clientTok.Get("nonce"); ok {
 			if nonce.(string) != "dfdffdfddf" {
@@ -344,7 +344,7 @@ func validateBasicAuth(r *http.Request, t *testing.T) {
 	}
 }
 
-func extractDpopToken(r *http.Request, t *testing.T) jwt.Token {
+func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 	dpop := r.Header.Get("dpop")
 	jwsMessage, err := jws.ParseString(dpop)
 	if err != nil {

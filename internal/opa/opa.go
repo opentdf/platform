@@ -10,6 +10,7 @@ import (
 	"github.com/open-policy-agent/opa/hooks"
 	opalog "github.com/open-policy-agent/opa/logging"
 	"github.com/open-policy-agent/opa/sdk"
+	"github.com/opentdf/platform/internal/idpplugin"
 )
 
 type Engine struct {
@@ -52,7 +53,8 @@ func NewEngine(config Config) (*Engine, error) {
 	logger := AdapterSlogger{
 		logger: asl,
 	}
-
+	slog.Debug("plugging in plugins")
+	idpplugin.KeycloakBuiltins()
 	opa, err := sdk.New(context.Background(), sdk.Options{
 		Config:        bytes.NewReader(bConfig),
 		Logger:        &logger,

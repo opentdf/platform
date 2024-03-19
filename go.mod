@@ -19,7 +19,6 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
-	github.com/opentdf/backend-go v0.1.17
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.19.1

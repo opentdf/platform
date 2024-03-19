@@ -22,6 +22,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -135,7 +136,7 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -159,7 +160,7 @@ func (s *AuthSuite) Test_VerifyTokenInterceptor_When_Authorization_Header_Missin
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	err := s.auth.checkToken(context.Background(), []string{"BPOP "}, dpopInfo{})
+	_, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -173,7 +174,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("missing issuer", err.Error())
 }
@@ -188,7 +189,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("invalid issuer", err.Error())
 }
@@ -202,7 +203,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -217,7 +218,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
@@ -232,7 +233,7 @@ func (s *AuthSuite) Test_CheckToken_When_ClientID_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("client id required", err.Error())
 }
@@ -248,7 +249,7 @@ func (s *AuthSuite) Test_CheckToken_When_ClientID_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("invalid client id", err.Error())
 }
@@ -264,7 +265,7 @@ func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("invalid client id", err.Error())
 }
@@ -280,7 +281,7 @@ func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_INT_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("invalid client id", err.Error())
 }
@@ -296,7 +297,7 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_Expect_No_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().NoError(err)
 }
 
@@ -369,7 +370,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 
 	for _, testCase := range testCases {
 		dpopToken := makeDPoPToken(s.T(), testCase)
-		err = s.auth.checkToken(
+		_, err = s.auth.checkToken(
 			context.Background(),
 			[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
 			dpopInfo{
@@ -410,7 +411,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	server := grpc.NewServer(grpc.UnaryInterceptor(s.auth.VerifyTokenInterceptor))
 	defer server.Stop()
 
-	kas.RegisterAccessServiceServer(server, &FakeAccessServiceServer{})
+	fakeServer := &FakeAccessServiceServer{}
+	kas.RegisterAccessServiceServer(server, fakeServer)
 	go func() {
 		err := server.Serve(listener)
 		if err != nil {
@@ -429,8 +431,80 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	client := kas.NewAccessServiceClient(conn)
 
-	_, err = client.LegacyPublicKey(context.Background(), &kas.LegacyPublicKeyRequest{})
+	_, err = client.Info(context.Background(), &kas.InfoRequest{})
 	s.Require().NoError(err)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), fakeServer.dpopKey)
+	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
+	assert.True(s.T(), ok)
+	dpopPublic, err := dpopKey.PublicKey()
+	assert.NoError(s.T(), err)
+	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
+	assert.True(s.T(), ok)
+
+	assert.Equal(s.T(), dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
+	assert.Equal(s.T(), dpopJWK.E(), dpopJWKFromRequest.E())
+	assert.Equal(s.T(), dpopJWK.N(), dpopJWKFromRequest.N())
+}
+
+func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
+	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
+	s.Require().NoError(err)
+	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
+	s.Require().NoError(err)
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client2"))
+	s.Require().NoError(err)
+	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+	cnf := map[string]string{"jkt": base64.URLEncoding.EncodeToString(thumbprint)}
+	s.Require().NoError(tok.Set("cnf", cnf))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	headers := make(chan []string, 1)
+	server := httptest.NewServer(s.auth.VerifyTokenHandler(http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
+		headers <- req.Header[DPOPJWKHeader]
+	})))
+	defer server.Close()
+
+	req, err := http.NewRequest("GET", server.URL+"/the/path", nil)
+
+	addingInterceptor := NewTokenAddingInterceptor(&FakeTokenSource{
+		key:         dpopKey,
+		accessToken: string(signedTok),
+	})
+	assert.NoError(s.T(), err)
+	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))
+	dpopTok, err := addingInterceptor.getDPoPToken("/the/path", "GET", string(signedTok))
+	assert.NoError(s.T(), err)
+	req.Header.Set("DPoP", dpopTok)
+
+	client := http.Client{}
+	_, err = client.Do(req)
+	assert.NoError(s.T(), err)
+	dpopJWKHeaders := <-headers
+
+	assert.Equal(s.T(), 1, len(dpopJWKHeaders))
+
+	dpopKeyFromRequest, err := jwk.ParseKey([]byte(dpopJWKHeaders[0]))
+	assert.NoError(s.T(), err)
+	dpopJWKFromRequest, ok := dpopKeyFromRequest.(jwk.RSAPublicKey)
+	assert.True(s.T(), ok)
+	assert.NoError(s.T(), err)
+	dpopPublic, err := dpopKey.PublicKey()
+	assert.NoError(s.T(), err)
+	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
+	assert.True(s.T(), ok)
+
+	assert.Equal(s.T(), dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
+	assert.Equal(s.T(), dpopJWK.E(), dpopJWKFromRequest.E())
+	assert.Equal(s.T(), dpopJWK.N(), dpopJWKFromRequest.N())
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {

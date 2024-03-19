@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+const (
+	DPOPJWKHeader = "Dpop-Jwk-Json"
+)
+
+type AuthValue string
 
 var (
 	// Set of allowed gRPC endpoints that do not require authentication
@@ -102,13 +109,18 @@ func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			handler.ServeHTTP(w, r)
 			return
 		}
+
+		// make sure that we don't allow the client to tell us about a dpop key
+		r.Header.Set(DPOPJWKHeader, "")
+
 		// Verify the token
 		header := r.Header["Authorization"]
 		if len(header) < 1 {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		err := a.checkToken(r.Context(), header, dpopInfo{
+
+		dpopKey, err := a.checkToken(r.Context(), header, dpopInfo{
 			headers: r.Header["Dpop"],
 			path:    r.URL.Path,
 			method:  r.Method,
@@ -119,6 +131,13 @@ func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			return
 		}
 
+		keyJSON, err := json.Marshal(dpopKey)
+		if err != nil {
+			slog.WarnContext(r.Context(), "error serializing JSON", "err", err)
+			http.Error(w, "unauthenticated", http.StatusUnauthorized)
+		}
+
+		r.Header.Set(DPOPJWKHeader, string(keyJSON))
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -144,7 +163,7 @@ func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 
-	err := a.checkToken(
+	key, err := a.checkToken(
 		ctx,
 		header,
 		dpopInfo{
@@ -158,11 +177,11 @@ func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
-	return handler(ctx, req)
+	return handler(context.WithValue(ctx, AuthValue(DPOPJWKHeader), key), req)
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) error {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (*jwk.Key, error) {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -177,19 +196,19 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		tokenType = "Bearer"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
-		return fmt.Errorf("not of type bearer or dpop")
+		return nil, fmt.Errorf("not of type bearer or dpop")
 	}
 
 	// We have to get iss from the token first to verify the signature
 	unverifiedToken, err := jwt.Parse([]byte(tokenRaw), jwt.WithVerify(false))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Get issuer from unverified token
 	issuer := unverifiedToken.Issuer()
 	if issuer == "" {
-		return fmt.Errorf("missing issuer")
+		return nil, fmt.Errorf("missing issuer")
 	}
 
 	// Get the openid configuration for the issuer
@@ -197,13 +216,13 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	// and jwx expects it as a string so we should never hit this error if the token is valid
 	oidc, exists := a.oidcConfigurations[issuer]
 	if !exists {
-		return fmt.Errorf("invalid issuer")
+		return nil, fmt.Errorf("invalid issuer")
 	}
 
 	// Get key set from cache that matches the jwks_uri
 	keySet, err := a.cache.Get(ctx, oidc.JwksURI)
 	if err != nil {
-		return fmt.Errorf("failed to get jwks from cache")
+		return nil, fmt.Errorf("failed to get jwks from cache")
 	}
 
 	// Now we verify the token signature
@@ -216,12 +235,12 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if tokenType == "Bearer" {
 		if _, ok := accessToken.Get("cnf"); !ok {
-			return nil
+			return nil, nil
 		}
 		slog.Info("presented token with `cnf` claim as a bearer token. validating as DPoP")
 	}
@@ -229,73 +248,73 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	return validateDPoP(accessToken, tokenRaw, dpopInfo)
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) error {
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (*jwk.Key, error) {
 	if len(dpopInfo.headers) != 1 {
-		return fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
+		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
 	}
 	dpopHeader := dpopInfo.headers[0]
 
 	cnf, ok := accessToken.Get("cnf")
 	if !ok {
-		return fmt.Errorf("missing `cnf` claim in access token")
+		return nil, fmt.Errorf("missing `cnf` claim in access token")
 	}
 
 	cnfDict, ok := cnf.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("got `cnf` in an invalid format")
+		return nil, fmt.Errorf("got `cnf` in an invalid format")
 	}
 
 	jktI, ok := cnfDict["jkt"]
 	if !ok {
-		return fmt.Errorf("missing `jkt` field in `cnf` claim. only thumbprint JWK confirmation is supported")
+		return nil, fmt.Errorf("missing `jkt` field in `cnf` claim. only thumbprint JWK confirmation is supported")
 	}
 
 	jkt, ok := jktI.(string)
 	if !ok {
-		return fmt.Errorf("invalid `jkt` field in `cnf` claim: %v. the value must be a JWK thumbprint", jkt)
+		return nil, fmt.Errorf("invalid `jkt` field in `cnf` claim: %v. the value must be a JWK thumbprint", jkt)
 	}
 
 	dpop, err := jws.Parse([]byte(dpopHeader))
 	if err != nil {
 		slog.Error("error parsing JWT: %w", err)
-		return fmt.Errorf("invalid DPoP JWT")
+		return nil, fmt.Errorf("invalid DPoP JWT")
 	}
 	if len(dpop.Signatures()) != 1 {
-		return fmt.Errorf("expected one signature on DPoP JWT, got %d", len(dpop.Signatures()))
+		return nil, fmt.Errorf("expected one signature on DPoP JWT, got %d", len(dpop.Signatures()))
 	}
 	sig := dpop.Signatures()[0]
 	protectedHeaders := sig.ProtectedHeaders()
 	if protectedHeaders.Type() != "dpop+jwt" {
-		return fmt.Errorf("invalid typ on DPoP JWT: %v", protectedHeaders.Type())
+		return nil, fmt.Errorf("invalid typ on DPoP JWT: %v", protectedHeaders.Type())
 	}
 
 	if _, exists := allowedSignatureAlgorithms[protectedHeaders.Algorithm()]; !exists {
-		return fmt.Errorf("unsupported algorithm specified: %v", protectedHeaders.Algorithm())
+		return nil, fmt.Errorf("unsupported algorithm specified: %v", protectedHeaders.Algorithm())
 	}
 
 	dpopKey := protectedHeaders.JWK()
 	if dpopKey == nil {
-		return fmt.Errorf("JWK missing in DPoP JWT")
+		return nil, fmt.Errorf("JWK missing in DPoP JWT")
 	}
 
 	isPrivate, err := jwk.IsPrivateKey(dpopKey)
 	if err != nil {
 		slog.Error("error checking if key is private", err)
-		return fmt.Errorf("invalid DPoP key specified")
+		return nil, fmt.Errorf("invalid DPoP key specified")
 	}
 
 	if isPrivate {
-		return fmt.Errorf("cannot use a private key for DPoP")
+		return nil, fmt.Errorf("cannot use a private key for DPoP")
 	}
 
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	if err != nil {
 		slog.Error("error computing thumbprint for key", err)
-		return fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
+		return nil, fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
 	}
 
 	if base64.URLEncoding.EncodeToString(thumbprint) != jkt {
-		return fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token")
+		return nil, fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token")
 	}
 
 	// at this point we have the right key because its thumbprint matches the `jkt` claim
@@ -304,48 +323,47 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 
 	if err != nil {
 		slog.Error("error validating DPoP JWT", err)
-		return fmt.Errorf("failed to verify signature on DPoP JWT")
+		return nil, fmt.Errorf("failed to verify signature on DPoP JWT")
 	}
 
 	issuedAt := dpopToken.IssuedAt()
 	if issuedAt.IsZero() {
-		return fmt.Errorf("missing `iat` claim in the DPoP JWT")
+		return nil, fmt.Errorf("missing `iat` claim in the DPoP JWT")
 	}
 
 	if issuedAt.Add(time.Hour).Before(time.Now()) {
-		return fmt.Errorf("the DPoP JWT has expired")
+		return nil, fmt.Errorf("the DPoP JWT has expired")
 	}
 
 	htm, ok := dpopToken.Get("htm")
 	if !ok {
-		return fmt.Errorf("`htm` claim missing in DPoP JWT")
+		return nil, fmt.Errorf("`htm` claim missing in DPoP JWT")
 	}
 
 	if htm != dpopInfo.method {
-		return fmt.Errorf("incorrect `htm` claim in DPoP JWT")
+		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT")
 	}
 
 	htu, ok := dpopToken.Get("htu")
 	if !ok {
-		return fmt.Errorf("`htu` claim missing in DPoP JWT")
+		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
 
 	if htu != dpopInfo.path {
-		return fmt.Errorf("incorrect `htu` claim in DPoP JWT")
+		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT")
 	}
 
 	ath, ok := dpopToken.Get("ath")
 	if !ok {
-		return fmt.Errorf("missing `ath` claim in DPoP JWT")
+		return nil, fmt.Errorf("missing `ath` claim in DPoP JWT")
 	}
 
 	h := sha256.New()
 	h.Write([]byte(acessTokenRaw))
 	if ath != base64.URLEncoding.EncodeToString(h.Sum(nil)) {
-		return fmt.Errorf("incorrect `ath` claim in DPoP JWT")
+		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
-
-	return nil
+	return &dpopKey, nil
 }
 
 // claimsValidator is a custom validator to check extra claims in the token.

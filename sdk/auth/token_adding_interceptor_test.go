@@ -131,6 +131,7 @@ func Test_InvalidCredentials_StillSendMessage(t *testing.T) {
 type FakeAccessServiceServer struct {
 	accessToken []string
 	dpopToken   []string
+	dpopKey     jwk.Key
 	kas.UnimplementedAccessServiceServer
 }
 
@@ -138,6 +139,11 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		f.accessToken = md.Get("authorization")
 		f.dpopToken = md.Get("dpop")
+	}
+	dpopKey := ctx.Value(AuthValue(DPOPJWKHeader))
+	dpop, ok := dpopKey.(*jwk.Key)
+	if ok {
+		f.dpopKey = *dpop
 	}
 
 	return &kas.InfoResponse{}, nil

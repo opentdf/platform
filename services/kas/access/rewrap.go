@@ -23,7 +23,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/internal/security"
+	"github.com/opentdf/platform/sdk/auth"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/nanotdf"
@@ -143,24 +145,38 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 	slog.DebugContext(ctx, "verified", "claims", cl)
 
-	/*block, _ := pem.Decode([]byte(cl.TDFClaims.ClientPublicSigningKey))
-	if block == nil {
-		slog.WarnContext(ctx, "missing clientPublicSigningKey")
-		return nil, err403("token missing PoP")
-	}
-	clientSigningPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		slog.WarnContext(ctx, "failure to parse clientSigningPublicKey", "err", err)
-		return nil, err403("signing key parse failure")
-	}*/
-
 	requestToken, err := jwt.ParseSigned(in.SignedRequestToken)
 	if err != nil {
 		slog.WarnContext(ctx, "unable parse request", "err", err)
 		return nil, err400("bad request")
 	}
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok || len(md.Get(auth.DPOPJWKHeader)) == 0 {
+		slog.Warn("couldn't get metadata from incoming context. body signature cannot be verified")
+		return nil, err401("unable to get metadata signature")
+	}
+
+	dpopKeyHeader := md.Get(auth.DPOPJWKHeader)[0]
+	dpopKey, err := jwk.ParseKey([]byte(dpopKeyHeader))
+	if err != nil {
+		slog.WarnContext(ctx, "error parsing key", "key", dpopKey, "err", err)
+		return nil, err403("couldn't parse DPoP key from header")
+	}
+
+	var verificationKey interface{}
+	err = dpopKey.Raw(verificationKey)
+	if err != nil {
+		slog.WarnContext(ctx, "error getting underlying key to verify signature", "key", dpopKey, "err", err)
+		return nil, err503("error parsing DPoP key")
+	}
+
 	var bodyClaims customClaimsBody
-	//err = requestToken.Claims(clientSigningPublicKey, &bodyClaims)
+	err = requestToken.Claims(verificationKey, &bodyClaims)
+	if err != nil {
+		slog.WarnContext(ctx, "invalid signature on body claims", "err", err)
+		return nil, err403("signature on body was invalid")
+	}
 	err = requestToken.UnsafeClaimsWithoutVerification(&bodyClaims)
 	if err != nil {
 		slog.WarnContext(ctx, "unable decode request", "err", err)

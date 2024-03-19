@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	goodPlatformEndpoint = "localhost:9000"
+	goodPlatformEndpoint = "localhost:8080"
 	badPlatformEndpoint  = "localhost:9999"
 )
 

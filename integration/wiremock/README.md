@@ -23,19 +23,19 @@ Note, wiremock does not support server reflection. Therefore, the `-protoset` op
 
 List Namespaces
 ```shell
-grpcurl -plaintext -d '{}' -protoset grpc/services.dsc localhost:9000 namespaces.NamespaceService/ListNamespaces
+grpcurl -plaintext -d '{}' -protoset grpc/services.dsc localhost:8080 namespaces.NamespaceService/ListNamespaces
 ```
 
 
 List Attributes 
 ```shell
-grpcurl -plaintext -d '{}' -protoset grpc/services.dsc localhost:9000 attributes.AttributesService/ListAttributes
+grpcurl -plaintext -d '{}' -protoset grpc/services.dsc localhost:8080 attributes.AttributesService/ListAttributes
 ```
 
 Get Decision:
 
 ```shell
-grpcurl -plaintext -d '{}' -protoset grpc/services.dsc localhost:9000 authorization.AuthorizationService/GetDecisions
+grpcurl -plaintext -d '{}' -protoset grpc/services.dsc localhost:8080 authorization.AuthorizationService/GetDecisions
 ```
 
 

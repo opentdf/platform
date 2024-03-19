@@ -93,7 +93,7 @@ var (
 					Protocol:       gocloak.StringP("openid-connect"),
 					ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
 					Config: &map[string]string{
-						"included.client.audience": "http://localhost:9000",
+						"included.client.audience": "http://localhost:8080",
 						"included.custom.audience": "custom_audience",
 						"access.token.claim":       "true",
 						"id.token.claim":           "true",

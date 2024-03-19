@@ -205,7 +205,7 @@ func (x *GetResourceMappingResponse) GetResourceMapping() *policy.ResourceMappin
 
 // ### Request
 //
-// grpcurl -plaintext -d @ localhost:9000 policy.resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM
+// grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM
 // {
 // "mapping": {
 // "name": "Classification",

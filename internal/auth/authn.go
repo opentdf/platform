@@ -154,9 +154,12 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	action := ""
 	if strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get") {
 		action = "read"
-	}
-	if strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update") {
+	} else if strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update") {
 		action = "write"
+	} else if strings.HasPrefix(p[2], "Delete") {
+		action = "delete"
+	} else if strings.HasPrefix(p[2], "Unsafe") {
+		action = "unsafe"
 	}
 
 	token, err := a.checkToken(ctx, header)

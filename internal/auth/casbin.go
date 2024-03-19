@@ -24,6 +24,24 @@ var defaultRoleMap = map[string]string{
 }
 
 var defaultPolicy = `
+## Roles (prefixed with role:)
+# org-admin - organization admin
+# admin - admin
+# readonly - readonly
+
+## Resources
+# policy.attributes - attributes policy
+# policy.namespaces - namespaces policy
+# policy.subjectmappings - subjectmappings policy
+# policy.resourcemappings - resourcemappings policy
+# kasregistry - key access servers registry
+
+## Actions
+# read - read the resource
+# write - write to the resource
+# delete - delete the resource
+# unsafe - unsafe actions
+
 p, role:org-admin, ^(policy\.attributes|/attributes).*, .*, allow
 p, role:org-admin, ^(policy\.namespaces).*, .*, allow
 p, role:org-admin, ^(policy\.subjectmappings|/subject-mappings).*, .*, allow

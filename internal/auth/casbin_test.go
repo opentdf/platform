@@ -101,6 +101,47 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithDefaults() {
 	assert.NotNil(s.T(), enforcer.GetPolicy())
 }
 
+func (s *AuthnCasbinSuite) Test_NewEnforcerWithCustomModel() {
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{
+		PolicyConfig: PolicyConfig{
+			Model: `
+			[request_definition]
+			r = sub, res, act
+			[policy_definition]
+			p = sub, res, act, eft
+			[role_definition]
+			g = _, _
+			[policy_effect]
+			e = some(where (p.eft == allow))
+			[matchers]
+			m = g(r.sub, p.sub)
+			`,
+			Csv: "p, role:unknown, res, act, allow",
+		},
+	})
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), enforcer)
+
+	tok := jwt.New()
+	tok.Set("realm_access", map[string]interface{}{
+		"roles": []interface{}{"role:unknown"},
+	})
+	allowed, err := enforcer.Enforce(tok, "", "")
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), allowed)
+}
+
+func (s *AuthnCasbinSuite) Test_NewEnforcerWithBadCustomModel() {
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{
+		PolicyConfig: PolicyConfig{
+			Model: "p, sub, obj, act",
+			Csv:   "xxxx",
+		},
+	})
+	assert.ErrorContains(s.T(), err, "failed to create casbin model")
+	assert.Nil(s.T(), enforcer)
+}
+
 func (s *AuthnCasbinSuite) Test_Enforcement() {
 	orgadmin := []bool{true, false, false}
 	admin := []bool{false, true, false}

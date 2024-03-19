@@ -149,12 +149,12 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 
 	m, err := casbinModel.NewModelFromString(mStr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create casbin model: %w", err)
 	}
 	a := stringadapter.NewAdapter(pStr)
 	e, err := casbin.NewEnforcer(m, a)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
 
 	return &Enforcer{

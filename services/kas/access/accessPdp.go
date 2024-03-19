@@ -22,7 +22,7 @@ func canAccess(ctx context.Context, entityID string, policy Policy, claims Claim
 	if err != nil {
 		return false, err
 	}
-	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, claims.Entitlements)
+	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entityID)
 	if err != nil {
 		return false, err
 	}
@@ -43,7 +43,7 @@ func checkDissems(dissems []string, entityID string) (bool, error) {
 	return false, nil
 }
 
-func checkAttributes(ctx context.Context, dataAttrs []Attribute, entitlements []Entitlement) (bool, error) {
+func checkAttributes(ctx context.Context, dataAttrs []Attribute, entityID string) (bool, error) {
 	// FIXME use in_process grpc calls, for now dial localhost
 	cc, err := grpc.Dial("localhost:9000", grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
@@ -52,10 +52,7 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, entitlements []
 	}
 	ac := authorization.NewAuthorizationServiceClient(cc)
 	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
-	for _, entitlement := range entitlements {
-		// FIXME pass access token as JWT
-		ec.Entities = append(ec.Entities, &authorization.Entity{Id: entitlement.EntityID})
-	}
+	ec.Entities = append(ec.Entities, &authorization.Entity{Id: entityID})
 	ras := []*authorization.ResourceAttribute{{
 		AttributeFqns: make([]string, 0),
 	}}

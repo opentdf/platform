@@ -53,7 +53,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
-	// once we change KAS to use standard DPOP we can put this all in the `build()` method
+	// once we change KAS to use standard DPoP we can put this all in the `build()` method
 	dialOptions := append([]grpc.DialOption{}, cfg.build()...)
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {

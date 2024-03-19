@@ -66,21 +66,21 @@ func (i TokenAddingInterceptor) getDPoPToken(path, accessToken string) (string, 
 
 		publicKey, err := key.PublicKey()
 		if err != nil {
-			return nil, fmt.Errorf("error getting public key from DPOP key: %w", err)
+			return nil, fmt.Errorf("error getting public key from DPoP key: %w", err)
 		}
 
 		headers := jws.NewHeaders()
 		err = headers.Set(jws.JWKKey, publicKey)
 		if err != nil {
-			return nil, fmt.Errorf("error setting the key on the DPOP token: %w", err)
+			return nil, fmt.Errorf("error setting the key on the DPoP token: %w", err)
 		}
 		err = headers.Set(jws.TypeKey, "dpop+jwt")
 		if err != nil {
-			return nil, fmt.Errorf("error setting the type on the DPOP token: %w", err)
+			return nil, fmt.Errorf("error setting the type on the DPoP token: %w", err)
 		}
 		err = headers.Set(jws.AlgorithmKey, key.Algorithm())
 		if err != nil {
-			return nil, fmt.Errorf("error setting the algorithm on the DPOP token: %w", err)
+			return nil, fmt.Errorf("error setting the algorithm on the DPoP token: %w", err)
 		}
 
 		h := sha256.New()
@@ -108,7 +108,7 @@ func (i TokenAddingInterceptor) getDPoPToken(path, accessToken string) (string, 
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("error creating DPOP token in interceptor: %w", err)
+		return "", fmt.Errorf("error creating DPoP token in interceptor: %w", err)
 	}
 
 	return string(tok), nil

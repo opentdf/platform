@@ -110,7 +110,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	requestBody := rewrapRequestBody{
 		Policy:          policy,
 		KeyAccess:       keyAccess,
-		ClientPublicKey: k.accessTokenSource.DPOPPublicKeyPEM(),
+		ClientPublicKey: k.accessTokenSource.DPoPPublicKeyPEM(),
 	}
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {
@@ -130,7 +130,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	signedToken, err := k.accessTokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
 		signed, err := jwt.Sign(tok, jwt.WithKey(key.Algorithm(), key))
 		if err != nil {
-			return nil, fmt.Errorf("error signing DPOP token: %w", err)
+			return nil, fmt.Errorf("error signing DPoP token: %w", err)
 		}
 
 		return signed, nil

@@ -10,6 +10,6 @@ type AccessTokenSource interface {
 	// more closely linked to what happens in KAS in terms of crypto params
 	DecryptWithDPoPKey(data []byte) ([]byte, error)
 	MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error)
-	DPOPPublicKeyPEM() string
+	DPoPPublicKeyPEM() string
 	RefreshAccessToken() error
 }

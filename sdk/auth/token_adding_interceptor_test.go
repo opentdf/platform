@@ -169,7 +169,7 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 	}
 	return f(fts.key)
 }
-func (*FakeTokenSource) DPOPPublicKeyPEM() string {
+func (*FakeTokenSource) DPoPPublicKeyPEM() string {
 	return ""
 }
 func (*FakeTokenSource) RefreshAccessToken() error {

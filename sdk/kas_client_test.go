@@ -13,7 +13,7 @@ import (
 )
 
 type FakeAccessTokenSource struct {
-	dPOPKey        jwk.Key
+	dpopKey        jwk.Key
 	asymDecryption crypto.AsymDecryption
 	accessToken    string
 }
@@ -25,9 +25,9 @@ func (fake FakeAccessTokenSource) DecryptWithDPoPKey(encrypted []byte) ([]byte, 
 	return fake.asymDecryption.Decrypt(encrypted)
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
-	return tokenMaker(fake.dPOPKey)
+	return tokenMaker(fake.dpopKey)
 }
-func (fake FakeAccessTokenSource) DPOPPublicKeyPEM() string {
+func (fake FakeAccessTokenSource) DPoPPublicKeyPEM() string {
 	return "this is the PEM"
 }
 func (fake FakeAccessTokenSource) RefreshAccessToken() error {
@@ -48,7 +48,7 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	}
 
 	return FakeAccessTokenSource{
-		dPOPKey:        dpopJWK,
+		dpopKey:        dpopJWK,
 		asymDecryption: decryption,
 		accessToken:    "thisistheaccesstoken",
 	}
@@ -75,9 +75,9 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("didn't produce a signed request token")
 	}
 
-	pubKey, _ := tokenSource.dPOPKey.PublicKey()
+	pubKey, _ := tokenSource.dpopKey.PublicKey()
 
-	tok, err := jwt.ParseString(req.SignedRequestToken, jwt.WithKey(tokenSource.dPOPKey.Algorithm(), pubKey))
+	tok, err := jwt.ParseString(req.SignedRequestToken, jwt.WithKey(tokenSource.dpopKey.Algorithm(), pubKey))
 	if err != nil {
 		t.Fatalf("couldn't parse signed token: %v", err)
 	}

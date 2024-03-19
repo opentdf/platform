@@ -40,7 +40,7 @@ type AuthSuite struct {
 }
 
 type FakeAccessTokenSource struct {
-	dPOPKey     jwk.Key
+	dpopKey     jwk.Key
 	accessToken string
 }
 
@@ -51,9 +51,9 @@ func (fake FakeAccessTokenSource) DecryptWithDPoPKey(encrypted []byte) ([]byte, 
 	return nil, nil
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
-	return tokenMaker(fake.dPOPKey)
+	return tokenMaker(fake.dpopKey)
 }
-func (fake FakeAccessTokenSource) DPOPPublicKeyPEM() string {
+func (fake FakeAccessTokenSource) DPoPPublicKeyPEM() string {
 	return "this is the PEM"
 }
 func (fake FakeAccessTokenSource) RefreshAccessToken() error {
@@ -324,7 +324,7 @@ type dpopTestCase struct {
 	errorMesssage    string
 }
 
-func (s *AuthSuite) TestInvalid_DPOP_Cases() {
+func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	assert.NoError(s.T(), err)
 	dpopKey, err := jwk.FromRaw(dpopRaw)
@@ -450,15 +450,15 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 	headers := jws.NewHeaders()
 	err = headers.Set(jws.JWKKey, tc.key)
 	if err != nil {
-		t.Fatalf("error setting the key on the DPOP token: %v", err)
+		t.Fatalf("error setting the key on the DPoP token: %v", err)
 	}
 	err = headers.Set(jws.TypeKey, tc.typ)
 	if err != nil {
-		t.Fatalf("error setting the type on the DPOP token: %v", err)
+		t.Fatalf("error setting the type on the DPoP token: %v", err)
 	}
 	err = headers.Set(jws.AlgorithmKey, tc.alg)
 	if err != nil {
-		t.Fatalf("error setting the algorithm on the DPOP token: %v", err)
+		t.Fatalf("error setting the algorithm on the DPoP token: %v", err)
 	}
 
 	var ath string

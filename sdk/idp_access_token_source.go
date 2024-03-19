@@ -76,7 +76,7 @@ func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) { //nolint
 
 /*
 Credentials that allow us to connect to an IDP and obtain an access token that is bound
-to a DPOP key
+to a DPoP key
 */
 type IDPAccessTokenSource struct {
 	credentials      oauth.ClientCredentials
@@ -148,6 +148,6 @@ func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error
 	return tokenMaker(t.dpopKey)
 }
 
-func (t *IDPAccessTokenSource) DPOPPublicKeyPEM() string {
+func (t *IDPAccessTokenSource) DPoPPublicKeyPEM() string {
 	return t.dpopPEM
 }

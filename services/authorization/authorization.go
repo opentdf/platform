@@ -3,6 +3,7 @@ package authorization
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -45,6 +46,9 @@ func NewRegistration() serviceregistry.Registration {
 
 var RetrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, as AuthorizationService) (*attr.GetAttributeValuesByFqnsResponse, error) {
 	return as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
 		Fqns: ra.AttributeFqns,
 	})
 }
@@ -91,7 +95,10 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				// fmt.Printf("\nTODO: make access decision here with these fully qualified attributes: %+v\n", attrs)
 				// get the entities entitlements
 				entities := ec.GetEntities()
-				req := authorization.GetEntitlementsRequest{Entities: entities}
+				req := authorization.GetEntitlementsRequest{
+					Entities: entities,
+					Scope:    ra,
+				}
 				ecEntitlements, err := RetrieveEntitlements(ctx, &req, as)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
@@ -153,6 +160,11 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
+	// FIXME allow without scope
+	if req.Scope == nil {
+		slog.ErrorContext(ctx, "requires scope")
+		return nil, errors.New(services.ErrFqnMissingValue)
+	}
 	// get subject mappings
 	request := attr.GetAttributeValuesByFqnsRequest{
 		Fqns: req.Scope.AttributeFqns,
@@ -166,6 +178,11 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	subjectMappings := avf.GetFqnAttributeValues()
 	slog.InfoContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
+	// FIXME allow without entity
+	if req.Entities == nil {
+		slog.ErrorContext(ctx, "requires entities")
+		return nil, errors.New("entity chain is required")
+	}
 	// OPA
 	in, err := entitlements.OpaInput(req.Entities[0], subjectMappings)
 	if err != nil {

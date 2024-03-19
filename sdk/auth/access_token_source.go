@@ -11,5 +11,6 @@ type AccessTokenSource interface {
 	DecryptWithDPoPKey(data []byte) ([]byte, error)
 	MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error)
 	DPoPPublicKeyPEM() string
+	EncryptionPublicKeyPEM() string
 	RefreshAccessToken() error
 }

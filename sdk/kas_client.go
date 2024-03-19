@@ -110,7 +110,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	requestBody := rewrapRequestBody{
 		Policy:          policy,
 		KeyAccess:       keyAccess,
-		ClientPublicKey: k.accessTokenSource.DPoPPublicKeyPEM(),
+		ClientPublicKey: k.accessTokenSource.EncryptionPublicKeyPEM(),
 	}
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {

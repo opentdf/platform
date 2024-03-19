@@ -22,56 +22,51 @@ const (
 	dpopKeySize = 2048
 )
 
-func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) { //nolint:ireturn // this is only internal
-	dpopPrivate, err := rsa.GenerateKey(rand.Reader, dpopKeySize)
+func GenerateKeyPair() (string, string, jwk.Key, error) {
+	rawPrivateKey, err := rsa.GenerateKey(rand.Reader, dpopKeySize)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("error creating DPoP keypair: %w", err)
+		return "", "", nil, fmt.Errorf("error creating DPoP keypair: %w", err)
 	}
-	dpopKey, err := jwk.FromRaw(dpopPrivate)
+	jwkPrivateKey, err := jwk.FromRaw(rawPrivateKey)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("error creating JWK: %w", err)
+		return "", "", nil, fmt.Errorf("error creating JWK: %w", err)
 	}
-	err = dpopKey.Set("alg", jwa.RS256)
+	err = jwkPrivateKey.Set("alg", jwa.RS256)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("error setting the key algorithm: %w", err)
-	}
-
-	dpopKeyDER, err := x509.MarshalPKCS8PrivateKey(dpopPrivate)
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("error marshalling private key: %w", err)
+		return "", "", nil, fmt.Errorf("error setting the key algorithm: %w", err)
 	}
 
-	var dpopPrivatePEM strings.Builder
+	derPrivateKey, err := x509.MarshalPKCS8PrivateKey(rawPrivateKey)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("error marshalling private key: %w", err)
+	}
 
-	err = pem.Encode(&dpopPrivatePEM, &pem.Block{
+	var privateKeyPem strings.Builder
+
+	err = pem.Encode(&privateKeyPem, &pem.Block{
 		Type:  "PRIVATE KEY",
-		Bytes: dpopKeyDER,
+		Bytes: derPrivateKey,
 	})
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("error encoding private key to PEM")
+		return "", "", nil, fmt.Errorf("error encoding private key to PEM")
 	}
 
-	dpopPublic := dpopPrivate.Public()
-	dpopPublicDER, err := x509.MarshalPKIXPublicKey(dpopPublic)
+	rawPublicKey := rawPrivateKey.Public()
+	derPublicKey, err := x509.MarshalPKIXPublicKey(rawPublicKey)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("error marshalling public key: %w", err)
+		return "", "", nil, fmt.Errorf("error marshalling public key: %w", err)
 	}
 
-	var dpopPublicKeyPEM strings.Builder
-	err = pem.Encode(&dpopPublicKeyPEM, &pem.Block{
+	var publicKeyPem strings.Builder
+	err = pem.Encode(&publicKeyPem, &pem.Block{
 		Type:  "PUBLIC KEY",
-		Bytes: dpopPublicDER,
+		Bytes: derPublicKey,
 	})
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("error encoding public key to PEM")
+		return "", "", nil, fmt.Errorf("error encoding public key to PEM")
 	}
 
-	asymDecryption, err := crypto.NewAsymDecryption(dpopPrivatePEM.String())
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("error creating asymmetric decryptor: %w", err)
-	}
-
-	return dpopPublicKeyPEM.String(), dpopKey, &asymDecryption, nil
+	return publicKeyPem.String(), privateKeyPem.String(), jwkPrivateKey, nil
 }
 
 /*
@@ -79,37 +74,50 @@ Credentials that allow us to connect to an IDP and obtain an access token that i
 to a DPoP key
 */
 type IDPAccessTokenSource struct {
-	credentials      oauth.ClientCredentials
-	idpTokenEndpoint url.URL
-	token            *oauth2.Token
-	scopes           []string
-	dpopKey          jwk.Key
-	asymDecryption   crypto.AsymDecryption
-	dpopPEM          string
-	tokenMutex       *sync.Mutex
+	credentials            oauth.ClientCredentials
+	idpTokenEndpoint       url.URL
+	token                  *oauth2.Token
+	scopes                 []string
+	dpopKey                jwk.Key
+	encryptionPublicKeyPEM string
+	asymDecryption         crypto.AsymDecryption
+	dpopPEM                string
+	tokenMutex             *sync.Mutex
 }
 
 func NewIDPAccessTokenSource(
 	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
+
 	if err != nil {
 		return IDPAccessTokenSource{}, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
 	}
 
-	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey()
+	dpopPublicKeyPem, _, dpopKey, err := GenerateKeyPair()
+	if err != nil {
+		return IDPAccessTokenSource{}, err
+	}
+
+	encryptionPublicKeyPem, encryptionPrivateKeyPem, _, err := GenerateKeyPair()
+	if err != nil {
+		return IDPAccessTokenSource{}, err
+	}
+
+	asymDecryption, err := crypto.NewAsymDecryption(encryptionPrivateKeyPem)
 	if err != nil {
 		return IDPAccessTokenSource{}, err
 	}
 
 	creds := IDPAccessTokenSource{
-		credentials:      credentials,
-		idpTokenEndpoint: *endpoint,
-		token:            nil,
-		scopes:           scopes,
-		asymDecryption:   *asymDecryption,
-		dpopKey:          dpopKey,
-		dpopPEM:          dpopPublicKeyPEM,
-		tokenMutex:       &sync.Mutex{},
+		credentials:            credentials,
+		idpTokenEndpoint:       *endpoint,
+		token:                  nil,
+		scopes:                 scopes,
+		asymDecryption:         asymDecryption,
+		encryptionPublicKeyPEM: encryptionPublicKeyPem,
+		dpopKey:                dpopKey,
+		dpopPEM:                dpopPublicKeyPem,
+		tokenMutex:             &sync.Mutex{},
 	}
 
 	return creds, nil
@@ -150,4 +158,8 @@ func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error
 
 func (t *IDPAccessTokenSource) DPoPPublicKeyPEM() string {
 	return t.dpopPEM
+}
+
+func (t *IDPAccessTokenSource) EncryptionPublicKeyPEM() string {
+	return t.encryptionPublicKeyPEM
 }

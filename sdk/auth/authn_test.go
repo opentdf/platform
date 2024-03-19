@@ -55,6 +55,7 @@ func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, er
 func (fake FakeAccessTokenSource) DPoPPublicKeyPEM() string {
 	return "this is the PEM"
 }
+func (fake FakeAccessTokenSource) EncryptionPublicKeyPEM() string { return "this is the PEM" }
 func (fake FakeAccessTokenSource) RefreshAccessToken() error {
 	return errors.New("can't refresh this one")
 }

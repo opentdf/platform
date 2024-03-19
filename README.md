@@ -59,7 +59,6 @@ Note: support was added to provision a set of fixture data into the database.
 Run `go run . provision fixtures -h` for more information.
 
 ### Test
-
 ```bash
   grpcurl -plaintext localhost:8080 list
 

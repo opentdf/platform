@@ -274,21 +274,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}
 
 	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.requestBody.Policy)
-	namespaces, err := getNamespacesFromAttributes(policy.Body)
-	if err != nil {
-		slog.WarnContext(ctx, "Could not get namespaces from policy!", "err", err)
-		return nil, err403("forbidden")
-	}
-
-	slog.DebugContext(ctx, "Fetching attributes", "policy.namespaces", namespaces, "policy.body", policy.Body)
-	definitions, err := p.fetchAttributes(ctx, namespaces)
-	if err != nil {
-		slog.ErrorContext(ctx, "Could not fetch attribute definitions from attributes service!", "err", err)
-		return nil, err503("attribute server request failure")
-	}
-	slog.DebugContext(ctx, "fetch attributes", "definitions", definitions)
-
-	access, err := canAccess(ctx, body.cl.EntityID, *policy, body.cl.TDFClaims, definitions)
+	access, err := canAccess(ctx, body.cl.EntityID, *policy, body.cl.TDFClaims)
 
 	if err != nil {
 		slog.WarnContext(ctx, "Could not perform access decision!", "err", err)

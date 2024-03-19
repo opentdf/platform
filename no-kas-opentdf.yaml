@@ -43,7 +43,7 @@ server:
   auth:
     enabled: false
     audience: "http://localhost:8080"
-    issuer: http://localhost:8888/auth/realms/opentdf
+    issuer: http://localhost:8888/auth/realms/tdf
     clients:
       - "opentdf"
   grpc:

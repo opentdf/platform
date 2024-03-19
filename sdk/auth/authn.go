@@ -24,10 +24,11 @@ import (
 )
 
 const (
-	DPOPJWKHeader = "Dpop-Jwk-Json"
+	DPOPJWKHeader     = "Dpop-Jwk-Json"
+	DPOPJWKContextKey = AuthContextKey(DPOPJWKHeader)
 )
 
-type AuthValue string
+type AuthContextKey string
 
 var (
 	// Set of allowed gRPC endpoints that do not require authentication
@@ -177,7 +178,7 @@ func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
-	return handler(context.WithValue(ctx, AuthValue(DPOPJWKHeader), key), req)
+	return handler(context.WithValue(ctx, AuthContextKey(DPOPJWKHeader), key), req)
 }
 
 // checkToken is a helper function to verify the token.

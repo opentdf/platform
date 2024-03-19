@@ -140,7 +140,7 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 		f.accessToken = md.Get("authorization")
 		f.dpopToken = md.Get("dpop")
 	}
-	dpopKey := ctx.Value(AuthValue(DPOPJWKHeader))
+	dpopKey := ctx.Value(AuthContextKey(DPOPJWKHeader))
 	dpop, ok := dpopKey.(*jwk.Key)
 	if ok {
 		f.dpopKey = *dpop

@@ -86,12 +86,14 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 		return nil, err
 	}
 
-	slog.Info("initializing casbin enforcer")
-
-	if a.enforcer, err = NewCasbinEnforcer(CasbinConfig{
+	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
-		Db:           d.SqlDB,
-	}); err != nil {
+	}
+	if d != nil && d.SqlDB != nil {
+		casbinConfig.Db = d.SqlDB
+	}
+	slog.Info("initializing casbin enforcer")
+	if a.enforcer, err = NewCasbinEnforcer(casbinConfig); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
@@ -191,7 +193,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 
 	// parse the rpc method
 	p := strings.Split(info.FullMethod, "/")
-	resource := p[1]
+	resource := p[1] + "/" + p[2]
 	action := ""
 	if strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get") {
 		action = "read"
@@ -201,6 +203,8 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		action = "delete"
 	} else if strings.HasPrefix(p[2], "Unsafe") {
 		action = "unsafe"
+	} else {
+		action = "other"
 	}
 
 	token, err := a.checkToken(

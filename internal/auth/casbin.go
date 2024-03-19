@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+var rolePrefix = "role:"
 var defaultRole = "unknown"
 
 var defaultRoleClaim = "realm_access.roles"
@@ -28,13 +29,11 @@ var defaultPolicy = `
 # org-admin - organization admin
 # admin - admin
 # readonly - readonly
+# unknown - unknown role or no role
 
 ## Resources
-# policy.attributes - attributes policy
-# policy.namespaces - namespaces policy
-# policy.subjectmappings - subjectmappings policy
-# policy.resourcemappings - resourcemappings policy
-# kasregistry - key access servers registry
+# Resources beginning with / are HTTP routes. Generally, this does not matter, but when HTTP routes don't map well
+# with the protos this may become important.
 
 ## Actions
 # read - read the resource
@@ -42,43 +41,77 @@ var defaultPolicy = `
 # delete - delete the resource
 # unsafe - unsafe actions
 
-p, role:org-admin, ^(policy\.attributes|/attributes).*, .*, allow
-p, role:org-admin, ^(policy\.namespaces).*, .*, allow
-p, role:org-admin, ^(policy\.subjectmappings|/subject-mappings).*, .*, allow
-p, role:org-admin, ^(policy\.resourcemappings|/resource-mappings).*, .*, allow
-p, role:org-admin, ^(kasregistry|/key-access-servers).*, .*, allow
+# Role: Org-Admin
+## gRPC routes
+p,	role:org-admin,		policy.*,																*,			allow
+p,	role:org-admin,		kasregistry.*,													*,			allow
+p,	role:org-admin,		kas.AccessService/LegacyPublicKey,			*,			allow
+p,	role:org-admin,		kas.AccessService/PublicKey,						*,			allow
+## HTTP routes
+p,	role:org-admin,		/health,																*,			allow
+p,	role:org-admin,		/attributes*,														*,			allow
+p,	role:org-admin,		/namespaces*,														*,			allow
+p,	role:org-admin,		/subject-mappings*,											*,			allow
+p,	role:org-admin,		/resource-mappings*,										*,			allow
+p,	role:org-admin,		/key-access-servers*,										*,			allow
+p,	role:org-admin,		/kas.AccessService/LegacyPublicKey,			*,			allow
 # add unsafe actions to the org-admin role
 
-p, role:admin, ^(policy\.attributes|/attributes).*, .*, allow
-p, role:admin, ^(policy\.namespaces).*, .*, allow
-p, role:admin, ^(policy\.subjectmappings|/subject-mappings).*, .*, allow
-p, role:admin, ^(policy\.resourcemappings|/resource-mappings).*, .*, allow
-p, role:admin, ^(kasregistry|/key-access-servers).*, .*, allow
+# Role: Admin
+## gRPC routes
+p,	role:admin,		policy.*,																		*,			allow
+p,	role:admin,		kasregistry.*,															*,			allow
+p,	role:admin,		kas.AccessService/LegacyPublicKey,					*,			allow
+p,	role:admin,		kas.AccessService/PublicKey,								*,			allow
+## HTTP routes
+p,	role:admin,		/health,																		*,			allow
+p,	role:admin,		/attributes*,																*,			allow
+p,	role:admin,		/namespaces*,																*,			allow
+p,	role:admin,		/subject-mappings*,													*,			allow
+p,	role:admin,		/resource-mappings*,												*,			allow
+p,	role:admin,		/key-access-servers*,												*,			allow
+p,	role:admin,		/kas.AccessService/LegacyPublicKey,					*,			allow
 
-p, role:readonly, ^(policy\.attributes|/attributes).*, read, allow
-p, role:readonly, ^(policy\.namespaces).*, read, allow
-p, role:readonly, ^(policy\.subjectmappings|/subject-mappings).*, read, allow
-p, role:readonly, ^(policy\.resourcemappings|/resource-mappings).*, read, allow
-p, role:readonly, ^(kasregistry|/key-access-servers).*, read, allow
+## Role: Readonly
+## gRPC routes
+p,	role:readonly,		policy.*,																read,			allow
+p,	role:readonly,		kasregistry.*,													read,			allow
+p,	role:readonly,		kas.AccessService/LegacyPublicKey,			read,			allow
+p,	role:readonly,		kas.AccessService/PublicKey,						read,			allow
+## HTTP routes
+p,	role:readonly,		/health,																read,			allow
+p,	role:readonly,		/attributes*,														read,			allow
+p,	role:readonly,		/namespaces*,														read,			allow
+p,	role:readonly,		/subject-mappings*,											read,			allow
+p,	role:readonly,		/resource-mappings*,										read,			allow
+p,	role:readonly,		/key-access-servers*,										read,			allow
+p,	role:readonly,		/kas.AccessService/LegacyPublicKey,			read,			allow
 
-p, role:unknown, .*, .*, deny
+# Public routes
+## gRPC routes
+p,	role:unknown,			kas.AccessService/LegacyPublicKey,			other,	allow
+p,	role:unknown,			kas.AccessService/PublicKey,						other,	allow
+## HTTP routes
+p,	role:unknown,			/health,																read,		allow
+p,	role:unknown,			/kas/v2/kas_public_key,									read,		allow
+p,	role:unknown,			/kas/kas_public_key,										read,		allow
 `
 
 var defaultModel = `
 [request_definition]
-r = sub, res, act
+r = sub,	res,	act
 
 [policy_definition]
-p = sub, res, act, eft
+p = sub,	res,	act,	eft
 
 [role_definition]
-g = _, _
+g = _,	_
 
 [policy_effect]
 e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
 
 [matchers]
-m = g(r.sub, p.sub) && regexMatch(r.res, p.res) && regexMatch(r.act, p.act)
+m = g(r.sub,	p.sub) && keyMatch(r.res,	p.res) && keyMatch(r.act,	p.act)
 `
 
 type Enforcer struct {
@@ -144,9 +177,15 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 		return false, permDeniedError
 	}
 
+	if len(s.Roles) == 0 {
+		sub := rolePrefix + defaultRole
+		slog.Info("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
+		return e.Enforcer.Enforce(sub, resource, action)
+	}
+
 	allowed := false
 	for _, role := range s.Roles {
-		sub := "role:" + role
+		sub := rolePrefix + role
 		slog.Info("enforcing policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
 		allowed, err = e.Enforcer.Enforce(sub, resource, action)
 		if err != nil {
@@ -196,7 +235,8 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 		if len(p) > 1 {
 			r = util.Dotnotation(n.(map[string]interface{}), strings.Join(p[1:], "."))
 			if r == nil {
-				return nil, fmt.Errorf("role claim not found")
+				slog.Warn("role claim not found", slog.String("claim", roleClaim), slog.Any("roles", n))
+				return nil, nil
 			}
 		}
 
@@ -208,6 +248,9 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 			default:
 			}
 		}
+	} else {
+		slog.Warn("role claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
+		return nil, nil
 	}
 
 	// filter roles based on the role map

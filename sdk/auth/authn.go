@@ -113,7 +113,7 @@ func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			path:    r.URL.Path,
 			method:  r.Method,
 		}
-		err := checkToken(r.Context(), header, dpopInfo, a)
+		err := a.checkToken(r.Context(), header, dpopInfo)
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
@@ -151,7 +151,7 @@ func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		method:  "POST",
 	}
 
-	err := checkToken(ctx, header, dpopInfo, a)
+	err := a.checkToken(ctx, header, dpopInfo)
 	if err != nil {
 		slog.Warn("failed to validate token", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
@@ -161,7 +161,7 @@ func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 }
 
 // checkToken is a helper function to verify the token.
-func checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo, auth authentication) error {
+func (a authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) error {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -194,13 +194,13 @@ func checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo, aut
 	// Get the openid configuration for the issuer
 	// Because we get an interface we need to cast it to a string
 	// and jwx expects it as a string so we should never hit this error if the token is valid
-	oidc, exists := auth.oidcConfigurations[issuer]
+	oidc, exists := a.oidcConfigurations[issuer]
 	if !exists {
 		return fmt.Errorf("invalid issuer")
 	}
 
 	// Get key set from cache that matches the jwks_uri
-	keySet, err := auth.cache.Get(ctx, oidc.JwksURI)
+	keySet, err := a.cache.Get(ctx, oidc.JwksURI)
 	if err != nil {
 		return fmt.Errorf("failed to get jwks from cache")
 	}
@@ -211,7 +211,7 @@ func checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo, aut
 		jwt.WithValidate(true),
 		jwt.WithIssuer(issuer),
 		jwt.WithAudience(oidc.Audience),
-		jwt.WithValidator(jwt.ValidatorFunc(auth.claimsValidator)),
+		jwt.WithValidator(jwt.ValidatorFunc(a.claimsValidator)),
 	)
 
 	if err != nil {

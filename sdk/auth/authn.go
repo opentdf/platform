@@ -222,7 +222,7 @@ func (a authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		if _, ok := accessToken.Get("cnf"); !ok {
 			return nil
 		}
-		slog.Warn("presented token with `cnf` claim as a bearer token. validating as DPoP")
+		slog.Info("presented token with `cnf` claim as a bearer token. validating as DPoP")
 	}
 
 	return validateDPoP(accessToken, tokenRaw, dpopInfo)

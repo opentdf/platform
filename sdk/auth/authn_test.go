@@ -433,12 +433,12 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	_, err = client.Info(context.Background(), &kas.InfoRequest{})
 	s.Require().NoError(err)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
 	s.True(ok)
 	dpopPublic, err := dpopKey.PublicKey()
-	s.NoError(err)
+	s.Require().NoError(err)
 	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
 	s.True(ok)
 
@@ -470,34 +470,33 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	jwkChan := make(chan jwk.Key, 1)
 	server := httptest.NewServer(s.auth.VerifyTokenHandler(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		jwkChan <- GetJWKFromContext(req.Context())
-		res.Write([]byte{})
 	})))
 	defer server.Close()
 
-	req, err := http.NewRequest("GET", server.URL+"/the/path", nil)
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/the/path", nil)
 
 	addingInterceptor := NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))
 	dpopTok, err := addingInterceptor.getDPoPToken("/the/path", "GET", string(signedTok))
-	s.NoError(err)
+	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
 
 	client := http.Client{}
 	_, err = client.Do(req)
-	s.NoError(err)
+	s.Require().NoError(err)
 	dpopKeyFromRequest := <-jwkChan
 
 	s.NotNil(dpopKeyFromRequest)
 
 	dpopJWKFromRequest, ok := dpopKeyFromRequest.(jwk.RSAPublicKey)
 	assert.True(s.T(), ok)
-	s.NoError(err)
+	s.Require().NoError(err)
 	dpopPublic, err := dpopKey.PublicKey()
-	s.NoError(err)
+	s.Require().NoError(err)
 	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
 	s.True(ok)
 

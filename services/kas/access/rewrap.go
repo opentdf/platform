@@ -52,7 +52,7 @@ type customClaimsBody struct {
 
 type customClaimsHeader struct {
 	EntityID  string       `json:"sub"`
-	ClientID  string       `json:"clientId"`
+	ClientID  string       `json:"client_id"`
 	TDFClaims ClaimsObject `json:"tdf_claims"`
 }
 
@@ -274,7 +274,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}
 
 	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.requestBody.Policy)
-	access, err := canAccess(ctx, body.cl.EntityID, *policy, body.cl.TDFClaims)
+	// changed to ClientID from EntityID
+	access, err := canAccess(ctx, body.cl.ClientID, *policy, body.cl.TDFClaims)
 
 	if err != nil {
 		slog.WarnContext(ctx, "Could not perform access decision!", "err", err)

@@ -17,7 +17,7 @@ const (
 	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
 
-func canAccess(ctx context.Context, entityID string, policy Policy, claims ClaimsObject) (bool, error) {
+func canAccess(ctx context.Context, entityID string, policy Policy, _ ClaimsObject) (bool, error) {
 	dissemAccess, err := checkDissems(policy.Body.Dissem, entityID)
 	if err != nil {
 		return false, err

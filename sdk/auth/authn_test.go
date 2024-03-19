@@ -60,46 +60,48 @@ func (fake FakeAccessTokenSource) RefreshAccessToken() error {
 	return errors.New("can't refresh this one")
 }
 
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (s *AuthSuite) SetupTest() {
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		slog.Error("failed to generate RSA private key", slog.String("error", err.Error()))
-		return
+		panic(err)
 	}
 
 	pubKeyJWK, err := jwk.FromRaw(privKey.PublicKey)
 	if err != nil {
 		slog.Error("failed to create jwk.Key from RSA public key", slog.String("error", err.Error()))
-		return
+		panic(err)
 	}
-	pubKeyJWK.Set(jws.KeyIDKey, "test")
-	pubKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256)
+	must(pubKeyJWK.Set(jws.KeyIDKey, "test"))
+	must(pubKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
 
 	// Create a new set with rsa public key
 	set := jwk.NewSet()
-	if err := set.AddKey(pubKeyJWK); err != nil {
-		slog.Error("failed to add RSA public key to jwk.Set", slog.String("error", err.Error()))
-		return
-	}
+	must(set.AddKey(pubKeyJWK))
 
 	key, err := jwk.FromRaw(privKey)
-	if err != nil {
-		slog.Error("failed to create jwk.Key from RSA private key", slog.String("error", err.Error()))
-		return
-	}
-	key.Set(jws.KeyIDKey, "test")
+	must(err)
+	must(key.Set(jws.KeyIDKey, "test"))
 
 	s.key = key
 
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/.well-known/openid-configuration" {
-			w.Write([]byte(fmt.Sprintf(`{"jwks_uri": "%s/jwks"}`, s.server.URL)))
+			_, err := w.Write([]byte(fmt.Sprintf(`{"jwks_uri": "%s/jwks"}`, s.server.URL)))
+			if err != nil {
+				panic(err)
+			}
 			return
 		}
 		if r.URL.Path == "/jwks" {
 			json.NewEncoder(w).Encode(set)
-			return
 		}
 	}))
 

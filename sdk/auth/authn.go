@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	DPOPJWKHeader     = "Dpop-Jwk-Json"
-	DPOPJWKContextKey = AuthContextKey(DPOPJWKHeader)
+	dpopJWKHeader     = "Dpop-Jwk-Json"
+	dpopJWKContextKey = authContextKey(dpopJWKHeader)
 )
 
-type AuthContextKey string
+type authContextKey string
 
 var (
 	// Set of allowed gRPC endpoints that do not require authentication
@@ -111,8 +111,9 @@ func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		// make sure that we don't allow the client to tell us about a dpop key
-		r.Header.Set(DPOPJWKHeader, "")
+		// make sure that we don't allow the client to tell us about a dpop key, we need
+		// to set this
+		r.Header.Set(dpopJWKHeader, "")
 
 		// Verify the token
 		header := r.Header["Authorization"]
@@ -138,7 +139,7 @@ func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 		}
 
-		r.Header.Set(DPOPJWKHeader, string(keyJSON))
+		r.Header.Set(dpopJWKHeader, string(keyJSON))
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -178,7 +179,7 @@ func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
-	return handler(context.WithValue(ctx, AuthContextKey(DPOPJWKHeader), key), req)
+	return handler(context.WithValue(ctx, dpopJWKContextKey, key), req)
 }
 
 // checkToken is a helper function to verify the token.
@@ -247,6 +248,33 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	}
 
 	return validateDPoP(accessToken, tokenRaw, dpopInfo)
+}
+
+func GetJWKFromContext(ctx context.Context) jwk.Key {
+	key := ctx.Value(dpopJWKContextKey)
+	if key == nil {
+		return nil
+	}
+	if jwk, ok := key.(jwk.Key); ok {
+		return jwk
+	}
+
+	return nil
+}
+
+func GetJWKFromHTTPHeaders(headers http.Header) jwk.Key {
+	jwkHeader := headers[dpopJWKHeader]
+	if len(jwkHeader) == 0 {
+		return nil
+	}
+
+	jwk, err := jwk.ParseKey([]byte(jwkHeader[0]))
+	if err != nil {
+		slog.Error("error parsing JWK from HTTP header", "key", jwkHeader, "error", err)
+		return nil
+	}
+
+	return jwk
 }
 
 func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (*jwk.Key, error) {

@@ -433,18 +433,18 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	_, err = client.Info(context.Background(), &kas.InfoRequest{})
 	s.Require().NoError(err)
-	assert.NoError(s.T(), err)
-	assert.NotNil(s.T(), fakeServer.dpopKey)
+	s.NoError(err)
+	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
-	assert.True(s.T(), ok)
+	s.True(ok)
 	dpopPublic, err := dpopKey.PublicKey()
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
-	assert.True(s.T(), ok)
+	s.True(ok)
 
-	assert.Equal(s.T(), dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
-	assert.Equal(s.T(), dpopJWK.E(), dpopJWKFromRequest.E())
-	assert.Equal(s.T(), dpopJWK.N(), dpopJWKFromRequest.N())
+	s.Equal(dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
+	s.Equal(dpopJWK.E(), dpopJWKFromRequest.E())
+	s.Equal(dpopJWK.N(), dpopJWKFromRequest.N())
 }
 
 func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
@@ -467,9 +467,10 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	headers := make(chan []string, 1)
-	server := httptest.NewServer(s.auth.VerifyTokenHandler(http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
-		headers <- req.Header[DPOPJWKHeader]
+	jwkChan := make(chan jwk.Key, 1)
+	server := httptest.NewServer(s.auth.VerifyTokenHandler(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		jwkChan <- GetJWKFromHTTPHeaders(req.Header)
+		res.Write([]byte{})
 	})))
 	defer server.Close()
 
@@ -479,32 +480,30 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 		key:         dpopKey,
 		accessToken: string(signedTok),
 	})
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))
 	dpopTok, err := addingInterceptor.getDPoPToken("/the/path", "GET", string(signedTok))
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	req.Header.Set("DPoP", dpopTok)
 
 	client := http.Client{}
 	_, err = client.Do(req)
-	assert.NoError(s.T(), err)
-	dpopJWKHeaders := <-headers
+	s.NoError(err)
+	dpopKeyFromRequest := <-jwkChan
 
-	assert.Equal(s.T(), 1, len(dpopJWKHeaders))
+	s.NotNil(dpopKeyFromRequest)
 
-	dpopKeyFromRequest, err := jwk.ParseKey([]byte(dpopJWKHeaders[0]))
-	assert.NoError(s.T(), err)
 	dpopJWKFromRequest, ok := dpopKeyFromRequest.(jwk.RSAPublicKey)
 	assert.True(s.T(), ok)
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	dpopPublic, err := dpopKey.PublicKey()
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
-	assert.True(s.T(), ok)
+	s.True(ok)
 
-	assert.Equal(s.T(), dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
-	assert.Equal(s.T(), dpopJWK.E(), dpopJWKFromRequest.E())
-	assert.Equal(s.T(), dpopJWK.N(), dpopJWKFromRequest.N())
+	s.Equal(dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
+	s.Equal(dpopJWK.E(), dpopJWKFromRequest.E())
+	s.Equal(dpopJWK.N(), dpopJWKFromRequest.N())
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {

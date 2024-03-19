@@ -151,13 +151,7 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 		return nil, err400("bad request")
 	}
 
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok || len(md.Get(auth.DPOPJWKHeader)) == 0 {
-		slog.Warn("couldn't get metadata from incoming context. body signature cannot be verified")
-		return nil, err401("unable to get metadata signature")
-	}
-
-	dpopJWK := ctx.Value(auth.DPOPJWKContextKey)
+	dpopJWK := auth.GetJWKFromContext(ctx)
 	if dpopJWK != nil {
 		key, ok := dpopJWK.(jwk.Key)
 		if ok {

@@ -469,7 +469,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 
 	jwkChan := make(chan jwk.Key, 1)
 	server := httptest.NewServer(s.auth.VerifyTokenHandler(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		jwkChan <- GetJWKFromHTTPHeaders(req.Header)
+		jwkChan <- GetJWKFromContext(req.Context())
 		res.Write([]byte{})
 	})))
 	defer server.Close()

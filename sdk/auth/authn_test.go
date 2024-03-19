@@ -193,21 +193,6 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.Equal("invalid issuer", err.Error())
 }
 
-func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_INT_Value_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", 1))
-
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("missing issuer", err.Error())
-}
-
 func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))

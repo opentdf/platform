@@ -33,7 +33,7 @@ var ExamplesCmd = &cobra.Command{
 }
 
 func init() {
-	ExamplesCmd.PersistentFlags().StringP("platformEndpoint", "e", "localhost:9000", "Platform Endpoint")
+	ExamplesCmd.PersistentFlags().StringP("platformEndpoint", "e", "localhost:8080", "Platform Endpoint")
 }
 
 func Execute() {

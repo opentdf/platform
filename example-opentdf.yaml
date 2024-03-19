@@ -42,7 +42,7 @@ services:
 server:
   auth:
     enabled: false
-    audience: "http://localhost:9000"
+    audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     clients:
       - "opentdf"
@@ -84,7 +84,6 @@ server:
       #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
 
   grpc:
-    port: 9000
     reflectionEnabled: true # Default is false
   hsm:
     enabled: true
@@ -96,7 +95,6 @@ server:
         label: development-rsa-kas
       ec:
         label: development-ec-kas
-  http:
-    port: 8080
+  port: 8080
 opa:
   embedded: true # Only for local development

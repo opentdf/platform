@@ -29,7 +29,7 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -41,7 +41,7 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -92,7 +92,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -104,7 +104,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -154,7 +154,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -166,7 +166,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -216,7 +216,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -228,7 +228,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -278,7 +278,7 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -290,7 +290,7 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {},
 	}
 	accessPDP := NewPdp()
@@ -330,8 +330,8 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockDataAttrs := []AttributeInstance{}
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -394,8 +394,8 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockDataAttrs := []AttributeInstance{}
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID1: {
 			{
 				Authority: "https://dank.org",
@@ -461,7 +461,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -473,7 +473,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -527,7 +527,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -539,7 +539,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -594,7 +594,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -606,7 +606,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -656,7 +656,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -668,7 +668,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://dank.org",
@@ -727,7 +727,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -739,7 +739,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -791,7 +791,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -803,7 +803,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -860,14 +860,14 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
 			Value:     mockAttrDefinitions[0].Values[2].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -914,7 +914,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -926,7 +926,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -983,7 +983,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -995,7 +995,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[1].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1052,7 +1052,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -1064,7 +1064,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1116,14 +1116,14 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
 			Value:     "UberPrivileged",
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1176,7 +1176,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -1188,7 +1188,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",
@@ -1240,14 +1240,14 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
 			Value:     mockAttrDefinitions[0].Values[1].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.net",
@@ -1300,7 +1300,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 			},
 		},
 	}
-	mockDataAttrs := []attributeInstance{
+	mockDataAttrs := []AttributeInstance{
 		{
 			Authority: attrAuthorities[0],
 			Name:      mockAttrDefinitions[0].Name,
@@ -1312,7 +1312,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 			Value:     mockAttrDefinitions[0].Values[0].Value,
 		},
 	}
-	mockEntityAttrs := map[string][]attributeInstance{
+	mockEntityAttrs := map[string][]AttributeInstance{
 		entityID: {
 			{
 				Authority: "https://example.org",

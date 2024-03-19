@@ -51,10 +51,8 @@ Example:
 ```yaml
 server:
   grpc:
-    port: 9001 
     reflection: true
-  http:
-    port: 8081
+  port: 8081
   tls:
     enabled: true
     cert: /path/to/cert

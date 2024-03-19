@@ -8,25 +8,26 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 type FakeAccessTokenSource struct {
-	dPOPKey        jwk.Key
+	dpopKey        jwk.Key
 	asymDecryption crypto.AsymDecryption
 	accessToken    string
 }
 
-func (fake FakeAccessTokenSource) AccessToken() (AccessToken, error) {
-	return AccessToken(fake.accessToken), nil
+func (fake FakeAccessTokenSource) AccessToken() (auth.AccessToken, error) {
+	return auth.AccessToken(fake.accessToken), nil
 }
-func (fake FakeAccessTokenSource) AsymDecryption() crypto.AsymDecryption {
-	return fake.asymDecryption
+func (fake FakeAccessTokenSource) DecryptWithDPoPKey(encrypted []byte) ([]byte, error) {
+	return fake.asymDecryption.Decrypt(encrypted)
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
-	return tokenMaker(fake.dPOPKey)
+	return tokenMaker(fake.dpopKey)
 }
-func (fake FakeAccessTokenSource) DPOPPublicKeyPEM() string {
+func (fake FakeAccessTokenSource) DPoPPublicKeyPEM() string {
 	return "this is the PEM"
 }
 func (fake FakeAccessTokenSource) RefreshAccessToken() error {
@@ -47,7 +48,7 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	}
 
 	return FakeAccessTokenSource{
-		dPOPKey:        dpopJWK,
+		dpopKey:        dpopJWK,
 		asymDecryption: decryption,
 		accessToken:    "thisistheaccesstoken",
 	}
@@ -74,9 +75,9 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("didn't produce a signed request token")
 	}
 
-	pubKey, _ := tokenSource.dPOPKey.PublicKey()
+	pubKey, _ := tokenSource.dpopKey.PublicKey()
 
-	tok, err := jwt.ParseString(req.SignedRequestToken, jwt.WithKey(tokenSource.dPOPKey.Algorithm(), pubKey))
+	tok, err := jwt.ParseString(req.GetSignedRequestToken(), jwt.WithKey(tokenSource.dpopKey.Algorithm(), pubKey))
 	if err != nil {
 		t.Fatalf("couldn't parse signed token: %v", err)
 	}
@@ -93,10 +94,10 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("error unmarshaling request body: %v", err)
 	}
 
-	if requestBody["clientPublicKey"].(string) != "this is the PEM" {
+	if requestBody["clientPublicKey"] != "this is the PEM" {
 		t.Fatalf("incorrect public key included")
 	}
-	if requestBody["policy"].(string) != "a policy" {
+	if requestBody["policy"] != "a policy" {
 		t.Fatalf("incorrect policy")
 	}
 

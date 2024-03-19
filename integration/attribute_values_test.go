@@ -17,8 +17,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// TODO: test failure of create/update with invalid member id's [https://github.com/opentdf/platform/issues/105]
-
 var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {

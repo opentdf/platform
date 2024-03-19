@@ -77,7 +77,7 @@ func TestCreatingRequest(t *testing.T) {
 
 	pubKey, _ := tokenSource.dpopKey.PublicKey()
 
-	tok, err := jwt.ParseString(req.SignedRequestToken, jwt.WithKey(tokenSource.dpopKey.Algorithm(), pubKey))
+	tok, err := jwt.ParseString(req.GetSignedRequestToken(), jwt.WithKey(tokenSource.dpopKey.Algorithm(), pubKey))
 	if err != nil {
 		t.Fatalf("couldn't parse signed token: %v", err)
 	}

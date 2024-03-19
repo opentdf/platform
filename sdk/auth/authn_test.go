@@ -22,7 +22,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -36,7 +35,7 @@ type AuthSuite struct {
 	suite.Suite
 	server *httptest.Server
 	key    jwk.Key
-	auth   *authentication
+	auth   *Authentication
 }
 
 type FakeAccessTokenSource struct {
@@ -47,7 +46,7 @@ type FakeAccessTokenSource struct {
 func (fake FakeAccessTokenSource) AccessToken() (AccessToken, error) {
 	return AccessToken(fake.accessToken), nil
 }
-func (fake FakeAccessTokenSource) DecryptWithDPoPKey(encrypted []byte) ([]byte, error) {
+func (fake FakeAccessTokenSource) DecryptWithDPoPKey(_ []byte) ([]byte, error) {
 	return nil, nil
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
@@ -101,7 +100,10 @@ func (s *AuthSuite) SetupTest() {
 			return
 		}
 		if r.URL.Path == "/jwks" {
-			json.NewEncoder(w).Encode(set)
+			err := json.NewEncoder(w).Encode(set)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}))
 
@@ -111,7 +113,7 @@ func (s *AuthSuite) SetupTest() {
 		Clients:  []string{"client1", "client2", "client3"},
 	})
 
-	assert.Nil(s.T(), err)
+	s.Require().NoError(err)
 
 	s.auth = auth
 }
@@ -126,24 +128,24 @@ func TestAuthSuite(t *testing.T) {
 
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC))
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
 
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "\"exp\" not satisfied", err.Error())
+	s.Require().Error(err)
+	s.Equal("\"exp\" not satisfied", err.Error())
 }
 
 func (s *AuthSuite) Test_VerifyTokenHandler_When_Authorization_Header_Missing_Expect_Error() {
-	handler := s.auth.VerifyTokenHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	handler := s.auth.VerifyTokenHandler(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-	assert.Equal(s.T(), http.StatusUnauthorized, rec.Code)
-	assert.Equal(s.T(), "missing authorization header\n", rec.Body.String())
+	s.Equal(http.StatusUnauthorized, rec.Code)
+	s.Equal("missing authorization header\n", rec.Body.String())
 }
 
 func (s *AuthSuite) Test_VerifyTokenInterceptor_When_Authorization_Header_Missing_Expect_Error() {
@@ -152,165 +154,165 @@ func (s *AuthSuite) Test_VerifyTokenInterceptor_When_Authorization_Header_Missin
 	_, err := s.auth.VerifyTokenInterceptor(ctx, "test", &grpc.UnaryServerInfo{
 		FullMethod: "/test",
 	}, nil)
-	assert.NotNil(s.T(), err)
-	assert.ErrorIs(s.T(), err, status.Error(codes.Unauthenticated, "missing authorization header"))
+	s.Require().Error(err)
+	s.ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
 	err := s.auth.checkToken(context.Background(), []string{"BPOP "}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "not of type bearer or dpop", err.Error())
+	s.Require().Error(err)
+	s.Equal("not of type bearer or dpop", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "missing issuer", err.Error())
+	s.Require().Error(err)
+	s.Equal("missing issuer", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", "invalid")
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", "invalid"))
 
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "invalid issuer", err.Error())
+	s.Require().Error(err)
+	s.Equal("invalid issuer", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_INT_Value_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", 1)
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", 1))
 
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "missing issuer", err.Error())
+	s.Require().Error(err)
+	s.Equal("missing issuer", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "claim \"aud\" not found", err.Error())
+	s.Require().Error(err)
+	s.Equal("claim \"aud\" not found", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "invalid")
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "invalid"))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "\"aud\" not satisfied", err.Error())
+	s.Require().Error(err)
+	s.Equal("\"aud\" not satisfied", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_ClientID_Missing_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "client id required", err.Error())
+	s.Require().Error(err)
+	s.Equal("client id required", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_ClientID_Invalid_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("client_id", "invalid")
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("client_id", "invalid"))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "invalid client id", err.Error())
+	s.Require().Error(err)
+	s.Equal("invalid client id", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("cid", "invalid")
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "invalid"))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "invalid client id", err.Error())
+	s.Require().Error(err)
+	s.Equal("invalid client id", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_INT_Expect_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("cid", 1)
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", 1))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "invalid client id", err.Error())
+	s.Require().Error(err)
+	s.Equal("invalid client id", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Valid_Expect_No_Error() {
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("client_id", "client1")
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("client_id", "client1"))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	assert.Nil(s.T(), err)
+	s.Require().NoError(err)
 }
 
 type dpopTestCase struct {
@@ -328,43 +330,43 @@ type dpopTestCase struct {
 
 func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 	dpopKey, err := jwk.FromRaw(dpopRaw)
-	assert.NoError(s.T(), err)
-	assert.NoError(s.T(), dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(err)
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
 	tok := jwt.New()
-	tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tok.Set("iss", s.server.URL)
-	tok.Set("aud", "test")
-	tok.Set("cid", "client2")
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client2"))
 	dpopPublic, err := dpopKey.PublicKey()
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.EncodeToString(thumbprint)}
-	tok.Set("cnf", cnf)
+	s.Require().NoError(tok.Set("cnf", cnf))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
-	assert.NotNil(s.T(), signedTok)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
 
 	otherKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 	otherKey, err := jwk.FromRaw(otherKeyRaw)
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 	otherKeyPublic, err := otherKey.PublicKey()
-	assert.NoError(s.T(), err)
-	assert.NoError(s.T(), otherKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(err)
+	s.Require().NoError(otherKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
 	tokenWithNoCNF := jwt.New()
-	tokenWithNoCNF.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	tokenWithNoCNF.Set("iss", s.server.URL)
-	tokenWithNoCNF.Set("aud", "test")
-	tokenWithNoCNF.Set("cid", "client2")
+	s.Require().NoError(tokenWithNoCNF.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tokenWithNoCNF.Set("iss", s.server.URL))
+	s.Require().NoError(tokenWithNoCNF.Set("aud", "test"))
+	s.Require().NoError(tokenWithNoCNF.Set("cid", "client2"))
 	signedTokWithNoCNF, err := jwt.Sign(tokenWithNoCNF, jwt.WithKey(jwa.RS256, s.key))
-	assert.NotNil(s.T(), signedTokWithNoCNF)
-	assert.Nil(s.T(), err)
+	s.NotNil(signedTokWithNoCNF)
+	s.Require().NoError(err)
 
 	testCases := []dpopTestCase{
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POST", "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
@@ -382,38 +384,40 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 
 	for _, testCase := range testCases {
 		dpopToken := makeDPoPToken(s.T(), testCase)
-		dpopInfo := dpopInfo{
-			headers: []string{dpopToken},
-			path:    "/a/path",
-			method:  "POST",
-		}
+		err = s.auth.checkToken(
+			context.Background(),
+			[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
+			dpopInfo{
+				headers: []string{dpopToken},
+				path:    "/a/path",
+				method:  "POST",
+			},
+		)
 
-		err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))}, dpopInfo)
-
-		assert.Error(s.T(), err)
-		assert.Equal(s.T(), testCase.errorMesssage, err.Error())
+		s.Require().Error(err)
+		s.Equal(testCase.errorMesssage, err.Error())
 	}
 }
 
 func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
-	assert.NoError(s.T(), err)
-	assert.NoError(s.T(), dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	s.Require().NoError(err)
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
 	tok := jwt.New()
-	assert.NoError(s.T(), tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	assert.NoError(s.T(), tok.Set("iss", s.server.URL))
-	assert.NoError(s.T(), tok.Set("aud", "test"))
-	assert.NoError(s.T(), tok.Set("cid", "client2"))
-	assert.NoError(s.T(), err)
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client2"))
+	s.Require().NoError(err)
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.EncodeToString(thumbprint)}
-	tok.Set("cnf", cnf)
+	s.Require().NoError(tok.Set("cnf", cnf))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	buffer := 1024 * 1024
 	listener := bufconn.Listen(buffer)
@@ -423,7 +427,10 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	kas.RegisterAccessServiceServer(server, &FakeAccessServiceServer{})
 	go func() {
-		assert.NoError(s.T(), server.Serve(listener))
+		err := server.Serve(listener)
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	addingInterceptor := NewTokenAddingInterceptor(&FakeTokenSource{
@@ -438,11 +445,10 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	client := kas.NewAccessServiceClient(conn)
 
 	_, err = client.LegacyPublicKey(context.Background(), &kas.LegacyPublicKeyRequest{})
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
-
 	jtiBytes := make([]byte, JTILength)
 	_, err := rand.Read(jtiBytes)
 	if err != nil {

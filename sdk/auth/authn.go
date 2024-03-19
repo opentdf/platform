@@ -48,7 +48,7 @@ var (
 )
 
 // Authentication holds a jwks cache and information about the openid configuration
-type authentication struct {
+type Authentication struct {
 	// cache holds the jwks cache
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
@@ -56,8 +56,8 @@ type authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(cfg AuthNConfig) (*authentication, error) {
-	a := &authentication{}
+func NewAuthenticator(cfg AuthNConfig) (*Authentication, error) {
+	a := &Authentication{}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	ctx := context.Background()
@@ -96,7 +96,7 @@ type dpopInfo struct {
 }
 
 // verifyTokenHandler is a http handler that verifies the token
-func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
+func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
 			handler.ServeHTTP(w, r)
@@ -108,12 +108,11 @@ func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		dpopInfo := dpopInfo{
+		err := a.checkToken(r.Context(), header, dpopInfo{
 			headers: r.Header["Dpop"],
 			path:    r.URL.Path,
 			method:  r.Method,
-		}
-		err := a.checkToken(r.Context(), header, dpopInfo)
+		})
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
@@ -125,7 +124,7 @@ func (a authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 }
 
 // verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
 	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
 		return handler(ctx, req)
@@ -145,13 +144,15 @@ func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 
-	dpopInfo := dpopInfo{
-		headers: md["dpop"],
-		path:    info.FullMethod,
-		method:  "POST",
-	}
-
-	err := a.checkToken(ctx, header, dpopInfo)
+	err := a.checkToken(
+		ctx,
+		header,
+		dpopInfo{
+			headers: md["dpop"],
+			path:    info.FullMethod,
+			method:  "POST",
+		},
+	)
 	if err != nil {
 		slog.Warn("failed to validate token", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
@@ -161,7 +162,7 @@ func (a authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 }
 
 // checkToken is a helper function to verify the token.
-func (a authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) error {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) error {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -311,7 +312,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return fmt.Errorf("missing `iat` claim in the DPoP JWT")
 	}
 
-	if issuedAt.Add(time.Minute * 60).Before(time.Now()) {
+	if issuedAt.Add(time.Hour).Before(time.Now()) {
 		return fmt.Errorf("the DPoP JWT has expired")
 	}
 
@@ -349,7 +350,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 
 // claimsValidator is a custom validator to check extra claims in the token.
 // right now it only checks for client_id
-func (a authentication) claimsValidator(ctx context.Context, token jwt.Token) jwt.ValidationError {
+func (a Authentication) claimsValidator(_ context.Context, token jwt.Token) jwt.ValidationError {
 	var (
 		clientID string
 	)

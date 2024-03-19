@@ -37,7 +37,7 @@ func DiscoverOIDCConfiguration(ctx context.Context, issuer string) (*OIDCConfigu
 		return nil, err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to discover idp: %s", resp.Status)
 	}
 	defer resp.Body.Close()

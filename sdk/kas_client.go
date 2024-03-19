@@ -10,7 +10,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	kas "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/sdk/internal/crypto"
+	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,20 +21,8 @@ const (
 )
 
 type KASClient struct {
-	accessTokenSource AccessTokenSource
+	accessTokenSource auth.AccessTokenSource
 	dialOptions       []grpc.DialOption
-}
-
-type AccessToken string
-
-type AccessTokenSource interface {
-	AccessToken() (AccessToken, error)
-	// probably better to use `crypto.AsymDecryption` here than roll our own since this should be
-	// more closely linked to what happens in KAS in terms of crypto params
-	AsymDecryption() crypto.AsymDecryption
-	MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error)
-	DPOPPublicKeyPEM() string
-	RefreshAccessToken() error
 }
 
 // once the backend moves over we should use the same type that the golang backend uses here
@@ -94,7 +82,7 @@ func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 		}
 	}
 
-	key, err := k.accessTokenSource.AsymDecryption().Decrypt(response.EntityWrappedKey)
+	key, err := k.accessTokenSource.DecryptWithDPoPKey(response.GetEntityWrappedKey())
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}
@@ -122,7 +110,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	requestBody := rewrapRequestBody{
 		Policy:          policy,
 		KeyAccess:       keyAccess,
-		ClientPublicKey: k.accessTokenSource.DPOPPublicKeyPEM(),
+		ClientPublicKey: k.accessTokenSource.DPoPPublicKeyPEM(),
 	}
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {
@@ -142,7 +130,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	signedToken, err := k.accessTokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
 		signed, err := jwt.Sign(tok, jwt.WithKey(key.Algorithm(), key))
 		if err != nil {
-			return nil, fmt.Errorf("error signing DPOP token: %w", err)
+			return nil, fmt.Errorf("error signing DPoP token: %w", err)
 		}
 
 		return signed, nil

@@ -97,6 +97,7 @@ jobs:
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
+          echo "OPENTDF_SERVER_HSM_PIN=$(openssl rand -hex 4)" >> "$GITHUB_ENV"
       - run: .github/scripts/hsm-init-temporary-keys.sh
       - run: docker compose up -d --wait --wait-timeout 240
       - run: cp example-opentdf.yaml opentdf.yaml

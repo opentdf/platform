@@ -15,7 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type KeyCloakConfg struct {
+type KeyCloakConfig struct {
 	Url            string `json:"url"`
 	Realm          string `json:"realm"`
 	ClientId       string `json:"clientid"`
@@ -31,13 +31,14 @@ type KeyCloakConnector struct {
 
 func EntityResolution(ctx context.Context,
 	req *authorization.IdpPluginRequest, config *authorization.IdpConfig) (*authorization.IdpPluginResponse, error) {
-
+	slog.Info(fmt.Sprintf("req: %+v", req))
+	slog.Info(fmt.Sprintf("config: %+v", config))
 	jsonString, err := json.Marshal(config.Config.AsMap())
 	if err != nil {
 		slog.Error("Error marshalling keycloak config!", "error", err)
 		return nil, err
 	}
-	kcConfig := KeyCloakConfg{}
+	kcConfig := KeyCloakConfig{}
 	err = json.Unmarshal(jsonString, &kcConfig)
 	if err != nil {
 		return &authorization.IdpPluginResponse{},
@@ -73,13 +74,16 @@ func EntityResolution(ctx context.Context,
 				status.Error(codes.InvalidArgument, typeErr.Error())
 		}
 
-		users, userErr := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
-		if userErr != nil {
+		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
+		if err != nil {
+			slog.Error(err.Error())
 			return &authorization.IdpPluginResponse{},
 				status.Error(codes.Internal, services.ErrGetRetrievalFailed)
 		} else if len(users) == 1 {
 			user := users[0]
 			slog.Debug("User found", "user", *user.ID, "entity", ident.String())
+			slog.Debug("User", "details", fmt.Sprintf("%+v", user))
+			slog.Debug("User", "attributes", fmt.Sprintf("%+v", user.Attributes))
 			keycloakEntities = append(keycloakEntities, user)
 		} else {
 			slog.Error("No user found for", "entity", ident.String())
@@ -149,6 +153,7 @@ func EntityResolution(ctx context.Context,
 				OriginalId:      ident.GetId(),
 				AdditionalProps: jsonEntities},
 		)
+		slog.Debug("Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))
 	}
 
 	return &authorization.IdpPluginResponse{
@@ -174,7 +179,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable) (map[string]
 	return genericMap, nil
 }
 
-func getKCClient(kcConfig KeyCloakConfg, ctx context.Context) (*KeyCloakConnector, error) {
+func getKCClient(kcConfig KeyCloakConfig, ctx context.Context) (*KeyCloakConnector, error) {
 	var client gocloak.GoCloak
 	if kcConfig.LegacyKeycloak {
 		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
@@ -193,7 +198,7 @@ func getKCClient(kcConfig KeyCloakConfg, ctx context.Context) (*KeyCloakConnecto
 	slog.Debug(kcConfig.Realm)
 	token, err := client.LoginClient(ctx, kcConfig.ClientId, kcConfig.ClientSecret, kcConfig.Realm)
 	if err != nil {
-		slog.Warn("Error connecting to keycloak!", err)
+		slog.Error("Error connecting to keycloak!", err)
 		return nil, err
 	}
 	keycloakConnector := KeyCloakConnector{token: token, client: client}
@@ -201,7 +206,7 @@ func getKCClient(kcConfig KeyCloakConfg, ctx context.Context) (*KeyCloakConnecto
 	return &keycloakConnector, nil
 }
 
-func expandGroup(groupID string, kcConnector *KeyCloakConnector, kcConfig *KeyCloakConfg, ctx context.Context) ([]*gocloak.User, error) {
+func expandGroup(groupID string, kcConnector *KeyCloakConnector, kcConfig *KeyCloakConfig, ctx context.Context) ([]*gocloak.User, error) {
 	slog.Info("expandGroup invoked: ", groupID, kcConnector, kcConfig.Url, ctx)
 	var entityRepresentations []*gocloak.User
 

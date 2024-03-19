@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -81,39 +82,33 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
 	// get subject mappings
-	// smc := subjectmapping.NewSubjectMappingServiceClient(as.cc)
-	subjectSets := []*policy.SubjectSet{
-		{
-			ConditionGroups: []*policy.ConditionGroup{
-				{
-					Conditions: []*policy.Condition{
-						{
-							SubjectExternalField:  "Department",
-							Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-							SubjectExternalValues: []string{"Marketing", "Sales"},
-						},
-					},
-				},
-			},
+	request := attr.GetAttributeValuesByFqnsRequest{
+		Fqns: req.Scope.AttributeFqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
 		},
 	}
-
-	slog.InfoContext(ctx, "retrieved from subject mappings service", slog.Any("subjectSets: ", subjectSets))
+	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
+	if err != nil {
+		return nil, err
+	}
+	subjectMappings := avf.GetFqnAttributeValues()
+	slog.InfoContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	// OPA
-	in, err := entitlements.OpaInput(req.Entities[0], subjectSets[0])
+	in, err := entitlements.OpaInput(req.Entities[0], subjectMappings)
 	if err != nil {
 		return nil, err
 	}
 	slog.Debug("entitlements", "input", fmt.Sprintf("%+v", in))
-	if err := json.NewEncoder(os.Stdout).Encode(in); err != nil {
-		panic(err)
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+		_ = json.NewEncoder(os.Stdout).Encode(in)
 	}
 	options := sdk.DecisionOptions{
 		Now:                 time.Now(),
-		Path:                "opentdf/entitlements/entitlements",
+		Path:                "opentdf/entitlements/attributes", // change to /resolve_entities to get output of idp_plugin
 		Input:               in,
 		NDBCache:            nil,
-		StrictBuiltinErrors: false,
+		StrictBuiltinErrors: true,
 		Tracer:              nil,
 		Metrics:             metrics.New(),
 		Profiler:            profiler.New(),
@@ -124,35 +119,32 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	if err != nil {
 		return nil, err
 	}
-	slog.DebugContext(ctx, "opa", "result", fmt.Sprintf("%+v", decision.Result))
-	results, ok := decision.Result.(map[string]interface{})
+	slog.DebugContext(ctx, "opa", "result", fmt.Sprintf("%+v", decision.Result), "type", fmt.Sprintf("%T", decision.Result))
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+		_ = json.NewEncoder(os.Stdout).Encode(decision.Result)
+	}
+	results, ok := decision.Result.([]interface{})
 	if !ok {
 		slog.DebugContext(ctx, "not ok", "decision.Result", fmt.Sprintf("%+v", decision.Result))
 		return nil, err
 	}
 	rsp := &authorization.GetEntitlementsResponse{
-		Entitlements: make([]*authorization.EntityEntitlements, 0),
+		Entitlements: make([]*authorization.EntityEntitlements, len(req.Entities)),
 	}
+	slog.DebugContext(ctx, "opa results", "results", fmt.Sprintf("%+v", results))
+	saa := make([]string, len(results))
 	for k, v := range results {
-		va, okk := v.([]interface{})
+		str, okk := v.(string)
 		if !okk {
-			slog.DebugContext(ctx, "not ok", k, fmt.Sprintf("%+v", v))
-			continue
+			slog.DebugContext(ctx, "not ok", slog.String(strconv.Itoa(k), fmt.Sprintf("%+v", v)))
 		}
-		var saa []string
-		for _, sv := range va {
-			str, okkk := sv.(string)
-			if !okkk {
-				slog.DebugContext(ctx, "not ok", k, fmt.Sprintf("%+v", sv))
-			}
-			saa = append(saa, str)
-		}
-		slog.DebugContext(ctx, "opa", k, fmt.Sprintf("%+v", va))
-		rsp.Entitlements = append(rsp.Entitlements, &authorization.EntityEntitlements{
-			EntityId:    k,
-			AttributeId: saa,
-		})
-		slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
+		saa[k] = str
 	}
+	// FIXME use index
+	rsp.Entitlements[0] = &authorization.EntityEntitlements{
+		EntityId:    req.Entities[0].Id,
+		AttributeId: saa,
+	}
+	slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
 	return rsp, nil
 }

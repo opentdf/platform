@@ -53,8 +53,8 @@ const group_resp = `{
 	"name": "group1"
 }`
 
-func test_keycloakConfig(server *httptest.Server) idpplugin.KeyCloakConfg {
-	return idpplugin.KeyCloakConfg{
+func test_keycloakConfig(server *httptest.Server) idpplugin.KeyCloakConfig {
+	return idpplugin.KeyCloakConfig{
 		Url:            server.URL,
 		ClientId:       "c1",
 		ClientSecret:   "cs",

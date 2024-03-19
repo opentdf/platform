@@ -2,7 +2,7 @@ package access
 
 import (
 	"context"
-	"crypto/ecdsa"
+	"crypto/ecdh"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -116,7 +116,7 @@ func exportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {
 	return string(pubkeyPem), nil
 }
 
-func exportEcPublicKeyAsPemStr(pubkey *ecdsa.PublicKey) (string, error) {
+func exportEcPublicKeyAsPemStr(pubkey *ecdh.PublicKey) (string, error) {
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(pubkey)
 	if err != nil {
 		return "", errors.Join(ErrPublicKeyMarshal, err)

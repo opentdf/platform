@@ -17,6 +17,6 @@ type Provider struct {
 	kaspb.AccessServiceServer
 	URI          url.URL `json:"uri"`
 	AttributeSvc *url.URL
-	Session      *security.CryptoSession
+	Session      security.CryptoSession
 	OIDCVerifier *oidc.IDTokenVerifier
 }

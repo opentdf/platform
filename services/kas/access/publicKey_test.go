@@ -3,6 +3,7 @@ package access
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -57,10 +58,16 @@ func TestExportRsaPublicKeyAsPemStrFailure(t *testing.T) {
 func TestExportEcPublicKeyAsPemStrSuccess(t *testing.T) {
 	curve := elliptic.P256()
 	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
+	publicKey := &privateKey.PublicKey
+
+	ecdhPub, err := publicKey.ECDH()
+	if err != nil {
+		t.Errorf("Failed to generate get pub key from ecdsa private key: %v", err)
+	}
 	if err != nil {
 		t.Errorf("Failed to generate a private key: %v", err)
 	}
-	output, err := exportEcPublicKeyAsPemStr(&privateKey.PublicKey)
+	output, err := exportEcPublicKeyAsPemStr(ecdhPub)
 
 	if err != nil {
 		t.Errorf("Expected no error, but got: %v", err)
@@ -76,7 +83,7 @@ func TestExportEcPublicKeyAsPemStrSuccess(t *testing.T) {
 }
 
 func TestExportEcPublicKeyAsPemStrFailure(t *testing.T) {
-	output, err := exportEcPublicKeyAsPemStr(&ecdsa.PublicKey{})
+	output, err := exportEcPublicKeyAsPemStr(&ecdh.PublicKey{})
 
 	if output != "" {
 		t.Errorf("Expected empty string, but got: %v", output)
@@ -156,11 +163,19 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		Session:      security.HSMSession{},
+		Session:      security.CryptoSession{},
 		OIDCVerifier: nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
-		PublicKey:   &privateKey.PublicKey,
+
+	publicKey := &privateKey.PublicKey
+
+	ecdhPub, err := publicKey.ECDH()
+	if err != nil {
+		t.Errorf("Failed to generate get pub key from ecdsa private key: %v", err)
+	}
+
+	kas.Session.EC = &security.StandardECKeyPair{
+		PublicKey:   ecdhPub,
 		Certificate: &x509.Certificate{},
 	}
 
@@ -183,11 +198,19 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		Session:      security.HSMSession{},
+		Session:      security.CryptoSession{},
 		OIDCVerifier: nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
-		PublicKey: &privateKey.PublicKey,
+
+	publicKey := &privateKey.PublicKey
+
+	ecdhPub, err := publicKey.ECDH()
+	if err != nil {
+		t.Errorf("Failed to generate get pub key from ecdsa private key: %v", err)
+	}
+
+	kas.Session.EC = &security.StandardECKeyPair{
+		PublicKey: ecdhPub,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1"})
@@ -214,13 +237,21 @@ func TestPublicKeyHandlerV2(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		Session:      security.HSMSession{},
+		Session:      security.CryptoSession{},
 		OIDCVerifier: nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
-		PublicKey: &privateKey.PublicKey,
+
+	publicKey := &privateKey.PublicKey
+
+	ecdhPub, err := publicKey.ECDH()
+	if err != nil {
+		t.Errorf("Failed to generate get pub key from ecdsa private key: %v", err)
 	}
-	kas.Session.RSA = &security.RSAKeyPair{
+
+	kas.Session.EC = &security.StandardECKeyPair{
+		PublicKey: ecdhPub,
+	}
+	kas.Session.RSA = &security.StandardRSAKeyPair{
 		Certificate: &x509.Certificate{},
 		PublicKey:   &mockPublicKeyRsa,
 	}
@@ -244,11 +275,18 @@ func TestPublicKeyHandlerV2Failure(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		Session:      security.HSMSession{},
+		Session:      security.CryptoSession{},
 		OIDCVerifier: nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
-		PublicKey: &privateKey.PublicKey,
+	publicKey := &privateKey.PublicKey
+
+	ecdhPub, err := publicKey.ECDH()
+	if err != nil {
+		t.Errorf("Failed to generate get pub key from ecdsa private key: %v", err)
+	}
+
+	kas.Session.EC = &security.StandardECKeyPair{
+		PublicKey: ecdhPub,
 	}
 
 	_, err = kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
@@ -271,13 +309,20 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		Session:      security.HSMSession{},
+		Session:      security.CryptoSession{},
 		OIDCVerifier: nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
-		PublicKey: &privateKey.PublicKey,
+	publicKey := &privateKey.PublicKey
+
+	ecdhPub, err := publicKey.ECDH()
+	if err != nil {
+		t.Errorf("Failed to generate get pub key from ecdsa private key: %v", err)
 	}
-	kas.Session.RSA = &security.RSAKeyPair{
+
+	kas.Session.EC = &security.StandardECKeyPair{
+		PublicKey: ecdhPub,
+	}
+	kas.Session.RSA = &security.StandardRSAKeyPair{
 		Certificate: &x509.Certificate{},
 		PublicKey:   &mockPublicKeyRsa,
 	}
@@ -306,13 +351,20 @@ func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:          *kasURI,
-		Session:      security.HSMSession{},
+		Session:      security.CryptoSession{},
 		OIDCVerifier: nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
-		PublicKey: &privateKey.PublicKey,
+	publicKey := &privateKey.PublicKey
+
+	ecdhPub, err := publicKey.ECDH()
+	if err != nil {
+		t.Errorf("Failed to generate get pub key from ecdsa private key: %v", err)
 	}
-	kas.Session.RSA = &security.RSAKeyPair{
+
+	kas.Session.EC = &security.StandardECKeyPair{
+		PublicKey: ecdhPub,
+	}
+	kas.Session.RSA = &security.StandardRSAKeyPair{
 		Certificate: &x509.Certificate{},
 		PublicKey:   &mockPublicKeyRsa,
 	}

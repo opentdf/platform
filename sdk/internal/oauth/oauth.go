@@ -163,7 +163,6 @@ func processResponse(resp *http.Response) (*Token, error) {
 	}
 
 	var tokenResponse *tokenResponse
-	fmt.Printf("here is the stuff %s", string(respBytes))
 	if err := json.Unmarshal(respBytes, &tokenResponse); err != nil {
 		return nil, fmt.Errorf("error unmarshaling token from response: %w", err)
 	}

@@ -151,29 +151,26 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 
 	dpopJWK := auth.GetJWKFromContext(ctx)
-	if dpopJWK != nil {
-		var verificationKey interface{}
-		err = dpopJWK.Raw(&verificationKey)
-		if err != nil {
-			slog.WarnContext(ctx, "error getting underlying key to verify signature", "key", dpopJWK, "err", err)
-			return nil, err503("error parsing DPoP key")
-		}
-		var bodyClaims customClaimsBody
-		err = requestToken.Claims(verificationKey, &bodyClaims)
-		if err != nil {
-			slog.WarnContext(ctx, "invalid signature on body claims", "err", err)
-			return nil, err403("signature on body was invalid")
-		}
-	} else {
-		slog.Warn("did not verify DPoP signature on signed request body. key was not passed in context")
+
+	if dpopJWK == nil {
+		slog.ErrorContext(ctx,
+			"if no DPoP token is passed then requests should never make it to rewrap, the authn middleware is configured incorrectly")
+		return nil, err503("unable to verify body signature")
 	}
 
-	var bodyClaims customClaimsBody
-	err = requestToken.UnsafeClaimsWithoutVerification(&bodyClaims)
+	var verificationKey interface{}
+	err = dpopJWK.Raw(&verificationKey)
 	if err != nil {
-		slog.WarnContext(ctx, "unable decode request", "err", err)
-		return nil, err400("bad request")
+		slog.WarnContext(ctx, "error getting underlying key to verify signature", "key", dpopJWK, "err", err)
+		return nil, err503("error parsing DPoP key")
 	}
+	var bodyClaims customClaimsBody
+	err = requestToken.Claims(verificationKey, &bodyClaims)
+	if err != nil {
+		slog.WarnContext(ctx, "invalid signature on body claims", "err", err)
+		return nil, err403("signature on body was invalid")
+	}
+
 	slog.DebugContext(ctx, "okay now we can check", "bodyClaims.RequestBody", bodyClaims.RequestBody)
 	decoder := json.NewDecoder(strings.NewReader(bodyClaims.RequestBody))
 	var requestBody RequestBody

@@ -347,7 +347,7 @@ func mockVerifier() *oidc.IDTokenVerifier {
 	)
 }
 
-func makeRewrapBody(t *testing.T, policy []byte) (string, error) {
+func makeRewrapBody(_ *testing.T, policy []byte) (string, error) {
 	mockBody := RequestBody{
 		KeyAccess:       keyAccessWrappedRaw(),
 		Policy:          string(policy),
@@ -393,20 +393,26 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		body    string
 		bearish bool
 		polite  bool
+		addDPoP bool
 	}{
-		{"good", jwtStandard(), srt, true, true},
-		{"bad bearer wrong issuer", jwtWrongIssuer(), srt, false, true},
-		{"bad bearer signature", jwtWrongKey(), srt, false, true},
-		{"different policy", jwtStandard(), badPolicySrt, true, false},
+		{"good", jwtStandard(), srt, true, true, true},
+		{"bad bearer wrong issuer", jwtWrongIssuer(), srt, false, true, true},
+		{"bad bearer signature", jwtWrongKey(), srt, false, true, true},
+		{"different policy", jwtStandard(), badPolicySrt, true, false, true},
+		{"no dpop token included", jwtStandard(), srt, false, true, false},
 	}
 	// The execution loop
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key, err := jwk.FromRaw(entityPublicKey())
-			if err != nil {
-				t.Fatalf("couldn't get JWK from key")
+			ctx := context.Background()
+			if tt.addDPoP {
+				key, err := jwk.FromRaw(entityPublicKey())
+				if err != nil {
+					t.Fatalf("couldn't get JWK from key")
+				}
+				ctx = auth.ContextWithJWK(ctx, key)
 			}
-			ctx := auth.ContextWithJWK(context.Background(), key)
+
 			verified, err := p.verifyBearerAndParseRequestBody(
 				ctx,
 				&kaspb.RewrapRequest{

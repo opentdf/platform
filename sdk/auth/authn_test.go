@@ -22,7 +22,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -468,7 +467,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.Require().NoError(err)
 
 	jwkChan := make(chan jwk.Key, 1)
-	server := httptest.NewServer(s.auth.VerifyTokenHandler(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+	server := httptest.NewServer(s.auth.VerifyTokenHandler(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		jwkChan <- GetJWKFromContext(req.Context())
 	})))
 	defer server.Close()
@@ -493,7 +492,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.NotNil(dpopKeyFromRequest)
 
 	dpopJWKFromRequest, ok := dpopKeyFromRequest.(jwk.RSAPublicKey)
-	assert.True(s.T(), ok)
+	s.True(ok)
 	s.Require().NoError(err)
 	dpopPublic, err := dpopKey.PublicKey()
 	s.Require().NoError(err)

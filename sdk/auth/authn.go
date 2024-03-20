@@ -116,7 +116,7 @@ func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		dpopKey, err := a.checkToken(r.Context(), header, dpopInfo{
+		newContext, err := a.checkToken(r.Context(), header, dpopInfo{
 			headers: r.Header["Dpop"],
 			path:    r.URL.Path,
 			method:  r.Method,
@@ -127,8 +127,7 @@ func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		newRequest := r.WithContext(withJWK(r.Context(), *dpopKey))
-		handler.ServeHTTP(w, newRequest)
+		handler.ServeHTTP(w, r.WithContext(newContext))
 	})
 }
 
@@ -153,7 +152,7 @@ func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 
-	key, err := a.checkToken(
+	newContext, err := a.checkToken(
 		ctx,
 		header,
 		dpopInfo{
@@ -167,11 +166,11 @@ func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
-	return handler(withJWK(ctx, *key), req)
+	return handler(newContext, req)
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (*jwk.Key, error) {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (context.Context, error) {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -230,12 +229,17 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 
 	if tokenType == "Bearer" {
 		if _, ok := accessToken.Get("cnf"); !ok {
-			return nil, nil
+			return ctx, nil
 		}
 		slog.Info("presented token with `cnf` claim as a bearer token. validating as DPoP")
 	}
 
-	return validateDPoP(accessToken, tokenRaw, dpopInfo)
+	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return withJWK(ctx, *key), nil
 }
 
 func withJWK(ctx context.Context, key jwk.Key) context.Context {

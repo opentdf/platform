@@ -159,7 +159,7 @@ func destroyPKCS11Context(ctx *pkcs11.Ctx) {
 
 func newHSMSession(hctx *pkcs11.Ctx, slot uint) (*HSMSession, error) {
 	slog.Info("pkcs11 OpenSession", "slot", slot)
-	session, err := hctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
+	session, err := hctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION)
 	if err != nil {
 		slots, err := hctx.GetSlotList(true)
 		if err != nil {

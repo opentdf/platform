@@ -28,6 +28,7 @@ opentdf.yaml
 .idea/
 
 # Generated files
+tmp-gen/
 /examples/examples
 /go.work.sum
 /go.work

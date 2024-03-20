@@ -33,11 +33,13 @@ var (
 	allowedGRPCEndpoints = [...]string{
 		"/grpc.health.v1.Health/Check",
 		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
+		"/kas.AccessService/PublicKey",
 	}
 	// Set of allowed HTTP endpoints that do not require authentication
 	allowedHTTPEndpoints = [...]string{
 		"/healthz",
 		"/.well-known/opentdf-configuration",
+		"/kas/v2/kas_public_key",
 	}
 	// only asymmetric algorithms and no 'none'
 	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{

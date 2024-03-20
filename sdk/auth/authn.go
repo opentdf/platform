@@ -293,8 +293,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		slog.Error("error computing thumbprint for key", err)
 		return fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
 	}
-
-	if base64.URLEncoding.EncodeToString(thumbprint) != jkt {
+	if base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint) != jkt {
 		return fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token")
 	}
 
@@ -329,7 +328,6 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 	if !ok {
 		return fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
-
 	if htu != dpopInfo.path {
 		return fmt.Errorf("incorrect `htu` claim in DPoP JWT")
 	}
@@ -341,7 +339,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 
 	h := sha256.New()
 	h.Write([]byte(acessTokenRaw))
-	if ath != base64.URLEncoding.EncodeToString(h.Sum(nil)) {
+	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
 

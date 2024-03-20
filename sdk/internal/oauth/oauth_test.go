@@ -207,7 +207,6 @@ func TestClientSecretWithNonce(t *testing.T) {
 }
 
 func TestTokenExpiration_RespectsLeeway(t *testing.T) {
-
 	if !(Token{expiry: time.Now().Add(-tokenExpirationBuffer - 10*time.Second)}).Expired() {
 		t.Fatalf("token should be expired")
 	}

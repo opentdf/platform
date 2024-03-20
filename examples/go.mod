@@ -1,11 +1,10 @@
 module github.com/opentdf/platform/examples
 
-go 1.22
+go 1.21.8
 
 toolchain go1.22.1
 
 require (
-	github.com/opentdf/platform/config v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.8.0
@@ -14,7 +13,7 @@ require (
 )
 
 replace (
-	github.com/opentdf/platform/config => ../config
+	github.com/opentdf/platform => ../
 	github.com/opentdf/platform/protocol/go => ../protocol/go
 	github.com/opentdf/platform/sdk => ../sdk
 )

@@ -20,7 +20,7 @@
 
 #### Required
 
-- Go (*see go.mod for specific version*)
+- Go (_see go.mod for specific version_)
 - Container runtime
   - [Docker](https://www.docker.com/get-started/)
   - [Podman](https://podman.io/docs/installation)
@@ -36,6 +36,7 @@
   - install with `go install github.com/bufbuild/buf/cmd/buf`
 - [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
   - install with `go install github.com/fullstorydev/grpcurl/cmd/grpcurl`
+- [softHSM](https://github.com/opendnssec/SoftHSMv2) is used to emulate hardware security (aka `PKCS #11`)
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
@@ -51,9 +52,10 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 2. Create a OpenTDF config file `cp example-opentdf.yaml opentdf.yaml`
    1. The example file is a good starting point, but you may need to modify it to match your environment.
 3. Provision keycloak `go run . provision keycloak`
-4. Run the server `go run . start`
-   1. *Alt* use the hot-reload development environment `air`
-5. The server is now running on `localhost:8080` (or the port specified in the config file)
+4. Configure KAS keys and your HSM with `.github/scripts/hsm-init-temporary-keys.sh`
+5. Run the server `go run . start`
+   1. _Alt_ use the hot-reload development environment `air`
+6. The server is now running on `localhost:8080` (or the port specified in the config file)
 
 Note: support was added to provision a set of fixture data into the database.
 Run `go run . provision fixtures -h` for more information.
@@ -162,20 +164,20 @@ export OPENTDF_SERVER_HSM_MODULEPATH=/lib/softhsm/libsofthsm2.so
 export OPENTDF_SERVER_HSM_KEYS_EC_LABEL=kas-ec
 export OPENTDF_SERVER_HSM_KEYS_RSA_LABEL=kas-rsa
 
-pkcs11-tool --module $PKCS11_MODULE_PATH \
+pkcs11-tool --module $OPENTDF_SERVER_HSM_MODULEPATH \
             --login --pin ${OPENTDF_SERVER_HSM_PIN} \
             --write-object kas-private.pem --type privkey \
             --label kas-rsa
-pkcs11-tool --module $PKCS11_MODULE_PATH \
+pkcs11-tool --module $OPENTDF_SERVER_HSM_MODULEPATH \
             --login --pin ${OPENTDF_SERVER_HSM_PIN} \
             --write-object kas-cert.pem --type cert \
             --label kas-rsa
 
-pkcs11-tool --module $PKCS11_MODULE_PATH \
+pkcs11-tool --module $OPENTDF_SERVER_HSM_MODULEPATH \
             --login --pin ${OPENTDF_SERVER_HSM_PIN} \
             --write-object ec-private.pem --type privkey \
             --label kas-ec
-pkcs11-tool --module $PKCS11_MODULE_PATH \
+pkcs11-tool --module $OPENTDF_SERVER_HSM_MODULEPATH \
             --login --pin ${OPENTDF_SERVER_HSM_PIN} \
             --write-object ec-cert.pem --type cert \
             --label kas-ec

@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type AuthSuite struct {
@@ -39,25 +40,52 @@ type AuthSuite struct {
 	auth   *Authentication
 }
 
-type FakeAccessTokenSource struct {
-	dpopKey     jwk.Key
+type FakeAccessServiceServer struct {
+	accessToken []string
+	dpopToken   []string
+	kas.UnimplementedAccessServiceServer
+}
+
+func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		f.accessToken = md.Get("authorization")
+		f.dpopToken = md.Get("dpop")
+	}
+
+	return &kas.InfoResponse{}, nil
+}
+func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
+	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
+}
+func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
+	return &wrapperspb.StringValue{}, nil
+}
+func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
+	return &kas.RewrapResponse{}, nil
+}
+
+type FakeTokenSource struct {
+	key         jwk.Key
 	accessToken string
 }
 
-func (fake FakeAccessTokenSource) AccessToken() (sdkauth.AccessToken, error) {
-	return sdkauth.AccessToken(fake.accessToken), nil
+func (fts *FakeTokenSource) AccessToken() (sdkauth.AccessToken, error) {
+	return sdkauth.AccessToken(fts.accessToken), nil
 }
-func (fake FakeAccessTokenSource) DecryptWithDPoPKey(_ []byte) ([]byte, error) {
+func (*FakeTokenSource) DecryptWithDPoPKey([]byte) ([]byte, error) {
 	return nil, nil
 }
-func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
-	return tokenMaker(fake.dpopKey)
+func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
+	if fts.key == nil {
+		return nil, errors.New("no such key")
+	}
+	return f(fts.key)
 }
-func (fake FakeAccessTokenSource) DPoPPublicKeyPEM() string {
-	return "this is the PEM"
+func (*FakeTokenSource) DPoPPublicKeyPEM() string {
+	return ""
 }
-func (fake FakeAccessTokenSource) RefreshAccessToken() error {
-	return errors.New("can't refresh this one")
+func (*FakeTokenSource) RefreshAccessToken() error {
+	return nil
 }
 
 func must(err error) {
@@ -419,7 +447,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 		}
 	}()
 
-	addingInterceptor := sdkauthNewTokenAddingInterceptor(&FakeTokenSource{
+	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
 	})

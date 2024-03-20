@@ -4,7 +4,7 @@
 
 ## Policy
 
-services/policy/*@opentdf/opentdf-policy
+services/policy/* @opentdf/opentdf-policy
 
 ## SDK
 

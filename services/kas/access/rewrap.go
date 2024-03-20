@@ -23,7 +23,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/internal/security"
 	"github.com/opentdf/platform/sdk/auth"
 
@@ -153,22 +152,17 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 
 	dpopJWK := auth.GetJWKFromContext(ctx)
 	if dpopJWK != nil {
-		key, ok := dpopJWK.(jwk.Key)
-		if ok {
-			var verificationKey interface{}
-			err = key.Raw(verificationKey)
-			if err != nil {
-				slog.WarnContext(ctx, "error getting underlying key to verify signature", "key", key, "err", err)
-				return nil, err503("error parsing DPoP key")
-			}
-			var bodyClaims customClaimsBody
-			err = requestToken.Claims(verificationKey, &bodyClaims)
-			if err != nil {
-				slog.WarnContext(ctx, "invalid signature on body claims", "err", err)
-				return nil, err403("signature on body was invalid")
-			}
-		} else {
-			slog.Warn("did not verify DPoP signature on signed request body. could not get key from context")
+		var verificationKey interface{}
+		err = dpopJWK.Raw(&verificationKey)
+		if err != nil {
+			slog.WarnContext(ctx, "error getting underlying key to verify signature", "key", dpopJWK, "err", err)
+			return nil, err503("error parsing DPoP key")
+		}
+		var bodyClaims customClaimsBody
+		err = requestToken.Claims(verificationKey, &bodyClaims)
+		if err != nil {
+			slog.WarnContext(ctx, "invalid signature on body claims", "err", err)
+			return nil, err403("signature on body was invalid")
 		}
 	} else {
 		slog.Warn("did not verify DPoP signature on signed request body. key was not passed in context")

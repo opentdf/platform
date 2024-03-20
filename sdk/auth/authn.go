@@ -239,10 +239,10 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		return nil, err
 	}
 
-	return withJWK(ctx, *key), nil
+	return ContextWithJWK(ctx, *key), nil
 }
 
-func withJWK(ctx context.Context, key jwk.Key) context.Context {
+func ContextWithJWK(ctx context.Context, key jwk.Key) context.Context {
 	return context.WithValue(ctx, dpopJWKContextKey, key)
 }
 

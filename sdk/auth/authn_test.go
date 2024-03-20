@@ -432,7 +432,6 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	_, err = client.Info(context.Background(), &kas.InfoRequest{})
 	s.Require().NoError(err)
-	s.Require().NoError(err)
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
 	s.True(ok)

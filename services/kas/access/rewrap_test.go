@@ -8,11 +8,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"github.com/opentdf/platform/internal/security"
 	"log/slog"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/opentdf/platform/internal/security"
+	"github.com/opentdf/platform/sdk/auth"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
@@ -399,8 +402,13 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	// The execution loop
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			key, err := jwk.FromRaw(entityPublicKey())
+			if err != nil {
+				t.Fatalf("couldn't get JWK from key")
+			}
+			ctx := auth.ContextWithJWK(context.Background(), key)
 			verified, err := p.verifyBearerAndParseRequestBody(
-				context.Background(),
+				ctx,
 				&kaspb.RewrapRequest{
 					Bearer:             tt.tok,
 					SignedRequestToken: tt.body,

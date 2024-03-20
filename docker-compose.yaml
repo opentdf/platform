@@ -1,7 +1,7 @@
 services:
   keycloak:
-    #image: ghcr.io/opentdf/keycloak:21.1.2-1.4.2
-    image: quay.io/keycloak/keycloak:latest
+    image: ghcr.io/opentdf/keycloak:sha-a0f4eb7
+    # image: quay.io/keycloak/keycloak:latest
     restart: always
     command: ["start-dev"]
     environment:

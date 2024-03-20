@@ -422,7 +422,7 @@ kas_registry:
   data:
     key_access_server_1:
       id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
-      uri: kas.example.com
+      uri: https://kas.example.com
       public_key:
         remote: https://kas.example.com/public_key
     key_access_server_2:

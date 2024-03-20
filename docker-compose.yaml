@@ -1,6 +1,6 @@
 services:
   keycloak:
-    image: ghcr.io/opentdf/keycloak:sha-a0f4eb7
+    image: ghcr.io/opentdf/keycloak:sha-a0f4eb7 # Includes https://github.com/opentdf/backend/pull/611
     # image: quay.io/keycloak/keycloak:latest
     restart: always
     command: ["start-dev"]

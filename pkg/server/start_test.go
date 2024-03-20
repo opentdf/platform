@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/internal/auth"
 	"github.com/opentdf/platform/internal/config"
+	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/server"
 	"github.com/opentdf/platform/pkg/serviceregistry"
-	"github.com/opentdf/platform/sdk/auth"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
@@ -48,12 +49,19 @@ func ServiceRegistrationTest() serviceregistry.Registration {
 
 func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	// Create new opentdf server
+	d, _ := db.NewClient(db.Config{})
 	s, err := server.NewOpenTDFServer(server.Config{
+		WellKnownConfigRegister: func(namespace string, config any) error {
+			return nil
+		},
 		Auth: auth.Config{
 			Enabled: false,
+			AuthNConfig: auth.AuthNConfig{
+				Issuer: "test",
+			},
 		},
 		Port: 43481,
-	})
+	}, d)
 	assert.NoError(t, err)
 
 	// Register Test Service

@@ -198,57 +198,57 @@ func keycloakLogin(connectParams *keycloakConnectParams) (*gocloak.GoCloak, *goc
 	return client, token, err
 }
 
-func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client, roles []gocloak.Role) (*gocloak.Client, error) {
-	var c *gocloak.Client
+func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client, roles []gocloak.Role) (string, error) {
+	var longClientId string
 	client, token, err := keycloakLogin(connectParams)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	clientId := *newClient.ClientID
 
-	if longClientId, err := client.CreateClient(context.Background(), token.AccessToken, connectParams.Realm, newClient); err != nil {
+	if longClientId, err = client.CreateClient(context.Background(), token.AccessToken, connectParams.Realm, newClient); err != nil {
 		kcErr := err.(*gocloak.APIError)
 		if kcErr.Code == 409 {
 			slog.Warn(fmt.Sprintf("⏭️  client %s already exists", clientId))
 			clients, err := client.GetClients(context.Background(), token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: newClient.ClientID})
 			if err != nil {
-				return nil, err
+				return "", err
 			}
 			if len(clients) == 1 {
-				c = clients[0]
+				longClientId = *clients[0].ID
 			} else {
 				err = fmt.Errorf("error, %s client not found", clientId)
-				return nil, err
+				return "", err
 			}
 		} else {
 			slog.Error(fmt.Sprintf("Error creating client %s : %s", clientId, err))
-			return nil, err
+			return "", err
 		}
 	} else {
 		slog.Info(fmt.Sprintf("✅ Client created: client id = %s, client identifier=%s", clientId, longClientId))
 	}
 
 	// Get service account user
-	user, err := client.GetClientServiceAccount(context.Background(), token.AccessToken, connectParams.Realm, *c.ID)
+	user, err := client.GetClientServiceAccount(context.Background(), token.AccessToken, connectParams.Realm, longClientId)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientId, err))
-		return nil, err
+		return "", err
 	}
 	slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientId, *user.Username))
 
-	slog.Info(fmt.Sprintf("Adding roles to client %s via service account %s", *c.Name, *user.Username))
+	slog.Info(fmt.Sprintf("Adding roles to client %s via service account %s", longClientId, *user.Username))
 	if err := client.AddRealmRoleToUser(context.Background(), token.AccessToken, connectParams.Realm, *user.ID, roles); err != nil {
 		for _, role := range roles {
 			slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
 		}
-		return nil, err
+		return "", err
 	} else {
 		for _, role := range roles {
-			slog.Info(fmt.Sprintf("✅ Role %s added to client %s", *role.Name, *c.ID))
+			slog.Info(fmt.Sprintf("✅ Role %s added to client %s", *role.Name, longClientId))
 		}
 	}
 
-	return c, nil
+	return longClientId, nil
 }
 
 func getIdOfClient(client *gocloak.GoCloak, token *gocloak.JWT, connectParams *keycloakConnectParams, clientName *string) (*string, error) {

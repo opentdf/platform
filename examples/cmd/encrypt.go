@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
+	"github.com/opentdf/platform/config"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
@@ -27,6 +29,9 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	plainText := args[0]
 	strReader := strings.NewReader(plainText)
+	conf, err := config.LoadConfig("opentdf")
+	tokenEndpoint := conf.Server
+	fmt.Print(tokenEndpoint)
 
 	// Create new offline client
 

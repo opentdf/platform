@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strings"
 
+	"github.com/opentdf/platform/config"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +27,9 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	tdfFile := args[0]
-
+	conf, err := config.LoadConfig("opentdf")
+	tokenEndpoint := conf.Server.Auth.Issuer
+	fmt.Print(tokenEndpoint)
 	// Create new client
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
 		sdk.WithInsecureConn(),

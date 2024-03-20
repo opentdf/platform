@@ -6,8 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opentdf/platform/internal/config"
-
+	"github.com/opentdf/platform/config"
 	"github.com/opentdf/platform/internal/db"
 	kasdb "github.com/opentdf/platform/services/kasregistry/db"
 	policydb "github.com/opentdf/platform/services/policy/db"

@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/opentdf/platform/internal/config"
+	"github.com/opentdf/platform/config"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/internal/logger"
 	"github.com/opentdf/platform/internal/opa"

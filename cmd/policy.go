@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/internal/config"
+	"github.com/opentdf/platform/config"
 	"github.com/opentdf/platform/internal/db"
 	policydb "github.com/opentdf/platform/services/policy/db"
 	"github.com/spf13/cobra"

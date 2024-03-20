@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/config"
 	"github.com/opentdf/platform/pkg/serviceregistry"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/access"
@@ -16,8 +17,10 @@ import (
 )
 
 func loadIdentityProvider() *oidc.IDTokenVerifier {
-	oidcIssuerURL := "http://localhost:8888/auth/realms/opentdf"
-	discoveryBaseURL := "http://localhost:8888/auth/realms/opentdf"
+	conf, err := config.LoadConfig("opentdf")
+
+	oidcIssuerURL := conf.Server.Auth.Issuer
+	discoveryBaseURL := conf.Server.Auth.Issuer
 	ctx := context.Background()
 	if discoveryBaseURL != "" {
 		ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)

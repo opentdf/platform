@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/internal/config"
+	"github.com/opentdf/platform/config"
 	"github.com/opentdf/platform/internal/server"
 	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/opentdf/platform/sdk/auth"

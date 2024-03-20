@@ -106,7 +106,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 
 	h := sha256.New()
 	h.Write([]byte("thisisafakeaccesstoken"))
-	expectedHash := base64.URLEncoding.EncodeToString(h.Sum(nil))
+	expectedHash := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
 
 	if ath, _ := parsedToken.Get("ath"); ath != expectedHash {
 		t.Fatalf("got invalid ath claim in token: %v", ath)

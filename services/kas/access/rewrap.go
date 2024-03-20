@@ -19,6 +19,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"io"
 	"log/slog"
 	"strings"
@@ -51,7 +52,7 @@ type customClaimsBody struct {
 }
 
 type customClaimsHeader struct {
-	EntityID  string       `json:"sub"`
+	Subject   string       `json:"sub"`
 	ClientID  string       `json:"client_id"`
 	TDFClaims ClaimsObject `json:"tdf_claims"`
 }
@@ -126,6 +127,7 @@ type verifiedRequest struct {
 	publicKey   crypto.PublicKey
 	requestBody *RequestBody
 	cl          *customClaimsHeader
+	bearerToken string
 }
 
 func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kaspb.RewrapRequest) (*verifiedRequest, error) {
@@ -188,9 +190,9 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 	switch clientPublicKey.(type) {
 	case *rsa.PublicKey:
-		return &verifiedRequest{clientPublicKey, &requestBody, &cl}, nil
+		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.Bearer}, nil
 	case *ecdsa.PublicKey:
-		return &verifiedRequest{clientPublicKey, &requestBody, &cl}, nil
+		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.Bearer}, nil
 	}
 	slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
 	return nil, err400("clientPublicKey unsupported type")
@@ -274,8 +276,20 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}
 
 	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.requestBody.Policy)
-	// changed to ClientID from EntityID
-	access, err := canAccess(ctx, body.cl.ClientID, *policy, body.cl.TDFClaims)
+	// changed to ClientID from Subject
+	ent := authorization.Entity{
+		EntityType: &authorization.Entity_Jwt{
+			Jwt: body.bearerToken,
+		},
+	}
+	if body.cl.ClientID != "" {
+		ent = authorization.Entity{
+			EntityType: &authorization.Entity_ClientId{
+				ClientId: body.cl.ClientID,
+			},
+		}
+	}
+	access, err := canAccess(ctx, ent, *policy, body.cl.TDFClaims)
 
 	if err != nil {
 		slog.WarnContext(ctx, "Could not perform access decision!", "err", err)

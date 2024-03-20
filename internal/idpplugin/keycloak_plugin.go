@@ -31,9 +31,9 @@ type KeyCloakConnector struct {
 
 func EntityResolution(ctx context.Context,
 	req *authorization.IdpPluginRequest, config *authorization.IdpConfig) (*authorization.IdpPluginResponse, error) {
-	slog.Info(fmt.Sprintf("req: %+v", req))
-	slog.Info(fmt.Sprintf("config: %+v", config))
-	jsonString, err := json.Marshal(config.Config.AsMap())
+	slog.InfoContext(ctx, "EntityResolution", "req", fmt.Sprintf("%+v", req))
+	slog.InfoContext(ctx, "EntityResolution", "config", fmt.Sprintf("%+v", config))
+	jsonString, err := json.Marshal(config.GetConfig().AsMap())
 	if err != nil {
 		slog.Error("Error marshalling keycloak config!", "error", err)
 		return nil, err
@@ -52,22 +52,54 @@ func EntityResolution(ctx context.Context,
 	payload := req.GetEntities()
 
 	var resolvedEntities []*authorization.IdpEntityRepresentation
-	slog.Debug("EntityResolution invoked with", "payload", payload)
+	slog.InfoContext(ctx, "EntityResolution invoked", "payload", payload)
 
 	for i, ident := range payload {
-		slog.Debug("Lookup", "entity", ident.GetEntityType())
+		slog.InfoContext(ctx, "Lookup", "entity", ident.GetEntityType())
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
-
 		exactMatch := true
-		switch ident.EntityType.(type) {
+		switch ident.GetEntityType().(type) {
+		case *authorization.Entity_ClientId:
+			slog.InfoContext(ctx, "GetClient", "client_id", payload[i].GetClientId())
+			clientID := payload[i].GetClientId()
+			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
+				ClientID: &clientID,
+			})
+			if err != nil {
+				slog.Error(err.Error())
+				return &authorization.IdpPluginResponse{},
+					status.Error(codes.Internal, services.ErrGetRetrievalFailed)
+			}
+			var jsonEntities []*structpb.Struct
+			for _, client := range clients {
+				json, err := typeToGenericJSONMap(client)
+				if err != nil {
+					slog.Error("Error serializing entity representation!", "error", err)
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, services.ErrCreationFailed)
+				}
+				var mystruct, struct_err = structpb.NewStruct(json)
+				if struct_err != nil {
+					slog.Error("Error making struct!", "error", err)
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, services.ErrCreationFailed)
+				}
+				jsonEntities = append(jsonEntities, mystruct)
+			}
+			resolvedEntities = append(
+				resolvedEntities,
+				&authorization.IdpEntityRepresentation{
+					OriginalId:      ident.GetId(),
+					AdditionalProps: jsonEntities},
+			)
+			return &authorization.IdpPluginResponse{
+				EntityRepresentations: resolvedEntities,
+			}, nil
 		case *authorization.Entity_EmailAddress:
 			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := payload[i].GetEmailAddress(); return &t }(), Exact: &exactMatch}
 		case *authorization.Entity_UserName:
 			getUserParams = gocloak.GetUsersParams{Username: func() *string { t := payload[i].GetUserName(); return &t }(), Exact: &exactMatch}
-		// case "":
-		// 	return &authorization.IdpPluginResponse{},
-		// 		status.Error(codes.InvalidArgument, services.ErrNotFound)
 		default:
 			typeErr := fmt.Errorf("Unsupported/unknown type for entity %s", ident.String())
 			return &authorization.IdpPluginResponse{},

@@ -112,7 +112,7 @@ func (pdp *Pdp) DetermineAccess(
 // Accepts
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
-// Returns a map of DataRuleResults keyed by EntityID
+// Returns a map of DataRuleResults keyed by Subject
 func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
@@ -168,7 +168,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 // Accepts
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
-// Returns a map of DataRuleResults keyed by EntityID
+// Returns a map of DataRuleResults keyed by Subject
 func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 

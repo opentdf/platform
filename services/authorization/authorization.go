@@ -68,7 +68,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 		for _, ra := range dr.ResourceAttributes {
 			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
 
-			// get attribute definisions
+			// get attribute definitions
 			getAttrsRes, err := RetrieveAttributeDefinitions(ctx, ra, as)
 			if err != nil {
 				// TODO: should all decisions in a request fail if one FQN lookup fails?
@@ -161,13 +161,13 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.Debug("getting entitlements")
 	// FIXME allow without scope
-	if req.Scope == nil {
+	if req.GetScope() == nil {
 		slog.ErrorContext(ctx, "requires scope")
 		return nil, errors.New(services.ErrFqnMissingValue)
 	}
 	// get subject mappings
 	request := attr.GetAttributeValuesByFqnsRequest{
-		Fqns: req.Scope.AttributeFqns,
+		Fqns: req.GetScope().AttributeFqns,
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},

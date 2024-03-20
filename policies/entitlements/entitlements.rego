@@ -11,7 +11,8 @@ idp_config = {"config": {
 }}
 idp_request = {"entities": [{
 	"id": input.entity.id,
-	"emailAddress": input.entity.email_address,
+#	"emailAddress": input.entity.email_address,
+	"clientId": input.entity.client_id,
 }]}
 
 

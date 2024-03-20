@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -99,6 +100,40 @@ func test_server(t *testing.T, userSearchQueryAndResp map[string]string, groupSe
 		}
 	}))
 	return server
+}
+
+func Test_KCEntityResolutionByClientId(t *testing.T) {
+
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}})
+
+	var ctxb = context.Background()
+
+	var req = authorization.IdpPluginRequest{}
+	req.Entities = validBody
+	kcconfig := idpplugin.KeyCloakConfig{
+		Url:            "http://localhost:8888",
+		Realm:          "tdf",
+		ClientId:       "tdf-entity-resolution-service",
+		ClientSecret:   "5Byk7Hh6l0E1hJDZfF8CQbG9vqh2FeIe",
+		LegacyKeycloak: true,
+		SubGroups:      false,
+	}
+	var kcConfigInterface map[string]interface{}
+	inrec, err := json.Marshal(kcconfig)
+	assert.Nil(t, err)
+
+	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
+	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
+	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{
+		Config: kcConfigStruct,
+	})
+
+	assert.Nil(t, reserr)
+	_ = json.NewEncoder(os.Stdout).Encode(resp)
+	var entity_representations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entity_representations)
+	assert.Equal(t, 1, len(entity_representations))
 }
 
 func Test_KCEntityResolutionByEmail(t *testing.T) {

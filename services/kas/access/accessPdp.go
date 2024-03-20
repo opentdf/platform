@@ -17,33 +17,40 @@ const (
 	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
 
-func canAccess(ctx context.Context, entityID string, policy Policy, _ ClaimsObject) (bool, error) {
-	dissemAccess, err := checkDissems(policy.Body.Dissem, entityID)
+func canAccess(ctx context.Context, entity authorization.Entity, policy Policy, _ ClaimsObject) (bool, error) {
+	if len(policy.Body.Dissem) > 0 {
+		dissemAccess, err := checkDissems(policy.Body.Dissem, entity)
+		if err != nil {
+			return false, err
+		}
+		if dissemAccess {
+			return true, nil
+		} else {
+			return false, nil
+		}
+	}
+	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entity)
 	if err != nil {
 		return false, err
 	}
-	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entityID)
-	if err != nil {
-		return false, err
-	}
-	if dissemAccess && attrAccess {
+	if attrAccess {
 		return true, nil
 	} else {
 		return false, nil
 	}
 }
 
-func checkDissems(dissems []string, entityID string) (bool, error) {
-	if entityID == "" {
+func checkDissems(dissems []string, ent authorization.Entity) (bool, error) {
+	if ent.GetEmailAddress() == "" {
 		return false, ErrPolicyDissemInvalid
 	}
-	if len(dissems) == 0 || contains(dissems, entityID) {
+	if len(dissems) == 0 || contains(dissems, ent.GetEmailAddress()) {
 		return true, nil
 	}
 	return false, nil
 }
 
-func checkAttributes(ctx context.Context, dataAttrs []Attribute, entityID string) (bool, error) {
+func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent authorization.Entity) (bool, error) {
 	// FIXME use in_process grpc calls, for now dial localhost
 	cc, err := grpc.Dial("localhost:9000", grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
@@ -52,7 +59,7 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, entityID string
 	}
 	ac := authorization.NewAuthorizationServiceClient(cc)
 	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
-	ec.Entities = append(ec.Entities, &authorization.Entity{Id: entityID})
+	ec.Entities = append(ec.Entities, &ent)
 	ras := []*authorization.ResourceAttribute{{
 		AttributeFqns: make([]string, 0),
 	}}

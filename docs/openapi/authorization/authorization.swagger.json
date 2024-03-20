@@ -175,6 +175,9 @@
         },
         "custom": {
           "$ref": "#/definitions/authorizationEntityCustom"
+        },
+        "clientId": {
+          "type": "string"
         }
       },
       "title": "PE (Person Entity) or NPE (Non-Person Entity)"

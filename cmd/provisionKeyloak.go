@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/opentdf/platform/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -52,6 +53,7 @@ var (
 				AllowInsecureTLS: true,
 			}
 
+			config, err := config.LoadConfig("")
 			ctx := context.Background()
 
 			// Create realm, if it does not exist.
@@ -97,7 +99,7 @@ var (
 					Protocol:       gocloak.StringP("openid-connect"),
 					ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
 					Config: &map[string]string{
-						"included.client.audience": "http://localhost:8080",
+						"included.client.audience": config.Server.Auth.Audience,
 						"included.custom.audience": "custom_audience",
 						"access.token.claim":       "true",
 						"id.token.claim":           "true",

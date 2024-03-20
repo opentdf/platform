@@ -73,6 +73,43 @@ func EntityResolution(ctx context.Context,
 			}
 			var jsonEntities []*structpb.Struct
 			for _, client := range clients {
+				json, err := typeToGenericJSONMap(client)
+				if err != nil {
+					slog.Error("Error serializing entity representation!", "error", err)
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, services.ErrCreationFailed)
+				}
+				var mystruct, struct_err = structpb.NewStruct(json)
+				if struct_err != nil {
+					slog.Error("Error making struct!", "error", err)
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, services.ErrCreationFailed)
+				}
+				jsonEntities = append(jsonEntities, mystruct)
+			}
+			resolvedEntities = append(
+				resolvedEntities,
+				&authorization.IdpEntityRepresentation{
+					OriginalId:      ident.GetId(),
+					AdditionalProps: jsonEntities},
+			)
+			return &authorization.IdpPluginResponse{
+				EntityRepresentations: resolvedEntities,
+			}, nil
+		switch ident.GetEntityType().(type) {
+		case *authorization.Entity_ClientId:
+			slog.InfoContext(ctx, "GetClient", "client_id", payload[i].GetClientId())
+			clientID := payload[i].GetClientId()
+			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
+				ClientID: &clientID,
+			})
+			if err != nil {
+				slog.Error(err.Error())
+				return &authorization.IdpPluginResponse{},
+					status.Error(codes.Internal, services.ErrGetRetrievalFailed)
+			}
+			var jsonEntities []*structpb.Struct
+			for _, client := range clients {
 				// roles
 				roles, err := connector.client.GetClientRoles(ctx, connector.token.AccessToken, kcConfig.Realm, *client.ID, gocloak.GetRoleParams{})
 				if err != nil {

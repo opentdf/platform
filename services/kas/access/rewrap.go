@@ -283,12 +283,20 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}
 
 	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.requestBody.Policy)
+	// changed to ClientID from Subject
 	ent := authorization.Entity{
 		EntityType: &authorization.Entity_Jwt{
 			Jwt: body.bearerToken,
 		},
 	}
-	access, err := canAccess(ctx, ent, *policy, p.SDK)
+	if body.cl.ClientID != "" {
+		ent = authorization.Entity{
+			EntityType: &authorization.Entity_ClientId{
+				ClientId: body.cl.ClientID,
+			},
+		}
+	}
+	access, err := canAccess(ctx, ent, *policy, body.cl.TDFClaims)
 
 	if err != nil {
 		slog.WarnContext(ctx, "Could not perform access decision!", "err", err)

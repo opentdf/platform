@@ -329,7 +329,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	s.Require().NoError(err)
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
-	cnf := map[string]string{"jkt": base64.URLEncoding.EncodeToString(thumbprint)}
+	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
 	s.Require().NoError(tok.Set("cnf", cnf))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 
@@ -399,7 +399,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	s.Require().NoError(err)
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
-	cnf := map[string]string{"jkt": base64.URLEncoding.EncodeToString(thumbprint)}
+	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
 	s.Require().NoError(tok.Set("cnf", cnf))
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
@@ -458,7 +458,7 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 	if tc.ath == "" {
 		h := sha256.New()
 		h.Write(tc.accessToken)
-		ath = base64.URLEncoding.EncodeToString(h.Sum(nil))
+		ath = base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
 	} else {
 		ath = tc.ath
 	}

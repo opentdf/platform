@@ -90,8 +90,8 @@ func (i TokenAddingInterceptor) getDPoPToken(path, accessToken string) (string, 
 		dpopTok, err := jwt.NewBuilder().
 			Claim("htu", path).
 			Claim("htm", "POST").
-			Claim("ath", base64.URLEncoding.EncodeToString(ath)).
-			Claim("jti", base64.URLEncoding.EncodeToString(jtiBytes)).
+			Claim("ath", base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(ath)).
+			Claim("jti", base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(jtiBytes)).
 			IssuedAt(time.Now()).
 			Build()
 

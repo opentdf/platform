@@ -16,6 +16,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/internal/db"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -53,12 +54,19 @@ type Authentication struct {
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
 	oidcConfigurations map[string]AuthNConfig
+	// Casbin enforcer
+	enforcer *Enforcer
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(cfg AuthNConfig) (*Authentication, error) {
+func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 	a := &Authentication{}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
+
+	// validate the configuration
+	if err := cfg.validateAuthNConfig(); err != nil {
+		return nil, err
+	}
 
 	ctx := context.Background()
 
@@ -76,6 +84,17 @@ func NewAuthenticator(cfg AuthNConfig) (*Authentication, error) {
 	// Register the jwks_uri with the cache
 	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
 		return nil, err
+	}
+
+	casbinConfig := CasbinConfig{
+		PolicyConfig: cfg.Policy,
+	}
+	if d != nil && d.SqlDB != nil {
+		casbinConfig.Db = d.SqlDB
+	}
+	slog.Info("initializing casbin enforcer")
+	if a.enforcer, err = NewCasbinEnforcer(casbinConfig); err != nil {
+		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
 	// Need to refresh the cache to verify jwks is available
@@ -96,7 +115,7 @@ type dpopInfo struct {
 }
 
 // verifyTokenHandler is a http handler that verifies the token
-func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
+func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
 			handler.ServeHTTP(w, r)
@@ -108,14 +127,42 @@ func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		err := a.checkToken(r.Context(), header, dpopInfo{
+
+		tok, err := a.checkToken(r.Context(), header, dpopInfo{
 			headers: r.Header["Dpop"],
 			path:    r.URL.Path,
 			method:  r.Method,
 		})
+
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if the token is allowed to access the resource
+		action := ""
+		switch r.Method {
+		case http.MethodGet:
+			action = "read"
+		case http.MethodPost, http.MethodPut, http.MethodPatch:
+			action = "write"
+		case http.MethodDelete:
+			action = "delete"
+		default:
+			action = "unsafe"
+		}
+		if allow, err := a.enforcer.Enforce(tok, r.URL.Path, action); err != nil {
+			if err.Error() == "permission denied" {
+				slog.WarnContext(r.Context(), "permission denied", slog.String("azp", tok.Subject()), slog.String("error", err.Error()))
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		} else if !allow {
+			slog.WarnContext(r.Context(), "permission denied", slog.String("azp", tok.Subject()))
+			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
@@ -123,8 +170,8 @@ func (a Authentication) VerifyTokenHandler(handler http.Handler) http.Handler {
 	})
 }
 
-// verifyTokenInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
+func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
 	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
 		return handler(ctx, req)
@@ -144,7 +191,23 @@ func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 
-	err := a.checkToken(
+	// parse the rpc method
+	p := strings.Split(info.FullMethod, "/")
+	resource := p[1] + "/" + p[2]
+	action := ""
+	if strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get") {
+		action = "read"
+	} else if strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update") {
+		action = "write"
+	} else if strings.HasPrefix(p[2], "Delete") {
+		action = "delete"
+	} else if strings.HasPrefix(p[2], "Unsafe") {
+		action = "unsafe"
+	} else {
+		action = "other"
+	}
+
+	token, err := a.checkToken(
 		ctx,
 		header,
 		dpopInfo{
@@ -158,11 +221,23 @@ func (a Authentication) VerifyTokenInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
+	// Check if the token is allowed to access the resource
+	if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
+		if err.Error() == "permission denied" {
+			slog.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
+			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+		}
+		return nil, err
+	} else if !allowed {
+		slog.Warn("permission denied", slog.String("azp", token.Subject()))
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
 	return handler(ctx, req)
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) error {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (jwt.Token, error) {
 	var (
 		tokenRaw  string
 		tokenType string
@@ -177,19 +252,19 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		tokenType = "Bearer"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
-		return fmt.Errorf("not of type bearer or dpop")
+		return nil, fmt.Errorf("not of type bearer or dpop")
 	}
 
 	// We have to get iss from the token first to verify the signature
 	unverifiedToken, err := jwt.Parse([]byte(tokenRaw), jwt.WithVerify(false))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Get issuer from unverified token
 	issuer := unverifiedToken.Issuer()
 	if issuer == "" {
-		return fmt.Errorf("missing issuer")
+		return nil, fmt.Errorf("missing issuer")
 	}
 
 	// Get the openid configuration for the issuer
@@ -197,13 +272,13 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	// and jwx expects it as a string so we should never hit this error if the token is valid
 	oidc, exists := a.oidcConfigurations[issuer]
 	if !exists {
-		return fmt.Errorf("invalid issuer")
+		return nil, fmt.Errorf("invalid issuer")
 	}
 
 	// Get key set from cache that matches the jwks_uri
 	keySet, err := a.cache.Get(ctx, oidc.JwksURI)
 	if err != nil {
-		return fmt.Errorf("failed to get jwks from cache")
+		return nil, fmt.Errorf("failed to get jwks from cache")
 	}
 
 	// Now we verify the token signature
@@ -216,17 +291,17 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if tokenType == "Bearer" {
 		if _, ok := accessToken.Get("cnf"); !ok {
-			return nil
+			return accessToken, nil
 		}
 		slog.Info("presented token with `cnf` claim as a bearer token. validating as DPoP")
 	}
 
-	return validateDPoP(accessToken, tokenRaw, dpopInfo)
+	return accessToken, validateDPoP(accessToken, tokenRaw, dpopInfo)
 }
 
 func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) error {

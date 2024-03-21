@@ -40,7 +40,7 @@ func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 
-	dpopTok, err := i.getDPoPToken(method, "POST", string(accessToken))
+	dpopTok, err := i.GetDPoPToken(method, "POST", string(accessToken))
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
@@ -56,7 +56,7 @@ func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
 	return err
 }
 
-func (i TokenAddingInterceptor) getDPoPToken(path, method, accessToken string) (string, error) {
+func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (string, error) {
 	tok, err := i.tokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
 		jtiBytes := make([]byte, JTILength)
 		_, err := rand.Read(jtiBytes)

@@ -160,7 +160,7 @@ var (
 				ClientAuthenticatorType: gocloak.StringP("client-secret"),
 				Secret:                  gocloak.StringP("secret"),
 				ProtocolMappers:         &protocolMappers,
-			}, []gocloak.Role{*opentdfOrgAdminRole})
+			}, []gocloak.Role{*opentdfOrgAdminRole}, nil, "")
 			if err != nil {
 				return err
 			}
@@ -174,7 +174,7 @@ var (
 				ClientAuthenticatorType: gocloak.StringP("client-secret"),
 				Secret:                  gocloak.StringP("secret"),
 				ProtocolMappers:         &protocolMappers,
-			}, []gocloak.Role{*opentdfReadonlyRole})
+			}, []gocloak.Role{*opentdfReadonlyRole}, nil, "")
 			if err != nil {
 				return err
 			}
@@ -197,7 +197,7 @@ var (
 				ClientAuthenticatorType: gocloak.StringP("client-secret"),
 				Secret:                  gocloak.StringP("secret"),
 				ProtocolMappers:         &protocolMappers,
-			}, clientRolesToAdd)
+			}, nil, clientRolesToAdd, *realmManagementClientId)
 			if err != nil {
 				return err
 			}
@@ -239,7 +239,7 @@ func keycloakLogin(connectParams *keycloakConnectParams) (*gocloak.GoCloak, *goc
 	return client, token, err
 }
 
-func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client, roles []gocloak.Role) (string, error) {
+func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client, realmRoles []gocloak.Role, clientRoles []gocloak.Role, clientIdRole string) (string, error) {
 	var longClientId string
 	client, token, err := keycloakLogin(connectParams)
 	if err != nil {
@@ -277,15 +277,31 @@ func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client
 	}
 	slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientId, *user.Username))
 
-	slog.Info(fmt.Sprintf("Adding roles to client %s via service account %s", longClientId, *user.Username))
-	if err := client.AddRealmRoleToUser(context.Background(), token.AccessToken, connectParams.Realm, *user.ID, roles); err != nil {
-		for _, role := range roles {
-			slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+	if realmRoles != nil {
+		slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientId, *user.Username))
+		if err := client.AddRealmRoleToUser(context.Background(), token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
+			for _, role := range realmRoles {
+				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+			}
+			return "", err
+		} else {
+			for _, role := range realmRoles {
+				slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientId))
+			}
 		}
-		return "", err
-	} else {
-		for _, role := range roles {
-			slog.Info(fmt.Sprintf("✅ Role %s added to client %s", *role.Name, longClientId))
+	}
+
+	if clientRoles != nil {
+		slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientId, *user.Username))
+		if err := client.AddClientRolesToUser(context.Background(), token.AccessToken, connectParams.Realm, clientIdRole, *user.ID, clientRoles); err != nil {
+			for _, role := range clientRoles {
+				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+			}
+			return "", err
+		} else {
+			for _, role := range clientRoles {
+				slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientId))
+			}
 		}
 	}
 

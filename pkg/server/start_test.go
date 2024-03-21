@@ -42,7 +42,7 @@ func ServiceRegistrationTest() serviceregistry.Registration {
 				if !ok {
 					return fmt.Errorf("Surprise! Not a TestService")
 				}
-				return mux.HandlePath(http.MethodOptions, "/testpath/{name}", t.TestHandler)
+				return mux.HandlePath(http.MethodGet, "/testpath/{name}", t.TestHandler)
 			}
 		},
 	}

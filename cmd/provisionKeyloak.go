@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/internal/config"
@@ -92,6 +93,8 @@ var (
 			opentdfOrgAdminRoleName := "opentdf-org-admin"
 			opentdfAdminRoleName := "opentdf-admin"
 			opentdfReadonlyRoleName := "opentdf-readonly"
+			opentdfERSClientId := "tdf-entity-resolution"
+			realmMangementClientName := "realm-management"
 
 			protocolMappers := []gocloak.ProtocolMapperRepresentation{
 				{
@@ -176,6 +179,42 @@ var (
 				return err
 			}
 
+			// Create TDF Entity Resolution Client
+			realmManagementClientId, err := getIdOfClient(client, token, &kcConnectParams, &realmMangementClientName)
+			if err != nil {
+				return err
+			}
+			clientRolesToAdd, addErr := getClientRolesByList(&kcConnectParams, client, token, ctx, *realmManagementClientId, []string{"view-clients", "query-clients", "view-users", "query-users"})
+			if addErr != nil {
+				slog.Error(fmt.Sprintf("Error getting client roles : %s", err))
+				return err
+			}
+			_, err = createClient(&kcConnectParams, gocloak.Client{
+				ClientID:                gocloak.StringP(opentdfERSClientId),
+				Enabled:                 gocloak.BoolP(true),
+				Name:                    gocloak.StringP(opentdfERSClientId),
+				ServiceAccountsEnabled:  gocloak.BoolP(true),
+				ClientAuthenticatorType: gocloak.StringP("client-secret"),
+				Secret:                  gocloak.StringP("secret"),
+				ProtocolMappers:         &protocolMappers,
+			}, clientRolesToAdd)
+			if err != nil {
+				return err
+			}
+
+			user := gocloak.User{
+				FirstName:  gocloak.StringP("sample"),
+				LastName:   gocloak.StringP("user"),
+				Email:      gocloak.StringP("sampleuser@sample.com"),
+				Enabled:    gocloak.BoolP(true),
+				Username:   gocloak.StringP("sampleuser"),
+				Attributes: &map[string][]string{"superhero_name": {"thor"}, "superhero_group": {"avengers"}},
+			}
+			_, err = createUser(&kcConnectParams, user)
+			if err != nil {
+				panic("Oh no!, failed to create user :(")
+			}
+
 			// Create token exchange opentdf->opentdf sdk
 			if err := createTokenExchange(&kcConnectParams, opentdfClientId, opentdfSdkClientId); err != nil {
 				return err
@@ -251,6 +290,64 @@ func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client
 	}
 
 	return longClientId, nil
+}
+
+func createUser(connectParams *keycloakConnectParams, newUser gocloak.User) (*string, error) {
+	client, token, err := keycloakLogin(connectParams)
+	if err != nil {
+		return nil, err
+	}
+	username := *newUser.Username
+	longUserId, err := client.CreateUser(context.Background(), token.AccessToken, connectParams.Realm, newUser)
+	if err != nil {
+		kcErr := err.(*gocloak.APIError)
+		if kcErr.Code == 409 {
+			slog.Warn(fmt.Sprintf("user %s already exists", username))
+			users, err := client.GetUsers(context.Background(), token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{Username: newUser.Username})
+			if err != nil {
+				return nil, err
+			}
+			if len(users) == 1 {
+				longUserId = *users[0].ID
+			} else {
+				err = fmt.Errorf("error, %s user not found", username)
+				return nil, err
+			}
+		} else {
+			slog.Error(fmt.Sprintf("Error creating user %s : %s", username, err))
+			return nil, err
+		}
+	} else {
+		slog.Info(fmt.Sprintf("✅ User created: username = %s, user identifier=%s", username, longUserId))
+	}
+	return &longUserId, nil
+}
+
+func getClientRolesByList(connectParams *keycloakConnectParams, client *gocloak.GoCloak, token *gocloak.JWT, ctx context.Context, idClient string, roles []string) (clientRoles []gocloak.Role, getErr error) {
+	var notFoundRoles []string
+
+	if roleObjects, tmpErr := client.GetClientRoles(ctx, token.AccessToken, connectParams.Realm, idClient, gocloak.GetRoleParams{}); tmpErr != nil {
+		getErr = fmt.Errorf("failed to get roles for client (error: %s)", tmpErr.Error())
+
+		return nil, getErr
+	} else {
+	searchRole:
+		for _, r := range roles {
+			for _, rb := range roleObjects {
+				if r == *rb.Name {
+					clientRoles = append(clientRoles, *rb)
+					continue searchRole
+				}
+			}
+			notFoundRoles = append(notFoundRoles, r)
+		}
+	}
+
+	if len(notFoundRoles) > 0 {
+		getErr = fmt.Errorf("failed to found role(s) '%s' for client", strings.Join(notFoundRoles, ", "))
+	}
+
+	return clientRoles, getErr
 }
 
 func getIdOfClient(client *gocloak.GoCloak, token *gocloak.JWT, connectParams *keycloakConnectParams, clientName *string) (*string, error) {

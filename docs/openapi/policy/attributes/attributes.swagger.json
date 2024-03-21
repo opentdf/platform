@@ -656,6 +656,12 @@
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
           "title": "Optional"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

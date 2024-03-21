@@ -653,15 +653,15 @@
         "rule": {
           "$ref": "#/definitions/policyAttributeRuleTypeEnum"
         },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Optional"
-        },
         "values": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
         }
       }
     },

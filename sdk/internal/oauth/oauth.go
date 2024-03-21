@@ -26,15 +26,11 @@ type ClientCredentials struct {
 	ClientId   string
 }
 
-type tokenResponse struct {
+type Token struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int64  `json:"expires_in,omitempty"`
 	Scope       string `json:"scope,omitempty"`
-}
-
-type Token struct {
-	AccessToken string
 	expiry      time.Time
 }
 
@@ -162,18 +158,16 @@ func processResponse(resp *http.Response) (*Token, error) {
 		return nil, fmt.Errorf("error reading bytes from response: %w", err)
 	}
 
-	var tokenResponse *tokenResponse
-	if err := json.Unmarshal(respBytes, &tokenResponse); err != nil {
+	var token *Token
+	if err := json.Unmarshal(respBytes, &token); err != nil {
 		return nil, fmt.Errorf("error unmarshaling token from response: %w", err)
 	}
 
-	var token Token
-	if tokenResponse.ExpiresIn != 0 {
-		token.expiry = time.Now().Add(time.Duration(tokenResponse.ExpiresIn) * time.Second)
+	if token.ExpiresIn != 0 {
+		token.expiry = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
 	}
-	token.AccessToken = tokenResponse.AccessToken
 
-	return &token, nil
+	return token, nil
 }
 
 func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce string) (string, error) {

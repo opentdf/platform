@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 
@@ -29,16 +28,19 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	plainText := args[0]
 	strReader := strings.NewReader(plainText)
+
 	conf, err := config.LoadConfig("opentdf")
-	tokenEndpoint := conf.Server
-	fmt.Print(tokenEndpoint)
+	if err != nil {
+		return err
+	}
+	tokenEndpoint := conf.Server.Auth.Issuer
 
 	// Create new offline client
 
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
 		sdk.WithInsecureConn(),
 		sdk.WithClientCredentials("opentdf", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
+		sdk.WithTokenEndpoint(tokenEndpoint+"/protocol/openid-connect/token"),
 	)
 	if err != nil {
 		return err

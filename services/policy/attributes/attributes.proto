@@ -52,6 +52,7 @@ message CreateAttributeRequest {
 
   // Optional
   common.MetadataMutable metadata = 100;
+  repeated string values = 101;
 }
 message CreateAttributeResponse {
   policy.Attribute attribute = 1;

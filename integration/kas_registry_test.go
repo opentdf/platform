@@ -139,7 +139,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 	assert.NotZero(s.T(), r.Id)
 }
 
-func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Labels() {
+func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	fixedLabel := "fixed label"
 	updateLabel := "update label"
 	updatedLabel := "true"

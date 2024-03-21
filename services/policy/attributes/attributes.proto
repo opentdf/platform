@@ -5,7 +5,6 @@ package policy.attributes;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
-
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
@@ -189,8 +188,12 @@ service AttributesService {
   /*--------------------------------------*
    * Attribute RPCs
    *---------------------------------------*/
-  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {}
-  rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {}
+  rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
+    option (google.api.http) = {get: "/attributes"};
+  }
+  rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {
+    option (google.api.http) = {get: "/attributes/*/values"};
+  }
 
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};

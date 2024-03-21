@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type Table struct {
@@ -73,24 +75,50 @@ type Config struct {
 type Client struct {
 	Pgx    PgxIface
 	config Config
+
+	// This is the stdlib connection that is used for transactions
+	SqlDB *sql.DB
 }
 
 func NewClient(config Config) (*Client, error) {
-	pool, err := pgxpool.New(context.Background(), config.buildURL())
+	c := Client{
+		config: config,
+	}
+
+	dbConfig, err := pgxpool.ParseConfig(config.buildURL())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
+	}
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), dbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
+	c.Pgx = pool
+	// We need to create a stdlib connection for transactions
+	c.SqlDB = stdlib.OpenDBFromPool(pool)
+
+	// Connect to the database to verify the connection
+	if err := c.Pgx.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	// Run migrations
+	slog.Info("running database migrations")
+	appliedMigrations, err := c.RunMigrations(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("issue running database migrations: %w", err)
+	}
+	slog.Info("database migrations complete", slog.Int("applied", appliedMigrations))
 
 	NewTable = NewTableWithSchema(config.Schema)
 
-	return &Client{
-		Pgx:    pool,
-		config: config,
-	}, nil
+	return &c, nil
 }
 
 func (c *Client) Close() {
 	c.Pgx.Close()
+	c.SqlDB.Close()
 }
 
 func (c Config) buildURL() string {

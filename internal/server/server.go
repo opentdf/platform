@@ -19,7 +19,8 @@ import (
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/internal/auth"
+	"github.com/opentdf/platform/internal/db"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -80,109 +81,51 @@ type inProcessServer struct {
 	srv *grpc.Server
 }
 
-func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 	var (
-		gRPCOpts   []grpc.ServerOption
-		httpServer *http.Server
-		tlsConfig  *tls.Config
-		err        error
+		authN *auth.Authentication
+		err   error
 	)
 
-	// Enbale proto validation
-	validator, _ := protovalidate.New()
-
-	if config.TLS.Enabled {
-		tlsConfig, err = loadTLSConfig(config.TLS)
+	// Add authN interceptor
+	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
+	if config.Auth.Enabled {
+		slog.Info("authentication enabled")
+		authN, err = auth.NewAuthenticator(config.Auth.AuthNConfig, d)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load tls config: %w", err)
+			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
 	}
 
-	// Add tls creds if tls is not nil
-	if tlsConfig != nil {
-		gRPCOpts = append(gRPCOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+	// Try an register oidc issuer to wellknown service but don't return an error if it fails
+	if err := config.WellKnownConfigRegister("platform_issuer", config.Auth.Issuer); err != nil {
+		slog.Warn("failed to register platform issuer", slog.String("error", err.Error()))
 	}
 
-	// Build interceptor chain and handler chain
-	var (
-		interceptors []grpc.UnaryServerInterceptor
-		handler      http.Handler
-	)
-
-	grpcInprocess := &inProcessServer{
+	// Create grpc server and in process grpc server
+	grpcServer, err := newGrpcServer(config, authN)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create grpc server: %w", err)
+	}
+	grpcIPCServer := &inProcessServer{
 		ln:  fasthttputil.NewInmemoryListener(),
 		srv: grpc.NewServer(),
 	}
 
+	// Create http server
 	mux := runtime.NewServeMux(
-		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcInprocess.Conn())),
+		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
 	)
-
-	handler = mux
-
-	// Add authN interceptor
-	if config.Auth.Enabled {
-		authN, err := auth.NewAuthenticator(config.Auth.AuthNConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
-		}
-
-		interceptors = append(interceptors, authN.VerifyTokenInterceptor)
-		handler = authN.VerifyTokenHandler(mux)
-
-		// Try an register oidc issuer to wellknown service but don't return an error if it fails
-		if err := config.WellKnownConfigRegister("platform_issuer", config.Auth.Issuer); err != nil {
-			slog.Warn("failed to register platform issuer", slog.String("error", err.Error()))
-		}
-	}
-
-	// Add proto validation interceptor
-	interceptors = append(interceptors, protovalidate_middleware.UnaryServerInterceptor(validator))
-
-	// Add CORS
-	// TODO(#305) We need to make cors configurable
-	handler = cors.New(cors.Options{
-		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           maxAge,
-	}).Handler(handler)
-
-	gRPCOpts = append(gRPCOpts, grpc.ChainUnaryInterceptor(
-		interceptors...,
-	))
-
-	grpcServer := grpc.NewServer(
-		gRPCOpts...,
-	)
-
-	// Enable grpc reflection
-	if config.GRPC.ReflectionEnabled {
-		reflection.Register(grpcServer)
-	}
-
-	// Combine grpc and http server
-	h2 := grpcHandlerFunc(grpcServer, handler)
-	if !config.TLS.Enabled {
-		h2 = h2c.NewHandler(h2, &http2.Server{})
-	}
-
-	httpServer = &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", config.Host, config.Port),
-		WriteTimeout: writeTimeoutSeconds * time.Second,
-		ReadTimeout:  readTimeoutSeconds * time.Second,
-		// We need to make cors configurable
-		Handler:   h2,
-		TLSConfig: tlsConfig,
+	httpServer, err := newHttpServer(config, mux, authN, grpcServer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
 
 	o := OpenTDFServer{
 		Mux:           mux,
 		HTTPServer:    httpServer,
 		GRPCServer:    grpcServer,
-		GRPCInProcess: grpcInprocess,
+		GRPCInProcess: grpcIPCServer,
 	}
 
 	if config.HSM.Enabled {
@@ -195,15 +138,100 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	return &o, nil
 }
 
-func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
+// newHttpServer creates a new http server with the given handler and grpc server
+func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
+	var err error
+	var tc *tls.Config
+
+	// Add authN interceptor
+	// TODO check if this is needed or if it is handled by gRPC
+	if c.Auth.Enabled {
+		h = a.MuxHandler(h)
+	}
+
+	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
+	h = cors.New(cors.Options{
+		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           maxAge,
+	}).Handler(h)
+
+	// Add grpc handler
+	h2 := httpGrpcHandlerFunc(h, g)
+
+	if !c.TLS.Enabled {
+		h2 = h2c.NewHandler(h2, &http2.Server{})
+	} else {
+		tc, err = loadTLSConfig(c.TLS)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load tls config: %w", err)
+		}
+	}
+
+	return &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", c.Host, c.Port),
+		WriteTimeout: writeTimeoutSeconds * time.Second,
+		ReadTimeout:  readTimeoutSeconds * time.Second,
+		Handler:      h2,
+		TLSConfig:    tc,
+	}, nil
+}
+
+// httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
+func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		slog.Debug("grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
 		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			grpcServer.ServeHTTP(w, r)
+			g.ServeHTTP(w, r)
 		} else {
-			otherHandler.ServeHTTP(w, r)
+			h.ServeHTTP(w, r)
 		}
 	})
+}
+
+// newGrpcServer creates a new grpc server with the given config and authN interceptor
+func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
+	var i []grpc.UnaryServerInterceptor
+	var o []grpc.ServerOption
+
+	// Enbale proto validation
+	validator, err := protovalidate.New()
+	if err != nil {
+		slog.Warn("failed to create proto validator", slog.String("error", err.Error()))
+	}
+
+	// Add authN interceptor
+	if c.Auth.Enabled {
+		i = append(i, a.UnaryServerInterceptor)
+	}
+
+	// Add tls creds if tls is not nil
+	if c.TLS.Enabled {
+		c, err := loadTLSConfig(c.TLS)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load tls config: %w", err)
+		}
+		o = append(o, grpc.Creds(credentials.NewTLS(c)))
+	}
+
+	// Add proto validation interceptor
+	i = append(i, protovalidate_middleware.UnaryServerInterceptor(validator))
+
+	o = append(o, grpc.ChainUnaryInterceptor(
+		i...,
+	))
+
+	s := grpc.NewServer(o...)
+
+	// Enable grpc reflection
+	if c.GRPC.ReflectionEnabled {
+		reflection.Register(s)
+	}
+
+	return s, nil
 }
 
 func (s OpenTDFServer) Start() {

@@ -17,6 +17,43 @@
   ],
   "paths": {
     "/attributes": {
+      "get": {
+        "summary": "--------------------------------------*\nAttribute RPCs\n---------------------------------------",
+        "operationId": "AttributesService_ListAttributes",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesListAttributesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "state",
+            "description": "ACTIVE by default when not specified",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ACTIVE_STATE_ENUM_UNSPECIFIED",
+              "ACTIVE_STATE_ENUM_ACTIVE",
+              "ACTIVE_STATE_ENUM_INACTIVE",
+              "ACTIVE_STATE_ENUM_ANY"
+            ],
+            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
       "post": {
         "operationId": "AttributesService_CreateAttribute",
         "responses": {
@@ -100,6 +137,50 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/*/values": {
+      "get": {
+        "operationId": "AttributesService_ListAttributeValues",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesListAttributeValuesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "state",
+            "description": "ACTIVE by default when not specified",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ACTIVE_STATE_ENUM_UNSPECIFIED",
+              "ACTIVE_STATE_ENUM_ACTIVE",
+              "ACTIVE_STATE_ENUM_INACTIVE",
+              "ACTIVE_STATE_ENUM_ANY"
+            ],
+            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
           }
         ],
         "tags": [

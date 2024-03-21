@@ -22,6 +22,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
+	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -29,6 +30,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type AuthSuite struct {
@@ -43,8 +45,56 @@ type FakeAccessTokenSource struct {
 	accessToken string
 }
 
-func (fake FakeAccessTokenSource) AccessToken() (AccessToken, error) {
-	return AccessToken(fake.accessToken), nil
+type FakeAccessServiceServer struct {
+	accessToken []string
+	dpopToken   []string
+	kas.UnimplementedAccessServiceServer
+}
+
+func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		f.accessToken = md.Get("authorization")
+		f.dpopToken = md.Get("dpop")
+	}
+
+	return &kas.InfoResponse{}, nil
+}
+func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
+	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
+}
+func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
+	return &wrapperspb.StringValue{}, nil
+}
+func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
+	return &kas.RewrapResponse{}, nil
+}
+
+type FakeTokenSource struct {
+	key         jwk.Key
+	accessToken string
+}
+
+func (fts *FakeTokenSource) AccessToken() (sdkauth.AccessToken, error) {
+	return sdkauth.AccessToken(fts.accessToken), nil
+}
+func (*FakeTokenSource) DecryptWithDPoPKey([]byte) ([]byte, error) {
+	return nil, nil
+}
+func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
+	if fts.key == nil {
+		return nil, errors.New("no such key")
+	}
+	return f(fts.key)
+}
+func (*FakeTokenSource) DPoPPublicKeyPEM() string {
+	return ""
+}
+func (*FakeTokenSource) RefreshAccessToken() error {
+	return nil
+}
+
+func (fake FakeAccessTokenSource) AccessToken() (sdkauth.AccessToken, error) {
+	return sdkauth.AccessToken(fake.accessToken), nil
 }
 func (fake FakeAccessTokenSource) DecryptWithDPoPKey(_ []byte) ([]byte, error) {
 	return nil, nil
@@ -111,7 +161,7 @@ func (s *AuthSuite) SetupTest() {
 		Issuer:   s.server.URL,
 		Audience: "test",
 		Clients:  []string{"client1", "client2", "client3"},
-	})
+	}, nil)
 
 	s.Require().NoError(err)
 
@@ -140,18 +190,18 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
 
-func (s *AuthSuite) Test_VerifyTokenHandler_When_Authorization_Header_Missing_Expect_Error() {
-	handler := s.auth.VerifyTokenHandler(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
+func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Error() {
+	handler := s.auth.MuxHandler(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	s.Equal(http.StatusUnauthorized, rec.Code)
 	s.Equal("missing authorization header\n", rec.Body.String())
 }
 
-func (s *AuthSuite) Test_VerifyTokenInterceptor_When_Authorization_Header_Missing_Expect_Error() {
+func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missing_Expect_Error() {
 	md := metadata.New(map[string]string{})
 	ctx := metadata.NewIncomingContext(context.Background(), md)
-	_, err := s.auth.VerifyTokenInterceptor(ctx, "test", &grpc.UnaryServerInfo{
+	_, err := s.auth.UnaryServerInterceptor(ctx, "test", &grpc.UnaryServerInfo{
 		FullMethod: "/test",
 	}, nil)
 	s.Require().Error(err)
@@ -310,7 +360,7 @@ type dpopTestCase struct {
 	htu              string
 	ath              string
 	iat              time.Time
-	errorMesssage    string
+	errorMessage     string
 }
 
 func (s *AuthSuite) TestInvalid_DPoP_Cases() {
@@ -380,7 +430,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		)
 
 		s.Require().Error(err)
-		s.Equal(testCase.errorMesssage, err.Error())
+		s.Equal(testCase.errorMessage, err.Error())
 	}
 }
 
@@ -407,7 +457,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	buffer := 1024 * 1024
 	listener := bufconn.Listen(buffer)
 
-	server := grpc.NewServer(grpc.UnaryInterceptor(s.auth.VerifyTokenInterceptor))
+	server := grpc.NewServer(grpc.UnaryInterceptor(s.auth.UnaryServerInterceptor))
 	defer server.Stop()
 
 	fakeServer := &FakeAccessServiceServer{}
@@ -419,7 +469,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 		}
 	}()
 
-	addingInterceptor := NewTokenAddingInterceptor(&FakeTokenSource{
+	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
 	})
@@ -504,7 +554,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
-	jtiBytes := make([]byte, JTILength)
+	jtiBytes := make([]byte, sdkauth.JTILength)
 	_, err := rand.Read(jtiBytes)
 	if err != nil {
 		t.Fatalf("error creating jti for dpop jwt: %v", err)

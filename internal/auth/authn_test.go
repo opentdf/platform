@@ -447,7 +447,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client2"))
-	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-admin"}}))
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-readonly"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
@@ -508,7 +508,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client2"))
-	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-admin"}}))
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-readonly"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}

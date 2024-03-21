@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -251,7 +250,6 @@ func (c PolicyDbClient) UpdateResourceMapping(ctx context.Context, id string, r 
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
-		fmt.Printf("err: %v %v\n", err, args)
 		return nil, err
 	}
 

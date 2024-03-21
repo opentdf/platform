@@ -31,15 +31,17 @@ type Token struct {
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int64  `json:"expires_in,omitempty"`
 	Scope       string `json:"scope,omitempty"`
-	expiry      time.Time
+	received    time.Time
 }
 
 func (t Token) Expired() bool {
-	if t.expiry.IsZero() {
+	if t.ExpiresIn == 0 {
 		return false
 	}
 
-	return time.Now().After(t.expiry.Add(-tokenExpirationBuffer))
+	expirationTime := t.received.Add(time.Second * time.Duration(t.ExpiresIn))
+
+	return time.Now().After(expirationTime.Add(-tokenExpirationBuffer))
 }
 
 func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
@@ -163,9 +165,7 @@ func processResponse(resp *http.Response) (*Token, error) {
 		return nil, fmt.Errorf("error unmarshaling token from response: %w", err)
 	}
 
-	if token.ExpiresIn != 0 {
-		token.expiry = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
-	}
+	token.received = time.Now()
 
 	return token, nil
 }

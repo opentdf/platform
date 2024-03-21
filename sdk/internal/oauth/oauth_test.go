@@ -83,12 +83,12 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 		t.Fatal("no cnf claim in token")
 	}
 
-	if tok.expiry.Before(time.Now()) {
-		t.Fatalf("invalid expiration is before current time: %v", tok.expiry)
+	if tok.ExpiresIn < 0 {
+		t.Fatalf("invalid expiration is before current time: %v", tok)
 	}
 
 	if tok.Expired() {
-		t.Fatalf("got a token that is currently expired: %v", tok.expiry)
+		t.Fatalf("got a token that is currently expired: %v", tok)
 	}
 
 }
@@ -207,11 +207,29 @@ func TestClientSecretWithNonce(t *testing.T) {
 }
 
 func TestTokenExpiration_RespectsLeeway(t *testing.T) {
-	if !(Token{expiry: time.Now().Add(-tokenExpirationBuffer - 10*time.Second)}).Expired() {
+	expiredToken := Token{
+		received:  time.Now().Add(-tokenExpirationBuffer - 10*time.Second),
+		ExpiresIn: 5,
+	}
+	if !expiredToken.Expired() {
 		t.Fatalf("token should be expired")
 	}
 
-	if (Token{expiry: time.Now().Add(tokenExpirationBuffer + 10*time.Second)}).Expired() {
+	goodToken := Token{
+		received:  time.Now(),
+		ExpiresIn: 2 * int64(tokenExpirationBuffer/time.Second),
+	}
+
+	if goodToken.Expired() {
+		t.Fatalf("token should not be expired")
+	}
+
+	justOverBorderToken := Token{
+		received:  time.Now(),
+		ExpiresIn: int64(tokenExpirationBuffer/time.Second) - 1,
+	}
+
+	if !justOverBorderToken.Expired() {
 		t.Fatalf("token should not be expired")
 	}
 }

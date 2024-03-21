@@ -17,8 +17,8 @@ func marshalMetadata(mutableMetadata *common.MetadataMutable) ([]byte, *common.M
 	m := &common.Metadata{
 		Labels: mutableMetadata.GetLabels(),
 	}
-	mJson, err := protojson.Marshal(m)
-	return mJson, m, err
+	j, err := protojson.Marshal(m)
+	return j, m, err
 }
 
 func MarshalCreateMetadata(metadata *common.MetadataMutable) ([]byte, *common.Metadata, error) {

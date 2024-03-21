@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"net"
+	"net/http"
 	"slices"
 	"testing"
 
@@ -96,7 +97,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 
 	parsedToken, _ := jwt.Parse([]byte(dpopToken), jwt.WithVerify(false))
 
-	if method, _ := parsedToken.Get("htm"); method != "POST" {
+	if method, _ := parsedToken.Get("htm"); method != http.MethodPost {
 		t.Fatalf("we got a bad method: %v", method)
 	}
 

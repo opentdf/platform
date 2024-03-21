@@ -30,20 +30,20 @@ func KeycloakBuiltins() {
 		var request = authorization.IdpPluginRequest{}
 		var config = authorization.IdpConfig{}
 
-		reqJson, err := json.Marshal(requestMap)
+		reqJSON, err := json.Marshal(requestMap)
 		if err != nil {
 			return nil, err
 		}
-		confJson, err := json.Marshal(configMap)
+		confJSON, err := json.Marshal(configMap)
 		if err != nil {
 			return nil, err
 		}
 
-		err = protojson.Unmarshal(reqJson, &request)
+		err = protojson.Unmarshal(reqJSON, &request)
 		if err != nil {
 			return nil, err
 		}
-		err = protojson.Unmarshal(confJson, &config)
+		err = protojson.Unmarshal(confJSON, &config)
 		if err != nil {
 			return nil, err
 		}
@@ -52,11 +52,11 @@ func KeycloakBuiltins() {
 		if errresp != nil {
 			return nil, errresp
 		}
-		respJson, err := protojson.Marshal(resp)
+		respJSON, err := protojson.Marshal(resp)
 		if err != nil {
 			return nil, err
 		}
-		reader := bytes.NewReader(respJson)
+		reader := bytes.NewReader(respJSON)
 		v, err := ast.ValueFromReader(reader)
 		if err != nil {
 			return nil, err

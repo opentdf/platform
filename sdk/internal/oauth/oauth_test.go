@@ -387,7 +387,7 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	formData.Add("grant_type", "password")
 	formData.Add("client_id", "admin-cli")
 
-	req, _ := http.NewRequest("POST", keycloakBase+"/realms/master/protocol/openid-connect/token", strings.NewReader(formData.Encode()))
+	req, _ := http.NewRequest(http.MethodPost, keycloakBase+"/realms/master/protocol/openid-connect/token", strings.NewReader(formData.Encode()))
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
 
 	res, err := client.Do(req)
@@ -406,9 +406,9 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	realmFile, err := os.ReadFile("./realm.json")
 	require.NoError(t, err)
 
-	realmJson := strings.Replace(string(realmFile), "<claimsprovider url>", claimsProviderUrl.String(), -1)
+	realmJSON := strings.ReplaceAll(string(realmFile), "<claimsprovider url>", claimsProviderUrl.String())
 
-	req, _ = http.NewRequest("POST", keycloakBase+"/admin/realms", strings.NewReader(realmJson))
+	req, _ = http.NewRequest(http.MethodPost, keycloakBase+"/admin/realms", strings.NewReader(realmJSON))
 	req.Header.Add("authorization", "Bearer "+accessToken)
 	req.Header.Add("content-type", "application/json")
 

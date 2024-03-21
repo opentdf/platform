@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -89,7 +90,7 @@ func (i TokenAddingInterceptor) getDPoPToken(path, accessToken string) (string, 
 
 		dpopTok, err := jwt.NewBuilder().
 			Claim("htu", path).
-			Claim("htm", "POST").
+			Claim("htm", http.MethodPost).
 			Claim("ath", base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(ath)).
 			Claim("jti", base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(jtiBytes)).
 			IssuedAt(time.Now()).

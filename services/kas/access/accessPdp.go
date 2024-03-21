@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"github.com/opentdf/platform/protocol/go/policy"
+	otdf "github.com/opentdf/platform/sdk"
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	attrs "github.com/virtru/access-pdp/attributes"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
 
-func canAccess(ctx context.Context, entity authorization.Entity, policy Policy, _ ClaimsObject) (bool, error) {
+func canAccess(ctx context.Context, entity authorization.Entity, policy Policy, sdk *otdf.SDK) (bool, error) {
 	if len(policy.Body.Dissem) > 0 {
 		dissemAccess, err := checkDissems(policy.Body.Dissem, entity)
 		if err != nil {
@@ -29,7 +29,7 @@ func canAccess(ctx context.Context, entity authorization.Entity, policy Policy, 
 			return false, nil
 		}
 	}
-	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entity)
+	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entity, sdk)
 	if err != nil {
 		return false, err
 	}
@@ -50,14 +50,7 @@ func checkDissems(dissems []string, ent authorization.Entity) (bool, error) {
 	return false, nil
 }
 
-func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent authorization.Entity) (bool, error) {
-	// FIXME use in_process grpc calls, for now dial localhost
-	cc, err := grpc.Dial("localhost:9000", grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		slog.ErrorContext(ctx, err.Error())
-		return false, err
-	}
-	ac := authorization.NewAuthorizationServiceClient(cc)
+func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent authorization.Entity, sdk *otdf.SDK) (bool, error) {
 	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
 	ec.Entities = append(ec.Entities, &ent)
 	ras := []*authorization.ResourceAttribute{{
@@ -77,7 +70,7 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent authorizati
 			},
 		},
 	}
-	dr, err := ac.GetDecisions(ctx, &in)
+	dr, err := sdk.Authorization.GetDecisions(ctx, &in)
 	if err != nil {
 		slog.ErrorContext(ctx, "Error received from GetDecisions", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)

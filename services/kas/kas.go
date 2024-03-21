@@ -71,7 +71,7 @@ func NewRegistration() serviceregistry.Registration {
 
 			p := access.Provider{
 				URI:          *kasURI,
-				AttributeSvc: nil,
+				SDK:          srp.SDK,
 				Session:      *hsm,
 				OIDCVerifier: loadIdentityProvider(),
 			}

@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -24,6 +26,25 @@ type keycloakConnectParams struct {
 	Password         string
 	Realm            string
 	AllowInsecureTLS bool
+}
+
+const (
+	kcErrNone    = 0
+	kcErrUnknown = -1
+)
+
+// Extracts the HTTP status code from err if it is available
+// as an http status code. Returns 0 for no error and -1 for
+// invalid error; use const values kcErrNone and kcErrUnknown.
+func kcErrCode(err error) int {
+	if err == nil {
+		return kcErrNone
+	}
+	var kcErr *gocloak.APIError
+	if errors.As(err, &kcErr) {
+		return kcErr.Code
+	}
+	return kcErrUnknown
 }
 
 var (
@@ -55,6 +76,9 @@ var (
 			}
 
 			config, err := config.LoadConfig("")
+			if err != nil {
+				return err
+			}
 			ctx := context.Background()
 
 			// Create realm, if it does not exist.
@@ -66,14 +90,15 @@ var (
 			//Create realm
 			r, err := client.GetRealm(ctx, token.AccessToken, realmName)
 			if err != nil {
-				kcErr := err.(*gocloak.APIError)
-				if kcErr.Code == 409 {
+				switch kcErrCode(err) {
+				case http.StatusConflict:
 					slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", realmName))
-				} else if kcErr.Code != 404 {
+				case http.StatusNotFound:
+					// yay!
+				default:
 					return err
 				}
 			}
-
 			if r == nil {
 				realm := gocloak.RealmRepresentation{
 					Realm:   gocloak.StringP(realmName),
@@ -117,10 +142,10 @@ var (
 					Name: gocloak.StringP(role),
 				})
 				if err != nil {
-					kcErr := err.(*gocloak.APIError)
-					if kcErr.Code == 409 {
+					switch kcErrCode(err) {
+					case http.StatusConflict:
 						slog.Warn(fmt.Sprintf("⏭️  role %s already exists", role))
-					} else {
+					default:
 						return err
 					}
 				} else {
@@ -246,10 +271,9 @@ func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client
 		return "", err
 	}
 	clientId := *newClient.ClientID
-
 	if longClientId, err = client.CreateClient(context.Background(), token.AccessToken, connectParams.Realm, newClient); err != nil {
-		kcErr := err.(*gocloak.APIError)
-		if kcErr.Code == 409 {
+		switch kcErrCode(err) {
+		case http.StatusConflict:
 			slog.Warn(fmt.Sprintf("⏭️  client %s already exists", clientId))
 			clients, err := client.GetClients(context.Background(), token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: newClient.ClientID})
 			if err != nil {
@@ -258,11 +282,11 @@ func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client
 			if len(clients) == 1 {
 				longClientId = *clients[0].ID
 			} else {
-				err = fmt.Errorf("error, %s client not found", clientId)
+				err = fmt.Errorf("❗️ error, %s client not found", clientId)
 				return "", err
 			}
-		} else {
-			slog.Error(fmt.Sprintf("Error creating client %s : %s", clientId, err))
+		default:
+			slog.Error(fmt.Sprintf("❗️  Error creating client %s : %s", clientId, err))
 			return "", err
 		}
 	} else {
@@ -316,8 +340,8 @@ func createUser(connectParams *keycloakConnectParams, newUser gocloak.User) (*st
 	username := *newUser.Username
 	longUserId, err := client.CreateUser(context.Background(), token.AccessToken, connectParams.Realm, newUser)
 	if err != nil {
-		kcErr := err.(*gocloak.APIError)
-		if kcErr.Code == 409 {
+		switch kcErrCode(err) {
+		case http.StatusConflict:
 			slog.Warn(fmt.Sprintf("user %s already exists", username))
 			users, err := client.GetUsers(context.Background(), token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{Username: newUser.Username})
 			if err != nil {
@@ -329,7 +353,7 @@ func createUser(connectParams *keycloakConnectParams, newUser gocloak.User) (*st
 				err = fmt.Errorf("error, %s user not found", username)
 				return nil, err
 			}
-		} else {
+		default:
 			slog.Error(fmt.Sprintf("Error creating user %s : %s", username, err))
 			return nil, err
 		}
@@ -421,13 +445,14 @@ func createTokenExchange(connectParams *keycloakConnectParams, startClientId str
 	realmMgmtPolicy, err := client.CreatePolicy(context.Background(), token.AccessToken, connectParams.Realm,
 		*realmManagementClientId, realmMgmtExchangePolicyRepresentation)
 	if err != nil {
-		kcErr := err.(*gocloak.APIError)
-		if kcErr.Code == 409 {
+		switch kcErrCode(err) {
+		case http.StatusConflict:
 			slog.Warn(fmt.Sprintf("⏭️  policy %s already exists; skipping remainder of token exchange creation", *realmMgmtExchangePolicyRepresentation.Name))
 			return nil
+		default:
+			slog.Error(fmt.Sprintf("Error create realm management policy: %s", err))
+			return err
 		}
-		slog.Error(fmt.Sprintf("Error create realm management policy: %s", err))
-		return err
 	}
 	tokenExchangePolicyId := realmMgmtPolicy.ID
 	slog.Info(fmt.Sprintf("✅ Created Token Exchange Policy %s", *tokenExchangePolicyId))

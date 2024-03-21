@@ -59,30 +59,25 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 		[]string{"testscope"},
 		clientCredentials,
 		dpopJWK)
+	require.NoError(t, err)
 
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
 	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
-	if err != nil {
-		t.Errorf("error parsing token received from IDP: %v", err)
-	}
+	require.NoError(t, err)
 
-	if cnfClaim, ok := tokenDetails.Get("cnf"); ok {
-		cnfClaimsMap := cnfClaim.(map[string]interface{})
-		idpKeyFingerprint := cnfClaimsMap["jkt"].(string)
-		if idpKeyFingerprint == "" {
-			t.Fatalf("no cnf.jkt key in claims: %v", cnfClaimsMap)
-		} else {
-			pk, _ := dpopJWK.PublicKey()
-			hash, _ := pk.Thumbprint(crypto.SHA256)
+	cnfClaim, ok := tokenDetails.Get("cnf")
+	require.True(t, ok)
+	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
+	require.True(t, ok)
+	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, idpKeyFingerprint)
+	pk, err := dpopJWK.PublicKey()
+	require.NoError(t, err)
+	hash, err := pk.Thumbprint(crypto.SHA256)
+	require.NoError(t, err)
 
-			expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
-			assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-		}
-	} else {
-		t.Fatal("no cnf claim in token")
-	}
+	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
+	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
 }
 
 func TestClientSecretNoNonce(t *testing.T) {
@@ -403,15 +398,13 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	var responseMap map[string]interface{}
 	decoder := json.NewDecoder(res.Body)
 	err = decoder.Decode(&responseMap)
-	if err != nil {
-		t.Fatalf("error decoding response: %v", err)
-	}
-	accessToken := responseMap["access_token"].(string)
+	require.NoError(t, err, "error decoding response")
+
+	accessToken, ok := responseMap["access_token"].(string)
+	require.True(t, ok, "missing access_token")
 
 	realmFile, err := os.ReadFile("./realm.json")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	realmJson := strings.Replace(string(realmFile), "<claimsprovider url>", claimsProviderUrl.String(), -1)
 

@@ -96,7 +96,7 @@ service KeyAccessServerRegistryService {
 
   rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
     option (google.api.http) = {
-      put: "/key-access-servers/{id}"
+      patch: "/key-access-servers/{id}"
       body: "*"
     };
   }

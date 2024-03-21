@@ -153,9 +153,7 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	dpopJWK := auth.GetJWKFromContext(ctx)
 
 	if dpopJWK == nil {
-		slog.ErrorContext(ctx,
-			"if no DPoP token is passed then requests should never make it to rewrap, the authn middleware is configured incorrectly")
-		return nil, err503("unable to verify body signature")
+		slog.ErrorContext(ctx, "allowing rewrap without authentication. the authn middleware is not in use")
 	}
 
 	var verificationKey interface{}

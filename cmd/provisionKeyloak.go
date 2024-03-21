@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/opentdf/platform/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -32,6 +33,7 @@ var (
  ** Local Development and Testing Only **
  This command will create the following Keyclaok resource:
  - Realm
+ - Roles
  - Client
  - Users
 
@@ -51,6 +53,7 @@ var (
 				AllowInsecureTLS: true,
 			}
 
+			config, err := config.LoadConfig("")
 			ctx := context.Background()
 
 			// Create realm, if it does not exist.
@@ -64,14 +67,13 @@ var (
 			if err != nil {
 				kcErr := err.(*gocloak.APIError)
 				if kcErr.Code == 409 {
-					slog.Info(fmt.Sprintf("%s realm already exists, skipping create", realmName))
+					slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", realmName))
 				} else if kcErr.Code != 404 {
 					return err
 				}
 			}
 
 			if r == nil {
-
 				realm := gocloak.RealmRepresentation{
 					Realm:   gocloak.StringP(realmName),
 					Enabled: gocloak.BoolP(true),
@@ -82,23 +84,68 @@ var (
 				}
 				slog.Info("✅ Realm created", slog.String("realm", realmName))
 			} else {
-				slog.Info("Realm already exists", slog.String("realm", realmName))
+				slog.Info("⏭️  Realm already exists", slog.String("realm", realmName))
 			}
 
 			opentdfClientId := "opentdf"
 			opentdfSdkClientId := "opentdf-sdk"
+			opentdfOrgAdminRoleName := "opentdf-org-admin"
+			opentdfAdminRoleName := "opentdf-admin"
+			opentdfReadonlyRoleName := "opentdf-readonly"
+
 			protocolMappers := []gocloak.ProtocolMapperRepresentation{
 				{
 					Name:           gocloak.StringP("audience-mapper"),
 					Protocol:       gocloak.StringP("openid-connect"),
 					ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
 					Config: &map[string]string{
-						"included.client.audience": "http://localhost:8080",
+						"included.client.audience": config.Server.Auth.Audience,
 						"included.custom.audience": "custom_audience",
 						"access.token.claim":       "true",
 						"id.token.claim":           "true",
 					},
 				},
+			}
+
+			// Create Roles
+			roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfReadonlyRoleName}
+			for _, role := range roles {
+				_, err := client.CreateRealmRole(ctx, token.AccessToken, realmName, gocloak.Role{
+					Name: gocloak.StringP(role),
+				})
+				if err != nil {
+					kcErr := err.(*gocloak.APIError)
+					if kcErr.Code == 409 {
+						slog.Warn(fmt.Sprintf("⏭️  role %s already exists", role))
+					} else {
+						return err
+					}
+				} else {
+					slog.Info(fmt.Sprintf("✅ Role created: role = %s", role))
+				}
+			}
+
+			// Get the roles
+			var opentdfOrgAdminRole *gocloak.Role
+			// var opentdfAdminRole *gocloak.Role
+			var opentdfReadonlyRole *gocloak.Role
+			realmRoles, err := client.GetRealmRoles(ctx, token.AccessToken, realmName, gocloak.GetRoleParams{
+				Search: gocloak.StringP("opentdf"),
+			})
+			if err != nil {
+				return err
+			}
+
+			slog.Info(fmt.Sprintf("✅ Roles found: %d", len(realmRoles))) //, slog.String("roles", fmt.Sprintf("%v", realmRoles))
+			for _, role := range realmRoles {
+				switch *role.Name {
+				case opentdfOrgAdminRoleName:
+					opentdfOrgAdminRole = role
+				// case opentdfAdminRoleName:
+				// 	opentdfAdminRole = role
+				case opentdfReadonlyRoleName:
+					opentdfReadonlyRole = role
+				}
 			}
 
 			// Create OpenTDF Client
@@ -110,7 +157,7 @@ var (
 				ClientAuthenticatorType: gocloak.StringP("client-secret"),
 				Secret:                  gocloak.StringP("secret"),
 				ProtocolMappers:         &protocolMappers,
-			})
+			}, []gocloak.Role{*opentdfOrgAdminRole})
 			if err != nil {
 				return err
 			}
@@ -124,7 +171,7 @@ var (
 				ClientAuthenticatorType: gocloak.StringP("client-secret"),
 				Secret:                  gocloak.StringP("secret"),
 				ProtocolMappers:         &protocolMappers,
-			})
+			}, []gocloak.Role{*opentdfReadonlyRole})
 			if err != nil {
 				return err
 			}
@@ -153,35 +200,57 @@ func keycloakLogin(connectParams *keycloakConnectParams) (*gocloak.GoCloak, *goc
 	return client, token, err
 }
 
-func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client) (*string, error) {
+func createClient(connectParams *keycloakConnectParams, newClient gocloak.Client, roles []gocloak.Role) (string, error) {
+	var longClientId string
 	client, token, err := keycloakLogin(connectParams)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	clientId := *newClient.ClientID
-	longClientId, err := client.CreateClient(context.Background(), token.AccessToken, connectParams.Realm, newClient)
-	if err != nil {
+
+	if longClientId, err = client.CreateClient(context.Background(), token.AccessToken, connectParams.Realm, newClient); err != nil {
 		kcErr := err.(*gocloak.APIError)
 		if kcErr.Code == 409 {
-			slog.Warn(fmt.Sprintf("client %s already exists", clientId))
+			slog.Warn(fmt.Sprintf("⏭️  client %s already exists", clientId))
 			clients, err := client.GetClients(context.Background(), token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: newClient.ClientID})
 			if err != nil {
-				return nil, err
+				return "", err
 			}
 			if len(clients) == 1 {
 				longClientId = *clients[0].ID
 			} else {
 				err = fmt.Errorf("error, %s client not found", clientId)
-				return nil, err
+				return "", err
 			}
 		} else {
 			slog.Error(fmt.Sprintf("Error creating client %s : %s", clientId, err))
-			return nil, err
+			return "", err
 		}
 	} else {
 		slog.Info(fmt.Sprintf("✅ Client created: client id = %s, client identifier=%s", clientId, longClientId))
 	}
-	return &longClientId, nil
+
+	// Get service account user
+	user, err := client.GetClientServiceAccount(context.Background(), token.AccessToken, connectParams.Realm, longClientId)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientId, err))
+		return "", err
+	}
+	slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientId, *user.Username))
+
+	slog.Info(fmt.Sprintf("Adding roles to client %s via service account %s", longClientId, *user.Username))
+	if err := client.AddRealmRoleToUser(context.Background(), token.AccessToken, connectParams.Realm, *user.ID, roles); err != nil {
+		for _, role := range roles {
+			slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+		}
+		return "", err
+	} else {
+		for _, role := range roles {
+			slog.Info(fmt.Sprintf("✅ Role %s added to client %s", *role.Name, longClientId))
+		}
+	}
+
+	return longClientId, nil
 }
 
 func getIdOfClient(client *gocloak.GoCloak, token *gocloak.JWT, connectParams *keycloakConnectParams, clientName *string) (*string, error) {
@@ -241,7 +310,7 @@ func createTokenExchange(connectParams *keycloakConnectParams, startClientId str
 	if err != nil {
 		kcErr := err.(*gocloak.APIError)
 		if kcErr.Code == 409 {
-			slog.Warn(fmt.Sprintf("policy %s already exists; skipping remainder of token exchange creation", *realmMgmtExchangePolicyRepresentation.Name))
+			slog.Warn(fmt.Sprintf("⏭️  policy %s already exists; skipping remainder of token exchange creation", *realmMgmtExchangePolicyRepresentation.Name))
 			return nil
 		}
 		slog.Error(fmt.Sprintf("Error create realm management policy: %s", err))

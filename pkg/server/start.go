@@ -45,40 +45,43 @@ func Start(f ...StartOptions) error {
 		startConfig = fn(startConfig)
 	}
 
+	ctx := context.Background()
+
 	slog.Info("starting opentdf services")
 
-	// Load the config
+	slog.Info("loading configuration")
 	conf, err := config.LoadConfig(startConfig.ConfigName)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
 	}
 
+	slog.Info("starting logger")
 	logger, err := logger.NewLogger(conf.Logger)
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
 	}
 	slog.SetDefault(logger.Logger)
 
-	ctx := context.Background()
-
 	slog.Info("starting opa engine")
-	// Start the opa engine
 	eng, err := opa.NewEngine(conf.OPA)
 	if err != nil {
 		return fmt.Errorf("could not start opa engine: %w", err)
 	}
 	defer eng.Stop(ctx)
 
-	// Lets make sure we can establish a new db client
-	dbClient, err := createDatabaseClient(ctx, conf.DB)
+	slog.Info("creating database client")
+	dbClient, err := db.NewClient(conf.DB)
 	if err != nil {
 		return fmt.Errorf("issue creating database client: %w", err)
 	}
 	defer dbClient.Close()
 
+	// Required services
+	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
+
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	otdf, err := server.NewOpenTDFServer(conf.Server)
+	otdf, err := server.NewOpenTDFServer(conf.Server, dbClient)
 	if err != nil {
 		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
@@ -135,24 +138,6 @@ func waitForShutdownSignal() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
-}
-
-func createDatabaseClient(ctx context.Context, conf db.Config) (*db.Client, error) {
-	slog.Info("creating database client")
-	dbClient, err := db.NewClient(conf)
-	if err != nil {
-		//nolint:wrapcheck // we want to return the error as is. the start command will wrap it
-		return nil, err
-	}
-
-	slog.Info("running database migrations")
-	appliedMigrations, err := dbClient.RunMigrations(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("issue running database migrations: %w", err)
-	}
-
-	slog.Info("database migrations complete", slog.Int("applied", appliedMigrations))
-	return dbClient, nil
 }
 
 func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine, client *sdk.SDK) error {

@@ -125,7 +125,7 @@
           "KeyAccessServerRegistryService"
         ]
       },
-      "put": {
+      "patch": {
         "operationId": "KeyAccessServerRegistryService_UpdateKeyAccessServer",
         "responses": {
           "200": {

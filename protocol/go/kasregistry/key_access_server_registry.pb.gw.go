@@ -320,7 +320,7 @@ func RegisterKeyAccessServerRegistryServiceHandlerServer(ctx context.Context, mu
 
 	})
 
-	mux.Handle("PUT", pattern_KeyAccessServerRegistryService_UpdateKeyAccessServer_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_KeyAccessServerRegistryService_UpdateKeyAccessServer_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -477,7 +477,7 @@ func RegisterKeyAccessServerRegistryServiceHandlerClient(ctx context.Context, mu
 
 	})
 
-	mux.Handle("PUT", pattern_KeyAccessServerRegistryService_UpdateKeyAccessServer_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_KeyAccessServerRegistryService_UpdateKeyAccessServer_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)

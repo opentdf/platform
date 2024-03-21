@@ -441,7 +441,7 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 	// Add values
 	var values []*policy.Value
-	if r.Values != nil && len(r.Values) > 0 {
+	if r.Values != nil {
 		for _, v := range r.Values {
 			req := &attributes.CreateAttributeValueRequest{AttributeId: id, Value: v}
 			value, err := c.CreateAttributeValue(ctx, id, req)

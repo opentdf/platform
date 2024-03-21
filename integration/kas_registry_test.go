@@ -242,7 +242,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValues() {
 	uri := "testingUpdateUri.com"
 	pubKeyRemote := "https://remote.com/key"
-	updatedUri := "updatedUri.com"
+	updatedUri := "updatingUri.com"
 
 	// create a test KAS
 	created, err := s.db.KASRClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{

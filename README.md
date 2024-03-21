@@ -134,7 +134,7 @@ EOM
 List Attributes
 
 ```bash
-grpcurl -plaintext localhost:8080 attributes.v1.AttributesService/ListAttributes
+grpcurl -plaintext localhost:8080 policy.attributes.AttributesService/ListAttributes
 ```
 
 ### Generation

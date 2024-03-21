@@ -178,12 +178,12 @@ func (c KasRegistryDbClient) CreateKeyAccessServer(ctx context.Context, r *kasr.
 	}, nil
 }
 
-func updateKeyAccessServerSQL(id, keyAccessServer string, publicKey, metadata []byte) (string, []interface{}, error) {
+func updateKeyAccessServerSQL(id, uri string, publicKey, metadata []byte) (string, []interface{}, error) {
 	sb := db.NewStatementBuilder().
 		Update(Tables.KeyAccessServerRegistry.Name())
 
-	if keyAccessServer != "" {
-		sb = sb.Set("uri", keyAccessServer)
+	if uri != "" {
+		sb = sb.Set("uri", uri)
 	}
 
 	if publicKey != nil {
@@ -210,9 +210,12 @@ func (c KasRegistryDbClient) UpdateKeyAccessServer(ctx context.Context, id strin
 		return nil, err
 	}
 
-	publicKeyJSON, err := protojson.Marshal(r.PublicKey)
-	if err != nil {
-		return nil, err
+	var publicKeyJSON []byte
+	if r.PublicKey != nil {
+		publicKeyJSON, err = protojson.Marshal(r.PublicKey)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sql, args, err := updateKeyAccessServerSQL(id, r.Uri, publicKeyJSON, metadataJson)

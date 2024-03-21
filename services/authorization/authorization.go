@@ -28,8 +28,9 @@ import (
 
 type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
-	eng *opa.Engine
-	sdk *otdf.SDK
+	eng    *opa.Engine
+	sdk    *otdf.SDK
+	config *map[string]interface{}
 }
 
 func NewRegistration() serviceregistry.Registration {
@@ -37,7 +38,7 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "authorization",
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, config: &srp.Config.ExtraProps}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
 			}
 		},
@@ -45,11 +46,15 @@ func NewRegistration() serviceregistry.Registration {
 }
 
 var RetrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, as AuthorizationService) (*attr.GetAttributeValuesByFqnsResponse, error) {
+	slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
 	return as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},
 		Fqns: ra.AttributeFqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
 	})
 }
 
@@ -108,7 +113,6 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				// format subject fqns as attribute instances for accesspdp
 				entityAttrs := make(map[string][]access.AttributeInstance)
 				for _, e := range ecEntitlements.Entitlements {
-					// currently just adding each entity retuned to same list
 					var thisEntityAttrs []access.AttributeInstance
 					for _, x := range e.GetAttributeId() {
 						inst, err := access.ParseInstanceFromURI(x)
@@ -138,6 +142,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				for _, d := range decisions {
 					if !d.Access {
 						decision = authorization.DecisionResponse_DECISION_DENY
+						break
 					}
 				}
 
@@ -167,7 +172,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	// get subject mappings
 	request := attr.GetAttributeValuesByFqnsRequest{
-		Fqns: req.GetScope().AttributeFqns,
+		Fqns: req.GetScope().GetAttributeFqns(),
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},
@@ -184,7 +189,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 		return nil, errors.New("entity chain is required")
 	}
 	// OPA
-	in, err := entitlements.OpaInput(req.Entities[0], subjectMappings)
+	in, err := entitlements.OpaInput(req.Entities[0], subjectMappings, *as.config)
 	if err != nil {
 		return nil, err
 	}

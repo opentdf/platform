@@ -335,7 +335,7 @@ func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_INT_Expect_Error() {
 	s.Equal("invalid client id", err.Error())
 }
 
-func (s *AuthSuite) Test_CheckToken_When_Valid_Expect_No_Error() {
+func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", s.server.URL))
@@ -347,7 +347,8 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_Expect_No_Error() {
 	s.Require().NoError(err)
 
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().NoError(err)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), "dpop")
 }
 
 type dpopTestCase struct {
@@ -446,7 +447,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client2"))
-	s.Require().NoError(err)
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-admin"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
@@ -507,7 +508,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client2"))
-	s.Require().NoError(err)
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-admin"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
@@ -516,12 +517,17 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.Require().NoError(err)
 
 	jwkChan := make(chan jwk.Key, 1)
+	timeout := make(chan string, 1)
+	go func() {
+		time.Sleep(5 * time.Second)
+		timeout <- ""
+	}()
 	server := httptest.NewServer(s.auth.MuxHandler(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		jwkChan <- GetJWKFromContext(req.Context())
 	})))
 	defer server.Close()
 
-	req, err := http.NewRequest(http.MethodGet, server.URL+"/the/path", nil)
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/attributes", nil)
 
 	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
@@ -529,17 +535,22 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	})
 	s.Require().NoError(err)
 	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))
-	dpopTok, err := addingInterceptor.GetDPoPToken("/the/path", "GET", string(signedTok))
+	dpopTok, err := addingInterceptor.GetDPoPToken("/attributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
 
 	client := http.Client{}
 	_, err = client.Do(req)
 	s.Require().NoError(err)
-	dpopKeyFromRequest := <-jwkChan
+	var dpopKeyFromRequest jwk.Key
+	select {
+	case k := <-jwkChan:
+		dpopKeyFromRequest = k
+	case <-timeout:
+		s.Require().FailNow("timed out waiting for call to complete")
+	}
 
 	s.NotNil(dpopKeyFromRequest)
-
 	dpopJWKFromRequest, ok := dpopKeyFromRequest.(jwk.RSAPublicKey)
 	s.True(ok)
 	s.Require().NoError(err)

@@ -61,6 +61,8 @@ p,	role:org-admin,		/kas.AccessService/LegacyPublicKey,			*,			allow
 ## gRPC routes
 p,	role:admin,		policy.*,																		*,			allow
 p,	role:admin,		kasregistry.*,															*,			allow
+p,	role:admin,		kas.AccessService/Info,					            *,			allow
+p,	role:admin,		kas.AccessService/Rewrap, 			            *,			allow
 p,	role:admin,		kas.AccessService/LegacyPublicKey,					*,			allow
 p,	role:admin,		kas.AccessService/PublicKey,								*,			allow
 ## HTTP routes

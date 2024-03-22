@@ -439,6 +439,17 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	// Update the FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeId: id})
 
+	// Add values
+	var values []*policy.Value
+	for _, v := range r.Values {
+		req := &attributes.CreateAttributeValueRequest{AttributeId: id, Value: v}
+		value, err := c.CreateAttributeValue(ctx, id, req)
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+
 	a := &policy.Attribute{
 		Id:       id,
 		Name:     r.Name,
@@ -448,6 +459,7 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 			Id: r.NamespaceId,
 		},
 		Active: &wrapperspb.BoolValue{Value: true},
+		Values: values,
 	}
 	return a, nil
 }

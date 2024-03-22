@@ -19,11 +19,6 @@ const (
 	provKcRealm    = "opentdf"
 )
 
-type ExtendedRealmRepresentation struct {
-	gocloak.RealmRepresentation
-	UnManagedAttributes string `json:"attributes,omitempty"`
-}
-
 type keycloakConnectParams struct {
 	BasePath         string
 	Username         string

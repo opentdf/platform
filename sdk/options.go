@@ -17,6 +17,7 @@ type config struct {
 	authConfig        *AuthConfig
 	policyConn        *grpc.ClientConn
 	authorizationConn *grpc.ClientConn
+	fixedToken        string
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -63,5 +64,11 @@ func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
+	}
+}
+
+func WithFixedTokenSource(tok string) Option {
+	return func(c *config) {
+		c.fixedToken = tok
 	}
 }

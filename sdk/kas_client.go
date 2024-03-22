@@ -11,6 +11,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	kas "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/internal/crypto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,8 +22,10 @@ const (
 )
 
 type KASClient struct {
-	accessTokenSource auth.AccessTokenSource
-	dialOptions       []grpc.DialOption
+	accessTokenSource   auth.AccessTokenSource
+	dialOptions         []grpc.DialOption
+	clientPublicKeyPEM  string
+	clientPrivateKeyPEM string
 }
 
 // once the backend moves over we should use the same type that the golang backend uses here
@@ -32,6 +35,30 @@ type rewrapRequestBody struct {
 	Algorithm       string    `json:"algorithm,omitempty"`
 	ClientPublicKey string    `json:"clientPublicKey"`
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
+}
+
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource) (*KASClient, error) {
+	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
+	if err != nil {
+		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
+	}
+
+	clientPublicKey, err := rsaKeyPair.PublicKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
+	}
+
+	clientPrivateKey, err := rsaKeyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("crypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+
+	return &KASClient{
+		accessTokenSource:   accessTokenSource,
+		dialOptions:         dialOptions,
+		clientPublicKeyPEM:  clientPublicKey,
+		clientPrivateKeyPEM: clientPrivateKey,
+	}, nil
 }
 
 // there is no connection caching as of now
@@ -81,8 +108,12 @@ func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 			return nil, fmt.Errorf("Error making rewrap request: %w", err)
 		}
 	}
+	asymDecryptor, err := crypto.NewAsymDecryption(k.clientPrivateKeyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("NewAsymDecryption - failed: %w", err)
+	}
 
-	key, err := k.accessTokenSource.DecryptWithDPoPKey(response.GetEntityWrappedKey())
+	key, err := asymDecryptor.Decrypt(response.GetEntityWrappedKey())
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}
@@ -110,7 +141,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	requestBody := rewrapRequestBody{
 		Policy:          policy,
 		KeyAccess:       keyAccess,
-		ClientPublicKey: k.accessTokenSource.DPoPPublicKeyPEM(),
+		ClientPublicKey: k.clientPublicKeyPEM,
 	}
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {

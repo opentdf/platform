@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
 	"sync"
@@ -15,7 +16,6 @@ import (
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 	"github.com/opentdf/platform/sdk/internal/oauth"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -81,7 +81,7 @@ to a DPoP key
 type IDPAccessTokenSource struct {
 	credentials      oauth.ClientCredentials
 	idpTokenEndpoint url.URL
-	token            *oauth2.Token
+	token            *oauth.Token
 	scopes           []string
 	dpopKey          jwk.Key
 	asymDecryption   crypto.AsymDecryption
@@ -117,11 +117,16 @@ func NewIDPAccessTokenSource(
 
 // use a pointer receiver so that the token state is shared
 func (t *IDPAccessTokenSource) AccessToken() (auth.AccessToken, error) {
-	if t.token == nil {
-		err := t.RefreshAccessToken()
+	t.tokenMutex.Lock()
+	defer t.tokenMutex.Unlock()
+
+	if t.token == nil || t.token.Expired() {
+		slog.Debug("getting new access token")
+		tok, err := oauth.GetAccessToken(t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
-			return auth.AccessToken(""), err
+			return "", fmt.Errorf("error getting access token: %w", err)
 		}
+		t.token = tok
 	}
 
 	return auth.AccessToken(t.token.AccessToken), nil
@@ -129,19 +134,6 @@ func (t *IDPAccessTokenSource) AccessToken() (auth.AccessToken, error) {
 
 func (t *IDPAccessTokenSource) DecryptWithDPoPKey(data []byte) ([]byte, error) {
 	return t.asymDecryption.Decrypt(data)
-}
-
-func (t *IDPAccessTokenSource) RefreshAccessToken() error {
-	t.tokenMutex.Lock()
-	defer t.tokenMutex.Unlock()
-
-	tok, err := oauth.GetAccessToken(t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
-	if err != nil {
-		return fmt.Errorf("error getting access token: %w", err)
-	}
-	t.token = tok
-
-	return nil
 }
 
 func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {

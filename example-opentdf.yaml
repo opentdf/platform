@@ -13,6 +13,13 @@ services:
     enabled: true
   policy:
     enabled: true
+  authorization:
+    enabled: true
+    url: http://localhost:8888
+    client: "tdf-entity-resolution"
+    secret: "secret"
+    realm: "opentdf"
+    legacy: true
   entitlements:
     providers:
       # - type: keycloak

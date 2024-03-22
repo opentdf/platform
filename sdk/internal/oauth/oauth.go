@@ -15,12 +15,33 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"golang.org/x/oauth2"
+)
+
+const (
+	tokenExpirationBuffer = 10 * time.Second
 )
 
 type ClientCredentials struct {
 	ClientAuth interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
 	ClientId   string
+}
+
+type Token struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int64  `json:"expires_in,omitempty"`
+	Scope       string `json:"scope,omitempty"`
+	received    time.Time
+}
+
+func (t Token) Expired() bool {
+	if t.ExpiresIn == 0 {
+		return false
+	}
+
+	expirationTime := t.received.Add(time.Second * time.Duration(t.ExpiresIn))
+
+	return time.Now().After(expirationTime.Add(-tokenExpirationBuffer))
 }
 
 func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
@@ -96,7 +117,7 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 // this misses the flow where the Authorization server can tell us the next nonce to use.
 // missing this flow costs us a bit in efficiency (a round trip per access token) but this is
 // still correct because
-func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*oauth2.Token, error) {
+func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
 	req, err := getRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
 	if err != nil {
 		return nil, err
@@ -128,7 +149,7 @@ func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials Cli
 	return processResponse(resp)
 }
 
-func processResponse(resp *http.Response) (*oauth2.Token, error) {
+func processResponse(resp *http.Response) (*Token, error) {
 	respBytes, err := io.ReadAll(resp.Body)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -139,10 +160,12 @@ func processResponse(resp *http.Response) (*oauth2.Token, error) {
 		return nil, fmt.Errorf("error reading bytes from response: %w", err)
 	}
 
-	var token *oauth2.Token
+	var token *Token
 	if err := json.Unmarshal(respBytes, &token); err != nil {
 		return nil, fmt.Errorf("error unmarshaling token from response: %w", err)
 	}
+
+	token.received = time.Now()
 
 	return token, nil
 }

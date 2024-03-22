@@ -12,8 +12,6 @@ import (
 	kas "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -65,22 +63,6 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 
 func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 	response, err := k.makeRewrapRequest(keyAccess, policy)
-
-	if err != nil {
-		switch status.Code(err) { //nolint:exhaustive // we can only handle authentication
-		case codes.Unauthenticated:
-			err = k.accessTokenSource.RefreshAccessToken()
-			if err != nil {
-				return nil, fmt.Errorf("error refreshing access token: %w", err)
-			}
-			response, err = k.makeRewrapRequest(keyAccess, policy)
-			if err != nil {
-				return nil, fmt.Errorf("Error making rewrap request: %w", err)
-			}
-		default:
-			return nil, fmt.Errorf("Error making rewrap request: %w", err)
-		}
-	}
 
 	key, err := k.accessTokenSource.DecryptWithDPoPKey(response.GetEntityWrappedKey())
 	if err != nil {

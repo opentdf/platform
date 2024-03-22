@@ -55,13 +55,26 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// once we change KAS to use standard DPoP we can put this all in the `build()` method
 	dialOptions := append([]grpc.DialOption{}, cfg.build()...)
-	accessTokenSource, err := buildIDPTokenSource(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
+
+	var accessTokenSource auth.AccessTokenSource
+	if cfg.fixedToken == "" {
+		idpTokenSource, err := buildIDPTokenSource(cfg)
+		if err != nil {
+			return nil, err
+		}
+		if idpTokenSource != nil {
+			interceptor := auth.NewTokenAddingInterceptor(idpTokenSource)
+			dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
+			accessTokenSource = idpTokenSource
+		}
+	} else {
+		fixedTokenSource, err := NewFixedAccessTokenSource(cfg.fixedToken)
+		if err != nil {
+			return nil, err
+		}
+		interceptor := auth.NewTokenAddingInterceptor(fixedTokenSource)
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
+		accessTokenSource = fixedTokenSource
 	}
 
 	var unwrapper Unwrapper

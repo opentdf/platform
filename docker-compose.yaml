@@ -1,8 +1,7 @@
 services:
   keycloak:
-    #image: ghcr.io/opentdf/keycloak:21.1.2-1.4.2
-    # image: quay.io/keycloak/keycloak:latest -- >= 24 does not have user attributes enabled by default in realms
-    image: quay.io/keycloak/keycloak:23.0.7
+    # This is kc 24.0.1 with opentdf protocol mapper on board
+    image: ghcr.io/opentdf/keycloak:sha-8a6d35a
     restart: always
     command: ["start-dev"]
     environment:

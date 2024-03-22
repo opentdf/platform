@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -84,6 +85,22 @@ var (
 					return err
 				}
 				slog.Info("✅ Realm created", slog.String("realm", realmName))
+
+				//update realm users profile via upconfig
+				realmProfileUrl := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, realmName)
+				realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileUrl)
+				var upConfig map[string]interface{}
+				err = json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig)
+				if err != nil {
+					return err
+				}
+				upConfig["unmanagedAttributePolicy"] = "ENABLED"
+				realmUserProfileResp, err = client.GetRequestWithBearerAuth(ctx, token.AccessToken).SetBody(upConfig).Put(realmProfileUrl)
+				if err != nil {
+					return err
+				}
+				slog.Info("✅ Realm Users Profile Updated", slog.String("realm", realmName))
+
 			} else {
 				slog.Info("⏭️  Realm already exists", slog.String("realm", realmName))
 			}

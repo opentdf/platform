@@ -399,7 +399,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		{"bad bearer wrong issuer", jwtWrongIssuer(), srt, false, true, true},
 		{"bad bearer signature", jwtWrongKey(), srt, false, true, true},
 		{"different policy", jwtStandard(), badPolicySrt, true, false, true},
-		{"no dpop token included", jwtStandard(), srt, false, true, false},
+		// once we start always requiring auth then add this test back {"no dpop token included", jwtStandard(), srt, false, true, false},
 	}
 	// The execution loop
 	for _, tt := range tests {

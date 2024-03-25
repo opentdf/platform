@@ -22,10 +22,10 @@ const (
 )
 
 type KASClient struct {
-	accessTokenSource   auth.AccessTokenSource
-	dialOptions         []grpc.DialOption
-	clientPublicKeyPEM  string
-	clientPrivateKeyPEM string
+	accessTokenSource  auth.AccessTokenSource
+	dialOptions        []grpc.DialOption
+	clientPublicKeyPEM string
+	asymDecryption     crypto.AsymDecryption
 }
 
 // once the backend moves over we should use the same type that the golang backend uses here
@@ -53,11 +53,16 @@ func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTo
 		return nil, fmt.Errorf("crypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
+	asymDecryption, err := crypto.NewAsymDecryption(clientPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("crypto.NewAsymDecryption failed: %w", err)
+	}
+
 	return &KASClient{
-		accessTokenSource:   accessTokenSource,
-		dialOptions:         dialOptions,
-		clientPublicKeyPEM:  clientPublicKey,
-		clientPrivateKeyPEM: clientPrivateKey,
+		accessTokenSource:  accessTokenSource,
+		dialOptions:        dialOptions,
+		clientPublicKeyPEM: clientPublicKey,
+		asymDecryption:     asymDecryption,
 	}, nil
 }
 
@@ -108,12 +113,8 @@ func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 			return nil, fmt.Errorf("Error making rewrap request: %w", err)
 		}
 	}
-	asymDecryptor, err := crypto.NewAsymDecryption(k.clientPrivateKeyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("NewAsymDecryption - failed: %w", err)
-	}
-
-	key, err := asymDecryptor.Decrypt(response.GetEntityWrappedKey())
+	
+	key, err := k.asymDecryption.Decrypt(response.GetEntityWrappedKey())
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}

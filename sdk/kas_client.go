@@ -95,22 +95,6 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 
 func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 	response, err := k.makeRewrapRequest(keyAccess, policy)
-
-	if err != nil {
-		switch status.Code(err) { //nolint:exhaustive // we can only handle authentication
-		case codes.Unauthenticated:
-			err = k.accessTokenSource.RefreshAccessToken()
-			if err != nil {
-				return nil, fmt.Errorf("error refreshing access token: %w", err)
-			}
-			response, err = k.makeRewrapRequest(keyAccess, policy)
-			if err != nil {
-				return nil, fmt.Errorf("Error making rewrap request: %w", err)
-			}
-		default:
-			return nil, fmt.Errorf("Error making rewrap request: %w", err)
-		}
-	}
 	
 	key, err := k.asymDecryption.Decrypt(response.GetEntityWrappedKey())
 	if err != nil {

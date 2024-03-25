@@ -132,19 +132,6 @@ func (t *IDPAccessTokenSource) AccessToken() (auth.AccessToken, error) {
 	return auth.AccessToken(t.token.AccessToken), nil
 }
 
-func (t *IDPAccessTokenSource) RefreshAccessToken() error {
-	t.tokenMutex.Lock()
-	defer t.tokenMutex.Unlock()
-
-	tok, err := oauth.GetAccessToken(t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
-	if err != nil {
-		return fmt.Errorf("error getting access token: %w", err)
-	}
-	t.token = tok
-
-	return nil
-}
-
 func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(t.dpopKey)
 }

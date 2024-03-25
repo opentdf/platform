@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -40,7 +41,7 @@ func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 
-	dpopTok, err := i.GetDPoPToken(method, "POST", string(accessToken))
+	dpopTok, err := i.GetDPoPToken(method, http.MethodPost, string(accessToken))
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {

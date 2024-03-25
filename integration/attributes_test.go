@@ -72,6 +72,24 @@ func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
 	assert.NotNil(s.T(), createdAttr)
 }
 
+func (s *AttributesSuite) Test_CreateAttribute_WithValueSucceeds() {
+	values := []string{"value1", "value2", "value3"}
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__create_attribute_with_values",
+		NamespaceId: fixtureNamespaceId,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      values,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	createdVals := []string{}
+	for _, v := range createdAttr.Values {
+		createdVals = append(createdVals, v.Value)
+	}
+	assert.Equal(s.T(), values, createdVals)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdAttr)
+}
+
 func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_metadata",

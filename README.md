@@ -96,7 +96,7 @@ Run `go run . provision fixtures -h` for more information.
 Create Attribute
 
 ```bash
-grpcurl -plaintext -d @ localhost:8080 attributes.v1.AttributesService/CreateAttribute <<EOM
+grpcurl -plaintext -d @ localhost:8080 policy.attributes.AttributesService/CreateAttribute <<EOM
 {
     "definition": {
         "name": "relto",
@@ -134,7 +134,7 @@ EOM
 List Attributes
 
 ```bash
-grpcurl -plaintext localhost:8080 attributes.v1.AttributesService/ListAttributes
+grpcurl -plaintext localhost:8080 policy.attributes.AttributesService/ListAttributes
 ```
 
 ### Generation

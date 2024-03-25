@@ -1,7 +1,7 @@
 services:
   keycloak:
-    image: ghcr.io/opentdf/keycloak:sha-a0f4eb7 # Includes https://github.com/opentdf/backend/pull/611
-    # image: quay.io/keycloak/keycloak:latest
+    # This is kc 24.0.1 with opentdf protocol mapper on board
+    image: ghcr.io/opentdf/keycloak:sha-8a6d35a
     restart: always
     command: ["start-dev"]
     environment:

@@ -91,6 +91,4 @@ realms:
             - view-users
             - query-users
 
-# custom_mappers:
-#   - name: something
-    
+ 

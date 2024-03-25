@@ -63,6 +63,9 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 
 func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 	response, err := k.makeRewrapRequest(keyAccess, policy)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to kas: %w", err)
+	}
 
 	key, err := k.accessTokenSource.DecryptWithDPoPKey(response.GetEntityWrappedKey())
 	if err != nil {

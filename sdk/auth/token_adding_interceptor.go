@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -40,7 +41,7 @@ func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 
-	dpopTok, err := i.getDPoPToken(method, string(accessToken))
+	dpopTok, err := i.GetDPoPToken(method, http.MethodPost, string(accessToken))
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
@@ -56,7 +57,7 @@ func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
 	return err
 }
 
-func (i TokenAddingInterceptor) getDPoPToken(path, accessToken string) (string, error) {
+func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (string, error) {
 	tok, err := i.tokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
 		jtiBytes := make([]byte, JTILength)
 		_, err := rand.Read(jtiBytes)
@@ -89,7 +90,7 @@ func (i TokenAddingInterceptor) getDPoPToken(path, accessToken string) (string, 
 
 		dpopTok, err := jwt.NewBuilder().
 			Claim("htu", path).
-			Claim("htm", "POST").
+			Claim("htm", method).
 			Claim("ath", base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(ath)).
 			Claim("jti", base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(jtiBytes)).
 			IssuedAt(time.Now()).

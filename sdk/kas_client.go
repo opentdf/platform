@@ -13,8 +13,6 @@ import (
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/crypto"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (

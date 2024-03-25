@@ -246,7 +246,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
 
-	policyObj, err := t.createPolicyObject(tdfConfig.attributes)
+	policyObj, err := createPolicyObject(tdfConfig.attributes)
 	if err != nil {
 		return fmt.Errorf("fail to create policy object:%w", err)
 	}
@@ -340,7 +340,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 }
 
 // create policy object
-func (t *TDFObject) createPolicyObject(attributes []string) (PolicyObject, error) {
+func createPolicyObject(attributes []string) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)

@@ -1,4 +1,4 @@
-package oauth_test
+package oauth
 
 import (
 	"context"
@@ -22,7 +22,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/sdk/internal/oauth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -49,12 +48,12 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	require.NoError(t, dpopJWK.Set("use", "sig"))
 	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
-	clientCredentials := oauth.ClientCredentials{
+	clientCredentials := ClientCredentials{
 		ClientId:   "testclient",
 		ClientAuth: "abcd1234",
 	}
 
-	tok, err := oauth.GetAccessToken(
+	tok, err := GetAccessToken(
 		idpEndpoint,
 		[]string{"testscope"},
 		clientCredentials,
@@ -83,6 +82,15 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	} else {
 		t.Fatal("no cnf claim in token")
 	}
+
+	if tok.ExpiresIn < 0 {
+		t.Fatalf("invalid expiration is before current time: %v", tok)
+	}
+
+	if tok.Expired() {
+		t.Fatalf("got a token that is currently expired: %v", tok)
+	}
+
 }
 
 func TestClientSecretNoNonce(t *testing.T) {
@@ -119,11 +127,11 @@ func TestClientSecretNoNonce(t *testing.T) {
 	}))
 	defer server.Close()
 
-	clientCredentials := oauth.ClientCredentials{
+	clientCredentials := ClientCredentials{
 		ClientId:   "theclient",
 		ClientAuth: "thesecret",
 	}
-	_, err = oauth.GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
+	_, err = GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	require.NoError(t, err, "didn't get a token back from the IdP")
 }
 
@@ -188,13 +196,41 @@ func TestClientSecretWithNonce(t *testing.T) {
 	}))
 	defer server.Close()
 
-	clientCredentials := oauth.ClientCredentials{
+	clientCredentials := ClientCredentials{
 		ClientId:   "theclient",
 		ClientAuth: "thesecret",
 	}
-	_, err = oauth.GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
+	_, err = GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	if err != nil {
 		t.Errorf("didn't get a token back from the IdP: %v", err)
+	}
+}
+
+func TestTokenExpiration_RespectsLeeway(t *testing.T) {
+	expiredToken := Token{
+		received:  time.Now().Add(-tokenExpirationBuffer - 10*time.Second),
+		ExpiresIn: 5,
+	}
+	if !expiredToken.Expired() {
+		t.Fatalf("token should be expired")
+	}
+
+	goodToken := Token{
+		received:  time.Now(),
+		ExpiresIn: 2 * int64(tokenExpirationBuffer/time.Second),
+	}
+
+	if goodToken.Expired() {
+		t.Fatalf("token should not be expired")
+	}
+
+	justOverBorderToken := Token{
+		received:  time.Now(),
+		ExpiresIn: int64(tokenExpirationBuffer/time.Second) - 1,
+	}
+
+	if !justOverBorderToken.Expired() {
+		t.Fatalf("token should not be expired")
 	}
 }
 
@@ -273,14 +309,14 @@ func TestSignedJWTWithNonce(t *testing.T) {
 	}))
 	defer server.Close()
 
-	clientCredentials := oauth.ClientCredentials{
+	clientCredentials := ClientCredentials{
 		ClientId:   "theclient",
 		ClientAuth: clientAuthJWK,
 	}
 
 	url = server.URL + "/token"
 
-	_, err = oauth.GetAccessToken(url, []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
+	_, err = GetAccessToken(url, []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	if err != nil {
 		t.Errorf("didn't get a token back from the IdP: %v", err)
 	}

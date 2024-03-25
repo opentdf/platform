@@ -49,6 +49,7 @@ message CreateAttributeRequest {
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
+  repeated string values = 4;
 
   // Optional
   common.MetadataMutable metadata = 100;

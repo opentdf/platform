@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	keycloakFilename = "./cmd/keycloak_data.yaml"
-	keycloakData     KeycloakData
+	provKeycloakFilename = "./cmd/keycloak_data.yaml"
+	keycloakData         KeycloakData
 )
 
 type KeycloakData struct {
@@ -56,6 +56,7 @@ var (
 			// realmName, _ := cmd.Flags().GetString(provKcRealm)
 			kcUsername, _ := cmd.Flags().GetString(provKcUsername)
 			kcPassword, _ := cmd.Flags().GetString(provKcPassword)
+			keycloakFilename, _ := cmd.Flags().GetString(provKeycloakFilename)
 
 			// config, err := config.LoadConfig("")
 			LoadKeycloakData(keycloakFilename)
@@ -448,6 +449,7 @@ func init() {
 	provisionKeycloakFromConfigCmd.Flags().StringP(provKcEndpoint, "e", "http://localhost:8888/auth", "Keycloak endpoint")
 	provisionKeycloakFromConfigCmd.Flags().StringP(provKcUsername, "u", "admin", "Keycloak username")
 	provisionKeycloakFromConfigCmd.Flags().StringP(provKcPassword, "p", "changeme", "Keycloak password")
+	provisionKeycloakFromConfigCmd.Flags().StringP(provKeycloakFilename, "f", "./cmd/keycloak_data.yaml", "Keycloak config file")
 	// provisionKeycloakFromConfigCmd.Flags().StringP(provKcRealm, "r", "opentdf", "OpenTDF Keycloak Realm name")
 
 	provisionCmd.AddCommand(provisionKeycloakFromConfigCmd)

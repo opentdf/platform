@@ -1,4 +1,13 @@
 baseUrl: &baseUrl http://localhost:8888
+customAudMapper: &customAudMapper
+  name: audience-mapper
+  protocol: openid-connect
+  protocolMapper: oidc-audience-mapper
+  config:
+    included.client.audience: *baseUrl
+    included.custom.audience: custom_audience
+    access.token.claim: "true"
+    id.token.claim: "true"
 realms:
   - realm_repepresentation:
       realm: opentdf
@@ -21,14 +30,7 @@ realms:
           clientAuthenticatorType: client-secret
           secret: secret
           protocolMappers:
-            - name: audience-mapper
-              protocol: openid-connect
-              protocolMapper: oidc-audience-mapper
-              config:
-                included.client.audience: *baseUrl
-                included.custom.audience: custom_audience
-                access.token.claim: "true"
-                id.token.claim: "true"
+            - *customAudMapper
         sa_realm_roles: 
           - opentdf-org-admin
       - client:
@@ -39,14 +41,7 @@ realms:
           clientAuthenticatorType: client-secret
           secret: secret
           protocolMappers:
-            - name: audience-mapper
-              protocol: openid-connect
-              protocolMapper: oidc-audience-mapper
-              config:
-                included.client.audience: *baseUrl
-                included.custom.audience: custom_audience
-                access.token.claim: "true"
-                id.token.claim: "true"
+            - *customAudMapper
         sa_realm_roles: 
           - opentdf-readonly
       - client:
@@ -57,14 +52,7 @@ realms:
           clientAuthenticatorType: client-secret
           secret: secret
           protocolMappers:
-            - name: audience-mapper
-              protocol: openid-connect
-              protocolMapper: oidc-audience-mapper
-              config:
-                included.client.audience: *baseUrl
-                included.custom.audience: custom_audience
-                access.token.claim: "true"
-                id.token.claim: "true"
+            - 
         sa_client_roles:
           realm-management:
             - view-clients

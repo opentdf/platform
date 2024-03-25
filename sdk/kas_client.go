@@ -95,7 +95,7 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 
 func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 	response, err := k.makeRewrapRequest(keyAccess, policy)
-	
+
 	key, err := k.asymDecryption.Decrypt(response.GetEntityWrappedKey())
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)

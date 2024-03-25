@@ -2,8 +2,9 @@ package sdk
 
 import (
 	"encoding/json"
-	"google.golang.org/grpc"
 	"testing"
+
+	"google.golang.org/grpc"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"

@@ -83,18 +83,12 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 	}
 	return f(fts.key)
 }
-func (*FakeTokenSource) RefreshAccessToken() error {
-	return nil
-}
 
 func (fake FakeAccessTokenSource) AccessToken() (sdkauth.AccessToken, error) {
 	return sdkauth.AccessToken(fake.accessToken), nil
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(fake.dpopKey)
-}
-func (fake FakeAccessTokenSource) RefreshAccessToken() error {
-	return errors.New("can't refresh this one")
 }
 
 func must(err error) {

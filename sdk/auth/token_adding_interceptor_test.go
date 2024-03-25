@@ -166,10 +166,6 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 	}
 	return f(fts.key)
 }
-func (*FakeTokenSource) RefreshAccessToken() error {
-	return nil
-}
-
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024

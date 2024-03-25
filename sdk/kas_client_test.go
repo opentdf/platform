@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"encoding/json"
-	"errors"
 	"google.golang.org/grpc"
 	"testing"
 
@@ -24,9 +23,6 @@ func (fake FakeAccessTokenSource) AccessToken() (auth.AccessToken, error) {
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(fake.dpopKey)
-}
-func (fake FakeAccessTokenSource) RefreshAccessToken() error {
-	return errors.New("can't refresh this one")
 }
 
 func getTokenSource(t *testing.T) FakeAccessTokenSource {

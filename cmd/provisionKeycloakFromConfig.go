@@ -28,6 +28,7 @@ type RealmToCreate struct {
 	Clients             []Client                    `yaml:"clients,omitempty" json:"clients,omitempty"`
 	Users               []gocloak.User              `yaml:"users,omitempty" json:"users,omitempty"`
 	CustomRealmRoles    []gocloak.Role              `yaml:"custom_realm_roles,omitempty" json:"custom_realm_roles,omitempty"`
+	CustomClientRoles   map[string][]gocloak.Role   `yaml:"custom_client_roles,omitempty" json:"custom_client_roles,omitempty"`
 	CustomGroups        []gocloak.Group             `yaml:"custom_groups,omitempty" json:"custom_groups,omitempty"`
 }
 
@@ -88,10 +89,10 @@ var (
 					return err
 				}
 
-				// create the custom roles
+				// create the custom realm roles
 				if realmToCreate.CustomRealmRoles != nil {
 					for _, customRole := range realmToCreate.CustomRealmRoles {
-						err = createRole(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, customRole)
+						err = createRealmRole(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, customRole)
 						if err != nil {
 							return err
 						}
@@ -114,6 +115,18 @@ var (
 						err = createCustomClient(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, customClient)
 						if err != nil {
 							return err
+						}
+					}
+				}
+
+				// create the custom client roles
+				if realmToCreate.CustomClientRoles != nil {
+					for clientId, customRoles := range realmToCreate.CustomClientRoles {
+						for _, customRole := range customRoles {
+							err = createClientRole(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, clientId, customRole)
+							if err != nil {
+								return err
+							}
 						}
 					}
 				}
@@ -203,7 +216,7 @@ func createGroup(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JW
 	return nil
 }
 
-func createRole(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, role gocloak.Role) error {
+func createRealmRole(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, role gocloak.Role) error {
 	if role.Name == nil {
 		return errors.New("realm role does not have name")
 	}
@@ -217,6 +230,31 @@ func createRole(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 		}
 	} else {
 		slog.Info(fmt.Sprintf("✅ Role created: role = %s", *role.Name))
+	}
+	return nil
+}
+
+func createClientRole(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, clientId string, role gocloak.Role) error {
+	if role.Name == nil {
+		return errors.New("client role does not have name")
+	}
+	results, err := client.GetClients(context.Background(), token.AccessToken, realmName, gocloak.GetClientsParams{ClientID: &clientId})
+	if err != nil || len(results) == 0 {
+		slog.Error(fmt.Sprintf("Error getting %s's client: %s", clientId, err))
+		return err
+	}
+	idOfClient := results[0].ID
+
+	_, err = client.CreateClientRole(ctx, token.AccessToken, realmName, *idOfClient, role)
+	if err != nil {
+		kcErr := err.(*gocloak.APIError)
+		if kcErr.Code == 409 {
+			slog.Warn(fmt.Sprintf("⏭️  role %s already exists for client %s", *role.Name, clientId))
+		} else {
+			return err
+		}
+	} else {
+		slog.Info(fmt.Sprintf("✅ Client role created for client %s: role = %s", clientId, *role.Name))
 	}
 	return nil
 }
@@ -281,19 +319,9 @@ func assignRealmRolesToClientSA(ctx context.Context, client *gocloak.GoCloak, to
 	slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientId, *user.Username))
 
 	// retrieve the roles by name
-	var roles []gocloak.Role
-	for _, roleName := range rolesToAdd {
-		role, err := client.GetRealmRole(
-			ctx,
-			token.AccessToken,
-			realmName,
-			roleName)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Error getting realm role for realm %s : %s", roleName, realmName))
-			return err
-		}
-		roles = append(roles, *role)
-
+	roles, err := getRealmRolesFromList(realmName, client, token, ctx, rolesToAdd)
+	if err != nil {
+		return err
 	}
 
 	if err := client.AddRealmRoleToUser(context.Background(), token.AccessToken, realmName, *user.ID, roles); err != nil {
@@ -308,6 +336,24 @@ func assignRealmRolesToClientSA(ctx context.Context, client *gocloak.GoCloak, to
 	}
 
 	return nil
+}
+
+func getRealmRolesFromList(realmName string, client *gocloak.GoCloak, token *gocloak.JWT, ctx context.Context, rolesToAdd []string) (realmRoles []gocloak.Role, getErr error) {
+	var roles []gocloak.Role
+	for _, roleName := range rolesToAdd {
+		role, err := client.GetRealmRole(
+			ctx,
+			token.AccessToken,
+			realmName,
+			roleName)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error getting realm role for realm %s : %s", roleName, realmName))
+			return nil, err
+		}
+		roles = append(roles, *role)
+
+	}
+	return roles, nil
 }
 
 func assignClientRolesToClientSA(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, longClientId string, user *gocloak.User, rolesToAdd map[string][]string) error {
@@ -390,6 +436,52 @@ func createCustomUser(ctx context.Context, client *gocloak.GoCloak, token *goclo
 	} else {
 		slog.Info(fmt.Sprintf("✅ User created: username = %s, user identifier=%s", *userToCreate.Username, longUserId))
 	}
+
+	// assign realm roles to user
+	// retrieve the roles by name
+	if userToCreate.RealmRoles != nil {
+		roles, err := getRealmRolesFromList(realmName, client, token, ctx, *userToCreate.RealmRoles)
+		if err != nil {
+			return err
+		}
+		err = client.AddRealmRoleToUser(ctx, token.AccessToken, realmName, longUserId, roles)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error adding realm roles to user %s : %s", *userToCreate.RealmRoles, realmName))
+			return err
+		}
+	}
+
+	// assign client roles to user
+	if userToCreate.ClientRoles != nil {
+		for clientId, roles := range *userToCreate.ClientRoles {
+
+			results, err := client.GetClients(context.Background(), token.AccessToken, realmName, gocloak.GetClientsParams{ClientID: &clientId})
+			if err != nil || len(results) == 0 {
+				slog.Error(fmt.Sprintf("Error getting %s's client: %s", clientId, err))
+				return err
+			}
+			idOfClient := results[0].ID
+
+			clientRoles, err := getClientRolesFromList(realmName, client, token, ctx, *idOfClient, roles)
+			if err != nil {
+				slog.Error(fmt.Sprintf("Error getting client roles: %s", err))
+				return err
+			}
+
+			if err := client.AddClientRolesToUser(context.Background(), token.AccessToken, realmName, *idOfClient, longUserId, clientRoles); err != nil {
+				for _, role := range clientRoles {
+					slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+				}
+				return err
+			} else {
+				for _, role := range clientRoles {
+					slog.Info(fmt.Sprintf("✅ Client Role %s added to user %s", *role.Name, longUserId))
+				}
+			}
+		}
+
+	}
+
 	return nil
 }
 

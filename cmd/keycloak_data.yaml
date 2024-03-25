@@ -16,6 +16,9 @@ realms:
       - name: opentdf-org-admin
       - name: opentdf-admin
       - name: opentdf-readonly
+    custom_client_roles:
+      tdf-entity-resolution:
+        - name: entity-resolution-test-role
     custom_groups:
       - name: mygroup
         attributes:
@@ -52,7 +55,7 @@ realms:
           clientAuthenticatorType: client-secret
           secret: secret
           protocolMappers:
-            - 
+            - *customAudMapper
         sa_client_roles:
           realm-management:
             - view-clients
@@ -65,6 +68,9 @@ realms:
         firstName: sample
         lastName: user
         email: sampleuser@sample.com
+        credentials:
+          - value: testuser123
+            type: password
         attributes:
           superhero_name: 
             - thor
@@ -72,11 +78,15 @@ realms:
             - avengers
         groups:
           - mygroup
+        realmRoles:
+          - opentdf-org-admin
         clientRoles:
           realm-management:
             - view-clients
             - query-clients
             - view-users
             - query-users
+          tdf-entity-resolution:
+            - entity-resolution-test-role
 
  

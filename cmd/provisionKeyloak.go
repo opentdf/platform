@@ -125,6 +125,18 @@ var (
 						"id.token.claim":           "true",
 					},
 				},
+				{
+					Name:           gocloak.StringP("dpop-mapper"),
+					Protocol:       gocloak.StringP("openid-connect"),
+					ProtocolMapper: gocloak.StringP("virtru-oidc-protocolmapper"),
+					Config: &map[string]string{
+						"claim.name":         "tdf_claims",
+						"client.dpop":        "true",
+						"tdf_claims.enabled": "true",
+						"access.token.claim": "true",
+						"client.publickey":   "X-VirtruPubKey",
+					},
+				},
 			}
 
 			// Create Roles

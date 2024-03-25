@@ -163,12 +163,12 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	rsp := &sm.CreateSubjectConditionSetResponse{}
 	slog.Debug("creating subject condition set", slog.String("subjectConditionSet", req.String()))
 
-	scs, err := s.dbClient.CreateSubjectConditionSet(context.Background(), req.SubjectConditionSet)
+	conditionSet, err := s.dbClient.CreateSubjectConditionSet(context.Background(), req.SubjectConditionSet)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("subjectConditionSet", req.String()))
 	}
+	rsp.SubjectConditionSet = conditionSet
 
-	rsp.SubjectConditionSet.Id = scs.Id
 	return rsp, nil
 }
 

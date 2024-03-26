@@ -73,6 +73,33 @@ func EntityResolution(ctx context.Context,
 			}
 			var jsonEntities []*structpb.Struct
 			for _, client := range clients {
+				// roles
+				roles, err := connector.client.GetClientRoles(ctx, connector.token.AccessToken, kcConfig.Realm, *client.ID, gocloak.GetRoleParams{})
+				if err != nil {
+					slog.Error(err.Error())
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, services.ErrGetRetrievalFailed)
+				}
+				roleNames := make([]interface{}, len(roles))
+				for i, role := range roles {
+					roleNames[i] = *role.Name
+				}
+				rns := make(map[string]interface{}, 1)
+				rns["roles"] = roleNames
+				roleNamesStruct, err := structpb.NewStruct(rns)
+				if err != nil {
+					slog.ErrorContext(ctx, "error serializing roleNames", "error", err)
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, services.ErrCreationFailed)
+				}
+				jsonEntities = append(jsonEntities, roleNamesStruct)
+				// groups
+				clientUser, err := connector.client.GetClientServiceAccount(context.Background(), connector.token.AccessToken, kcConfig.Realm, *client.ID)
+				if err != nil {
+					slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", *client.ID, err))
+					return nil, err
+				}
+				slog.Info("GetClientServiceAccount", "client-user", clientUser.ID)
 				json, err := typeToGenericJSONMap(client)
 				if err != nil {
 					slog.Error("Error serializing entity representation!", "error", err)

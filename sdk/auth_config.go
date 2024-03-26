@@ -61,7 +61,7 @@ func NewOIDCAuthConfig(ctx context.Context, host, realm, clientId, clientSecret,
 
 	authConfig.accessToken, err = authConfig.fetchOIDCAccessToken(ctx, host, realm, clientId, clientSecret, subjectToken)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to fetch acces token:%w", err)
+		return nil, fmt.Errorf("failed to fetch acces token: %w", err)
 	}
 	return authConfig, nil
 }

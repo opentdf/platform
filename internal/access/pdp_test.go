@@ -16,7 +16,7 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Values: []*policy.Value{
@@ -64,6 +64,9 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.True(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
@@ -79,7 +82,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Values: []*policy.Value{
@@ -126,6 +129,9 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -141,7 +147,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Values: []*policy.Value{
@@ -188,6 +194,9 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -203,7 +212,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Values: []*policy.Value{
@@ -250,6 +259,9 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -265,7 +277,7 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Values: []*policy.Value{
@@ -301,6 +313,9 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -317,7 +332,7 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Values: []*policy.Value{
@@ -353,6 +368,9 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.Nil(t, decisions[entityID])
 	// No data attributes -> no decisions to make -> no decisions per-entity
 	// (PDP Caller can do what it wants with this info - infer this means access for all, or infer this means failure)
@@ -366,7 +384,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Values: []*policy.Value{
@@ -381,7 +399,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 		{
 			Name: "YourAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Values: []*policy.Value{
@@ -430,7 +448,9 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
-
+	if err != nil {
+		return
+	}
 	// Both the entities lack the necessary Attribute for the only data attribute we're comparing them against,
 	// so neither of them get a Decision -> no decisions to be made here.
 	assert.Nil(t, decisions[entityID1])
@@ -448,7 +468,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 			Values: []*policy.Value{
@@ -500,6 +520,9 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.True(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
@@ -514,7 +537,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 			Values: []*policy.Value{
@@ -566,6 +589,9 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -581,7 +607,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 			Values: []*policy.Value{
@@ -628,6 +654,9 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -643,7 +672,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 			Values: []*policy.Value{
@@ -695,6 +724,9 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -711,7 +743,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -761,6 +793,9 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.True(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
@@ -775,7 +810,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -830,6 +865,9 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -844,7 +882,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -884,6 +922,9 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.True(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
@@ -898,7 +939,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -953,6 +994,9 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -967,7 +1011,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -1022,6 +1066,9 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -1036,7 +1083,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -1086,6 +1133,9 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -1100,7 +1150,7 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -1145,6 +1195,9 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -1160,7 +1213,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -1210,6 +1263,9 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.True(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.True(t, decisions[entityID].Results[0].Passed)
@@ -1224,7 +1280,7 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -1269,6 +1325,9 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)
@@ -1284,7 +1343,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 		{
 			Name: "MyAttr",
 			Namespace: &policy.Namespace{
-				Name: "https://example.org",
+				Name: "example.org",
 			},
 			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Values: []*policy.Value{
@@ -1339,6 +1398,9 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 		mockAttrDefinitions)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.False(t, decisions[entityID].Access)
 	assert.Equal(t, 1, len(decisions[entityID].Results))
 	assert.False(t, decisions[entityID].Results[0].Passed)

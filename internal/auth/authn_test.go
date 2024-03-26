@@ -77,36 +77,18 @@ type FakeTokenSource struct {
 func (fts *FakeTokenSource) AccessToken() (sdkauth.AccessToken, error) {
 	return sdkauth.AccessToken(fts.accessToken), nil
 }
-func (*FakeTokenSource) DecryptWithDPoPKey([]byte) ([]byte, error) {
-	return nil, nil
-}
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	if fts.key == nil {
 		return nil, errors.New("no such key")
 	}
 	return f(fts.key)
 }
-func (*FakeTokenSource) DPoPPublicKeyPEM() string {
-	return ""
-}
-func (*FakeTokenSource) RefreshAccessToken() error {
-	return nil
-}
 
 func (fake FakeAccessTokenSource) AccessToken() (sdkauth.AccessToken, error) {
 	return sdkauth.AccessToken(fake.accessToken), nil
 }
-func (fake FakeAccessTokenSource) DecryptWithDPoPKey(_ []byte) ([]byte, error) {
-	return nil, nil
-}
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(fake.dpopKey)
-}
-func (fake FakeAccessTokenSource) DPoPPublicKeyPEM() string {
-	return "this is the PEM"
-}
-func (fake FakeAccessTokenSource) RefreshAccessToken() error {
-	return errors.New("can't refresh this one")
 }
 
 func must(err error) {

@@ -66,7 +66,10 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	var unwrapper Unwrapper
 	if cfg.authConfig == nil {
-		unwrapper = &KASClient{dialOptions: dialOptions, accessTokenSource: accessTokenSource}
+		unwrapper, err = newKASClient(dialOptions, accessTokenSource)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		unwrapper = cfg.authConfig
 	}

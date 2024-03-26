@@ -330,6 +330,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 
 func findInstanceValueInClusterAI(a *AttributeInstance, instances []AttributeInstance) bool {
 	for _, ai := range instances {
+		slog.Debug("findInstanceValueInClusterAI", "ai.GetCanonicalName()", ai.GetCanonicalName(), "GetCanonicalName(*a)", GetCanonicalName(*a))
 		if ai.Value == a.Value && ai.GetCanonicalName() == GetCanonicalName(*a) {
 			return true
 		}
@@ -500,7 +501,6 @@ func ClusterByCanonicalName(attrs []Clusterable) map[string][]Clusterable {
 // (e.g. Authority+Name, 'https://myauthority.org/attr/<name>') found in the slice of Clusterables
 func ClusterByCanonicalNameAD(ads []*policy.Attribute) map[string][]*policy.Attribute {
 	clusters := make(map[string][]*policy.Attribute)
-	// FIXME
 	for _, instance := range ads {
 		a := GetCanonicalNameADV(instance)
 		clusters[a] = append(clusters[a], instance)
@@ -528,9 +528,10 @@ func GetCanonicalName(ai AttributeInstance) string {
 }
 
 func GetCanonicalNameADV(instance *policy.Attribute) string {
-	return fmt.Sprintf("%s/attr/%s",
-		instance.Namespace.Name,
-		instance.Name,
+	// namespace is not stored with scheme
+	return fmt.Sprintf("https://%s/attr/%s",
+		instance.GetNamespace().GetName(),
+		instance.GetName(),
 	)
 }
 

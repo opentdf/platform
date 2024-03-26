@@ -132,14 +132,6 @@ func (t *IDPAccessTokenSource) AccessToken() (auth.AccessToken, error) {
 	return auth.AccessToken(t.token.AccessToken), nil
 }
 
-func (t *IDPAccessTokenSource) DecryptWithDPoPKey(data []byte) ([]byte, error) {
-	return t.asymDecryption.Decrypt(data)
-}
-
 func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(t.dpopKey)
-}
-
-func (t *IDPAccessTokenSource) DPoPPublicKeyPEM() string {
-	return t.dpopPEM
 }

@@ -162,22 +162,12 @@ type FakeTokenSource struct {
 func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
 	return AccessToken(fts.accessToken), nil
 }
-func (*FakeTokenSource) DecryptWithDPoPKey([]byte) ([]byte, error) {
-	return nil, nil
-}
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	if fts.key == nil {
 		return nil, errors.New("no such key")
 	}
 	return f(fts.key)
 }
-func (*FakeTokenSource) DPoPPublicKeyPEM() string {
-	return ""
-}
-func (*FakeTokenSource) RefreshAccessToken() error {
-	return nil
-}
-
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024

@@ -112,7 +112,7 @@ func (pdp *Pdp) DetermineAccess(
 // Accepts
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
-// Returns a map of DataRuleResults keyed by Subject
+// Returns a map of DataRuleResults keyed by EntityID
 func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
@@ -168,7 +168,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 // Accepts
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
-// Returns a map of DataRuleResults keyed by Subject
+// Returns a map of DataRuleResults keyed by EntityID
 func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
@@ -195,7 +195,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 
 			denialMsg := ""
 			// If we did not find the data attributeInstance canonical name + value in the entity attributeInstance set,
-			// then prepare a ValueFailure for that data attributeInstance and value, for this entity
+			//then prepare a ValueFailure for that data attributeInstance and value, for this entity
 			if !found {
 				denialMsg = fmt.Sprintf("anyOf not satisfied for canonical data attr+value %s and entity %s - anyOf is permissive, so this doesn't mean overall failure", dataAttrVal, entityId)
 				slog.WarnContext(ctx, denialMsg)

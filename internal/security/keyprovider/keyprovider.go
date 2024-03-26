@@ -11,7 +11,7 @@ import (
 type Config struct {
 	Type string `yaml:"type" default:"standard"`
 	// HSMConfig is the configuration for the HSM
-	HSMConfig hsm.HSMConfig `yaml:"hsm,omitempty"`
+	HSMConfig hsm.HSMConfig `yaml:"hsm,omitempty" mapstructure:"hsm"`
 	// StandardConfig is the configuration for the standard key provider
 	StandardConfig standard.Config `yaml:"standard,omitempty" mapstructure:"standard"`
 }

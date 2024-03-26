@@ -45,12 +45,12 @@ func TestGetDecisionsAllOfPass(t *testing.T) {
 	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
 		{
 			EntityId:    "e1",
-			AttributeId: []string{"http://www.example.org/attr/foo/value/value1"},
+			AttributeId: []string{"https://www.example.org/attr/foo/value/value1"},
 		}}}
 	attrDef := policy.Attribute{
 		Name: "foo",
 		Namespace: &policy.Namespace{
-			Name: "http://www.example.org",
+			Name: "www.example.org",
 		},
 		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		Values: []*policy.Value{
@@ -63,7 +63,7 @@ func TestGetDecisionsAllOfPass(t *testing.T) {
 		},
 	}
 	getAttributesByValueFqnsResponse = attributes.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-		"http://www.example.org/attr/foo/value/value1": {
+		"https://www.example.org/attr/foo/value/value1": {
 			Attribute: &attrDef,
 			Value:     &policy.Value{},
 		}}}
@@ -78,7 +78,7 @@ func TestGetDecisionsAllOfPass(t *testing.T) {
 					}},
 			},
 			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeFqns: []string{"http://www.example.org/attr/foo/value/value1"}},
+				{AttributeFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
 			},
 		},
 	}}
@@ -89,6 +89,9 @@ func TestGetDecisionsAllOfPass(t *testing.T) {
 	resp, err := as.GetDecisions(ctxb, &req)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.NotNil(t, resp)
 
 	// some asserts about resp
@@ -115,12 +118,12 @@ func TestGetDecisionsAllOfFail(t *testing.T) {
 	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
 		{
 			EntityId:    "e1",
-			AttributeId: []string{"http://www.example.org/attr/foo/value/value1"},
+			AttributeId: []string{"https://www.example.org/attr/foo/value/value1"},
 		}}}
 	attrDef := policy.Attribute{
 		Name: "foo",
 		Namespace: &policy.Namespace{
-			Name: "http://www.example.org",
+			Name: "www.example.org",
 		},
 		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		Values: []*policy.Value{
@@ -133,7 +136,7 @@ func TestGetDecisionsAllOfFail(t *testing.T) {
 		},
 	}
 	getAttributesByValueFqnsResponse = attributes.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-		"http://www.example.org/attr/foo/value/value1": {
+		"https://www.example.org/attr/foo/value/value1": {
 			Attribute: &attrDef,
 			Value:     &policy.Value{},
 		}}}
@@ -148,7 +151,7 @@ func TestGetDecisionsAllOfFail(t *testing.T) {
 					}},
 			},
 			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeFqns: []string{"http://www.example.org/attr/foo/value/value1", "http://www.example.org/attr/foo/value/value2"}},
+				{AttributeFqns: []string{"https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"}},
 			},
 		},
 	}}
@@ -159,6 +162,9 @@ func TestGetDecisionsAllOfFail(t *testing.T) {
 	resp, err := as.GetDecisions(ctxb, &req)
 
 	assert.Nil(t, err)
+	if err != nil {
+		return
+	}
 	assert.NotNil(t, resp)
 
 	// some asserts about resp

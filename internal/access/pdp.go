@@ -112,7 +112,7 @@ func (pdp *Pdp) DetermineAccess(
 // Accepts
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
-// Returns a map of DataRuleResults keyed by EntityID
+// Returns a map of DataRuleResults keyed by Subject
 func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
@@ -168,7 +168,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 // Accepts
 // - a set of data AttributeInstances with the same canonical name
 // - a map of entity AttributeInstances keyed by entity ID
-// Returns a map of DataRuleResults keyed by EntityID
+// Returns a map of DataRuleResults keyed by Subject
 func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []AttributeInstance, entityAttributes map[string][]AttributeInstance) map[string]DataRuleResult {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
@@ -195,7 +195,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrsBySingleCanonicalName []
 
 			denialMsg := ""
 			// If we did not find the data attributeInstance canonical name + value in the entity attributeInstance set,
-			//then prepare a ValueFailure for that data attributeInstance and value, for this entity
+			// then prepare a ValueFailure for that data attributeInstance and value, for this entity
 			if !found {
 				denialMsg = fmt.Sprintf("anyOf not satisfied for canonical data attr+value %s and entity %s - anyOf is permissive, so this doesn't mean overall failure", dataAttrVal, entityId)
 				slog.WarnContext(ctx, denialMsg)
@@ -330,6 +330,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 
 func findInstanceValueInClusterAI(a *AttributeInstance, instances []AttributeInstance) bool {
 	for _, ai := range instances {
+		slog.Debug("findInstanceValueInClusterAI", "ai.GetCanonicalName()", ai.GetCanonicalName(), "GetCanonicalName(*a)", GetCanonicalName(*a))
 		if ai.Value == a.Value && ai.GetCanonicalName() == GetCanonicalName(*a) {
 			return true
 		}
@@ -500,7 +501,6 @@ func ClusterByCanonicalName(attrs []Clusterable) map[string][]Clusterable {
 // (e.g. Authority+Name, 'https://myauthority.org/attr/<name>') found in the slice of Clusterables
 func ClusterByCanonicalNameAD(ads []*policy.Attribute) map[string][]*policy.Attribute {
 	clusters := make(map[string][]*policy.Attribute)
-	// FIXME
 	for _, instance := range ads {
 		a := GetCanonicalNameADV(instance)
 		clusters[a] = append(clusters[a], instance)
@@ -528,9 +528,10 @@ func GetCanonicalName(ai AttributeInstance) string {
 }
 
 func GetCanonicalNameADV(instance *policy.Attribute) string {
-	return fmt.Sprintf("%s/attr/%s",
-		instance.Namespace.Name,
-		instance.Name,
+	// namespace is not stored with scheme
+	return fmt.Sprintf("https://%s/attr/%s",
+		instance.GetNamespace().GetName(),
+		instance.GetName(),
 	)
 }
 

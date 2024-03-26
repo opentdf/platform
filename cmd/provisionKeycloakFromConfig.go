@@ -525,7 +525,7 @@ func LoadKeycloakData(file string) {
 	if err != nil {
 		panic(fmt.Errorf("error converting yaml to json: %s", err.Error()))
 	}
-	slog.Info("", slog.Any("kcData", kcData))
+	// slog.Info("", slog.Any("kcData", kcData))
 
 	if err := json.Unmarshal(kcData, &keycloakData); err != nil {
 		slog.Error("could not unmarshal json into data object", slog.String("error", err.Error()))

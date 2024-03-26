@@ -1,4 +1,4 @@
-package security
+package hsm
 
 import (
 	"crypto"
@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -47,7 +48,6 @@ type HSMSession struct {
 }
 
 type HSMConfig struct {
-	Enabled    bool               `yaml:"enabled"`
 	ModulePath string             `yaml:"modulePath,omitempty"`
 	PIN        string             `yaml:"pin,omitempty"`
 	SlotID     uint               `yaml:"slotId,omitempty"`
@@ -493,7 +493,7 @@ func (h *HSMSession) LoadECKey(info KeyInfo) (*ECKeyPair, error) {
 	return &pair, nil
 }
 
-func (session *HSMSession) DecryptOAEP(key *PrivateKeyRSA, ciphertext []byte, hashFunction crypto.Hash, label []byte) ([]byte, error) {
+func (session *HSMSession) DecryptOAEP(hashFunction crypto.Hash, ciphertext []byte, label []byte) ([]byte, error) {
 	hashAlg, mgfAlg, _, err := hashToPKCS11(hashFunction)
 	if err != nil {
 		return nil, errors.Join(ErrHSMDecrypt, err)
@@ -501,7 +501,7 @@ func (session *HSMSession) DecryptOAEP(key *PrivateKeyRSA, ciphertext []byte, ha
 
 	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED, label))
 
-	err = session.ctx.DecryptInit(session.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(*key))
+	err = session.ctx.DecryptInit(session.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(session.RSA.PrivateKey))
 	if err != nil {
 		return nil, errors.Join(ErrHSMDecrypt, err)
 	}
@@ -664,4 +664,16 @@ func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte("L1L"))
 	return digest.Sum(nil)
+}
+
+func (h HSMSession) PublicKey() []byte {
+	pubASN1, err := x509.MarshalPKIXPublicKey(h.RSA.PublicKey)
+	if err != nil {
+		slog.Error("can't convert hsm public key to asn1", slog.String("err", err.Error()))
+		return nil
+	}
+	return pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: pubASN1,
+	})
 }

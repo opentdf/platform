@@ -57,10 +57,10 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "kas",
 		ServiceDesc: &kaspb.AccessService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			hsm := srp.OTDF.HSM
-			if hsm == nil {
-				slog.Error("hsm not enabled")
-				panic(fmt.Errorf("hsm not enabled"))
+			keyProvider := srp.OTDF.KeyProvider
+			if keyProvider == nil {
+				slog.Error("keyProvider not enabled")
+				panic(fmt.Errorf("keyProvider not enabled"))
 			}
 			kasURLString := "https://" + srp.OTDF.HTTPServer.Addr
 			kasURI, err := url.Parse(kasURLString)
@@ -71,7 +71,7 @@ func NewRegistration() serviceregistry.Registration {
 			p := access.Provider{
 				URI:          *kasURI,
 				AttributeSvc: nil,
-				Session:      *hsm,
+				KeyProvider:  keyProvider,
 				OIDCVerifier: loadIdentityProvider(),
 			}
 			return &p, func(ctx context.Context, mux *runtime.ServeMux, server any) error {

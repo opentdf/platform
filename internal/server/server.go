@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentdf/platform/internal/security"
+	"github.com/opentdf/platform/internal/security/keyprovider"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -45,7 +45,7 @@ func (e Error) Error() string {
 type Config struct {
 	Auth                    auth.Config        `yaml:"auth"`
 	GRPC                    GRPCConfig         `yaml:"grpc"`
-	HSM                     security.HSMConfig `yaml:"hsm"`
+	KeyProvider             keyprovider.Config `yaml:"keyProvider"`
 	TLS                     TLSConfig          `yaml:"tls"`
 	WellKnownConfigRegister func(namespace string, config any) error
 	Port                    int    `yaml:"port" default:"9000"`
@@ -67,7 +67,7 @@ type OpenTDFServer struct {
 	HTTPServer    *http.Server
 	GRPCServer    *grpc.Server
 	GRPCInProcess *inProcessServer
-	HSM           *security.HSMSession
+	KeyProvider   keyprovider.Provider
 }
 
 /*
@@ -128,11 +128,9 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 		GRPCInProcess: grpcIPCServer,
 	}
 
-	if config.HSM.Enabled {
-		o.HSM, err = security.New(&config.HSM)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize hsm: %w", err)
-		}
+	o.KeyProvider, err = keyprovider.New(config.KeyProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create key provider of type %s: %w", config.KeyProvider.Type, err)
 	}
 
 	return &o, nil

@@ -1,15 +1,10 @@
 package access
 
 import (
-	"bytes"
 	"context"
 	"crypto"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -19,14 +14,10 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"strings"
 
-	"github.com/opentdf/platform/internal/security"
-
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/services/kas/nanotdf"
 	"github.com/opentdf/platform/services/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -253,15 +244,15 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 		body.requestBody.Algorithm = "rsa:2048"
 	}
 
-	if body.requestBody.Algorithm == "ec:secp256r1" {
-		return nanoTDFRewrap(*body, &p.Session, p.Session.EC.PrivateKey)
-	}
+	// if body.requestBody.Algorithm == "ec:secp256r1" {
+	// 	return nanoTDFRewrap(*body, &p.Session, p.Session.EC.PrivateKey)
+	// }
 	return p.tdf3Rewrap(ctx, body)
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kaspb.RewrapResponse, error) {
-	symmetricKey, err := p.Session.DecryptOAEP(
-		&p.Session.RSA.PrivateKey, body.requestBody.KeyAccess.WrappedKey, crypto.SHA1, nil)
+	fmt.Println("tdf3Rewrap")
+	symmetricKey, err := p.KeyProvider.DecryptOAEP(crypto.SHA1, body.requestBody.KeyAccess.WrappedKey, nil)
 	if err != nil {
 		slog.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")
@@ -313,90 +304,90 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}, nil
 }
 
-func nanoTDFRewrap(
-	body verifiedRequest,
-	session *security.HSMSession,
-	key security.PrivateKeyEC,
-) (*kaspb.RewrapResponse, error) {
-	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
+// func nanoTDFRewrap(
+// 	body verifiedRequest,
+// 	session *security.HSMSession,
+// 	key security.PrivateKeyEC,
+// ) (*kaspb.RewrapResponse, error) {
+// 	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
 
-	header, err := nanotdf.ReadNanoTDFHeader(headerReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
-	}
+// 	header, err := nanotdf.ReadNanoTDFHeader(headerReader)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
+// 	}
 
-	symmetricKey, err := session.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key, key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
-	}
+// 	symmetricKey, err := session.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key, key)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
+// 	}
 
-	pub, ok := body.publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("failed to extract public key: %w", err)
-	}
+// 	pub, ok := body.publicKey.(*ecdsa.PublicKey)
+// 	if !ok {
+// 		return nil, fmt.Errorf("failed to extract public key: %w", err)
+// 	}
 
-	// Convert public key to 65-bytes format
-	pubKeyBytes := make([]byte, 1+len(pub.X.Bytes())+len(pub.Y.Bytes()))
-	pubKeyBytes[0] = 0x4 // ID for uncompressed format
-	if copy(pubKeyBytes[1:33], pub.X.Bytes()) != 32 || copy(pubKeyBytes[33:], pub.Y.Bytes()) != 32 {
-		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
-	}
+// 	// Convert public key to 65-bytes format
+// 	pubKeyBytes := make([]byte, 1+len(pub.X.Bytes())+len(pub.Y.Bytes()))
+// 	pubKeyBytes[0] = 0x4 // ID for uncompressed format
+// 	if copy(pubKeyBytes[1:33], pub.X.Bytes()) != 32 || copy(pubKeyBytes[33:], pub.Y.Bytes()) != 32 {
+// 		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
+// 	}
 
-	privateKeyHandle, publicKeyHandle, err := session.GenerateEphemeralKasKeys()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate keypair: %w", err)
-	}
-	sessionKey, err := session.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate session key: %w", err)
-	}
+// 	privateKeyHandle, publicKeyHandle, err := session.GenerateEphemeralKasKeys()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
+// 	}
+// 	sessionKey, err := session.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to generate session key: %w", err)
+// 	}
 
-	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt key: %w", err)
-	}
+// 	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
+// 	}
 
-	// see explanation why Public Key starts at position 2
-	//https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
-	pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle[2:])
-	if err != nil {
-		return nil, fmt.Errorf("failed to make public key") // Handle error, e.g., invalid public key format
-	}
+// 	// see explanation why Public Key starts at position 2
+// 	//https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
+// 	pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle[2:])
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to make public key") // Handle error, e.g., invalid public key format
+// 	}
 
-	pbk, err := x509.MarshalPKIXPublicKey(pubGoKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert public Key to PKIX")
-	}
+// 	pbk, err := x509.MarshalPKIXPublicKey(pubGoKey)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to convert public Key to PKIX")
+// 	}
 
-	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pbk,
-	}
-	pemString := string(pem.EncodeToMemory(pemBlock))
+// 	pemBlock := &pem.Block{
+// 		Type:  "PUBLIC KEY",
+// 		Bytes: pbk,
+// 	}
+// 	pemString := string(pem.EncodeToMemory(pemBlock))
 
-	return &kaspb.RewrapResponse{
-		EntityWrappedKey: cipherText,
-		SessionPublicKey: pemString,
-		SchemaVersion:    schemaVersion,
-	}, nil
-}
+// 	return &kaspb.RewrapResponse{
+// 		EntityWrappedKey: cipherText,
+// 		SessionPublicKey: pemString,
+// 		SchemaVersion:    schemaVersion,
+// 	}, nil
+// }
 
-func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
-	block, err := aes.NewCipher(sessionKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create cipher block: %w", err)
-	}
+// func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
+// 	block, err := aes.NewCipher(sessionKey)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to create cipher block: %w", err)
+// 	}
 
-	aesGcm, err := cipher.NewGCMWithTagSize(block, tagSize)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create NewGCMWithTagSize: %w", err)
-	}
+// 	aesGcm, err := cipher.NewGCMWithTagSize(block, tagSize)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to create NewGCMWithTagSize: %w", err)
+// 	}
 
-	iv := make([]byte, ivSize)
-	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, fmt.Errorf("failed to generate IV: %w", err)
-	}
+// 	iv := make([]byte, ivSize)
+// 	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
+// 		return nil, fmt.Errorf("failed to generate IV: %w", err)
+// 	}
 
-	cipherText := aesGcm.Seal(iv, iv, dek, nil)
-	return cipherText, nil
-}
+// 	cipherText := aesGcm.Seal(iv, iv, dek, nil)
+// 	return cipherText, nil
+// }

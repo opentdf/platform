@@ -74,7 +74,7 @@ func (c *PolicyDbClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 		return ""
 	}
 
-	r, err := c.QueryRow(ctx, sql, args, nil)
+	r, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""

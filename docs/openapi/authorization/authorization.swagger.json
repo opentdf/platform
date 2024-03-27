@@ -214,7 +214,7 @@
         "entityId": {
           "type": "string"
         },
-        "attributeId": {
+        "attributeValueFqns": {
           "type": "array",
           "items": {
             "type": "string"
@@ -245,7 +245,7 @@
           }
         }
       },
-      "description": "{\n\"entitlements\":  [\n{\n\"entityId\":  \"e1\",\n\"attributeValueReferences\":  [\n{\n\"attributeFqn\":  \"http://www.example.org/attr/foo/value/bar\"\n}\n]\n},\n{\n\"entityId\":  \"e2\",\n\"attributeValueReferences\":  [\n{\n\"attributeFqn\":  \"http://www.example.org/attr/color/value/red\"\n}\n]\n}\n]\n}",
+      "description": "{\n\"entitlements\":  [\n{\n\"entityId\":  \"e1\",\n\"attributeValueFqns\":  [\"https://www.example.org/attr/foo/value/bar\"]\n},\n{\n\"entityId\":  \"e2\",\n\"attributeValueFqns\":  [\"https://www.example.org/attr/color/value/red\"]\n}\n]\n}",
       "title": "Example Response for a request of : Get entitlements for bob and alice (both represented using an email address"
     },
     "authorizationResourceAttribute": {

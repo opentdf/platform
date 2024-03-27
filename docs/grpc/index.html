@@ -2487,7 +2487,7 @@
                 </tr>
               
                 <tr>
-                  <td>attribute_id</td>
+                  <td>attribute_value_fqns</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
@@ -2580,7 +2580,7 @@
         
       
         <h3 id="authorization.GetEntitlementsResponse">GetEntitlementsResponse</h3>
-        <p>Example Response for a request of : Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entitlements":  [</p><p>{</p><p>"entityId":  "e1",</p><p>"attributeValueReferences":  [</p><p>{</p><p>"attributeFqn":  "http://www.example.org/attr/foo/value/bar"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"entityId":  "e2",</p><p>"attributeValueReferences":  [</p><p>{</p><p>"attributeFqn":  "http://www.example.org/attr/color/value/red"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
+        <p>Example Response for a request of : Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entitlements":  [</p><p>{</p><p>"entityId":  "e1",</p><p>"attributeValueFqns":  ["https://www.example.org/attr/foo/value/bar"]</p><p>},</p><p>{</p><p>"entityId":  "e2",</p><p>"attributeValueFqns":  ["https://www.example.org/attr/color/value/red"]</p><p>}</p><p>]</p><p>}</p>
 
         
           <table class="field-table">

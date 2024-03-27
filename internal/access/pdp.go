@@ -48,7 +48,7 @@ func (pdp *Pdp) DetermineAccess(
 	decisions := make(map[string]*Decision)
 	// Go through all the grouped data values under each definition FQN
 	for definitionFqn, distinctValues := range dataAttrValsByDefinition {
-		slog.DebugContext(ctx, "Evaluating data attribute fqn", definitionFqn)
+		slog.DebugContext(ctx, "Evaluating data attribute fqn", definitionFqn, slog.Any("values", distinctValues))
 		attrDefinition, ok := fqnToDefinitionMap[definitionFqn]
 		if !ok {
 			return nil, fmt.Errorf("expected an Attribute Definition under the FQN %s", definitionFqn)
@@ -184,7 +184,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 // Accepts
 // - a set of data Attribute Values with the same FQN
 // - a map of entity Attribute Values keyed by entity ID
-// Returns a map of DataRuleResults keyed by Subject
+// Returns a map of DataRuleResults keyed by Subject entity ID
 func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*policy.Value, entityAttributeValueFqns map[string][]string) (map[string]DataRuleResult, error) {
 	ruleResultsByEntity := make(map[string]DataRuleResult)
 
@@ -196,12 +196,12 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 	slog.DebugContext(ctx, "Evaluating anyOf decision", "attribute definition FQN", attrDefFqn)
 
 	// Go through every entity's Attribute Value set...
-	for entityId, entityAttrs := range entityAttributeValueFqns {
+	for entityId, entityAttrValFqns := range entityAttributeValueFqns {
 		var valueFailures []ValueFailure
 		// Default to DENY
 		entityPassed := false
 
-		entityAttrGroup, err := GroupValueFqnsByDefinition(entityAttrs)
+		entityAttrGroup, err := GroupValueFqnsByDefinition(entityAttrValFqns)
 		if err != nil {
 			return nil, fmt.Errorf("error grouping entity attribute values by definition: %s", err.Error())
 		}
@@ -209,11 +209,9 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 		// For every unique data Attribute Value in this set of data Attribute Value sharing the same FQN...
 		for dvIndex, dataAttrVal := range dataAttrValuesOfOneDefinition {
 			slog.DebugContext(ctx, "Evaluating anyOf decision", "attribute definition FQN", attrDefFqn, "value", dataAttrVal.Value)
-			// See if
-			// 1. there exists an entity Attribute Value in the set of Attribute Values
+			// See if there exists an entity Attribute Value in the set of Attribute Values
 			// with the same FQN as the data Attribute Value in question
-			// 2. It has the same VALUE as the data Attribute Value in question
-			found := getIsValueFoundInFqnValuesSet(dataAttrValuesOfOneDefinition[dvIndex], entityAttrGroup[attrDefFqn])
+			found := getIsValueFoundInFqnValuesSet(dataAttrVal, entityAttrGroup[attrDefFqn])
 
 			denialMsg := ""
 			// If we did not find the data Attribute Value FQN + value in the entity Attribute Value set,
@@ -615,7 +613,14 @@ func GetDefinitionFqnFromValue(v *policy.Value) (string, error) {
 //	Input: https://<namespace>/attr/<attr name>/value/<value>
 //	Output: https://<namespace>/attr/<attr name>
 func GetDefinitionFqnFromValueFqn(valueFqn string) (string, error) {
-	defFqn := valueFqn[:strings.LastIndex(valueFqn, "/value/")]
+	if valueFqn == "" {
+		return "", fmt.Errorf("unexpected empty value FQN in GetDefinitionFqnFromValueFqn")
+	}
+	idx := strings.LastIndex(valueFqn, "/value/")
+	if idx == -1 {
+		return "", fmt.Errorf("value FQN (%s) is of unknown format with no '/value/' segment", valueFqn)
+	}
+	defFqn := valueFqn[:idx]
 	if defFqn == "" {
 		return "", fmt.Errorf("value FQN (%s) is of unknown format with no known parent Definition", valueFqn)
 	}

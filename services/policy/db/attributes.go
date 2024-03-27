@@ -286,8 +286,12 @@ func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]
 	}
 
 	sql, args, err := listAllAttributesSql(opts)
+	if err != nil {
+		return nil, err
+	}
 	slog.Info("list all attributes", slog.String("sql", sql), slog.Any("args", args))
-	rows, err := c.Query(ctx, sql, args, err)
+
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -311,7 +315,11 @@ func (c PolicyDbClient) ListAllAttributesWithout(ctx context.Context, state stri
 	}
 
 	sql, args, err := listAllAttributesSql(opts)
-	rows, err := c.Query(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -340,7 +348,11 @@ func (c PolicyDbClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		withAttributeValues: true,
 	}
 	sql, args, err := getAttributeSql(id, opts)
-	row, err := c.QueryRow(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -373,7 +385,11 @@ func (c PolicyDbClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		opts.withFqn = true
 	}
 	sql, args, err := getAttributeByFqnSql(fqn, opts)
-	row, err := c.QueryRow(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -397,8 +413,11 @@ func getAttributesByNamespaceSql(namespaceId string, opts attributesSelectOption
 func (c PolicyDbClient) GetAttributesByNamespace(ctx context.Context, namespaceId string) ([]*policy.Attribute, error) {
 	opts := attributesSelectOptions{}
 	sql, args, err := getAttributesByNamespaceSql(namespaceId, opts)
+	if err != nil {
+		return nil, err
+	}
 
-	rows, err := c.Query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -429,8 +448,12 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	sql, args, err := createAttributeSql(r.NamespaceId, r.Name, attributesRuleTypeEnumTransformIn(r.Rule.String()), metadataJson)
+	if err != nil {
+		return nil, err
+	}
+
 	var id string
-	if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
+	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
 	} else if err := r.Scan(&id); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -594,7 +617,7 @@ func removeKeyAccessServerFromAttributeSql(attributeID, keyAccessServerID string
 func (c PolicyDbClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
 	sql, args, err := removeKeyAccessServerFromAttributeSql(k.AttributeId, k.KeyAccessServerId)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {

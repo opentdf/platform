@@ -104,7 +104,7 @@ func (c PolicyDbClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (c PolicyDbClient) ListNamespaces(ctx context.Context, state string) ([]*po
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		slog.Error("error listing namespaces", slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
@@ -190,9 +190,12 @@ func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	sql, args, err := createNamespaceSql(r.Name, metadataJson)
-	var id string
+	if err != nil {
+		return nil, err
+	}
 
-	if r, e := c.QueryRow(ctx, sql, args, err); e != nil {
+	var id string
+	if r, e := c.QueryRow(ctx, sql, args); e != nil {
 		return nil, e
 	} else if e := r.Scan(&id); e != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(e)
@@ -243,7 +246,7 @@ func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *names
 		}, nil
 	}
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {

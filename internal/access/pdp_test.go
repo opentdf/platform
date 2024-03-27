@@ -2,7 +2,6 @@ package access
 
 import (
 	ctx "context"
-	"fmt"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -94,15 +93,16 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
 	ns := mockAttrDefinitions[0].Namespace.Name
 	name := mockAttrDefinitions[0].Name
-	val1 := mockAttrDefinitions[0].Values[0].Value
+	val0 := mockAttrDefinitions[0].Values[0]
+	val1 := mockAttrDefinitions[0].Values[1]
 	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].Values[1],
-		mockAttrDefinitions[0].Values[0],
+		val0,
+		val1,
 	}
 
 	mockEntityAttrs := map[string][]string{}
 	mockEntityAttrs[mockEntityId] = []string{
-		fqnBuilder(ns, name, val1),
+		fqnBuilder(ns, name, val1.Value),
 		mockExtraneousValueFqn,
 	}
 
@@ -119,7 +119,7 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
 	assert.True(t, decisions[mockEntityId].Results[0].Passed)
 	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockDataAttrs[1], decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, val0, decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
 	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
 }
 
@@ -144,9 +144,6 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
-
-	fmt.Printf("decisions: %+v", decisions[mockEntityId])
-	fmt.Println("err: ", err)
 
 	assert.Nil(t, err)
 	assert.False(t, decisions[mockEntityId].Access)
@@ -1050,3 +1047,70 @@ func Test_GetDefinitionFqnFromDefinition_FailsWithNoName(t *testing.T) {
 		assert.NotNil(t, err)
 	}
 }
+
+// getIsValueFoundInFqnValuesSet
+func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
+	ns1 := mockNamespaces[1]
+	ns2 := mockNamespaces[2]
+	name := mockAttributeNames[2]
+	fqnsList := []string{
+		fqnBuilder(ns1, name, mockAttributeValues[0]),
+		fqnBuilder(ns1, name, mockAttributeValues[1]),
+		fqnBuilder(ns1, name, mockAttributeValues[2]),
+		fqnBuilder(ns2, name, mockAttributeValues[0]),
+	}
+
+	values := []struct {
+		val      *policy.Value
+		expected bool
+	}{
+		{
+			val: &policy.Value{
+				Fqn: fqnsList[0],
+			},
+			expected: true,
+		},
+		{
+			val: &policy.Value{
+				Fqn: fqnsList[1],
+			},
+			expected: true,
+		},
+		{
+			val: &policy.Value{
+				Fqn: fqnsList[2],
+			},
+			expected: true,
+		},
+		{
+			val: &policy.Value{
+				Fqn: fqnsList[3],
+			},
+			expected: true,
+		},
+		{
+			val: &policy.Value{
+				Fqn: fqnBuilder(ns1, name, "unknownValue"),
+			},
+		},
+		{
+			val: nil,
+		},
+		{
+			val: &policy.Value{
+				Fqn: "",
+			},
+		},
+	}
+
+	for i, v := range values {
+		assert.Equal(t, v.expected, getIsValueFoundInFqnValuesSet(v.val, fqnsList))
+		if i == 3 {
+			assert.False(t, getIsValueFoundInFqnValuesSet(v.val, fqnsList[:3]))
+		}
+	}
+}
+
+// TODO: entityRankGreaterThanOrEqualToDataRank
+// TODO: getOrderOfValue
+// TODO: getOrderOfValueByFqn

@@ -373,7 +373,7 @@ func getIsValueFoundInFqnValuesSet(v *policy.Value, fqns []string) bool {
 		return false
 	}
 	for _, fqn := range fqns {
-		if valFqn != fqn {
+		if valFqn == fqn {
 			return true
 		}
 	}

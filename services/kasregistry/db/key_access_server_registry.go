@@ -47,8 +47,11 @@ func listAllKeyAccessServersSql() (string, []interface{}, error) {
 
 func (c KasRegistryDbClient) ListKeyAccessServers(ctx context.Context) ([]*kasr.KeyAccessServer, error) {
 	sql, args, err := listAllKeyAccessServersSql()
+	if err != nil {
+		return nil, err
+	}
 
-	rows, err := c.Query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +107,11 @@ func getKeyAccessServerSql(id string) (string, []interface{}, error) {
 
 func (c KasRegistryDbClient) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAccessServer, error) {
 	sql, args, err := getKeyAccessServerSql(id)
+	if err != nil {
+		return nil, err
+	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -161,8 +167,11 @@ func (c KasRegistryDbClient) CreateKeyAccessServer(ctx context.Context, r *kasr.
 	}
 
 	sql, args, err := createKeyAccessServerSQL(r.Uri, pkBytes, metadataBytes)
+	if err != nil {
+		return nil, err
+	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}

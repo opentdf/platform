@@ -132,22 +132,19 @@ func (c Config) buildURL() string {
 }
 
 // Common function for all queryRow calls
-func (c Client) QueryRow(ctx context.Context, sql string, args []interface{}, err error) (pgx.Row, error) {
+func (c Client) QueryRow(ctx context.Context, sql string, args []interface{}) (pgx.Row, error) {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-	if err != nil {
-		return nil, err
-	}
 	return c.Pgx.QueryRow(ctx, sql, args...), nil
 }
 
 // Common function for all query calls
-func (c Client) Query(ctx context.Context, sql string, args []interface{}, err error) (pgx.Rows, error) {
+func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.Rows, error) {
 	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
-	if err != nil {
-		return nil, err
-	}
 	r, e := c.Pgx.Query(ctx, sql, args...)
-	return r, WrapIfKnownInvalidQueryErr(e)
+	if e != nil {
+		return nil, WrapIfKnownInvalidQueryErr(e)
+	}
+	return r, nil
 }
 
 // Common function for all exec calls

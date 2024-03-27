@@ -123,10 +123,10 @@ func (c PolicyDbClient) CreateResourceMapping(ctx context.Context, r *resourcema
 
 	sql, args, err := createResourceMappingSQL(r.AttributeValueId, metadataJSON, r.Terms)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -160,8 +160,11 @@ func getResourceMappingSQL(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
 	sql, args, err := getResourceMappingSQL(id)
+	if err != nil {
+		return nil, err
+	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -183,10 +186,10 @@ func listResourceMappingsSQL() (string, []interface{}, error) {
 func (c PolicyDbClient) ListResourceMappings(ctx context.Context) ([]*policy.ResourceMapping, error) {
 	sql, args, err := listResourceMappingsSQL()
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -246,7 +249,7 @@ func (c PolicyDbClient) UpdateResourceMapping(ctx context.Context, id string, r 
 		}, nil
 	}
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
@@ -274,7 +277,7 @@ func (c PolicyDbClient) DeleteResourceMapping(ctx context.Context, id string) (*
 
 	sql, args, err := deleteResourceMappingSQL(id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {

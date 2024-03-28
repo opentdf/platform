@@ -66,7 +66,7 @@ func TestFetchAttributesSuccess(t *testing.T) {
 		},
 	}
 
-	httpmock.RegisterResponder("GET", "http://localhost:65432/api/attributes/v1/attrName",
+	httpmock.RegisterResponder(http.MethodGet, "http://localhost:65432/api/attributes/v1/attrName",
 		func(req *http.Request) (*http.Response, error) {
 			authority := req.URL.Query().Get("authority")
 
@@ -107,7 +107,7 @@ func TestFetchAttributesFailure(t *testing.T) {
 		Response: "mock",
 	}
 
-	httpmock.RegisterResponder("GET", "http://localhost:65432/api/attributes/v1/attrName",
+	httpmock.RegisterResponder(http.MethodGet, "http://localhost:65432/api/attributes/v1/attrName",
 		func(req *http.Request) (*http.Response, error) {
 			resp, err := httpmock.NewJsonResponse(200, mockWrongResponse)
 			return resp, err
@@ -136,7 +136,7 @@ func TestFetchAttributesFailure1(t *testing.T) {
 	ctx := context.Background()
 	namespaces := []string{"namespace1", "namespace2"}
 
-	httpmock.RegisterResponder("GET", "http://localhost:65432/api/attributes/v1/attrName",
+	httpmock.RegisterResponder(http.MethodGet, "http://localhost:65432/api/attributes/v1/attrName",
 		func(req *http.Request) (*http.Response, error) {
 			return httpmock.NewStringResponse(500, ""), nil
 		},
@@ -161,7 +161,7 @@ func TestFetchAttributesFailure2(t *testing.T) {
 	ctx := context.Background()
 	namespaces := []string{"namespace1", "namespace2"}
 
-	httpmock.RegisterResponder("GET", "http://localhost:65432/api/attributes/v1/attrName",
+	httpmock.RegisterResponder(http.MethodGet, "http://localhost:65432/api/attributes/v1/attrName",
 		func(req *http.Request) (*http.Response, error) {
 			return nil, Error("Mock http client error")
 		},

@@ -195,8 +195,7 @@ func (writer *Writer) AddData(data []byte) error {
 		writer.FileInfo.offset = int64(writer.currentOffset)
 		writer.FileInfo.flag = 0x08
 
-		newFileInfoEntries := append(writer.fileInfoEntries, writer.FileInfo)
-		writer.fileInfoEntries = newFileInfoEntries
+		writer.fileInfoEntries = append(writer.fileInfoEntries, writer.FileInfo)
 	}
 
 	if writer.writeState == Finished {

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -37,11 +38,11 @@ func ServiceRegistrationTest() serviceregistry.Registration {
 		},
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &TestService{}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				err := mux.HandlePath("GET", "/testpath/{name}", server.(*TestService).TestHandler)
-				if err != nil {
-					return err
+				t, ok := server.(*TestService)
+				if !ok {
+					return fmt.Errorf("Surprise! Not a TestService")
 				}
-				return nil
+				return mux.HandlePath(http.MethodGet, "/testpath/{name}", t.TestHandler)
 			}
 		},
 	}

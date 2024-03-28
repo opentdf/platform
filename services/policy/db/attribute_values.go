@@ -32,8 +32,8 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		id           string
 		value        string
 		active       bool
-		membersJson  []byte
-		metadataJson []byte
+		membersJSON  []byte
+		metadataJSON []byte
 		attributeId  string
 		fqn          sql.NullString
 		members      []*policy.Value
@@ -42,8 +42,8 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		&id,
 		&value,
 		&active,
-		&membersJson,
-		&metadataJson,
+		&membersJSON,
+		&metadataJSON,
 		&attributeId,
 	}
 
@@ -53,8 +53,8 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	if err := row.Scan(fields...); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	} else {
-		if membersJson != nil {
-			members, err = attributesValuesProtojson(membersJson)
+		if membersJSON != nil {
+			members, err = attributesValuesProtojson(membersJSON)
 			if err != nil {
 				return nil, err
 			}
@@ -62,8 +62,8 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	}
 
 	m := &common.Metadata{}
-	if metadataJson != nil {
-		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
 			return nil, err
 		}
 	}
@@ -149,7 +149,7 @@ func createAttributeValueSql(
 }
 
 func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
-	metadataJson, metadata, err := db.MarshalCreateMetadata(v.Metadata)
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(v.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	sql, args, err := createAttributeValueSql(
 		attributeId,
 		v.Value,
-		metadataJson,
+		metadataJSON,
 	)
 	if err != nil {
 		return nil, err
@@ -419,8 +419,8 @@ func updateAttributeValueSql(
 }
 
 func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {
-	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
-		v, err := c.GetAttributeValue(ctx, r.Id)
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+		v, err := c.GetAttributeValue(ctx, r.GetId())
 		if err != nil {
 			return nil, err
 		}
@@ -431,19 +431,19 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 	}
 
 	sql, args, err := updateAttributeValueSql(
-		r.Id,
-		metadataJson,
+		r.GetId(),
+		metadataJSON,
 	)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.Value{
-			Id: r.Id,
+			Id: r.GetId(),
 		}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	prev, err := c.GetAttributeValue(ctx, r.Id)
+	prev, err := c.GetAttributeValue(ctx, r.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +479,7 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 
 	// Remove members
 	for member := range toRemove {
-		sql, args, err := removeMemberSql(r.Id, member)
+		sql, args, err = removeMemberSql(r.GetId(), member)
 		if err != nil {
 			return nil, err
 		}
@@ -489,7 +489,7 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 	}
 
 	for member := range toAdd {
-		sql, args, err := addMemberSql(r.Id, member)
+		sql, args, err = addMemberSql(r.GetId(), member)
 		if err != nil {
 			return nil, err
 		}
@@ -499,10 +499,10 @@ func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: r.Id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: r.GetId()})
 
 	return &policy.Value{
-		Id: r.Id,
+		Id: r.GetId(),
 	}, nil
 }
 

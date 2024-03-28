@@ -152,7 +152,7 @@ func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
 	h = cors.New(cors.Options{
 		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete, http.MethodOptions},
 		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,

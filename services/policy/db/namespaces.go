@@ -25,11 +25,11 @@ func hydrateNamespaceItem(row pgx.Row, opts namespaceSelectOptions) (*policy.Nam
 		id           string
 		name         string
 		active       bool
-		metadataJson []byte
+		metadataJSON []byte
 		fqn          sql.NullString
 	)
 
-	fields := []interface{}{&id, &name, &active, &metadataJson}
+	fields := []interface{}{&id, &name, &active, &metadataJSON}
 	if opts.withFqn {
 		fields = append(fields, &fqn)
 	}
@@ -39,8 +39,8 @@ func hydrateNamespaceItem(row pgx.Row, opts namespaceSelectOptions) (*policy.Nam
 	}
 
 	m := &common.Metadata{}
-	if metadataJson != nil {
-		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
 			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}
@@ -184,12 +184,12 @@ func createNamespaceSql(name string, metadata []byte) (string, []interface{}, er
 }
 
 func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
-	metadataJson, m, err := db.MarshalCreateMetadata(r.Metadata)
+	metadataJSON, m, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := createNamespaceSql(r.Name, metadataJson)
+	sql, args, err := createNamespaceSql(r.GetName(), metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func updateNamespaceSql(id string, metadata []byte) (string, []interface{}, erro
 
 func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*policy.Namespace, error) {
 	// if extend we need to merge the metadata
-	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		n, err := c.GetNamespace(ctx, id)
 		if err != nil {
 			return nil, err
@@ -239,7 +239,7 @@ func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	sql, args, err := updateNamespaceSql(id, metadataJson)
+	sql, args, err := updateNamespaceSql(id, metadataJSON)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.Namespace{
 			Id: id,

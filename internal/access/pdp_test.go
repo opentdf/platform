@@ -24,7 +24,7 @@ func fqnBuilder(n string, a string, v string) string {
 var (
 	mockNamespaces      = []string{"example.org", "authority.gov", "somewhere.net"}
 	mockAttributeNames  = []string{"MyAttr", "YourAttr", "TheirAttr"}
-	mockAttributeValues = []string{"Value1", "Value2", "Value3", "Value4"}
+	mockAttributeValues = []string{"Value1", "Value2", "Value3", "Value4", "Value5"}
 
 	mockExtraneousValueFqn = fqnBuilder("meep.org", "meep", "beepbeep")
 	mockEntityId           = "4f6636ca-c60c-40d1-9f3f-015086303f74"
@@ -1112,5 +1112,183 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 }
 
 // TODO: entityRankGreaterThanOrEqualToDataRank
-// TODO: getOrderOfValue
-// TODO: getOrderOfValueByFqn
+
+
+// getOrderOfValue tests
+func Test_GetOrderOfValue(t *testing.T) {
+	ns := mockNamespaces[1]
+	name := mockAttributeNames[2]
+
+	values := []*policy.Value{
+		{
+			Value: mockAttributeValues[1],
+			Fqn:   fqnBuilder(ns, name, mockAttributeValues[1]),
+		},
+		{
+			Value: mockAttributeValues[2],
+			Attribute: &policy.Attribute{
+				Fqn: fqnBuilder(ns, name, ""),
+			},
+		},
+		{
+			Value: mockAttributeValues[4],
+			Attribute: &policy.Attribute{
+				Name: name,
+				Namespace: &policy.Namespace{
+					Name: ns,
+				},
+			},
+		},
+		{
+			Value: mockAttributeValues[0],
+		},
+	}
+
+	for i := range values {
+		got, err := getOrderOfValue(values, values[i])
+		assert.Nil(t, err)
+		assert.Equal(t, i, got)
+	}
+
+	// test with a value that doesn't exist in the list
+	idx, err := getOrderOfValue(values, &policy.Value{
+		Value: "unknownValue",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, -1, idx)
+}
+
+func Test_GetOrderOfValue_FailsCorrectly(t *testing.T) {
+	ns := mockNamespaces[1]
+	name := mockAttributeNames[2]
+
+	bad := []*policy.Value{
+		{
+			Fqn: fqnBuilder(ns, name, mockAttributeValues[1]),
+		},
+		{},
+		{
+			Attribute: &policy.Attribute{
+				Name: name,
+				Namespace: &policy.Namespace{
+					Name: ns,
+				},
+			},
+		},
+	}
+
+	good := &policy.Value{
+		Value: mockAttributeValues[1],
+	}
+
+	for _, v := range bad {
+		order := []*policy.Value{v, good}
+		got, err := getOrderOfValue(order, good)
+		assert.NotNil(t, err)
+		assert.Equal(t, -1, got)
+	}
+
+	// test with a value that doesn't exist in the list
+	idx, err := getOrderOfValue(append(bad, good), &policy.Value{
+		Value: "unknownValue",
+	})
+	assert.NotNil(t, err)
+	assert.Equal(t, -1, idx)
+}
+
+// getOrderOfValueByFqn tests
+func Test_GetOrderOfValueByFqn(t *testing.T) {
+	ns := mockNamespaces[0]
+	name := mockAttributeNames[0]
+	values := []*policy.Value{
+		{
+			Fqn: fqnBuilder(ns, name, mockAttributeValues[0]),
+		},
+		{
+			Fqn: fqnBuilder(ns, name, mockAttributeValues[1]),
+		},
+		{
+			Value: mockAttributeValues[2],
+			Attribute: &policy.Attribute{
+				Fqn: fqnBuilder(ns, name, ""),
+			},
+		},
+		{
+			Value: mockAttributeValues[3],
+			Attribute: &policy.Attribute{
+				Name: name,
+				Namespace: &policy.Namespace{
+					Name: ns,
+				},
+			},
+		},
+	}
+
+	for i := range values {
+		fqn := fqnBuilder(ns, name, mockAttributeValues[i])
+		got, err := getOrderOfValueByFqn(values, fqn)
+		assert.Nil(t, err)
+		assert.Equal(t, i, got)
+	}
+}
+
+func Test_GetOrderOfValueByFqn_SadCases(t *testing.T) {
+	ns := mockNamespaces[0]
+	name := mockAttributeNames[0]
+	bad := []*policy.Value{
+		// empty FQN and no parent parts
+		{
+			Fqn: "",
+		},
+		// no definition FQN, no parts
+		{
+			Value: mockAttributeValues[1],
+			Attribute: &policy.Attribute{
+				Fqn: "",
+			},
+		},
+		// full definition parts, no value
+		{
+			Attribute: &policy.Attribute{
+				Name: name,
+				Namespace: &policy.Namespace{
+					Name: ns,
+				},
+			},
+		},
+		// missing namespace
+		{
+			Value: mockAttributeValues[1],
+			Attribute: &policy.Attribute{
+				Name:      name,
+				Namespace: &policy.Namespace{},
+			},
+		},
+		// missing definition name
+		{
+			Value: mockAttributeValues[1],
+			Attribute: &policy.Attribute{
+				Namespace: &policy.Namespace{
+					Name: ns,
+				},
+			},
+		},
+		// full definition FQN, no value
+		{
+			Attribute: &policy.Attribute{
+				Fqn: fqnBuilder(ns, name, ""),
+			},
+		},
+	}
+	fqn := fqnBuilder(ns, name, mockAttributeValues[1])
+	good := &policy.Value{
+		Fqn: fqn,
+	}
+
+	for _, v := range bad {
+		order := []*policy.Value{v, good}
+		got, err := getOrderOfValueByFqn(order, fqn)
+		assert.NotNil(t, err)
+		assert.Equal(t, -1, got)
+	}
+}

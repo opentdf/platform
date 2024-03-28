@@ -438,13 +438,13 @@ func entityRankGreaterThanOrEqualToDataRank(order []*policy.Value, dataAttribute
 
 // Given a set of ordered/ranked values and a singular Attribute Value, return the
 // rank #/index of the singular Attribute Value. If the value is not found, return -1.
-// For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc
+// For hierarchy, convention is 0 == most privileged, 1 == less privileged, etc.
 func getOrderOfValue(order []*policy.Value, v *policy.Value) (int, error) {
 	val := v.GetValue()
+	valFqn := v.GetFqn()
 	if val == "" {
-		slog.Warn(fmt.Sprintf("Unexpected empty value %+v", v))
-		// fallback to FQN order matching
-		return getOrderOfValueByFqn(order, v.GetFqn())
+		slog.Debug(fmt.Sprintf("Unexpected empty 'value' in value: %+v, falling back to FQN", v))
+		return getOrderOfValueByFqn(order, valFqn)
 	}
 
 	for idx := range order {

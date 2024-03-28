@@ -98,11 +98,12 @@ Create Attribute
 ```bash
 grpcurl -plaintext -d @ localhost:8080 policy.attributes.AttributesService/CreateAttribute <<EOM
 {
-        "name": "new_attr",
+        "name": "attribute1",
         "rule":"ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
-        "values": ["new_attr1", "new_attr2"],
+        "values": ["test1", "test2"],
         "namespace_id": "0d94e00a-7bd3-4482-afe3-f1e4b03c1353"
 }
+
 EOM
 ```
 

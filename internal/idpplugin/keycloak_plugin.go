@@ -54,15 +54,15 @@ func EntityResolution(ctx context.Context,
 	var resolvedEntities []*authorization.IdpEntityRepresentation
 	slog.InfoContext(ctx, "EntityResolution invoked", "payload", payload)
 
-	for i, ident := range payload {
+	for _, ident := range payload {
 		slog.InfoContext(ctx, "Lookup", "entity", ident.GetEntityType())
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
 		exactMatch := true
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_ClientId:
-			slog.InfoContext(ctx, "GetClient", "client_id", payload[i].GetClientId())
-			clientID := payload[i].GetClientId()
+			slog.InfoContext(ctx, "GetClient", "client_id", ident.GetClientId())
+			clientID := ident.GetClientId()
 			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
 				ClientID: &clientID,
 			})
@@ -97,9 +97,9 @@ func EntityResolution(ctx context.Context,
 				EntityRepresentations: resolvedEntities,
 			}, nil
 		case *authorization.Entity_EmailAddress:
-			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := payload[i].GetEmailAddress(); return &t }(), Exact: &exactMatch}
+			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := ident.GetEmailAddress(); return &t }(), Exact: &exactMatch}
 		case *authorization.Entity_UserName:
-			getUserParams = gocloak.GetUsersParams{Username: func() *string { t := payload[i].GetUserName(); return &t }(), Exact: &exactMatch}
+			getUserParams = gocloak.GetUsersParams{Username: func() *string { t := ident.GetUserName(); return &t }(), Exact: &exactMatch}
 		}
 
 		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
@@ -121,7 +121,7 @@ func EntityResolution(ctx context.Context,
 					ctx,
 					connector.token.AccessToken,
 					kcConfig.Realm,
-					gocloak.GetGroupsParams{Search: func() *string { t := payload[i].GetEmailAddress(); return &t }()},
+					gocloak.GetGroupsParams{Search: func() *string { t := ident.GetEmailAddress(); return &t }()},
 				)
 				if groupErr != nil {
 					slog.Error("Error getting group", "group", groupErr)

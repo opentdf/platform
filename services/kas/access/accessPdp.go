@@ -22,21 +22,17 @@ func canAccess(ctx context.Context, entity authorization.Entity, policy Policy, 
 		if err != nil {
 			return false, err
 		}
-		if dissemAccess {
-			return true, nil
-		} else {
-			return false, nil
+		return dissemAccess, nil
+	}
+	if policy.Body.DataAttributes != nil {
+		attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entity, sdk)
+		if err != nil {
+			return false, err
 		}
+		return attrAccess, nil
 	}
-	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entity, sdk)
-	if err != nil {
-		return false, err
-	}
-	if attrAccess {
-		return true, nil
-	} else {
-		return false, nil
-	}
+	// if no dissem and no attributes then allow
+	return true, nil
 }
 
 func checkDissems(dissems []string, ent authorization.Entity) (bool, error) {

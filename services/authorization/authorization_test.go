@@ -1,4 +1,4 @@
-package authorization_test
+package authorization
 
 import (
 	"context"
@@ -9,21 +9,22 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
-	authorizationSvc "github.com/opentdf/platform/services/authorization"
+	otdf "github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 )
 
-var entitlementsResponse authorization.GetEntitlementsResponse
-var getAttributesByValueFqnsResponse attributes.GetAttributeValuesByFqnsResponse
+var (
+	entitlementsResponse             authorization.GetEntitlementsResponse
+	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
+)
 
-var MockRetrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, as authorizationSvc.AuthorizationService) (*attr.GetAttributeValuesByFqnsResponse, error) {
+func mockRetrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	fmt.Print("Using mocked GetAttributeValuesByFqns")
-	return &getAttributesByValueFqnsResponse, nil
+	return getAttributesByValueFqnsResponse.GetFqnAttributeValues(), nil
 }
 
-var MockRetrieveEntitlements = func(ctx context.Context, req *authorization.GetEntitlementsRequest, as authorizationSvc.AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
+func mockRetrieveEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest, as AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
 	fmt.Print("Using mocked GetEntitlements")
 	return &entitlementsResponse, nil
 }
@@ -39,14 +40,14 @@ func TestGetDecisionsAllOfPass(t *testing.T) {
 
 	slog.SetDefault(logger)
 
-	authorizationSvc.RetrieveAttributeDefinitions = MockRetrieveAttributeDefinitions
-	authorizationSvc.RetrieveEntitlements = MockRetrieveEntitlements
+	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	// set entitlementsResponse and getAttributesByValueFqnsResponse
 	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
 		{
-			EntityId:    "e1",
-			AttributeId: []string{"http://www.example.org/attr/foo/value/value1"},
-		}}}
+			EntityId:           "e1",
+			AttributeValueFqns: []string{"http://www.example.org/attr/foo/value/value1"},
+		},
+	}}
 	attrDef := policy.Attribute{
 		Name: "foo",
 		Namespace: &policy.Namespace{
@@ -62,20 +63,24 @@ func TestGetDecisionsAllOfPass(t *testing.T) {
 			},
 		},
 	}
-	getAttributesByValueFqnsResponse = attributes.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 		"http://www.example.org/attr/foo/value/value1": {
 			Attribute: &attrDef,
 			Value:     &policy.Value{},
-		}}}
+		},
+	}}
 
 	// set the request
 	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
-		{Actions: []*policy.Action{},
+		{
+			Actions: []*policy.Action{},
 			EntityChains: []*authorization.EntityChain{
-				{Id: "ec1",
+				{
+					Id: "ec1",
 					Entities: []*authorization.Entity{
 						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
-					}},
+					},
+				},
 			},
 			ResourceAttributes: []*authorization.ResourceAttribute{
 				{AttributeFqns: []string{"http://www.example.org/attr/foo/value/value1"}},
@@ -83,8 +88,9 @@ func TestGetDecisionsAllOfPass(t *testing.T) {
 		},
 	}}
 
-	as := authorizationSvc.AuthorizationService{}
-	var ctxb = context.Background()
+	as := AuthorizationService{}
+	retrieveEntitlements = mockRetrieveEntitlements
+	ctxb := context.Background()
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -108,15 +114,16 @@ func TestGetDecisionsAllOfFail(t *testing.T) {
 
 	slog.SetDefault(logger)
 
-	authorizationSvc.RetrieveAttributeDefinitions = MockRetrieveAttributeDefinitions
-	authorizationSvc.RetrieveEntitlements = MockRetrieveEntitlements
+	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
+	retrieveEntitlements = mockRetrieveEntitlements
 
 	// set entitlementsResponse and getAttributesByValueFqnsResponse
 	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
 		{
-			EntityId:    "e1",
-			AttributeId: []string{"http://www.example.org/attr/foo/value/value1"},
-		}}}
+			EntityId:           "e1",
+			AttributeValueFqns: []string{"http://www.example.org/attr/foo/value/value1"},
+		},
+	}}
 	attrDef := policy.Attribute{
 		Name: "foo",
 		Namespace: &policy.Namespace{
@@ -132,20 +139,24 @@ func TestGetDecisionsAllOfFail(t *testing.T) {
 			},
 		},
 	}
-	getAttributesByValueFqnsResponse = attributes.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 		"http://www.example.org/attr/foo/value/value1": {
 			Attribute: &attrDef,
 			Value:     &policy.Value{},
-		}}}
+		},
+	}}
 
 	// set the request
 	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
-		{Actions: []*policy.Action{},
+		{
+			Actions: []*policy.Action{},
 			EntityChains: []*authorization.EntityChain{
-				{Id: "ec1",
+				{
+					Id: "ec1",
 					Entities: []*authorization.Entity{
 						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
-					}},
+					},
+				},
 			},
 			ResourceAttributes: []*authorization.ResourceAttribute{
 				{AttributeFqns: []string{"http://www.example.org/attr/foo/value/value1", "http://www.example.org/attr/foo/value/value2"}},
@@ -153,8 +164,8 @@ func TestGetDecisionsAllOfFail(t *testing.T) {
 		},
 	}}
 
-	as := authorizationSvc.AuthorizationService{}
-	var ctxb = context.Background()
+	as := AuthorizationService{}
+	ctxb := context.Background()
 
 	resp, err := as.GetDecisions(ctxb, &req)
 

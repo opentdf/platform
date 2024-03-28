@@ -45,11 +45,11 @@ func (t Token) Expired() bool {
 }
 
 func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
-	req, err := http.NewRequest("POST", tokenEndpoint, nil)
+	req, err := http.NewRequest(http.MethodPost, tokenEndpoint, nil) //nolint: noctx // TODO(#455): AccessToken methods should take contexts
 	if err != nil {
 		return nil, err
 	}
-	dpop, err := getDPoPAssertion(*privateJWK, "POST", tokenEndpoint, dpopNonce)
+	dpop, err := getDPoPAssertion(*privateJWK, http.MethodPost, tokenEndpoint, dpopNonce)
 	if err != nil {
 		return nil, err
 	}

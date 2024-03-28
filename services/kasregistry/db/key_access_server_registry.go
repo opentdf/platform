@@ -208,7 +208,7 @@ func updateKeyAccessServerSQL(id, uri string, publicKey, metadata []byte) (strin
 
 func (c KasRegistryDbClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasr.UpdateKeyAccessServerRequest) (*kasr.KeyAccessServer, error) {
 	// if extend we need to merge the metadata
-	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		k, err := c.GetKeyAccessServer(ctx, id)
 		if err != nil {
 			return nil, err
@@ -227,7 +227,7 @@ func (c KasRegistryDbClient) UpdateKeyAccessServer(ctx context.Context, id strin
 		}
 	}
 
-	sql, args, err := updateKeyAccessServerSQL(id, r.Uri, publicKeyJSON, metadataJson)
+	sql, args, err := updateKeyAccessServerSQL(id, r.GetUri(), publicKeyJSON, metadataJSON)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &kasr.KeyAccessServer{
 			Id: id,

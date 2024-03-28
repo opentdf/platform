@@ -68,7 +68,7 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("failed to create a rewrap request: %v", err)
 	}
 
-	if req.SignedRequestToken == "" {
+	if req.GetSignedRequestToken() == "" {
 		t.Fatalf("didn't produce a signed request token")
 	}
 

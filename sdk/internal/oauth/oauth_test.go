@@ -58,39 +58,27 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 		[]string{"testscope"},
 		clientCredentials,
 		dpopJWK)
+	require.NoError(t, err)
 
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
 	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
-	if err != nil {
-		t.Errorf("error parsing token received from IDP: %v", err)
-	}
+	require.NoError(t, err)
 
-	if cnfClaim, ok := tokenDetails.Get("cnf"); ok {
-		cnfClaimsMap := cnfClaim.(map[string]interface{})
-		idpKeyFingerprint := cnfClaimsMap["jkt"].(string)
-		if idpKeyFingerprint == "" {
-			t.Fatalf("no cnf.jkt key in claims: %v", cnfClaimsMap)
-		} else {
-			pk, _ := dpopJWK.PublicKey()
-			hash, _ := pk.Thumbprint(crypto.SHA256)
+	cnfClaim, ok := tokenDetails.Get("cnf")
+	require.True(t, ok)
+	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
+	require.True(t, ok)
+	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, idpKeyFingerprint)
+	pk, err := dpopJWK.PublicKey()
+	require.NoError(t, err)
+	hash, err := pk.Thumbprint(crypto.SHA256)
+	require.NoError(t, err)
 
-			expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
-			assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-		}
-	} else {
-		t.Fatal("no cnf claim in token")
-	}
-
-	if tok.ExpiresIn < 0 {
-		t.Fatalf("invalid expiration is before current time: %v", tok)
-	}
-
-	if tok.Expired() {
-		t.Fatalf("got a token that is currently expired: %v", tok)
-	}
-
+	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
+	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
+	assert.Greaterf(t, tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
+	assert.Falsef(t, tok.Expired(), "got a token that is currently expired: %v", tok)
 }
 
 func TestClientSecretNoNonce(t *testing.T) {
@@ -428,7 +416,7 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	formData.Add("grant_type", "password")
 	formData.Add("client_id", "admin-cli")
 
-	req, _ := http.NewRequest("POST", keycloakBase+"/realms/master/protocol/openid-connect/token", strings.NewReader(formData.Encode()))
+	req, _ := http.NewRequest(http.MethodPost, keycloakBase+"/realms/master/protocol/openid-connect/token", strings.NewReader(formData.Encode()))
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
 
 	res, err := client.Do(req)
@@ -439,19 +427,17 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	var responseMap map[string]interface{}
 	decoder := json.NewDecoder(res.Body)
 	err = decoder.Decode(&responseMap)
-	if err != nil {
-		t.Fatalf("error decoding response: %v", err)
-	}
-	accessToken := responseMap["access_token"].(string)
+	require.NoError(t, err, "error decoding response")
+
+	accessToken, ok := responseMap["access_token"].(string)
+	require.True(t, ok, "missing access_token")
 
 	realmFile, err := os.ReadFile("./realm.json")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	realmJson := strings.Replace(string(realmFile), "<claimsprovider url>", claimsProviderUrl.String(), -1)
+	realmJSON := strings.ReplaceAll(string(realmFile), "<claimsprovider url>", claimsProviderUrl.String())
 
-	req, _ = http.NewRequest("POST", keycloakBase+"/admin/realms", strings.NewReader(realmJson))
+	req, _ = http.NewRequest(http.MethodPost, keycloakBase+"/admin/realms", strings.NewReader(realmJSON))
 	req.Header.Add("authorization", "Bearer "+accessToken)
 	req.Header.Add("content-type", "application/json")
 

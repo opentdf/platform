@@ -190,5 +190,5 @@ func (k *KASClient) getPublicKey(kasInfo KASInfo) (string, error) {
 		return "", fmt.Errorf("error making request to KAS: %w", err)
 	}
 
-	return resp.PublicKey, nil
+	return resp.GetPublicKey(), nil
 }

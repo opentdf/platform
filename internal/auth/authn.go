@@ -221,7 +221,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		dpopInfo{
 			headers: md["dpop"],
 			path:    info.FullMethod,
-			method:  "POST",
+			method:  http.MethodPost,
 		},
 	)
 	if err != nil {

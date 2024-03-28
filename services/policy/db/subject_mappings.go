@@ -599,7 +599,7 @@ func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_s
 // Mutates provided fields and returns id of the updated subject mapping
 func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	// if extend we need to merge the metadata
-	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		a, err := c.GetSubjectMapping(ctx, r.Id)
 		if err != nil {
 			return nil, err
@@ -620,7 +620,7 @@ func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 
 	sql, args, err := updateSubjectMappingSql(
 		r.Id,
-		metadataJson,
+		metadataJSON,
 		r.SubjectConditionSetId,
 		actionsJSON,
 	)

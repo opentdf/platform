@@ -30,13 +30,13 @@ func attributesRuleTypeEnumTransformOut(value string) policy.AttributeRuleTypeEn
 	return policy.AttributeRuleTypeEnum(policy.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
 }
 
-func attributesValuesProtojson(valuesJson []byte) ([]*policy.Value, error) {
+func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 	var (
 		raw    []json.RawMessage
 		values []*policy.Value
 	)
 
-	if err := json.Unmarshal(valuesJson, &raw); err != nil {
+	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
 		return nil, err
 	}
 
@@ -186,18 +186,18 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 		id            string
 		name          string
 		rule          string
-		metadataJson  []byte
+		metadataJSON  []byte
 		namespaceId   string
 		active        bool
 		namespaceName string
-		valuesJson    []byte
+		valuesJSON    []byte
 		grants        []byte
 		fqn           sql.NullString
 	)
 
-	fields := []interface{}{&id, &name, &rule, &metadataJson, &namespaceId, &active, &namespaceName}
+	fields := []interface{}{&id, &name, &rule, &metadataJSON, &namespaceId, &active, &namespaceName}
 	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
-		fields = append(fields, &valuesJson)
+		fields = append(fields, &valuesJSON)
 	}
 	if opts.withKeyAccessGrants {
 		fields = append(fields, &grants)
@@ -212,15 +212,15 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 	}
 
 	m := &common.Metadata{}
-	if metadataJson != nil {
-		if err := protojson.Unmarshal(metadataJson, m); err != nil {
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
 			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
 	var v []*policy.Value
-	if valuesJson != nil {
-		v, err = attributesValuesProtojson(valuesJson)
+	if valuesJSON != nil {
+		v, err = attributesValuesProtojson(valuesJSON)
 		if err != nil {
 			slog.Error("could not unmarshal values", slog.String("error", err.Error()))
 			return nil, err
@@ -442,12 +442,12 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 }
 
 func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*policy.Attribute, error) {
-	metadataJson, metadata, err := db.MarshalCreateMetadata(r.Metadata)
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := createAttributeSql(r.NamespaceId, r.Name, attributesRuleTypeEnumTransformIn(r.Rule.String()), metadataJson)
+	sql, args, err := createAttributeSql(r.GetNamespaceId(), r.GetName(), attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -500,7 +500,7 @@ func updateAttributeSql(id string, metadata []byte) (string, []interface{}, erro
 
 func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*policy.Attribute, error) {
 	// if extend we need to merge the metadata
-	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		a, err := c.GetAttribute(ctx, id)
 		if err != nil {
 			return nil, err
@@ -511,7 +511,7 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	sql, args, err := updateAttributeSql(id, metadataJson)
+	sql, args, err := updateAttributeSql(id, metadataJSON)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.Attribute{
 			Id: id,

@@ -98,36 +98,11 @@ Create Attribute
 ```bash
 grpcurl -plaintext -d @ localhost:8080 policy.attributes.AttributesService/CreateAttribute <<EOM
 {
-    "definition": {
-        "name": "relto",
+        "name": "new_attr",
         "rule":"ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
-        "values": [
-            {
-                "value": "test1"
-            },
-            {
-                "value": "test2"
-            }
-        ],
-        "descriptor": {
-            "labels": [
-                {
-                    "key": "test2",
-                    "value": "test2"
-                },
-                {
-                    "key": "test3",
-                    "value": "test3"
-                }
-            ],
-            "description": "this is a test attribute",
-            "namespace": "virtru.com",
-            "name": "attribute1",
-            "type":"POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION"
-        }
-    }
+        "values": ["new_attr1", "new_attr2"],
+        "namespace_id": "0d94e00a-7bd3-4482-afe3-f1e4b03c1353"
 }
-
 EOM
 ```
 

@@ -77,13 +77,15 @@ func test_server_resp(t *testing.T, w http.ResponseWriter, r *http.Request, k st
 	}
 }
 func test_server(t *testing.T, userSearchQueryAndResp map[string]string, groupSearchQueryAndResp map[string]string,
-	groupByIdAndResponse map[string]string, groupMemberQueryAndResponse map[string]string) *httptest.Server {
+	groupByIdAndResponse map[string]string, groupMemberQueryAndResponse map[string]string, clientsSearchQueryAndResp map[string]string) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/realms/tdf/protocol/openid-connect/token" {
 			_, err := io.WriteString(w, token_resp)
 			if err != nil {
 				t.Error(err)
 			}
+		} else if r.URL.Path == "/admin/realms/tdf/clients" {
+			test_server_resp(t, w, r, r.URL.RawQuery, clientsSearchQueryAndResp)
 		} else if r.URL.Path == "/admin/realms/tdf/users" {
 			test_server_resp(t, w, r, r.URL.RawQuery, userSearchQueryAndResp)
 		} else if r.URL.Path == "/admin/realms/tdf/groups" && groupSearchQueryAndResp != nil {
@@ -111,14 +113,12 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 
 	var req = authorization.IdpPluginRequest{}
 	req.Entities = validBody
-	kcconfig := idpplugin.KeyCloakConfig{
-		Url:            "http://localhost:8888",
-		Realm:          "tdf",
-		ClientId:       "tdf-entity-resolution-service",
-		ClientSecret:   "5Byk7Hh6l0E1hJDZfF8CQbG9vqh2FeIe",
-		LegacyKeycloak: true,
-		SubGroups:      false,
+	csqr := map[string]string{
+		"clientId=opentdf": by_email_bob_resp,
 	}
+	server := test_server(t, nil, nil, nil, nil, csqr)
+	defer server.Close()
+	var kcconfig = test_keycloakConfig(server)
 	var kcConfigInterface map[string]interface{}
 	inrec, err := json.Marshal(kcconfig)
 	assert.Nil(t, err)
@@ -141,7 +141,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	server := test_server(t, map[string]string{
 		"email=bob%40sample.org&exact=true":   by_email_bob_resp,
 		"email=alice%40sample.org&exact=true": by_email_alice_resp,
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 	defer server.Close()
 
 	var validBody []*authorization.Entity
@@ -185,7 +185,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	server := test_server(t, map[string]string{
 		"exact=true&username=bob.smith":   by_username_bob_resp,
 		"exact=true&username=alice.smith": by_username_alice_resp,
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 	defer server.Close()
 
 	// validBody := `{"entity_identifiers": [{"type": "username","identifier": "bob.smith"}]}`
@@ -235,7 +235,8 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 		"group1-uuid": group_resp,
 	}, map[string]string{
 		"group1-uuid": group_submember_resp,
-	})
+	},
+		nil)
 	defer server.Close()
 
 	var validBody []*authorization.Entity
@@ -281,7 +282,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 		"group1-uuid": group_resp,
 	}, map[string]string{
 		"group1-uuid": group_submember_resp,
-	})
+	}, nil)
 	defer server.Close()
 
 	var validBody []*authorization.Entity

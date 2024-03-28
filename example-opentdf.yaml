@@ -50,7 +50,7 @@ server:
   auth:
     enabled: true
     audience: "http://localhost:8080"
-    issuer: http://localhost:8888/auth/realms/tdf
+    issuer: http://localhost:8888/auth/realms/opentdf
     clients:
       - "opentdf"
       - "opentdf-sdk"

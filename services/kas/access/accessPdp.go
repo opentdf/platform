@@ -3,12 +3,11 @@ package access
 import (
 	"context"
 	"errors"
-	"github.com/opentdf/platform/protocol/go/policy"
-	otdf "github.com/opentdf/platform/sdk"
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
-	attrs "github.com/virtru/access-pdp/attributes"
+	"github.com/opentdf/platform/protocol/go/policy"
+	otdf "github.com/opentdf/platform/sdk"
 )
 
 const (
@@ -83,30 +82,6 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent authorizati
 		return true, nil
 	}
 	return false, nil
-}
-
-func convertAttrsToAttrInstances(attributes []Attribute) ([]attrs.AttributeInstance, error) {
-	instances := make([]attrs.AttributeInstance, len(attributes))
-	for i, attr := range attributes {
-		instance, err := attrs.ParseInstanceFromURI(attr.URI)
-		if err != nil {
-			return nil, errors.Join(ErrPolicyDataAttributeParse, err)
-		}
-		instances[i] = instance
-	}
-	return instances, nil
-}
-
-func convertEntitlementsToEntityAttrMap(entitlements []Entitlement) (map[string][]attrs.AttributeInstance, error) {
-	entityAttrMap := make(map[string][]attrs.AttributeInstance)
-	for _, entitlement := range entitlements {
-		instances, err := convertAttrsToAttrInstances(entitlement.EntityAttributes)
-		if err != nil {
-			return nil, err
-		}
-		entityAttrMap[entitlement.EntityID] = instances
-	}
-	return entityAttrMap, nil
 }
 
 func contains(s []string, e string) bool {

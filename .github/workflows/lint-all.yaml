@@ -33,6 +33,7 @@ jobs:
         with:
           version: v1.56
           working-directory: ${{ matrix.directory }}
+          args: --out-format=colored-line-number
 
   buf:
     runs-on: ubuntu-22.04

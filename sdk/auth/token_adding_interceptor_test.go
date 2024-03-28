@@ -141,7 +141,11 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 		f.accessToken = md.Get("authorization")
 		f.dpopToken = md.Get("dpop")
 	}
-	f.dpopKey = ctx.Value("dpop-jwk").(jwk.Key)
+	var ok bool
+	f.dpopKey, ok = ctx.Value("dpop-jwk").(jwk.Key)
+	if !ok {
+		panic(ok)
+	}
 	return &kas.InfoResponse{}, nil
 }
 func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {

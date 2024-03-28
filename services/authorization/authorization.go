@@ -48,9 +48,6 @@ func NewRegistration() serviceregistry.Registration {
 var RetrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, as AuthorizationService) (*attr.GetAttributeValuesByFqnsResponse, error) {
 	slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
 	return as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 		Fqns: ra.AttributeFqns,
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,

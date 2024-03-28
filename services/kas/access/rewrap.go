@@ -296,7 +296,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 			},
 		}
 	}
-	access, err := canAccess(ctx, ent, *policy, body.cl.TDFClaims)
+	access, err := canAccess(ctx, ent, *policy, p.SDK)
 
 	if err != nil {
 		slog.WarnContext(ctx, "Could not perform access decision!", "err", err)

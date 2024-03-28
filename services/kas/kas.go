@@ -16,8 +16,8 @@ import (
 )
 
 func loadIdentityProvider() *oidc.IDTokenVerifier {
-	oidcIssuerURL := "http://localhost:8888/auth/realms/tdf"
-	discoveryBaseURL := "http://localhost:8888/auth/realms/tdf"
+	oidcIssuerURL := "http://localhost:8888/auth/realms/opentdf"
+	discoveryBaseURL := "http://localhost:8888/auth/realms/opentdf"
 	ctx := context.Background()
 	if discoveryBaseURL != "" {
 		ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)

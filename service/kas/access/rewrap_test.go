@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"log/slog"
-	"net/url"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -17,17 +16,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/security"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/kas/tdf3"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -273,7 +268,6 @@ func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
 	set(jwt.IssuerKey, mockIdPOrigin)
 	set(jwt.AudienceKey, `testonly`)
 	set(jwt.SubjectKey, `testuser1`)
-	set("tdf_claims", standardClaims())
 	require.NoError(t, err)
 
 	raw, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, signer))
@@ -310,14 +304,6 @@ func jwtWrongKey(t *testing.T) []byte {
 	return signedMockJWT(t, entityPrivateKey(t))
 }
 
-func mockVerifier(t *testing.T) *oidc.IDTokenVerifier {
-	return oidc.NewVerifier(
-		mockIdPOrigin,
-		(*RSAPublicKey)(publicKey(t)),
-		&oidc.Config{SkipExpiryCheck: true, ClientID: "testonly"},
-	)
-}
-
 func makeRewrapBody(t *testing.T, policy []byte) []byte {
 	mockBody := RequestBody{
 		KeyAccess:       keyAccessWrappedRaw(t),
@@ -339,10 +325,6 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	srt := makeRewrapBody(t, fauxPolicyBytes(t))
 	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes())
 
-	p := &Provider{
-		OIDCVerifier: mockVerifier(t),
-	}
-
 	var tests = []struct {
 		name    string
 		bearer  []byte
@@ -352,10 +334,8 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		addDPoP bool
 	}{
 		{"good", jwtStandard(t), srt, true, true, true},
-		{"bad bearer wrong issuer", jwtWrongIssuer(t), srt, false, true, true},
-		{"bad bearer signature", jwtWrongKey(t), srt, false, true, true},
 		{"different policy", jwtStandard(t), badPolicySrt, true, false, true},
-		// once we start always requiring auth then add this test back {"no dpop token included", jwtStandard(), srt, false, true, false},
+		{"no dpop token included", jwtStandard(t), srt, false, true, false},
 	}
 	// The execution loop
 	for _, tt := range tests {
@@ -364,24 +344,26 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			if tt.addDPoP {
 				key, err := jwk.FromRaw(entityPublicKey(t))
 				require.NoError(t, err, "couldn't get JWK from key")
-
+				key.Set(jwk.AlgorithmKey, jwa.RS256)
 				ctx = auth.ContextWithJWK(ctx, key)
 			}
 
-			verified, err := p.verifyBearerAndParseRequestBody(
+			md := metadata.New(map[string]string{"token": string(tt.bearer)})
+			ctx = metadata.NewIncomingContext(ctx, md)
+
+			verified, _, err := verifySignedRequesToken(
 				ctx,
 				&kaspb.RewrapRequest{
-					Bearer:             string(tt.bearer),
 					SignedRequestToken: string(tt.body),
 				},
 			)
 			slog.Info("verifiy repspponse", "v", verified, "e", err)
 			if tt.bearish {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, tt.bearer)
-				require.NotNil(t, verified.publicKey, "unable to load public key")
-				require.NotNil(t, verified.requestBody, "unable to load request body")
+				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
+				require.NotNil(t, verified, "unable to load request body")
 
-				policy, err := p.verifyAndParsePolicy(context.Background(), verified.requestBody, []byte(plainKey))
+				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey))
 				if tt.polite {
 					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)
@@ -393,94 +375,4 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestLegacyBearerTokenFails(t *testing.T) {
-	var tests = []struct {
-		name     string
-		metadata []string
-		msg      string
-	}{
-		{"no auth header", []string{}, "no auth token"},
-		{"multiple auth", []string{"Authorization", "a", "Authorization", "b"}, "auth fail"},
-		{"no bearer", []string{"Authorization", "a"}, "auth fail"},
-		{"no token", []string{"Authorization", "Bearer "}, "auth fail"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(tt.metadata...))
-			p, err := legacyBearerToken(ctx, "")
-			assert.Empty(t, p)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.msg)
-		})
-	}
-}
-
-func TestLegacyBearerTokenEtc(t *testing.T) {
-	p, err := legacyBearerToken(context.Background(), "")
-	assert.Empty(t, p)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no auth token")
-
-	p, err = legacyBearerToken(context.Background(), "something")
-	assert.Equal(t, "something", p)
-	require.NoError(t, err)
-
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("Authorization", "Bearer TOKEN"))
-	p, err = legacyBearerToken(ctx, "")
-	assert.Equal(t, "TOKEN", p)
-	require.NoError(t, err)
-}
-
-func TestHandlerAuthFailure0(t *testing.T) {
-	hsmSession, _ := security.New(&security.HSMConfig{})
-	kasURI, _ := url.Parse("https://" + hostname + ":5000")
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
-	}
-
-	body := `{"mock": "value"}`
-	_, err := kas.Rewrap(context.Background(), &kaspb.RewrapRequest{SignedRequestToken: body})
-	status, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.Unauthenticated, status.Code())
-}
-
-func TestHandlerAuthFailure1(t *testing.T) {
-	hsmSession, _ := security.New(&security.HSMConfig{})
-	kasURI, _ := url.Parse("https://" + hostname + ":5000")
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
-	}
-
-	body := `{"mock": "value"}`
-	md := map[string][]string{
-		"Authorization": {"Bearer invalidToken"},
-	}
-	ctx := metadata.NewIncomingContext(context.Background(), md)
-	_, err := kas.Rewrap(ctx, &kaspb.RewrapRequest{SignedRequestToken: body})
-	status, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.PermissionDenied, status.Code())
-}
-
-func TestHandlerAuthFailure2(t *testing.T) {
-	hsmSession, _ := security.New(&security.HSMConfig{})
-	kasURI, _ := url.Parse("https://" + hostname + ":5000")
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
-	}
-
-	body := `{"mock": "value"}`
-	_, err := kas.Rewrap(context.Background(), &kaspb.RewrapRequest{SignedRequestToken: body, Bearer: "invalidToken"})
-	status, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.PermissionDenied, status.Code())
 }

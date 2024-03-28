@@ -43,7 +43,6 @@ message PublicKeyResponse {
 
 message RewrapRequest {
   string signed_request_token = 1;
-  string bearer = 2;
 }
 
 message RewrapResponse {

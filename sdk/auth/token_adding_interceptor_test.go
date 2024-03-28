@@ -144,7 +144,7 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 	var ok bool
 	f.dpopKey, ok = ctx.Value("dpop-jwk").(jwk.Key)
 	if !ok {
-		panic(ok)
+		f.dpopKey = nil
 	}
 	return &kas.InfoResponse{}, nil
 }

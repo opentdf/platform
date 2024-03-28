@@ -1111,9 +1111,6 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 	}
 }
 
-// TODO: entityRankGreaterThanOrEqualToDataRank
-
-
 // getOrderOfValue tests
 func Test_GetOrderOfValue(t *testing.T) {
 	ns := mockNamespaces[1]
@@ -1292,3 +1289,5 @@ func Test_GetOrderOfValueByFqn_SadCases(t *testing.T) {
 		assert.Equal(t, -1, got)
 	}
 }
+
+// TODO: entityRankGreaterThanOrEqualToDataRank

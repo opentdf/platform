@@ -164,7 +164,7 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 	}
 
 	var id string
-	if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
+	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
 	} else if err := r.Scan(&id); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -179,7 +179,7 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 		if err != nil {
 			return nil, err
 		}
-		if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
+		if r, err := c.QueryRow(ctx, sql, args); err != nil {
 			return nil, err
 		} else if err := r.Scan(&vm_id); err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -253,7 +253,11 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true}
 	sql, args, err := getAttributeValueSql(id, opts)
-	row, err := c.QueryRow(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		slog.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
@@ -326,7 +330,11 @@ func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id st
 	opts := attributeValueSelectOptions{withFqn: true, state: state}
 
 	sql, args, err := listAttributeValuesSql(attribute_id, opts)
-	rows, err := c.Query(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +392,11 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string) ([]*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true, state: state}
 	sql, args, err := listAllAttributeValuesSql(opts)
-	rows, err := c.Query(ctx, sql, args, err)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}

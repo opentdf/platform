@@ -61,6 +61,8 @@ p,	role:org-admin,		/kas.AccessService/LegacyPublicKey,			*,			allow
 ## gRPC routes
 p,	role:admin,		policy.*,																		*,			allow
 p,	role:admin,		kasregistry.*,															*,			allow
+p,	role:admin,		kas.AccessService/Info,					            *,			allow
+p,	role:admin,		kas.AccessService/Rewrap, 			            *,			allow
 p,	role:admin,		kas.AccessService/LegacyPublicKey,					*,			allow
 p,	role:admin,		kas.AccessService/PublicKey,								*,			allow
 ## HTTP routes
@@ -76,8 +78,10 @@ p,	role:admin,		/kas.AccessService/LegacyPublicKey,					*,			allow
 ## gRPC routes
 p,	role:readonly,		policy.*,																read,			allow
 p,	role:readonly,		kasregistry.*,													read,			allow
-p,	role:readonly,		kas.AccessService/LegacyPublicKey,			read,			allow
-p,	role:readonly,		kas.AccessService/PublicKey,						read,			allow
+p,	role:readonly,		kas.AccessService/Info,		 		             *,			allow
+p,	role:readonly,    kas.AccessService/Rewrap, 			           *,			allow
+p,	role:readonly,    kas.AccessService/LegacyPublicKey,				 *,			allow
+p,	role:readonly,    kas.AccessService/PublicKey,							 *,			allow
 ## HTTP routes
 p,	role:readonly,		/health,																read,			allow
 p,	role:readonly,		/attributes*,														read,			allow

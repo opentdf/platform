@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -109,6 +110,22 @@ var (
 					return err
 				}
 				slog.Info("✅ Realm created", slog.String("realm", realmName))
+
+				//update realm users profile via upconfig
+				realmProfileUrl := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, realmName)
+				realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileUrl)
+				var upConfig map[string]interface{}
+				err = json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig)
+				if err != nil {
+					return err
+				}
+				upConfig["unmanagedAttributePolicy"] = "ENABLED"
+				realmUserProfileResp, err = client.GetRequestWithBearerAuth(ctx, token.AccessToken).SetBody(upConfig).Put(realmProfileUrl)
+				if err != nil {
+					return err
+				}
+				slog.Info("✅ Realm Users Profile Updated", slog.String("realm", realmName))
+
 			} else {
 				slog.Info("⏭️  Realm already exists", slog.String("realm", realmName))
 			}
@@ -131,6 +148,18 @@ var (
 						"included.custom.audience": "custom_audience",
 						"access.token.claim":       "true",
 						"id.token.claim":           "true",
+					},
+				},
+				{
+					Name:           gocloak.StringP("dpop-mapper"),
+					Protocol:       gocloak.StringP("openid-connect"),
+					ProtocolMapper: gocloak.StringP("virtru-oidc-protocolmapper"),
+					Config: &map[string]string{
+						"claim.name":         "tdf_claims",
+						"client.dpop":        "true",
+						"tdf_claims.enabled": "true",
+						"access.token.claim": "true",
+						"client.publickey":   "X-VirtruPubKey",
 					},
 				},
 			}

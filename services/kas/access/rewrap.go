@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/opentdf/platform/internal/auth"
 	"github.com/opentdf/platform/internal/security"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -143,29 +144,35 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 	slog.DebugContext(ctx, "verified", "claims", cl)
 
-	/*block, _ := pem.Decode([]byte(cl.TDFClaims.ClientPublicSigningKey))
-	if block == nil {
-		slog.WarnContext(ctx, "missing clientPublicSigningKey")
-		return nil, err403("token missing PoP")
-	}
-	clientSigningPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		slog.WarnContext(ctx, "failure to parse clientSigningPublicKey", "err", err)
-		return nil, err403("signing key parse failure")
-	}*/
-
 	requestToken, err := jwt.ParseSigned(in.SignedRequestToken)
 	if err != nil {
 		slog.WarnContext(ctx, "unable parse request", "err", err)
 		return nil, err400("bad request")
 	}
+
+	dpopJWK := auth.GetJWKFromContext(ctx)
+
 	var bodyClaims customClaimsBody
-	//err = requestToken.Claims(clientSigningPublicKey, &bodyClaims)
-	err = requestToken.UnsafeClaimsWithoutVerification(&bodyClaims)
-	if err != nil {
-		slog.WarnContext(ctx, "unable decode request", "err", err)
-		return nil, err400("bad request")
+	if dpopJWK == nil {
+		slog.ErrorContext(ctx, "allowing rewrap without authentication. the authn middleware is not in use")
+		err = requestToken.UnsafeClaimsWithoutVerification(&bodyClaims)
+		if err != nil {
+			return nil, err403("unable to parse unverified claims from body")
+		}
+	} else {
+		var verificationKey interface{}
+		err = dpopJWK.Raw(&verificationKey)
+		if err != nil {
+			slog.WarnContext(ctx, "error getting underlying key to verify signature", "key", dpopJWK, "err", err)
+			return nil, err503("error parsing DPoP key")
+		}
+		err = requestToken.Claims(verificationKey, &bodyClaims)
+		if err != nil {
+			slog.WarnContext(ctx, "invalid signature on body claims", "err", err)
+			return nil, err403("signature on body was invalid")
+		}
 	}
+
 	slog.DebugContext(ctx, "okay now we can check", "bodyClaims.RequestBody", bodyClaims.RequestBody)
 	decoder := json.NewDecoder(strings.NewReader(bodyClaims.RequestBody))
 	var requestBody RequestBody

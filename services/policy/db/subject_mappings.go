@@ -290,7 +290,7 @@ func (c PolicyDbClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 	}
 
 	var id string
-	r, err := c.QueryRow(ctx, sql, args, err)
+	r, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (c PolicyDbClient) GetSubjectConditionSet(ctx context.Context, id string) (
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func (c PolicyDbClient) ListSubjectConditionSets(ctx context.Context) ([]*policy
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -503,9 +503,12 @@ func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		metadataJSON,
 		scs.Id,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	var id string
-	if r, err := c.QueryRow(ctx, sql, args, err); err != nil {
+	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
 	} else if err := r.Scan(&id); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -532,8 +535,11 @@ func getSubjectMappingSql(id string) (string, []interface{}, error) {
 
 func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
 	sql, args, err := getSubjectMappingSql(id)
+	if err != nil {
+		return nil, err
+	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -554,7 +560,7 @@ func (c PolicyDbClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -748,7 +754,7 @@ func (c PolicyDbClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args)
 	slog.Debug("executed SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args), slog.Any("rows", rows), slog.Any("error", err))
 	if err != nil {
 		return nil, err

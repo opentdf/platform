@@ -114,6 +114,7 @@ jobs:
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - run: grpcurl -plaintext localhost:8080 list
       - run: grpcurl -plaintext localhost:8080 grpc.health.v1.Health.Check
+      - run: grpcurl -plaintext localhost:8080 kas.AccessService/PublicKey
       - run: curl --show-error --fail --insecure localhost:8080/kas/v2/kas_public_key
       - run: go run examples/main.go encrypt "Hello Virtru"
       - run: go run examples/main.go decrypt sensitive.txt.tdf

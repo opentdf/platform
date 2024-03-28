@@ -136,7 +136,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 							Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 						},
 					},
-					ResourceAttributesId: "resourceAttributesId_stub" + ra.String(),
+					ResourceAttributesId: ra.GetAttributeFqns()[0],
 				}
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}

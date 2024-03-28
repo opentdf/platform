@@ -77,8 +77,8 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
 	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-  assert.Greaterf(t, tok.ExpiresIn, 0, "invalid expiration is before current time: %v", tok)
-  assert.Falsef(t, tok.Expired(), "got a token that is currently expired: %v", tok)
+	assert.Greaterf(t, tok.ExpiresIn, 0, "invalid expiration is before current time: %v", tok)
+	assert.Falsef(t, tok.Expired(), "got a token that is currently expired: %v", tok)
 }
 
 func TestClientSecretNoNonce(t *testing.T) {

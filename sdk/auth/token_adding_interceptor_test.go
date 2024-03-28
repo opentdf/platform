@@ -17,7 +17,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/internal/auth"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -142,7 +141,7 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 		f.accessToken = md.Get("authorization")
 		f.dpopToken = md.Get("dpop")
 	}
-	f.dpopKey = auth.GetJWKFromContext(ctx)
+	f.dpopKey = ctx.Value("dpop-jwk").(jwk.Key)
 	return &kas.InfoResponse{}, nil
 }
 func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {

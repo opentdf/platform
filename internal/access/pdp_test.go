@@ -123,7 +123,6 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
 }
 
-// TODO: fix this test
 func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
 	mockDataAttrs := []*policy.Value{
@@ -350,7 +349,6 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
 }
 
-// TODO: fix this test
 func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 	mockAttrDefinitions := []*policy.Attribute{&simpleAllOfAttribute}
 	mockDataAttrs := []*policy.Value{

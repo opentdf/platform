@@ -119,6 +119,7 @@ jobs:
       - run: curl --show-error --fail --insecure localhost:8080/kas/v2/kas_public_key
       - run: go run examples/main.go encrypt "Hello Virtru"
       - run: go run examples/main.go decrypt sensitive.txt.tdf
+      - run: go run examples/main.go decrypt sensitive.txt.tdf | grep "Hello Virtru"
 
   image:
     name: image build

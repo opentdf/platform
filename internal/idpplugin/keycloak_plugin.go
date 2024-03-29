@@ -91,7 +91,7 @@ func EntityResolution(ctx context.Context,
 				resolvedEntities,
 				&authorization.IdpEntityRepresentation{
 					OriginalId:      ident.GetId(),
-					AdditionalProps: jsonEntities
+					AdditionalProps: jsonEntities,
 				},
 			)
 			return &authorization.IdpPluginResponse{

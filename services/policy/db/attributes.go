@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -59,7 +60,7 @@ type attributesSelectOptions struct {
 	withFqn           bool
 	withOneValueByFqn string
 	state             string
-	namespace_id      string
+	namespace         string
 }
 
 func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
@@ -276,19 +277,24 @@ func listAllAttributesSql(opts attributesSelectOptions) (string, []interface{}, 
 		sb = sb.Where(sq.Eq{t.Field("active"): opts.state == StateActive})
 	}
 
-	if opts.namespace_id != "" {
-		sb = sb.Where(sq.Eq{t.Field("namespace_id"): opts.namespace_id})
+	if opts.namespace != "" {
+		_, err := uuid.Parse(opts.namespace)
+		if err == nil {
+			sb = sb.Where(sq.Eq{t.Field("namespace_id"): opts.namespace})
+		} else {
+			sb = sb.Where(sq.Eq{Tables.Namespaces.Field("name"): opts.namespace})
+		}
 	}
 	return sb.ToSql()
 }
 
-func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string, namespace_id string) ([]*policy.Attribute, error) {
+func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string, namespace string) ([]*policy.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: false,
 		withFqn:             true,
 		state:               state,
-		namespace_id:        namespace_id,
+		namespace:           namespace,
 	}
 
 	sql, args, err := listAllAttributesSql(opts)

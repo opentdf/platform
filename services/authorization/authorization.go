@@ -45,9 +45,9 @@ func NewRegistration() serviceregistry.Registration {
 }
 
 var RetrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, as AuthorizationService) (*attr.GetAttributeValuesByFqnsResponse, error) {
-	slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
+	slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 	return as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-		Fqns: ra.AttributeFqns,
+		Fqns: ra.GetAttributeValueFqns(),
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},
@@ -67,13 +67,13 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 	}
 	for _, dr := range req.DecisionRequests {
 		for _, ra := range dr.ResourceAttributes {
-			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
+			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
 			// get attribute definisions
 			getAttrsRes, err := RetrieveAttributeDefinitions(ctx, ra, as)
 			if err != nil {
 				// TODO: should all decisions in a request fail if one FQN lookup fails?
-				return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", strings.Join(ra.AttributeFqns, ", ")))
+				return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 			}
 			// get list of attributes from response
 			var attrDefs []*policy.Attribute
@@ -83,7 +83,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 
 			// format resource fqns as attribute instances for accesspdp
 			var dataAttrs []access.AttributeInstance
-			for _, x := range ra.AttributeFqns {
+			for _, x := range ra.GetAttributeValueFqns() {
 				inst, err := access.ParseInstanceFromURI(x)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one FQDN to attributeinstance conversion fails?
@@ -107,7 +107,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				entityAttrs := make(map[string][]access.AttributeInstance)
 				for _, e := range ecEntitlements.Entitlements {
 					var thisEntityAttrs []access.AttributeInstance
-					for _, x := range e.GetAttributeId() {
+					for _, x := range e.GetAttributeValueFqns() {
 						inst, err := access.ParseInstanceFromURI(x)
 						if err != nil {
 							// TODO: should all decisions in a request fail if one FQDN to attributeinstance conversion fails?
@@ -160,7 +160,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	slog.Debug("getting entitlements")
 	// get subject mappings
 	request := attr.GetAttributeValuesByFqnsRequest{
-		Fqns: req.Scope.GetAttributeFqns(),
+		Fqns: req.Scope.GetAttributeValueFqns(),
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},
@@ -219,8 +219,8 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	// FIXME use index
 	rsp.Entitlements[0] = &authorization.EntityEntitlements{
-		EntityId:    req.Entities[0].Id,
-		AttributeId: saa,
+		EntityId:           req.Entities[0].Id,
+		AttributeValueFqns: saa,
 	}
 	slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
 	return rsp, nil

@@ -403,7 +403,7 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state)
+		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state, "")
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), listedAttrs)
 		for _, a := range listedAttrs {

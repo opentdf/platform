@@ -229,7 +229,7 @@ func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 func (s *AttributesSuite) Test_ListAttribute() {
 	fixtures := s.getAttributeFixtures()
 
-	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive)
+	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive, "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), list)
 
@@ -243,6 +243,24 @@ func (s *AttributesSuite) Test_ListAttribute() {
 			}
 		}
 		assert.True(s.T(), found)
+	}
+}
+
+func (s *AttributesSuite) Test_ListAttributesByNamespace() {
+	// get all unique namespace_ids
+	nsIds := map[string]bool{}
+	for _, f := range s.getAttributeFixtures() {
+		nsIds[f.NamespaceId] = true
+	}
+	// get all attributes by namespace
+	for nsId := range nsIds {
+		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsId)
+		assert.Nil(s.T(), err)
+		assert.NotNil(s.T(), list)
+		assert.NotEmpty(s.T(), list)
+		for _, l := range list {
+			assert.Equal(s.T(), nsId, l.Namespace.Id)
+		}
 	}
 }
 
@@ -452,7 +470,7 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state)
+		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state, "")
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), listedAttrs)
 		for _, a := range listedAttrs {

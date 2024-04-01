@@ -48,6 +48,12 @@
               "ACTIVE_STATE_ENUM_ANY"
             ],
             "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
+          },
+          {
+            "name": "namespaceId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [

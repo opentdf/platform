@@ -248,18 +248,30 @@ func (s *AttributesSuite) Test_ListAttribute() {
 
 func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 	// get all unique namespace_ids
-	nsIds := map[string]bool{}
+	namespaces := map[string]string{}
 	for _, f := range s.getAttributeFixtures() {
-		nsIds[f.NamespaceId] = true
+		namespaces[f.NamespaceId] = ""
 	}
-	// get all attributes by namespace
-	for nsId := range nsIds {
+	// list attributes by namespace id
+	for nsId := range namespaces {
 		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsId)
 		assert.Nil(s.T(), err)
 		assert.NotNil(s.T(), list)
 		assert.NotEmpty(s.T(), list)
 		for _, l := range list {
 			assert.Equal(s.T(), nsId, l.Namespace.Id)
+		}
+		namespaces[nsId] = list[0].Namespace.Name
+	}
+
+	// list attributes by namespace name
+	for _, nsName := range namespaces {
+		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsName)
+		assert.Nil(s.T(), err)
+		assert.NotNil(s.T(), list)
+		assert.NotEmpty(s.T(), list)
+		for _, l := range list {
+			assert.Equal(s.T(), nsName, l.Namespace.Name)
 		}
 	}
 }

@@ -49,11 +49,11 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *attributes.ListAttributesRequest,
 ) (*attributes.ListAttributesResponse, error) {
 	state := services.GetDbStateTypeTransformedEnum(req.State)
-	namespace_id := req.NamespaceId
+	namespace := req.Namespace
 	slog.Debug("listing attribute definitions", slog.String("state", state))
 	rsp := &attributes.ListAttributesResponse{}
 
-	list, err := s.dbClient.ListAllAttributes(ctx, state, namespace_id)
+	list, err := s.dbClient.ListAllAttributes(ctx, state, namespace)
 	if err != nil {
 		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
 	}

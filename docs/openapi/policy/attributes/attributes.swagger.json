@@ -50,13 +50,8 @@
             "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
           },
           {
-            "name": "namespaceId",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "namespaceName",
+            "name": "namespace",
+            "description": "can be id or name",
             "in": "query",
             "required": false,
             "type": "string"

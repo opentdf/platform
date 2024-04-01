@@ -81,6 +81,12 @@ func (s *AuthnCasbinSuite) newTokenWithCustomRoleMap(orgAdmin bool, admin bool, 
 	return "", tok
 }
 
+func (s *AuthnCasbinSuite) newTokenWithCilentID(orgAdmin bool, admin bool, readonly bool) (string, jwt.Token) {
+	tok := jwt.New()
+	tok.Set("client_id", "test")
+	return "", tok
+}
+
 func (s *AuthnCasbinSuite) SetupSuite() {
 }
 
@@ -347,5 +353,26 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			s.NoError(err)
 		}
 		s.Equal(test.allowed, allowed)
+		slog.Info("running test w/ client_id", slog.String("name", name))
+		enforcer, err = NewCasbinEnforcer(CasbinConfig{
+			PolicyConfig: PolicyConfig{
+				RoleClaim: "client_id",
+				RoleMap: map[string]string{
+					"org-admin": "test",
+					"admin":     "test",
+					"readonly":  "test",
+				},
+			},
+		})
+		s.Nil(s.T(), err)
+		_, tok = s.newTokenWithCilentID(test.roles[0], test.roles[1], test.roles[2])
+		allowed, err = enforcer.Enforce(tok, test.resource, test.action)
+		if !test.allowed {
+			s.NotNil(s.T(), err)
+		} else {
+			s.Nil(s.T(), err)
+		}
+		s.Equal(s.T(), test.allowed, allowed)
 	}
+
 }

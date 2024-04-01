@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"log/slog"
+
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/pkg/util"
-	"golang.org/x/exp/slog"
 )
 
 var rolePrefix = "role:"
@@ -151,6 +152,8 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 		pStr = c.Csv
 	}
 
+	slog.Debug("creating casbin enforcer", slog.Any("config", c))
+
 	m, err := casbinModel.NewModelFromString(mStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin model: %w", err)
@@ -208,6 +211,7 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 }
 
 func (e Enforcer) buildSubjectFromToken(t jwt.Token) (casbinSubject, error) {
+	slog.Debug("building subject from token", slog.Any("token", t))
 	roles, err := e.extractRolesFromToken(t)
 	if err != nil {
 		return casbinSubject{}, err
@@ -220,6 +224,7 @@ func (e Enforcer) buildSubjectFromToken(t jwt.Token) (casbinSubject, error) {
 }
 
 func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
+	slog.Debug("extracting roles from token", slog.Any("token", t))
 	roles := []string{}
 
 	roleClaim := defaultRoleClaim
@@ -234,6 +239,7 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 
 	p := strings.Split(roleClaim, ".")
 	if n, ok := t.Get(p[0]); ok {
+		slog.Debug("role claim", slog.String("claim", roleClaim), slog.Any("roles", n))
 		// use dotnotation if the claim is nested
 		r := n
 		if len(p) > 1 {
@@ -244,14 +250,23 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 			}
 		}
 
-		// TODO test the type because an array of strings will panic
-		for _, v := range r.([]interface{}) {
-			switch vv := v.(type) {
-			case string:
-				roles = append(roles, vv)
-			default:
+		// check the type of the role claim
+		switch r.(type) {
+		case string:
+			roles = append(roles, r.(string))
+		case []interface{}:
+			for _, rr := range r.([]interface{}) {
+				switch rr.(type) {
+				case string:
+					roles = append(roles, rr.(string))
+				default:
+				}
 			}
+		default:
+			slog.Warn("could not get type of role claim", slog.String("claim", roleClaim), slog.Any("roles", r))
+			return nil, nil
 		}
+
 	} else {
 		slog.Warn("role claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
 		return nil, nil

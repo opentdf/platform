@@ -29,7 +29,8 @@ message ValueKeyAccessServer {
 message ListAttributesRequest {
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;
-  string namespace_id = 2;
+  // can be id or name
+  string namespace = 2;
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;

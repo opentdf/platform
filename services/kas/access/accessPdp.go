@@ -49,10 +49,10 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent authorizati
 	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
 	ec.Entities = append(ec.Entities, &ent)
 	ras := []*authorization.ResourceAttribute{{
-		AttributeFqns: make([]string, 0),
+		AttributeValueFqns: make([]string, 0),
 	}}
 	for _, attr := range dataAttrs {
-		ras[0].AttributeFqns = append(ras[0].AttributeFqns, attr.URI)
+		ras[0].AttributeValueFqns = append(ras[0].GetAttributeValueFqns(), attr.URI)
 	}
 	in := authorization.GetDecisionsRequest{
 		DecisionRequests: []*authorization.DecisionRequest{

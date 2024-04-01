@@ -54,6 +54,12 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [

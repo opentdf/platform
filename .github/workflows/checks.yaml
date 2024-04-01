@@ -101,7 +101,7 @@ jobs:
           echo "OPENTDF_SERVER_HSM_PIN=$(openssl rand -hex 4)" >> "$GITHUB_ENV"
       - run: .github/scripts/hsm-init-temporary-keys.sh
       - run: docker compose up -d --wait --wait-timeout 240
-      - run: cp example-opentdf.yaml opentdf.yaml
+      - run: cp opentdf-example.yaml opentdf.yaml
       - run: go run . provision keycloak
       - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
         name: start server in background

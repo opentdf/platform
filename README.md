@@ -49,8 +49,9 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 > needed. They can also be run manually using the `migrate` command (`go run . migrate -h`).
 
 1. `docker-compose up`
-2. Create a OpenTDF config file `cp example-opentdf.yaml opentdf.yaml`
-   1. The example file is a good starting point, but you may need to modify it to match your environment.
+2. Create an OpenTDF config file: `opentdf.yaml`
+   1. The `opentdf-example.yaml` file is a good starting point, but you may need to modify it to match your environment.
+   2. The `opentdf-example-no-kas.yaml` file configures the platform to run insecurely without KAS and without endpoint auth.
 3. Provision keycloak `go run . provision keycloak`
 4. Configure KAS keys and your HSM with `.github/scripts/hsm-init-temporary-keys.sh`
 5. Run the server `go run . start`

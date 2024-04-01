@@ -7,7 +7,7 @@ require (
 	github.com/Nerzal/gocloak/v11 v11.2.0
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bufbuild/protovalidate-go v0.6.0
-	github.com/casbin/casbin/v2 v2.84.0
+	github.com/casbin/casbin/v2 v2.86.0
 	github.com/coreos/go-oidc/v3 v3.9.0
 	github.com/creasty/defaults v1.7.0
 	github.com/go-chi/cors v1.2.1

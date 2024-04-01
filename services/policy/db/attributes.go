@@ -59,6 +59,7 @@ type attributesSelectOptions struct {
 	withFqn           bool
 	withOneValueByFqn string
 	state             string
+	namespace_id      string
 }
 
 func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
@@ -274,15 +275,20 @@ func listAllAttributesSql(opts attributesSelectOptions) (string, []interface{}, 
 	if opts.state != "" && opts.state != StateAny {
 		sb = sb.Where(sq.Eq{t.Field("active"): opts.state == StateActive})
 	}
+
+	if opts.namespace_id != "" {
+		sb = sb.Where(sq.Eq{t.Field("namespace_id"): opts.namespace_id})
+	}
 	return sb.ToSql()
 }
 
-func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string) ([]*policy.Attribute, error) {
+func (c PolicyDbClient) ListAllAttributes(ctx context.Context, state string, namespace_id string) ([]*policy.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: false,
 		withFqn:             true,
 		state:               state,
+		namespace_id:        namespace_id,
 	}
 
 	sql, args, err := listAllAttributesSql(opts)

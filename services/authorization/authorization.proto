@@ -168,12 +168,12 @@ message GetEntitlementsRequest {
 
 message EntityEntitlements {
   string entity_id = 1;
-  repeated string attribute_id = 2;
+  repeated string attribute_value_fqns = 2;
 }
 
 //A logical bucket of attributes belonging to a "Resource"
 message ResourceAttribute {
-  repeated string attribute_fqns = 2;
+  repeated string attribute_value_fqns = 2;
 }
 
 /*

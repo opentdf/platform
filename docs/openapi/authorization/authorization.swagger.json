@@ -57,7 +57,7 @@
         },
         "parameters": [
           {
-            "name": "scope.attributeFqns",
+            "name": "scope.attributeValueFqns",
             "in": "query",
             "required": false,
             "type": "array",
@@ -211,7 +211,7 @@
         "entityId": {
           "type": "string"
         },
-        "attributeId": {
+        "attributeValueFqns": {
           "type": "array",
           "items": {
             "type": "string"
@@ -248,7 +248,7 @@
     "authorizationResourceAttribute": {
       "type": "object",
       "properties": {
-        "attributeFqns": {
+        "attributeValueFqns": {
           "type": "array",
           "items": {
             "type": "string"

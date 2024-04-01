@@ -14,7 +14,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/open-policy-agent/opa/metrics"
 	"github.com/open-policy-agent/opa/profiler"
-	"github.com/open-policy-agent/opa/sdk"
+	opaSdk "github.com/open-policy-agent/opa/sdk"
 	"github.com/opentdf/platform/internal/access"
 	"github.com/opentdf/platform/internal/entitlements"
 	"github.com/opentdf/platform/internal/opa"
@@ -45,17 +45,22 @@ func NewRegistration() serviceregistry.Registration {
 	}
 }
 
-var RetrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, as AuthorizationService) (*attr.GetAttributeValuesByFqnsResponse, error) {
-	slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
-	return as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-		Fqns: ra.AttributeFqns,
+// abstracted into variable for mocking in tests
+var retrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},
+		Fqns: ra.AttributeValueFqns,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetFqnAttributeValues(), nil
 }
 
-var RetrieveEntitlements = func(ctx context.Context, req *authorization.GetEntitlementsRequest, as AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
+// abstracted into variable for mocking in tests
+var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntitlementsRequest, as AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
 	return as.GetEntitlements(ctx, req)
 }
 
@@ -68,78 +73,59 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 	}
 	for _, dr := range req.DecisionRequests {
 		for _, ra := range dr.ResourceAttributes {
-			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.AttributeFqns, ", ")))
+			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
-			// get attribute definitions
-			getAttrsRes, err := RetrieveAttributeDefinitions(ctx, ra, as)
+			// get attribute definition/value combinations
+			dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
 			if err != nil {
 				// TODO: should all decisions in a request fail if one FQN lookup fails?
-				return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", strings.Join(ra.AttributeFqns, ", ")))
+				return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 			}
-			// get list of attributes from response
 			var attrDefs []*policy.Attribute
-			for _, v := range getAttrsRes.GetFqnAttributeValues() {
+			var attrVals []*policy.Value
+			for _, v := range dataAttrDefsAndVals {
 				attrDefs = append(attrDefs, v.GetAttribute())
-			}
-
-			// format resource fqns as attribute instances for accesspdp
-			var dataAttrs []access.AttributeInstance
-			for _, x := range ra.AttributeFqns {
-				inst, err := access.ParseInstanceFromURI(x)
-				if err != nil {
-					// TODO: should all decisions in a request fail if one FQDN to attributeinstance conversion fails?
-					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("attribute instance conversion failed for resource fqn ", x))
-				}
-				dataAttrs = append(dataAttrs, inst)
+				attrVals = append(attrVals, v.GetValue())
 			}
 
 			for _, ec := range dr.EntityChains {
-				// fmt.Printf("\nTODO: make access decision here with these fully qualified attributes: %+v\n", attrs)
-				// get the entities entitlements
+				//
+				// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
+				//
 				entities := ec.GetEntities()
 				req := authorization.GetEntitlementsRequest{
 					Entities: entities,
 					Scope:    ra,
 				}
-				ecEntitlements, err := RetrieveEntitlements(ctx, &req, as)
+				ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
 					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("getEntitlements request failed ", req.String()))
 				}
 
-				// format subject fqns as attribute instances for accesspdp
-				entityAttrs := make(map[string][]access.AttributeInstance)
-				for _, e := range ecEntitlements.Entitlements {
-					var thisEntityAttrs []access.AttributeInstance
-					for _, x := range e.GetAttributeId() {
-						inst, err := access.ParseInstanceFromURI(x)
-						if err != nil {
-							// TODO: should all decisions in a request fail if one FQDN to attributeinstance conversion fails?
-							return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("attribute instance conversion failed for subject fqn ", x))
-						}
-						thisEntityAttrs = append(thisEntityAttrs, inst)
-					}
-					entityAttrs[e.EntityId] = thisEntityAttrs
+				// currently just adding each entity retuned to same list
+				entityAttrValues := make(map[string][]string)
+				for _, e := range ecEntitlements.GetEntitlements() {
+					entityAttrValues[e.EntityId] = e.GetAttributeValueFqns()
 				}
 
 				// call access-pdp
 				accessPDP := access.NewPdp()
 				decisions, err := accessPDP.DetermineAccess(
 					ctx,
-					dataAttrs,
-					entityAttrs,
+					attrVals,
+					entityAttrValues,
 					attrDefs,
 				)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("determinsAccess request to accesspdp failed", ""))
+					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("DetermineAccess request to Access PDP failed", ""))
 				}
 				// check the decisions
 				decision := authorization.DecisionResponse_DECISION_PERMIT
 				for _, d := range decisions {
 					if !d.Access {
 						decision = authorization.DecisionResponse_DECISION_DENY
-						break
 					}
 				}
 
@@ -151,7 +137,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 							Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 						},
 					},
-					ResourceAttributesId: "resourceAttributesId_stub" + ra.String(),
+					ResourceAttributesId: ra.GetAttributeValueFqns()[0],
 				}
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}
@@ -169,7 +155,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	// get subject mappings
 	request := attr.GetAttributeValuesByFqnsRequest{
-		Fqns: req.GetScope().GetAttributeFqns(),
+		Fqns: req.GetScope().GetAttributeValueFqns(),
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},
@@ -194,7 +180,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		_ = json.NewEncoder(os.Stdout).Encode(in)
 	}
-	options := sdk.DecisionOptions{
+	options := opaSdk.DecisionOptions{
 		Now:                 time.Now(),
 		Path:                "opentdf/entitlements/attributes", // change to /resolve_entities to get output of idp_plugin
 		Input:               in,
@@ -233,8 +219,8 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	// FIXME use index
 	rsp.Entitlements[0] = &authorization.EntityEntitlements{
-		EntityId:    req.Entities[0].Id,
-		AttributeId: saa,
+		EntityId:           req.Entities[0].Id,
+		AttributeValueFqns: saa,
 	}
 	slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
 	return rsp, nil

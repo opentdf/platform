@@ -31,8 +31,8 @@ type KeyCloakConnector struct {
 
 func EntityResolution(ctx context.Context,
 	req *authorization.IdpPluginRequest, config *authorization.IdpConfig) (*authorization.IdpPluginResponse, error) {
-	slog.InfoContext(ctx, "EntityResolution", "req", fmt.Sprintf("%+v", req))
-	slog.InfoContext(ctx, "EntityResolution", "config", fmt.Sprintf("%+v", config))
+	// note this only logs when run in test not when running in the OPE engine.
+	slog.DebugContext(ctx, "EntityResolution", "req", fmt.Sprintf("%+v", req), "config", fmt.Sprintf("%+v", config))
 	jsonString, err := json.Marshal(config.GetConfig().AsMap())
 	if err != nil {
 		slog.Error("Error marshalling keycloak config!", "error", err)
@@ -52,16 +52,16 @@ func EntityResolution(ctx context.Context,
 	payload := req.GetEntities()
 
 	var resolvedEntities []*authorization.IdpEntityRepresentation
-	slog.InfoContext(ctx, "EntityResolution invoked", "payload", payload)
+	slog.DebugContext(ctx, "EntityResolution invoked", "payload", payload)
 
 	for _, ident := range payload {
-		slog.InfoContext(ctx, "Lookup", "entity", ident.GetEntityType())
+		slog.DebugContext(ctx, "Lookup", "entity", ident.GetEntityType())
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
 		exactMatch := true
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_ClientId:
-			slog.InfoContext(ctx, "GetClient", "client_id", ident.GetClientId())
+			slog.DebugContext(ctx, "GetClient", "client_id", ident.GetClientId())
 			clientID := ident.GetClientId()
 			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
 				ClientID: &clientID,
@@ -182,7 +182,7 @@ func EntityResolution(ctx context.Context,
 				OriginalId:      ident.GetId(),
 				AdditionalProps: jsonEntities},
 		)
-		slog.Debug("Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))
+		slog.DebugContext(ctx, "Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))
 	}
 
 	return &authorization.IdpPluginResponse{

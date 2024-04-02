@@ -194,6 +194,81 @@ func (s *AttributesSuite) Test_CreateAttribute_WithInvalidRuleFails() {
 	assert.Nil(s.T(), createdAttr)
 }
 
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
+	// TODO: write test when unsafe behaviors are implemented [https://github.com/opentdf/platform/issues/115]
+	s.T().Skip("Unsafe service behaviors not yet implemented.")
+}
+
+func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__get_attribute_order_of_values",
+		NamespaceId: fixtureNamespaceId,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values:      []string{"FIRST", "SECOND", "THIRD"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdAttr)
+	assert.Equal(s.T(), 3, len(createdAttr.GetValues()))
+	assert.Equal(s.T(), policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, createdAttr.GetRule())
+
+	// add a fourth value
+	val := &attributes.CreateAttributeValueRequest{
+		Value:       "FOURTH",
+		AttributeId: createdAttr.Id,
+	}
+
+	createdVal, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.GetId(), val)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), createdVal)
+
+	// get attribute and ensure the order of the values is preserved
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotAttr)
+	assert.Equal(s.T(), 4, len(gotAttr.GetValues()))
+	assert.Equal(s.T(), "FIRST", gotAttr.GetValues()[0].GetValue())
+	assert.Equal(s.T(), "SECOND", gotAttr.GetValues()[1].GetValue())
+	assert.Equal(s.T(), "THIRD", gotAttr.GetValues()[2].GetValue())
+	assert.Equal(s.T(), "FOURTH", gotAttr.GetValues()[3].GetValue())
+	assert.Equal(s.T(), policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
+
+	// deactivate one of the values
+	deactivatedVal, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, gotAttr.Values[1].Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), deactivatedVal)
+
+	// get attribute and ensure order stays consistent
+	gotAttr, err = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.Id)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), gotAttr)
+	assert.Equal(s.T(), 4, len(gotAttr.GetValues()))
+	assert.Equal(s.T(), "FIRST", gotAttr.GetValues()[0].GetValue())
+	assert.Equal(s.T(), "SECOND", gotAttr.GetValues()[1].GetValue())
+	assert.Equal(s.T(), "THIRD", gotAttr.GetValues()[2].GetValue())
+	assert.Equal(s.T(), "FOURTH", gotAttr.GetValues()[3].GetValue())
+	assert.Equal(s.T(), policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
+
+	// get attribute by value fqn and ensure the order of the values is preserved
+	fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", gotAttr.GetNamespace().GetName(), createdAttr.GetName(), gotAttr.GetValues()[0].GetValue())}
+	req := &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	}
+	resp, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), resp)
+	assert.Equal(s.T(), 1, len(resp))
+	gotVals := resp[fqns[0]].GetAttribute().GetValues()
+	assert.Equal(s.T(), 4, len(gotVals))
+	assert.Equal(s.T(), "FIRST", gotVals[0].GetValue())
+	assert.Equal(s.T(), "SECOND", gotVals[1].GetValue())
+	assert.Equal(s.T(), "THIRD", gotVals[2].GetValue())
+	assert.Equal(s.T(), "FOURTH", gotVals[3].GetValue())
+}
+
 func (s *AttributesSuite) Test_GetAttribute() {
 	fixtures := s.getAttributeFixtures()
 

@@ -10,7 +10,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	//"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 )
 

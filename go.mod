@@ -21,9 +21,8 @@ require (
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/lib/crypto v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
-	github.com/pressly/goose/v3 v3.19.1
+	github.com/pressly/goose/v3 v3.19.2
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
@@ -39,8 +38,8 @@ require (
 )
 
 replace (
-	github.com/opentdf/platform/protocol/go => ./protocol/go
 	github.com/opentdf/platform/lib/crypto => ./lib/crypto
+	github.com/opentdf/platform/protocol/go => ./protocol/go
 	github.com/opentdf/platform/sdk => ./sdk
 )
 
@@ -104,6 +103,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
+	github.com/opentdf/platform/lib/crypto v0.0.0-00010101000000-000000000000 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

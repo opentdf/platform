@@ -295,7 +295,7 @@ func signedMockJWT(signer *rsa.PrivateKey) string {
 		panic(err)
 	}
 	cl := customClaimsHeader{
-		EntityID:  "testuser1",
+		Subject:   "testuser1",
 		ClientID:  "testonly",
 		TDFClaims: standardClaims(),
 	}
@@ -323,7 +323,7 @@ func jwtWrongIssuer() string {
 		panic(err)
 	}
 	cl := customClaimsHeader{
-		EntityID:  "testuser1",
+		Subject:   "testuser1",
 		ClientID:  "testonly",
 		TDFClaims: standardClaims(),
 	}

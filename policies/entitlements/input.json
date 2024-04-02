@@ -1,28 +1,85 @@
 {
-  "entity": {
-    "claims": [
-      "ec11",
-      "ec12",
-      "ec13"
-    ],
-    "email_address": "a@a.af",
-    "id": "email_address:\"a@a.af\""
-  },
-  "subjectset": {
-    "id": "abc",
-    "condition_groups": [
-      {
-        "conditions": [
+  "attribute_mappings": {
+    "https://brightonhealthclinic.org/attr/healthrecordtype/value/basicpatientinfo": {
+      "attribute": {
+        "id": "46fd500e-6839-4cc0-8b29-75665bf98e3a",
+        "namespace": {
+          "id": "f1f12166-8b22-47d6-829a-66e68b533eb2",
+          "name": "brightonhealthclinic.org"
+        },
+        "name": "healthrecordtype",
+        "rule": 2,
+        "values": [
           {
-            "subject_attribute": "https://example.com/attr/attr1/value/value1",
-            "operator": 1,
-            "subject_values": [
-              "ec11"
-            ]
+            "id": "356b7dd3-6abb-453c-8354-6915705fabcb",
+            "value": "basicpatientinfo",
+            "fqn": "https://brightonhealthclinic.org/attr/healthrecordtype/value/basicpatientinfo",
+            "active": {
+              "value": true
+            }
           }
         ],
-        "boolean_type": 1
+        "active": {
+          "value": true
+        },
+        "metadata": {}
+      },
+      "value": {
+        "id": "356b7dd3-6abb-453c-8354-6915705fabcb",
+        "value": "basicpatientinfo",
+        "fqn": "https://brightonhealthclinic.org/attr/healthrecordtype/value/basicpatientinfo",
+        "active": {
+          "value": true
+        },
+        "subject_mappings": [
+          {
+            "id": "5fb9f643-b7ea-4d53-8b23-f2b61a7ca38a",
+            "subject_condition_set": {
+              "id": "eb688795-fa0a-4014-8f4e-0f770c7bdab6",
+              "subject_sets": [
+                {
+                  "condition_groups": [
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "groups",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "/medical"
+                          ]
+                        },
+                        {
+                          "subject_external_field": "roles",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "nurse",
+                            "doctor"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 1
+                    }
+                  ]
+                }
+              ],
+              "metadata": {}
+            },
+            "actions": [
+              {
+                "Value": {
+                  "Standard": 1
+                }
+              }
+            ],
+            "metadata": {}
+          }
+        ]
       }
-    ]
-  }
+    }
+  },
+  "entity": {
+    "client_id": "opentdf-sdk",
+    "id": ""
+  },
+  "idp": null
 }

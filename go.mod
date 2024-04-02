@@ -20,13 +20,12 @@ require (
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/lib/crypto v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
-	github.com/testcontainers/testcontainers-go v0.28.0
+	github.com/testcontainers/testcontainers-go v0.29.1
 	github.com/valyala/fasthttp v1.52.0
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
 	golang.org/x/oauth2 v0.18.0
@@ -37,8 +36,8 @@ require (
 )
 
 replace (
-	github.com/opentdf/platform/protocol/go => ./protocol/go
 	github.com/opentdf/platform/lib/crypto => ./lib/crypto
+	github.com/opentdf/platform/protocol/go => ./protocol/go
 	github.com/opentdf/platform/sdk => ./sdk
 )
 
@@ -63,7 +62,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
-	github.com/docker/docker v25.0.2+incompatible // indirect
+	github.com/docker/docker v25.0.3+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -102,6 +101,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
+	github.com/opentdf/platform/lib/crypto v0.0.0-00010101000000-000000000000 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -139,7 +139,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/mod v0.15.0 // indirect
+	golang.org/x/mod v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect

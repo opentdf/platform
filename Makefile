@@ -3,7 +3,8 @@
 
 .PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
 
-MODS=protocol/go lib/crypto sdk . examples
+MODS=protocol/go lib/crypto sdk services examples
+HAND_MODS=lib/crypto sdk services examples
 
 EXCLUDE_OPENAPI=./services/authorization/idp_plugin.proto
 
@@ -27,7 +28,7 @@ go.work go.work.sum:
 	go work edit --go=1.21.8
 
 fix:
-	for m in $(MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
+	for m in $(HAND_MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
 
 lint: proto-lint go-lint
 
@@ -41,7 +42,7 @@ proto-lint:
 		fi)
 
 go-lint:
-	for m in $(MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
+	for m in $(HAND_MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
 
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
@@ -54,9 +55,7 @@ proto-generate:
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
 test:
-	go test ./... -race
-	(cd sdk && go test ./... -race)
-	(cd examples && go test ./... -race)
+	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
@@ -64,8 +63,8 @@ clean:
 
 build: go.work proto-generate opentdf sdk/sdk examples/examples
 
-opentdf: go.work go.mod go.sum main.go $(shell find cmd internal services)
-	go build -o opentdf -v ./main.go
+opentdf: go.work $(shell find services)
+	go build -o opentdf -v services/main.go
 
 sdk/sdk: go.work $(shell find sdk)
 	(cd sdk && go build ./...)

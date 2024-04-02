@@ -24,8 +24,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/opentdf/platform/internal/auth"
-	"github.com/opentdf/platform/internal/security"
+	"github.com/opentdf/platform/services/internal/auth"
+	"github.com/opentdf/platform/services/internal/security"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/nanotdf"

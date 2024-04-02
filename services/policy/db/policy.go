@@ -1,7 +1,8 @@
 package db
 
 import (
-	"github.com/opentdf/platform/internal/db"
+	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/services/internal/db"
 )
 
 const (
@@ -11,7 +12,7 @@ const (
 	StateUnspecified = "UNSPECIFIED"
 )
 
-type PolicyDbClient struct {
+type PolicyDBClient struct {
 	db.Client
 }
 
@@ -41,7 +42,7 @@ var Tables struct {
 	SubjectConditionSet           db.Table
 }
 
-func NewClient(c db.Client) *PolicyDbClient {
+func NewClient(c db.Client) *PolicyDBClient {
 	Tables.Attributes = db.NewTable(TableAttributes)
 	Tables.AttributeValues = db.NewTable(TableAttributeValues)
 	Tables.ValueMembers = db.NewTable(TableValueMembers)
@@ -53,5 +54,20 @@ func NewClient(c db.Client) *PolicyDbClient {
 	Tables.SubjectMappings = db.NewTable(TableSubjectMappings)
 	Tables.SubjectConditionSet = db.NewTable(TableSubjectConditionSet)
 
-	return &PolicyDbClient{c}
+	return &PolicyDBClient{c}
+}
+
+func GetDBStateTypeTransformedEnum(state common.ActiveStateEnum) string {
+	switch state.String() {
+	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE.String():
+		return StateActive
+	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE.String():
+		return StateInactive
+	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY.String():
+		return StateAny
+	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED.String():
+		return StateActive
+	default:
+		return StateActive
+	}
 }

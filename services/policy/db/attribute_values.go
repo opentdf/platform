@@ -7,10 +7,10 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/services/internal/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -148,14 +148,14 @@ func createAttributeValueSql(
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId string, v *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
+func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID string, v *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(v.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
 	sql, args, err := createAttributeValueSql(
-		attributeId,
+		attributeID,
 		v.Value,
 		metadataJSON,
 	)
@@ -196,7 +196,7 @@ func (c PolicyDbClient) CreateAttributeValue(ctx context.Context, attributeId st
 
 	rV := &policy.Value{
 		Id:        id,
-		Attribute: &policy.Attribute{Id: attributeId},
+		Attribute: &policy.Attribute{Id: attributeID},
 		Value:     v.Value,
 		Members:   members,
 		Metadata:  metadata,
@@ -250,7 +250,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 	return sb.Where(sq.Eq{"av.id": id}).GroupBy("av.id").ToSql()
 }
 
-func (c PolicyDbClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
+func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true}
 	sql, args, err := getAttributeValueSql(id, opts)
 	if err != nil {
@@ -326,10 +326,10 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		ToSql()
 }
 
-func (c PolicyDbClient) ListAttributeValues(ctx context.Context, attribute_id string, state string) ([]*policy.Value, error) {
+func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID string, state string) ([]*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true, state: state}
 
-	sql, args, err := listAttributeValuesSql(attribute_id, opts)
+	sql, args, err := listAttributeValuesSql(attributeID, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +389,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		ToSql()
 }
 
-func (c PolicyDbClient) ListAllAttributeValues(ctx context.Context, state string) ([]*policy.Value, error) {
+func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context, state string) ([]*policy.Value, error) {
 	opts := attributeValueSelectOptions{withFqn: true, state: state}
 	sql, args, err := listAllAttributeValuesSql(opts)
 	if err != nil {
@@ -418,7 +418,7 @@ func updateAttributeValueSql(
 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
-func (c PolicyDbClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {
+func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetAttributeValue(ctx, r.GetId())
 		if err != nil {
@@ -516,7 +516,7 @@ func deactivateAttributeValueSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) DeactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
+func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	sql, args, err := deactivateAttributeValueSql(id)
 	if err != nil {
 		return nil, err
@@ -536,7 +536,7 @@ func deleteAttributeValueSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) DeleteAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
+func (c PolicyDBClient) DeleteAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	prev, err := c.GetAttributeValue(ctx, id)
 	if err != nil {
 		return nil, err
@@ -563,7 +563,7 @@ func assignKeyAccessServerToValueSql(valueID, keyAccessServerID string) (string,
 		ToSql()
 }
 
-func (c PolicyDbClient) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
+func (c PolicyDBClient) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
 	sql, args, err := assignKeyAccessServerToValueSql(k.ValueId, k.KeyAccessServerId)
 	if err != nil {
 		return nil, err
@@ -585,7 +585,7 @@ func removeKeyAccessServerFromValueSql(valueID, keyAccessServerID string) (strin
 		ToSql()
 }
 
-func (c PolicyDbClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
+func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
 	sql, args, err := removeKeyAccessServerFromValueSql(k.ValueId, k.KeyAccessServerId)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,8 @@
-package sdk_test
+package sdk
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 
@@ -8,14 +10,21 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	"github.com/opentdf/platform/sdk"
+	//"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	goodPlatformEndpoint = "localhost:8080"
+	goodPlatformEndpoint = "localhost:9000"
 	badPlatformEndpoint  = "localhost:9999"
 )
+
+func setupMockServer(responseBody string, statusCode int) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(statusCode)
+		w.Write([]byte(responseBody)) // nolint:errcheck
+	}))
+}
 
 func GetMethods(i interface{}) (m []string) {
 	r := reflect.TypeOf(i)
@@ -26,9 +35,8 @@ func GetMethods(i interface{}) (m []string) {
 }
 
 func TestNew_ShouldCreateSDK(t *testing.T) {
-	sdk, err := sdk.New(goodPlatformEndpoint,
-		sdk.WithClientCredentials("myid", "mysecret", nil),
-		sdk.WithTokenEndpoint("https://example.org/token"),
+	sdk, err := New(goodPlatformEndpoint,
+		WithClientCredentials("myid", "mysecret", nil),
 	)
 	assert.NoError(t, err)
 	assert.NotNil(t, sdk)
@@ -49,20 +57,23 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	if sdk.KeyAccessServerRegistry == nil {
 		t.Errorf("Expected KeyAccessGrants client, got nil")
 	}
+	if sdk.WellknownConfiguration == nil {
+		t.Errorf("Expected WellknownConfiguration client, got nil")
+	}
 }
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	// When
-	sdk, err := sdk.New(goodPlatformEndpoint)
+	sdk, err := New(goodPlatformEndpoint)
 	// Then
 	assert.Nil(t, err)
 	assert.NotNil(t, sdk)
 }
 
 func TestNew_ShouldCloseConnections(t *testing.T) {
-	sdk, err := sdk.New(goodPlatformEndpoint,
-		sdk.WithClientCredentials("myid", "mysecret", nil),
-		sdk.WithTokenEndpoint("https://example.org/token"),
+	sdk, err := New(goodPlatformEndpoint,
+		WithClientCredentials("myid", "mysecret", nil),
+		WithTokenEndpoint("https://example.org/token"),
 	)
 	assert.NoError(t, err)
 	if !t.Failed() {
@@ -71,9 +82,9 @@ func TestNew_ShouldCloseConnections(t *testing.T) {
 }
 
 func TestNew_ShouldHaveSameMethods(t *testing.T) {
-	sdk, err := sdk.New(goodPlatformEndpoint,
-		sdk.WithClientCredentials("myid", "mysecret", nil),
-		sdk.WithTokenEndpoint("https://example.org/token"),
+	sdk, err := New(goodPlatformEndpoint,
+		WithClientCredentials("myid", "mysecret", nil),
+		WithTokenEndpoint("https://example.org/token"),
 	)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
@@ -119,7 +130,7 @@ func Test_ShouldCreateNewSDKWithBadEndpoint(t *testing.T) {
 	// Bad endpoints are not detected until the first call to the platform
 	t.Skip("Skipping test since this is expected but not great behavior")
 	// When
-	sdk, err := sdk.New(badPlatformEndpoint)
+	sdk, err := New(badPlatformEndpoint)
 	// Then
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
@@ -127,4 +138,31 @@ func Test_ShouldCreateNewSDKWithBadEndpoint(t *testing.T) {
 	if sdk == nil {
 		t.Errorf("Expected sdk, got nil")
 	}
+}
+
+func TestFetchTokenEndpoint_Success(t *testing.T) {
+	mockResponse := `{"token_endpoint": "https://example.com/oauth2/token"}`
+	mockServer := setupMockServer(mockResponse, http.StatusOK)
+	defer mockServer.Close()
+
+	endpoint, err := fetchTokenEndpoint(mockServer.URL)
+	assert.NoError(t, err)
+	assert.Equal(t, "https://example.com/oauth2/token", endpoint)
+}
+
+func TestFetchTokenEndpoint_InvalidJSON(t *testing.T) {
+	mockResponse := `{"invalid_json": }`
+	mockServer := setupMockServer(mockResponse, http.StatusOK)
+	defer mockServer.Close()
+
+	_, err := fetchTokenEndpoint(mockServer.URL)
+	assert.Error(t, err)
+}
+
+func TestFetchTokenEndpoint_HttpError(t *testing.T) {
+	mockServer := setupMockServer("", http.StatusNotFound) // Simulate 404 error
+	defer mockServer.Close()
+
+	_, err := fetchTokenEndpoint(mockServer.URL)
+	assert.Error(t, err)
 }

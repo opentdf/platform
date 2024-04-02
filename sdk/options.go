@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -10,13 +11,15 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	tls               grpc.DialOption
-	clientCredentials oauth.ClientCredentials
-	tokenEndpoint     string
-	scopes            []string
-	authConfig        *AuthConfig
-	policyConn        *grpc.ClientConn
-	authorizationConn *grpc.ClientConn
+	tls                   grpc.DialOption
+	clientCredentials     oauth.ClientCredentials
+	tokenEndpoint         string
+	scopes                []string
+	authConfig            *AuthConfig
+	policyConn            *grpc.ClientConn
+	authorizationConn     *grpc.ClientConn
+	wellknownConn         *grpc.ClientConn
+	platformConfiguration *wellknownconfiguration.GetWellKnownConfigurationResponse
 }
 
 func (c *config) build() []grpc.DialOption {

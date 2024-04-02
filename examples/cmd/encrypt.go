@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"encoding/json"
-	"os"
-	"strings"
-
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
+	"log/slog"
+	"os"
+	"strings"
 )
 
 var encryptCmd = &cobra.Command{
@@ -29,11 +29,12 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	strReader := strings.NewReader(plainText)
 
 	// Create new offline client
+	platformEndpoint := cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint
 
-	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
+	slog.Info(platformEndpoint)
+	client, err := sdk.New(platformEndpoint,
 		sdk.WithInsecureConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)
 	if err != nil {
 		return err
@@ -49,7 +50,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		//sdk.WithDataAttributes("https://example.com/attributes/1", "https://example.com/attributes/2"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				URL:       "http://localhost:8080",
+				URL:       "http://localhost:9000",
 				PublicKey: "",
 			}))
 	if err != nil {

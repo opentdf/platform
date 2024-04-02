@@ -3,7 +3,7 @@
 
 .PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
 
-MODS=protocol/go sdk . examples
+MODS=protocol/go lib/crypto sdk . examples
 
 EXCLUDE_OPENAPI=./services/authorization/idp_plugin.proto
 
@@ -23,7 +23,7 @@ toolcheck:
 	@golangci-lint --version | grep "version 1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
 
 go.work go.work.sum:
-	go work init . examples protocol/go sdk
+	go work init $(MODS)
 	go work edit --go=1.21.8
 
 fix:

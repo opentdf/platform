@@ -13,9 +13,13 @@ require (
 	golang.org/x/oauth2 v0.18.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
+	github.com/opentdf/platform/lib/crypto v0.0.0-00010101000000-000000000000
 )
 
-replace github.com/opentdf/platform/protocol/go => ../protocol/go
+replace (
+	github.com/opentdf/platform/protocol/go => ../protocol/go
+	github.com/opentdf/platform/lib/crypto => ../lib/crypto
+)
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.33.0-20240221180331-f05a6f4403ce.1 // indirect

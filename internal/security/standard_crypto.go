@@ -2,8 +2,10 @@ package security
 
 import (
 	"crypto/ecdh"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/crypto"
 	"log/slog"
 	"os"
@@ -111,4 +113,25 @@ func (s StandardCrypto) RSADecrypt(hashFunction string, keyId string, keyLabel s
 	}
 
 	return data, nil
+}
+
+func (s StandardCrypto) RSAPublicKeyAsJson(keyId string) (string, error) {
+	if len(s.rsaKeys) == 0 {
+		return "", errStandardCryptoObjIsInvalid
+	}
+
+	// TODO: For now ignore the key id
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+
+	rsaPublicKeyJwk, err := jwk.FromRaw(s.rsaKeys[0].asymEncryption.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("jwk.FromRaw: %w", err)
+	}
+
+	jsonPublicKey, err := json.Marshal(rsaPublicKeyJwk)
+	if err != nil {
+		return "", fmt.Errorf("jwk.FromRaw: %w", err)
+	}
+
+	return string(jsonPublicKey), nil
 }

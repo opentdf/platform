@@ -10,6 +10,7 @@ type Config struct {
 
 type CryptoProvider interface {
 	RSAPublicKey(keyId string) (string, error)
+	RSAPublicKeyAsJson(keyId string) (string, error)
 	ECPublicKey(keyId string) (string, error)
 	RSADecrypt(hashFunction string, keyId string, keyLabel string, ciphertext []byte) ([]byte, error)
 }

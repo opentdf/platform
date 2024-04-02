@@ -6,9 +6,11 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"io"
 	"log/slog"
 	"os"
@@ -665,6 +667,23 @@ func (h *HSMSession) RSAPublicKey(keyId string) (string, error) {
 		return "", ErrCertificateEncode
 	}
 	return string(certPem), nil
+}
+
+func (h *HSMSession) RSAPublicKeyAsJson(keyId string) (string, error) {
+	// TODO: For now ignore the key id
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+
+	rsaPublicKeyJwk, err := jwk.FromRaw(h.RSA.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("jwk.FromRaw: %w", err)
+	}
+
+	jsonPublicKey, err := json.Marshal(rsaPublicKeyJwk)
+	if err != nil {
+		return "", fmt.Errorf("jwk.FromRaw: %w", err)
+	}
+
+	return string(jsonPublicKey), nil
 }
 
 func (h *HSMSession) ECPublicKey(keyId string) (string, error) {

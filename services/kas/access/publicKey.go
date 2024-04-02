@@ -57,7 +57,7 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 	}
 
 	if in.Fmt == "jwk" {
-		rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKey("unknown")
+		rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKeyAsJson("unknown")
 		if err != nil {
 			slog.ErrorContext(ctx, "CryptoProvider.RSAPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))

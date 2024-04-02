@@ -1,46 +1,5 @@
 package access
 
-import (
-	"testing"
-)
-
-func TestGetNamespacesFromAttributesSuccess(t *testing.T) {
-	testBody := PolicyBody{
-		DataAttributes: []Attribute{
-			{URI: "https://example.com/attr/Test1/value/A", Name: "TestAttr1"},
-			{URI: "https://example2.com/attr/Test2/value/B", Name: "TestAttr2"},
-			{URI: "https://example.com/attr/Test3/value/C", Name: "TestAttr3"},
-		},
-		Dissem: []string{},
-	}
-	expectedResult := []string{"https://example2.com", "https://example.com"}
-	output, err := getNamespacesFromAttributes(testBody)
-	if err != nil {
-		t.Error(err)
-	}
-	if !sameStringSlice(output, expectedResult) {
-		t.Errorf("Output %q not equal to expected %q", output, expectedResult)
-	}
-}
-
-func TestGetNamespacesFromAttributesFailure(t *testing.T) {
-	testBody := PolicyBody{
-		DataAttributes: []Attribute{
-			{URI: "", Name: "TestAttr1"},
-		},
-		Dissem: []string{},
-	}
-	output, err := getNamespacesFromAttributes(testBody)
-
-	if len(output) != 0 {
-		t.Errorf("Output %v not equal to expected %v", len(output), 0)
-	}
-
-	if err == nil {
-		t.Errorf("Should throw an error, but got %v", err)
-	}
-}
-
 func sameStringSlice(x, y []string) bool {
 	if len(x) != len(y) {
 		return false

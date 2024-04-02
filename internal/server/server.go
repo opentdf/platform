@@ -48,7 +48,7 @@ type Config struct {
 	HSM                     security.HSMConfig `yaml:"hsm"`
 	TLS                     TLSConfig          `yaml:"tls"`
 	WellKnownConfigRegister func(namespace string, config any) error
-	Port                    int    `yaml:"port" default:"9000"`
+	Port                    int    `yaml:"port" default:"8080"`
 	Host                    string `yaml:"host,omitempty"`
 }
 

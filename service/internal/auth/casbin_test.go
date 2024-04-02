@@ -354,14 +354,21 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		}
 		s.Equal(test.allowed, allowed)
 		slog.Info("running test w/ client_id", slog.String("name", name))
+		var roleMap = make(map[string]string)
+		if test.roles[0] {
+			roleMap["org-admin"] = "test"
+		}
+		if test.roles[1] {
+			roleMap["admin"] = "test"
+		}
+		if test.roles[2] {
+			roleMap["readonly"] = "test"
+		}
+
 		enforcer, err = NewCasbinEnforcer(CasbinConfig{
 			PolicyConfig: PolicyConfig{
 				RoleClaim: "client_id",
-				RoleMap: map[string]string{
-					"org-admin": "test",
-					"admin":     "test",
-					"readonly":  "test",
-				},
+				RoleMap:   roleMap,
 			},
 		})
 		s.Nil(s.T(), err)

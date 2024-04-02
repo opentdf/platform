@@ -46,15 +46,4 @@ erDiagram
         uuid[]       values_order  "preserves order of values"
         bool         active
     }
-
-    TableA ||--|{ TableB : has
-    TableB {
-        uuid         id                      PK
-        uuid         table_a_id FK
-    }
-
-    TableA {
-        uuid         id           PK
-        uuid[]       values
-    }
 ```

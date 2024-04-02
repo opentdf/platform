@@ -269,9 +269,11 @@ func setupCascadeDeactivateNamespace(s *NamespacesSuite) (string, string, string
 	assert.NotNil(s.T(), createdVal)
 
 	// deactivate the namespace
-	deletedNs, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, n.Id)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), deletedNs)
+	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, n.Id)
+	expectedErrorMessage := "unable to deactivate non-empty namespace. This namespace has 1 attribute(s)"
+	assert.Equal(s.T(), expectedErrorMessage, err.Error())
+	//assert.Nil(s.T(), err)
+	//assert.NotNil(s.T(), deletedNs)
 
 	return n.Id, createdAttr.Id, createdVal.Id
 }

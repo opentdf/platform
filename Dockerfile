@@ -5,6 +5,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 COPY protocol/ protocol/
 COPY sdk/ sdk/
+COPY lib/crypto lib/crypto
 RUN go mod download \
     && go mod verify
 # copy .go files, add new package here

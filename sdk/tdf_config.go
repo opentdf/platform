@@ -3,7 +3,7 @@ package sdk
 import (
 	"fmt"
 
-	"github.com/opentdf/platform/sdk/internal/crypto"
+	"github.com/opentdf/platform/lib/crypto"
 )
 
 const (

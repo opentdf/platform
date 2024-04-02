@@ -59,8 +59,9 @@ type customClaimsHeader struct {
 }
 
 const (
-	ErrUser     = Error("request error")
-	ErrInternal = Error("internal error")
+	ErrUser                      = Error("request error")
+	ErrInternal                  = Error("internal error")
+	DefaultShaFunctionForDecrypt = "SHA1"
 )
 
 func err400(s string) error {
@@ -263,14 +264,14 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.requestBody.Algorithm == "ec:secp256r1" {
-		return nanoTDFRewrap(*body, &p.Session, p.Session.EC.PrivateKey)
+		//return nanoTDFRewrap(*body, &p.Session, p.Session.EC.PrivateKey)
+		return nil, fmt.Errorf("BUG: NanoTDF is disabled")
 	}
 	return p.tdf3Rewrap(ctx, body)
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kaspb.RewrapResponse, error) {
-	symmetricKey, err := p.Session.DecryptOAEP(
-		&p.Session.RSA.PrivateKey, body.requestBody.KeyAccess.WrappedKey, crypto.SHA1, nil)
+	symmetricKey, err := p.CryptoProvider.RSADecrypt(DefaultShaFunctionForDecrypt, "UnKnown", "", body.requestBody.KeyAccess.WrappedKey)
 	if err != nil {
 		slog.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")

@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -19,10 +20,13 @@ import (
 )
 
 const (
-	ErrHSMUnexpected = Error("hsm unexpected")
-	ErrHSMDecrypt    = Error("hsm decrypt error")
-	ErrHSMNotFound   = Error("hsm unavailable")
-	ErrKeyConfig     = Error("key configuration error")
+	ErrCertificateEncode   = Error("certificate encode error")
+	ErrPublicKeyMarshal    = Error("public key marshal error")
+	ErrHSMUnexpected       = Error("hsm unexpected")
+	ErrHSMDecrypt          = Error("hsm decrypt error")
+	ErrHSMNotFound         = Error("hsm unavailable")
+	ErrKeyConfig           = Error("key configuration error")
+	ErrUnknownHashFunction = Error("unknown hash function")
 )
 const keyLength = 32
 
@@ -493,25 +497,6 @@ func (h *HSMSession) LoadECKey(info KeyInfo) (*ECKeyPair, error) {
 	return &pair, nil
 }
 
-func (session *HSMSession) DecryptOAEP(key *PrivateKeyRSA, ciphertext []byte, hashFunction crypto.Hash, label []byte) ([]byte, error) {
-	hashAlg, mgfAlg, _, err := hashToPKCS11(hashFunction)
-	if err != nil {
-		return nil, errors.Join(ErrHSMDecrypt, err)
-	}
-
-	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED, label))
-
-	err = session.ctx.DecryptInit(session.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(*key))
-	if err != nil {
-		return nil, errors.Join(ErrHSMDecrypt, err)
-	}
-	decrypt, err := session.ctx.Decrypt(session.sh, ciphertext)
-	if err != nil {
-		return nil, errors.Join(ErrHSMDecrypt, err)
-	}
-	return decrypt, nil
-}
-
 func hashToPKCS11(hashFunction crypto.Hash) (hashAlg uint, mgfAlg uint, hashLen uint, err error) {
 	switch hashFunction {
 	case crypto.SHA1:
@@ -660,8 +645,108 @@ func (h *HSMSession) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
 	return PrivateKeyEC(prvHandle), publicKeyBytes, nil
 }
 
+func (h *HSMSession) RSAPublicKey(keyId string) (string, error) {
+	// TODO: For now ignore the key id
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.RSA.PublicKey)
+	if err != nil {
+		return "", errors.Join(ErrPublicKeyMarshal, err)
+	}
+
+	certPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:    "PUBLIC KEY",
+			Headers: nil,
+			Bytes:   pubkeyBytes,
+		},
+	)
+	if certPem == nil {
+		return "", ErrCertificateEncode
+	}
+	return string(certPem), nil
+}
+
+func (h *HSMSession) ECPublicKey(keyId string) (string, error) {
+	return "", nil
+}
+
+func (h *HSMSession) RSADecrypt(hashFunction string, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
+
+	// TODO: For now ignore the key id
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+
+	hash, err := stringToHashFunction(hashFunction)
+	if err != nil {
+		return nil, errors.Join(ErrHSMDecrypt, err)
+	}
+
+	hashAlg, mgfAlg, _, err := hashToPKCS11(hash)
+	if err != nil {
+		return nil, errors.Join(ErrHSMDecrypt, err)
+	}
+
+	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP,
+		pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED,
+			[]byte(keyLabel)))
+
+	err = h.ctx.DecryptInit(h.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(h.RSA.PrivateKey))
+	if err != nil {
+		return nil, errors.Join(ErrHSMDecrypt, err)
+	}
+	decrypt, err := h.ctx.Decrypt(h.sh, ciphertext)
+	if err != nil {
+		return nil, errors.Join(ErrHSMDecrypt, err)
+	}
+	return decrypt, nil
+}
+
 func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte("L1L"))
 	return digest.Sum(nil)
+}
+
+// StringToHashFunction String to crypto hash function name
+func stringToHashFunction(hashFunction string) (crypto.Hash, error) {
+	switch hashFunction {
+	case "MD4":
+		return crypto.MD4, nil
+	case "MD5":
+		return crypto.MD5, nil
+	case "SHA1":
+		return crypto.SHA1, nil
+	case "SHA224":
+		return crypto.SHA224, nil
+	case "SHA256":
+		return crypto.SHA256, nil
+	case "SHA384":
+		return crypto.SHA384, nil
+	case "SHA512":
+		return crypto.SHA512, nil
+	case "MD5SHA1":
+		return crypto.MD5SHA1, nil
+	case "SHA3_224":
+		return crypto.SHA3_224, nil
+	case "SHA3_256":
+		return crypto.SHA3_256, nil
+	case "SHA3_384":
+		return crypto.SHA3_384, nil
+	case "SHA3_512":
+		return crypto.SHA3_512, nil
+	case "SHA512_224":
+		return crypto.SHA512_224, nil
+	case "SHA512_256":
+		return crypto.SHA512_256, nil
+	case "BLAKE2s_256":
+		return crypto.BLAKE2s_256, nil
+	case "BLAKE2b_256":
+		return crypto.BLAKE2b_256, nil
+	case "BLAKE2b_384":
+		return crypto.BLAKE2b_384, nil
+	case "BLAKE2b_512":
+		return crypto.BLAKE2b_512, nil
+	default:
+		return 0, ErrUnknownHashFunction
+	}
 }

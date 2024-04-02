@@ -1,10 +1,9 @@
 package access
 
 import (
+	"github.com/opentdf/platform/internal/security"
 	otdf "github.com/opentdf/platform/sdk"
 	"net/url"
-
-	"github.com/opentdf/platform/internal/security"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -17,8 +16,9 @@ const (
 
 type Provider struct {
 	kaspb.AccessServiceServer
-	URI          url.URL `json:"uri"`
-	SDK          *otdf.SDK
-	Session      security.HSMSession
-	OIDCVerifier *oidc.IDTokenVerifier
+	URI            url.URL `json:"uri"`
+	SDK            *otdf.SDK
+	AttributeSvc   *url.URL
+	CryptoProvider security.CryptoProvider
+	OIDCVerifier   *oidc.IDTokenVerifier
 }

@@ -687,7 +687,19 @@ func (h *HSMSession) RSAPublicKeyAsJson(keyId string) (string, error) {
 }
 
 func (h *HSMSession) ECPublicKey(keyId string) (string, error) {
-	return "", nil
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.EC.PublicKey)
+	if err != nil {
+		return "", errors.Join(ErrPublicKeyMarshal, err)
+	}
+	pubkeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:    "PUBLIC KEY",
+			Headers: nil,
+			Bytes:   pubkeyBytes,
+		},
+	)
+
+	return string(pubkeyPem), nil
 }
 
 func (h *HSMSession) RSADecrypt(hashFunction string, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {

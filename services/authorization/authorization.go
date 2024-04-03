@@ -71,7 +71,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 	}
 	for _, dr := range req.GetDecisionRequests() {
 		for _, ra := range dr.GetResourceAttributes() {
-			slog.Debug("getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
+			slog.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
 			// get attribute definition/value combinations
 			dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
@@ -145,8 +145,9 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 }
 
 func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-	slog.Debug("getting entitlements")
-	// FIXME allow without scope
+	slog.DebugContext(ctx, "getting entitlements")
+	// Scope is required for because of performance.  Remove and handle 360 no scope
+	// https://github.com/opentdf/platform/issues/365
 	if req.GetScope() == nil {
 		slog.ErrorContext(ctx, "requires scope")
 		return nil, errors.New(services.ErrFqnMissingValue)
@@ -163,8 +164,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 		return nil, err
 	}
 	subjectMappings := avf.GetFqnAttributeValues()
-	slog.InfoContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
-	// FIXME allow without entity
+	slog.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	if req.Entities == nil {
 		slog.ErrorContext(ctx, "requires entities")
 		return nil, errors.New("entity chain is required")
@@ -180,9 +180,9 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 		}
 		slog.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 		// uncomment for debugging
-		//if slog.Default().Enabled(ctx, slog.LevelDebug) {
+		// if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		//	_ = json.NewEncoder(os.Stdout).Encode(in)
-		//}
+		// }
 		options := opaSdk.DecisionOptions{
 			Now:                 time.Now(),
 			Path:                "opentdf/entitlements/attributes", // change to /resolve_entities to get output of idp_plugin
@@ -200,9 +200,9 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 			return nil, err
 		}
 		// uncomment for debugging
-		//if slog.Default().Enabled(ctx, slog.LevelDebug) {
+		// if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		//	_ = json.NewEncoder(os.Stdout).Encode(decision.Result)
-		//}
+		// }
 		results, ok := decision.Result.([]interface{})
 		if !ok {
 			slog.DebugContext(ctx, "not ok", "entity_id", entity.GetId(), "decision.Result", fmt.Sprintf("%+v", decision.Result))

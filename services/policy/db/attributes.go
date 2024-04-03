@@ -99,7 +99,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"'subject_mappings', sub_maps_arr"
 		}
 		valueSelect += ")) AS values"
-		selectFields = append(selectFields, valueSelect)
+		selectFields = append(selectFields, t.Field("values_order"), valueSelect)
 	}
 	if opts.withKeyAccessGrants {
 		selectFields = append(selectFields, "JSON_AGG("+
@@ -193,13 +193,14 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 		active        bool
 		namespaceName string
 		valuesJSON    []byte
+		valuesOrder   []string
 		grants        []byte
 		fqn           sql.NullString
 	)
 
 	fields := []interface{}{&id, &name, &rule, &metadataJSON, &namespaceId, &active, &namespaceName}
 	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
-		fields = append(fields, &valuesJSON)
+		fields = append(fields, &valuesOrder, &valuesJSON)
 	}
 	if opts.withKeyAccessGrants {
 		fields = append(fields, &grants)
@@ -243,10 +244,28 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
 		Active:    &wrapperspb.BoolValue{Value: active},
 		Metadata:  m,
-		Values:    v,
 		Namespace: &policy.Namespace{Id: namespaceId, Name: namespaceName},
 		Grants:    k,
 		Fqn:       fqn.String,
+	}
+
+	// In Go, 0 is not equal to 0, so check if they're not equal and more than 0. If so, then the values_order column
+	// on the attribute_definition table does not match the number of values, which is a problem but should not fail the query.
+	if len(v) > 0 && len(valuesOrder) > 0 && len(valuesOrder) != len(v) {
+		slog.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
+		attr.Values = v
+	} else {
+		// sort the values according to the order
+		ordered := make([]*policy.Value, len(v))
+		for i, order := range valuesOrder {
+			for _, value := range v {
+				if value.GetId() == order {
+					ordered[i] = value
+					break
+				}
+			}
+		}
+		attr.Values = ordered
 	}
 
 	return attr, nil
@@ -499,7 +518,31 @@ func (c PolicyDbClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	return a, nil
 }
 
-func updateAttributeSql(id string, metadata []byte) (string, []interface{}, error) {
+// TODO: uncomment this and consume when unsafe protos/service is implemented [https://github.com/opentdf/platform/issues/115]
+// func unsafeUpdateAttributeSql(id string, updateName string, updateRule string, replaceValuesOrder []string, metadata []byte) (string, []interface{}, error) {
+// 	t := Tables.Attributes
+// 	sb := db.NewStatementBuilder().Update(t.Name())
+
+// 	if updateName != "" {
+// 		sb = sb.Set("name", updateName)
+// 	}
+// 	if updateRule != "" {
+// 		sb = sb.Set("rule", updateRule)
+// 	}
+// 	// validation should happen before calling that:
+// 	// 1) replaceValuesOrder should be the same length as the column's current array length
+// 	// 2) replaceValuesOrder should contain all children value id's of this attribute
+// 	if len(replaceValuesOrder) > 0 {
+// 		sb = sb.Set("values_order", replaceValuesOrder)
+// 	}
+// 	if metadata != nil {
+// 		sb = sb.Set("metadata", metadata)
+// 	}
+
+// 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
+// }
+
+func safeUpdateAttributeSql(id string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Attributes
 	sb := db.NewStatementBuilder().Update(t.Name())
 
@@ -523,7 +566,7 @@ func (c PolicyDbClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	sql, args, err := updateAttributeSql(id, metadataJSON)
+	sql, args, err := safeUpdateAttributeSql(id, metadataJSON)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.Attribute{
 			Id: id,

@@ -187,7 +187,7 @@ func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
-		filtered, selected := filterValues(attr.Values, fqn)
+		filtered, selected := filterValues(attr.GetValues(), fqn)
 		if selected == nil {
 			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN: %s", fqn)

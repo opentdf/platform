@@ -18,6 +18,7 @@ message Entity {
     string jwt = 5;
     google.protobuf.Any claims = 6;
     EntityCustom custom = 7;
+    string client_id = 8;
   }
 }
 

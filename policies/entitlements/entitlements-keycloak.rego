@@ -2,18 +2,31 @@ package opentdf.entitlements
 
 import rego.v1
 
+ idp_config = {"config": {
+ 	"url": input.idp.url,
+ 	"realm": input.idp.realm,
+ 	"clientid": input.idp.client,
+ 	"clientsecret": input.idp.secret,
+ 	"legacykeycloak": input.idp.legacy,
+ }}
+
+idp_request := {"entities": [{
+	"id": input.entity.id,
+	"emailAddress": input.entity.email_address,
+	"clientId": input.entity.client_id,
+}]}
+
 attributes := [attribute |
-	# JWT
-	# This statement invokes the built-in function `io.jwt.decode` passing the
-	# parsed bearer_token as a parameter. The `io.jwt.decode` function returns an
-	# array: [header, payload, signature]
-	[_, payload, _] := io.jwt.decode(input.entity.jwt)
+	# external entity
+    response := keycloak.resolve.entities(idp_request, idp_config)
+    entity_representations := response.entityRepresentations
+    some entity_representation in entity_representations
 
 	# mappings
 	some subject_mapping in input.attribute_mappings[attribute].value.subject_mappings
 	some subject_set in subject_mapping.subject_condition_set.subject_sets
 	some condition_group in subject_set.condition_groups
-	condition_group_evaluate(payload, condition_group.boolean_operator, condition_group.conditions)
+	condition_group_evaluate(entity_representation.additionalProps, condition_group.boolean_operator, condition_group.conditions)
 ]
 
 # condition_group

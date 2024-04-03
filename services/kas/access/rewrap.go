@@ -19,6 +19,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"io"
 	"log/slog"
 	"strings"
@@ -52,8 +53,8 @@ type customClaimsBody struct {
 }
 
 type customClaimsHeader struct {
-	EntityID  string       `json:"sub"`
-	ClientID  string       `json:"clientId"`
+	Subject   string       `json:"sub"`
+	ClientID  string       `json:"client_id"`
 	TDFClaims ClaimsObject `json:"tdf_claims"`
 }
 
@@ -127,6 +128,7 @@ type verifiedRequest struct {
 	publicKey   crypto.PublicKey
 	requestBody *RequestBody
 	cl          *customClaimsHeader
+	bearerToken string
 }
 
 func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kaspb.RewrapRequest) (*verifiedRequest, error) {
@@ -195,9 +197,9 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 	switch clientPublicKey.(type) {
 	case *rsa.PublicKey:
-		return &verifiedRequest{clientPublicKey, &requestBody, &cl}, nil
+		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.Bearer}, nil
 	case *ecdsa.PublicKey:
-		return &verifiedRequest{clientPublicKey, &requestBody, &cl}, nil
+		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.Bearer}, nil
 	}
 	slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
 	return nil, err400("clientPublicKey unsupported type")
@@ -281,21 +283,20 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}
 
 	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.requestBody.Policy)
-	namespaces, err := getNamespacesFromAttributes(policy.Body)
-	if err != nil {
-		slog.WarnContext(ctx, "Could not get namespaces from policy!", "err", err)
-		return nil, err403("forbidden")
+	// changed to ClientID from Subject
+	ent := authorization.Entity{
+		EntityType: &authorization.Entity_Jwt{
+			Jwt: body.bearerToken,
+		},
 	}
-
-	slog.DebugContext(ctx, "Fetching attributes", "policy.namespaces", namespaces, "policy.body", policy.Body)
-	definitions, err := p.fetchAttributes(ctx, namespaces)
-	if err != nil {
-		slog.ErrorContext(ctx, "Could not fetch attribute definitions from attributes service!", "err", err)
-		return nil, err503("attribute server request failure")
+	if body.cl.ClientID != "" {
+		ent = authorization.Entity{
+			EntityType: &authorization.Entity_ClientId{
+				ClientId: body.cl.ClientID,
+			},
+		}
 	}
-	slog.DebugContext(ctx, "fetch attributes", "definitions", definitions)
-
-	access, err := canAccess(ctx, body.cl.EntityID, *policy, body.cl.TDFClaims, definitions)
+	access, err := canAccess(ctx, ent, *policy, p.SDK)
 
 	if err != nil {
 		slog.WarnContext(ctx, "Could not perform access decision!", "err", err)

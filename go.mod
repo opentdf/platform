@@ -16,11 +16,11 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.5
-	github.com/jarcoal/httpmock v1.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/crypto v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
@@ -28,7 +28,6 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
 	github.com/valyala/fasthttp v1.52.0
-	github.com/virtru/access-pdp v1.11.0
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
 	golang.org/x/oauth2 v0.18.0
 	google.golang.org/grpc v1.62.1
@@ -39,6 +38,7 @@ require (
 
 replace (
 	github.com/opentdf/platform/protocol/go => ./protocol/go
+	github.com/opentdf/platform/lib/crypto => ./lib/crypto
 	github.com/opentdf/platform/sdk => ./sdk
 )
 
@@ -139,7 +139,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect

@@ -1,6 +1,7 @@
 package access
 
 import (
+	otdf "github.com/opentdf/platform/sdk"
 	"net/url"
 
 	"github.com/opentdf/platform/internal/security"
@@ -17,7 +18,7 @@ const (
 type Provider struct {
 	kaspb.AccessServiceServer
 	URI          url.URL `json:"uri"`
-	AttributeSvc *url.URL
+	SDK          *otdf.SDK
 	Session      security.HSMSession
 	OIDCVerifier *oidc.IDTokenVerifier
 }

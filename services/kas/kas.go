@@ -62,6 +62,7 @@ func NewRegistration() serviceregistry.Registration {
 				slog.Error("hsm not enabled")
 				panic(fmt.Errorf("hsm not enabled"))
 			}
+			// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
 			kasURLString := "https://" + srp.OTDF.HTTPServer.Addr
 			kasURI, err := url.Parse(kasURLString)
 			if err != nil {
@@ -70,7 +71,7 @@ func NewRegistration() serviceregistry.Registration {
 
 			p := access.Provider{
 				URI:          *kasURI,
-				AttributeSvc: nil,
+				SDK:          srp.SDK,
 				Session:      *hsm,
 				OIDCVerifier: loadIdentityProvider(),
 			}

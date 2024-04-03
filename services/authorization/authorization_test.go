@@ -12,6 +12,7 @@ import (
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -109,7 +110,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
@@ -237,7 +238,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
 	// NOTE: there should be two decision responses, one for each data attribute value, but authorization service

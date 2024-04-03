@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/internal/db"
-	"github.com/opentdf/platform/pkg/serviceregistry"
+	"github.com/opentdf/platform/services/internal/db"
+	"github.com/opentdf/platform/services/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"

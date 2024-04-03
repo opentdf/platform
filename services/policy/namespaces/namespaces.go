@@ -5,15 +5,15 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
-	"github.com/opentdf/platform/services"
+	services "github.com/opentdf/platform/services/err"
+	"github.com/opentdf/platform/services/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/services/policy/db"
 )
 
 type NamespacesService struct {
 	namespaces.UnimplementedNamespaceServiceServer
-	dbClient *policydb.PolicyDbClient
+	dbClient *policydb.PolicyDBClient
 }
 
 func NewRegistration() serviceregistry.Registration {
@@ -29,7 +29,7 @@ func NewRegistration() serviceregistry.Registration {
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
-	state := services.GetDbStateTypeTransformedEnum(req.State)
+	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
 	slog.Debug("listing namespaces", slog.String("state", state))
 
 	rsp := &namespaces.ListNamespacesResponse{}

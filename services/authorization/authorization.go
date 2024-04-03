@@ -13,15 +13,15 @@ import (
 	"github.com/open-policy-agent/opa/metrics"
 	"github.com/open-policy-agent/opa/profiler"
 	opaSdk "github.com/open-policy-agent/opa/sdk"
-	"github.com/opentdf/platform/internal/access"
-	"github.com/opentdf/platform/internal/entitlements"
-	"github.com/opentdf/platform/internal/opa"
-	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/services"
+	services "github.com/opentdf/platform/services/err"
+	"github.com/opentdf/platform/services/internal/access"
+	"github.com/opentdf/platform/services/internal/entitlements"
+	"github.com/opentdf/platform/services/internal/opa"
+	"github.com/opentdf/platform/services/pkg/serviceregistry"
 )
 
 type AuthorizationService struct {

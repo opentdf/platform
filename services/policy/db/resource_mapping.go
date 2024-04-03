@@ -6,10 +6,10 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/services/internal/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -115,7 +115,7 @@ func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateResourceMapping(ctx context.Context, r *resourcemapping.CreateResourceMappingRequest) (*policy.ResourceMapping, error) {
+func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcemapping.CreateResourceMappingRequest) (*policy.ResourceMapping, error) {
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func getResourceMappingSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
+func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
 	sql, args, err := getResourceMappingSQL(id)
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func listResourceMappingsSQL() (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) ListResourceMappings(ctx context.Context) ([]*policy.ResourceMapping, error) {
+func (c PolicyDBClient) ListResourceMappings(ctx context.Context) ([]*policy.ResourceMapping, error) {
 	sql, args, err := listResourceMappingsSQL()
 	if err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func updateResourceMappingSQL(id string, attribute_value_id string, metadata []b
 		ToSql()
 }
 
-func (c PolicyDbClient) UpdateResourceMapping(ctx context.Context, id string, r *resourcemapping.UpdateResourceMappingRequest) (*policy.ResourceMapping, error) {
+func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r *resourcemapping.UpdateResourceMappingRequest) (*policy.ResourceMapping, error) {
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
 		rm, err := c.GetResourceMapping(ctx, id)
 		if err != nil {
@@ -269,7 +269,7 @@ func deleteResourceMappingSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
+func (c PolicyDBClient) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
 	prev, err := c.GetResourceMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/services/internal/db"
 )
 
 // These values are optional, but at least one must be set. The other values will be derived from
@@ -67,7 +67,7 @@ func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (s
 }
 
 // This is a side effect -- errors will be swallowed and the fqn will be returned as an empty string
-func (c *PolicyDbClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) string {
+func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) string {
 	sql, args, err := upsertAttrFqnSql(opts.namespaceId, opts.attributeId, opts.valueId)
 	if err != nil {
 		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
@@ -91,7 +91,7 @@ func (c *PolicyDbClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 }
 
 // AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
-func (c *PolicyDbClient) AttrFqnReindex() (res struct {
+func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns // Used to initializze an anonymous struct
 	Namespaces []struct {
 		Id  string
 		Fqn string
@@ -172,7 +172,7 @@ func filterValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.
 	return values, nil
 }
 
-func (c *PolicyDbClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	if r.Fqns == nil || r.WithValue == nil {
 		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
 	}

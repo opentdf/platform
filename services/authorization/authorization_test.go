@@ -59,6 +59,10 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 			EntityId:           "e1",
 			AttributeValueFqns: []string{mockFqn1},
 		},
+		{
+			EntityId:           "e999",
+			AttributeValueFqns: []string{mockFqn1},
+		},
 	}}
 	attrDef := policy.Attribute{
 		Name: mockAttrName,
@@ -113,24 +117,54 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.Equal(t, 1, len(resp.DecisionResponses))
 	assert.Equal(t, resp.DecisionResponses[0].Decision, authorization.DecisionResponse_DECISION_PERMIT)
 
-	// TODO: uncomment the below when authorization service responds with multiple decisions instead of just a sole permit/deny
 	// run again with two attribute values throughout
-	// attrDef.Values = append(attrDef.Values, &policy.Value{
-	// 	Value: mockAttrValue2,
-	// })
-	// getAttributesByValueFqnsResponse.FqnAttributeValues["https://www.example.org/attr/foo/value/value2"] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-	// 	Attribute: &attrDef,
-	// 	Value: &policy.Value{
-	// 		Fqn: mockFqn2,
-	// 	},
-	// }
-	// entitlementsResponse.Entitlements[0].AttributeValueFqns = []string{mockFqn1, mockFqn2}
+	// set the request
+	req = authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
+		{
+			Actions: []*policy.Action{},
+			EntityChains: []*authorization.EntityChain{
+				{
+					Id: "ec1",
+					Entities: []*authorization.Entity{
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+					},
+				},
+			},
+			ResourceAttributes: []*authorization.ResourceAttribute{
+				{AttributeValueFqns: []string{mockFqn1}},
+			},
+		},
+		{
+			Actions: []*policy.Action{},
+			EntityChains: []*authorization.EntityChain{
+				{
+					Id: "ec1",
+					Entities: []*authorization.Entity{
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+					},
+				},
+			},
+			ResourceAttributes: []*authorization.ResourceAttribute{
+				{AttributeValueFqns: []string{mockFqn1}},
+			},
+		},
+	}}
+	attrDef.Values = append(attrDef.Values, &policy.Value{
+		Value: mockAttrValue2,
+	})
+	getAttributesByValueFqnsResponse.FqnAttributeValues["https://www.example.org/attr/foo/value/value2"] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		Attribute: &attrDef,
+		Value: &policy.Value{
+			Fqn: mockFqn2,
+		},
+	}
+	entitlementsResponse.Entitlements[0].AttributeValueFqns = []string{mockFqn1, mockFqn2}
 
-	// resp, err = as.GetDecisions(ctxb, &req)
-	// assert.Nil(t, err)
-	// assert.Equal(t, 1, len(resp.DecisionResponses))
-	// assert.Equal(t, resp.DecisionResponses[0].Decision, authorization.DecisionResponse_DECISION_PERMIT)
-	// assert.Equal(t, resp.DecisionResponses[1].Decision, authorization.DecisionResponse_DECISION_PERMIT)
+	resp, err = as.GetDecisions(ctxb, &req)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(resp.DecisionResponses))
+	assert.Equal(t, resp.DecisionResponses[0].Decision, authorization.DecisionResponse_DECISION_DENY)
+	assert.Equal(t, resp.DecisionResponses[1].Decision, authorization.DecisionResponse_DECISION_DENY)
 }
 
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
@@ -143,6 +177,10 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
 		{
 			EntityId:           "e1",
+			AttributeValueFqns: []string{mockFqn1},
+		},
+		{
+			EntityId:           "e999",
 			AttributeValueFqns: []string{mockFqn1},
 		},
 	}}

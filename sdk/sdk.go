@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	ErrGrpcDialFailed = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed = Error("failed to shutdown sdk")
+	ErrGrpcDialFailed       = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed       = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed = Error("failed to retrieve platform configuration")
 )
 
 type Error string
@@ -32,10 +33,12 @@ func (c Error) Error() string {
 	return string(c)
 }
 
+type PlatformConfigurationType map[string]interface{}
+
 type SDK struct {
 	conn                    *grpc.ClientConn
 	unwrapper               Unwrapper
-	platformConfiguration   *wellknownconfiguration.GetWellKnownConfigurationResponse
+	platformConfiguration   PlatformConfigurationType
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
@@ -68,7 +71,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		policyConn            *grpc.ClientConn
 		authorizationConn     *grpc.ClientConn
 		wellknownConn         *grpc.ClientConn
-		platformConfiguration *wellknownconfiguration.GetWellKnownConfigurationResponse
+		platformConfiguration PlatformConfigurationType
 	)
 
 	if platformEndpoint != "" {
@@ -98,11 +101,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	if cfg.platformConfiguration == nil && platformEndpoint != "" {
-		configResponse, err := setPlatformConfiguration(cfg, wellknownConn)
+		configMap, err := getPlatformConfiguration(wellknownConn)
 
-		platformConfiguration = configResponse
+		platformConfiguration = configMap
 		if err != nil {
-			return nil, errors.New("Unable to retrieve platform configuration.")
+			return nil, errors.Join(ErrPlatformConfigFailed, err)
 		}
 
 	} else {
@@ -189,42 +192,41 @@ func (s SDK) TokenExchange(token string) (string, error) {
 	return "", nil
 }
 
-type OIDCConfig struct {
-	TokenEndpoint string `json:"token_endpoint"`
+func setTokenEndpoint(c *config) error {
+	issuerUrl, ok := c.platformConfiguration["platform_issuer"].(string)
+
+	if !ok {
+		return errors.New("platform_issuer is not a string")
+	}
+
+	tokenEndpoint, err := fetchTokenEndpoint(issuerUrl)
+
+	if err != nil {
+		return errors.New("Unable to retrieve token endpoint")
+	}
+
+	c.tokenEndpoint = tokenEndpoint
+
+	return nil
 }
 
-type ConfigurationResponse struct {
-	platform_issuer string
-}
-
-func setPlatformConfiguration(c *config, conn *grpc.ClientConn) (*wellknownconfiguration.GetWellKnownConfigurationResponse, error) {
+func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfigurationType, error) {
 	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
 
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
+
 	if err != nil {
 		return nil, errors.New("Unable to retrieve config information, and none was provided")
 	}
 	// Get token endpoint
 	configuration := response.GetConfiguration()
 
-	configMap := configuration.AsMap()
+	return configuration.AsMap(), nil
+}
 
-	issuerUrl, ok := configMap["platform_issuer"].(string)
-
-	if !ok {
-		return nil, errors.New("platform_issuer is not a string")
-	}
-
-	tokenEndpoint, err := fetchTokenEndpoint(issuerUrl)
-
-	if err != nil {
-		return nil, errors.New("Unable to retrieve token endpoint")
-	}
-
-	c.tokenEndpoint = tokenEndpoint
-
-	return response, nil
+type OIDCConfig struct {
+	TokenEndpoint string `json:"token_endpoint"`
 }
 
 func fetchTokenEndpoint(issuerURL string) (string, error) {

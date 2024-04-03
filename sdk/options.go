@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -19,7 +18,7 @@ type config struct {
 	policyConn            *grpc.ClientConn
 	authorizationConn     *grpc.ClientConn
 	wellknownConn         *grpc.ClientConn
-	platformConfiguration *wellknownconfiguration.GetWellKnownConfigurationResponse
+	platformConfiguration *PlatformConfigurationType
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -66,5 +65,10 @@ func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
+	}
+}
+func WithPlatformConfiguration(platformConfiguration *PlatformConfigurationType) Option {
+	return func(c *config) {
+		c.platformConfiguration = platformConfiguration
 	}
 }

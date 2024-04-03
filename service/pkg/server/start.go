@@ -20,9 +20,24 @@ import (
 
 type StartOptions func(StartConfig) StartConfig
 
+// Deprecated: Use WithConfigKey
 func WithConfigName(name string) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.ConfigName = name
+		c.ConfigKey = name
+		return c
+	}
+}
+
+func WithConfigFile(file string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.ConfigFile = file
+		return c
+	}
+}
+
+func WithConfigKey(key string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.ConfigKey = key
 		return c
 	}
 }
@@ -35,7 +50,8 @@ func WithWaitForShutdownSignal() StartOptions {
 }
 
 type StartConfig struct {
-	ConfigName            string
+	ConfigKey             string
+	ConfigFile            string
 	WaitForShutdownSignal bool
 }
 
@@ -50,7 +66,7 @@ func Start(f ...StartOptions) error {
 	slog.Info("starting opentdf services")
 
 	slog.Info("loading configuration")
-	conf, err := config.LoadConfig(startConfig.ConfigName)
+	conf, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
 	}

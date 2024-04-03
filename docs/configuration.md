@@ -7,17 +7,16 @@ This guide provides details about the configuration setup for our application, i
 - [Database Configuration](#database-configuration)
 - [OPA Configuration](#opa-configuration)
 -[Services Configuration](#services-configuration)
-  - [Entitlements](#entitlements)
-    - [LDAP Provider](#ldap-provider)
-    - [Keycloak Provider](#keycloak-provider)
 
 ## Logger Configuration
 
 The logger configuration is used to define how the application logs its output.
 
-- `level`: The logging level, set to `debug` for detailed logging information. `(default: info)`
-- `type`: The format of the log output. Valid values are `json` or `text` `(default: json)`
-- `output`: The output destination for logs. Only `stdout` is supported. `(default: stdout)`
+| Field | Description | Default |
+| --- | --- | --- |
+| `level` | The logging level. | `info` |
+| `type` | The format of the log output. | `json` |
+| `output` | The output destination for logs. | `stdout` |
 
 Example:
 
@@ -32,19 +31,17 @@ logger:
 
 The server configuration is used to define how the application runs its server.
 
-- `port`: The port number for the server. `(default: 9000)`
-- `host`: The host address for the server. `(default: "")`
-- `grpc`: The configuration for the grpc server.
-  - `reflection`: Whether to enable reflection for the grpc server. `(default: true)`
-- `tls`: The configuration for the tls server.
-  - `enabled`: Enable tls. `(default: false)`
-  - `cert`: The path to the tls certificate.
-  - `key`: The path to the tls key.
-- `auth`: The configuration for your trusted IDP.
-  - `enabled`: Enable authentication. `(default: true)`
-  - `audience`: The audience for the IDP.
-  - `issuer`: The issuer for the IDP.
-  - `clients`: A list of client id's that are allowed
+| Field | Description | Default |
+| --- | --- | --- |
+| `port` | The port number for the server. | `9000` |
+| `host` | The host address for the server. | `""` |
+| `grpc.reflection` | The configuration for the grpc server. | `true` |
+| `tls.enabled` | Enable tls. | `false` |
+| `tls.cert` | The path to the tls certificate. | |
+| `tls.key` | The path to the tls key. | |
+| `auth.audience` | The audience for the IDP. | |
+| `auth.issuer` | The issuer for the IDP. | |
+| `auth.clients` | A list of client id's that are allowed. | |
 
 Example:
 
@@ -70,14 +67,17 @@ server:
 
 The database configuration is used to define how the application connects to its database.
 
-- `host`: The host address for the database. `(default: localhost)`
-- `port`: The port number for the database. `(default: 5432)`
-- `database`: The name of the database. `(default: opentdf)`
-- `user`: The username for the database. `(default: postgres)`
-- `password`: The password for the database. `(default: changeme)`
-- `sslmode`: The ssl mode for the database `(default: prefer)`
-- `schema`: The schema for the database. `(default: opentdf)`
-- `runMigration`: Whether to run the database migration or not. `(default: true)`
+| Field | Description | Default |
+| --- | --- | --- |
+| `host` | The host address for the database. | `localhost` |
+| `port` | The port number for the database. | `5432` |
+| `database` | The name of the database. | `opentdf` |
+| `user` | The username for the database. | `postgres` |
+| `password` | The password for the database. | `changeme` |
+| `sslmode` | The ssl mode for the database | `prefer` |
+| `schema` | The schema for the database. | `opentdf` |
+| `runMigration` | Whether to run the database migration or not. | `true` |
+
 Example:
 
 ```yaml
@@ -94,8 +94,10 @@ db:
 
 ## OPA Configuration
 
-- `embedded`: Whether to use the embedded OPA Bundle server or not. This is only used for local development.
-- `path`: The path to the OPA configuration file.
+| Field | Description | Default |
+| --- | --- | --- |
+| `embedded` | Whether to use the embedded OPA Bundle server or not. This is only used for local development. | `false` |
+| `path` | The path to the OPA configuration file. | `./opa/opa.yaml` |
 
 Example:
 
@@ -106,3 +108,31 @@ opa:
 ```
 
 ## Services Configuration
+
+### Key Access Server (KAS)
+
+| Field | Description | Default |
+| --- | --- | --- |
+| `enabled` | Enable the Key Access Server | `true` |
+
+Example:
+
+```yaml
+services:
+  kas:
+    enabled: true
+```
+
+### Policy
+
+| Field | Description | Default |
+| --- | --- | --- |
+| `enabled` | Enable the Policy Service | `true` |
+
+Example:
+
+```yaml
+services:
+  policy:
+    enabled: true
+```

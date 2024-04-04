@@ -8,12 +8,12 @@ services/policy/* @opentdf/opentdf-policy
 
 ## SDK
 
-sdk/* @opentdf/opentdf-go-sdk
+/sdk/ @opentdf/opentdf-go-sdk
 
 ## Authorization
 
-services/authorization/* @opentdf/opentdf-authorization
+/services/authorization/ @opentdf/opentdf-authorization
 
 ## Key Access Server
 
-services/kas/* @opentdf/opentdf-kas
+/services/kas/ @opentdf/opentdf-kas

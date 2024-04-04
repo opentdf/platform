@@ -1,12 +1,13 @@
 package security
 
 import (
+	"crypto"
 	"crypto/ecdh"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/opentdf/platform/lib/crypto"
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	"log/slog"
 	"os"
 )
@@ -28,8 +29,8 @@ type StandardKeyInfo struct {
 
 type StandardRSACrypto struct {
 	Identifier     string
-	asymDecryption crypto.AsymDecryption
-	asymEncryption crypto.AsymEncryption
+	asymDecryption ocrypto.AsymDecryption
+	asymEncryption ocrypto.AsymEncryption
 }
 
 type StandardECCrypto struct {
@@ -52,9 +53,9 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 			return nil, fmt.Errorf("failed to rsa private key file: %w", err)
 		}
 
-		asymDecryption, err := crypto.NewAsymDecryption(string(privatePemData))
+		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePemData))
 		if err != nil {
-			return nil, fmt.Errorf("crypto.NewAsymDecryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
 		}
 
 		publicPemData, err := os.ReadFile(kasInfo.PublicKeyPath)
@@ -62,9 +63,9 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 			return nil, fmt.Errorf("failed to rsa public key file: %w", err)
 		}
 
-		asymEncryption, err := crypto.NewAsymEncryption(string(publicPemData))
+		asymEncryption, err := ocrypto.NewAsymEncryption(string(publicPemData))
 		if err != nil {
-			return nil, fmt.Errorf("crypto.NewAsymEncryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.NewAsymEncryption failed: %w", err)
 		}
 
 		standardCrypto.rsaKeys = append(standardCrypto.rsaKeys, StandardRSACrypto{
@@ -98,7 +99,7 @@ func (s StandardCrypto) ECPublicKey(keyId string) (string, error) {
 	return "", nil
 }
 
-func (s StandardCrypto) RSADecrypt(hashFunction string, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
+func (s StandardCrypto) RSADecrypt(hash crypto.Hash, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
 
 	if len(s.rsaKeys) == 0 {
 		return nil, errStandardCryptoObjIsInvalid

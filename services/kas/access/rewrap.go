@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -20,13 +17,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"io"
 	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/internal/auth"
 	"github.com/opentdf/platform/internal/security"
-
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/nanotdf"
 	"github.com/opentdf/platform/services/kas/tdf3"
@@ -35,9 +31,6 @@ import (
 	"google.golang.org/grpc/status"
 	"gopkg.in/go-jose/go-jose.v2/jwt"
 )
-
-const ivSize = 12
-const tagSize = 12
 
 type RequestBody struct {
 	AuthToken       string         `json:"authToken"`
@@ -59,9 +52,8 @@ type customClaimsHeader struct {
 }
 
 const (
-	ErrUser                      = Error("request error")
-	ErrInternal                  = Error("internal error")
-	DefaultShaFunctionForDecrypt = "SHA1"
+	ErrUser     = Error("request error")
+	ErrInternal = Error("internal error")
 )
 
 func err400(s string) error {
@@ -126,7 +118,7 @@ func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 }
 
 type verifiedRequest struct {
-	publicKey   crypto.PublicKey
+	publicKey   crypto.PublicKey // TODO: Remove this
 	requestBody *RequestBody
 	cl          *customClaimsHeader
 	bearerToken string
@@ -271,7 +263,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kaspb.RewrapResponse, error) {
-	symmetricKey, err := p.CryptoProvider.RSADecrypt(DefaultShaFunctionForDecrypt, "UnKnown", "", body.requestBody.KeyAccess.WrappedKey)
+	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, "UnKnown", "", body.requestBody.KeyAccess.WrappedKey)
 	if err != nil {
 		slog.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")
@@ -309,9 +301,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 		return nil, err403("forbidden")
 	}
 
-	rewrappedKey, err := tdf3.EncryptWithPublicKey(symmetricKey, body.publicKey.(*rsa.PublicKey))
+	asymEncrypt, err := ocrypto.NewAsymEncryption(body.requestBody.ClientPublicKey)
 	if err != nil {
-		slog.WarnContext(ctx, "rewrap: encryptWithPublicKey failed", "err", err, "clientPublicKey", &body.publicKey)
+		slog.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
+	}
+
+	rewrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
+	if err != nil {
+		slog.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.publicKey)
 		return nil, err400("bad key for rewrap")
 	}
 
@@ -391,21 +388,15 @@ func nanoTDFRewrap(
 }
 
 func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
-	block, err := aes.NewCipher(sessionKey)
+	gcm, err := ocrypto.NewAESGcm(sessionKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cipher block: %w", err)
+		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
 	}
 
-	aesGcm, err := cipher.NewGCMWithTagSize(block, tagSize)
+	cipherText, err := gcm.Encrypt(dek)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create NewGCMWithTagSize: %w", err)
+		return nil, fmt.Errorf("crypto.AsymEncryption.encrypt:%w", err)
 	}
 
-	iv := make([]byte, ivSize)
-	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, fmt.Errorf("failed to generate IV: %w", err)
-	}
-
-	cipherText := aesGcm.Seal(iv, iv, dek, nil)
 	return cipherText, nil
 }

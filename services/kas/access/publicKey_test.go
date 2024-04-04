@@ -134,11 +134,13 @@ func TestError(t *testing.T) {
 const hostname = "localhost"
 
 func TestCertificateHandlerEmpty(t *testing.T) {
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
+
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
@@ -153,13 +155,14 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 		t.Errorf("Failed to generate a private key: %v", err)
 	}
 
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
+	hsmSession.EC = &security.ECKeyPair{
 		PublicKey:   &privateKey.PublicKey,
 		Certificate: &x509.Certificate{},
 	}
@@ -180,13 +183,14 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 		t.Errorf("Failed to generate a private key: %v", err)
 	}
 
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
+	hsmSession.EC = &security.ECKeyPair{
 		PublicKey: &privateKey.PublicKey,
 	}
 
@@ -211,16 +215,17 @@ func TestPublicKeyHandlerV2(t *testing.T) {
 		t.Errorf("Failed to generate a private key: %v", err)
 	}
 
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
+	hsmSession.EC = &security.ECKeyPair{
 		PublicKey: &privateKey.PublicKey,
 	}
-	kas.Session.RSA = &security.RSAKeyPair{
+	hsmSession.RSA = &security.RSAKeyPair{
 		Certificate: &x509.Certificate{},
 		PublicKey:   &mockPublicKeyRsa,
 	}
@@ -241,13 +246,14 @@ func TestPublicKeyHandlerV2Failure(t *testing.T) {
 		t.Errorf("Failed to generate a private key: %v", err)
 	}
 
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
+	hsmSession.EC = &security.ECKeyPair{
 		PublicKey: &privateKey.PublicKey,
 	}
 
@@ -268,16 +274,17 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to generate a private key: %v", err)
 	}
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
+	hsmSession.EC = &security.ECKeyPair{
 		PublicKey: &privateKey.PublicKey,
 	}
-	kas.Session.RSA = &security.RSAKeyPair{
+	hsmSession.RSA = &security.RSAKeyPair{
 		Certificate: &x509.Certificate{},
 		PublicKey:   &mockPublicKeyRsa,
 	}
@@ -303,16 +310,17 @@ func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to generate a private key: %v", err)
 	}
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
-	kas.Session.EC = &security.ECKeyPair{
+	hsmSession.EC = &security.ECKeyPair{
 		PublicKey: &privateKey.PublicKey,
 	}
-	kas.Session.RSA = &security.RSAKeyPair{
+	hsmSession.RSA = &security.RSAKeyPair{
 		Certificate: &x509.Certificate{},
 		PublicKey:   &mockPublicKeyRsa,
 	}

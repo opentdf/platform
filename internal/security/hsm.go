@@ -702,15 +702,10 @@ func (h *HSMSession) ECPublicKey(keyId string) (string, error) {
 	return string(pubkeyPem), nil
 }
 
-func (h *HSMSession) RSADecrypt(hashFunction string, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
+func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
 
 	// TODO: For now ignore the key id
 	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
-
-	hash, err := stringToHashFunction(hashFunction)
-	if err != nil {
-		return nil, errors.Join(ErrHSMDecrypt, err)
-	}
 
 	hashAlg, mgfAlg, _, err := hashToPKCS11(hash)
 	if err != nil {
@@ -736,48 +731,4 @@ func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte("L1L"))
 	return digest.Sum(nil)
-}
-
-// StringToHashFunction String to crypto hash function name
-func stringToHashFunction(hashFunction string) (crypto.Hash, error) {
-	switch hashFunction {
-	case "MD4":
-		return crypto.MD4, nil
-	case "MD5":
-		return crypto.MD5, nil
-	case "SHA1":
-		return crypto.SHA1, nil
-	case "SHA224":
-		return crypto.SHA224, nil
-	case "SHA256":
-		return crypto.SHA256, nil
-	case "SHA384":
-		return crypto.SHA384, nil
-	case "SHA512":
-		return crypto.SHA512, nil
-	case "MD5SHA1":
-		return crypto.MD5SHA1, nil
-	case "SHA3_224":
-		return crypto.SHA3_224, nil
-	case "SHA3_256":
-		return crypto.SHA3_256, nil
-	case "SHA3_384":
-		return crypto.SHA3_384, nil
-	case "SHA3_512":
-		return crypto.SHA3_512, nil
-	case "SHA512_224":
-		return crypto.SHA512_224, nil
-	case "SHA512_256":
-		return crypto.SHA512_256, nil
-	case "BLAKE2s_256":
-		return crypto.BLAKE2s_256, nil
-	case "BLAKE2b_256":
-		return crypto.BLAKE2b_256, nil
-	case "BLAKE2b_384":
-		return crypto.BLAKE2b_384, nil
-	case "BLAKE2b_512":
-		return crypto.BLAKE2b_512, nil
-	default:
-		return 0, ErrUnknownHashFunction
-	}
 }

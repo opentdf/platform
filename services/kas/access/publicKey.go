@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -82,6 +83,22 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 	}
 
 	return &kaspb.PublicKeyResponse{PublicKey: rsaPublicKeyPem}, nil
+}
+
+func exportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(pubkey)
+	if err != nil {
+		return "", errors.Join(ErrPublicKeyMarshal, err)
+	}
+	pubkeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:    "PUBLIC KEY",
+			Headers: nil,
+			Bytes:   pubkeyBytes,
+		},
+	)
+
+	return string(pubkeyPem), nil
 }
 
 func exportEcPublicKeyAsPemStr(pubkey *ecdsa.PublicKey) (string, error) {

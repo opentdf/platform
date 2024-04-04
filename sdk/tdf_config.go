@@ -2,8 +2,7 @@ package sdk
 
 import (
 	"fmt"
-
-	"github.com/opentdf/platform/lib/crypto"
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 )
 
 const (
@@ -55,19 +54,19 @@ type TDFConfig struct {
 
 // NewTDFConfig CreateTDF a new instance of tdf config.
 func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
-	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
-		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
 	}
 
 	publicKey, err := rsaKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
 	privateKey, err := rsaKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
 	c := &TDFConfig{

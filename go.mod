@@ -20,7 +20,7 @@ require (
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/lib/crypto v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/ocrypto v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
@@ -38,7 +38,7 @@ require (
 
 replace (
 	github.com/opentdf/platform/protocol/go => ./protocol/go
-	github.com/opentdf/platform/lib/crypto => ./lib/crypto
+	github.com/opentdf/platform/lib/ocrypto => ./lib/ocrypto
 	github.com/opentdf/platform/sdk => ./sdk
 )
 

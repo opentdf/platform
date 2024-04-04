@@ -1,5 +1,7 @@
 package security
 
+import "crypto"
+
 type Config struct {
 	Type string `yaml:"type" default:"standard"`
 	// HSMConfig is the configuration for the HSM
@@ -12,7 +14,7 @@ type CryptoProvider interface {
 	RSAPublicKey(keyId string) (string, error)
 	RSAPublicKeyAsJson(keyId string) (string, error)
 	ECPublicKey(keyId string) (string, error)
-	RSADecrypt(hashFunction string, keyId string, keyLabel string, ciphertext []byte) ([]byte, error)
+	RSADecrypt(hash crypto.Hash, keyId string, keyLabel string, ciphertext []byte) ([]byte, error)
 }
 
 func NewCryptoProvider(cfg Config) (CryptoProvider, error) {

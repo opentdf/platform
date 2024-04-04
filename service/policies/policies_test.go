@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/opentdf/platform/internal/idpplugin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,6 +51,8 @@ func TestRegoEntitlementsKeycloakEmpty(t *testing.T) {
 }
 
 func EvaluateRegoEntitlementsKeycloak(t *testing.T, input string, expected []interface{}) {
+	// instantiate built-ins
+	idpplugin.KeycloakBuiltins()
 	ctx := context.Background()
 	policy, err := os.ReadFile("entitlements/entitlements-keycloak.rego")
 	if assert.NoError(t, err) {
@@ -57,19 +60,16 @@ func EvaluateRegoEntitlementsKeycloak(t *testing.T, input string, expected []int
 			rego.Query("data.opentdf.entitlements.attributes"),
 			rego.Module("policy.rego", string(policy)),
 		)
-		_, err := regoObj.PrepareForEval(ctx)
-		// expect policy.rego:21: rego_type_error: undefined function keycloak.resolve.entities
-		// FIXME instantiate built-ins
-		assert.Error(t, err)
-		//if assert.NoError(t, err) {
-		//	resultSet, err := evalQuery.Eval(ctx, rego.EvalInput(input))
-		//	if assert.NoError(t, err) {
-		//		for _, result := range resultSet {
-		//			for _, expression := range result.Expressions {
-		//				assert.Equal(t, expected, expression.Value)
-		//			}
-		//		}
-		//	}
-		//}
+		evalQuery, err := regoObj.PrepareForEval(ctx)
+		if assert.NoError(t, err) {
+			resultSet, err := evalQuery.Eval(ctx, rego.EvalInput(input))
+			if assert.NoError(t, err) {
+				for _, result := range resultSet {
+					for _, expression := range result.Expressions {
+						assert.Equal(t, expected, expression.Value)
+					}
+				}
+			}
+		}
 	}
 }

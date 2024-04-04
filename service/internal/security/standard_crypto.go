@@ -115,7 +115,7 @@ func (s StandardCrypto) RSADecrypt(_ crypto.Hash, keyID string, _ string, cipher
 	return data, nil
 }
 
-func (s StandardCrypto) RSAPublicKeyAsJson(keyID string) (string, error) {
+func (s StandardCrypto) RSAPublicKeyAsJSON(keyID string) (string, error) {
 	if len(s.rsaKeys) == 0 {
 		return "", errStandardCryptoObjIsInvalid
 	}

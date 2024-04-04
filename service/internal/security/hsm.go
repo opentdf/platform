@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	ErrCertNotFound        = Error("not found")
 	ErrCertificateEncode   = Error("certificate encode error")
 	ErrPublicKeyMarshal    = Error("public key marshal error")
 	ErrHSMUnexpected       = Error("hsm unexpected")
@@ -650,6 +651,10 @@ func (h *HSMSession) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
 func (h *HSMSession) RSAPublicKey(keyID string) (string, error) {
 	// TODO: For now ignore the key id
 	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
+
+	if h.RSA == nil {
+		return "", ErrCertNotFound
+	}
 
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.RSA.PublicKey)
 	if err != nil {

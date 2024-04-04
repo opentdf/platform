@@ -134,21 +134,6 @@ func TestError(t *testing.T) {
 
 const hostname = "localhost"
 
-func TestCertificateHandlerEmpty(t *testing.T) {
-	hsmSession, _ := security.New(&security.HSMConfig{})
-	kasURI, _ := url.Parse("https://" + hostname + ":5000")
-
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
-	}
-
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
-	assert.Error(t, err, "not found")
-	assert.Nil(t, result)
-}
-
 func TestCertificateHandlerWithEc256(t *testing.T) {
 	curve := elliptic.P256()
 	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)

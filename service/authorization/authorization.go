@@ -254,7 +254,7 @@ func fqnBuilder(n string, a string, v string) (string, error) {
 	case n != "" && a == "":
 		return fqn + n, nil
 	default:
-		return "", errors.New("Invalid FQN, unable to build fqn")
+		return "", errors.New("invalid FQN, unable to build fqn")
 	}
 }
 

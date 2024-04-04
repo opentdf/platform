@@ -16,6 +16,7 @@ jobs:
         directory:
           - "."
           - sdk
+          - lib/crypto
           - examples
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -28,10 +29,12 @@ jobs:
             examples/go.sum
       - run: make go.work
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        # uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
+        uses: strantalis/golangci-lint-action@f4e979f5b36068d69d340547f66c991dca8b70ef
         with:
           version: v1.56
           working-directory: ${{ matrix.directory }}
+          args: --out-format=colored-line-number
 
   buf:
     runs-on: ubuntu-22.04

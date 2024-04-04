@@ -5,9 +5,9 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
 	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
+	"github.com/opentdf/platform/services/internal/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -19,14 +19,14 @@ var (
 	}
 )
 
-type KasRegistryDbClient struct {
+type KasRegistryDBClient struct {
 	db.Client
 }
 
-func NewClient(c db.Client) *KasRegistryDbClient {
+func NewClient(c db.Client) *KasRegistryDBClient {
 	Tables.KeyAccessServerRegistry = db.NewTable(TableKeyAccessServerRegistry)
 
-	return &KasRegistryDbClient{c}
+	return &KasRegistryDBClient{c}
 }
 
 func keyAccessServerSelect() sq.SelectBuilder {
@@ -45,10 +45,13 @@ func listAllKeyAccessServersSql() (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c KasRegistryDbClient) ListKeyAccessServers(ctx context.Context) ([]*kasr.KeyAccessServer, error) {
+func (c KasRegistryDBClient) ListKeyAccessServers(ctx context.Context) ([]*kasr.KeyAccessServer, error) {
 	sql, args, err := listAllKeyAccessServersSql()
+	if err != nil {
+		return nil, err
+	}
 
-	rows, err := c.Query(ctx, sql, args, err)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -102,10 +105,13 @@ func getKeyAccessServerSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c KasRegistryDbClient) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAccessServer, error) {
+func (c KasRegistryDBClient) GetKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAccessServer, error) {
 	sql, args, err := getKeyAccessServerSql(id)
+	if err != nil {
+		return nil, err
+	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +155,7 @@ func createKeyAccessServerSQL(uri string, publicKey, metadata []byte) (string, [
 		ToSql()
 }
 
-func (c KasRegistryDbClient) CreateKeyAccessServer(ctx context.Context, r *kasr.CreateKeyAccessServerRequest) (*kasr.KeyAccessServer, error) {
+func (c KasRegistryDBClient) CreateKeyAccessServer(ctx context.Context, r *kasr.CreateKeyAccessServerRequest) (*kasr.KeyAccessServer, error) {
 	metadataBytes, _, err := db.MarshalCreateMetadata(r.Metadata)
 	if err != nil {
 		return nil, err
@@ -161,8 +167,11 @@ func (c KasRegistryDbClient) CreateKeyAccessServer(ctx context.Context, r *kasr.
 	}
 
 	sql, args, err := createKeyAccessServerSQL(r.Uri, pkBytes, metadataBytes)
+	if err != nil {
+		return nil, err
+	}
 
-	row, err := c.QueryRow(ctx, sql, args, err)
+	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -197,9 +206,9 @@ func updateKeyAccessServerSQL(id, uri string, publicKey, metadata []byte) (strin
 	return sb.Where(sq.Eq{"id": id}).ToSql()
 }
 
-func (c KasRegistryDbClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasr.UpdateKeyAccessServerRequest) (*kasr.KeyAccessServer, error) {
+func (c KasRegistryDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasr.UpdateKeyAccessServerRequest) (*kasr.KeyAccessServer, error) {
 	// if extend we need to merge the metadata
-	metadataJson, _, err := db.MarshalUpdateMetadata(r.Metadata, r.MetadataUpdateBehavior, func() (*common.Metadata, error) {
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		k, err := c.GetKeyAccessServer(ctx, id)
 		if err != nil {
 			return nil, err
@@ -218,7 +227,7 @@ func (c KasRegistryDbClient) UpdateKeyAccessServer(ctx context.Context, id strin
 		}
 	}
 
-	sql, args, err := updateKeyAccessServerSQL(id, r.Uri, publicKeyJSON, metadataJson)
+	sql, args, err := updateKeyAccessServerSQL(id, r.GetUri(), publicKeyJSON, metadataJSON)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &kasr.KeyAccessServer{
 			Id: id,
@@ -244,7 +253,7 @@ func deleteKeyAccessServerSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c KasRegistryDbClient) DeleteKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAccessServer, error) {
+func (c KasRegistryDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*kasr.KeyAccessServer, error) {
 	sql, args, err := deleteKeyAccessServerSQL(id)
 	if err != nil {
 		return nil, err

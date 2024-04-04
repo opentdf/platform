@@ -9,8 +9,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/lib/crypto"
 	"github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 type FakeAccessTokenSource struct {
@@ -68,7 +68,7 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("failed to create a rewrap request: %v", err)
 	}
 
-	if req.SignedRequestToken == "" {
+	if req.GetSignedRequestToken() == "" {
 		t.Fatalf("didn't produce a signed request token")
 	}
 

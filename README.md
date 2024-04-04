@@ -12,7 +12,7 @@
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
 - [Policy Config Schema](./migrations/20240212000000_schema_erd.md)
-- [Policy Config Testing Diagram](./integration/testing_diagram.png)
+- [Policy Config Testing Diagram](./services/integration/testing_diagram.png)
 
 ## Development
 
@@ -46,19 +46,21 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 > [!NOTE]
 > Migrations are handled automatically by the server. This can be disabled via the config file, as
-> needed. They can also be run manually using the `migrate` command (`go run . migrate -h`).
+> needed. They can also be run manually using the `migrate` command
+> (`go run github.com/opentdf/platform/services migrate -h`).
 
 1. `docker-compose up`
-2. Create a OpenTDF config file `cp example-opentdf.yaml opentdf.yaml`
-   1. The example file is a good starting point, but you may need to modify it to match your environment.
-3. Provision keycloak `go run . provision keycloak`
+2. Create an OpenTDF config file: `opentdf.yaml`
+   1. The `opentdf-example.yaml` file is a good starting point, but you may need to modify it to match your environment.
+   2. The `opentdf-example-no-kas.yaml` file configures the platform to run insecurely without KAS and without endpoint auth.
+3. Provision keycloak `go run github.com/opentdf/platform/services provision keycloak`
 4. Configure KAS keys and your HSM with `.github/scripts/hsm-init-temporary-keys.sh`
-5. Run the server `go run . start`
+5. Run the server `go run github.com/opentdf/platform/services start`
    1. _Alt_ use the hot-reload development environment `air`
 6. The server is now running on `localhost:8080` (or the port specified in the config file)
 
 Note: support was added to provision a set of fixture data into the database.
-Run `go run . provision fixtures -h` for more information.
+Run `go run github.com/opentdf/platform/services provision fixtures -h` for more information.
 
 ### Test
 
@@ -98,34 +100,10 @@ Create Attribute
 ```bash
 grpcurl -plaintext -d @ localhost:8080 policy.attributes.AttributesService/CreateAttribute <<EOM
 {
-    "definition": {
-        "name": "relto",
-        "rule":"ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
-        "values": [
-            {
-                "value": "test1"
-            },
-            {
-                "value": "test2"
-            }
-        ],
-        "descriptor": {
-            "labels": [
-                {
-                    "key": "test2",
-                    "value": "test2"
-                },
-                {
-                    "key": "test3",
-                    "value": "test3"
-                }
-            ],
-            "description": "this is a test attribute",
-            "namespace": "virtru.com",
-            "name": "attribute1",
-            "type":"POLICY_RESOURCE_TYPE_ATTRIBUTE_DEFINITION"
-        }
-    }
+        "name": "attribute1",
+        "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "values": ["test1", "test2"],
+        "namespace_id": "0d94e00a-7bd3-4482-afe3-f1e4b03c1353"
 }
 
 EOM

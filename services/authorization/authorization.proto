@@ -18,6 +18,7 @@ message Entity {
     string jwt = 5;
     google.protobuf.Any claims = 6;
     EntityCustom custom = 7;
+    string client_id = 8;
   }
 }
 
@@ -168,12 +169,12 @@ message GetEntitlementsRequest {
 
 message EntityEntitlements {
   string entity_id = 1;
-  repeated string attribute_id = 2;
+  repeated string attribute_value_fqns = 2;
 }
 
 //A logical bucket of attributes belonging to a "Resource"
 message ResourceAttribute {
-  repeated string attribute_fqns = 2;
+  repeated string attribute_value_fqns = 2;
 }
 
 /*

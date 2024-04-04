@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	"log/slog"
 	"os"
+
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 )
 
 var (
@@ -80,7 +81,6 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 }
 
 func (s StandardCrypto) RSAPublicKey(keyId string) (string, error) {
-
 	if len(s.rsaKeys) == 0 {
 		return "", errStandardCryptoObjIsInvalid
 	}
@@ -101,7 +101,6 @@ func (s StandardCrypto) ECPublicKey(keyId string) (string, error) {
 }
 
 func (s StandardCrypto) RSADecrypt(hash crypto.Hash, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
-
 	if len(s.rsaKeys) == 0 {
 		return nil, errStandardCryptoObjIsInvalid
 	}

@@ -10,12 +10,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"io"
 	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/lestrrat-go/jwx/v2/jwk"
 
 	"github.com/miekg/pkcs11"
 	"golang.org/x/crypto/hkdf"
@@ -702,7 +703,6 @@ func (h *HSMSession) ECPublicKey(keyId string) (string, error) {
 }
 
 func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
-
 	// TODO: For now ignore the key id
 	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
 

@@ -57,16 +57,8 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 		return &kaspb.PublicKeyResponse{PublicKey: ecPublicKeyPem}, nil
 	}
 
-<<<<<<< HEAD:services/kas/access/publicKey.go
-	if in.Fmt == "jwk" {
-		rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKeyAsJson("unknown")
-=======
-	if p.Session.RSA == nil {
-		return nil, err404("not found")
-	}
 	if in.GetFmt() == "jwk" {
-		rsaPublicKeyJwk, err := jwk.FromRaw(p.Session.RSA.PublicKey)
->>>>>>> main:service/kas/access/publicKey.go
+		rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKeyAsJson("unknown")
 		if err != nil {
 			slog.ErrorContext(ctx, "CryptoProvider.RSAPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
@@ -75,13 +67,8 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 		return &kaspb.PublicKeyResponse{PublicKey: rsaPublicKeyPem}, nil
 	}
 
-<<<<<<< HEAD:services/kas/access/publicKey.go
-	if in.Fmt == "pkcs8" {
-		rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKey("unknown")
-=======
 	if in.GetFmt() == "pkcs8" {
-		certificatePem, err := exportCertificateAsPemStr(p.Session.RSA.Certificate)
->>>>>>> main:service/kas/access/publicKey.go
+		rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKey("unknown")
 		if err != nil {
 			slog.ErrorContext(ctx, "CryptoProvider.RSAPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))

@@ -26,10 +26,10 @@ const (
 
 // MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
 // if there is any single condition found among the structures that matches for one of the provided properties:
-// 1. The external field, external value, and an IN operator
-// 2. The external field, _no_ external value, and a NOT_IN operator
+// 1. The external selector value, external value, and an IN operator
+// 2. The external selector value, _no_ external value, and a NOT_IN operator
 //
-// Without this filtering, if a field was something like 'emailAddress' or 'username', every Subject is probably going to relate to that mapping
+// Without this filtering, if a selector value was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping
 // in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no
 // logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
 // initial filter.

@@ -717,11 +717,11 @@ func (x *SubjectMapping) GetMetadata() *common.Metadata {
 }
 
 // *
-// A Condition defines a rule of <subject external field name> <operator> <subject external values>
+// A Condition defines a rule of <the value by a jq 'selector value' expression> <operator> <subject external values>
 //
 // Example:  Subjects with a field selected by the jq syntax "'.division[0]'" and a value of "Accounting" or "Marketing":
 // {
-// "subject_external_selector_value": "division",
+// "subject_external_selector_value": "'.division'",
 // "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
 // "subject_external_values" : ["Accounting", "Marketing"]
 // }
@@ -970,14 +970,12 @@ func (x *SubjectConditionSet) GetMetadata() *common.Metadata {
 	return nil
 }
 
-// TODO: rewrite this!
-//
-// A property of a Subject/Entity as a field->value pair. This would mirror external user attributes retrieved
+// A property of a Subject/Entity as its selector expression -> value result pair. This would mirror external user attributes retrieved
 // from an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.
-// For now, a valid property must contain both field & value.
+// For now, a valid property must contain both a selector expression & a resulting value.
 //
 // The external_selector_value is a jq syntax expression to select a value from an externally known field (such as from idP/LDAP),
-// and the external_value is the value selected by the external_selector_value on that Subject's Context.
+// and the external_value is the value selected by the external_selector_value on that Subject's Context. These mirror the Condition.
 type SubjectProperty struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

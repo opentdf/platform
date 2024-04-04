@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"testing"
 
@@ -858,21 +857,17 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	s.True(foundMappedSubjectConditionSet1)
 }
 
+// TODO: add tests for matching with complex jq expressions in subject_condition_set3 in immediate followup PR
+
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
 	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
 
 	otherFixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	otherexternalSelectorValue1 := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[1].SubjectExternalSelectorValue
+	otherexternalSelectorValue1 := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[1].Conditions[1].SubjectExternalSelectorValue
 	otherExpectedMatchedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
 
-	fmt.Println("fixtureScs", fixtureScs)
-	fmt.Println("externalSelectorValue", externalSelectorValue)
-	fmt.Println("expectedMappedFixture", expectedMappedFixture)
-	fmt.Println("otherFixtureScs", otherFixtureScs)
-	fmt.Println("otherexternalSelectorValue1", otherexternalSelectorValue1)
-	fmt.Println("otherExpectedMatchedFixture", otherExpectedMatchedFixture)
 	props := []*policy.SubjectProperty{
 		{
 			ExternalSelectorValue: externalSelectorValue,
@@ -885,7 +880,6 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	}
 
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	fmt.Println(smList)
 	s.NoError(err)
 	s.NotZero(smList)
 	s.Equal(2, len(smList))

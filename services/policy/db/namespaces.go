@@ -7,10 +7,10 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/services/internal/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -97,7 +97,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		ToSql()
 }
 
-func (c PolicyDbClient) GetNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
 	opts := namespaceSelectOptions{withFqn: true}
 	sql, args, err := getNamespaceSql(id, opts)
 	if err != nil {
@@ -148,7 +148,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 	return sb.ToSql()
 }
 
-func (c PolicyDbClient) ListNamespaces(ctx context.Context, state string) ([]*policy.Namespace, error) {
+func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*policy.Namespace, error) {
 	opts := namespaceSelectOptions{withFqn: true, state: state}
 
 	sql, args, err := listNamespacesSql(opts)
@@ -183,7 +183,7 @@ func createNamespaceSql(name string, metadata []byte) (string, []interface{}, er
 		ToSql()
 }
 
-func (c PolicyDbClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
+func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
 	metadataJSON, m, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
@@ -223,7 +223,7 @@ func updateNamespaceSql(id string, metadata []byte) (string, []interface{}, erro
 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
-func (c PolicyDbClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*policy.Namespace, error) {
+func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*policy.Namespace, error) {
 	// if extend we need to merge the metadata
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		n, err := c.GetNamespace(ctx, id)
@@ -271,7 +271,7 @@ func deactivateNamespaceSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) DeactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
 	sql, args, err := deactivateNamespaceSql(id)
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func deleteNamespaceSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) DeleteNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+func (c PolicyDBClient) DeleteNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
 	// get a namespace before deleting
 	ns, err := c.GetNamespace(ctx, id)
 	if err != nil {

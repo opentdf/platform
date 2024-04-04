@@ -5,16 +5,16 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/pkg/serviceregistry"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/services/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/services/policy/db"
 
-	"github.com/opentdf/platform/services"
+	services "github.com/opentdf/platform/services/err"
 )
 
 type SubjectMappingService struct {
 	sm.UnimplementedSubjectMappingServiceServer
-	dbClient *policydb.PolicyDbClient
+	dbClient *policydb.PolicyDBClient
 }
 
 func NewRegistration() serviceregistry.Registration {

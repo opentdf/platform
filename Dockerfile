@@ -5,7 +5,7 @@ WORKDIR /app
 COPY protocol/ protocol/
 COPY sdk/ sdk/
 COPY lib/ocrypto lib/ocrypto
-COPY services/ services/
+COPY service/ service/
 COPY examples/ examples/
 COPY Makefile ./
 RUN cd service \

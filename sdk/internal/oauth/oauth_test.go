@@ -138,7 +138,7 @@ func TestClientSecretWithNonce(t *testing.T) {
 	timesCalled := 0
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		timesCalled += 1
+		timesCalled++
 		assert.Equal(t, "/token", r.URL.Path, "surprise http request to mock oauth service")
 		err := r.ParseForm()
 		require.NoError(t, err, "error parsing oauth request")

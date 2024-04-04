@@ -502,7 +502,7 @@ type Decision struct {
 	// FEWER DataRuleResults then there are DataRules
 	//
 	// e.g. there are 5 data Attribute Values, and two entities each with a set of Attribute Values,
-	//the definition for one of those data Attribute Values has a GroupBy clause that excludes the second entity
+	// the definition for one of those data Attribute Values has a GroupBy clause that excludes the second entity
 	//-> the first entity will have 5 DataRuleResults with Passed = true
 	//-> the second entity will have 4 DataRuleResults Passed = true
 	//-> both will have Access == true.

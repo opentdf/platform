@@ -59,7 +59,7 @@ func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
 func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 	req *kasr.GetKeyAccessServerRequest,
 ) (*kasr.GetKeyAccessServerResponse, error) {
-	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, req.Id)
+	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, req.GetId())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
@@ -72,7 +72,7 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 	req *kasr.UpdateKeyAccessServerRequest,
 ) (*kasr.UpdateKeyAccessServerResponse, error) {
-	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.Id, req)
+	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.GetId(), req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("keyAccessServer", req.String()))
 	}
@@ -84,7 +84,7 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 	req *kasr.DeleteKeyAccessServerRequest,
 ) (*kasr.DeleteKeyAccessServerResponse, error) {
-	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.Id)
+	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.GetId())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}

@@ -32,7 +32,7 @@ func NewRegistration() serviceregistry.Registration {
 func (s AttributesService) CreateAttribute(ctx context.Context,
 	req *attributes.CreateAttributeRequest,
 ) (*attributes.CreateAttributeResponse, error) {
-	slog.Debug("creating new attribute definition", slog.String("name", req.Name))
+	slog.Debug("creating new attribute definition", slog.String("name", req.GetName()))
 	rsp := &attributes.CreateAttributeResponse{}
 
 	item, err := s.dbClient.CreateAttribute(ctx, req)
@@ -41,7 +41,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 	}
 	rsp.Attribute = item
 
-	slog.Debug("created new attribute definition", slog.String("name", req.Name))
+	slog.Debug("created new attribute definition", slog.String("name", req.GetName()))
 	return rsp, nil
 }
 
@@ -49,7 +49,7 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *attributes.ListAttributesRequest,
 ) (*attributes.ListAttributesResponse, error) {
 	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	namespace := req.Namespace
+	namespace := req.GetNamespace()
 	slog.Debug("listing attribute definitions", slog.String("state", state))
 	rsp := &attributes.ListAttributesResponse{}
 
@@ -67,7 +67,7 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 ) (*attributes.GetAttributeResponse, error) {
 	rsp := &attributes.GetAttributeResponse{}
 
-	item, err := s.dbClient.GetAttribute(ctx, req.Id)
+	item, err := s.dbClient.GetAttribute(ctx, req.GetId())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
@@ -95,7 +95,7 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 ) (*attributes.UpdateAttributeResponse, error) {
 	rsp := &attributes.UpdateAttributeResponse{}
 
-	a, err := s.dbClient.UpdateAttribute(ctx, req.Id, req)
+	a, err := s.dbClient.UpdateAttribute(ctx, req.GetId(), req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute", req.String()))
 	}
@@ -108,7 +108,7 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 ) (*attributes.DeactivateAttributeResponse, error) {
 	rsp := &attributes.DeactivateAttributeResponse{}
 
-	a, err := s.dbClient.DeactivateAttribute(ctx, req.Id)
+	a, err := s.dbClient.DeactivateAttribute(ctx, req.GetId())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", req.GetId()))
 	}
@@ -122,7 +122,7 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 ///
 
 func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attributes.CreateAttributeValueRequest) (*attributes.CreateAttributeValueResponse, error) {
-	item, err := s.dbClient.CreateAttributeValue(ctx, req.AttributeId, req)
+	item, err := s.dbClient.CreateAttributeValue(ctx, req.GetAttributeId(), req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeId", req.GetAttributeId()), slog.String("value", req.String()))
 	}
@@ -134,8 +134,8 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
 	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	slog.Debug("listing attribute values", slog.String("attributeId", req.AttributeId), slog.String("state", state))
-	list, err := s.dbClient.ListAttributeValues(ctx, req.AttributeId, state)
+	slog.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", state))
+	list, err := s.dbClient.ListAttributeValues(ctx, req.GetAttributeId(), state)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("attributeId", req.GetAttributeId()))
 	}
@@ -146,7 +146,7 @@ func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attrib
 }
 
 func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attributes.GetAttributeValueRequest) (*attributes.GetAttributeValueResponse, error) {
-	item, err := s.dbClient.GetAttributeValue(ctx, req.Id)
+	item, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
@@ -168,7 +168,7 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 }
 
 func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *attributes.DeactivateAttributeValueRequest) (*attributes.DeactivateAttributeValueResponse, error) {
-	a, err := s.dbClient.DeactivateAttributeValue(ctx, req.Id)
+	a, err := s.dbClient.DeactivateAttributeValue(ctx, req.GetId())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", req.GetId()))
 	}
@@ -179,7 +179,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *a
 }
 
 func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context, req *attributes.AssignKeyAccessServerToAttributeRequest) (*attributes.AssignKeyAccessServerToAttributeResponse, error) {
-	attributeKas, err := s.dbClient.AssignKeyAccessServerToAttribute(ctx, req.AttributeKeyAccessServer)
+	attributeKas, err := s.dbClient.AssignKeyAccessServerToAttribute(ctx, req.GetAttributeKeyAccessServer())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeKas", req.GetAttributeKeyAccessServer().String()))
 	}
@@ -190,7 +190,7 @@ func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *attributes.RemoveKeyAccessServerFromAttributeRequest) (*attributes.RemoveKeyAccessServerFromAttributeResponse, error) {
-	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.AttributeKeyAccessServer)
+	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.GetAttributeKeyAccessServer())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attributeKas", req.GetAttributeKeyAccessServer().String()))
 	}
@@ -201,7 +201,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 }
 
 func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, req *attributes.AssignKeyAccessServerToValueRequest) (*attributes.AssignKeyAccessServerToValueResponse, error) {
-	valueKas, err := s.dbClient.AssignKeyAccessServerToValue(ctx, req.ValueKeyAccessServer)
+	valueKas, err := s.dbClient.AssignKeyAccessServerToValue(ctx, req.GetValueKeyAccessServer())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeValueKas", req.GetValueKeyAccessServer().String()))
 	}
@@ -212,7 +212,7 @@ func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, re
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *attributes.RemoveKeyAccessServerFromValueRequest) (*attributes.RemoveKeyAccessServerFromValueResponse, error) {
-	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.ValueKeyAccessServer)
+	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.GetValueKeyAccessServer())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attributeValueKas", req.GetValueKeyAccessServer().String()))
 	}

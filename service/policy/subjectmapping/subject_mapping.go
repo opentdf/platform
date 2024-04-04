@@ -66,11 +66,11 @@ func (s SubjectMappingService) GetSubjectMapping(ctx context.Context,
 	req *sm.GetSubjectMappingRequest,
 ) (*sm.GetSubjectMappingResponse, error) {
 	rsp := &sm.GetSubjectMappingResponse{}
-	slog.Debug("getting subject mapping", slog.String("id", req.Id))
+	slog.Debug("getting subject mapping", slog.String("id", req.GetId()))
 
-	mapping, err := s.dbClient.GetSubjectMapping(ctx, req.Id)
+	mapping, err := s.dbClient.GetSubjectMapping(ctx, req.GetId())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
 	rsp.SubjectMapping = mapping
@@ -85,7 +85,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 
 	sm, err := s.dbClient.UpdateSubjectMapping(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.Id), slog.String("subjectMapping fields", req.String()))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("subjectMapping fields", req.String()))
 	}
 
 	rsp.SubjectMapping = sm
@@ -96,11 +96,11 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 	req *sm.DeleteSubjectMappingRequest,
 ) (*sm.DeleteSubjectMappingResponse, error) {
 	rsp := &sm.DeleteSubjectMappingResponse{}
-	slog.Debug("deleting subject mapping", slog.String("id", req.Id))
+	slog.Debug("deleting subject mapping", slog.String("id", req.GetId()))
 
-	sm, err := s.dbClient.DeleteSubjectMapping(ctx, req.Id)
+	sm, err := s.dbClient.DeleteSubjectMapping(ctx, req.GetId())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
 
 	rsp.SubjectMapping = sm
@@ -111,11 +111,11 @@ func (s SubjectMappingService) MatchSubjectMappings(ctx context.Context,
 	req *sm.MatchSubjectMappingsRequest,
 ) (*sm.MatchSubjectMappingsResponse, error) {
 	rsp := &sm.MatchSubjectMappingsResponse{}
-	slog.Debug("matching subject mappings", slog.Any("subjectProperties", req.SubjectProperties))
+	slog.Debug("matching subject mappings", slog.Any("subjectProperties", req.GetSubjectProperties()))
 
-	smList, err := s.dbClient.GetMatchedSubjectMappings(ctx, req.SubjectProperties)
+	smList, err := s.dbClient.GetMatchedSubjectMappings(ctx, req.GetSubjectProperties())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("subjectProperties", req.SubjectProperties))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("subjectProperties", req.GetSubjectProperties()))
 	}
 
 	rsp.SubjectMappings = smList
@@ -130,11 +130,11 @@ func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
 	req *sm.GetSubjectConditionSetRequest,
 ) (*sm.GetSubjectConditionSetResponse, error) {
 	rsp := &sm.GetSubjectConditionSetResponse{}
-	slog.Debug("getting subject condition set", slog.String("id", req.Id))
+	slog.Debug("getting subject condition set", slog.String("id", req.GetId()))
 
-	conditionSet, err := s.dbClient.GetSubjectConditionSet(ctx, req.Id)
+	conditionSet, err := s.dbClient.GetSubjectConditionSet(ctx, req.GetId())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
 	rsp.SubjectConditionSet = conditionSet
@@ -162,7 +162,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	rsp := &sm.CreateSubjectConditionSetResponse{}
 	slog.Debug("creating subject condition set", slog.String("subjectConditionSet", req.String()))
 
-	conditionSet, err := s.dbClient.CreateSubjectConditionSet(context.Background(), req.SubjectConditionSet)
+	conditionSet, err := s.dbClient.CreateSubjectConditionSet(context.Background(), req.GetSubjectConditionSet())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectConditionSet", req.String()))
 	}
@@ -179,7 +179,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 
 	conditionSet, err := s.dbClient.UpdateSubjectConditionSet(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.Id), slog.String("subjectConditionSet fields", req.String()))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("subjectConditionSet fields", req.String()))
 	}
 
 	rsp.SubjectConditionSet = conditionSet
@@ -190,11 +190,11 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 	req *sm.DeleteSubjectConditionSetRequest,
 ) (*sm.DeleteSubjectConditionSetResponse, error) {
 	rsp := &sm.DeleteSubjectConditionSetResponse{}
-	slog.Debug("deleting subject condition set", slog.String("id", req.Id))
+	slog.Debug("deleting subject condition set", slog.String("id", req.GetId()))
 
-	conditionSet, err := s.dbClient.DeleteSubjectConditionSet(ctx, req.Id)
+	conditionSet, err := s.dbClient.DeleteSubjectConditionSet(ctx, req.GetId())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
 
 	rsp.SubjectConditionSet = conditionSet

@@ -154,6 +154,6 @@ func (s SDK) Conn() *grpc.ClientConn {
 }
 
 // TokenExchange exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
-func (s SDK) TokenExchange(token string) (string, error) {
+func (s SDK) TokenExchange(_ string) (string, error) {
 	return "", nil
 }

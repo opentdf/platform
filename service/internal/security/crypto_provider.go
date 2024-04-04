@@ -11,11 +11,11 @@ type Config struct {
 }
 
 type CryptoProvider interface {
-	RSAPublicKey(keyId string) (string, error)
-	RSAPublicKeyAsJson(keyId string) (string, error)
-	RSADecrypt(hash crypto.Hash, keyId string, keyLabel string, ciphertext []byte) ([]byte, error)
+	RSAPublicKey(keyID string) (string, error)
+	RSAPublicKeyAsJson(keyID string) (string, error)
+	RSADecrypt(hash crypto.Hash, keyID string, keyLabel string, ciphertext []byte) ([]byte, error)
 
-	ECPublicKey(keyId string) (string, error)
+	ECPublicKey(keyID string) (string, error)
 	GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error)
 	GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error)
 	GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC, ephemeralPublicKey []byte) ([]byte, error)

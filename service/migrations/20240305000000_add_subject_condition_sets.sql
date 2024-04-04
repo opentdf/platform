@@ -32,7 +32,7 @@ WITH subject_mappings_migration_data AS (
                             'conditions', JSONB_BUILD_ARRAY(
                                 JSONB_BUILD_OBJECT(
                                     'operator', operator,
-                                    'subject_external_field', subject_attribute,
+                                    'subject_external_selector_value', subject_attribute,
                                     'subject_external_values', subject_attribute_values
                                 )
                             )
@@ -70,7 +70,7 @@ ALTER TABLE subject_mappings ADD FOREIGN KEY (subject_condition_set_id) REFERENC
                     "conditions": [
                         {
                             "operator": "IN",
-                            "subject_external_field": "subject_attribute1",
+                            "subject_external_selector_value": "subject_attribute1",
                             "subject_external_values": [
                                 "value1",
                                 "value2"
@@ -98,7 +98,7 @@ ALTER TABLE IF EXISTS subject_mappings ADD COLUMN operator VARCHAR, ADD COLUMN s
 WITH subject_mappings_migration_data AS (
    SELECT
         (condition->'subject_sets'->0->'condition_groups'->0->'conditions'->0->'operator')::TEXT AS operator,
-        (condition->'subject_sets'->0->'condition_groups'->0->'conditions'->0->'subject_external_field')::TEXT AS subject_attribute,
+        (condition->'subject_sets'->0->'condition_groups'->0->'conditions'->0->'subject_external_selector_value')::TEXT AS subject_attribute,
         (condition->'subject_sets'->0->'condition_groups'->0->'conditions'->0->'subject_external_values')::TEXT AS subject_attribute_values,
         id AS set_id
     FROM subject_condition_set

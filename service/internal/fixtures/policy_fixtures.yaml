@@ -279,12 +279,12 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_field: superhero_name
+                  - subject_external_selector_value: .superhero.name
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - thor
                       - captain_america
-                  - subject_external_field: superhero_group
+                  - subject_external_selector_value: .superhero.group
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - avengers
@@ -295,12 +295,12 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_field: department
+                  - subject_external_selector_value: .org
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - marketing
                       - sales
-                  - subject_external_field: role
+                  - subject_external_selector_value: .role
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - senior_vice_president
@@ -313,22 +313,25 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_field: fave_sport
+                  - subject_external_selector_value: .data[0].favorite_things | map(tostring) | any(index("futbol"))
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
-                      - futbol
-                      - soccer
-                  - subject_external_field: fave_dessert
+                      - true
+                  - subject_external_selector_value: .data[0].favorite_things | map(tostring) | any(index("soccer"))
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subject_external_values:
+                      - true
+                  - subject_external_selector_value: .data[0].favorite_things | map(tostring) | any(index("ice_cream"))
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
-                      - ice_cream
+                      - true
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_field: department
+                  - subject_external_selector_value: .department
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - engineering
-                  - subject_external_field: role
+                  - subject_external_selector_value: .role
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - manager
@@ -341,7 +344,7 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_field: some_field
+                  - subject_external_selector_value: .some_field
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - some_value
@@ -352,7 +355,7 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_field: some_other_field123
+                  - subject_external_selector_value: .some_other_field[1]
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - some_other_value_123
@@ -363,13 +366,13 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_field: team_name
+                  - subject_external_selector_value: .team.name
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - CoolTool
                       - RadService
                       - ShinyThing
-                  - subject_external_field: org_name
+                  - subject_external_selector_value: .org.name
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - marketing

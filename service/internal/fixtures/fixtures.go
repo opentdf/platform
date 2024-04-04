@@ -74,9 +74,9 @@ type SubjectConditionSet struct {
 			ConditionGroups []struct {
 				BooleanOperator string `yaml:"boolean_operator" json:"boolean_operator"`
 				Conditions      []struct {
-					SubjectExternalField  string   `yaml:"subject_external_field" json:"subject_external_field"`
-					Operator              string   `yaml:"operator" json:"operator"`
-					SubjectExternalValues []string `yaml:"subject_external_values" json:"subject_external_values"`
+					SubjectExternalSelectorValue string   `yaml:"subject_external_selector_value" json:"subject_external_selector_value"`
+					Operator                     string   `yaml:"operator" json:"operator"`
+					SubjectExternalValues        []string `yaml:"subject_external_values" json:"subject_external_values"`
 				} `yaml:"conditions" json:"conditions"`
 			} `yaml:"condition_groups" json:"condition_groups"`
 		} `yaml:"subject_sets" json:"subject_sets"`

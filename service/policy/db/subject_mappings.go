@@ -678,7 +678,7 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 // 1. The external field, external value, and an IN operator
 // 2. The external field, _no_ external value, and a NOT_IN operator
 //
-// Without this filtering, if a field was something like 'emailAddress' or 'username', every Subject is probably going to relate to that mapping
+// Without this filtering, if a selector value was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping
 // in some way or another. This could theoretically be every attribute in the DB if a policy admin has relied heavily on that field.
 //
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
@@ -691,8 +691,8 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 	}
 	where := "("
 	for i, sp := range subjectProperties {
-		if sp.GetExternalField() == "" || sp.GetExternalValue() == "" {
-			err = errors.Join(db.ErrMissingValue, errors.New("all subject properties must include defined external field and value"))
+		if sp.GetExternalSelectorValue() == "" || sp.GetExternalValue() == "" {
+			err = errors.Join(db.ErrMissingValue, errors.New("all subject properties must include defined external selector value and value"))
 			slog.Error("subject property missing required value", slog.Any("properties provided", subjectProperties), slog.String("error", err.Error()))
 			return "", nil, err
 		}
@@ -700,15 +700,15 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 			where += " OR "
 		}
 
-		hasField := "each_condition->>'subject_external_field' = '" + sp.GetExternalField() + "'"
-		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.GetExternalValue() + "\"]'::jsonb"
+		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.ExternalSelectorValue + "'"
+		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.ExternalValue + "\"]'::jsonb"
 		hasInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_IN'"
 		hasNotInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN'"
 		// Parses the json and matches the row if either of the following conditions are met:
 		where += "((" + hasField + " AND " + hasValue + " AND " + hasInOperator + ")" +
 			" OR " +
 			"(" + hasField + " AND NOT " + hasValue + " AND " + hasNotInOperator + "))"
-		slog.Debug("current condition filter WHERE clause", slog.String("subject_external_field", sp.GetExternalField()), slog.String("subject_external_value", sp.GetExternalValue()), slog.String("where", where))
+		slog.Debug("current condition filter WHERE clause", slog.String("subject_external_selector_value", sp.ExternalSelectorValue), slog.String("subject_external_value", sp.ExternalValue), slog.String("where", where))
 	}
 	where += ")"
 
@@ -740,7 +740,7 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 // 1. The external field, external value, and an IN operator
 // 2. The external field, _no_ external value, and a NOT_IN operator
 //
-// Without this filtering, if a field was something like 'emailAddress' or 'username', every Subject is probably going to relate to that mapping
+// Without this filtering, if a field was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping
 // in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no
 // logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
 // initial filter.

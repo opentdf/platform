@@ -8,7 +8,7 @@ logger:
 #   port: 5432
 #   user: postgres
 #   password: changeme
-service:
+services:
   kas:
     enabled: false
   policy:

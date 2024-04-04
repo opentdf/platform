@@ -70,12 +70,12 @@
           "consentRequired": false,
           "config": {
             "userinfo.token.claim": "false",
-            "remote.url": "<claimsprovider url>",
             "id.token.claim": "false",
             "client.publickey": "X-VirtruPubKey",
             "access.token.claim": "true",
             "claim.name": "tdf_claims",
-            "client.dpop": "true"
+            "client.dpop": "true",
+            "tdf_claims.enabled": "true"
           }
         }
       ]

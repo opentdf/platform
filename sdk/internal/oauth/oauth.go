@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,7 +45,7 @@ func (t Token) Expired() bool {
 	return time.Now().After(expirationTime.Add(-tokenExpirationBuffer))
 }
 
-func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
+func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodPost, tokenEndpoint, nil) //nolint: noctx // TODO(#455): AccessToken methods should take contexts
 	if err != nil {
 		return nil, err
@@ -64,23 +65,32 @@ func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredenti
 		formData.Set("scope", strings.Join(scopes, " "))
 	}
 
-	switch ca := clientCredentials.ClientAuth.(type) {
-	case string:
-		req.SetBasicAuth(clientCredentials.ClientId, string(ca))
-	case jwk.Key:
-		signedToken, err := getSignedToken(clientCredentials.ClientId, tokenEndpoint, ca)
-		if err != nil {
-			return nil, fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
-		}
-		formData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
-		formData.Set("client_assertion", string(signedToken))
-	default:
-		return nil, fmt.Errorf("unsupported type for ClientAuth: %T", ca)
+	err = setClientAuth(clientCredentials, &formData, req, tokenEndpoint)
+	if err != nil {
+		return nil, err
 	}
 
 	req.Body = io.NopCloser(strings.NewReader(formData.Encode()))
 
 	return req, nil
+}
+
+func setClientAuth(cc ClientCredentials, formData *url.Values, req *http.Request, tokenEndpoint string) error {
+	switch ca := cc.ClientAuth.(type) {
+	case string:
+		req.SetBasicAuth(cc.ClientId, string(ca))
+	case jwk.Key:
+		signedToken, err := getSignedToken(cc.ClientId, tokenEndpoint, ca)
+		if err != nil {
+			return fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
+		}
+		formData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+		formData.Set("client_assertion", string(signedToken))
+	default:
+		return fmt.Errorf("unsupported type for ClientAuth: %T", ca)
+	}
+
+	return nil
 }
 
 func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error) {
@@ -118,7 +128,7 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 // missing this flow costs us a bit in efficiency (a round trip per access token) but this is
 // still correct because
 func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
-	req, err := getRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
+	req, err := getAccessTokenRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +142,7 @@ func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials Cli
 	defer resp.Body.Close()
 
 	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
-		nonceReq, err := getRequest(tokenEndpoint, nonceHeader, scopes, clientCredentials, &dpopPrivateKey)
+		nonceReq, err := getAccessTokenRequest(tokenEndpoint, nonceHeader, scopes, clientCredentials, &dpopPrivateKey)
 		if err != nil {
 			return nil, err
 		}
@@ -218,4 +228,67 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 	}
 
 	return string(proof), nil
+}
+
+func DoTokenExchange(ctx context.Context, clientCredentials ClientCredentials, scope []string, tokenEndpoint url.URL, subjectToken string, key jwk.Key) (*Token, error) {
+
+	req, err := getTokenExchangeRequest(ctx, tokenEndpoint.String(), "", subjectToken, scope, clientCredentials, &key)
+	if err != nil {
+		return nil, err
+	}
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to IdP for token exchange: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
+		nonceReq, err := getTokenExchangeRequest(ctx, tokenEndpoint.String(), nonceHeader, subjectToken, scope, clientCredentials, &key)
+		if err != nil {
+			return nil, err
+		}
+		nonceResp, err := client.Do(nonceReq)
+		if err != nil {
+			return nil, fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
+		}
+
+		defer nonceResp.Body.Close()
+
+		return processResponse(nonceResp)
+	}
+
+	return processResponse(resp)
+}
+
+func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce, subjectToken string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
+	data := url.Values{
+		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"subject_token":        {subjectToken},
+		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
+		"audience":             {"opentdf-sdk"},
+	}
+
+	if len(scopes) > 0 {
+		data.Set("scopes", strings.Join(scopes, " "))
+	}
+
+	body := strings.NewReader(data.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	if err != nil {
+		return nil, fmt.Errorf("error getting HTTP request: %w", err)
+	}
+	dpop, err := getDPoPAssertion(*privateJWK, http.MethodPost, tokenEndpoint, dpopNonce)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("dpop", dpop)
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	err = setClientAuth(clientCredentials, &data, req, tokenEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }

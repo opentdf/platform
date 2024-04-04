@@ -112,7 +112,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
-func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) {
+func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	if (c.clientCredentials.ClientId == "") != (c.clientCredentials.ClientAuth == nil) {
 		return nil,
 			errors.New("if specifying client credentials must specify both client id and authentication secret")
@@ -128,13 +128,19 @@ func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) {
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
-	ts, err := NewIDPAccessTokenSource(
-		c.clientCredentials,
-		c.tokenEndpoint,
-		c.scopes,
-	)
+	var ts auth.AccessTokenSource
+	var err error
+	if c.subjectToken == "" {
+		ts, err = NewIDPAccessTokenSource(
+			c.clientCredentials,
+			c.tokenEndpoint,
+			c.scopes,
+		)
+	} else {
+		ts, err = NewIDPTokenExchangeTokenSource(c.subjectToken, c.clientCredentials, c.tokenEndpoint, c.scopes)
+	}
 
-	return &ts, err
+	return ts, err
 }
 
 // Close closes the underlying grpc.ClientConn.
@@ -151,9 +157,4 @@ func (s SDK) Close() error {
 // Conn returns the underlying grpc.ClientConn.
 func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
-}
-
-// TokenExchange exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
-func (s SDK) TokenExchange(token string) (string, error) {
-	return "", nil
 }

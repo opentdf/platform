@@ -89,19 +89,45 @@ type IDPAccessTokenSource struct {
 	tokenMutex       *sync.Mutex
 }
 
-func NewIDPAccessTokenSource(
-	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPAccessTokenSource, error) {
+func NewAccessTokenSource(
+	clientId, clientSecret string, idpTokenEndpoint string, scopes []string) (*IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
-		return IDPAccessTokenSource{}, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
+		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
 	}
 
 	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey()
 	if err != nil {
-		return IDPAccessTokenSource{}, err
+		return nil, err
 	}
 
-	creds := IDPAccessTokenSource{
+	tokenSource := IDPAccessTokenSource{
+		credentials:      oauth.ClientCredentials{ClientId: clientId, ClientAuth: clientSecret},
+		idpTokenEndpoint: *endpoint,
+		token:            nil,
+		scopes:           scopes,
+		asymDecryption:   *asymDecryption,
+		dpopKey:          dpopKey,
+		dpopPEM:          dpopPublicKeyPEM,
+		tokenMutex:       &sync.Mutex{},
+	}
+
+	return &tokenSource, nil
+}
+
+func NewIDPAccessTokenSource(
+	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (*IDPAccessTokenSource, error) {
+	endpoint, err := url.Parse(idpTokenEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
+	}
+
+	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey()
+	if err != nil {
+		return nil, err
+	}
+
+	tokenSource := IDPAccessTokenSource{
 		credentials:      credentials,
 		idpTokenEndpoint: *endpoint,
 		token:            nil,
@@ -112,7 +138,7 @@ func NewIDPAccessTokenSource(
 		tokenMutex:       &sync.Mutex{},
 	}
 
-	return creds, nil
+	return &tokenSource, nil
 }
 
 // use a pointer receiver so that the token state is shared

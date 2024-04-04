@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -31,10 +30,7 @@ import (
 func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	ctx := context.Background()
 
-	wiremock, wiremockUrl := setupWiremock(t, ctx)
-	defer func() { require.NoError(t, wiremock.Terminate(ctx)) }()
-
-	keycloak, idpEndpoint := setupKeycloak(t, wiremockUrl, ctx)
+	keycloak, idpEndpoint := setupKeycloak(t, ctx)
 	defer func() { require.NoError(t, keycloak.Terminate(ctx)) }()
 
 	// Generate RSA Key to use for DPoP
@@ -62,6 +58,8 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 
 	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
 	require.NoError(t, err)
+
+	fmt.Printf("here is the access token: %s", tok.AccessToken)
 
 	cnfClaim, ok := tokenDetails.Get("cnf")
 	require.True(t, ok)
@@ -386,11 +384,11 @@ func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 	return clientTok
 }
 
-func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context) (tc.Container, string) {
+func setupKeycloak(t *testing.T, ctx context.Context) (tc.Container, string) {
 	containerReq := tc.ContainerRequest{
-		Image:        "ghcr.io/opentdf/keycloak:sha-ce2f709",
+		Image:        "ghcr.io/opentdf/keycloak:sha-8a6d35a",
 		ExposedPorts: []string{"8082/tcp"},
-		Cmd:          []string{"start-dev --http-port=8082"},
+		Cmd:          []string{"start-dev", "--http-port=8082"},
 		Files:        []tc.ContainerFile{},
 		Env: map[string]string{
 			"KEYCLOAK_ADMIN":          "admin",
@@ -431,13 +429,10 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 
 	accessToken, ok := responseMap["access_token"].(string)
 	require.True(t, ok, "missing access_token")
-
 	realmFile, err := os.ReadFile("./realm.json")
 	require.NoError(t, err)
 
-	realmJSON := strings.ReplaceAll(string(realmFile), "<claimsprovider url>", claimsProviderUrl.String())
-
-	req, _ = http.NewRequest(http.MethodPost, keycloakBase+"/admin/realms", strings.NewReader(realmJSON))
+	req, _ = http.NewRequest(http.MethodPost, keycloakBase+"/admin/realms", strings.NewReader(string(realmFile)))
 	req.Header.Add("authorization", "Bearer "+accessToken)
 	req.Header.Add("content-type", "application/json")
 
@@ -452,37 +447,4 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 	}
 
 	return keycloak, keycloakBase + "/realms/test/protocol/openid-connect/token"
-}
-
-func setupWiremock(t *testing.T, ctx context.Context) (tc.Container, *url.URL) {
-	listenPort, _ := nat.NewPort("tcp", "8181")
-	req := tc.ContainerRequest{
-		Image:      "wiremock/wiremock:3.3.1",
-		Cmd:        []string{fmt.Sprintf("--port=%s", listenPort.Port())},
-		WaitingFor: wait.ForLog("extensions:"),
-		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      "./claims.json",
-				ContainerFilePath: "/home/wiremock/mappings/claims.json",
-				FileMode:          0o444,
-			},
-		},
-	}
-	wiremock, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		panic(err)
-	}
-	containerIP, err := wiremock.ContainerIP(ctx)
-	if err != nil {
-		t.Fatalf("error getting endpoint from keycloak: %v", err)
-	}
-
-	wiremockUrl, err := url.Parse(fmt.Sprintf("http://%s:8181/claims", containerIP))
-	if err != nil {
-		panic(err)
-	}
-	return wiremock, wiremockUrl
 }

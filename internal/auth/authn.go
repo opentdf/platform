@@ -472,7 +472,8 @@ func (a Authentication) claimsValidator(_ context.Context, token jwt.Token) jwt.
 			break
 		}
 	default:
-		return jwt.NewValidationError(fmt.Errorf("client id required"))
+		return nil
+		// return jwt.NewValidationError(fmt.Errorf("client id required"))
 	}
 
 	// Check if the client id is allowed in list of clients

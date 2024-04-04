@@ -36,7 +36,7 @@ jobs:
         directory:
           - examples
           - sdk
-          - services
+          - service
           - lib/crypto
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -47,7 +47,7 @@ jobs:
             examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
-            services/go.sum
+            service/go.sum
       - run: make go.work
       - run: go mod download
       - run: go mod verify
@@ -61,7 +61,7 @@ jobs:
           only-new-issues: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
           args: --out-format=colored-line-number
       - name: Install softHSM
-        if: matrix.directory == 'services'
+        if: matrix.directory == 'service'
         run: |-
           sudo apt-get install -y softhsm opensc openssl
           sudo chmod +x /etc/softhsm
@@ -82,14 +82,14 @@ jobs:
         with:
           go-version: "1.21.8"
           cache-dependency-path: |
-            services/go.sum
+            service/go.sum
             examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
       - run: make go.work
       - run: go mod download
       - run: go mod verify
-      - run: go test ./services/integration -race -failfast
+      - run: go test ./service/integration -race -failfast
       - name: Install softHSM
         run: |-
           sudo apt-get install -y softhsm opensc openssl
@@ -103,12 +103,12 @@ jobs:
       - run: .github/scripts/hsm-init-temporary-keys.sh
       - run: docker compose up -d --wait --wait-timeout 240
       - run: cp opentdf-example.yaml opentdf.yaml
-      - run: go run ./services provision keycloak
+      - run: go run ./service provision keycloak
       - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
         name: start server in background
         with:
           run: |
-            go run ./services start
+            go run ./service start
           wait-on: |
             tcp:localhost:8080
           log-output-if: true
@@ -142,26 +142,26 @@ jobs:
       - uses: bufbuild/buf-setup-action@382440cdb8ec7bc25a68d7b4711163d95f7cc3aa
       - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
         with:
-          input: services
+          input: service
       - uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01
         # TODO(#212) Block on breaking changes after protos are frozen
         continue-on-error: true
         with:
-          input: services
-          against: "https://github.com/opentdf/platform.git#branch=main,subdir=services"
+          input: service
+          against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.21.8"
           cache-dependency-path: |
-            services/go.sum
+            service/go.sum
             protocol/go/go.sum
             sdk/go.sum
             examples/go.sum
-      - run: cd services && go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-      - run: cd services && go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: cd service && go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: cd service && go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: make proto-generate
       - name: Restore go.mod after installing protoc-gen-doc
-        run: git restore {services,protocol/go}/go.{mod,sum}
+        run: git restore {service,protocol/go}/go.{mod,sum}
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that files have been formatted before PR submission
@@ -195,17 +195,17 @@ jobs:
           filters: |
             examples:
               - 'examplesk/go.*'
-            services:
-              - 'services/go.*'
+            service:
+              - 'service/go.*'
             sdk:
               - 'sdk/go.*'
       - name: install go-licenses
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
-      - name: check services licenses
-        if: steps.deps-changed.outputs.services == 'true'
+      - name: check service licenses
+        if: steps.deps-changed.outputs.service == 'true'
         run: >
           go-licenses check --disallowed_types=forbidden --include_tests
-          ./services
+          ./service
       - name: check sdk licenses
         if: steps.deps-changed.outputs.sdk == 'true'
         run: >

@@ -73,7 +73,7 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 	var entryCount uint64
 	var centralDirectoryStart uint64
 	isZip64 := false
-	if endOfCDRecord.CentralDirectoryOffset != zip64MagicVal {
+	if endOfCDRecord.CentralDirectoryOffset != zip64MagicVal { //nolint:nestif // pkzip is complicated
 		entryCount = uint64(endOfCDRecord.NumberOfCDRecordEntries)
 		centralDirectoryStart = uint64(endOfCDRecord.CentralDirectoryOffset)
 	} else {
@@ -145,7 +145,7 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 		offset := uint64(cdFileHeader.LocalHeaderOffset)
 		bytesToRead := uint64(cdFileHeader.CompressedSize)
 
-		if isZip64 {
+		if isZip64 { //nolint:nestif // pkzip is complicated
 			// read Zip64 Extended Information extra field id
 			headerTag := uint16(0)
 			err = binary.Read(readSeeker, binary.LittleEndian, &headerTag)

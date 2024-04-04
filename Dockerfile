@@ -8,11 +8,11 @@ COPY lib/ocrypto lib/ocrypto
 COPY services/ services/
 COPY examples/ examples/
 COPY Makefile ./
-RUN cd services \
+RUN cd service \
     && go mod download \
     && go mod verify
 RUN make go.work \
-    && go build -o opentdf ./services
+    && go build -o opentdf ./service
 
 FROM cgr.dev/chainguard/glibc-dynamic
 

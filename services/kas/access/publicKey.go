@@ -54,7 +54,7 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
 
-		return &kaspb.PublicKeyResponse{PublicKey: string(ecPublicKeyPem)}, nil
+		return &kaspb.PublicKeyResponse{PublicKey: ecPublicKeyPem}, nil
 	}
 
 	if in.Fmt == "jwk" {

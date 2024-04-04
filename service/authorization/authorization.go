@@ -86,7 +86,10 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				attrVals = append(attrVals, v.GetValue())
 			}
 
-			attrDefs = populateAttrDefValueFqns(attrDefs)
+			attrDefs, err = populateAttrDefValueFqns(attrDefs)
+			if err != nil {
+				return nil, err
+			}
 
 			// get the relevent resource attribute fqns
 			allPertinentFqnsRA := authorization.ResourceAttribute{
@@ -241,32 +244,35 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 }
 
 // Build an fqn from a namespace, attribute name, and value
-func fqnBuilder(n string, a string, v string) string {
+func fqnBuilder(n string, a string, v string) (string, error) {
 	fqn := "https://"
 	switch {
 	case n != "" && a != "" && v != "":
-		return fqn + n + "/attr/" + a + "/value/" + v
+		return fqn + n + "/attr/" + a + "/value/" + v, nil
 	case n != "" && a != "" && v == "":
-		return fqn + n + "/attr/" + a
+		return fqn + n + "/attr/" + a, nil
 	case n != "" && a == "":
-		return fqn + n
+		return fqn + n, nil
 	default:
-		panic("Invalid FQN")
+		return "", errors.New("Invalid FQN, unable to build fqn")
 	}
 }
 
 // If there are missing fqns in the attribute definition fill them in using
 // information from the attr definition
-func populateAttrDefValueFqns(attrDefs []*policy.Attribute) []*policy.Attribute {
+func populateAttrDefValueFqns(attrDefs []*policy.Attribute) ([]*policy.Attribute, error) {
 	for i, attrDef := range attrDefs {
 		ns := attrDef.GetNamespace().GetName()
 		attr := attrDef.GetName()
 		for j, value := range attrDef.GetValues() {
 			if value.GetFqn() == "" {
-				fqn := fqnBuilder(ns, attr, value.GetValue())
+				fqn, err := fqnBuilder(ns, attr, value.GetValue())
+				if err != nil {
+					return nil, err
+				}
 				attrDefs[i].Values[j].Fqn = fqn
 			}
 		}
 	}
-	return attrDefs
+	return attrDefs, nil
 }

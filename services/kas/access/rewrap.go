@@ -16,11 +16,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/services/internal/auth"
-	"github.com/opentdf/platform/services/internal/security"
 	"log/slog"
 	"strings"
+
+	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/services/internal/auth"
 
 	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -125,9 +125,9 @@ type verifiedRequest struct {
 }
 
 func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kaspb.RewrapRequest) (*verifiedRequest, error) {
-	idToken, err := p.OIDCVerifier.Verify(ctx, in.Bearer)
+	idToken, err := p.OIDCVerifier.Verify(ctx, in.GetBearer())
 	if err != nil {
-		slog.WarnContext(ctx, "unable verify bearer token", "err", err, "bearer", in.Bearer, "oidc", p.OIDCVerifier)
+		slog.WarnContext(ctx, "unable verify bearer token", "err", err, "bearer", in.GetBearer(), "oidc", p.OIDCVerifier)
 		return nil, err403("403")
 	}
 
@@ -139,7 +139,7 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 	slog.DebugContext(ctx, "verified", "claims", cl)
 
-	requestToken, err := jwt.ParseSigned(in.SignedRequestToken)
+	requestToken, err := jwt.ParseSigned(in.GetSignedRequestToken())
 	if err != nil {
 		slog.WarnContext(ctx, "unable parse request", "err", err)
 		return nil, err400("bad request")
@@ -190,9 +190,9 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 	switch clientPublicKey.(type) {
 	case *rsa.PublicKey:
-		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.Bearer}, nil
+		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.GetBearer()}, nil
 	case *ecdsa.PublicKey:
-		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.Bearer}, nil
+		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.GetBearer()}, nil
 	}
 	slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
 	return nil, err400("clientPublicKey unsupported type")
@@ -235,7 +235,7 @@ func (p *Provider) verifyAndParsePolicy(ctx context.Context, requestBody *Reques
 
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	slog.DebugContext(ctx, "REWRAP")
-	bearer, err := legacyBearerToken(ctx, in.Bearer)
+	bearer, err := legacyBearerToken(ctx, in.GetBearer())
 	if err != nil {
 		return nil, err
 	}
@@ -256,8 +256,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.requestBody.Algorithm == "ec:secp256r1" {
-		//return nanoTDFRewrap(*body, &p.Session, p.Session.EC.PrivateKey)
-		return nil, fmt.Errorf("BUG: NanoTDF is disabled")
+		return p.nanoTDFRewrap(*body)
 	}
 	return p.tdf3Rewrap(ctx, body)
 }
@@ -319,11 +318,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}, nil
 }
 
-func nanoTDFRewrap(
-	body verifiedRequest,
-	session *security.HSMSession,
-	key security.PrivateKeyEC,
-) (*kaspb.RewrapResponse, error) {
+func (p *Provider) nanoTDFRewrap(body verifiedRequest) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
 
 	header, err := nanotdf.ReadNanoTDFHeader(headerReader)
@@ -331,7 +326,7 @@ func nanoTDFRewrap(
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	symmetricKey, err := session.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key, key)
+	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
@@ -348,11 +343,11 @@ func nanoTDFRewrap(
 		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
 	}
 
-	privateKeyHandle, publicKeyHandle, err := session.GenerateEphemeralKasKeys()
+	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-	sessionKey, err := session.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
+	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}

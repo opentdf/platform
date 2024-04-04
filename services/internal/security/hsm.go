@@ -516,7 +516,7 @@ func hashToPKCS11(hashFunction crypto.Hash) (hashAlg uint, mgfAlg uint, hashLen 
 	}
 }
 
-func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte, key PrivateKeyEC) ([]byte, error) {
+func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error) {
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
@@ -535,7 +535,7 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte,
 		pkcs11.NewMechanism(pkcs11.CKM_ECDH1_DERIVE, &params),
 	}
 
-	handle, err := h.ctx.DeriveKey(h.sh, mech, pkcs11.ObjectHandle(key), template)
+	handle, err := h.ctx.DeriveKey(h.sh, mech, pkcs11.ObjectHandle(h.EC.PrivateKey), template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive symmetric key: %w", err)
 	}

@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	errNotImplemented             = errors.New("standard crypto for nano not implemented")
 	errStandardCryptoNotEnabled   = errors.New("standard crypto flag is enabled in the config")
 	errStandardCryptoObjIsInvalid = errors.New("standard crypto object is invalid")
 )
@@ -135,4 +136,16 @@ func (s StandardCrypto) RSAPublicKeyAsJson(keyId string) (string, error) {
 	}
 
 	return string(jsonPublicKey), nil
+}
+
+func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error) {
+	return nil, errNotImplemented
+}
+
+func (s StandardCrypto) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
+	return 0, nil, errNotImplemented
+}
+
+func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC, ephemeralPublicKey []byte) ([]byte, error) {
+	return nil, errNotImplemented
 }

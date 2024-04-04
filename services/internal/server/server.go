@@ -131,11 +131,18 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 	if config.CryptoProvider.HSMConfig.Enabled {
 		config.CryptoProvider.Type = "hsm"
 		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-		slog.Info("✅crypto provider: HSM")
+		if err != nil {
+			return nil, fmt.Errorf("HSM security.NewCryptoProvider: %w", err)
+		}
 
+		slog.Info("✅crypto provider: HSM")
 	} else {
 		config.CryptoProvider.Type = "standard"
 		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
+		if err != nil {
+			return nil, fmt.Errorf("standard security.NewCryptoProvider: %w", err)
+		}
+
 		slog.Info("✅ crypto provider: standard")
 	}
 

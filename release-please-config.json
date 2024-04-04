@@ -6,19 +6,23 @@
   "tag-separator": "/",
   "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
   "packages": {
-    ".":{
-      "exclude-paths": [
-        "sdk",
-        "protocol"
-      ]
+    "service": {
+      "component": "service",
+      "separate-pull-requests": true,
+      "include-component-in-tag": true
     },
-    "sdk":{
+    "sdk": {
       "component": "sdk",
       "separate-pull-requests": true,
       "include-component-in-tag": true
     },
-    "protocol":{
+    "protocol": {
       "component": "protocol",
+      "separate-pull-requests": true,
+      "include-component-in-tag": true
+    },
+    "lib": {
+      "component": "lib",
       "separate-pull-requests": true,
       "include-component-in-tag": true
     }

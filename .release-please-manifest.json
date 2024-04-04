@@ -1,8 +1,10 @@
 {
-  ".": "2.0.0",
-  ".+FILLER": "0.0.0",
+  "service": "2.0.0",
+  "service+FILLER": "0.0.0",
   "sdk": "0.1.0",
   "sdk+FILLER": "0.0.0",
   "protocol": "0.1.0",
-  "protocol+FILLER": "0.0.0"
+  "protocol+FILLER": "0.0.0",
+  "lib": "0.1.0",
+  "lib+FILLER": "0.0.0"
 }

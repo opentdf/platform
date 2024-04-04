@@ -1725,7 +1725,7 @@
         
       
         <h3 id="policy.Condition">Condition</h3>
-        <p>A Condition defines a rule of <the value by a jq 'selector value' expression> <operator> <subject external values></p><p>Example:  Subjects with a field selected by the jq syntax "'.division[0]'" and a value of "Accounting" or "Marketing":</p><p>{</p><p>"subject_external_selector_value": "'.division'",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",</p><p>"subject_external_values" : ["Accounting", "Marketing"]</p><p>}</p><p>Example: Subjects that are not part of the Fantastic Four according to their alias field:</p><p>{</p><p>"subject_external_selector_value": "'.data[0].alias'",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",</p><p>"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]</p><p>}</p>
+        <p>A Condition defines a rule of <the value by a jq 'selector value' expression> <operator> <subject external values></p><p>Example:  Subjects with a field selected by the jq syntax "'.division'" and a value of "Accounting" or "Marketing":</p><p>{</p><p>"subject_external_selector_value": "'.division'",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",</p><p>"subject_external_values" : ["Accounting", "Marketing"]</p><p>}</p><p>Example: Subjects that are not part of the Fantastic Four according to their alias field:</p><p>{</p><p>"subject_external_selector_value": "'.data[0].alias'",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",</p><p>"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]</p><p>}</p>
 
         
           <table class="field-table">

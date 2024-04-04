@@ -719,7 +719,7 @@ func (x *SubjectMapping) GetMetadata() *common.Metadata {
 // *
 // A Condition defines a rule of <the value by a jq 'selector value' expression> <operator> <subject external values>
 //
-// Example:  Subjects with a field selected by the jq syntax "'.division[0]'" and a value of "Accounting" or "Marketing":
+// Example:  Subjects with a field selected by the jq syntax "'.division'" and a value of "Accounting" or "Marketing":
 // {
 // "subject_external_selector_value": "'.division'",
 // "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",

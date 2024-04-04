@@ -700,15 +700,15 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 			where += " OR "
 		}
 
-		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.ExternalSelectorValue + "'"
-		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.ExternalValue + "\"]'::jsonb"
+		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.GetExternalSelectorValue() + "'"
+		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.GetExternalValue() + "\"]'::jsonb"
 		hasInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_IN'"
 		hasNotInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN'"
 		// Parses the json and matches the row if either of the following conditions are met:
 		where += "((" + hasField + " AND " + hasValue + " AND " + hasInOperator + ")" +
 			" OR " +
 			"(" + hasField + " AND NOT " + hasValue + " AND " + hasNotInOperator + "))"
-		slog.Debug("current condition filter WHERE clause", slog.String("subject_external_selector_value", sp.ExternalSelectorValue), slog.String("subject_external_value", sp.ExternalValue), slog.String("where", where))
+		slog.Debug("current condition filter WHERE clause", slog.String("subject_external_selector_value", sp.GetExternalSelectorValue()), slog.String("subject_external_value", sp.GetExternalValue()), slog.String("where", where))
 	}
 	where += ")"
 

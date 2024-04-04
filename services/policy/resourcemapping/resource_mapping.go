@@ -6,7 +6,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	services "github.com/opentdf/platform/services/err"
+	"github.com/opentdf/platform/services/internal/db"
 	"github.com/opentdf/platform/services/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/services/policy/db"
 )
@@ -39,7 +39,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 
 	rm, err := s.dbClient.CreateResourceMapping(ctx, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("resourceMapping", req.String()))
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("resourceMapping", req.String()))
 	}
 
 	return &resourcemapping.CreateResourceMappingResponse{
@@ -52,7 +52,7 @@ func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
 ) (*resourcemapping.ListResourceMappingsResponse, error) {
 	resourceMappings, err := s.dbClient.ListResourceMappings(ctx)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
 	return &resourcemapping.ListResourceMappingsResponse{
@@ -65,7 +65,7 @@ func (s ResourceMappingService) GetResourceMapping(ctx context.Context,
 ) (*resourcemapping.GetResourceMappingResponse, error) {
 	rm, err := s.dbClient.GetResourceMapping(ctx, req.Id)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
 	return &resourcemapping.GetResourceMappingResponse{
@@ -82,7 +82,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		req,
 	)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("resourceMapping", req.String()))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("resourceMapping", req.String()))
 	}
 	return &resourcemapping.UpdateResourceMappingResponse{
 		ResourceMapping: rm,
@@ -94,7 +94,7 @@ func (s ResourceMappingService) DeleteResourceMapping(ctx context.Context,
 ) (*resourcemapping.DeleteResourceMappingResponse, error) {
 	rm, err := s.dbClient.DeleteResourceMapping(ctx, req.Id)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
 	return &resourcemapping.DeleteResourceMappingResponse{
 		ResourceMapping: rm,

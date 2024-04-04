@@ -6,7 +6,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
-	services "github.com/opentdf/platform/services/err"
+	"github.com/opentdf/platform/services/internal/db"
 	"github.com/opentdf/platform/services/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/services/policy/db"
 )
@@ -35,7 +35,7 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.
 	rsp := &namespaces.ListNamespacesResponse{}
 	list, err := ns.dbClient.ListNamespaces(ctx, state)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
 	slog.Debug("listed namespaces")
@@ -51,7 +51,7 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespaces.Ge
 
 	namespace, err := ns.dbClient.GetNamespace(ctx, req.Id)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, "id", req.Id)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, "id", req.GetId())
 	}
 
 	rsp.Namespace = namespace
@@ -65,7 +65,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 
 	n, err := ns.dbClient.CreateNamespace(ctx, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("name", req.Name))
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("name", req.GetName()))
 	}
 
 	slog.Debug("created new namespace", slog.String("name", req.Name))
@@ -80,7 +80,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 
 	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.Id, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
 	}
 
 	slog.Debug("updated namespace", slog.String("id", req.Id))
@@ -94,7 +94,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 	rsp := &namespaces.DeactivateNamespaceResponse{}
 
 	if _, err := ns.dbClient.DeactivateNamespace(ctx, req.Id); err != nil {
-		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
 
 	slog.Debug("soft-deleted namespace", slog.String("id", req.Id))

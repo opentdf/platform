@@ -6,7 +6,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
-	services "github.com/opentdf/platform/services/err"
+	"github.com/opentdf/platform/services/internal/db"
 	kasDB "github.com/opentdf/platform/services/kasregistry/db"
 	"github.com/opentdf/platform/services/pkg/serviceregistry"
 )
@@ -35,7 +35,7 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrCreationFailed, slog.String("keyAccessServer", req.String()))
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("keyAccessServer", req.String()))
 	}
 
 	return &kasr.CreateKeyAccessServerResponse{
@@ -48,7 +48,7 @@ func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
 ) (*kasr.ListKeyAccessServersResponse, error) {
 	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrListRetrievalFailed)
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
 	return &kasr.ListKeyAccessServersResponse{
@@ -61,7 +61,7 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 ) (*kasr.GetKeyAccessServerResponse, error) {
 	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, req.Id)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
 	return &kasr.GetKeyAccessServerResponse{
@@ -74,7 +74,7 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 ) (*kasr.UpdateKeyAccessServerResponse, error) {
 	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.Id, req)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrUpdateFailed, slog.String("id", req.Id), slog.String("keyAccessServer", req.String()))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("keyAccessServer", req.String()))
 	}
 	return &kasr.UpdateKeyAccessServerResponse{
 		KeyAccessServer: k,
@@ -86,7 +86,7 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 ) (*kasr.DeleteKeyAccessServerResponse, error) {
 	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.Id)
 	if err != nil {
-		return nil, services.HandleError(err, services.ErrDeletionFailed, slog.String("id", req.Id))
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
 	return &kasr.DeleteKeyAccessServerResponse{
 		KeyAccessServer: keyAccessServer,

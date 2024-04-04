@@ -541,7 +541,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_WithNoId_Fails() {
 	scs, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, "")
 	s.NotNil(err)
 	s.Nil(scs)
-	s.ErrorIs(err, db.ErrUuidInvalid)
+	s.ErrorIs(err, db.ErrUUIDInvalid)
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_NonExistentId_Fails() {

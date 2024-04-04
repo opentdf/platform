@@ -234,7 +234,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails
 	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
 	s.Nil(createdValue)
 	s.NotNil(err)
-	s.ErrorIs(err, db.ErrUuidInvalid)
+	s.ErrorIs(err, db.ErrUUIDInvalid)
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {

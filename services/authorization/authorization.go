@@ -17,8 +17,8 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
-	services "github.com/opentdf/platform/services/err"
 	"github.com/opentdf/platform/services/internal/access"
+	"github.com/opentdf/platform/services/internal/db"
 	"github.com/opentdf/platform/services/internal/entitlements"
 	"github.com/opentdf/platform/services/internal/opa"
 	"github.com/opentdf/platform/services/pkg/serviceregistry"
@@ -77,7 +77,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 			dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
 			if err != nil {
 				// TODO: should all decisions in a request fail if one FQN lookup fails?
-				return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("fqns", strings.Join(ra.GetAttributeValueFqns(), ", ")))
+				return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 			}
 			var attrDefs []*policy.Attribute
 			var attrVals []*policy.Value
@@ -98,7 +98,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("getEntitlements request failed ", req.String()))
+					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("getEntitlements request failed ", req.String()))
 				}
 
 				// currently just adding each entity retuned to same list
@@ -117,7 +117,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, services.HandleError(err, services.ErrGetRetrievalFailed, slog.String("DetermineAccess request to Access PDP failed", ""))
+					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("DetermineAccess request to Access PDP failed", ""))
 				}
 				// check the decisions
 				decision := authorization.DecisionResponse_DECISION_PERMIT
@@ -150,7 +150,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	// https://github.com/opentdf/platform/issues/365
 	if req.GetScope() == nil {
 		slog.ErrorContext(ctx, "requires scope")
-		return nil, errors.New(services.ErrFqnMissingValue)
+		return nil, errors.New(db.ErrTextFqnMissingValue)
 	}
 	// get subject mappings
 	request := attr.GetAttributeValuesByFqnsRequest{

@@ -6,11 +6,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	"log/slog"
 	"net/url"
 	"strings"
 	"sync"
+
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"

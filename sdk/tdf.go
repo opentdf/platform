@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	"io"
 	"math"
 	"strings"
+
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/sdk/internal/archive"

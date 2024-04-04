@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 )
 
 type AuthConfig struct {

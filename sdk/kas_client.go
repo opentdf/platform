@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	"net/url"
 	"time"
+
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"

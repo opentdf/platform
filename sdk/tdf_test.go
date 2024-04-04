@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	"io"
 	"math"
 	"net/http"
@@ -18,6 +16,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/golang-jwt/jwt/v4"
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 
 	"github.com/stretchr/testify/assert"
 )

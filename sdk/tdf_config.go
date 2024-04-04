@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"fmt"
+
 	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 )
 

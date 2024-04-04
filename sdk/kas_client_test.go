@@ -2,8 +2,9 @@ package sdk
 
 import (
 	"encoding/json"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	"testing"
+
+	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 
 	"google.golang.org/grpc"
 

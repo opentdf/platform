@@ -5,90 +5,79 @@ import (
 	"errors"
 	"log/slog"
 
-	attrs "github.com/virtru/access-pdp/attributes"
-	accessPdp "github.com/virtru/access-pdp/pdp"
+	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/policy"
+	otdf "github.com/opentdf/platform/sdk"
 )
 
 const (
-	ErrPolicyDissemInvalid = Error("policy dissem invalid")
-	ErrDecisionUnexpected  = Error("access policy decision unexpected")
+	ErrPolicyDissemInvalid     = Error("policy dissem invalid")
+	ErrDecisionUnexpected      = Error("authorization decision unexpected")
+	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
 
-func canAccess(ctx context.Context, entityID string, policy Policy, claims ClaimsObject, attrDefs []attrs.AttributeDefinition) (bool, error) {
-	dissemAccess, err := checkDissems(policy.Body.Dissem, entityID)
-	if err != nil {
-		return false, err
+func canAccess(ctx context.Context, entity authorization.Entity, policy Policy, sdk *otdf.SDK) (bool, error) {
+	if len(policy.Body.Dissem) > 0 {
+		dissemAccess, err := checkDissems(policy.Body.Dissem, entity)
+		if err != nil {
+			return false, err
+		}
+		return dissemAccess, nil
 	}
-	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, claims.Entitlements, attrDefs)
-	if err != nil {
-		return false, err
+	if policy.Body.DataAttributes != nil {
+		attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entity, sdk)
+		if err != nil {
+			return false, err
+		}
+		return attrAccess, nil
 	}
-	if dissemAccess && attrAccess {
-		return true, nil
-	} else {
-		return false, nil
-	}
+	// if no dissem and no attributes then allow
+	return true, nil
 }
 
-func checkDissems(dissems []string, entityID string) (bool, error) {
-	if entityID == "" {
+func checkDissems(dissems []string, ent authorization.Entity) (bool, error) {
+	if ent.GetEmailAddress() == "" {
 		return false, ErrPolicyDissemInvalid
 	}
-	if len(dissems) == 0 || contains(dissems, entityID) {
+	if len(dissems) == 0 || contains(dissems, ent.GetEmailAddress()) {
 		return true, nil
 	}
 	return false, nil
 }
 
-func checkAttributes(ctx context.Context, dataAttrs []Attribute, entitlements []Entitlement, attrDefs []attrs.AttributeDefinition) (bool, error) {
-	// convert data and entitty attrs to attrs.AttributeInstance
-	dataAttrInstances, err := convertAttrsToAttrInstances(dataAttrs)
-	if err != nil {
-		return false, err
+func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent authorization.Entity, sdk *otdf.SDK) (bool, error) {
+	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
+	ec.Entities = append(ec.Entities, &ent)
+	ras := []*authorization.ResourceAttribute{{
+		AttributeValueFqns: make([]string, 0),
+	}}
+	for _, attr := range dataAttrs {
+		ras[0].AttributeValueFqns = append(ras[0].GetAttributeValueFqns(), attr.URI)
 	}
-	entityAttrMap, err := convertEntitlementsToEntityAttrMap(entitlements)
-	if err != nil {
-		return false, err
+	in := authorization.GetDecisionsRequest{
+		DecisionRequests: []*authorization.DecisionRequest{
+			{
+				Actions: []*policy.Action{
+					{Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_DECRYPT}},
+				},
+				EntityChains:       []*authorization.EntityChain{&ec},
+				ResourceAttributes: ras,
+			},
+		},
 	}
-
-	accessPDP := accessPdp.NewAccessPDPWithSlog(slog.Default())
-
-	decisions, err := accessPDP.DetermineAccess(dataAttrInstances, entityAttrMap, attrDefs, &ctx)
+	dr, err := sdk.Authorization.GetDecisions(ctx, &in)
 	if err != nil {
-		slog.WarnContext(ctx, "Error recieved from accessPDP", "err", err)
+		slog.ErrorContext(ctx, "Error received from GetDecisions", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)
 	}
-	// check the decisions
-	for _, decision := range decisions {
-		if !decision.Access {
-			return false, nil
-		}
+	if len(dr.DecisionResponses) != 1 {
+		slog.ErrorContext(ctx, ErrDecisionCountUnexpected.Error(), "count", len(dr.DecisionResponses))
+		return false, ErrDecisionCountUnexpected
 	}
-	return true, nil
-}
-
-func convertAttrsToAttrInstances(attributes []Attribute) ([]attrs.AttributeInstance, error) {
-	instances := make([]attrs.AttributeInstance, len(attributes))
-	for i, attr := range attributes {
-		instance, err := attrs.ParseInstanceFromURI(attr.URI)
-		if err != nil {
-			return nil, errors.Join(ErrPolicyDataAttributeParse, err)
-		}
-		instances[i] = instance
+	if dr.DecisionResponses[0].Decision == authorization.DecisionResponse_DECISION_PERMIT {
+		return true, nil
 	}
-	return instances, nil
-}
-
-func convertEntitlementsToEntityAttrMap(entitlements []Entitlement) (map[string][]attrs.AttributeInstance, error) {
-	entityAttrMap := make(map[string][]attrs.AttributeInstance)
-	for _, entitlement := range entitlements {
-		instances, err := convertAttrsToAttrInstances(entitlement.EntityAttributes)
-		if err != nil {
-			return nil, err
-		}
-		entityAttrMap[entitlement.EntityID] = instances
-	}
-	return entityAttrMap, nil
+	return false, nil
 }
 
 func contains(s []string, e string) bool {

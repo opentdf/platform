@@ -55,7 +55,7 @@ func authorizationExamples(examplesConfig *ExampleConfig) error {
 		Actions:      actions,
 		EntityChains: entityChains,
 		ResourceAttributes: []*authorization.ResourceAttribute{
-			{AttributeFqns: []string{tradeSecretAttributeValueFqn, openAttributeValueFqn}},
+			{AttributeValueFqns: []string{tradeSecretAttributeValueFqn, openAttributeValueFqn}},
 		},
 	})
 

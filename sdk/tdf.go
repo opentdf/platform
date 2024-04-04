@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/opentdf/platform/lib/crypto"
 	"github.com/opentdf/platform/sdk/internal/archive"
-	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 var (

@@ -18,9 +18,8 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/opentdf/platform/lib/crypto"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 const (

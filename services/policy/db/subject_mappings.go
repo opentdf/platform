@@ -8,10 +8,10 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/platform/internal/db"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/services/internal/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -278,7 +278,7 @@ func createSubjectConditionSetSql(subjectSets []*policy.SubjectSet, metadataJSON
 }
 
 // Creates a new subject condition set and returns the id of the created
-func (c PolicyDbClient) CreateSubjectConditionSet(ctx context.Context, s *subjectmapping.SubjectConditionSetCreate) (*policy.SubjectConditionSet, error) {
+func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjectmapping.SubjectConditionSetCreate) (*policy.SubjectConditionSet, error) {
 	metadataJSON, m, err := db.MarshalCreateMetadata(s.Metadata)
 	if err != nil {
 		return nil, err
@@ -310,7 +310,7 @@ func getSubjectConditionSetSql(id string) (string, []interface{}, error) {
 		From(t.Name()).Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
-func (c PolicyDbClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
+func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
 	sql, args, err := getSubjectConditionSetSql(id)
 	if err != nil {
 		return nil, err
@@ -331,7 +331,7 @@ func listSubjectConditionSetsSql() (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) ListSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
+func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
 	sql, args, err := listSubjectConditionSetsSql()
 	if err != nil {
 		return nil, err
@@ -365,7 +365,7 @@ func updateSubjectConditionSetSql(id string, metadata []byte, condition []byte) 
 }
 
 // Mutates provided fields and returns id of the updated subject condition set
-func (c PolicyDbClient) UpdateSubjectConditionSet(ctx context.Context, r *subjectmapping.UpdateSubjectConditionSetRequest) (*policy.SubjectConditionSet, error) {
+func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjectmapping.UpdateSubjectConditionSetRequest) (*policy.SubjectConditionSet, error) {
 	var condition []byte
 
 	// if extend we need to merge the metadata
@@ -421,7 +421,7 @@ func deleteSubjectConditionSetSql(id string) (string, []interface{}, error) {
 }
 
 // Deletes specified subject condition set and returns the id of the deleted
-func (c PolicyDbClient) DeleteSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
+func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
 	sql, args, err := deleteSubjectConditionSetSql(id)
 	if err != nil {
 		return nil, err
@@ -462,7 +462,7 @@ func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata
 
 // Creates a new subject mapping and returns the id of the created. If an existing subject condition set id is provided, it will be used.
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
-func (c PolicyDbClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
+func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	var (
 		scs *policy.SubjectConditionSet
 		err error
@@ -533,7 +533,7 @@ func getSubjectMappingSql(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
+func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
 	sql, args, err := getSubjectMappingSql(id)
 	if err != nil {
 		return nil, err
@@ -554,7 +554,7 @@ func listSubjectMappingsSql() (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDbClient) ListSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
+func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
 	sql, args, err := listSubjectMappingsSql()
 	if err != nil {
 		return nil, err
@@ -597,7 +597,7 @@ func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_s
 }
 
 // Mutates provided fields and returns id of the updated subject mapping
-func (c PolicyDbClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (*policy.SubjectMapping, error) {
+func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	// if extend we need to merge the metadata
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		a, err := c.GetSubjectMapping(ctx, r.Id)
@@ -652,7 +652,7 @@ func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
 }
 
 // Deletes specified subject mapping and returns the id of the deleted
-func (c PolicyDbClient) DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
+func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
 	sql, args, err := deleteSubjectMappingSql(id)
 	if err != nil {
 		return nil, err
@@ -747,7 +747,7 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 //
 // NOTE: This relationship is sometimes called Entitlements or Subject Entitlements.
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
-func (c PolicyDbClient) GetMatchedSubjectMappings(ctx context.Context, properties []*policy.SubjectProperty) ([]*policy.SubjectMapping, error) {
+func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, properties []*policy.SubjectProperty) ([]*policy.SubjectMapping, error) {
 	sql, args, err := selectMatchedSubjectMappingsSql(properties)
 	slog.Debug("generated SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args))
 	if err != nil {

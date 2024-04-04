@@ -10,7 +10,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/crypto"
-	kas "github.com/opentdf/platform/protocol/go/kas"
+	kas "github.com/opentdf/platform/protocol/kas"
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 )

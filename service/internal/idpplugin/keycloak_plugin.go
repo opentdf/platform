@@ -8,7 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/Nerzal/gocloak/v11"
-	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/authorization"
 	"github.com/opentdf/platform/service/internal/db"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

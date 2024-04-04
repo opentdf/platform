@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	wellknown "github.com/opentdf/platform/protocol/wellknownconfiguration"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

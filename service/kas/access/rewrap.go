@@ -23,8 +23,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/authorization"
+	kaspb "github.com/opentdf/platform/protocol/kas"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/nanotdf"

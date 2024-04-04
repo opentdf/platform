@@ -19,7 +19,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	kaspb "github.com/opentdf/platform/protocol/kas"
 	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

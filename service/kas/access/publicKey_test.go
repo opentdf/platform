@@ -18,7 +18,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/security"
 
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	kaspb "github.com/opentdf/platform/protocol/kas"
 	"github.com/stretchr/testify/assert"
 )
 

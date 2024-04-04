@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/authorization"
+	"github.com/opentdf/platform/protocol/policy"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"

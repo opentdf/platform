@@ -1,4 +1,4 @@
-module github.com/opentdf/platform/protocol/go
+module github.com/opentdf/platform/protocol
 
 go 1.21.8
 

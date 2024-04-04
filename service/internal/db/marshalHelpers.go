@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/opentdf/platform/protocol/go/common"
-	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
+	"github.com/opentdf/platform/protocol/common"
+	kasr "github.com/opentdf/platform/protocol/kasregistry"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

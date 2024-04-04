@@ -1,8 +1,8 @@
 package entitlements
 
 import (
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/authorization"
+	"github.com/opentdf/platform/protocol/policy/attributes"
 )
 
 func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, config map[string]interface{}) (map[string]interface{}, error) {

@@ -4,7 +4,7 @@ import (
 	"net/url"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	kaspb "github.com/opentdf/platform/protocol/kas"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
 )

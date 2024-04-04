@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/policy"
+	"github.com/opentdf/platform/protocol/policy/attributes"
+	"github.com/opentdf/platform/protocol/policy/namespaces"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"

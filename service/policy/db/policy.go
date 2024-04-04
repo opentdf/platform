@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/common"
 	"github.com/opentdf/platform/service/internal/db"
 )
 

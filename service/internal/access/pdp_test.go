@@ -4,7 +4,7 @@ import (
 	ctx "context"
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/policy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

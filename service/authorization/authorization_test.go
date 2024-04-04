@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/policy"
-	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/authorization"
+	"github.com/opentdf/platform/protocol/policy"
+	attr "github.com/opentdf/platform/protocol/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

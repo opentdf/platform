@@ -3,7 +3,7 @@
 
 .PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
 
-MODS=protocol/go lib/crypto sdk service examples
+MODS=protocol lib/crypto sdk service examples
 HAND_MODS=lib/crypto sdk service examples
 
 EXCLUDE_OPENAPI=./service/authorization/idp_plugin.proto
@@ -45,7 +45,7 @@ go-lint:
 	for m in $(HAND_MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
 
 proto-generate:
-	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
+	rm -rf protocol/[a-fh-z]* docs/grpc docs/openapi
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml

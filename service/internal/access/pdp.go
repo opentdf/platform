@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/policy"
 )
 
 type Pdp struct{}

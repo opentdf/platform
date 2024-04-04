@@ -5,8 +5,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/authorization"
+	"github.com/opentdf/platform/protocol/policy"
 	otdf "github.com/opentdf/platform/sdk"
 )
 

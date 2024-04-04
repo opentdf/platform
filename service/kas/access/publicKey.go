@@ -11,7 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	kaspb "github.com/opentdf/platform/protocol/kas"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"

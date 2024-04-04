@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/policy"
+	"github.com/opentdf/platform/protocol/policy/attributes"
 	"github.com/opentdf/platform/service/internal/db"
 )
 

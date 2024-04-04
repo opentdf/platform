@@ -26,7 +26,7 @@ var (
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			dbClient, err := migrateDbClient(cfg)
+			dbClient, err := migrateDBClient(cfg)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
@@ -41,14 +41,14 @@ var (
 	migrateUpCmd = &cobra.Command{
 		Use:   "up",
 		Short: "Run database migrations up to the latest version",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
 			cfg, err := config.LoadConfig(configKey, configFile)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
-			dbClient, err := migrateDbClient(cfg)
+			dbClient, err := migrateDBClient(cfg)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
@@ -71,7 +71,7 @@ var (
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
-			dbClient, err := migrateDbClient(cfg)
+			dbClient, err := migrateDBClient(cfg)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
@@ -87,7 +87,7 @@ var (
 	}
 )
 
-func migrateDbClient(conf *config.Config) (*db.Client, error) {
+func migrateDBClient(conf *config.Config) (*db.Client, error) {
 	slog.Info("creating database client")
 	dbClient, err := db.NewClient(conf.DB)
 	if err != nil {

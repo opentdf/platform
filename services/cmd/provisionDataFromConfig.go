@@ -125,7 +125,9 @@ var provisionDataFromConfigCmd = &cobra.Command{
 					if err != nil {
 						return err
 					}
-					policyConfigData.Namespaces[ni].Attributes[ai].ValueIds = make(map[string]string)
+					if policyConfigData.Namespaces[ni].Attributes[ai].ValueIds == nil {
+						policyConfigData.Namespaces[ni].Attributes[ai].ValueIds = make(map[string]string)
+					}
 					policyConfigData.Namespaces[ni].Attributes[ai].ValueIds[value] = id
 				}
 			}
@@ -159,8 +161,12 @@ func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsId string, smConfi
 	var attrId string
 	for _, ns := range policyConfigData.Namespaces {
 		if ns.Name == smConfig.AttributeValue.Namespace {
+			slog.Info("namesapce the same")
 			for _, attr := range ns.Attributes {
+				slog.Info("my attribute: %s, their attribute %s", attr.Name, smConfig.AttributeValue.Attribute)
 				if attr.Name == smConfig.AttributeValue.Attribute {
+					slog.Info("assigning")
+					fmt.Println(attr.ValueIds)
 					val, ok := attr.ValueIds[smConfig.AttributeValue.Value]
 					if ok {
 						attrId = val

@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -278,7 +277,7 @@ func (c PolicyDbClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		return nil, err
 	}
 	if len(attrs) > 0 {
-		return nil, fmt.Errorf("unable to deactivate non-empty namespace. This namespace has %d attribute(s)", len(attrs))
+		slog.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
 	sql, args, err := deactivateNamespaceSql(id)

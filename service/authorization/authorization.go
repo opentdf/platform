@@ -243,13 +243,14 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 // Build an fqn from a namespace, attribute name, and value
 func fqnBuilder(n string, a string, v string) string {
 	fqn := "https://"
-	if n != "" && a != "" && v != "" {
+	switch {
+	case n != "" && a != "" && v != "":
 		return fqn + n + "/attr/" + a + "/value/" + v
-	} else if n != "" && a != "" && v == "" {
+	case n != "" && a != "" && v == "":
 		return fqn + n + "/attr/" + a
-	} else if n != "" && a == "" {
+	case n != "" && a == "":
 		return fqn + n
-	} else {
+	default:
 		panic("Invalid FQN")
 	}
 }

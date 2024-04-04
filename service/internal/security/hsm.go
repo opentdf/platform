@@ -647,9 +647,9 @@ func (h *HSMSession) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
 	return PrivateKeyEC(prvHandle), publicKeyBytes, nil
 }
 
-func (h *HSMSession) RSAPublicKey(keyId string) (string, error) {
+func (h *HSMSession) RSAPublicKey(keyID string) (string, error) {
 	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.RSA.PublicKey)
 	if err != nil {
@@ -669,9 +669,9 @@ func (h *HSMSession) RSAPublicKey(keyId string) (string, error) {
 	return string(certPem), nil
 }
 
-func (h *HSMSession) RSAPublicKeyAsJson(keyId string) (string, error) {
+func (h *HSMSession) RSAPublicKeyAsJSON(keyID string) (string, error) {
 	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
 	rsaPublicKeyJwk, err := jwk.FromRaw(h.RSA.PublicKey)
 	if err != nil {
@@ -686,7 +686,7 @@ func (h *HSMSession) RSAPublicKeyAsJson(keyId string) (string, error) {
 	return string(jsonPublicKey), nil
 }
 
-func (h *HSMSession) ECPublicKey(keyId string) (string, error) {
+func (h *HSMSession) ECPublicKey(string) (string, error) {
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.EC.PublicKey)
 	if err != nil {
 		return "", errors.Join(ErrPublicKeyMarshal, err)
@@ -702,9 +702,9 @@ func (h *HSMSession) ECPublicKey(keyId string) (string, error) {
 	return string(pubkeyPem), nil
 }
 
-func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
+func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string, ciphertext []byte) ([]byte, error) {
 	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
 	hashAlg, mgfAlg, _, err := hashToPKCS11(hash)
 	if err != nil {

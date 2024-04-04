@@ -15,7 +15,6 @@ import (
 
 var (
 	errNotImplemented             = errors.New("standard crypto for nano not implemented")
-	errStandardCryptoNotEnabled   = errors.New("standard crypto flag is enabled in the config")
 	errStandardCryptoObjIsInvalid = errors.New("standard crypto object is invalid")
 )
 
@@ -80,13 +79,13 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 	return standardCrypto, nil
 }
 
-func (s StandardCrypto) RSAPublicKey(keyId string) (string, error) {
+func (s StandardCrypto) RSAPublicKey(keyID string) (string, error) {
 	if len(s.rsaKeys) == 0 {
 		return "", errStandardCryptoObjIsInvalid
 	}
 
 	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
 	pem, err := s.rsaKeys[0].asymEncryption.PublicKeyInPemFormat()
 	if err != nil {
@@ -96,17 +95,17 @@ func (s StandardCrypto) RSAPublicKey(keyId string) (string, error) {
 	return pem, nil
 }
 
-func (s StandardCrypto) ECPublicKey(keyId string) (string, error) {
+func (s StandardCrypto) ECPublicKey(string) (string, error) {
 	return "", nil
 }
 
-func (s StandardCrypto) RSADecrypt(hash crypto.Hash, keyId string, keyLabel string, ciphertext []byte) ([]byte, error) {
+func (s StandardCrypto) RSADecrypt(_ crypto.Hash, keyID string, _ string, ciphertext []byte) ([]byte, error) {
 	if len(s.rsaKeys) == 0 {
 		return nil, errStandardCryptoObjIsInvalid
 	}
 
 	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
 	data, err := s.rsaKeys[0].asymDecryption.Decrypt(ciphertext)
 	if err != nil {
@@ -116,13 +115,13 @@ func (s StandardCrypto) RSADecrypt(hash crypto.Hash, keyId string, keyLabel stri
 	return data, nil
 }
 
-func (s StandardCrypto) RSAPublicKeyAsJson(keyId string) (string, error) {
+func (s StandardCrypto) RSAPublicKeyAsJson(keyID string) (string, error) {
 	if len(s.rsaKeys) == 0 {
 		return "", errStandardCryptoObjIsInvalid
 	}
 
 	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyId))
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
 	rsaPublicKeyJwk, err := jwk.FromRaw(s.rsaKeys[0].asymEncryption.PublicKey)
 	if err != nil {
@@ -137,7 +136,7 @@ func (s StandardCrypto) RSAPublicKeyAsJson(keyId string) (string, error) {
 	return string(jsonPublicKey), nil
 }
 
-func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error) {
+func (s StandardCrypto) GenerateNanoTDFSymmetricKey([]byte) ([]byte, error) {
 	return nil, errNotImplemented
 }
 
@@ -145,6 +144,6 @@ func (s StandardCrypto) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error)
 	return 0, nil, errNotImplemented
 }
 
-func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC, ephemeralPublicKey []byte) ([]byte, error) {
+func (s StandardCrypto) GenerateNanoTDFSessionKey(PrivateKeyEC, []byte) ([]byte, error) {
 	return nil, errNotImplemented
 }

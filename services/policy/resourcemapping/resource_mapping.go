@@ -5,15 +5,15 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/pkg/serviceregistry"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	"github.com/opentdf/platform/services"
+	services "github.com/opentdf/platform/services/err"
+	"github.com/opentdf/platform/services/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/services/policy/db"
 )
 
 type ResourceMappingService struct {
 	resourcemapping.UnimplementedResourceMappingServiceServer
-	dbClient *policydb.PolicyDbClient
+	dbClient *policydb.PolicyDBClient
 }
 
 func NewRegistration() serviceregistry.Registration {

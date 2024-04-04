@@ -9,13 +9,14 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/opentdf/platform/internal/security"
 	"math/big"
 	"net/url"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/opentdf/platform/services/internal/security"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/stretchr/testify/assert"

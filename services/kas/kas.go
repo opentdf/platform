@@ -9,9 +9,9 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/pkg/serviceregistry"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/access"
+	"github.com/opentdf/platform/services/pkg/serviceregistry"
 	"golang.org/x/oauth2"
 )
 

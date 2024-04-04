@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/opentdf/platform/internal/auth"
-	"github.com/opentdf/platform/internal/security"
+	"github.com/opentdf/platform/services/internal/auth"
+	"github.com/opentdf/platform/services/internal/security"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"

@@ -35,13 +35,13 @@ type StandardRSACrypto struct {
 
 type StandardECCrypto struct {
 	Identifier string
-	//ecPublicKey  *ecdh.PublicKey
-	//ecPrivateKey *ecdh.PrivateKey
+	// ecPublicKey  *ecdh.PublicKey
+	// ecPrivateKey *ecdh.PrivateKey
 }
 
 type StandardCrypto struct {
 	rsaKeys []StandardRSACrypto
-	//ecKeys  []StandardECCrypto
+	// ecKeys  []StandardECCrypto
 }
 
 // NewStandardCrypto Create a new instance of standard crypto

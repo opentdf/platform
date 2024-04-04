@@ -17,11 +17,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/services/internal/auth"
+	"github.com/opentdf/platform/services/internal/security"
 	"log/slog"
 	"strings"
 
-	"github.com/opentdf/platform/internal/auth"
-	"github.com/opentdf/platform/internal/security"
 	ocrypto "github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/services/kas/nanotdf"

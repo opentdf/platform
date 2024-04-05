@@ -276,7 +276,16 @@ func (c PolicyDbClient) DeactivateNamespace(ctx context.Context, id string) (*po
 	if err != nil {
 		return nil, err
 	}
-	if len(attrs) > 0 {
+
+	allAttrsDeactivated := true
+	for _, attr := range attrs {
+		if attr.Active.Value {
+			allAttrsDeactivated = false
+			break
+		}
+	}
+
+	if !allAttrsDeactivated {
 		slog.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 

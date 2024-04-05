@@ -1,3 +1,4 @@
+//nolint:mnd // pkzip magics and lengths are inlined for clarity
 package archive
 
 import (
@@ -108,7 +109,7 @@ func (writer *Writer) AddData(data []byte) error {
 	localFileHeader := LocalFileHeader{}
 	fileTime, fileDate := writer.getTimeDateUnMSDosFormat()
 
-	if writer.writeState == Initial {
+	if writer.writeState == Initial { //nolint:nestif // pkzip is complicated
 		localFileHeader.Signature = fileHeaderSignature
 		localFileHeader.Version = zipVersion
 		// since payload is added by chunks we set General purpose bit flag to 0x08
@@ -198,7 +199,7 @@ func (writer *Writer) AddData(data []byte) error {
 		writer.fileInfoEntries = append(writer.fileInfoEntries, writer.FileInfo)
 	}
 
-	if writer.writeState == Finished {
+	if writer.writeState == Finished { //nolint:nestif // pkzip is complicated
 		if writer.isZip64 {
 			zip64DataDescriptor := Zip64DataDescriptor{}
 			zip64DataDescriptor.Signature = dataDescriptorSignature

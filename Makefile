@@ -3,10 +3,10 @@
 
 .PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
 
-MODS=protocol/go lib/crypto sdk services examples
-HAND_MODS=lib/crypto sdk services examples
+MODS=protocol/go lib/crypto sdk service examples
+HAND_MODS=lib/crypto sdk service examples
 
-EXCLUDE_OPENAPI=./services/authorization/idp_plugin.proto
+EXCLUDE_OPENAPI=./service/authorization/idp_plugin.proto
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -33,7 +33,7 @@ fix:
 lint: proto-lint go-lint
 
 proto-lint:
-	buf lint services || (exit_code=$$?; \
+	buf lint service || (exit_code=$$?; \
 	 if [ $$exit_code -eq 100 ]; then \
       echo "Buf lint exited with code 100, treating as success"; \
 		else \
@@ -46,9 +46,9 @@ go-lint:
 
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
-	buf generate services
-	buf generate services --template buf.gen.grpc.docs.yaml
-	buf generate services --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
+	buf generate service
+	buf generate service --template buf.gen.grpc.docs.yaml
+	buf generate service --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
 	
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
@@ -63,8 +63,8 @@ clean:
 
 build: go.work proto-generate opentdf sdk/sdk examples/examples
 
-opentdf: go.work $(shell find services)
-	go build -o opentdf -v services/main.go
+opentdf: go.work $(shell find service)
+	go build -o opentdf -v service/main.go
 
 sdk/sdk: go.work $(shell find sdk)
 	(cd sdk && go build ./...)

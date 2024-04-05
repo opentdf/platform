@@ -53,20 +53,20 @@ func NewAuthConfig() (*AuthConfig, error) {
 	return &AuthConfig{dpopPublicKeyPEM: publicKey, dpopPrivateKeyPEM: privateKey}, nil
 }
 
-func NewOIDCAuthConfig(ctx context.Context, host, realm, clientId, clientSecret, subjectToken string) (*AuthConfig, error) {
+func NewOIDCAuthConfig(ctx context.Context, host, realm, clientID, clientSecret, subjectToken string) (*AuthConfig, error) {
 	authConfig, err := NewAuthConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	authConfig.accessToken, err = authConfig.fetchOIDCAccessToken(ctx, host, realm, clientId, clientSecret, subjectToken)
+	authConfig.accessToken, err = authConfig.fetchOIDCAccessToken(ctx, host, realm, clientID, clientSecret, subjectToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch acces token: %w", err)
 	}
 	return authConfig, nil
 }
-func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clientId, clientSecret, subjectToken string) (string, error) {
-	data := url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:token-exchange"}, "client_id": {clientId}, "client_secret": {clientSecret}, "subject_token": {subjectToken}, "requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"}}
+func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clientID, clientSecret, subjectToken string) (string, error) {
+	data := url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:token-exchange"}, "client_id": {clientID}, "client_secret": {clientSecret}, "subject_token": {subjectToken}, "requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"}}
 
 	body := strings.NewReader(data.Encode())
 	kcURL := fmt.Sprintf("%s/auth/realms/%s/protocol/openid-connect/token", host, realm)

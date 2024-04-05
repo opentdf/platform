@@ -704,18 +704,18 @@ func unescapeSelectorValue(selectorValue string) (string, error) {
 	if selectorValue == "" {
 		return "", nil
 	}
-	subject_external_selector_value, err := strconv.Unquote(selectorValue)
+	subjectExternalSelectorVal, err := strconv.Unquote(selectorValue)
 	if err != nil {
 		if err.Error() == "invalid syntax" {
 			slog.Debug("invalid syntax error when unquoting means there was nothing to unescape. carry on.", slog.String("subject_external_selector_value", selectorValue))
-			subject_external_selector_value = selectorValue
+			subjectExternalSelectorVal = selectorValue
 		} else {
 			slog.Error("failed to unescape double quotes in subject external selector value", slog.String("subject_external_selector_value", selectorValue), slog.String("error", err.Error()))
 			return "", err
 		}
 	}
-	slog.Debug("unescaped any double quotes in subject external selector value", slog.String("subject_external_selector_value", subject_external_selector_value))
-	return subject_external_selector_value, nil
+	slog.Debug("unescaped any double quotes in subject external selector value", slog.String("subject_external_selector_value", subjectExternalSelectorVal))
+	return subjectExternalSelectorVal, nil
 }
 
 // This function generates a SQL select statement for SubjectMappings that based on external Subject property fields & values. This relationship
@@ -751,12 +751,12 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 			where += " OR "
 		}
 
-		subject_external_selector_value, err := unescapeSelectorValue(sp.GetExternalSelectorValue())
+		subjectExternalSelectorVal, err := unescapeSelectorValue(sp.GetExternalSelectorValue())
 		if err != nil {
 			return "", nil, err
 		}
 
-		hasField := "each_condition->>'subject_external_selector_value' = '" + subject_external_selector_value + "'"
+		hasField := "each_condition->>'subject_external_selector_value' = '" + subjectExternalSelectorVal + "'"
 		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.GetExternalValue() + "\"]'::jsonb"
 		hasInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_IN'"
 		hasNotInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN'"

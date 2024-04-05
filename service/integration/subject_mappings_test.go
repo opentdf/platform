@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -878,9 +879,9 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ComplexSelectorValu
 	}
 
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	require.NoError(err)
+	require.NoError(s.T(), err)
 	s.NotZero(sm)
-	s.Len(2, sm)
+	s.Len(sm, 2)
 	s.Equal(fixtureScsWithComplexJqExp.Id, sm[0].GetSubjectConditionSet().GetId())
 	s.Equal(fixtureScsWithComplexJqExp2.Id, sm[1].GetSubjectConditionSet().GetId())
 }

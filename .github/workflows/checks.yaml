@@ -108,12 +108,15 @@ jobs:
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
-      - run: .github/scripts/hsm-init-temporary-keys.sh
-        if: matrix.crypto == 'hsm'
-      - run: .github/scripts/hsm-init-temporary-keys.sh
-        if: matrix.crypto == 'standard'
       - run: docker compose up -d --wait --wait-timeout 240
-      - run: cp opentdf-example.yaml opentdf.yaml
+      - run: |
+          .github/scripts/init-temp-keys.sh --hsm
+          cp opentdf-with-hsm.yaml opentdf.yaml
+        if: matrix.crypto == 'hsm'
+      - run: |
+          .github/scripts/init-temp-keys.sh
+          cp opentdf-example.yaml opentdf.yaml
+        if: matrix.crypto == 'standard'
       - run: go run ./service provision keycloak
       - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
         name: start server in background

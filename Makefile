@@ -3,9 +3,10 @@
 
 .PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
 
-MODS=protocol/go sdk . examples
+MODS=protocol/go lib/crypto sdk service examples
+HAND_MODS=lib/crypto sdk service examples
 
-EXCLUDE_OPENAPI=./services/authorization/idp_plugin.proto
+EXCLUDE_OPENAPI=./service/authorization/idp_plugin.proto
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -23,16 +24,16 @@ toolcheck:
 	@golangci-lint --version | grep "version 1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
 
 go.work go.work.sum:
-	go work init . examples protocol/go sdk
+	go work init $(MODS)
 	go work edit --go=1.21.8
 
 fix:
-	for m in $(MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
+	for m in $(HAND_MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
 
 lint: proto-lint go-lint
 
 proto-lint:
-	buf lint services || (exit_code=$$?; \
+	buf lint service || (exit_code=$$?; \
 	 if [ $$exit_code -eq 100 ]; then \
       echo "Buf lint exited with code 100, treating as success"; \
 		else \
@@ -41,22 +42,20 @@ proto-lint:
 		fi)
 
 go-lint:
-	for m in $(MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
+	for m in $(HAND_MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
 
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
-	buf generate services
-	buf generate services --template buf.gen.grpc.docs.yaml
-	buf generate services --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
+	buf generate service
+	buf generate service --template buf.gen.grpc.docs.yaml
+	buf generate service --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
 	
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
 test:
-	go test ./... -race
-	(cd sdk && go test ./... -race)
-	(cd examples && go test ./... -race)
+	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
@@ -64,8 +63,8 @@ clean:
 
 build: go.work proto-generate opentdf sdk/sdk examples/examples
 
-opentdf: go.work go.mod go.sum main.go $(shell find cmd internal services)
-	go build -o opentdf -v ./main.go
+opentdf: go.work $(shell find service)
+	go build -o opentdf -v service/main.go
 
 sdk/sdk: go.work $(shell find sdk)
 	(cd sdk && go build ./...)

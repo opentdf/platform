@@ -46,7 +46,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	defer tdfFile.Close()
 
 	tdf, err := client.CreateTDF(tdfFile, strReader,
-		//sdk.WithDataAttributes("https://example.com/attributes/1", "https://example.com/attributes/2"),
+		//sdk.WithDataAttributes("https://example.com/attr/attr1/value/value1"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
 				URL:       "http://localhost:8080",

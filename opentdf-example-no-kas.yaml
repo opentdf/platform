@@ -1,0 +1,29 @@
+logger:
+  level: debug
+  type: text
+  output: stdout
+# DB and Server confgurations are defaulted for local development
+# db:
+#   host: localhost
+#   port: 5432
+#   user: postgres
+#   password: changeme
+services:
+  kas:
+    enabled: false
+  policy:
+    enabled: true
+server:
+  auth:
+    enabled: false
+    audience: "http://localhost:8080"
+    issuer: http://localhost:8888/auth/realms/tdf
+    clients:
+      - "opentdf"
+  grpc:
+    reflectionEnabled: true # Default is false
+  hsm:
+    enabled: false
+  port: 8080
+opa:
+  embedded: true # Only for local development

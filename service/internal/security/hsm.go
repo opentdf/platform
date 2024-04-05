@@ -331,17 +331,16 @@ func (h *HSMSession) loadKeys(keys map[string]KeyInfo) error {
 	return nil
 }
 
-func (s *HSMSession) Close() {
-	if s == nil {
+func (h *HSMSession) Close() {
+	if h == nil {
 		return
 	}
-	ctx := s.ctx
-	sh := s.sh
+	ctx := h.ctx
+	sh := h.sh
 	if err := ctx.Logout(sh); err != nil {
 		slog.Error("pkcs11 error logging out", "err", err)
 	}
-	s.destroy()
-	s = nil
+	h.destroy()
 }
 
 func (h *HSMSession) findKey(class uint, label string) (pkcs11.ObjectHandle, error) {

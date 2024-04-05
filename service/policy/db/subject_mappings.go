@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strconv"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -46,6 +47,21 @@ func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*policy.SubjectSet, erro
 			return nil, err
 		}
 		ss = append(ss, &s)
+	}
+
+	// unescape any complex selector values with double quotes
+	for _, s := range ss {
+		for _, cg := range s.GetConditionGroups() {
+			for _, c := range cg.GetConditions() {
+				if c.GetSubjectExternalSelectorValue() != "" {
+					unescaped, err := unescapeSelectorValue(c.GetSubjectExternalSelectorValue())
+					c.SubjectExternalSelectorValue = unescaped
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
 	}
 
 	return ss, nil
@@ -235,6 +251,20 @@ func subjectMappingHydrateItem(row pgx.Row) (*policy.SubjectMapping, error) {
 		if err := protojson.Unmarshal(scsJSON, &scs); err != nil {
 			slog.Error("could not unmarshal subject condition set", slog.String("error", err.Error()), slog.String("subject condition set JSON", string(scsJSON)))
 			return nil, err
+		}
+		// unescape any complex selector values with double quotes
+		for _, ss := range scs.GetSubjectSets() {
+			for _, cg := range ss.GetConditionGroups() {
+				for _, c := range cg.GetConditions() {
+					if c.GetSubjectExternalSelectorValue() != "" {
+						unescaped, err := unescapeSelectorValue(c.GetSubjectExternalSelectorValue())
+						c.SubjectExternalSelectorValue = unescaped
+						if err != nil {
+							return nil, err
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -667,6 +697,27 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 	}, nil
 }
 
+// PostgreSQL requires the expression in 'subject_external_selector_value' to be escaped as valid JSONB, but SELECT statements that are
+// escaped will fail to find the row (i.e. 'any(index(\"hello\"))' ), and jq evaluations on escaped strings will error out. Therefore,
+// we must unescape if there are any escaped double quotes.
+func unescapeSelectorValue(selectorValue string) (string, error) {
+	if selectorValue == "" {
+		return "", nil
+	}
+	subject_external_selector_value, err := strconv.Unquote(selectorValue)
+	if err != nil {
+		if err.Error() == "invalid syntax" {
+			slog.Debug("invalid syntax error when unquoting means there was nothing to unescape. carry on.", slog.String("subject_external_selector_value", selectorValue))
+			subject_external_selector_value = selectorValue
+		} else {
+			slog.Error("failed to unescape double quotes in subject external selector value", slog.String("subject_external_selector_value", selectorValue), slog.String("error", err.Error()))
+			return "", err
+		}
+	}
+	slog.Debug("unescaped any double quotes in subject external selector value", slog.String("subject_external_selector_value", subject_external_selector_value))
+	return subject_external_selector_value, nil
+}
+
 // This function generates a SQL select statement for SubjectMappings that based on external Subject property fields & values. This relationship
 // is sometimes called Entitlements or Subject Entitlements.
 //
@@ -700,7 +751,12 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 			where += " OR "
 		}
 
-		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.GetExternalSelectorValue() + "'"
+		subject_external_selector_value, err := unescapeSelectorValue(sp.GetExternalSelectorValue())
+		if err != nil {
+			return "", nil, err
+		}
+
+		hasField := "each_condition->>'subject_external_selector_value' = '" + subject_external_selector_value + "'"
 		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.GetExternalValue() + "\"]'::jsonb"
 		hasInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_IN'"
 		hasNotInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN'"

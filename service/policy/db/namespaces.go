@@ -279,7 +279,7 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 
 	allAttrsDeactivated := true
 	for _, attr := range attrs {
-		if attr.Active.Value {
+		if attr.GetActive().GetValue() {
 			allAttrsDeactivated = false
 			break
 		}

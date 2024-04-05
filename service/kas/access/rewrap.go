@@ -19,7 +19,7 @@ import (
 	"log/slog"
 	"strings"
 
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/auth"

@@ -7,11 +7,10 @@ import (
 	"net/url"
 	"time"
 
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
-
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	kas "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 )

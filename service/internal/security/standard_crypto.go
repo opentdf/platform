@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 var (

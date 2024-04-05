@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 type AuthConfig struct {

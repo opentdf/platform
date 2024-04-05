@@ -10,9 +10,8 @@ import (
 	"math"
 	"strings"
 
-	ocrypto "github.com/opentdf/platform/lib/ocrypto"
-
 	"github.com/google/uuid"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/internal/archive"
 )
 

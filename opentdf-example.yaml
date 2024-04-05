@@ -69,7 +69,7 @@ server:
     reflectionEnabled: true # Default is false
   cryptoProvider:
     hsm:
-      enabled: true
+      enabled: false
       # As configured by hsm-init-temporary-keys.sh
       pin: "12345"
       slotlabel: "dev-token"

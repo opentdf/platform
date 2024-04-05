@@ -191,29 +191,19 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 }
 
 func TestCertificateHandlerWithEc256(t *testing.T) {
-	curve := elliptic.P256()
-	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
-	if err != nil {
-		t.Errorf("Failed to generate a private key: %v", err)
-	}
-
-	hsmSession, _ := security.New(&security.HSMConfig{})
+	hsmSession, _ := security.NewCryptoProvider(config)
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
 		OIDCVerifier:   nil,
 	}
-	hsmSession.EC = &security.ECKeyPair{
-		PublicKey:   &privateKey.PublicKey,
-		Certificate: &x509.Certificate{},
-	}
 
 	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
 	if err != nil {
 		t.Errorf("got %s, but should be nil", err)
 	}
-	if result == nil || !strings.Contains(result.GetValue(), "BEGIN CERTIFICATE") {
+	if result == nil || !strings.Contains(result.GetValue(), "BEGIN PUBLIC KEY") {
 		t.Errorf("got %s, but should be cert", result)
 	}
 }

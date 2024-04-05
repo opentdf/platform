@@ -9,7 +9,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"net/url"
 	"os"
@@ -18,7 +17,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/service/internal/security"
-
+	"github.com/stretchr/testify/require"
+	
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/stretchr/testify/assert"
 )

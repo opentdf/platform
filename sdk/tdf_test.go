@@ -401,7 +401,7 @@ func TestSimpleTDF(t *testing.T) {
 	_ = os.Remove(tdfFilename)
 }
 
-func TestTDFReader(t *testing.T) { //nolint:gocognit
+func TestTDFReader(t *testing.T) { //nolint:gocognit // requires for testing tdf
 	serverURL, closer, sdk := runKas()
 	defer closer()
 

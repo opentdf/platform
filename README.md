@@ -42,14 +42,14 @@
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
-`brew install buf grpcurl goose openssl pkcs11-tools softhsm`
+`brew install buf grpcurl openssl pkcs11-tools softhsm`
 
 ### Run
 
 > [!NOTE]
 > Migrations are handled automatically by the server. This can be disabled via the config file, as
 > needed. They can also be run manually using the `migrate` command
-> (`go run github.com/opentdf/platform/service migrate -h`).
+> (`make go.work`;`go run github.com/opentdf/platform/service migrate up`).
 
 1. `docker-compose up`
 2. Create an OpenTDF config file: `opentdf.yaml`

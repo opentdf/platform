@@ -494,11 +494,12 @@ func TestLegacyBearerTokenEtc(t *testing.T) {
 }
 
 func TestHandlerAuthFailure0(t *testing.T) {
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
 
 	body := `{"mock": "value"}`
@@ -510,11 +511,12 @@ func TestHandlerAuthFailure0(t *testing.T) {
 }
 
 func TestHandlerAuthFailure1(t *testing.T) {
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
 
 	body := `{"mock": "value"}`
@@ -530,11 +532,12 @@ func TestHandlerAuthFailure1(t *testing.T) {
 }
 
 func TestHandlerAuthFailure2(t *testing.T) {
+	hsmSession, _ := security.New(&security.HSMConfig{})
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
-		URI:          *kasURI,
-		Session:      security.HSMSession{},
-		OIDCVerifier: nil,
+		URI:            *kasURI,
+		CryptoProvider: hsmSession,
+		OIDCVerifier:   nil,
 	}
 
 	body := `{"mock": "value"}`

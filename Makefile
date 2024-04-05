@@ -3,8 +3,8 @@
 
 .PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
 
-MODS=protocol/go lib/crypto sdk service examples
-HAND_MODS=lib/crypto sdk service examples
+MODS=protocol/go lib/ocrypto sdk service examples
+HAND_MODS=lib/ocrypto sdk service examples
 
 EXCLUDE_OPENAPI=./service/authorization/idp_plugin.proto
 

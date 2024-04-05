@@ -57,11 +57,6 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "kas",
 		ServiceDesc: &kaspb.AccessService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			hsm := srp.OTDF.HSM
-			if hsm == nil {
-				slog.Error("hsm not enabled")
-				panic(fmt.Errorf("hsm not enabled"))
-			}
 			// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
 			kasURLString := "https://" + srp.OTDF.HTTPServer.Addr
 			kasURI, err := url.Parse(kasURLString)
@@ -70,10 +65,10 @@ func NewRegistration() serviceregistry.Registration {
 			}
 
 			p := access.Provider{
-				URI:          *kasURI,
-				SDK:          srp.SDK,
-				Session:      *hsm,
-				OIDCVerifier: loadIdentityProvider(),
+				URI:            *kasURI,
+				AttributeSvc:   nil,
+				CryptoProvider: srp.OTDF.CryptoProvider,
+				OIDCVerifier:   loadIdentityProvider(),
 			}
 			return &p, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				kas, ok := server.(*access.Provider)

@@ -99,18 +99,13 @@ func TestHashToPKCS11Success(t *testing.T) {
 }
 
 func TestDecryptOAEPUnsupportedRSAFailure(t *testing.T) {
-	objectHandle := pkcs11.ObjectHandle(2)
 	sessionHandle := pkcs11.SessionHandle(1)
-
 	session := &HSMSession{
 		ctx: pkcs11.Ctx{},
 		sh:  sessionHandle,
 	}
 
-	key := PrivateKeyRSA(objectHandle)
-	unsupportedRSA := crypto.BLAKE2b_384
-
-	decrypted, err := session.DecryptOAEP(&key, []byte("sample ciphertext"), unsupportedRSA, []byte("sample label"))
+	decrypted, err := session.RSADecrypt(crypto.BLAKE2b_384, "unknown", "sample label", []byte("sample ciphertext"))
 
 	t.Log(err)
 	t.Log(decrypted)

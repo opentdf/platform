@@ -8,10 +8,12 @@
 
 ## Documentation
 
+<!-- Broken
 - [Home](https://opentdf.github.io/platform)
+-->
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
-- [Policy Config Schema](./migrations/20240212000000_schema_erd.md)
+- [Policy Config Schema](./service/migrations/20240212000000_schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
 
 ## Development
@@ -61,59 +63,6 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 Note: support was added to provision a set of fixture data into the database.
 Run `go run github.com/opentdf/platform/service provision fixtures -h` for more information.
-
-### Test
-
-```bash
-  grpcurl -plaintext localhost:8080 list
-
-  authorization.AuthorizationService
-  grpc.reflection.v1.ServerReflection
-  grpc.reflection.v1alpha.ServerReflection
-  kasregistry.KeyAccessServerRegistryService
-  policy.attributes.AttributesService
-  policy.namespaces.NamespaceService
-  policy.resourcemapping.ResourceMappingService
-  policy.subjectmapping.SubjectMappingService
-
-  grpcurl -plaintext localhost:8080 list policy.attributes.AttributesService
-
-  policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
-  policy.attributes.AttributesService.AssignKeyAccessServerToValue
-  policy.attributes.AttributesService.CreateAttribute
-  policy.attributes.AttributesService.CreateAttributeValue
-  policy.attributes.AttributesService.DeactivateAttribute
-  policy.attributes.AttributesService.DeactivateAttributeValue
-  policy.attributes.AttributesService.GetAttribute
-  policy.attributes.AttributesService.GetAttributeValue
-  policy.attributes.AttributesService.GetAttributesByValueFqns
-  policy.attributes.AttributesService.ListAttributeValues
-  policy.attributes.AttributesService.ListAttributes
-  policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute
-  policy.attributes.AttributesService.RemoveKeyAccessServerFromValue
-  policy.attributes.AttributesService.UpdateAttribute
-  policy.attributes.AttributesService.UpdateAttributeValue
-```
-
-Create Attribute
-
-```bash
-grpcurl -plaintext -d @ localhost:8080 policy.attributes.AttributesService/CreateAttribute <<EOM
-{
-        "name": "attribute1",
-        "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
-        "values": ["test1", "test2"],
-        "namespace_id": "0d94e00a-7bd3-4482-afe3-f1e4b03c1353"
-}
-
-EOM
-```
-
-List Attributes
-
-```bash
-grpcurl -plaintext localhost:8080 policy.attributes.AttributesService/ListAttributes
-```
 
 ### Generation
 
@@ -166,20 +115,4 @@ To see how to generate key pairs that KAS can use, review the [the temp keys ini
 ### Policy
 
 The policy service is responsible for managing policy configurations. It provides a gRPC API for
-creating, updating, and deleting policy configurations.
-
-#### Attributes
-
-##### Namespaces
-
-##### Definitions
-
-##### Values
-
-#### Attribute FQNs
-
-Attribute FQNs are a unique string identifier for an attribute (and its respective parts) that is
-used to reference the attribute in policy configurations. Specific places where this will be used:
-
-- TDF attributes
-- Key Access Server (KAS) to determine key release
+creating, updating, and deleting policy configurations. [Docs](https://github.com/opentdf/platform/tree/main/docs)

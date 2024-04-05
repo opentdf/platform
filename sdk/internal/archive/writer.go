@@ -46,6 +46,8 @@ const (
 	Finished
 )
 
+const extraFieldSizeOffset = 4
+
 type FileInfo struct {
 	crc      uint32
 	size     int64
@@ -152,7 +154,7 @@ func (writer *Writer) AddData(data []byte) error {
 		if writer.isZip64 {
 			zip64ExtendedLocalInfoExtraField := Zip64ExtendedLocalInfoExtraField{}
 			zip64ExtendedLocalInfoExtraField.Signature = zip64ExternalID
-			zip64ExtendedLocalInfoExtraField.Size = zip64ExtendedLocalInfoExtraFieldSize - 4
+			zip64ExtendedLocalInfoExtraField.Size = zip64ExtendedLocalInfoExtraFieldSize - extraFieldSizeOffset
 			zip64ExtendedLocalInfoExtraField.OriginalSize = uint64(writer.FileInfo.size)
 			zip64ExtendedLocalInfoExtraField.CompressedSize = uint64(writer.FileInfo.size)
 
@@ -326,7 +328,7 @@ func (writer *Writer) writeCentralDirectory() error {
 		if writer.isZip64 {
 			zip64ExtendedInfoExtraField := Zip64ExtendedInfoExtraField{}
 			zip64ExtendedInfoExtraField.Signature = zip64ExternalID
-			zip64ExtendedInfoExtraField.Size = zip64ExtendedInfoExtraFieldSize - 4
+			zip64ExtendedInfoExtraField.Size = zip64ExtendedInfoExtraFieldSize - extraFieldSizeOffset
 			zip64ExtendedInfoExtraField.OriginalSize = uint64(writer.fileInfoEntries[i].size)
 			zip64ExtendedInfoExtraField.CompressedSize = uint64(writer.fileInfoEntries[i].size)
 			zip64ExtendedInfoExtraField.LocalFileHeaderOffset = uint64(writer.fileInfoEntries[i].offset)
@@ -400,9 +402,10 @@ func (writer *Writer) writeEndOfCentralDirectory() error {
 
 // WriteZip64EndOfCentralDirectory write the zip64 end of central directory record struct to the archive.
 func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
+	const zip64EndOfCDRecordSizeOffset = 12
 	zip64EndOfCDRecord := Zip64EndOfCDRecord{}
 	zip64EndOfCDRecord.Signature = zip64EndOfCDSignature
-	zip64EndOfCDRecord.RecordSize = zip64EndOfCDRecordSize - 12
+	zip64EndOfCDRecord.RecordSize = zip64EndOfCDRecordSize - zip64EndOfCDRecordSizeOffset
 	zip64EndOfCDRecord.VersionMadeBy = zipVersion
 	zip64EndOfCDRecord.VersionToExtract = zipVersion
 	zip64EndOfCDRecord.DiskNumber = 0
@@ -452,10 +455,18 @@ func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
 }
 
 // GetTimeDateUnMSDosFormat Get the time and date in MSDOS format.
+const defaultSecondValue = 29
+
+const monthShift = 5
+
+const baseYear = 80
+
+const halfSecond = 2
+
 func (writer *Writer) getTimeDateUnMSDosFormat() (uint16, uint16) {
 	t := time.Now().UTC()
-	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/2), 29))
-	dateInDos := (t.Year()-80)<<9 | int((t.Month()+1)<<5) | t.Day()
+	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/halfSecond), float64(defaultSecondValue)))
+	dateInDos := (t.Year()-baseYear)<<9 | int((t.Month()+1)<<monthShift) | t.Day()
 	return uint16(timeInDos), uint16(dateInDos)
 }
 

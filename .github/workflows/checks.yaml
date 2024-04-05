@@ -105,7 +105,7 @@ jobs:
       - run: docker compose up -d --wait --wait-timeout 240
       - run: cp opentdf-example.yaml opentdf.yaml
       - run: go run ./service provision keycloak
-      - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
+      - uses: JarvusInnovations/background-action@0444a073df6a8899a8c117e41a1e23843996f4ce
         name: start server in background
         with:
           run: |

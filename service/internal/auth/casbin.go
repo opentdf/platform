@@ -237,38 +237,39 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 		roleMap = e.Config.RoleMap
 	}
 
-	p := strings.Split(roleClaim, ".")
-	if n, ok := t.Get(p[0]); ok {
-		slog.Debug("role claim", slog.String("claim", roleClaim), slog.Any("roles", n))
-		// use dotnotation if the claim is nested
-		r := n
-		if len(p) > 1 {
-			r = util.Dotnotation(n.(map[string]interface{}), strings.Join(p[1:], "."))
-			if r == nil {
-				slog.Warn("role claim not found", slog.String("claim", roleClaim), slog.Any("roles", n))
-				return nil, nil
-			}
-		}
-
-		// check the type of the role claim
-		switch r.(type) {
-		case string:
-			roles = append(roles, r.(string))
-		case []interface{}:
-			for _, rr := range r.([]interface{}) {
-				switch rr.(type) {
-				case string:
-					roles = append(roles, rr.(string))
-				default:
-				}
-			}
-		default:
-			slog.Warn("could not get type of role claim", slog.String("claim", roleClaim), slog.Any("roles", r))
+	selectors := strings.Split(roleClaim, ".")
+	claim, exists := t.Get(selectors[0])
+	if !exists {
+		slog.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
+		return nil, nil
+	}
+	slog.Debug("root claim found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+	// use dotnotation if the claim is nested
+	if len(selectors) > 1 {
+		claimMap, ok := claim.(map[string]interface{})
+		if !ok {
+			slog.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
 			return nil, nil
 		}
+		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
+		if claim == nil {
+			slog.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			return nil, nil
+		}
+	}
 
-	} else {
-		slog.Warn("role claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
+	// check the type of the role claim
+	switch v := claim.(type) {
+	case string:
+		roles = append(roles, v)
+	case []interface{}:
+		for _, rr := range v {
+			if r, ok := rr.(string); ok {
+				roles = append(roles, r)
+			}
+		}
+	default:
+		slog.Warn("could not get claim type", slog.String("selector", roleClaim), slog.Any("claims", claim))
 		return nil, nil
 	}
 

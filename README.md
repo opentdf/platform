@@ -38,11 +38,13 @@
   - install with `go install github.com/bufbuild/buf/cmd/buf`
 - [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
   - install with `go install github.com/fullstorydev/grpcurl/cmd/grpcurl`
+- [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices
+  - install with `brew install golangci-lint`
 - [softHSM](https://github.com/opendnssec/SoftHSMv2) is used to emulate hardware security (aka `PKCS #11`)
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
-`brew install buf grpcurl openssl pkcs11-tools softhsm`
+`brew install buf grpcurl openssl pkcs11-tools softhsm golangci-lint`
 
 ### Run
 

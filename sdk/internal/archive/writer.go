@@ -1,4 +1,4 @@
-//nolint:mnd // pkzip magics and lengths are inlined for clarity
+//nolint:gomnd // pkzip magics and lengths are inlined for clarity
 package archive
 
 import (
@@ -45,8 +45,6 @@ const (
 	Appending
 	Finished
 )
-
-const extraFieldSizeOffset = 4
 
 type FileInfo struct {
 	crc      uint32
@@ -154,7 +152,7 @@ func (writer *Writer) AddData(data []byte) error {
 		if writer.isZip64 {
 			zip64ExtendedLocalInfoExtraField := Zip64ExtendedLocalInfoExtraField{}
 			zip64ExtendedLocalInfoExtraField.Signature = zip64ExternalID
-			zip64ExtendedLocalInfoExtraField.Size = zip64ExtendedLocalInfoExtraFieldSize - extraFieldSizeOffset
+			zip64ExtendedLocalInfoExtraField.Size = zip64ExtendedLocalInfoExtraFieldSize - 4
 			zip64ExtendedLocalInfoExtraField.OriginalSize = uint64(writer.FileInfo.size)
 			zip64ExtendedLocalInfoExtraField.CompressedSize = uint64(writer.FileInfo.size)
 
@@ -328,7 +326,7 @@ func (writer *Writer) writeCentralDirectory() error {
 		if writer.isZip64 {
 			zip64ExtendedInfoExtraField := Zip64ExtendedInfoExtraField{}
 			zip64ExtendedInfoExtraField.Signature = zip64ExternalID
-			zip64ExtendedInfoExtraField.Size = zip64ExtendedInfoExtraFieldSize - extraFieldSizeOffset
+			zip64ExtendedInfoExtraField.Size = zip64ExtendedInfoExtraFieldSize - 4
 			zip64ExtendedInfoExtraField.OriginalSize = uint64(writer.fileInfoEntries[i].size)
 			zip64ExtendedInfoExtraField.CompressedSize = uint64(writer.fileInfoEntries[i].size)
 			zip64ExtendedInfoExtraField.LocalFileHeaderOffset = uint64(writer.fileInfoEntries[i].offset)
@@ -402,10 +400,9 @@ func (writer *Writer) writeEndOfCentralDirectory() error {
 
 // WriteZip64EndOfCentralDirectory write the zip64 end of central directory record struct to the archive.
 func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
-	const zip64EndOfCDRecordSizeOffset = 12
 	zip64EndOfCDRecord := Zip64EndOfCDRecord{}
 	zip64EndOfCDRecord.Signature = zip64EndOfCDSignature
-	zip64EndOfCDRecord.RecordSize = zip64EndOfCDRecordSize - zip64EndOfCDRecordSizeOffset
+	zip64EndOfCDRecord.RecordSize = zip64EndOfCDRecordSize - 12
 	zip64EndOfCDRecord.VersionMadeBy = zipVersion
 	zip64EndOfCDRecord.VersionToExtract = zipVersion
 	zip64EndOfCDRecord.DiskNumber = 0

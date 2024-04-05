@@ -36,7 +36,7 @@ tmp-gen/
 /opentdf
 /sdkjava/target
 /serviceapp
-/services/opentdf
+/service/opentdf
 
 *.zip
 sensitive.txt.tdf

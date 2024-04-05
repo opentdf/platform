@@ -9,6 +9,7 @@ import (
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/internal/idpplugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRegoEntitlementsEmpty(t *testing.T) {
@@ -16,7 +17,7 @@ func TestRegoEntitlementsEmpty(t *testing.T) {
 	inputJSON := `{}`
 	var input interface{}
 	err := json.Unmarshal([]byte(inputJSON), &input)
-	assert.NoError(t, err) //nolint:testifylint
+	require.NoError(t, err)
 	EvaluateRegoEntitlements(t, input, expected)
 }
 
@@ -109,30 +110,27 @@ func TestRegoEntitlementsSimple(t *testing.T) {
 }`
 	var input interface{}
 	err := json.Unmarshal([]byte(inputJSON), &input)
-	assert.NoError(t, err) //nolint:testifylint
+	require.NoError(t, err)
 	EvaluateRegoEntitlements(t, input, expected)
 }
 
 func EvaluateRegoEntitlements(t *testing.T, input interface{}, expected []interface{}) {
 	ctx := context.Background()
 	policy, err := os.ReadFile("entitlements/entitlements.rego")
-	if assert.NoError(t, err) {
-		regoObj := rego.New(
-			rego.Query("data.opentdf.entitlements.attributes"),
-			rego.Module("entitlements.rego", string(policy)),
-			rego.Dump(os.Stderr),
-			rego.EnablePrintStatements(true),
-		)
-		evalQuery, err := regoObj.PrepareForEval(ctx)
-		if assert.NoError(t, err) {
-			resultSet, err := evalQuery.Eval(ctx, rego.EvalInput(input))
-			if assert.NoError(t, err) {
-				for _, result := range resultSet {
-					for _, expression := range result.Expressions {
-						assert.Equal(t, expected, expression.Value)
-					}
-				}
-			}
+	require.NoError(t, err)
+	regoObj := rego.New(
+		rego.Query("data.opentdf.entitlements.attributes"),
+		rego.Module("entitlements.rego", string(policy)),
+		rego.Dump(os.Stderr),
+		rego.EnablePrintStatements(true),
+	)
+	evalQuery, err := regoObj.PrepareForEval(ctx)
+	require.NoError(t, err)
+	resultSet, err := evalQuery.Eval(ctx, rego.EvalInput(input))
+	require.NoError(t, err)
+	for _, result := range resultSet {
+		for _, expression := range result.Expressions {
+			assert.Equal(t, expected, expression.Value)
 		}
 	}
 }
@@ -143,7 +141,7 @@ func TestRegoEntitlementsKeycloakEmpty(t *testing.T) {
 	inputJSON := `{}`
 	var input interface{}
 	err := json.Unmarshal([]byte(inputJSON), &input)
-	assert.NoError(t, err) //nolint:testifylint
+	require.NoError(t, err)
 	EvaluateRegoEntitlementsKeycloak(t, input, expected)
 }
 
@@ -153,23 +151,20 @@ func EvaluateRegoEntitlementsKeycloak(t *testing.T, input interface{}, expected 
 	idpplugin.KeycloakBuiltins()
 	ctx := context.Background()
 	policy, err := os.ReadFile("entitlements/entitlements-keycloak.rego")
-	if assert.NoError(t, err) {
-		regoObj := rego.New(
-			rego.Query("data.opentdf.entitlements.attributes"),
-			rego.Module("entitlements-keycloak.rego", string(policy)),
-			rego.Dump(os.Stderr),
-			rego.EnablePrintStatements(true),
-		)
-		evalQuery, err := regoObj.PrepareForEval(ctx)
-		if assert.NoError(t, err) {
-			resultSet, err := evalQuery.Eval(ctx, rego.EvalInput(input))
-			if assert.NoError(t, err) {
-				for _, result := range resultSet {
-					for _, expression := range result.Expressions {
-						assert.Equal(t, expected, expression.Value)
-					}
-				}
-			}
+	require.NoError(t, err)
+	regoObj := rego.New(
+		rego.Query("data.opentdf.entitlements.attributes"),
+		rego.Module("entitlements-keycloak.rego", string(policy)),
+		rego.Dump(os.Stderr),
+		rego.EnablePrintStatements(true),
+	)
+	evalQuery, err := regoObj.PrepareForEval(ctx)
+	require.NoError(t, err)
+	resultSet, err := evalQuery.Eval(ctx, rego.EvalInput(input))
+	require.NoError(t, err)
+	for _, result := range resultSet {
+		for _, expression := range result.Expressions {
+			assert.Equal(t, expected, expression.Value)
 		}
 	}
 }
@@ -198,7 +193,7 @@ func TestRegoConditionSimple(t *testing.T) {
 }`
 	var input interface{}
 	err := json.Unmarshal([]byte(inputJSON), &input)
-	assert.NoError(t, err) //nolint:testifylint
+	require.NoError(t, err)
 	EvaluateRegoConditions(t, input, expected)
 }
 
@@ -206,27 +201,23 @@ func TestRegoConditionSimple(t *testing.T) {
 func EvaluateRegoConditions(t *testing.T, input interface{}, expected bool) {
 	ctx := context.Background()
 	policy, err := os.ReadFile("entitlements/entitlements.rego")
-	if assert.NoError(t, err) { //nolint:nestif,nestif testify linted
-		policyTest, err := os.ReadFile("entitlements/conditions-test.rego")
-		if assert.NoError(t, err) {
-			regoObj := rego.New(
-				rego.Query("data.opentdf.entitlements_test.condition_result"),
-				rego.Module("entitlements.rego", string(policy)),
-				rego.Module("conditions-test.rego", string(policyTest)),
-				rego.Dump(os.Stderr),
-				rego.EnablePrintStatements(true),
-			)
-			evalQuery, err := regoObj.PrepareForEval(ctx)
-			if assert.NoError(t, err) {
-				resultSet, err := evalQuery.Eval(ctx, rego.EvalInput(input))
-				if assert.NoError(t, err) {
-					for _, result := range resultSet {
-						for _, expression := range result.Expressions {
-							assert.Equal(t, expected, expression.Value)
-						}
-					}
-				}
-			}
+	require.NoError(t, err)
+	policyTest, err := os.ReadFile("entitlements/conditions-test.rego")
+	require.NoError(t, err)
+	regoObj := rego.New(
+		rego.Query("data.opentdf.entitlements_test.condition_result"),
+		rego.Module("entitlements.rego", string(policy)),
+		rego.Module("conditions-test.rego", string(policyTest)),
+		rego.Dump(os.Stderr),
+		rego.EnablePrintStatements(true),
+	)
+	evalQuery, err := regoObj.PrepareForEval(ctx)
+	require.NoError(t, err)
+	resultSet, err := evalQuery.Eval(ctx, rego.EvalInput(input))
+	require.NoError(t, err)
+	for _, result := range resultSet {
+		for _, expression := range result.Expressions {
+			assert.Equal(t, expected, expression.Value)
 		}
 	}
 }

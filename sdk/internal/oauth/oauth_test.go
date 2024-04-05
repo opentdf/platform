@@ -510,7 +510,7 @@ func setupWiremock(ctx context.Context, t *testing.T) (tc.Container, *url.URL) {
 		t.Fatalf("error getting endpoint from keycloak: %v", err)
 	}
 
-	wiremockURL, err := url.Parse(net.JoinHostPort(containerIP, "8181") + "/claims")
+	wiremockURL, err := url.Parse(fmt.Sprintf("http://%s", net.JoinHostPort(containerIP, "8181")) + "/claims")
 	if err != nil {
 		panic(err)
 	}

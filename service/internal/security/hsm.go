@@ -6,6 +6,8 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -14,15 +16,21 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/lestrrat-go/jwx/v2/jwk"
+
 	"github.com/miekg/pkcs11"
 	"golang.org/x/crypto/hkdf"
 )
 
 const (
-	ErrHSMUnexpected = Error("hsm unexpected")
-	ErrHSMDecrypt    = Error("hsm decrypt error")
-	ErrHSMNotFound   = Error("hsm unavailable")
-	ErrKeyConfig     = Error("key configuration error")
+	ErrCertNotFound        = Error("not found")
+	ErrCertificateEncode   = Error("certificate encode error")
+	ErrPublicKeyMarshal    = Error("public key marshal error")
+	ErrHSMUnexpected       = Error("hsm unexpected")
+	ErrHSMDecrypt          = Error("hsm decrypt error")
+	ErrHSMNotFound         = Error("hsm unavailable")
+	ErrKeyConfig           = Error("key configuration error")
+	ErrUnknownHashFunction = Error("unknown hash function")
 )
 const keyLength = 32
 
@@ -323,17 +331,16 @@ func (h *HSMSession) loadKeys(keys map[string]KeyInfo) error {
 	return nil
 }
 
-func (s *HSMSession) Destroy() {
-	if s == nil {
+func (h *HSMSession) Close() {
+	if h == nil {
 		return
 	}
-	ctx := s.ctx
-	sh := s.sh
+	ctx := h.ctx
+	sh := h.sh
 	if err := ctx.Logout(sh); err != nil {
 		slog.Error("pkcs11 error logging out", "err", err)
 	}
-	s.destroy()
-	s = nil
+	h.destroy()
 }
 
 func (h *HSMSession) findKey(class uint, label string) (pkcs11.ObjectHandle, error) {
@@ -493,25 +500,6 @@ func (h *HSMSession) LoadECKey(info KeyInfo) (*ECKeyPair, error) {
 	return &pair, nil
 }
 
-func (session *HSMSession) DecryptOAEP(key *PrivateKeyRSA, ciphertext []byte, hashFunction crypto.Hash, label []byte) ([]byte, error) {
-	hashAlg, mgfAlg, _, err := hashToPKCS11(hashFunction)
-	if err != nil {
-		return nil, errors.Join(ErrHSMDecrypt, err)
-	}
-
-	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED, label))
-
-	err = session.ctx.DecryptInit(session.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(*key))
-	if err != nil {
-		return nil, errors.Join(ErrHSMDecrypt, err)
-	}
-	decrypt, err := session.ctx.Decrypt(session.sh, ciphertext)
-	if err != nil {
-		return nil, errors.Join(ErrHSMDecrypt, err)
-	}
-	return decrypt, nil
-}
-
 func hashToPKCS11(hashFunction crypto.Hash) (hashAlg uint, mgfAlg uint, hashLen uint, err error) {
 	switch hashFunction {
 	case crypto.SHA1:
@@ -529,7 +517,7 @@ func hashToPKCS11(hashFunction crypto.Hash) (hashAlg uint, mgfAlg uint, hashLen 
 	}
 }
 
-func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte, key PrivateKeyEC) ([]byte, error) {
+func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error) {
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
@@ -548,7 +536,7 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte,
 		pkcs11.NewMechanism(pkcs11.CKM_ECDH1_DERIVE, &params),
 	}
 
-	handle, err := h.ctx.DeriveKey(h.sh, mech, pkcs11.ObjectHandle(key), template)
+	handle, err := h.ctx.DeriveKey(h.sh, mech, pkcs11.ObjectHandle(h.EC.PrivateKey), template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive symmetric key: %w", err)
 	}
@@ -657,6 +645,89 @@ func (h *HSMSession) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
 	publicKeyBytes := pubBytes[0].Value
 
 	return PrivateKeyEC(prvHandle), publicKeyBytes, nil
+}
+
+func (h *HSMSession) RSAPublicKey(keyID string) (string, error) {
+	// TODO: For now ignore the key id
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
+
+	if h.RSA == nil {
+		return "", ErrCertNotFound
+	}
+
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.RSA.PublicKey)
+	if err != nil {
+		return "", errors.Join(ErrPublicKeyMarshal, err)
+	}
+
+	certPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:    "PUBLIC KEY",
+			Headers: nil,
+			Bytes:   pubkeyBytes,
+		},
+	)
+	if certPem == nil {
+		return "", ErrCertificateEncode
+	}
+	return string(certPem), nil
+}
+
+func (h *HSMSession) RSAPublicKeyAsJSON(keyID string) (string, error) {
+	// TODO: For now ignore the key id
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
+
+	rsaPublicKeyJwk, err := jwk.FromRaw(h.RSA.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("jwk.FromRaw: %w", err)
+	}
+
+	jsonPublicKey, err := json.Marshal(rsaPublicKeyJwk)
+	if err != nil {
+		return "", fmt.Errorf("jwk.FromRaw: %w", err)
+	}
+
+	return string(jsonPublicKey), nil
+}
+
+func (h *HSMSession) ECPublicKey(string) (string, error) {
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.EC.PublicKey)
+	if err != nil {
+		return "", errors.Join(ErrPublicKeyMarshal, err)
+	}
+	pubkeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:    "PUBLIC KEY",
+			Headers: nil,
+			Bytes:   pubkeyBytes,
+		},
+	)
+
+	return string(pubkeyPem), nil
+}
+
+func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string, ciphertext []byte) ([]byte, error) {
+	// TODO: For now ignore the key id
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
+
+	hashAlg, mgfAlg, _, err := hashToPKCS11(hash)
+	if err != nil {
+		return nil, errors.Join(ErrHSMDecrypt, err)
+	}
+
+	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP,
+		pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED,
+			[]byte(keyLabel)))
+
+	err = h.ctx.DecryptInit(h.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(h.RSA.PrivateKey))
+	if err != nil {
+		return nil, errors.Join(ErrHSMDecrypt, err)
+	}
+	decrypt, err := h.ctx.Decrypt(h.sh, ciphertext)
+	if err != nil {
+		return nil, errors.Join(ErrHSMDecrypt, err)
+	}
+	return decrypt, nil
 }
 
 func versionSalt() []byte {

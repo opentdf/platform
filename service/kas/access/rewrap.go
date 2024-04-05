@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -19,14 +16,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"strings"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/nanotdf"
 	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
@@ -34,9 +30,6 @@ import (
 	"google.golang.org/grpc/status"
 	"gopkg.in/go-jose/go-jose.v2/jwt"
 )
-
-const ivSize = 12
-const tagSize = 12
 
 type RequestBody struct {
 	AuthToken       string         `json:"authToken"`
@@ -124,7 +117,7 @@ func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 }
 
 type verifiedRequest struct {
-	publicKey   crypto.PublicKey
+	publicKey   crypto.PublicKey // TODO: Remove this
 	requestBody *RequestBody
 	cl          *customClaimsHeader
 	bearerToken string
@@ -262,14 +255,13 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.requestBody.Algorithm == "ec:secp256r1" {
-		return nanoTDFRewrap(*body, &p.Session, p.Session.EC.PrivateKey)
+		return p.nanoTDFRewrap(*body)
 	}
 	return p.tdf3Rewrap(ctx, body)
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kaspb.RewrapResponse, error) {
-	symmetricKey, err := p.Session.DecryptOAEP(
-		&p.Session.RSA.PrivateKey, body.requestBody.KeyAccess.WrappedKey, crypto.SHA1, nil)
+	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, "UnKnown", "", body.requestBody.KeyAccess.WrappedKey)
 	if err != nil {
 		slog.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")
@@ -307,9 +299,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 		return nil, err403("forbidden")
 	}
 
-	rewrappedKey, err := tdf3.EncryptWithPublicKey(symmetricKey, body.publicKey.(*rsa.PublicKey))
+	asymEncrypt, err := ocrypto.NewAsymEncryption(body.requestBody.ClientPublicKey)
 	if err != nil {
-		slog.WarnContext(ctx, "rewrap: encryptWithPublicKey failed", "err", err, "clientPublicKey", &body.publicKey)
+		slog.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
+	}
+
+	rewrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
+	if err != nil {
+		slog.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.publicKey)
 		return nil, err400("bad key for rewrap")
 	}
 
@@ -320,11 +317,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}, nil
 }
 
-func nanoTDFRewrap(
-	body verifiedRequest,
-	session *security.HSMSession,
-	key security.PrivateKeyEC,
-) (*kaspb.RewrapResponse, error) {
+func (p *Provider) nanoTDFRewrap(body verifiedRequest) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
 
 	header, err := nanotdf.ReadNanoTDFHeader(headerReader)
@@ -332,7 +325,7 @@ func nanoTDFRewrap(
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	symmetricKey, err := session.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key, key)
+	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
@@ -349,11 +342,11 @@ func nanoTDFRewrap(
 		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
 	}
 
-	privateKeyHandle, publicKeyHandle, err := session.GenerateEphemeralKasKeys()
+	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-	sessionKey, err := session.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
+	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
@@ -389,21 +382,15 @@ func nanoTDFRewrap(
 }
 
 func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
-	block, err := aes.NewCipher(sessionKey)
+	gcm, err := ocrypto.NewAESGcm(sessionKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cipher block: %w", err)
+		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
 	}
 
-	aesGcm, err := cipher.NewGCMWithTagSize(block, tagSize)
+	cipherText, err := gcm.Encrypt(dek)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create NewGCMWithTagSize: %w", err)
+		return nil, fmt.Errorf("crypto.AsymEncryption.encrypt:%w", err)
 	}
 
-	iv := make([]byte, ivSize)
-	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, fmt.Errorf("failed to generate IV: %w", err)
-	}
-
-	cipherText := aesGcm.Seal(iv, iv, dek, nil)
 	return cipherText, nil
 }

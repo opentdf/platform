@@ -1,4 +1,4 @@
-package crypto
+package ocrypto
 
 import (
 	"crypto"
@@ -10,7 +10,7 @@ import (
 )
 
 type AsymDecryption struct {
-	privateKey *rsa.PrivateKey
+	PrivateKey *rsa.PrivateKey
 }
 
 // NewAsymDecryption creates and returns a new AsymDecryption.
@@ -37,11 +37,11 @@ func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
 
 // Decrypt decrypts ciphertext with private key.
 func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
-	if asymDecryption.privateKey == nil {
+	if asymDecryption.PrivateKey == nil {
 		return nil, errors.New("failed to decrypt, private key is empty")
 	}
 
-	bytes, err := asymDecryption.privateKey.Decrypt(nil,
+	bytes, err := asymDecryption.PrivateKey.Decrypt(nil,
 		data,
 		&rsa.OAEPOptions{Hash: crypto.SHA1})
 	if err != nil {

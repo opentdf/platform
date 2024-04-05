@@ -86,26 +86,26 @@ For development, we use [the SoftHSM library](https://www.softhsm.org/),
 which presents a `PKCS #11` interface to on CPU cryptography libraries.
 
 ```
-export OPENTDF_SERVER_HSM_PIN=12345
-export OPENTDF_SERVER_HSM_MODULEPATH=/lib/softhsm/libsofthsm2.so
-export OPENTDF_SERVER_HSM_KEYS_EC_LABEL=kas-ec
-export OPENTDF_SERVER_HSM_KEYS_RSA_LABEL=kas-rsa
+export OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN=12345
+export OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH=/lib/softhsm/libsofthsm2.so
+export OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_EC_LABEL=kas-ec
+export OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_RSA_LABEL=kas-rsa
 
-pkcs11-tool --module $OPENTDF_SERVER_HSM_MODULEPATH \
-            --login --pin ${OPENTDF_SERVER_HSM_PIN} \
+pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
+            --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
             --write-object kas-private.pem --type privkey \
             --label kas-rsa
-pkcs11-tool --module $OPENTDF_SERVER_HSM_MODULEPATH \
-            --login --pin ${OPENTDF_SERVER_HSM_PIN} \
+pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
+            --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
             --write-object kas-cert.pem --type cert \
             --label kas-rsa
 
-pkcs11-tool --module $OPENTDF_SERVER_HSM_MODULEPATH \
-            --login --pin ${OPENTDF_SERVER_HSM_PIN} \
+pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
+            --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
             --write-object ec-private.pem --type privkey \
             --label kas-ec
-pkcs11-tool --module $OPENTDF_SERVER_HSM_MODULEPATH \
-            --login --pin ${OPENTDF_SERVER_HSM_PIN} \
+pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
+            --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
             --write-object ec-cert.pem --type cert \
             --label kas-ec
 ```

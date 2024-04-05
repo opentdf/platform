@@ -14,9 +14,9 @@ jobs:
     strategy:
       matrix:
         directory:
-          - "."
           - sdk
-          - lib/crypto
+          - lib/ocrypto
+          - service
           - examples
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -24,9 +24,9 @@ jobs:
         with:
           go-version: "1.21"
           cache-dependency-path: |
-            ./go.sum
             sdk/go.sum
             examples/go.sum
+            service/go.sum
       - run: make go.work
       - name: golangci-lint
         # uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc

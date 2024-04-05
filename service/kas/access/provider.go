@@ -16,8 +16,9 @@ const (
 
 type Provider struct {
 	kaspb.AccessServiceServer
-	URI          url.URL `json:"uri"`
-	SDK          *otdf.SDK
-	Session      security.HSMSession
-	OIDCVerifier *oidc.IDTokenVerifier
+	URI            url.URL `json:"uri"`
+	SDK            *otdf.SDK
+	AttributeSvc   *url.URL
+	CryptoProvider security.CryptoProvider
+	OIDCVerifier   *oidc.IDTokenVerifier
 }

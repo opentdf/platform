@@ -1,4 +1,4 @@
-package opentdf.entitlements
+package opentdf.entitlements_keycloak
 
 import rego.v1
 

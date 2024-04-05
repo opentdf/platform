@@ -17,7 +17,7 @@ func JQBuiltin() {
 		Decl:             types.NewFunction(types.Args(types.A, types.S), types.A),
 		Memoize:          true,
 		Nondeterministic: true,
-	}, func(ctx rego.BuiltinContext, a, b *ast.Term) (*ast.Term, error) {
+	}, func(_ rego.BuiltinContext, a, b *ast.Term) (*ast.Term, error) {
 		slog.Debug("JQ plugin invoked")
 		var input map[string]any
 		var query string
@@ -47,12 +47,12 @@ func JQBuiltin() {
 	)
 }
 
-func ExecuteQuery(inputJson map[string]any, queryString string) ([]any, error) {
+func ExecuteQuery(inputJSON map[string]any, queryString string) ([]any, error) {
 	query, err := gojq.Parse(queryString)
 	if err != nil {
 		return nil, err
 	}
-	iter := query.Run(inputJson)
+	iter := query.Run(inputJSON)
 	found := []any{}
 	for {
 		v, ok := iter.Next()
@@ -61,6 +61,7 @@ func ExecuteQuery(inputJson map[string]any, queryString string) ([]any, error) {
 		}
 		slog.Info("v: ", v)
 		if err, ok := v.(error); ok {
+			//nolint:errorlint
 			if err, ok := err.(*gojq.HaltError); ok && err.Value() == nil {
 				break
 			}
@@ -73,5 +74,4 @@ func ExecuteQuery(inputJson map[string]any, queryString string) ([]any, error) {
 	}
 
 	return found, nil
-
 }

@@ -16,9 +16,8 @@ var testQuery1 = ".testing1"
 
 func Test_JQSuccessSimple(t *testing.T) {
 	res, err := jqbuiltin.ExecuteQuery(testInput1, testQuery1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []any{testResult1}, res)
-
 }
 
 var testInput2 = map[string]interface{}{
@@ -28,9 +27,8 @@ var testQuery2 = ".testing1.testing2"
 
 func Test_JQSuccessTwoDeep(t *testing.T) {
 	res, err := jqbuiltin.ExecuteQuery(testInput2, testQuery2)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []any{testResult1}, res)
-
 }
 
 var testInput3 = map[string]interface{}{
@@ -40,9 +38,8 @@ var testQuery3 = ".testing1.testing2[0]"
 
 func Test_JQSuccessTwoDeepInArray(t *testing.T) {
 	res, err := jqbuiltin.ExecuteQuery(testInput3, testQuery3)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []any{testResult1}, res)
-
 }
 
 const testResult2 string = "whatsup"
@@ -54,9 +51,8 @@ var testQuery4 = ".testing1.testing2[]"
 
 func Test_JQSuccessTwoDeepAllInArray(t *testing.T) {
 	res, err := jqbuiltin.ExecuteQuery(testInput4, testQuery4)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []any{testResult1, testResult2}, res)
-
 }
 
 var testInput5 = map[string]interface{}{
@@ -66,6 +62,6 @@ var testQuery5 = ".testing1.testing3"
 
 func Test_JQSuccessTwoDeepAllNoMatch(t *testing.T) {
 	res, err := jqbuiltin.ExecuteQuery(testInput5, testQuery5)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []any{}, res)
 }

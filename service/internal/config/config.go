@@ -71,19 +71,5 @@ func LoadConfig(key string) (*Config, error) {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 
-	// Manually handle unmarshaling of ExtraProps for each service
-	for serviceKey, service := range config.Services {
-		var extraProps map[string]interface{}
-		if err := viper.UnmarshalKey("service."+serviceKey, &extraProps); err != nil {
-			return nil, errors.Join(err, ErrLoadingConfig)
-		}
-		service.ExtraProps = extraProps
-
-		// Remove "enabled" from ExtraProps
-		delete(extraProps, "enabled")
-
-		config.Services[serviceKey] = service // Update the service in the map
-	}
-
 	return config, nil
 }

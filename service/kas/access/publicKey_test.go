@@ -45,14 +45,14 @@ var (
 		StandardConfig: security.StandardConfig{
 			RSAKeys: map[string]security.StandardKeyInfo{
 				"rsa": {
-					"kas-private.pem",
-					"kas-cert.pem",
+					PrivateKeyPath: "kas-private.pem",
+					PublicKeyPath:  "kas-cert.pem",
 				},
 			},
 			ECKeys: map[string]security.StandardKeyInfo{
 				"ec": {
-					"kas-ec-private.pem",
-					"kas-ec-cert.pem",
+					PrivateKeyPath: "kas-ec-private.pem",
+					PublicKeyPath:  "kas-ec-cert.pem",
 				},
 			},
 		},

@@ -10,10 +10,10 @@
 
 ## General
 
-.gitignore    @opentdf/developer
-README.md     @opentdf/developer
-/docs/        @opentdf/developer
-/examples/    @opentdf/developer
+.gitignore    @opentdf/developers
+README.md     @opentdf/developers
+/docs/        @opentdf/developers
+/examples/    @opentdf/developers
 
 ## Policy
 

@@ -59,10 +59,9 @@ func ExecuteQuery(inputJSON map[string]any, queryString string) ([]any, error) {
 		if !ok {
 			break
 		}
-		slog.Info("v: ", v)
-		if err, ok := v.(error); ok {
+		if err, ok2 := v.(error); ok2 {
 			//nolint:errorlint // temp following gojq example
-			if err, ok2 := err.(*gojq.HaltError); ok2 && err.Value() == nil {
+			if err, ok3 := err.(*gojq.HaltError); ok3 && err.Value() == nil {
 				break
 			}
 			// ignore error: we don't have a match but that is not an error state in this case

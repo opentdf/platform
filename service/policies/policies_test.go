@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/opentdf/platform/internal/idpplugin"
+	"github.com/opentdf/platform/service/internal/idpplugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

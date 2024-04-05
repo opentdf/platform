@@ -23,7 +23,7 @@ const (
 
 type ClientCredentials struct {
 	ClientAuth interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
-	ClientId   string
+	ClientID   string
 }
 
 type Token struct {
@@ -59,16 +59,16 @@ func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredenti
 
 	formData := url.Values{}
 	formData.Set("grant_type", "client_credentials")
-	formData.Set("client_id", clientCredentials.ClientId)
+	formData.Set("client_id", clientCredentials.ClientID)
 	if len(scopes) > 0 {
 		formData.Set("scope", strings.Join(scopes, " "))
 	}
 
 	switch ca := clientCredentials.ClientAuth.(type) {
 	case string:
-		req.SetBasicAuth(clientCredentials.ClientId, string(ca))
+		req.SetBasicAuth(clientCredentials.ClientID, ca)
 	case jwk.Key:
-		signedToken, err := getSignedToken(clientCredentials.ClientId, tokenEndpoint, ca)
+		signedToken, err := getSignedToken(clientCredentials.ClientID, tokenEndpoint, ca)
 		if err != nil {
 			return nil, fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
 		}
@@ -84,12 +84,14 @@ func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredenti
 }
 
 func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error) {
+	const tokenExpiration = 5 * time.Minute
+
 	tok, err := jwt.NewBuilder().
 		Issuer(clientID).
 		Subject(clientID).
 		Audience([]string{tokenEndpoint}).
 		IssuedAt(time.Now()).
-		Expiration(time.Now().Add(5 * time.Minute)).
+		Expiration(time.Now().Add(tokenExpiration)).
 		JwtID(uuid.NewString()).
 		Build()
 	if err != nil {
@@ -173,6 +175,8 @@ func processResponse(resp *http.Response) (*Token, error) {
 func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce string) (string, error) {
 	slog.Debug("Building DPoP Proof")
 	publicKey, err := jwk.PublicKeyOf(dpopJWK)
+	const expirationTime = 5 * time.Minute
+
 	if err != nil {
 		panic(err)
 	}
@@ -182,7 +186,7 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 		Claim("htm", method).
 		Claim("htu", endpoint).
 		Claim("iat", time.Now().Unix()).
-		Claim("exp", time.Now().Add(5*time.Minute).Unix())
+		Claim("exp", time.Now().Add(expirationTime).Unix())
 
 	if nonce != "" {
 		tokenBuilder.Claim("nonce", nonce)

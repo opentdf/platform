@@ -19,6 +19,7 @@ type CryptoProvider interface {
 	GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error)
 	GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error)
 	GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC, ephemeralPublicKey []byte) ([]byte, error)
+	Close()
 }
 
 func NewCryptoProvider(cfg Config) (CryptoProvider, error) {

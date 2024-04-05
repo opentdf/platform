@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"net/url"
 	"os"
@@ -177,6 +178,7 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 		"ec":  {},
 	}
 	hsmSession, _ := security.NewCryptoProvider(config)
+	defer hsmSession.Close()
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 
 	kas := Provider{
@@ -186,7 +188,7 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
-	assert.Error(t, err, "not found")
+	require.Error(t, err, "not found")
 	assert.Nil(t, result)
 }
 
@@ -202,6 +204,7 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 		},
 	}
 	hsmSession, _ := security.NewCryptoProvider(config)
+	defer hsmSession.Close()
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:            *kasURI,
@@ -230,6 +233,7 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 		},
 	}
 	hsmSession, _ := security.NewCryptoProvider(config)
+	defer hsmSession.Close()
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:            *kasURI,
@@ -258,6 +262,7 @@ func TestPublicKeyHandlerV2(t *testing.T) {
 		},
 	}
 	hsmSession, _ := security.NewCryptoProvider(config)
+	defer hsmSession.Close()
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:            *kasURI,
@@ -280,6 +285,7 @@ func TestPublicKeyHandlerV2Failure(t *testing.T) {
 		"ec":  {},
 	}
 	hsmSession, _ := security.NewCryptoProvider(config)
+	defer hsmSession.Close()
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:            *kasURI,
@@ -305,6 +311,7 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 		},
 	}
 	hsmSession, _ := security.NewCryptoProvider(config)
+	defer hsmSession.Close()
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:            *kasURI,
@@ -334,6 +341,7 @@ func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
 		},
 	}
 	hsmSession, _ := security.NewCryptoProvider(config)
+	defer hsmSession.Close()
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
 		URI:            *kasURI,

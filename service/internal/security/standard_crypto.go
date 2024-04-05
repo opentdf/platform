@@ -146,3 +146,6 @@ func (s StandardCrypto) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error)
 func (s StandardCrypto) GenerateNanoTDFSessionKey(PrivateKeyEC, []byte) ([]byte, error) {
 	return nil, errNotImplemented
 }
+
+func (s StandardCrypto) Close() {
+}

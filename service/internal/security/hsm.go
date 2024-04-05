@@ -331,7 +331,7 @@ func (h *HSMSession) loadKeys(keys map[string]KeyInfo) error {
 	return nil
 }
 
-func (s *HSMSession) Destroy() {
+func (s *HSMSession) Close() {
 	if s == nil {
 		return
 	}

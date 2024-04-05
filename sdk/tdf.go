@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/opentdf/platform/lib/crypto"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/internal/archive"
 )
 
@@ -63,7 +63,7 @@ type Reader struct {
 	tdfReader           archive.TDFReader
 	unwrapper           Unwrapper
 	cursor              int64
-	aesGcm              crypto.AesGcm
+	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
 }
@@ -71,7 +71,7 @@ type Reader struct {
 type TDFObject struct {
 	manifest   Manifest
 	size       int64
-	aesGcm     crypto.AesGcm
+	aesGcm     ocrypto.AesGcm
 	payloadKey [kKeySize]byte
 }
 
@@ -167,7 +167,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 
 		aggregateHash += segmentSig
 		segmentInfo := Segment{
-			Hash:          string(crypto.Base64Encode([]byte(segmentSig))),
+			Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
 			Size:          readSize,
 			EncryptedSize: int64(len(cipherData)),
 		}
@@ -184,7 +184,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 	}
 
-	sig := string(crypto.Base64Encode([]byte(rootSignature)))
+	sig := string(ocrypto.Base64Encode([]byte(rootSignature)))
 	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
 
 	integrityAlgStr := gmacIntegrityAlgorithm
@@ -256,16 +256,16 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 		return fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
-	base64PolicyObject := crypto.Base64Encode(policyObjectAsStr)
+	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
 	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
 	for _, kasInfo := range tdfConfig.kasInfoList {
 		if len(kasInfo.PublicKey) == 0 {
 			return errKasPubKeyMissing
 		}
 
-		symKey, err := crypto.RandomBytes(kKeySize)
+		symKey, err := ocrypto.RandomBytes(kKeySize)
 		if err != nil {
-			return fmt.Errorf("crypto.RandomBytes failed:%w", err)
+			return fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
 		}
 
 		keyAccess := KeyAccess{}
@@ -274,37 +274,37 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 		keyAccess.Protocol = kKasProtocol
 
 		// add policyBinding
-		policyBinding := hex.EncodeToString(crypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		keyAccess.PolicyBinding = string(crypto.Base64Encode([]byte(policyBinding)))
+		policyBinding := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
+		keyAccess.PolicyBinding = string(ocrypto.Base64Encode([]byte(policyBinding)))
 
 		// wrap the key with kas public key
-		asymEncrypt, err := crypto.NewAsymEncryption(kasInfo.PublicKey)
+		asymEncrypt, err := ocrypto.NewAsymEncryption(kasInfo.PublicKey)
 		if err != nil {
-			return fmt.Errorf("crypto.NewAsymEncryption failed:%w", err)
+			return fmt.Errorf("ocrypto.NewAsymEncryption failed:%w", err)
 		}
 
 		wrappedKey, err := asymEncrypt.Encrypt(symKey)
 		if err != nil {
-			return fmt.Errorf("crypto.AsymEncryption.encrypt failed:%w", err)
+			return fmt.Errorf("ocrypto.AsymEncryption.encrypt failed:%w", err)
 		}
-		keyAccess.WrappedKey = string(crypto.Base64Encode(wrappedKey))
+		keyAccess.WrappedKey = string(ocrypto.Base64Encode(wrappedKey))
 
 		// add meta data
 		if len(tdfConfig.metaData) > 0 {
-			gcm, err := crypto.NewAESGcm(symKey)
+			gcm, err := ocrypto.NewAESGcm(symKey)
 			if err != nil {
-				return fmt.Errorf("crypto.NewAESGcm failed:%w", err)
+				return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 			}
 
 			encryptedMetaData, err := gcm.Encrypt([]byte(tdfConfig.metaData))
 			if err != nil {
-				return fmt.Errorf("crypto.AesGcm.encrypt failed:%w", err)
+				return fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
 			}
 
-			iv := encryptedMetaData[:crypto.GcmStandardNonceSize]
+			iv := encryptedMetaData[:ocrypto.GcmStandardNonceSize]
 			metadata := EncryptedMetadata{
-				Cipher: string(crypto.Base64Encode(encryptedMetaData)),
-				Iv:     string(crypto.Base64Encode(iv)),
+				Cipher: string(ocrypto.Base64Encode(encryptedMetaData)),
+				Iv:     string(ocrypto.Base64Encode(iv)),
 			}
 
 			metadataJSON, err := json.Marshal(metadata)
@@ -312,7 +312,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 				return fmt.Errorf(" json.Marshal failed:%w", err)
 			}
 
-			keyAccess.EncryptedMetadata = string(crypto.Base64Encode(metadataJSON))
+			keyAccess.EncryptedMetadata = string(ocrypto.Base64Encode(metadataJSON))
 		}
 
 		symKeys = append(symKeys, symKey)
@@ -329,9 +329,9 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 		}
 	}
 
-	gcm, err := crypto.NewAESGcm(t.payloadKey[:])
+	gcm, err := ocrypto.NewAESGcm(t.payloadKey[:])
 	if err != nil {
-		return fmt.Errorf(" crypto.NewAESGcm failed:%w", err)
+		return fmt.Errorf(" ocrypto.NewAESGcm failed:%w", err)
 	}
 
 	t.manifest = manifest
@@ -434,7 +434,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
-		if seg.Hash != string(crypto.Base64Encode([]byte(payloadSig))) {
+		if seg.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
 			return totalBytes, errSegSigValidation
 		}
 
@@ -520,7 +520,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
-		if seg.Hash != string(crypto.Base64Encode([]byte(payloadSig))) {
+		if seg.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
 			return 0, errSegSigValidation
 		}
 
@@ -574,9 +574,9 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 // Otherwise, returns an error.
 func (r *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
-	policy, err := crypto.Base64Decode([]byte(r.manifest.Policy))
+	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
-		return policyObj, fmt.Errorf("crypto.Base64Decode failed:%w", err)
+		return policyObj, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
 	}
 
 	err = json.Unmarshal(policy, &policyObj)
@@ -589,9 +589,9 @@ func (r *Reader) Policy() (PolicyObject, error) {
 
 // DataAttributes return the data attributes present in tdf.
 func (r *Reader) DataAttributes() ([]string, error) {
-	policy, err := crypto.Base64Decode([]byte(r.manifest.Policy))
+	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
-		return nil, fmt.Errorf("crypto.Base64Decode failed:%w", err)
+		return nil, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
 	}
 
 	policyObj := PolicyObject{}
@@ -624,14 +624,14 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 		}
 
 		if len(keyAccessObj.EncryptedMetadata) != 0 {
-			gcm, err := crypto.NewAESGcm(wrappedKey)
+			gcm, err := ocrypto.NewAESGcm(wrappedKey)
 			if err != nil {
-				return fmt.Errorf("crypto.NewAESGcm failed:%w", err)
+				return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 			}
 
-			decodedMetaData, err := crypto.Base64Decode([]byte(keyAccessObj.EncryptedMetadata))
+			decodedMetaData, err := ocrypto.Base64Decode([]byte(keyAccessObj.EncryptedMetadata))
 			if err != nil {
-				return fmt.Errorf("crypto.Base64Decode failed:%w", err)
+				return fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
 			}
 
 			metadata := EncryptedMetadata{}
@@ -641,10 +641,10 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 			}
 
 			encodedCipherText := metadata.Cipher
-			cipherText, _ := crypto.Base64Decode([]byte(encodedCipherText))
+			cipherText, _ := ocrypto.Base64Decode([]byte(encodedCipherText))
 			metaData, err := gcm.Decrypt(cipherText)
 			if err != nil {
-				return fmt.Errorf("crypto.AesGcm.encrypt failed:%w", err)
+				return fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
 			}
 
 			unencryptedMetadata = metaData
@@ -672,9 +672,9 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 		payloadSize += seg.Size
 	}
 
-	gcm, err := crypto.NewAESGcm(payloadKey[:])
+	gcm, err := ocrypto.NewAESGcm(payloadKey[:])
 	if err != nil {
-		return fmt.Errorf(" crypto.NewAESGcm failed:%w", err)
+		return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
 	r.payloadSize = payloadSize
@@ -688,7 +688,7 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
 // calculateSignature calculate signature of data of the given algorithm.
 func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm) (string, error) {
 	if alg == HS256 {
-		hmac := crypto.CalculateSHA256Hmac(secret, data)
+		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
 		return hex.EncodeToString(hmac), nil
 	}
 	if kGMACPayloadLength > len(data) {
@@ -705,9 +705,9 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 
 	aggregateHash := &bytes.Buffer{}
 	for _, segment := range manifest.EncryptionInformation.IntegrityInformation.Segments {
-		decodedHash, err := crypto.Base64Decode([]byte(segment.Hash))
+		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
 		if err != nil {
-			return false, fmt.Errorf("crypto.Base64Decode failed:%w", err)
+			return false, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
 		}
 
 		aggregateHash.Write(decodedHash)
@@ -723,7 +723,7 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 		return false, fmt.Errorf("splitkey.getSignature failed:%w", err)
 	}
 
-	if rootSigValue == string(crypto.Base64Encode([]byte(sig))) {
+	if rootSigValue == string(ocrypto.Base64Encode([]byte(sig))) {
 		return true, nil
 	}
 

@@ -67,16 +67,29 @@ server:
 
   grpc:
     reflectionEnabled: true # Default is false
-  hsm:
-    enabled: true
-    # As configured by hsm-init-temporary-keys.sh
-    pin: "12345"
-    slotlabel: "dev-token"
-    keys:
+  cryptoProvider:
+    hsm:
+      enabled: false
+      # As configured by hsm-init-temporary-keys.sh
+      pin: "12345"
+      slotlabel: "dev-token"
+      keys:
+        rsa:
+          label: development-rsa-kas
+        ec:
+          label: development-ec-kas
+    standard:
       rsa:
-        label: development-rsa-kas
+        123:
+          privateKeyPath: kas-private.pem
+          publicKeyPath: kas-cert.pem
+        456:
+          privateKeyPath: kas-private.pem
+          publicKeyPath: kas-cert.pem
       ec:
-        label: development-ec-kas
+        123:
+          privateKeyPath: kas-ec-private.pem
+          publicKeyPath: kas-ec-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

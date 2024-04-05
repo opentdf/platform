@@ -69,8 +69,15 @@ server:
     reflectionEnabled: true # Default is false
   cryptoProvider:
     hsm:
-      enabled: false
-      pin:
+      enabled: true
+      # As configured by init-temp-keys.sh --hsm
+      pin: "12345"
+      slotlabel: "dev-token"
+      keys:
+        rsa:
+          label: development-rsa-kas
+        ec:
+          label: development-ec-kas
     standard:
       rsa:
         123:

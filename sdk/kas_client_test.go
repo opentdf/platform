@@ -9,13 +9,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/lib/crypto"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 )
 
 type FakeAccessTokenSource struct {
 	dpopKey        jwk.Key
-	asymDecryption crypto.AsymDecryption
+	asymDecryption ocrypto.AsymDecryption
 	accessToken    string
 }
 
@@ -27,9 +27,9 @@ func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, er
 }
 
 func getTokenSource(t *testing.T) FakeAccessTokenSource {
-	dpopKey, _ := crypto.NewRSAKeyPair(2048)
+	dpopKey, _ := ocrypto.NewRSAKeyPair(2048)
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
-	decryption, _ := crypto.NewAsymDecryption(dpopPEM)
+	decryption, _ := ocrypto.NewAsymDecryption(dpopPEM)
 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
 	if err != nil {
 		t.Fatalf("error creating JWK: %v", err)
@@ -91,7 +91,7 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("error unmarshaling request body: %v", err)
 	}
 
-	_, err = crypto.NewAsymEncryption(requestBody["clientPublicKey"].(string))
+	_, err = ocrypto.NewAsymEncryption(requestBody["clientPublicKey"].(string))
 	if err != nil {
 		t.Fatalf("NewAsymEncryption failed, incorrect public key include: %v", err)
 	}

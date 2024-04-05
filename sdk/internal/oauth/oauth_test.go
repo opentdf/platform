@@ -398,7 +398,17 @@ func setupKeycloak(t *testing.T, claimsProviderUrl *url.URL, ctx context.Context
 		},
 		WaitingFor: wait.ForLog("Running the server"),
 	}
+
+	var providerType tc.ProviderType
+
+	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
+		providerType = tc.ProviderPodman
+	} else {
+		providerType = tc.ProviderDocker
+	}
+
 	keycloak, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+		ProviderType:     providerType,
 		ContainerRequest: containerReq,
 		Started:          true,
 	})
@@ -468,7 +478,17 @@ func setupWiremock(t *testing.T, ctx context.Context) (tc.Container, *url.URL) {
 			},
 		},
 	}
+
+	var providerType tc.ProviderType
+
+	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
+		providerType = tc.ProviderPodman
+	} else {
+		providerType = tc.ProviderDocker
+	}
+
 	wiremock, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+		ProviderType:     providerType,
 		ContainerRequest: req,
 		Started:          true,
 	})

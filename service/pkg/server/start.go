@@ -62,6 +62,8 @@ func Start(f ...StartOptions) error {
 	}
 	slog.SetDefault(logger.Logger)
 
+	slog.Debug("config loaded", slog.Any("config", conf))
+
 	slog.Info("starting opa engine")
 	eng, err := opa.NewEngine(conf.OPA)
 	if err != nil {

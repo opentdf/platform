@@ -7,7 +7,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
-	github.com/opentdf/platform/lib/crypto v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/ocrypto v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
@@ -16,7 +16,7 @@ require (
 )
 
 replace (
-	github.com/opentdf/platform/lib/crypto => ../lib/crypto
+	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
 	github.com/opentdf/platform/protocol/go => ../protocol/go
 )
 

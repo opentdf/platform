@@ -18,7 +18,8 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/platform/lib/crypto"
+	"github.com/opentdf/platform/lib/ocrypto"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -709,26 +710,26 @@ func runKas() (string, func(), *SDK) {
 		return "grpc://localhost:8080", func() {}, sdk
 	}
 
-	signingKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
+	signingKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
-		panic(fmt.Sprintf("crypto.NewRSAKeyPair: %v", err))
+		panic(fmt.Sprintf("ocrypto.NewRSAKeyPair: %v", err))
 	}
 
 	signingPubKey, err := signingKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		panic(fmt.Sprintf("crypto.PublicKeyInPemFormat failed: %v", err))
+		panic(fmt.Sprintf("ocrypto.PublicKeyInPemFormat failed: %v", err))
 	}
 
 	signingPrivateKey, err := signingKeyPair.PrivateKeyInPemFormat()
 	if err != nil {
-		panic(fmt.Sprintf("crypto.PrivateKeyInPemFormat failed: %v", err))
+		panic(fmt.Sprintf("ocrypto.PrivateKeyInPemFormat failed: %v", err))
 	}
 
 	accessTokenBytes := make([]byte, 10)
 	if _, err := rand.Read(accessTokenBytes); err != nil {
 		panic("failed to create random access token")
 	}
-	accessToken := crypto.Base64Encode(accessTokenBytes)
+	accessToken := ocrypto.Base64Encode(accessTokenBytes)
 
 	server := httptest.NewServer(http.HandlerFunc(getKASRequestHandler(string(accessToken), signingPubKey)))
 
@@ -790,7 +791,7 @@ func getKASRequestHandler(expectedAccessToken, //nolint:gocognit // KAS is prett
 
 			entityWrappedKey := getRewrappedKey(rewrapRequest)
 			response, err := json.Marshal(map[string]string{
-				kEntityWrappedKey: string(crypto.Base64Encode(entityWrappedKey)),
+				kEntityWrappedKey: string(ocrypto.Base64Encode(entityWrappedKey)),
 			})
 			if err != nil {
 				panic(fmt.Sprintf("json.Marshal failed: %v", err))
@@ -812,26 +813,26 @@ func getRewrappedKey(rewrapRequest string) []byte {
 	if err != nil {
 		panic(fmt.Sprintf("json.Unmarshal failed: %v", err))
 	}
-	wrappedKey, err := crypto.Base64Decode([]byte(bodyData.WrappedKey))
+	wrappedKey, err := ocrypto.Base64Decode([]byte(bodyData.WrappedKey))
 	if err != nil {
-		panic(fmt.Sprintf("crypto.Base64Decode failed: %v", err))
+		panic(fmt.Sprintf("ocrypto.Base64Decode failed: %v", err))
 	}
 	kasPrivateKey := strings.ReplaceAll(mockKasPrivateKey, "\n\t", "\n")
-	asymDecrypt, err := crypto.NewAsymDecryption(kasPrivateKey)
+	asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
 	if err != nil {
-		panic(fmt.Sprintf("crypto.NewAsymDecryption failed: %v", err))
+		panic(fmt.Sprintf("ocrypto.NewAsymDecryption failed: %v", err))
 	}
 	symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
 	if err != nil {
-		panic(fmt.Sprintf("crypto.Decrypt failed: %v", err))
+		panic(fmt.Sprintf("ocrypto.Decrypt failed: %v", err))
 	}
-	asymEncrypt, err := crypto.NewAsymEncryption(bodyData.ClientPublicKey)
+	asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.ClientPublicKey)
 	if err != nil {
-		panic(fmt.Sprintf("crypto.NewAsymEncryption failed: %v", err))
+		panic(fmt.Sprintf("ocrypto.NewAsymEncryption failed: %v", err))
 	}
 	entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 	if err != nil {
-		panic(fmt.Sprintf("crypto.encrypt failed: %v", err))
+		panic(fmt.Sprintf("ocrypto.encrypt failed: %v", err))
 	}
 	return entityWrappedKey
 }

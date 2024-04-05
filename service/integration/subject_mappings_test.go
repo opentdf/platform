@@ -878,9 +878,9 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ComplexSelectorValu
 	}
 
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	s.NoError(err)
+	require.NoError(err)
 	s.NotZero(sm)
-	s.Equal(2, len(sm))
+	s.Len(2, sm)
 	s.Equal(fixtureScsWithComplexJqExp.Id, sm[0].GetSubjectConditionSet().GetId())
 	s.Equal(fixtureScsWithComplexJqExp2.Id, sm[1].GetSubjectConditionSet().GetId())
 }

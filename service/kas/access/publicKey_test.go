@@ -191,6 +191,16 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 }
 
 func TestCertificateHandlerWithEc256(t *testing.T) {
+	config.HSMConfig.Keys = map[string]security.KeyInfo{
+		"rsa": {
+			Name:  "rsa",
+			Label: "development-rsa-kas",
+		},
+		"ec": {
+			Name:  "ec",
+			Label: "development-ec-kas",
+		},
+	}
 	hsmSession, _ := security.NewCryptoProvider(config)
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
@@ -209,6 +219,16 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 }
 
 func TestPublicKeyHandlerWithEc256(t *testing.T) {
+	config.HSMConfig.Keys = map[string]security.KeyInfo{
+		"rsa": {
+			Name:  "rsa",
+			Label: "development-rsa-kas",
+		},
+		"ec": {
+			Name:  "ec",
+			Label: "development-ec-kas",
+		},
+	}
 	hsmSession, _ := security.NewCryptoProvider(config)
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
@@ -227,6 +247,16 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 }
 
 func TestPublicKeyHandlerV2(t *testing.T) {
+	config.HSMConfig.Keys = map[string]security.KeyInfo{
+		"rsa": {
+			Name:  "rsa",
+			Label: "development-rsa-kas",
+		},
+		"ec": {
+			Name:  "ec",
+			Label: "development-ec-kas",
+		},
+	}
 	hsmSession, _ := security.NewCryptoProvider(config)
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
@@ -264,6 +294,16 @@ func TestPublicKeyHandlerV2Failure(t *testing.T) {
 }
 
 func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
+	config.HSMConfig.Keys = map[string]security.KeyInfo{
+		"rsa": {
+			Name:  "rsa",
+			Label: "development-rsa-kas",
+		},
+		"ec": {
+			Name:  "ec",
+			Label: "development-ec-kas",
+		},
+	}
 	hsmSession, _ := security.NewCryptoProvider(config)
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{
@@ -283,6 +323,16 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 }
 
 func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
+	config.HSMConfig.Keys = map[string]security.KeyInfo{
+		"rsa": {
+			Name:  "rsa",
+			Label: "development-rsa-kas",
+		},
+		"ec": {
+			Name:  "ec",
+			Label: "development-ec-kas",
+		},
+	}
 	hsmSession, _ := security.NewCryptoProvider(config)
 	kasURI, _ := url.Parse("https://" + hostname + ":5000")
 	kas := Provider{

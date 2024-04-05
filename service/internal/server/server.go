@@ -43,10 +43,10 @@ func (e Error) Error() string {
 }
 
 type Config struct {
-	Auth                    auth.Config        `yaml:"auth"`
-	GRPC                    GRPCConfig         `yaml:"grpc"`
-	HSM                     security.HSMConfig `yaml:"hsm"`
-	TLS                     TLSConfig          `yaml:"tls"`
+	Auth                    auth.Config     `yaml:"auth"`
+	GRPC                    GRPCConfig      `yaml:"grpc"`
+	CryptoProvider          security.Config `yaml:"cryptoProvider"`
+	TLS                     TLSConfig       `yaml:"tls"`
 	WellKnownConfigRegister func(namespace string, config any) error
 	Port                    int    `yaml:"port" default:"8080"`
 	Host                    string `yaml:"host,omitempty"`
@@ -63,11 +63,11 @@ type TLSConfig struct {
 }
 
 type OpenTDFServer struct {
-	Mux           *runtime.ServeMux
-	HTTPServer    *http.Server
-	GRPCServer    *grpc.Server
-	GRPCInProcess *inProcessServer
-	HSM           *security.HSMSession
+	Mux            *runtime.ServeMux
+	HTTPServer     *http.Server
+	GRPCServer     *grpc.Server
+	GRPCInProcess  *inProcessServer
+	CryptoProvider security.CryptoProvider
 }
 
 /*
@@ -128,11 +128,22 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 		GRPCInProcess: grpcIPCServer,
 	}
 
-	if config.HSM.Enabled {
-		o.HSM, err = security.New(&config.HSM)
+	if config.CryptoProvider.HSMConfig.Enabled {
+		config.CryptoProvider.Type = "hsm"
+		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize hsm: %w", err)
+			return nil, fmt.Errorf("HSM security.NewCryptoProvider: %w", err)
 		}
+
+		slog.Info("✅crypto provider: HSM")
+	} else {
+		config.CryptoProvider.Type = "standard"
+		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
+		if err != nil {
+			return nil, fmt.Errorf("standard security.NewCryptoProvider: %w", err)
+		}
+
+		slog.Info("✅ crypto provider: standard")
 	}
 
 	return &o, nil

@@ -1,4 +1,4 @@
-package crypto
+package ocrypto
 
 import (
 	"crypto/rand"
@@ -12,7 +12,7 @@ import (
 )
 
 type AsymEncryption struct {
-	publicKey *rsa.PublicKey
+	PublicKey *rsa.PublicKey
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
@@ -53,14 +53,35 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 
 // Encrypt encrypts data with public key.
 func (asymEncryption AsymEncryption) Encrypt(data []byte) ([]byte, error) {
-	if asymEncryption.publicKey == nil {
+	if asymEncryption.PublicKey == nil {
 		return nil, errors.New("failed to encrypt, public key is empty")
 	}
 
-	bytes, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, asymEncryption.publicKey, data, nil) //nolint:gosec // used for padding which is safe
+	bytes, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, asymEncryption.PublicKey, data, nil) //nolint:gosec // used for padding which is safe
 	if err != nil {
 		return nil, fmt.Errorf("rsa.EncryptOAEP failed: %w", err)
 	}
 
 	return bytes, nil
+}
+
+// PublicKeyInPemFormat Returns public key in pem format.
+func (asymEncryption AsymEncryption) PublicKeyInPemFormat() (string, error) {
+	if asymEncryption.PublicKey == nil {
+		return "", errors.New("failed to generate PEM formatted public key")
+	}
+
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(asymEncryption.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
+	}
+
+	publicKeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: publicKeyBytes,
+		},
+	)
+
+	return string(publicKeyPem), nil
 }

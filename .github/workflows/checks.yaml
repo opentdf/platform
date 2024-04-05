@@ -37,7 +37,7 @@ jobs:
           - examples
           - sdk
           - service
-          - lib/crypto
+          - lib/ocrypto
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
@@ -70,6 +70,8 @@ jobs:
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
+      - if: matrix.directory == 'service'
+        run: .github/scripts/hsm-init-temporary-keys.sh
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
 
@@ -99,7 +101,6 @@ jobs:
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
-          echo "OPENTDF_SERVER_HSM_PIN=$(openssl rand -hex 4)" >> "$GITHUB_ENV"
       - run: .github/scripts/hsm-init-temporary-keys.sh
       - run: docker compose up -d --wait --wait-timeout 240
       - run: cp opentdf-example.yaml opentdf.yaml

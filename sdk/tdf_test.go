@@ -17,8 +17,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/arkavo-org/opentdf-platform/lib/ocrypto"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/platform/lib/ocrypto"
 
 	"github.com/stretchr/testify/assert"
 )

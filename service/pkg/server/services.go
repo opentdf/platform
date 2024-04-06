@@ -1,16 +1,16 @@
 package server
 
 import (
-	"github.com/opentdf/platform/service/authorization"
-	"github.com/opentdf/platform/service/health"
-	"github.com/opentdf/platform/service/kas"
-	"github.com/opentdf/platform/service/kasregistry"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"github.com/opentdf/platform/service/policy/attributes"
-	"github.com/opentdf/platform/service/policy/namespaces"
-	"github.com/opentdf/platform/service/policy/resourcemapping"
-	"github.com/opentdf/platform/service/policy/subjectmapping"
-	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
+	"github.com/arkavo-org/opentdf-platform/service/authorization"
+	"github.com/arkavo-org/opentdf-platform/service/health"
+	"github.com/arkavo-org/opentdf-platform/service/kas"
+	"github.com/arkavo-org/opentdf-platform/service/kasregistry"
+	"github.com/arkavo-org/opentdf-platform/service/pkg/serviceregistry"
+	"github.com/arkavo-org/opentdf-platform/service/policy/attributes"
+	"github.com/arkavo-org/opentdf-platform/service/policy/namespaces"
+	"github.com/arkavo-org/opentdf-platform/service/policy/resourcemapping"
+	"github.com/arkavo-org/opentdf-platform/service/policy/subjectmapping"
+	wellknown "github.com/arkavo-org/opentdf-platform/service/wellknownconfiguration"
 )
 
 func registerServices() error {

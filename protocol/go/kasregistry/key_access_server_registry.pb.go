@@ -8,7 +8,7 @@ package kasregistry
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	common "github.com/opentdf/platform/protocol/go/common"
+	common "github.com/arkavo-org/opentdf-platform/protocol/go/common"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

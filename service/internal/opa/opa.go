@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/arkavo-org/opentdf-platform/service/internal/idpplugin"
 	"github.com/open-policy-agent/opa/hooks"
 	opalog "github.com/open-policy-agent/opa/logging"
 	"github.com/open-policy-agent/opa/sdk"
-	"github.com/opentdf/platform/service/internal/idpplugin"
 )
 
 type Engine struct {

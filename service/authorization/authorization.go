@@ -9,19 +9,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arkavo-org/opentdf-platform/protocol/go/authorization"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy"
+	attr "github.com/arkavo-org/opentdf-platform/protocol/go/policy/attributes"
+	otdf "github.com/arkavo-org/opentdf-platform/sdk"
+	"github.com/arkavo-org/opentdf-platform/service/internal/access"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/service/internal/entitlements"
+	"github.com/arkavo-org/opentdf-platform/service/internal/opa"
+	"github.com/arkavo-org/opentdf-platform/service/pkg/serviceregistry"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/open-policy-agent/opa/metrics"
 	"github.com/open-policy-agent/opa/profiler"
 	opaSdk "github.com/open-policy-agent/opa/sdk"
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/policy"
-	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
-	otdf "github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/internal/access"
-	"github.com/opentdf/platform/service/internal/db"
-	"github.com/opentdf/platform/service/internal/entitlements"
-	"github.com/opentdf/platform/service/internal/opa"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
 type AuthorizationService struct {

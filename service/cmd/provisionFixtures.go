@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
-	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/arkavo-org/opentdf-platform/service/internal/config"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/service/internal/fixtures"
 	"github.com/spf13/cobra"
 )
 

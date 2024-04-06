@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/arkavo-org/opentdf-platform/protocol/go/authorization"
+	"github.com/arkavo-org/opentdf-platform/sdk"
 	"github.com/google/uuid"
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/sdk"
 )
 
 var c = context.Background()

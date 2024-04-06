@@ -8,8 +8,8 @@ package policy
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	common "github.com/opentdf/platform/protocol/go/common"
-	kasregistry "github.com/opentdf/platform/protocol/go/kasregistry"
+	common "github.com/arkavo-org/opentdf-platform/protocol/go/common"
+	kasregistry "github.com/arkavo-org/opentdf-platform/protocol/go/kasregistry"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"

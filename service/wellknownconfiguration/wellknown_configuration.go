@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"sync"
 
+	wellknown "github.com/arkavo-org/opentdf-platform/protocol/go/wellknownconfiguration"
+	"github.com/arkavo-org/opentdf-platform/service/pkg/serviceregistry"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"

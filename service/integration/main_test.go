@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/arkavo-org/opentdf-platform/service/internal/fixtures"
 	"github.com/creasty/defaults"
-	"github.com/opentdf/platform/service/internal/fixtures"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )

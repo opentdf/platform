@@ -7,11 +7,11 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/arkavo-org/opentdf-platform/lib/ocrypto"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/kas"
+	"github.com/arkavo-org/opentdf-platform/sdk/auth"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 )
 

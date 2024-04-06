@@ -1,6 +1,6 @@
-module github.com/opentdf/platform/sdk
+module github.com/arkavo-org/opentdf-platform/sdk
 
-go 1.21.8
+go 1.22.2
 
 require (
 	github.com/docker/go-connections v0.5.0

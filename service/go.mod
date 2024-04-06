@@ -1,6 +1,6 @@
-module github.com/opentdf/platform/service
+module github.com/arkavo-org/opentdf-platform/service
 
-go 1.21.8
+go 1.22.2
 
 require (
 	github.com/Masterminds/squirrel v1.5.4

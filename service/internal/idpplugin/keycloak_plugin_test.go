@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/service/internal/db"
-	"github.com/opentdf/platform/service/internal/idpplugin"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/authorization"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/service/internal/idpplugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"

@@ -10,9 +10,9 @@ import (
 	"math"
 	"strings"
 
+	"github.com/arkavo-org/opentdf-platform/lib/ocrypto"
+	"github.com/arkavo-org/opentdf-platform/sdk/internal/archive"
 	"github.com/google/uuid"
-	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/sdk/internal/archive"
 )
 
 var (

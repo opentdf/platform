@@ -13,14 +13,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/arkavo-org/opentdf-platform/service/internal/auth"
+	"github.com/arkavo-org/opentdf-platform/service/internal/security"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/security"
 
+	kaspb "github.com/arkavo-org/opentdf-platform/protocol/go/kas"
+	"github.com/arkavo-org/opentdf-platform/service/kas/tdf3"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"

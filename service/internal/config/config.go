@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/service/internal/logger"
+	"github.com/arkavo-org/opentdf-platform/service/internal/opa"
+	"github.com/arkavo-org/opentdf-platform/service/internal/server"
+	"github.com/arkavo-org/opentdf-platform/service/pkg/serviceregistry"
 	"github.com/creasty/defaults"
-	"github.com/opentdf/platform/service/internal/db"
-	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
-	"github.com/opentdf/platform/service/internal/server"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/spf13/viper"
 )
 

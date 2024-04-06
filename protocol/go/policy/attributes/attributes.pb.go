@@ -8,8 +8,8 @@ package attributes
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	common "github.com/opentdf/platform/protocol/go/common"
-	policy "github.com/opentdf/platform/protocol/go/policy"
+	common "github.com/arkavo-org/opentdf-platform/protocol/go/common"
+	policy "github.com/arkavo-org/opentdf-platform/protocol/go/policy"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

@@ -5,11 +5,11 @@ import (
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/common"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/resourcemapping"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	"github.com/opentdf/platform/service/internal/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
-	policydb "github.com/opentdf/platform/service/policy/db"
+	"github.com/arkavo-org/opentdf-platform/service/internal/config"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	policydb "github.com/arkavo-org/opentdf-platform/service/policy/db"
 	"github.com/spf13/cobra"
 )
 

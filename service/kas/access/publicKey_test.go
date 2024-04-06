@@ -16,10 +16,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opentdf/platform/service/internal/security"
+	"github.com/arkavo-org/opentdf-platform/service/internal/security"
 	"github.com/stretchr/testify/require"
 
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	kaspb "github.com/arkavo-org/opentdf-platform/protocol/go/kas"
 	"github.com/stretchr/testify/assert"
 )
 

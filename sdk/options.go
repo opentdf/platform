@@ -1,7 +1,7 @@
 package sdk
 
 import (
-	"github.com/opentdf/platform/sdk/internal/oauth"
+	"github.com/arkavo-org/opentdf-platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

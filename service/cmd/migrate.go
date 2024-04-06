@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/service/internal/config"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
 	"github.com/spf13/cobra"
 )
 

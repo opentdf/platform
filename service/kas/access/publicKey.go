@@ -9,7 +9,7 @@ import (
 	"errors"
 	"log/slog"
 
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	kaspb "github.com/arkavo-org/opentdf-platform/protocol/go/kas"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"

@@ -4,11 +4,11 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/namespaces"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/service/pkg/serviceregistry"
+	policydb "github.com/arkavo-org/opentdf-platform/service/policy/db"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/protocol/go/policy/namespaces"
-	"github.com/opentdf/platform/service/internal/db"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type NamespacesService struct {

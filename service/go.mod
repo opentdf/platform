@@ -1,11 +1,14 @@
-module github.com/opentdf/platform/service
+module github.com/arkavo-org/opentdf-platform/service
 
-go 1.21.8
+go 1.22.2
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v11 v11.2.0
 	github.com/Nerzal/gocloak/v13 v13.9.0
+	github.com/arkavo-org/opentdf-platform/lib/ocrypto v0.0.0-00010101000000-000000000000
+	github.com/arkavo-org/opentdf-platform/protocol/go v0.0.0-00010101000000-000000000000
+	github.com/arkavo-org/opentdf-platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/bufbuild/protovalidate-go v0.6.0
 	github.com/casbin/casbin/v2 v2.84.0
 	github.com/coreos/go-oidc/v3 v3.9.0
@@ -19,9 +22,6 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
-	github.com/opentdf/platform/lib/ocrypto v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -59,9 +59,9 @@ require (
 )
 
 replace (
-	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
-	github.com/opentdf/platform/protocol/go => ../protocol/go
-	github.com/opentdf/platform/sdk => ../sdk
+	github.com/arkavo-org/opentdf-platform/lib/ocrypto => ../lib/ocrypto
+	github.com/arkavo-org/opentdf-platform/protocol/go => ../protocol/go
+	github.com/arkavo-org/opentdf-platform/sdk => ../sdk
 )
 
 require (

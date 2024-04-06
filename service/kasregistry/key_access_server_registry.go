@@ -4,11 +4,11 @@ import (
 	"context"
 	"log/slog"
 
+	kasr "github.com/arkavo-org/opentdf-platform/protocol/go/kasregistry"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	kasDB "github.com/arkavo-org/opentdf-platform/service/kasregistry/db"
+	"github.com/arkavo-org/opentdf-platform/service/pkg/serviceregistry"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
-	"github.com/opentdf/platform/service/internal/db"
-	kasDB "github.com/opentdf/platform/service/kasregistry/db"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
 type KeyAccessServerRegistry struct {

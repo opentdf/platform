@@ -7,11 +7,11 @@ import (
 
 	"log/slog"
 
+	"github.com/arkavo-org/opentdf-platform/service/pkg/util"
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/pkg/util"
 )
 
 var rolePrefix = "role:"

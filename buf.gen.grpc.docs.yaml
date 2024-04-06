@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/opentdf/platform/protocol/go
+    default: github.com/arkavo-org/opentdf-platform/protocol/go
     except:
       - buf.build/bufbuild/protovalidate
       - buf.build/googleapis/googleapis

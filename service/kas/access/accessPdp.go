@@ -5,9 +5,9 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/policy"
-	otdf "github.com/opentdf/platform/sdk"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/authorization"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy"
+	otdf "github.com/arkavo-org/opentdf-platform/sdk"
 )
 
 const (

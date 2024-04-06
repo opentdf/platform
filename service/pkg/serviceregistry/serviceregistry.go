@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/sdk"
+	"github.com/arkavo-org/opentdf-platform/sdk"
 
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/service/internal/opa"
+	"github.com/arkavo-org/opentdf-platform/service/internal/server"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/service/internal/db"
-	"github.com/opentdf/platform/service/internal/opa"
-	"github.com/opentdf/platform/service/internal/server"
 	"google.golang.org/grpc"
 )
 

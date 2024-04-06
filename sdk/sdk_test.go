@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	"github.com/opentdf/platform/sdk"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/kasregistry"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/attributes"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/resourcemapping"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/subjectmapping"
+	"github.com/arkavo-org/opentdf-platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

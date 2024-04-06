@@ -1,8 +1,8 @@
 package db
 
 import (
-	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/common"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
 )
 
 const (

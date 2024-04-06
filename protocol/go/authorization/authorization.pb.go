@@ -7,7 +7,7 @@
 package authorization
 
 import (
-	policy "github.com/opentdf/platform/protocol/go/policy"
+	policy "github.com/arkavo-org/opentdf-platform/protocol/go/policy"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

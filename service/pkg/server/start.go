@@ -8,14 +8,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
-	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
-	"github.com/opentdf/platform/service/internal/server"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
+	"github.com/arkavo-org/opentdf-platform/sdk"
+	"github.com/arkavo-org/opentdf-platform/service/internal/config"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/service/internal/logger"
+	"github.com/arkavo-org/opentdf-platform/service/internal/opa"
+	"github.com/arkavo-org/opentdf-platform/service/internal/server"
+	"github.com/arkavo-org/opentdf-platform/service/pkg/serviceregistry"
+	wellknown "github.com/arkavo-org/opentdf-platform/service/wellknownconfiguration"
 )
 
 type StartOptions func(StartConfig) StartConfig

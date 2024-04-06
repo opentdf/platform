@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
-	"github.com/opentdf/platform/service/internal/config"
+	"github.com/arkavo-org/opentdf-platform/service/internal/config"
 	"github.com/spf13/cobra"
 )
 

@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/arkavo-org/opentdf-platform/lib/ocrypto"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 var (

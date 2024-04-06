@@ -3,8 +3,8 @@ package opa
 import (
 	"fmt"
 
+	"github.com/arkavo-org/opentdf-platform/service/policies"
 	sdktest "github.com/open-policy-agent/opa/sdk/test"
-	"github.com/opentdf/platform/service/policies"
 )
 
 // MockBundleServer is a mock HTTP server that serves a bundle. This should be used for local development only.

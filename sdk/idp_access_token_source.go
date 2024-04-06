@@ -11,11 +11,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/arkavo-org/opentdf-platform/lib/ocrypto"
+	"github.com/arkavo-org/opentdf-platform/sdk/auth"
+	"github.com/arkavo-org/opentdf-platform/sdk/internal/oauth"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/sdk/internal/oauth"
 )
 
 const (

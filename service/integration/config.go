@@ -1,6 +1,6 @@
 package integration
 
-import "github.com/opentdf/platform/service/internal/config"
+import "github.com/arkavo-org/opentdf-platform/service/internal/config"
 
 var Config *config.Config
 

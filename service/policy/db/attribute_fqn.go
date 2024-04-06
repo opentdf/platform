@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy"
+	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/attributes"
+	"github.com/arkavo-org/opentdf-platform/service/internal/db"
 )
 
 // These values are optional, but at least one must be set. The other values will be derived from

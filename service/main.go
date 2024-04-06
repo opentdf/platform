@@ -1,7 +1,14 @@
 package main
 
-import "github.com/arkavo-org/opentdf-platform/service/cmd"
+import "github.com/arkavo-org/opentdf-platform/service/pkg/server"
 
 func main() {
-	cmd.Execute()
+	err := server.Start(
+		server.WithWaitForShutdownSignal(),
+		server.WithConfigFile("opentdf.yaml"),
+		server.WithConfigKey("opentdf"),
+	)
+	if err != nil {
+		panic(err)
+	}
 }

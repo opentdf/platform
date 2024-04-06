@@ -14,13 +14,13 @@ type AuthNConfig struct {
 	Audience          string   `yaml:"audience" json:"audience"`
 	Clients           []string `yaml:"clients" json:"clients"`
 	OIDCConfiguration `yaml:"-" json:"-"`
-	Policy            PolicyConfig `yaml:"policy" json:"policy"`
+	Policy            PolicyConfig `yaml:"policy" json:"policy" mapstructure:"policy"`
 }
 
 type PolicyConfig struct {
 	Default   string            `yaml:"default" json:"default"`
-	RoleClaim string            `yaml:"claim" json:"claim"`
-	RoleMap   map[string]string `yaml:"map" json:"map"`
+	RoleClaim string            `yaml:"claim" json:"claim" mapstructure:"claim"`
+	RoleMap   map[string]string `yaml:"map" json:"map" mapstructure:"map"`
 	Csv       string            `yaml:"csv" json:"csv"`
 	Model     string            `yaml:"model" json:"model"`
 }

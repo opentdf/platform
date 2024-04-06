@@ -19,7 +19,14 @@ var (
 		Use:   "down",
 		Short: "Run database migration down one version",
 		Run: func(cmd *cobra.Command, args []string) {
-			dbClient, err := migrateDBClient()
+			configFile, _ := cmd.Flags().GetString(configFileFlag)
+			configKey, _ := cmd.Flags().GetString(configKeyFlag)
+			cfg, err := config.LoadConfig(configKey, configFile)
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
+
+			dbClient, err := migrateDBClient(cfg)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
@@ -35,7 +42,13 @@ var (
 		Use:   "up",
 		Short: "Run database migrations up to the latest version",
 		Run: func(cmd *cobra.Command, _ []string) {
-			dbClient, err := migrateDBClient()
+			configFile, _ := cmd.Flags().GetString(configFileFlag)
+			configKey, _ := cmd.Flags().GetString(configKeyFlag)
+			cfg, err := config.LoadConfig(configKey, configFile)
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
+			dbClient, err := migrateDBClient(cfg)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
@@ -52,7 +65,13 @@ var (
 		Use:   "status",
 		Short: "Show the status of the database migrations",
 		Run: func(cmd *cobra.Command, args []string) {
-			dbClient, err := migrateDBClient()
+			configFile, _ := cmd.Flags().GetString(configFileFlag)
+			configKey, _ := cmd.Flags().GetString(configKeyFlag)
+			cfg, err := config.LoadConfig(configKey, configFile)
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
+			dbClient, err := migrateDBClient(cfg)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
@@ -68,13 +87,7 @@ var (
 	}
 )
 
-func migrateDBClient() (*db.Client, error) {
-	// Load the config
-	conf, err := config.LoadConfig("opentdf")
-	if err != nil {
-		return nil, err
-	}
-
+func migrateDBClient(conf *config.Config) (*db.Client, error) {
 	slog.Info("creating database client")
 	dbClient, err := db.NewClient(conf.DB)
 	if err != nil {

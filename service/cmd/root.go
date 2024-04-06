@@ -19,6 +19,16 @@ user authorization, and performing access checks. Use this tool to start, stop,
 manage, configure, or upgrade one or more of the OpenTDF Platform services.`,
 }
 
+var (
+	configFileFlag = "config-file"
+	configKeyFlag  = "config-key"
+)
+
+func init() {
+	rootCmd.PersistentFlags().StringP(configFileFlag, "", "", "custom configuration file location")
+	rootCmd.PersistentFlags().StringP(configKeyFlag, "", "opentdf", "the key is the name of the configuration file without the extension")
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {

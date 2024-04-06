@@ -35,7 +35,9 @@ to run this command in a clean database. This command is intended for local deve
 ** Teardown or Issues **
 You can clear/recycle your database with 'docker-compose down' and 'docker-compose up' to start fresh.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			cfg, err := config.LoadConfig("opentdf")
+			configFile, _ := cmd.Flags().GetString(configFileFlag)
+			configKey, _ := cmd.Flags().GetString(configKeyFlag)
+			cfg, err := config.LoadConfig(configKey, configFile)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}

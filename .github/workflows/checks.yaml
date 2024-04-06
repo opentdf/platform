@@ -149,7 +149,7 @@ jobs:
         continue-on-error: true
         with:
           input: service
-          against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
+          against: "https://github.com/arkavo-org/opentdf-platform.git#branch=main,subdir=service"
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.21.8"

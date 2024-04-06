@@ -1,7 +1,5 @@
 # OpenTDF Platform (Fork of)
 
-![CI](https://github.com/opentdf/platform/actions/workflows/checks.yaml/badge.svg?branch=main) ![lint](https://github.com/opentdf/platform/actions/workflows/lint-all.yaml/badge.svg?branch=main) ![Vulnerability Check](https://github.com/opentdf/platform/actions/workflows/vulnerability-check.yaml/badge.svg?branch=main)
-
 ## Documentation
 
 <!-- Broken
@@ -47,20 +45,20 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 > [!NOTE]
 > Migrations are handled automatically by the server. This can be disabled via the config file, as
 > needed. They can also be run manually using the `migrate` command
-> (`make go.work`;`go run github.com/opentdf/platform/service migrate up`).
+> (`make go.work`;`go run github.com/arkavo-org/opentdf-platform/service migrate up`).
 
 1. `docker-compose up`
 2. Create an OpenTDF config file: `opentdf.yaml`
    1. The `opentdf-example.yaml` file is a good starting point, but you may need to modify it to match your environment.
    2. The `opentdf-example-no-kas.yaml` file configures the platform to run insecurely without KAS and without endpoint auth.
-3. Provision keycloak `go run github.com/opentdf/platform/service provision keycloak`
+3. Provision keycloak `go run github.com/arkavo-org/opentdf-platform/service provision keycloak`
 4. Configure KAS keys and your HSM with `.github/scripts/hsm-init-temporary-keys.sh`
-5. Run the server `go run github.com/opentdf/platform/service start`
+5. Run the server `go run github.com/arkavo-org/opentdf-platform/service start`
    1. _Alt_ use the hot-reload development environment `air`
 6. The server is now running on `localhost:8080` (or the port specified in the config file)
 
 Note: support was added to provision a set of fixture data into the database.
-Run `go run github.com/opentdf/platform/service provision fixtures -h` for more information.
+Run `go run github.com/arkavo-org/opentdf-platform/service provision fixtures -h` for more information.
 
 ### Generation
 
@@ -113,4 +111,4 @@ To see how to generate key pairs that KAS can use, review the [the temp keys ini
 ### Policy
 
 The policy service is responsible for managing policy configurations. It provides a gRPC API for
-creating, updating, and deleting policy configurations. [Docs](https://github.com/opentdf/platform/tree/main/docs)
+creating, updating, and deleting policy configurations. [Docs](https://github.com/arkavo-org/opentdf-platform/tree/main/docs)

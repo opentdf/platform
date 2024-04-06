@@ -3,6 +3,8 @@ module github.com/arkavo-org/opentdf-platform/sdk
 go 1.22.2
 
 require (
+	github.com/arkavo-org/opentdf-platform/lib/ocrypto v0.0.0-00010101000000-000000000000
+	github.com/arkavo-org/opentdf-platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/docker/go-connections v0.5.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.6.0
@@ -60,6 +62,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect

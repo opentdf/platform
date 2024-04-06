@@ -5,7 +5,6 @@ go 1.22.2
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v11 v11.2.0
-	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/arkavo-org/opentdf-platform/lib/ocrypto v0.0.0-00010101000000-000000000000
 	github.com/arkavo-org/opentdf-platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/arkavo-org/opentdf-platform/sdk v0.0.0-00010101000000-000000000000
@@ -23,7 +22,6 @@ require (
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
 	github.com/pressly/goose/v3 v3.19.1
-	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
@@ -81,7 +79,6 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/google/cel-go v0.20.1 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -154,7 +151,6 @@ require (
 
 require (
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect

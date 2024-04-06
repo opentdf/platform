@@ -23,7 +23,7 @@ tmp/
 __pycache__
 
 # Userland files
-opentdf.yaml
+service/opentdf.yaml
 .vscode/settings.json
 .idea/
 

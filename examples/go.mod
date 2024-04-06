@@ -3,6 +3,8 @@ module github.com/arkavo-org/opentdf-platform/examples
 go 1.22.2
 
 require (
+	github.com/arkavo-org/opentdf-platform/protocol/go v0.0.0-00010101000000-000000000000
+	github.com/arkavo-org/opentdf-platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.8.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
@@ -16,6 +18,7 @@ replace (
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.33.0-20240221180331-f05a6f4403ce.1 // indirect
+	github.com/arkavo-org/opentdf-platform/lib/ocrypto v0.0.0-00010101000000-000000000000 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect

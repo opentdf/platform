@@ -45,7 +45,7 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientCredentials := ClientCredentials{
-		ClientId:   "testclient",
+		ClientID:   "testclient",
 		ClientAuth: "abcd1234",
 	}
 
@@ -114,7 +114,7 @@ func TestClientSecretNoNonce(t *testing.T) {
 	defer server.Close()
 
 	clientCredentials := ClientCredentials{
-		ClientId:   "theclient",
+		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
 	_, err = GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
@@ -145,7 +145,7 @@ func TestClientSecretWithNonce(t *testing.T) {
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte{})
 			require.NoError(t, err, "error writing response")
 			return
@@ -157,12 +157,17 @@ func TestClientSecretWithNonce(t *testing.T) {
 		// get the key we used to sign the DPoP token from the header
 		clientTok := extractDPoPToken(r, t)
 
-		if nonce, ok := clientTok.Get("nonce"); ok {
-			if nonce.(string) != "dfdffdfddf" {
+		nonce, exists := clientTok.Get("nonce")
+		if !exists {
+			t.Logf("didn't get nonce assertion")
+		}
+
+		if nonceStr, ok := nonce.(string); ok {
+			if nonceStr != "dfdffdfddf" {
 				t.Errorf("Got incorrect nonce: %v", nonce)
 			}
 		} else {
-			t.Logf("didn't get nonce assertion")
+			t.Errorf("Nonce is not a string")
 		}
 
 		tok, _ := jwt.NewBuilder().
@@ -183,7 +188,7 @@ func TestClientSecretWithNonce(t *testing.T) {
 	defer server.Close()
 
 	clientCredentials := ClientCredentials{
-		ClientId:   "theclient",
+		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
 	_, err = GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
@@ -241,23 +246,23 @@ func TestSignedJWTWithNonce(t *testing.T) {
 	timesCalled := 0
 
 	var url string
-	getUrl := func() string {
+	getURL := func() string {
 		return url
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		timesCalled += 1
+		timesCalled++
 
 		if r.URL.Path != "/token" {
 			t.Errorf("Expected to request '/token', got: %s", r.URL.Path)
 		}
 		require.NoError(t, r.ParseForm())
 
-		validateClientAssertionAuth(r, t, getUrl, "theclient", clientPublicKey)
+		validateClientAssertionAuth(r, t, getURL, "theclient", clientPublicKey)
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			if _, err := w.Write([]byte{}); err != nil {
 				t.Errorf("error writing response: %v", err)
 			}
@@ -270,9 +275,13 @@ func TestSignedJWTWithNonce(t *testing.T) {
 		// get the key we used to sign the DPoP token from the header
 		clientTok := extractDPoPToken(r, t)
 
-		if nonce, ok := clientTok.Get("nonce"); ok {
-			if nonce.(string) != "dfdffdfddf" {
-				t.Errorf("Got incorrect nonce: %v", nonce)
+		nonce, exists := clientTok.Get("nonce")
+		if exists {
+			value, ok := nonce.(string)
+			if !ok {
+				t.Errorf("Nonce is not a string")
+			} else if value != "dfdffdfddf" {
+				t.Errorf("Got incorrect nonce: %v", value)
 			}
 		} else {
 			t.Logf("didn't get nonce assertion")
@@ -296,7 +305,7 @@ func TestSignedJWTWithNonce(t *testing.T) {
 	defer server.Close()
 
 	clientCredentials := ClientCredentials{
-		ClientId:   "theclient",
+		ClientID:   "theclient",
 		ClientAuth: clientAuthJWK,
 	}
 
@@ -314,7 +323,7 @@ the token endpoint is a string _but_ we only have the value after we create the 
 so we need a way get the value of the url after the server has started
 *
 */
-func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint func() string, clientId string, key jwk.Key) {
+func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint func() string, clientID string, key jwk.Key) {
 	if grant := r.Form.Get("grant_type"); grant != "client_credentials" {
 		t.Logf("got the wrong grant type: %s, expected client_credentials", grant)
 	}
@@ -338,11 +347,11 @@ func validateClientAssertionAuth(r *http.Request, t *testing.T, tokenEndpoint fu
 		t.Fatalf("error verifying client signature on token [%s]: %v", clientAssertion, err)
 	}
 
-	if tok.Subject() != clientId {
+	if tok.Subject() != clientID {
 		t.Fatalf("incorrect subject: %s", tok.Subject())
 	}
 
-	if tok.Issuer() != clientId {
+	if tok.Issuer() != clientID {
 		t.Fatalf("incorrect issuer: %s", tok.Issuer())
 	}
 
@@ -396,7 +405,17 @@ func setupKeycloak(t *testing.T, ctx context.Context) (tc.Container, string) {
 		},
 		WaitingFor: wait.ForLog("Running the server"),
 	}
+
+	var providerType tc.ProviderType
+
+	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
+		providerType = tc.ProviderPodman
+	} else {
+		providerType = tc.ProviderDocker
+	}
+
 	keycloak, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+		ProviderType:     providerType,
 		ContainerRequest: containerReq,
 		Started:          true,
 	})
@@ -441,7 +460,7 @@ func setupKeycloak(t *testing.T, ctx context.Context) (tc.Container, string) {
 		panic(err)
 	}
 
-	if res.StatusCode != 201 {
+	if res.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(res.Body)
 		t.Fatalf("error creating realm: %s", string(body))
 	}

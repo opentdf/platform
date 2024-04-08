@@ -1,4 +1,4 @@
-//nolint:mnd // pkzip magics and lengths are inlined for clarity
+//nolint:gomnd // pkzip magics and lengths are inlined for clarity
 package archive
 
 import (
@@ -452,10 +452,18 @@ func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
 }
 
 // GetTimeDateUnMSDosFormat Get the time and date in MSDOS format.
+const defaultSecondValue = 29
+
+const monthShift = 5
+
+const baseYear = 80
+
+const halfSecond = 2
+
 func (writer *Writer) getTimeDateUnMSDosFormat() (uint16, uint16) {
 	t := time.Now().UTC()
-	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/2), 29))
-	dateInDos := (t.Year()-80)<<9 | int((t.Month()+1)<<5) | t.Day()
+	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/halfSecond), float64(defaultSecondValue)))
+	dateInDos := (t.Year()-baseYear)<<9 | int((t.Month()+1)<<monthShift) | t.Day()
 	return uint16(timeInDos), uint16(dateInDos)
 }
 

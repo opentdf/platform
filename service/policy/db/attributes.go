@@ -80,7 +80,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("rule"),
-		t.Field("metadata"),
+		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', " + t.Field("metadata") + "->'labels', 'created_at', " + t.Field("created_at") + ", 'updated_at', " + t.Field("updated_at") + ")) as metadata",
 		t.Field("namespace_id"),
 		t.Field("active"),
 		nt.Field("name"),

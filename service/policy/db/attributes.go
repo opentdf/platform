@@ -464,7 +464,6 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 
 func createAttributeSql(namespaceId string, name string, rule string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Attributes
-	name = strings.ToLower(name)
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("namespace_id", "name", "rule", "metadata").
@@ -479,7 +478,9 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, err
 	}
 
-	sql, args, err := createAttributeSql(r.GetNamespaceId(), r.GetName(), attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
+	name := strings.ToLower(r.GetName())
+
+	sql, args, err := createAttributeSql(r.GetNamespaceId(), name, attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +508,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 	a := &policy.Attribute{
 		Id:       id,
-		Name:     strings.ToLower(r.GetName()),
+		Name:     name,
 		Rule:     r.GetRule(),
 		Metadata: metadata,
 		Namespace: &policy.Namespace{

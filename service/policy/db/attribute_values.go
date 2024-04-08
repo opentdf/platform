@@ -133,7 +133,6 @@ func createAttributeValueSql(
 	metadata []byte,
 ) (string, []interface{}, error) {
 	t := Tables.AttributeValues
-	value = strings.ToLower(value)
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns(
@@ -156,9 +155,11 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		return nil, err
 	}
 
+	value := strings.ToLower(v.GetValue())
+
 	sql, args, err := createAttributeValueSql(
 		attributeID,
-		v.GetValue(),
+		value,
 		metadataJSON,
 	)
 	if err != nil {
@@ -199,7 +200,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	rV := &policy.Value{
 		Id:        id,
 		Attribute: &policy.Attribute{Id: attributeID},
-		Value:     strings.ToLower(v.GetValue()),
+		Value:     value,
 		Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},

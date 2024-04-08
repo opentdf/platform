@@ -176,7 +176,6 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 
 func createNamespaceSql(name string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	name = strings.ToLower(name)
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("name", "metadata").
@@ -191,7 +190,8 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 		return nil, err
 	}
 
-	sql, args, err := createNamespaceSql(r.GetName(), metadataJSON)
+	name := strings.ToLower(r.GetName())
+	sql, args, err := createNamespaceSql(name, metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 
 	return &policy.Namespace{
 		Id:       id,
-		Name:     strings.ToLower(r.GetName()),
+		Name:     name,
 		Active:   &wrapperspb.BoolValue{Value: true},
 		Metadata: m,
 	}, nil

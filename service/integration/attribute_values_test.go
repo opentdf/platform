@@ -80,6 +80,11 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	s.Equal(len(f.Members), len(v.GetMembers()))
 	// s.Equal(f.AttributeDefinitionId, v.AttributeId)
 	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
+	metadata := v.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
@@ -265,6 +270,8 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 			Labels: labels,
 		},
 	})
+	metadata := created.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
 	s.NoError(err)
 	s.NotNil(created)
 
@@ -294,6 +301,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {

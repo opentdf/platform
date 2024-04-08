@@ -219,11 +219,12 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
 }
 
 func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
+	values := []string{"first", "second", "third", "fourth"}
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__get_attribute_order_of_values",
 		NamespaceId: fixtureNamespaceId,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-		Values:      []string{"FIRST", "SECOND", "THIRD"},
+		Values:      []string{strings.ToUpper(values[0]), strings.ToUpper(values[1]), strings.ToUpper(values[2])},
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	assert.Nil(s.T(), err)
@@ -233,7 +234,7 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 
 	// add a fourth value
 	val := &attributes.CreateAttributeValueRequest{
-		Value:       "FOURTH",
+		Value:       strings.ToUpper(values[3]),
 		AttributeId: createdAttr.GetId(),
 	}
 
@@ -241,15 +242,15 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), createdVal)
 
-	// get attribute and ensure the order of the values is preserved
+	// get attribute and ensure the order of the values is preserved (normalized to lower case)
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
 	assert.Equal(s.T(), 4, len(gotAttr.GetValues()))
-	assert.Equal(s.T(), "FIRST", gotAttr.GetValues()[0].GetValue())
-	assert.Equal(s.T(), "SECOND", gotAttr.GetValues()[1].GetValue())
-	assert.Equal(s.T(), "THIRD", gotAttr.GetValues()[2].GetValue())
-	assert.Equal(s.T(), "FOURTH", gotAttr.GetValues()[3].GetValue())
+	assert.Equal(s.T(), values[0], gotAttr.GetValues()[0].GetValue())
+	assert.Equal(s.T(), values[1], gotAttr.GetValues()[1].GetValue())
+	assert.Equal(s.T(), values[2], gotAttr.GetValues()[2].GetValue())
+	assert.Equal(s.T(), values[3], gotAttr.GetValues()[3].GetValue())
 	assert.Equal(s.T(), policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
 
 	// deactivate one of the values
@@ -262,10 +263,10 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
 	assert.Equal(s.T(), 4, len(gotAttr.GetValues()))
-	assert.Equal(s.T(), "FIRST", gotAttr.GetValues()[0].GetValue())
-	assert.Equal(s.T(), "SECOND", gotAttr.GetValues()[1].GetValue())
-	assert.Equal(s.T(), "THIRD", gotAttr.GetValues()[2].GetValue())
-	assert.Equal(s.T(), "FOURTH", gotAttr.GetValues()[3].GetValue())
+	assert.Equal(s.T(), values[0], gotAttr.GetValues()[0].GetValue())
+	assert.Equal(s.T(), values[1], gotAttr.GetValues()[1].GetValue())
+	assert.Equal(s.T(), values[2], gotAttr.GetValues()[2].GetValue())
+	assert.Equal(s.T(), values[3], gotAttr.GetValues()[3].GetValue())
 	assert.Equal(s.T(), policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
 
 	// get attribute by value fqn and ensure the order of the values is preserved
@@ -282,10 +283,10 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	assert.Equal(s.T(), 1, len(resp))
 	gotVals := resp[fqns[0]].GetAttribute().GetValues()
 	assert.Equal(s.T(), 4, len(gotVals))
-	assert.Equal(s.T(), "FIRST", gotVals[0].GetValue())
-	assert.Equal(s.T(), "SECOND", gotVals[1].GetValue())
-	assert.Equal(s.T(), "THIRD", gotVals[2].GetValue())
-	assert.Equal(s.T(), "FOURTH", gotVals[3].GetValue())
+	assert.Equal(s.T(), values[0], gotVals[0].GetValue())
+	assert.Equal(s.T(), values[1], gotVals[1].GetValue())
+	assert.Equal(s.T(), values[2], gotVals[2].GetValue())
+	assert.Equal(s.T(), values[3], gotVals[3].GetValue())
 }
 
 func (s *AttributesSuite) Test_GetAttribute() {

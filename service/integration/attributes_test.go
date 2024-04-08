@@ -246,12 +246,12 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
-	assert.Equal(s.T(), 4, len(gotAttr.GetValues()))
-	assert.Equal(s.T(), values[0], gotAttr.GetValues()[0].GetValue())
-	assert.Equal(s.T(), values[1], gotAttr.GetValues()[1].GetValue())
-	assert.Equal(s.T(), values[2], gotAttr.GetValues()[2].GetValue())
-	assert.Equal(s.T(), values[3], gotAttr.GetValues()[3].GetValue())
-	assert.Equal(s.T(), policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
+	s.Len(gotAttr.GetValues(), 4)
+	s.Equal(values[0], gotAttr.GetValues()[0].GetValue())
+	s.Equal(values[1], gotAttr.GetValues()[1].GetValue())
+	s.Equal(values[2], gotAttr.GetValues()[2].GetValue())
+	s.Equal(values[3], gotAttr.GetValues()[3].GetValue())
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
 
 	// deactivate one of the values
 	deactivatedVal, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, gotAttr.GetValues()[1].GetId())
@@ -262,12 +262,12 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	gotAttr, err = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), gotAttr)
-	assert.Equal(s.T(), 4, len(gotAttr.GetValues()))
-	assert.Equal(s.T(), values[0], gotAttr.GetValues()[0].GetValue())
-	assert.Equal(s.T(), values[1], gotAttr.GetValues()[1].GetValue())
-	assert.Equal(s.T(), values[2], gotAttr.GetValues()[2].GetValue())
-	assert.Equal(s.T(), values[3], gotAttr.GetValues()[3].GetValue())
-	assert.Equal(s.T(), policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
+	s.Len(gotAttr.GetValues(), 4)
+	s.Equal(values[0], gotAttr.GetValues()[0].GetValue())
+	s.Equal(values[1], gotAttr.GetValues()[1].GetValue())
+	s.Equal(values[2], gotAttr.GetValues()[2].GetValue())
+	s.Equal(values[3], gotAttr.GetValues()[3].GetValue())
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
 
 	// get attribute by value fqn and ensure the order of the values is preserved
 	fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", gotAttr.GetNamespace().GetName(), createdAttr.GetName(), gotAttr.GetValues()[0].GetValue())}
@@ -280,13 +280,13 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	resp, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), resp)
-	assert.Equal(s.T(), 1, len(resp))
+	s.Len(resp, 1)
 	gotVals := resp[fqns[0]].GetAttribute().GetValues()
-	assert.Equal(s.T(), 4, len(gotVals))
-	assert.Equal(s.T(), values[0], gotVals[0].GetValue())
-	assert.Equal(s.T(), values[1], gotVals[1].GetValue())
-	assert.Equal(s.T(), values[2], gotVals[2].GetValue())
-	assert.Equal(s.T(), values[3], gotVals[3].GetValue())
+	s.Len(gotVals, 4)
+	s.Equal(values[0], gotVals[0].GetValue())
+	s.Equal(values[1], gotVals[1].GetValue())
+	s.Equal(values[2], gotVals[2].GetValue())
+	s.Equal(values[3], gotVals[3].GetValue())
 }
 
 func (s *AttributesSuite) Test_GetAttribute() {

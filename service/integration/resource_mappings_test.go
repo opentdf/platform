@@ -132,6 +132,11 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 			s.True(testedMembers, "expected to test at least one attribute value member")
 		}
 		equalMembers(s.T(), av, mapping.GetAttributeValue(), false)
+		metadata := mapping.GetMetadata()
+		createdAt := metadata.GetCreatedAt()
+		updatedAt := metadata.GetUpdatedAt()
+		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 	}
 }
 
@@ -194,6 +199,8 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		},
 		Terms: terms,
 	})
+	metadata := createdMapping.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
 	s.NoError(err)
 	s.NotNil(createdMapping)
 
@@ -232,6 +239,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
 	s.Equal(updateTerms, got.GetTerms())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {

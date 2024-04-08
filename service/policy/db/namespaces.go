@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -76,7 +77,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		t.Field("metadata"),
+		getMetadataField("", false),
 	}
 
 	if opts.withFqn {
@@ -125,7 +126,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		t.Field("metadata"),
+		getMetadataField("", false),
 	}
 
 	if opts.withFqn {
@@ -189,7 +190,8 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 		return nil, err
 	}
 
-	sql, args, err := createNamespaceSql(r.GetName(), metadataJSON)
+	name := strings.ToLower(r.GetName())
+	sql, args, err := createNamespaceSql(name, metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +208,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 
 	return &policy.Namespace{
 		Id:       id,
-		Name:     r.GetName(),
+		Name:     name,
 		Active:   &wrapperspb.BoolValue{Value: true},
 		Metadata: m,
 	}, nil

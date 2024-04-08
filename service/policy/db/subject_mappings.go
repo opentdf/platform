@@ -105,7 +105,7 @@ func subjectConditionSetSelect() sq.SelectBuilder {
 	t := Tables.SubjectConditionSet
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		t.Field("metadata"),
+		getMetadataField("", false),
 		t.Field("condition"),
 	)
 }
@@ -171,10 +171,10 @@ func subjectMappingSelect() sq.SelectBuilder {
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("actions"),
-		t.Field("metadata"),
+		getMetadataField(t.Name(), false),
 		"JSON_BUILD_OBJECT("+
 			"'id', "+scsT.Field("id")+", "+
-			"'metadata', "+scsT.Field("metadata")+", "+
+			getMetadataField(scsT.Name(), true)+
 			"'subject_sets', "+scsT.Field("condition")+
 			") AS subject_condition_set",
 		"JSON_BUILD_OBJECT("+

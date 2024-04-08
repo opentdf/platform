@@ -77,6 +77,19 @@ func (s *NamespacesSuite) Test_CreateNamespace() {
 	}
 }
 
+func (s *NamespacesSuite) Test_CreateNamespace_NormalizeCasing() {
+	name := "TeStInG-NaMeSpAcE-123.com"
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	s.Require().NoError(err)
+	s.NotNil(createdNamespace)
+	s.Equal(strings.ToLower(name), createdNamespace.GetName())
+
+	got, err := s.db.PolicyClient.GetNamespace(s.ctx, createdNamespace.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(strings.ToLower(name), got.GetName(), createdNamespace.GetName())
+}
+
 func (s *NamespacesSuite) Test_GetNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 
@@ -86,6 +99,11 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 		s.NotNil(gotNamespace)
 		// name retrieved by ID equal to name used to create
 		s.Equal(test.Name, gotNamespace.GetName())
+		metadata := gotNamespace.GetMetadata()
+		createdAt := metadata.GetCreatedAt()
+		updatedAt := metadata.GetUpdatedAt()
+		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 	}
 
 	// Getting a namespace with an nonExistent id should fail
@@ -140,13 +158,15 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 		"update": updatedLabel,
 		"new":    newLabel,
 	}
-
 	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "updating-namespace.com",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
+	metadata := created.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
+
 	s.NoError(err)
 	s.NotNil(created)
 
@@ -170,6 +190,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {

@@ -278,7 +278,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		"'metadata', vmv.metadata, " +
+		"'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', vmv.metadata->'labels', 'created_at', vmv.created_at, 'updated_at', vmv.updated_at)), " +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -290,7 +290,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		"av.value",
 		"av.active",
 		members,
-		"av.metadata",
+		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata->'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata",
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {

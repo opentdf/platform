@@ -449,7 +449,7 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_AllAttributesDeactivated() {
 
 	// Check if all attributes are deactivated
 	for _, attr := range attrs {
-		s.Equal(false, attr.GetActive().GetValue())
+		s.False(attr.GetActive().GetValue())
 	}
 }
 

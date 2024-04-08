@@ -80,7 +80,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("rule"),
-		t.Field("metadata"),
+		getMetadataField(t.Name(), false),
 		t.Field("namespace_id"),
 		t.Field("active"),
 		nt.Field("name"),
@@ -152,10 +152,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"JSON_AGG(JSON_BUILD_OBJECT(" +
 				"'id', " + smT.Field("id") + "," +
 				"'actions', " + smT.Field("actions") + "," +
-				"'metadata', " + smT.Field("metadata") + "," +
+				getMetadataField(smT.Name(), true) +
 				"'subject_condition_set', JSON_BUILD_OBJECT(" +
 				"'id', " + scsT.Field("id") + "," +
-				"'metadata', " + scsT.Field("metadata") + "," +
+				getMetadataField(scsT.Name(), true) +
 				"'subject_sets', " + scsT.Field("condition") +
 				")" +
 				")) AS sub_maps_arr " +
@@ -478,7 +478,9 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, err
 	}
 
-	sql, args, err := createAttributeSql(r.GetNamespaceId(), r.GetName(), attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
+	name := strings.ToLower(r.GetName())
+
+	sql, args, err := createAttributeSql(r.GetNamespaceId(), name, attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +508,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 	a := &policy.Attribute{
 		Id:       id,
-		Name:     r.GetName(),
+		Name:     name,
 		Rule:     r.GetRule(),
 		Metadata: metadata,
 		Namespace: &policy.Namespace{

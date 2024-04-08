@@ -47,7 +47,7 @@ func NewRegistration() serviceregistry.Registration {
 var retrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
+			WithSubjectMaps: false,
 		},
 		Fqns: ra.GetAttributeValueFqns(),
 	})
@@ -86,6 +86,23 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				attrVals = append(attrVals, v.GetValue())
 			}
 
+			attrDefs, err = populateAttrDefValueFqns(attrDefs)
+			if err != nil {
+				return nil, err
+			}
+
+			// get the relevent resource attribute fqns
+			allPertinentFqnsRA := authorization.ResourceAttribute{
+				AttributeValueFqns: ra.GetAttributeValueFqns(),
+			}
+			for _, attrDef := range attrDefs {
+				if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+					for _, value := range attrDef.GetValues() {
+						allPertinentFqnsRA.AttributeValueFqns = append(allPertinentFqnsRA.AttributeValueFqns, value.GetFqn())
+					}
+				}
+			}
+
 			for _, ec := range dr.GetEntityChains() {
 				//
 				// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
@@ -93,7 +110,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				entities := ec.GetEntities()
 				req := authorization.GetEntitlementsRequest{
 					Entities: entities,
-					Scope:    ra,
+					Scope:    &allPertinentFqnsRA,
 				}
 				ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
 				if err != nil {
@@ -224,4 +241,38 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
 	return rsp, nil
+}
+
+// Build an fqn from a namespace, attribute name, and value
+func fqnBuilder(n string, a string, v string) (string, error) {
+	fqn := "https://"
+	switch {
+	case n != "" && a != "" && v != "":
+		return fqn + n + "/attr/" + a + "/value/" + v, nil
+	case n != "" && a != "" && v == "":
+		return fqn + n + "/attr/" + a, nil
+	case n != "" && a == "":
+		return fqn + n, nil
+	default:
+		return "", errors.New("invalid FQN, unable to build fqn")
+	}
+}
+
+// If there are missing fqns in the attribute definition fill them in using
+// information from the attr definition
+func populateAttrDefValueFqns(attrDefs []*policy.Attribute) ([]*policy.Attribute, error) {
+	for i, attrDef := range attrDefs {
+		ns := attrDef.GetNamespace().GetName()
+		attr := attrDef.GetName()
+		for j, value := range attrDef.GetValues() {
+			if value.GetFqn() == "" {
+				fqn, err := fqnBuilder(ns, attr, value.GetValue())
+				if err != nil {
+					return nil, err
+				}
+				attrDefs[i].Values[j].Fqn = fqn
+			}
+		}
+	}
+	return attrDefs, nil
 }

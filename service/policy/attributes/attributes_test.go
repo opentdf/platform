@@ -28,7 +28,7 @@ var (
 
 // Create Attributes (definitions)
 
-func TestCreateAttribute_Valid(t *testing.T) {
+func TestCreateAttribute_Valid_Succeeds(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
 		NamespaceId: validUuid,
@@ -41,7 +41,7 @@ func TestCreateAttribute_Valid(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestCreateAttribute_WithValues_Valid(t *testing.T) {
+func TestCreateAttribute_WithValues_Valid_Succeeds(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
 		NamespaceId: validUuid,
@@ -59,7 +59,7 @@ func TestCreateAttribute_WithValues_Valid(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestCreateAttribute_NameTooLong(t *testing.T) {
+func TestCreateAttribute_NameTooLong_Fails(t *testing.T) {
 	name := strings.Repeat("a", 254)
 	req := &attributes.CreateAttributeRequest{
 		Name:        name,
@@ -74,7 +74,7 @@ func TestCreateAttribute_NameTooLong(t *testing.T) {
 	require.Contains(t, err.Error(), "string.max_len")
 }
 
-func TestCreateAttribute_NameWithSpace(t *testing.T) {
+func TestCreateAttribute_NameWithSpace_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        "invalid name",
 		NamespaceId: validUuid,
@@ -88,7 +88,7 @@ func TestCreateAttribute_NameWithSpace(t *testing.T) {
 	require.Contains(t, err.Error(), "[attribute_name_format]")
 }
 
-func TestCreateAttribute_NameWithNonAlphanumeric(t *testing.T) {
+func TestCreateAttribute_NameWithNonAlphanumeric_Fails(t *testing.T) {
 	names := []string{
 		"invalid@name",
 		"invalid#name",
@@ -114,7 +114,7 @@ func TestCreateAttribute_NameWithNonAlphanumeric(t *testing.T) {
 	}
 }
 
-func TestCreateAttribute_NamespaceIdMissing(t *testing.T) {
+func TestCreateAttribute_NamespaceIdMissing_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name: validName,
 		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
@@ -128,7 +128,7 @@ func TestCreateAttribute_NamespaceIdMissing(t *testing.T) {
 	require.Contains(t, err.Error(), "[required]")
 }
 
-func TestCreateAttribute_RuleMissing(t *testing.T) {
+func TestCreateAttribute_RuleMissing_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
 		NamespaceId: validUuid,
@@ -142,7 +142,7 @@ func TestCreateAttribute_RuleMissing(t *testing.T) {
 	require.Contains(t, err.Error(), "[required]")
 }
 
-func TestCreateAttribute_RuleUnspecified(t *testing.T) {
+func TestCreateAttribute_RuleUnspecified_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
 		NamespaceId: validUuid,
@@ -157,7 +157,7 @@ func TestCreateAttribute_RuleUnspecified(t *testing.T) {
 	require.Contains(t, err.Error(), "[required]")
 }
 
-func TestCreateAttribute_RuleInvalid(t *testing.T) {
+func TestCreateAttribute_RuleInvalid_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
 		NamespaceId: validUuid,
@@ -173,7 +173,7 @@ func TestCreateAttribute_RuleInvalid(t *testing.T) {
 	require.Contains(t, err.Error(), "enum")
 }
 
-func TestCreateAttribute_ValueInvalid(t *testing.T) {
+func TestCreateAttribute_ValueInvalid_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
 		NamespaceId: validUuid,
@@ -193,7 +193,7 @@ func TestCreateAttribute_ValueInvalid(t *testing.T) {
 
 // Create Attribute Values
 
-func TestCreateAttributeValue_Valid(t *testing.T) {
+func TestCreateAttributeValue_Valid_Succeeds(t *testing.T) {
 	req := &attributes.CreateAttributeValueRequest{
 		AttributeId: validUuid,
 		Value:       validValue1,
@@ -205,7 +205,7 @@ func TestCreateAttributeValue_Valid(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestCreateAttributeValue_ValueTooLong(t *testing.T) {
+func TestCreateAttributeValue_ValueTooLong_Fails(t *testing.T) {
 	value := strings.Repeat("a", 254)
 	req := &attributes.CreateAttributeValueRequest{
 		AttributeId: validUuid,
@@ -219,7 +219,7 @@ func TestCreateAttributeValue_ValueTooLong(t *testing.T) {
 	require.Contains(t, err.Error(), "string.max_len")
 }
 
-func TestCreateAttributeValue_ValueWithSpace(t *testing.T) {
+func TestCreateAttributeValue_ValueWithSpace_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeValueRequest{
 		AttributeId: validUuid,
 		Value:       "invalid value",
@@ -232,7 +232,7 @@ func TestCreateAttributeValue_ValueWithSpace(t *testing.T) {
 	require.Contains(t, err.Error(), "[attribute_value_format]")
 }
 
-func TestCreateAttributeValue_ValueWithNonAlphanumeric(t *testing.T) {
+func TestCreateAttributeValue_ValueWithNonAlphanumeric_Fails(t *testing.T) {
 	values := []string{
 		"invalid@value",
 		"invalid#value",
@@ -257,7 +257,7 @@ func TestCreateAttributeValue_ValueWithNonAlphanumeric(t *testing.T) {
 	}
 }
 
-func TestCreateAttributeValue_AttributeIdMissing(t *testing.T) {
+func TestCreateAttributeValue_AttributeIdMissing_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeValueRequest{
 		Value: validValue1,
 	}
@@ -270,7 +270,7 @@ func TestCreateAttributeValue_AttributeIdMissing(t *testing.T) {
 	require.Contains(t, err.Error(), "[required]")
 }
 
-func TestCreateAttributeValue_ValueMissing(t *testing.T) {
+func TestCreateAttributeValue_ValueMissing_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeValueRequest{
 		AttributeId: validUuid,
 	}

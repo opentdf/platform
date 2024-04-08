@@ -19,7 +19,7 @@ func getValidator() *protovalidate.Validator {
 	return v
 }
 
-func TestCreateNamespace_Valid(t *testing.T) {
+func TestCreateNamespace_Valid_Succeeds(t *testing.T) {
 	names := []string{
 		"example.org",
 		"hello.com",
@@ -47,7 +47,7 @@ func TestCreateNamespace_Valid(t *testing.T) {
 	}
 }
 
-func TestCreateNamespace_WithMetadata_Valid(t *testing.T) {
+func TestCreateNamespace_WithMetadata_Valid_Succeeds(t *testing.T) {
 	req := &namespaces.CreateNamespaceRequest{
 		Name: validName,
 		Metadata: &common.MetadataMutable{
@@ -63,7 +63,7 @@ func TestCreateNamespace_WithMetadata_Valid(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestCreateNamespace_WithSpace(t *testing.T) {
+func TestCreateNamespace_WithSpace_Fails(t *testing.T) {
 	req := &namespaces.CreateNamespaceRequest{
 		Name: "name with space.org",
 	}
@@ -75,7 +75,7 @@ func TestCreateNamespace_WithSpace(t *testing.T) {
 	require.Contains(t, err.Error(), "[namespace_format]")
 }
 
-func TestCreateNamespace_WithInvalidCharacter(t *testing.T) {
+func TestCreateNamespace_WithInvalidCharacter_Fails(t *testing.T) {
 	names := []string{
 		"~name.org",
 		"!name.net",
@@ -103,7 +103,7 @@ func TestCreateNamespace_WithInvalidCharacter(t *testing.T) {
 	}
 }
 
-func TestCreateNamespace_NameMissing(t *testing.T) {
+func TestCreateNamespace_NameMissing_Fails(t *testing.T) {
 	req := &namespaces.CreateNamespaceRequest{}
 
 	v := getValidator()

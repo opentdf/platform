@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"log/slog"
+	"strconv"
 
 	"github.com/itchyny/gojq"
 	"github.com/open-policy-agent/opa/ast"
@@ -48,7 +49,13 @@ func JQBuiltin() {
 }
 
 func ExecuteQuery(inputJSON map[string]any, queryString string) ([]any, error) {
-	query, err := gojq.Parse(queryString)
+	//first unescape the query string
+	unescapedQueryString, err := unescapeQueryString(queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	query, err := gojq.Parse(unescapedQueryString)
 	if err != nil {
 		return nil, err
 	}
@@ -73,4 +80,23 @@ func ExecuteQuery(inputJSON map[string]any, queryString string) ([]any, error) {
 	}
 
 	return found, nil
+}
+
+// unescape any strings within the provided string
+func unescapeQueryString(queryString string) (string, error) {
+	if queryString == "" {
+		return "", nil
+	}
+	unquotedQueryString, err := strconv.Unquote(queryString)
+	if err != nil {
+		if err.Error() == "invalid syntax" {
+			slog.Debug("invalid syntax error when unquoting means there was nothing to unescape. carry on.", slog.String("queryString", queryString))
+			unquotedQueryString = queryString
+		} else {
+			slog.Error("failed to unescape double quotes in subject external selector value", slog.String("queryString", queryString), slog.String("error", err.Error()))
+			return "", err
+		}
+	}
+	slog.Debug("unescaped any double quotes in jq query string", slog.String("queryString", unquotedQueryString))
+	return unquotedQueryString, nil
 }

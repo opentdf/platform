@@ -77,7 +77,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		t.Field("metadata"),
+		getMetadataField("", false),
 	}
 
 	if opts.withFqn {
@@ -126,7 +126,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		t.Field("metadata"),
+		getMetadataField("", false),
 	}
 
 	if opts.withFqn {

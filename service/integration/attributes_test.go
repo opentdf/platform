@@ -300,6 +300,11 @@ func (s *AttributesSuite) Test_GetAttribute() {
 		s.Equal(f.Name, gotAttr.GetName())
 		s.Equal(fmt.Sprintf("%s%s", policydb.AttributeRuleTypeEnumPrefix, f.Rule), gotAttr.GetRule().Enum().String())
 		s.Equal(f.NamespaceId, gotAttr.GetNamespace().GetId())
+		metadata := gotAttr.GetMetadata()
+		createdAt := metadata.GetCreatedAt()
+		updatedAt := metadata.GetUpdatedAt()
+		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 	}
 }
 
@@ -400,6 +405,8 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 		},
 	}
 	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	metadata := created.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
 	s.NoError(err)
 	s.NotNil(created)
 
@@ -425,6 +432,7 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
 }
 
 func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {

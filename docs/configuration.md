@@ -136,3 +136,9 @@ services:
   policy:
     enabled: true
 ```
+
+### Authorization
+
+| Field | Description | Default |
+| --- | --- | --- |
+| `enabled` | Enable the Authorization

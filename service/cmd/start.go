@@ -15,6 +15,13 @@ func init() {
 	rootCmd.AddCommand(&startCmd)
 }
 
-func start(_ *cobra.Command, _ []string) error {
-	return server.Start(server.WithWaitForShutdownSignal())
+func start(cmd *cobra.Command, _ []string) error {
+	configFile, _ := cmd.Flags().GetString(configFileFlag)
+	configKey, _ := cmd.Flags().GetString(configKeyFlag)
+
+	return server.Start(
+		server.WithWaitForShutdownSignal(),
+		server.WithConfigFile(configFile),
+		server.WithConfigKey(configKey),
+	)
 }

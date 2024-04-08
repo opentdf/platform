@@ -47,7 +47,7 @@ condition_group_evaluate(payload, boolean_operator, conditions) if {
 	# how do we handle the situation when multiple entities returned
 	# add to the list for each entity?
 	# or do they all have to have the attribtue for it to be returned?
-	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_field),
+	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_selector_value),
          condition.operator, condition.subject_external_values
     )
 } else if {
@@ -55,7 +55,7 @@ condition_group_evaluate(payload, boolean_operator, conditions) if {
 	boolean_operator == 2
 	payload[key]
 	some condition in conditions
-	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_field),
+	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_selector_value),
          condition.operator, condition.subject_external_values
     )
 }

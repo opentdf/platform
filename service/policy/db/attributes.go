@@ -478,7 +478,9 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, err
 	}
 
-	sql, args, err := createAttributeSql(r.GetNamespaceId(), r.GetName(), attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
+	name := strings.ToLower(r.GetName())
+
+	sql, args, err := createAttributeSql(r.GetNamespaceId(), name, attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +508,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 	a := &policy.Attribute{
 		Id:       id,
-		Name:     r.GetName(),
+		Name:     name,
 		Rule:     r.GetRule(),
 		Metadata: metadata,
 		Namespace: &policy.Namespace{

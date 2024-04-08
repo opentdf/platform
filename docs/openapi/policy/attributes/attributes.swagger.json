@@ -664,7 +664,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",

@@ -77,6 +77,19 @@ func (s *NamespacesSuite) Test_CreateNamespace() {
 	}
 }
 
+func (s *NamespacesSuite) Test_CreateNamespace_NormalizeCasing() {
+	name := "TeStInG-NaMeSpAcE-123.com"
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	s.Require().NoError(err)
+	s.NotNil(createdNamespace)
+	s.Equal(strings.ToLower(name), createdNamespace.GetName())
+
+	got, err := s.db.PolicyClient.GetNamespace(s.ctx, createdNamespace.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(strings.ToLower(name), got.GetName(), createdNamespace.GetName())
+}
+
 func (s *NamespacesSuite) Test_GetNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 

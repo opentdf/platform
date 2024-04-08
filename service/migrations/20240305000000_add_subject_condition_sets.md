@@ -138,7 +138,7 @@ erDiagram
     ConditionGroups ||--|{ Conditions: has
 
     Conditions {
-        varchar         subject_external_selector_value
+        varchar         subject_external_field
         varchar[]       subject_external_values
         enum            operator "IN | NOT IN"
     }

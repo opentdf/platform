@@ -1,4 +1,4 @@
-# OpenTDF Enhancements POC
+# OpenTDF
 
 ![CI](https://github.com/opentdf/platform/actions/workflows/checks.yaml/badge.svg?branch=main)
 

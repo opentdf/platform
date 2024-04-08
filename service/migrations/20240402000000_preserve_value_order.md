@@ -20,10 +20,8 @@ Expected behaviors:
 title: Add values_order uuid[] to AttributeDefinition
 nodes: |
 ---
-
 erDiagram
     AttributeDefinition ||--|{ AttributeValue : has
-
     AttributeValue {
         uuid         id                      PK
         uuid         namespace_id            FK
@@ -33,7 +31,6 @@ erDiagram
         compIdx      comp_key                UK "ns_id + ad_id + value"
         bool         active
     }
-
     AttributeDefinition {
         uuid         id           PK
         uuid         namespace_id FK

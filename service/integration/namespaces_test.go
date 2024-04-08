@@ -15,7 +15,6 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -81,12 +80,12 @@ func (s *NamespacesSuite) Test_CreateNamespace() {
 func (s *NamespacesSuite) Test_CreateNamespace_NormalizeCasing() {
 	name := "TeStInG-NaMeSpAcE-123.com"
 	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	s.NotNil(createdNamespace)
 	s.Equal(strings.ToLower(name), createdNamespace.GetName())
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, createdNamespace.GetId())
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(strings.ToLower(name), got.GetName(), createdNamespace.GetName())
 }

@@ -80,7 +80,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("rule"),
-		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', " + t.Field("metadata") + "->'labels', 'created_at', " + t.Field("created_at") + ", 'updated_at', " + t.Field("updated_at") + ")) as metadata",
+		getMetadataField(t.Name(), false),
 		t.Field("namespace_id"),
 		t.Field("active"),
 		nt.Field("name"),
@@ -152,10 +152,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"JSON_AGG(JSON_BUILD_OBJECT(" +
 				"'id', " + smT.Field("id") + "," +
 				"'actions', " + smT.Field("actions") + "," +
-				"'metadata', " + smT.Field("metadata") + "," +
+				getMetadataField(smT.Name(), true) +
 				"'subject_condition_set', JSON_BUILD_OBJECT(" +
 				"'id', " + scsT.Field("id") + "," +
-				"'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', " + scsT.Field("metadata") + "->'labels', 'created_at', " + scsT.Field("created_at") + ", 'updated_at', " + scsT.Field("updated_at") + "))," +
+				getMetadataField(scsT.Name(), true) +
 				"'subject_sets', " + scsT.Field("condition") +
 				")" +
 				")) AS sub_maps_arr " +

@@ -213,7 +213,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		"'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', vmv.metadata->'labels', 'created_at', vmv.created_at, 'updated_at', vmv.updated_at)), " +
+		getMetadataField("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -225,7 +225,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"av.value",
 		"av.active",
 		members,
-		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata->'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata",
+		getMetadataField("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
@@ -278,7 +278,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		"'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', vmv.metadata->'labels', 'created_at', vmv.created_at, 'updated_at', vmv.updated_at)), " +
+		getMetadataField("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -290,7 +290,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		"av.value",
 		"av.active",
 		members,
-		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata->'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata",
+		getMetadataField("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
@@ -349,7 +349,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		"'metadata', vmv.metadata, " +
+		getMetadataField("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -361,7 +361,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		"av.value",
 		"av.active",
 		members,
-		"av.metadata",
+		getMetadataField("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {

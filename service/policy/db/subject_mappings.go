@@ -89,7 +89,7 @@ func subjectConditionSetSelect() sq.SelectBuilder {
 	t := Tables.SubjectConditionSet
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata->'labels', 'created_at', \"created_at\", 'updated_at', \"updated_at\")) as metadata",
+		getMetadataField("", false),
 		t.Field("condition"),
 	)
 }
@@ -155,10 +155,10 @@ func subjectMappingSelect() sq.SelectBuilder {
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("actions"),
-		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', "+t.Field("metadata")+"->'labels', 'created_at', "+t.Field("created_at")+", 'updated_at', "+t.Field("updated_at")+")) as metadata",
+		getMetadataField(t.Name(), false),
 		"JSON_BUILD_OBJECT("+
 			"'id', "+scsT.Field("id")+", "+
-			"'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', "+scsT.Field("metadata")+"->'labels', 'created_at', "+scsT.Field("created_at")+", 'updated_at', "+scsT.Field("updated_at")+")), "+
+			getMetadataField(scsT.Name(), true)+
 			"'subject_sets', "+scsT.Field("condition")+
 			") AS subject_condition_set",
 		"JSON_BUILD_OBJECT("+

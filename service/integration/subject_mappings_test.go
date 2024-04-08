@@ -205,6 +205,8 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	metadata := created.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -228,6 +230,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	s.Equal(got.GetActions(), newActions)
 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
 	s.Equal(newSubjectMapping.GetExistingSubjectConditionSetId(), got.GetSubjectConditionSet().GetId())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() {
@@ -370,6 +373,11 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 	s.Equal(fixture.AttributeValueId, got.GetId())
 	s.NotEmpty(got.GetMembers())
 	equalMembers(s.T(), got, sm.GetAttributeValue(), false)
+	metadata := sm.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectMapping_NonExistentId_Fails() {

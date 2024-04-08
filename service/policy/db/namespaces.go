@@ -125,7 +125,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		t.Field("metadata"),
+		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata->'labels', 'created_at', \"created_at\", 'updated_at', \"updated_at\")) as metadata",
 	}
 
 	if opts.withFqn {

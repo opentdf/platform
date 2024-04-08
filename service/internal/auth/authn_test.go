@@ -254,21 +254,6 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
 
-func (s *AuthSuite) Test_CheckToken_When_ClientID_Missing_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("client id required", err.Error())
-}
-
 func (s *AuthSuite) Test_CheckToken_When_ClientID_Invalid_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))

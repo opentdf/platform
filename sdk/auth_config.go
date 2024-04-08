@@ -65,6 +65,7 @@ func NewOIDCAuthConfig(ctx context.Context, host, realm, clientID, clientSecret,
 	}
 	return authConfig, nil
 }
+
 func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clientID, clientSecret, subjectToken string) (string, error) {
 	data := url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:token-exchange"}, "client_id": {clientID}, "client_secret": {clientSecret}, "subject_token": {subjectToken}, "requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"}}
 

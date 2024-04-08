@@ -4,7 +4,7 @@ WORKDIR /app
 # dependencies, add local,dependant package here
 COPY protocol/ protocol/
 COPY sdk/ sdk/
-COPY lib/crypto lib/crypto
+COPY lib/ocrypto lib/ocrypto
 COPY service/ service/
 COPY examples/ examples/
 COPY Makefile ./

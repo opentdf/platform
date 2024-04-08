@@ -13,7 +13,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/opentdf/platform/lib/crypto"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 )
@@ -22,7 +22,7 @@ const (
 	dpopKeySize = 2048
 )
 
-func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) { //nolint:ireturn // this is only internal
+func getNewDPoPKey() (string, jwk.Key, *ocrypto.AsymDecryption, error) { //nolint:ireturn // this is only internal
 	dpopPrivate, err := rsa.GenerateKey(rand.Reader, dpopKeySize)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating DPoP keypair: %w", err)
@@ -66,7 +66,7 @@ func getNewDPoPKey() (string, jwk.Key, *crypto.AsymDecryption, error) { //nolint
 		return "", nil, nil, fmt.Errorf("error encoding public key to PEM")
 	}
 
-	asymDecryption, err := crypto.NewAsymDecryption(dpopPrivatePEM.String())
+	asymDecryption, err := ocrypto.NewAsymDecryption(dpopPrivatePEM.String())
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating asymmetric decryptor: %w", err)
 	}
@@ -84,7 +84,7 @@ type IDPAccessTokenSource struct {
 	token            *oauth.Token
 	scopes           []string
 	dpopKey          jwk.Key
-	asymDecryption   crypto.AsymDecryption
+	asymDecryption   ocrypto.AsymDecryption
 	dpopPEM          string
 	tokenMutex       *sync.Mutex
 }

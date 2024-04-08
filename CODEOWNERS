@@ -2,18 +2,32 @@
 
 * @opentdf/opentdf-architecture
 
+## Lib
+
+/.github/     @opentdf/opentdf-architecture
+/lib/         @opentdf/opentdf-architecture
+/protocol/go/ @opentdf/opentdf-architecture
+
+## General
+
+.gitignore    @opentdf/developers
+README.md     @opentdf/developers
+/docs/        @opentdf/developers
+/examples/    @opentdf/developers
+
 ## Policy
 
-services/policy/* @opentdf/opentdf-policy
+/service/migrations/ @opentdf/opentdf-policy @opentdf/opentdf-architecture
+/service/policy/ @opentdf/opentdf-policy @opentdf/opentdf-architecture
 
 ## SDK
 
-/sdk/ @opentdf/opentdf-go-sdk
+/sdk/ @opentdf/opentdf-go-sdk @opentdf/opentdf-architecture
 
 ## Authorization
 
-/services/authorization/ @opentdf/opentdf-authorization
+/service/authorization/ @opentdf/opentdf-authorization @opentdf/opentdf-architecture
 
 ## Key Access Server
 
-/services/kas/ @opentdf/opentdf-kas
+/service/kas/ @opentdf/opentdf-kas @opentdf/opentdf-architecture

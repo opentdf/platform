@@ -9,8 +9,8 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/lib/crypto"
-	kas "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 )
@@ -23,7 +23,7 @@ type KASClient struct {
 	accessTokenSource  auth.AccessTokenSource
 	dialOptions        []grpc.DialOption
 	clientPublicKeyPEM string
-	asymDecryption     crypto.AsymDecryption
+	asymDecryption     ocrypto.AsymDecryption
 }
 
 // once the backend moves over we should use the same type that the golang backend uses here
@@ -36,24 +36,24 @@ type rewrapRequestBody struct {
 }
 
 func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource) (*KASClient, error) {
-	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
-		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
 	}
 
 	clientPublicKey, err := rsaKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
 	clientPrivateKey, err := rsaKeyPair.PrivateKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("crypto.PrivateKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
-	asymDecryption, err := crypto.NewAsymDecryption(clientPrivateKey)
+	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAsymDecryption failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
 	}
 
 	return &KASClient{

@@ -49,7 +49,7 @@ func JQBuiltin() {
 }
 
 func ExecuteQuery(inputJSON map[string]any, queryString string) ([]any, error) {
-	//first unescape the query string
+	// first unescape the query string
 	unescapedQueryString, err := unescapeQueryString(queryString)
 	if err != nil {
 		return nil, err

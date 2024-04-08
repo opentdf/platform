@@ -155,7 +155,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"'metadata', " + smT.Field("metadata") + "," +
 				"'subject_condition_set', JSON_BUILD_OBJECT(" +
 				"'id', " + scsT.Field("id") + "," +
-				"'metadata', " + scsT.Field("metadata") + "," +
+				"'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', " + scsT.Field("metadata") + "->'labels', 'created_at', " + scsT.Field("created_at") + ", 'updated_at', " + scsT.Field("updated_at") + "))," +
 				"'subject_sets', " + scsT.Field("condition") +
 				")" +
 				")) AS sub_maps_arr " +

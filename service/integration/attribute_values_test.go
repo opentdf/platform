@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -110,12 +111,12 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NormalizesValueToLowerC
 		Value: v,
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, req)
-	s.NoError(err)
+	require.NoError(s.T(), err)
 	s.NotNil(createdValue)
 	s.Equal(strings.ToLower(v), createdValue.GetValue())
 
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
-	s.NoError(err)
+	require.NoError(s.T(), err)
 	s.NotNil(got)
 	s.Equal(strings.ToLower(v), createdValue.GetValue(), got.GetValue())
 }

@@ -35,7 +35,6 @@ func TestCreateNamespace_Valid_Succeeds(t *testing.T) {
 	}
 
 	for _, name := range names {
-
 		req := &namespaces.CreateNamespaceRequest{
 			Name: name,
 		}

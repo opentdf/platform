@@ -23,7 +23,7 @@ var (
 	validValue1 = "value1"
 	validValue2 = "value_2"
 	validValue3 = "3_value"
-	validUuid   = "00000000-0000-0000-0000-000000000000"
+	validUUID   = "00000000-0000-0000-0000-000000000000"
 )
 
 // Create Attributes (definitions)
@@ -31,7 +31,7 @@ var (
 func TestCreateAttribute_Valid_Succeeds(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
-		NamespaceId: validUuid,
+		NamespaceId: validUUID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 
@@ -44,7 +44,7 @@ func TestCreateAttribute_Valid_Succeeds(t *testing.T) {
 func TestCreateAttribute_WithValues_Valid_Succeeds(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
-		NamespaceId: validUuid,
+		NamespaceId: validUUID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		Values: []string{
 			validValue1,
@@ -63,7 +63,7 @@ func TestCreateAttribute_NameTooLong_Fails(t *testing.T) {
 	name := strings.Repeat("a", 254)
 	req := &attributes.CreateAttributeRequest{
 		Name:        name,
-		NamespaceId: validUuid,
+		NamespaceId: validUUID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 
@@ -77,7 +77,7 @@ func TestCreateAttribute_NameTooLong_Fails(t *testing.T) {
 func TestCreateAttribute_NameWithSpace_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        "invalid name",
-		NamespaceId: validUuid,
+		NamespaceId: validUUID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 
@@ -102,7 +102,7 @@ func TestCreateAttribute_NameWithNonAlphanumeric_Fails(t *testing.T) {
 	for _, name := range names {
 		req := &attributes.CreateAttributeRequest{
 			Name:        name,
-			NamespaceId: validUuid,
+			NamespaceId: validUUID,
 			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		}
 
@@ -131,7 +131,7 @@ func TestCreateAttribute_NamespaceIdMissing_Fails(t *testing.T) {
 func TestCreateAttribute_RuleMissing_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
-		NamespaceId: validUuid,
+		NamespaceId: validUUID,
 	}
 
 	v := getValidator()
@@ -145,7 +145,7 @@ func TestCreateAttribute_RuleMissing_Fails(t *testing.T) {
 func TestCreateAttribute_RuleUnspecified_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
-		NamespaceId: validUuid,
+		NamespaceId: validUUID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 
@@ -160,7 +160,7 @@ func TestCreateAttribute_RuleUnspecified_Fails(t *testing.T) {
 func TestCreateAttribute_RuleInvalid_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
-		NamespaceId: validUuid,
+		NamespaceId: validUUID,
 		// first enum index not mapped to one of 3 defined rules
 		Rule: 4,
 	}
@@ -176,7 +176,7 @@ func TestCreateAttribute_RuleInvalid_Fails(t *testing.T) {
 func TestCreateAttribute_ValueInvalid_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
 		Name:        validName,
-		NamespaceId: validUuid,
+		NamespaceId: validUUID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		Values: []string{
 			"invalid@value",
@@ -195,7 +195,7 @@ func TestCreateAttribute_ValueInvalid_Fails(t *testing.T) {
 
 func TestCreateAttributeValue_Valid_Succeeds(t *testing.T) {
 	req := &attributes.CreateAttributeValueRequest{
-		AttributeId: validUuid,
+		AttributeId: validUUID,
 		Value:       validValue1,
 	}
 
@@ -208,7 +208,7 @@ func TestCreateAttributeValue_Valid_Succeeds(t *testing.T) {
 func TestCreateAttributeValue_ValueTooLong_Fails(t *testing.T) {
 	value := strings.Repeat("a", 254)
 	req := &attributes.CreateAttributeValueRequest{
-		AttributeId: validUuid,
+		AttributeId: validUUID,
 		Value:       value,
 	}
 
@@ -221,7 +221,7 @@ func TestCreateAttributeValue_ValueTooLong_Fails(t *testing.T) {
 
 func TestCreateAttributeValue_ValueWithSpace_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeValueRequest{
-		AttributeId: validUuid,
+		AttributeId: validUUID,
 		Value:       "invalid value",
 	}
 
@@ -245,7 +245,7 @@ func TestCreateAttributeValue_ValueWithNonAlphanumeric_Fails(t *testing.T) {
 	}
 	for _, value := range values {
 		req := &attributes.CreateAttributeValueRequest{
-			AttributeId: validUuid,
+			AttributeId: validUUID,
 			Value:       value,
 		}
 
@@ -272,7 +272,7 @@ func TestCreateAttributeValue_AttributeIdMissing_Fails(t *testing.T) {
 
 func TestCreateAttributeValue_ValueMissing_Fails(t *testing.T) {
 	req := &attributes.CreateAttributeValueRequest{
-		AttributeId: validUuid,
+		AttributeId: validUUID,
 	}
 
 	v := getValidator()

@@ -541,6 +541,11 @@ func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_ById() {
 	s.Require().NoError(err)
 	s.NotNil(scs)
 	s.Equal(fixture.Id, scs.GetId())
+	metadata := scs.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_WithNoId_Fails() {
@@ -627,6 +632,8 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	metadata := created.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -666,6 +673,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(len(ss), len(got.GetSubjectSets()))
 	s.Equal(ss[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalField(), got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalField())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() {

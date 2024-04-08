@@ -26,7 +26,7 @@ var (
 	validUuid   = "00000000-0000-0000-0000-000000000000"
 )
 
-// Attributes (definitions)
+// Create Attributes (definitions)
 
 func TestCreateAttribute_Valid(t *testing.T) {
 	req := &attributes.CreateAttributeRequest{
@@ -191,7 +191,7 @@ func TestCreateAttribute_ValueInvalid(t *testing.T) {
 	require.Contains(t, err.Error(), "[string.pattern]")
 }
 
-// Attribute Values
+// Create Attribute Values
 
 func TestCreateAttributeValue_Valid(t *testing.T) {
 	req := &attributes.CreateAttributeValueRequest{
@@ -282,4 +282,3 @@ func TestCreateAttributeValue_ValueMissing(t *testing.T) {
 	require.Contains(t, err.Error(), "value")
 	require.Contains(t, err.Error(), "[required]")
 }
-

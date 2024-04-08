@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -132,6 +133,7 @@ func createAttributeValueSql(
 	metadata []byte,
 ) (string, []interface{}, error) {
 	t := Tables.AttributeValues
+	value = strings.ToLower(value)
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns(
@@ -197,7 +199,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	rV := &policy.Value{
 		Id:        id,
 		Attribute: &policy.Attribute{Id: attributeID},
-		Value:     v.GetValue(),
+		Value:     strings.ToLower(v.GetValue()),
 		Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},

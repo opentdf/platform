@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -175,6 +176,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 
 func createNamespaceSql(name string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Namespaces
+	name = strings.ToLower(name)
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("name", "metadata").
@@ -206,7 +208,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 
 	return &policy.Namespace{
 		Id:       id,
-		Name:     r.GetName(),
+		Name:     strings.ToLower(r.GetName()),
 		Active:   &wrapperspb.BoolValue{Value: true},
 		Metadata: m,
 	}, nil

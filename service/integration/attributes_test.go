@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -70,6 +71,24 @@ func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	s.NoError(err)
 	s.NotNil(createdAttr)
+}
+
+func (s *AttributesSuite) Test_CreateAttribute_NormalizeName() {
+	name := "NaMe_12_ShOuLdBe-NoRmAlIzEd"
+	attr := &attributes.CreateAttributeRequest{
+		Name:        name,
+		NamespaceId: fixtureNamespaceId,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.NoError(err)
+	s.NotNil(createdAttr)
+	s.Equal(strings.ToLower(name), createdAttr.GetName())
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.NoError(err)
+	s.NotNil(got)
+	s.Equal(strings.ToLower(name), got.GetName(), createdAttr.GetName())
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithValueSucceeds() {

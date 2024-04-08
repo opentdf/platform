@@ -79,7 +79,7 @@ func resourceMappingSelect() sq.SelectBuilder {
 		")) FILTER (WHERE vmv.id IS NOT NULL ), '[]')"
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		t.Field("metadata"),
+		"JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', "+t.Field("metadata")+"->'labels', 'created_at', "+t.Field("created_at")+", 'updated_at', "+t.Field("updated_at")+")) as metadata",
 		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
 			"'id', av.id,"+

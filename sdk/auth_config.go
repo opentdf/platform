@@ -85,6 +85,8 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 	if err != nil {
 		return "", fmt.Errorf("error making request to IdP for token exchange: %w", err)
 	}
+	defer resp.Body.Close()
+
 	type keycloakResponsePayload struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`

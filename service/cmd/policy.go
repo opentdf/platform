@@ -29,7 +29,13 @@ var (
 		Long:  policyFqnReindexCmdLong,
 
 		Run: func(cmd *cobra.Command, args []string) {
-			dbClient, err := policyDBClient()
+			configFile, _ := cmd.Flags().GetString(configFileFlag)
+			configKey, _ := cmd.Flags().GetString(configKeyFlag)
+			cfg, err := config.LoadConfig(configKey, configFile)
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
+			dbClient, err := policyDBClient(cfg)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
@@ -53,13 +59,7 @@ var (
 	}
 )
 
-func policyDBClient() (*policydb.PolicyDBClient, error) {
-	// Load the config
-	conf, err := config.LoadConfig("opentdf")
-	if err != nil {
-		return nil, err
-	}
-
+func policyDBClient(conf *config.Config) (*policydb.PolicyDBClient, error) {
 	slog.Info("creating database client")
 	dbClient, err := db.NewClient(conf.DB)
 	if err != nil {

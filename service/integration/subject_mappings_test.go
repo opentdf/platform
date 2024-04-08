@@ -876,7 +876,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ComplexSelectorValu
 		},
 	}
 
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
 	s.Require().NoError(err)
 	s.NotZero(sm)
 	s.Len(sm, 2)

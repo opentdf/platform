@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -86,6 +87,11 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 		s.NotNil(gotNamespace)
 		// name retrieved by ID equal to name used to create
 		s.Equal(test.Name, gotNamespace.GetName())
+		metadata := gotNamespace.GetMetadata()
+		createdAt := metadata.GetCreatedAt()
+		updatedAt := metadata.GetUpdatedAt()
+		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 	}
 
 	// Getting a namespace with an nonExistent id should fail
@@ -140,13 +146,16 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 		"update": updatedLabel,
 		"new":    newLabel,
 	}
-
+	start := time.Now()
 	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "updating-namespace.com",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
+	metadata := created.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
+
 	s.NoError(err)
 	s.NotNil(created)
 
@@ -170,6 +179,8 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	s.True(got.GetMetadata().GetCreatedAt().AsTime().After(start))
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {

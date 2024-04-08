@@ -108,9 +108,9 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
 						Conditions: []*policy.Condition{
 							{
-								SubjectExternalField:  "email",
-								Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-								SubjectExternalValues: []string{"hello@email.com"},
+								SubjectExternalSelectorValue: ".email",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"hello@email.com"},
 							},
 						},
 					},
@@ -142,7 +142,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 
 	expectedCondition := expectedCGroups[0].GetConditions()[0]
 	gotCondition := sm.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0]
-	s.Equal(expectedCondition.GetSubjectExternalField(), gotCondition.GetSubjectExternalField())
+	s.Equal(expectedCondition.GetSubjectExternalSelectorValue(), gotCondition.GetSubjectExternalSelectorValue())
 	s.Equal(expectedCondition.GetOperator(), gotCondition.GetOperator())
 	s.Equal(expectedCondition.GetSubjectExternalValues(), gotCondition.GetSubjectExternalValues())
 }
@@ -461,9 +461,9 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
 						Conditions: []*policy.Condition{
 							{
-								SubjectExternalField:  "idp_field",
-								Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-								SubjectExternalValues: []string{"idp_value"},
+								SubjectExternalSelectorValue: ".idp_field",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"idp_value"},
 							},
 						},
 					},
@@ -510,9 +510,9 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet() {
 						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
 						Conditions: []*policy.Condition{
 							{
-								SubjectExternalField:  "some_field",
-								Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
-								SubjectExternalValues: []string{"some_value"},
+								SubjectExternalSelectorValue: ".someField[1]",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+								SubjectExternalValues:        []string{"some_value"},
 							},
 						},
 					},
@@ -630,9 +630,9 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
 					Conditions: []*policy.Condition{
 						{
-							SubjectExternalField:  "origin",
-							Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
-							SubjectExternalValues: []string{"USA", "Canada"},
+							SubjectExternalSelectorValue: ".origin.country",
+							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+							SubjectExternalValues:        []string{"USA", "Canada"},
 						},
 					},
 				},
@@ -657,7 +657,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(len(ss), len(got.GetSubjectSets()))
-	s.Equal(ss[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalField(), got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalField())
+	s.Equal(ss[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue(), got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue())
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() {
@@ -680,9 +680,9 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
 					Conditions: []*policy.Condition{
 						{
-							SubjectExternalField:  "somewhere",
-							Operator:              policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
-							SubjectExternalValues: []string{"neither here", "nor there"},
+							SubjectExternalSelectorValue: ".origin",
+							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+							SubjectExternalValues:        []string{"neither here", "nor there"},
 						},
 					},
 				},
@@ -710,7 +710,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(len(ss), len(got.GetSubjectSets()))
-	s.Equal(ss[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalField(), got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalField())
+	s.Equal(ss[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue(), got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue())
 	s.Equal(metadata.GetLabels()["key_example"], got.GetMetadata().GetLabels()["key_example"])
 }
 
@@ -728,13 +728,13 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
+	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalField: externalField,
-			ExternalValue: externalValues[0],
+			ExternalSelectorValue: externalSelectorValue,
+			ExternalValue:         externalValues[0],
 		},
 	}
 
@@ -746,13 +746,13 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInWhenMatches() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
+	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalField: externalField,
-			ExternalValue: externalValues[0],
+			ExternalSelectorValue: externalSelectorValue,
+			ExternalValue:         externalValues[0],
 		},
 	}
 
@@ -764,14 +764,14 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInW
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
+	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 
 	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalField: externalField,
-			ExternalValue: "random_value",
+			ExternalSelectorValue: externalSelectorValue,
+			ExternalValue:         "random_value",
 		},
 	}
 
@@ -798,7 +798,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInPrope
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInProperty_Fails() {
 	props := []*policy.SubjectProperty{
 		{
-			ExternalField: "some_field",
+			ExternalSelectorValue: ".some_field",
 		},
 	}
 
@@ -817,21 +817,21 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NoPropertiesProvide
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	simpleScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
-	simpleExternalField := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
+	simpleexternalSelectorValue := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	simpleExternalValues := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
 
 	otherScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	otherExternalField := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
+	otherexternalSelectorValue := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	otherExternalValues := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalField: simpleExternalField,
-			ExternalValue: simpleExternalValues[0],
+			ExternalSelectorValue: simpleexternalSelectorValue,
+			ExternalValue:         simpleExternalValues[0],
 		},
 		{
-			ExternalField: otherExternalField,
-			ExternalValue: otherExternalValues[0],
+			ExternalSelectorValue: otherexternalSelectorValue,
+			ExternalValue:         otherExternalValues[0],
 		},
 	}
 
@@ -856,23 +856,51 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	s.True(foundMappedSubjectConditionSet1)
 }
 
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ComplexSelectorValueExpression() {
+	// escaped string complex jq expression
+	fixtureScsWithComplexJqExp := s.f.GetSubjectConditionSetKey("subject_condition_set3")
+	escapedSelectorVal := fixtureScsWithComplexJqExp.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
+	escapedExternalVal := fixtureScsWithComplexJqExp.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues[0]
+	// unescaped string complex jq expression
+	fixtureScsWithComplexJqExp2 := s.f.GetSubjectConditionSetKey("subject_condition_set_complex_selector_value")
+	unescapedSelectorVal := fixtureScsWithComplexJqExp2.Condition.SubjectSets[0].ConditionGroups[0].Conditions[1].SubjectExternalSelectorValue
+	unescapedExternalVal := fixtureScsWithComplexJqExp2.Condition.SubjectSets[0].ConditionGroups[0].Conditions[1].SubjectExternalValues[0]
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: escapedSelectorVal,
+			ExternalValue:         escapedExternalVal,
+		},
+		{
+			ExternalSelectorValue: unescapedSelectorVal,
+			ExternalValue:         unescapedExternalVal,
+		},
+	}
+
+	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	s.Require().NoError(err)
+	s.NotZero(sm)
+	s.Len(sm, 2)
+	s.Equal(fixtureScsWithComplexJqExp.Id, sm[0].GetSubjectConditionSet().GetId())
+	s.Equal(fixtureScsWithComplexJqExp2.Id, sm[1].GetSubjectConditionSet().GetId())
+}
+
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
+	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
 
 	otherFixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	otherExternalField1 := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[1].SubjectExternalField
+	otherexternalSelectorValue1 := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[1].Conditions[1].SubjectExternalSelectorValue
 	otherExpectedMatchedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalField: externalField,
-			ExternalValue: "random_value_definitely_not_in_fixtures",
+			ExternalSelectorValue: externalSelectorValue,
+			ExternalValue:         "random_value_definitely_not_in_fixtures",
 		},
 		{
-			ExternalField: otherExternalField1,
-			ExternalValue: "random_value_definitely_not_in_fixtures",
+			ExternalSelectorValue: otherexternalSelectorValue1,
+			ExternalValue:         "random_value_definitely_not_in_fixtures",
 		},
 	}
 
@@ -891,22 +919,22 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOneAndNotInASecond() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
-	externalField := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
+	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
 	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_in")
 
 	otherFixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	otherExternalField := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalField
+	otherexternalSelectorValue := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	expectedMappedOtherFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalField: externalField,
-			ExternalValue: externalValues[0],
+			ExternalSelectorValue: externalSelectorValue,
+			ExternalValue:         externalValues[0],
 		},
 		{
-			ExternalField: otherExternalField,
-			ExternalValue: "random_value_987654321",
+			ExternalSelectorValue: otherexternalSelectorValue,
+			ExternalValue:         "random_value_987654321",
 		},
 	}
 
@@ -925,8 +953,8 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOneAndNotInASecon
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NonExistentField_ReturnsNoMappings() {
 	props := []*policy.SubjectProperty{
 		{
-			ExternalField: "non_existent_field",
-			ExternalValue: "non_existent_value",
+			ExternalSelectorValue: ".non_existent_field[1]",
+			ExternalValue:         "non_existent_value",
 		},
 	}
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)

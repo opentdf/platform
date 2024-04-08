@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -154,9 +155,11 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		return nil, err
 	}
 
+	value := strings.ToLower(v.GetValue())
+
 	sql, args, err := createAttributeValueSql(
 		attributeID,
-		v.GetValue(),
+		value,
 		metadataJSON,
 	)
 	if err != nil {
@@ -197,7 +200,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	rV := &policy.Value{
 		Id:        id,
 		Attribute: &policy.Attribute{Id: attributeID},
-		Value:     v.GetValue(),
+		Value:     value,
 		Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},

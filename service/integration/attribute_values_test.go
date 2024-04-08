@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -101,6 +102,24 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDe
 	s.Equal(true, createdValue.GetActive().GetValue())
 }
 
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_NormalizesValueToLowerCase() {
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
+	v := "VaLuE_12_ShOuLdBe-NoRmAlIzEd"
+
+	req := &attributes.CreateAttributeValueRequest{
+		Value: v,
+	}
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, req)
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+	s.Equal(strings.ToLower(v), createdValue.GetValue())
+
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(strings.ToLower(v), createdValue.GetValue(), got.GetValue())
+}
+
 func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
 	inactive := s.f.GetAttributeValueKey("deactivated.io/attr/attr1/value/deactivated_value")
 
@@ -137,6 +156,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	s.Equal(len(createdValue.GetMembers()), len(got.GetMembers()))
 	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
 }
+
 func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool) {
 	m1 := v1.GetMembers()
 	m2 := v2.GetMembers()
@@ -155,6 +175,7 @@ func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool
 		assert.Equal(t, m1[idx].GetActive().GetValue(), m2[idx].GetActive().GetValue())
 	}
 }
+
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{

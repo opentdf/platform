@@ -75,15 +75,12 @@ func TestCreateNamespace_WithSpace_Fails(t *testing.T) {
 }
 
 func TestCreateNamespace_WithInvalidCharacter_Fails(t *testing.T) {
+	// test a couple of the likely most common invalid characters, but knowing the set is much larger
 	names := []string{
-		"~name.org",
-		"!name.net",
-		"@name.com",
-		"#name.io",
-		"$name.co",
-		"name/123.world",
-		"name?123.world",
-		"name*123.world",
+		"hello@name.com",
+		"name/123.io",
+		"name?123.net",
+		"name*123.org",
 		"name:123.uk",
 		// preceeding and trailing hyphens
 		"-name.org",

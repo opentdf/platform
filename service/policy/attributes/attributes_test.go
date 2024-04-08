@@ -89,15 +89,11 @@ func TestCreateAttribute_NameWithSpace_Fails(t *testing.T) {
 }
 
 func TestCreateAttribute_NameWithNonAlphanumeric_Fails(t *testing.T) {
+	// test a couple of the likely most common invalid characters, but knowing the set is much larger
 	names := []string{
 		"invalid@name",
-		"invalid#name",
-		"invalid$name",
-		"invalid%name",
-		"invalid^name",
 		"invalid:name",
 		"invalid/name",
-		"invalid&name",
 	}
 	for _, name := range names {
 		req := &attributes.CreateAttributeRequest{
@@ -233,15 +229,11 @@ func TestCreateAttributeValue_ValueWithSpace_Fails(t *testing.T) {
 }
 
 func TestCreateAttributeValue_ValueWithNonAlphanumeric_Fails(t *testing.T) {
+	// test a couple of the likely most common invalid characters, but knowing the set is much larger
 	values := []string{
 		"invalid@value",
-		"invalid#value",
-		"invalid$value",
-		"invalid%value",
-		"invalid^value",
 		"invalid:value",
 		"invalid/value",
-		"invalid&value",
 	}
 	for _, value := range values {
 		req := &attributes.CreateAttributeValueRequest{

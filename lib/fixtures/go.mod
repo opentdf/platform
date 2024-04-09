@@ -1,3 +1,3 @@
 module github.com/opentdf/platform/lib/fixtures
 
-go 1.22.2
+go 1.21.8

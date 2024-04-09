@@ -48,7 +48,7 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 > [!NOTE]
 > Migrations are handled automatically by the server. This can be disabled via the config file, as
 > needed. They can also be run manually using the `migrate` command
-> (`make go.work`;`go run github.com/opentdf/platform/service migrate up`).
+> (`go run github.com/opentdf/platform/service migrate up`).
 
 1. `docker-compose up`
 2. Create an OpenTDF config file: `opentdf.yaml`
@@ -128,6 +128,7 @@ For this example, we will call our new module `lib/foo`.
 mkdir -p lib/foo
 cd lib/foo
 go mod init github.com/opentdf/platform/lib/foo
+go work use .
 ```
 
 In this folder, create your go code as usual.
@@ -139,29 +140,6 @@ Remember, this will be published to https://pkg.go.dev/ as part of the module do
 
 Make sure to add a LICENSE file to your module to support automated license checks.
 Feel free to copy the existing (BSD-clear) LICENSE file for most new modules.
-
-#### Replace Directives
-
-If you need to import any monorepo-local modules,
-add replace directives as follows (for the SDK) to your `lib/foo/go.mod`:
-
-```go.mod
-replace (
- github.com/opentdf/platform/protocol/go => ../../protocol/go
- github.com/opentdf/platform/sdk => ../../sdk
-)
-```
-
-If any monorepo-local modules need to import your new module,
-add a your module folder to their replace directives,
-e.g. in `sdk/go.mod`:
-
-```go.mod
-replace (
- github.com/opentdf/platform/protocol/go => ../../protocol/go
- github.com/opentdf/platform/lib/foo => ../lib/foo
-)
-```
 
 #### Updating the Makefile
 
@@ -187,7 +165,7 @@ replace (
 4. Add your build target and rule
 
    ```Makefile
-   lib/foo/foo: go.work $(shell find lib/foo)
+   lib/foo/foo: $(shell find lib/foo)
    	(cd lib/foo && go build ./...)
    ```
 

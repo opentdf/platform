@@ -7,12 +7,11 @@ COPY sdk/ sdk/
 COPY lib/ocrypto lib/ocrypto
 COPY service/ service/
 COPY examples/ examples/
-COPY Makefile ./
+COPY go.work go.work.sum ./
 RUN cd service \
     && go mod download \
     && go mod verify
-RUN make go.work \
-    && go build -o opentdf ./service
+RUN go build -o opentdf ./service
 
 FROM cgr.dev/chainguard/glibc-dynamic
 

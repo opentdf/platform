@@ -23,10 +23,6 @@ toolcheck:
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
 	@golangci-lint --version | grep "version 1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
 
-go.work go.work.sum:
-	go work init $(MODS)
-	go work edit --go=1.21.8
-
 fix:
 	for m in $(HAND_MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
 
@@ -59,17 +55,17 @@ test:
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
-	rm -f opentdf examples/examples go.work go.work.sum
+	rm -f opentdf examples/examples
 
-build: go.work proto-generate opentdf sdk/sdk examples/examples
+build: proto-generate opentdf sdk/sdk examples/examples
 
-opentdf: go.work $(shell find service)
+opentdf: $(shell find service)
 	go build -o opentdf -v service/main.go
 
-sdk/sdk: go.work $(shell find sdk)
+sdk/sdk: $(shell find sdk)
 	(cd sdk && go build ./...)
 
-examples/examples: go.work $(shell find examples)
+examples/examples: $(shell find examples)
 	(cd examples && go build -o examples .)
 
 docker-build: build

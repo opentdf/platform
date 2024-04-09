@@ -1,0 +1,6 @@
+github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 h1:+9834+KizmvFV7pXQGSXQTsaWhq2GjuNUt0aUU0YBYw=
+github.com/lestrrat-go/jwx v1.2.28 h1:uadI6o0WpOVrBSf498tRXZIwPpEtLnR9CvqPFXeI5sA=
+github.com/opentdf/platform/sdk v0.0.0-20240409133529-9d7b951a26c6/go.mod h1:+nDnByiCcyonXP7XzIhdU80zf/NUvPRXFySTkWjb6/k=
+github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
+github.com/russross/blackfriday v1.6.0 h1:KqfZb0pUVN2lYqZUYRddxF4OR8ZMURnJIG5Y3VRLtww=
+google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 h1:KAeGQVN3M9nD0/bQXnr/ClcEMJ968gUXJQ9pwfSynuQ=

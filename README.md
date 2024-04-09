@@ -7,6 +7,7 @@
 <!-- Broken
 - [Home](https://opentdf.github.io/platform)
 -->
+
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
 - [Policy Config Schema](./service/migrations/20240212000000_schema_erd.md)
@@ -114,3 +115,92 @@ To see how to generate key pairs that KAS can use, review the [the temp keys ini
 
 The policy service is responsible for managing policy configurations. It provides a gRPC API for
 creating, updating, and deleting policy configurations. [Docs](https://github.com/opentdf/platform/tree/main/docs)
+
+### How To Add a New Go Module
+
+Within this repo, todefine a new, distinct [go module](https://go.dev/ref/mod),
+for example to provide shared functionality between several existing modules,
+or to define new and unique functionality
+follow these steps.
+For this example, we will call our new module `lib/foo`.
+
+```sh
+mkdir -p lib/foo
+cd lib/foo
+go mod init github.com/opentdf/platform/lib/foo
+```
+
+In this folder, create your go code as usual.
+
+#### Add a README.md and a LICENSE File
+
+A README is recommended to assist with orientation to use of your package.
+Remember, this will be published to https://pkg.go.dev/ as part of the module documentation.
+
+Make sure to add a LICENSE file to your module to support automated license checks.
+Feel free to copy the existing (BSD-clear) LICENSE file for most new modules.
+
+#### Replace Directives
+
+If you need to import any monorepo-local modules,
+add replace directives as follows (for the SDK) to your `lib/foo/go.mod`:
+
+```go.mod
+replace (
+ github.com/opentdf/platform/protocol/go => ../../protocol/go
+ github.com/opentdf/platform/sdk => ../../sdk
+)
+```
+
+If any monorepo-local modules need to import your new module,
+add a your module folder to their replace directives,
+e.g. in `sdk/go.mod`:
+
+```go.mod
+replace (
+ github.com/opentdf/platform/protocol/go => ../../protocol/go
+ github.com/opentdf/platform/lib/foo => ../lib/foo
+)
+```
+
+#### Updating the Makefile
+
+1. Add your module to the `MODS` variable:
+
+   ```Makefile
+   MODS=protocol/go sdk . examples lib/foo
+   ```
+
+2. _If required_ If your project does not generate a built artifact,
+   add a phony binary target to the `.PHONY` declaration.
+
+   ```Makefile
+   .PHONY: ...existing phony targets... lib/foo/foo
+   ```
+
+3. Add your build target to the `build` phony target.
+
+   ```Makefile
+   build: ...existing targets... lib/foo/foo
+   ```
+
+4. Add your build target and rule
+
+   ```Makefile
+   lib/foo/foo: go.work $(shell find lib/foo)
+   	(cd lib/foo && go build ./...)
+   ```
+
+#### Updating the Docker Images
+
+Add any required `COPY` directives to `./Dockerfile`:
+
+```Dockerfile
+COPY lib/foo/ lib/foo/
+```
+
+#### Updating the Workflow Files
+
+1. Add your new `go.mod` directory to the `.github/workflows/checks.yaml`'s `go` job's `matrix.strategry.directory` line.
+2. Add the module to the `license` job in the `checks` workflow as well, especially if you declare _any_ dependencies.
+3. Do the same for any other workflows that should be running on your folder, such as `vuln-check` and `lint`.

@@ -1,8 +1,4 @@
-# OpenTDF Enhancements POC
-
-![CI](https://github.com/opentdf/platform/actions/workflows/checks.yaml/badge.svg?branch=main)
-
-![lint](https://github.com/opentdf/platform/actions/workflows/lint-all.yaml/badge.svg?branch=main)
+# OpenTDF
 
 ![Vulnerability Check](https://github.com/opentdf/platform/actions/workflows/vulnerability-check.yaml/badge.svg?branch=main)
 
@@ -33,19 +29,24 @@
   - install with `go install github.com/cosmtrek/air`
 - [Buf](https://buf.build/docs/ecosystem/cli-overview) is used for managing protobuf files
   - install with `go install github.com/bufbuild/buf/cmd/buf`
+- [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices
+  - install with `brew install golangci-lint`
 - [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
   - install with `go install github.com/fullstorydev/grpcurl/cmd/grpcurl`
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
-`brew install buf grpcurl goose openssl`
+```sh
+brew install buf golangci-lint goose grpcurl openssl
+
+```
 
 ### Run
 
 > [!NOTE]
 > Migrations are handled automatically by the server. This can be disabled via the config file, as
 > needed. They can also be run manually using the `migrate` command
-> (`go run github.com/opentdf/platform/service migrate -h`).
+> (`make go.work`;`go run github.com/opentdf/platform/service migrate up`).
 
 1. `docker-compose up`
 2. Create an OpenTDF config file: `opentdf.yaml`

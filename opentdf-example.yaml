@@ -31,17 +31,15 @@ server:
     policy:
       ## Default policy for all requests
       default: #"role:readonly"
-      ## Role map is used to map external roles to opentdf roles (opentdf_role:idp_role) the benefit of this is that you
-      ## can use the builtin policy if desired
-      roles:
-        ## Dot notation is used to access nested claims (i.e. realm_access.roles)
-        claim: # realm_access.roles
-        ## Maps the external role to the opentdf role
-        ## Note: left side is used in the policy, right side is the external role
-        map:
-        #  readonly: opentdf-readonly
-        #  admin: opentdf-admin
-        #  org-admin: opentdf-org-admin
+      ## Dot notation is used to access nested claims (i.e. realm_access.roles)
+      claim: # realm_access.roles
+      ## Maps the external role to the opentdf role
+      ## Note: left side is used in the policy, right side is the external role
+      map:
+      #  readonly: opentdf-readonly
+      #  admin: opentdf-admin
+      #  org-admin: opentdf-org-admin
+
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
       #  p, role:org-admin, policy:attributes, *, *, allow

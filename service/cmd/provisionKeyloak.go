@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/opentdf/platform/lib/fixtures"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -39,7 +40,7 @@ var (
 				return err
 			}
 
-			kcConnectParams := keycloakConnectParams{
+			kcConnectParams := fixtures.KeycloakConnectParams{
 				BasePath:         kcEndpoint,
 				Username:         kcUsername,
 				Password:         kcPassword,
@@ -48,7 +49,7 @@ var (
 				AllowInsecureTLS: true,
 			}
 
-			return CreateStockKeycloakSetup(kcConnectParams)
+			return fixtures.CreateStockKeycloakSetup(kcConnectParams)
 		},
 	}
 )

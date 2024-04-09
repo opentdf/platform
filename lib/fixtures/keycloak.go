@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Nerzal/gocloak/v11"
+	"github.com/Nerzal/gocloak/v13"
 )
 
 const (
@@ -242,7 +242,7 @@ func CreateStockKeycloakSetup(kcConnectParams KeycloakConnectParams) error {
 
 }
 
-func keycloakLogin(connectParams *KeycloakConnectParams) (gocloak.GoCloak, *gocloak.JWT, error) {
+func keycloakLogin(connectParams *KeycloakConnectParams) (*gocloak.GoCloak, *gocloak.JWT, error) {
 	client := gocloak.NewClient(connectParams.BasePath)
 	// restyClient := client.RestyClient()
 	// TODO allow insecure TLS....
@@ -353,7 +353,7 @@ func createUser(connectParams *KeycloakConnectParams, newUser gocloak.User) (*st
 	return &longUserId, nil
 }
 
-func getClientRolesByList(connectParams *keycloakConnectParams, client *gocloak.GoCloak, token *gocloak.JWT, ctx context.Context, idClient string, roles []string) (clientRoles []gocloak.Role, getErr error) {
+func getClientRolesByList(connectParams *KeycloakConnectParams, client *gocloak.GoCloak, token *gocloak.JWT, ctx context.Context, idClient string, roles []string) (clientRoles []gocloak.Role, getErr error) {
 	var notFoundRoles []string
 
 	if roleObjects, tmpErr := client.GetClientRoles(ctx, token.AccessToken, connectParams.Realm, idClient, gocloak.GetRoleParams{}); tmpErr != nil {
@@ -380,7 +380,7 @@ func getClientRolesByList(connectParams *keycloakConnectParams, client *gocloak.
 	return clientRoles, getErr
 }
 
-func getIdOfClient(client *gocloak.GoCloak, token *gocloak.JWT, connectParams *keycloakConnectParams, clientName *string) (*string, error) {
+func getIdOfClient(client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, clientName *string) (*string, error) {
 	results, err := client.GetClients(context.Background(), token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: clientName})
 	if err != nil || len(results) == 0 {
 		slog.Error(fmt.Sprintf("Error getting realm management client: %s", err))
@@ -390,7 +390,7 @@ func getIdOfClient(client *gocloak.GoCloak, token *gocloak.JWT, connectParams *k
 	return clientId, nil
 }
 
-func createTokenExchange(connectParams *keycloakConnectParams, startClientId string, targetClientId string) error {
+func createTokenExchange(connectParams *KeycloakConnectParams, startClientId string, targetClientId string) error {
 	client, token, err := keycloakLogin(connectParams)
 	if err != nil {
 		return err

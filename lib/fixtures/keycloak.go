@@ -322,7 +322,7 @@ func createClient(connectParams *KeycloakConnectParams, newClient gocloak.Client
 	return longClientId, nil
 }
 
-func createUser(connectParams *keycloakConnectParams, newUser gocloak.User) (*string, error) {
+func createUser(connectParams *KeycloakConnectParams, newUser gocloak.User) (*string, error) {
 	client, token, err := keycloakLogin(connectParams)
 	if err != nil {
 		return nil, err

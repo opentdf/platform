@@ -30,16 +30,10 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	strReader := strings.NewReader(plainText)
 
 	// Create new offline client
-	ats, _ := sdk.NewAccessTokenSource("opentdf-sdk", "secret", "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", nil)
-	tok, err := ats.AccessToken()
-	if err != nil {
-		return err
-	}
 
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
 		sdk.WithInsecureConn(),
-		sdk.WithClientCredentials("opentdf", "secret", nil),
-		sdk.WithTokenExchange(string(tok), "opentdf-sdk"),
+		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)
 	if err != nil {

@@ -70,13 +70,20 @@ jobs:
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
       - if: matrix.directory == 'service'
-        run: .github/scripts/hsm-init-temporary-keys.sh
+        run: .github/scripts/init-temp-keys.sh --hsm
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
+      - if: matrix.directory == 'service'
+        run: go test ./service/integration -race -failfast
 
   integration:
     name: integration tests
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        crypto:
+          - hsm
+          - standard
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
@@ -89,8 +96,8 @@ jobs:
             sdk/go.sum
       - run: go mod download
       - run: go mod verify
-      - run: go test ./service/integration -race -failfast
       - name: Install softHSM
+        if: matrix.crypto == 'hsm'
         run: |-
           sudo apt-get install -y softhsm opensc openssl
           sudo chmod +x /etc/softhsm
@@ -99,9 +106,15 @@ jobs:
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
-      - run: .github/scripts/hsm-init-temporary-keys.sh
       - run: docker compose up -d --wait --wait-timeout 240
-      - run: cp opentdf-example.yaml opentdf.yaml
+      - run: |
+          .github/scripts/init-temp-keys.sh --hsm
+          cp opentdf-with-hsm.yaml opentdf.yaml
+        if: matrix.crypto == 'hsm'
+      - run: |
+          .github/scripts/init-temp-keys.sh
+          cp opentdf-example.yaml opentdf.yaml
+        if: matrix.crypto == 'standard'
       - run: go run ./service provision keycloak
       - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
         name: start server in background

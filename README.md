@@ -4,10 +4,6 @@
 
 ## Documentation
 
-<!-- Broken
-- [Home](https://opentdf.github.io/platform)
--->
-
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
 - [Policy Config Schema](./service/migrations/20240212000000_schema_erd.md)
@@ -33,15 +29,17 @@
   - install with `go install github.com/cosmtrek/air`
 - [Buf](https://buf.build/docs/ecosystem/cli-overview) is used for managing protobuf files
   - install with `go install github.com/bufbuild/buf/cmd/buf`
-- [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
-  - install with `go install github.com/fullstorydev/grpcurl/cmd/grpcurl`
 - [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices
   - install with `brew install golangci-lint`
-- [softHSM](https://github.com/opendnssec/SoftHSMv2) is used to emulate hardware security (aka `PKCS #11`)
+- [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
+  - install with `go install github.com/fullstorydev/grpcurl/cmd/grpcurl`
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
-`brew install buf grpcurl openssl pkcs11-tools softhsm golangci-lint`
+```sh
+brew install buf golangci-lint goose grpcurl openssl
+
+```
 
 ### Run
 
@@ -54,9 +52,9 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 2. Create an OpenTDF config file: `opentdf.yaml`
    1. The `opentdf-example.yaml` file is a good starting point, but you may need to modify it to match your environment.
    2. The `opentdf-example-no-kas.yaml` file configures the platform to run insecurely without KAS and without endpoint auth.
-3. Provision keycloak `go run github.com/opentdf/platform/service provision keycloak`
-4. Configure KAS keys and your HSM with `.github/scripts/hsm-init-temporary-keys.sh`
-5. Run the server `go run github.com/opentdf/platform/service start`
+3. Provision keycloak: `go run github.com/opentdf/platform/service provision keycloak`
+4. Configure KAS keys: `.github/scripts/init-temp-keys.sh`
+5. Run the server: `go run github.com/opentdf/platform/service start`
    1. _Alt_ use the hot-reload development environment `air`
 6. The server is now running on `localhost:8080` (or the port specified in the config file)
 
@@ -80,36 +78,8 @@ A KAS controls access to TDF protected content.
 
 #### Configuration
 
-To enable KAS, you must have a working `PKCS #11` library on your system.
-For development, we use [the SoftHSM library](https://www.softhsm.org/),
-which presents a `PKCS #11` interface to on CPU cryptography libraries.
-
-```
-export OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN=12345
-export OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH=/lib/softhsm/libsofthsm2.so
-export OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_EC_LABEL=kas-ec
-export OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_RSA_LABEL=kas-rsa
-
-pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
-            --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
-            --write-object kas-private.pem --type privkey \
-            --label kas-rsa
-pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
-            --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
-            --write-object kas-cert.pem --type cert \
-            --label kas-rsa
-
-pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
-            --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
-            --write-object ec-private.pem --type privkey \
-            --label kas-ec
-pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
-            --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
-            --write-object ec-cert.pem --type cert \
-            --label kas-ec
-```
-
-To see how to generate key pairs that KAS can use, review the [the temp keys init script](.github/scripts/hsm-init-temporary-keys.sh).
+To enable KAS, you must have stable asymmetric keypairs configured.
+[The temp keys init script](.github/scripts/init-temp-keys.sh) will generate two development keys.
 
 ### Policy
 

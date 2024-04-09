@@ -70,7 +70,7 @@ Our native gRPC service functions are generated from `proto` definitions using [
 The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` config, including OpenAPI docs, grpc docs, and the
 generated code.
 
-For convenience, the `make pre-build` script checks if you have the necessary dependencies for `proto -> gRPC` generation.
+For convenience, the `make toolcheck` script checks if you have the necessary dependencies for `proto -> gRPC` generation.
 
 ## Services
 

@@ -13,7 +13,7 @@ type config struct {
 	tls               grpc.DialOption
 	clientCredentials oauth.ClientCredentials
 	subjectToken      string
-	subjectClientId   string
+	subjectClientID   string
 	tokenEndpoint     string
 	scopes            []string
 	authConfig        *AuthConfig
@@ -68,9 +68,9 @@ func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	}
 }
 
-func WithTokenExchange(subjectToken, subjectClientId string) Option {
+func WithTokenExchange(subjectToken, subjectClientID string) Option {
 	return func(c *config) {
 		c.subjectToken = subjectToken
-		c.subjectClientId = subjectClientId
+		c.subjectClientID = subjectClientID
 	}
 }

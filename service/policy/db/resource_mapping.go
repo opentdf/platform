@@ -79,7 +79,7 @@ func resourceMappingSelect() sq.SelectBuilder {
 		")) FILTER (WHERE vmv.id IS NOT NULL ), '[]')"
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		t.Field("metadata"),
+		getMetadataField(t.Name(), false),
 		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
 			"'id', av.id,"+

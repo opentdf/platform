@@ -265,6 +265,14 @@ subject_mappings:
       actions:
         - standard: STANDARD_ACTION_DECRYPT
 
+    subject_mapping_with_complex_selector_value_scs:
+      id: 5bf3b34c-72a2-447f-8b7d-46413329bc1f
+      attribute_value_id: 81f643f8-e050-4b97-a005-b61294d4c8bb
+      # subject_condition_set_complex_selector_value
+      subject_condition_set_id: 4ed65609-9d98-4ce3-b073-eeec5be8db50
+      actions:
+        - standard: STANDARD_ACTION_TRANSMIT
+
 subject_condition_set:
   metadata:
     table_name: subject_condition_set
@@ -279,12 +287,12 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_field: superhero_name
+                  - subject_external_selector_value: '.superhero.name'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - thor
                       - captain_america
-                  - subject_external_field: superhero_group
+                  - subject_external_selector_value: '.superhero.group'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - avengers
@@ -295,12 +303,12 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_field: department
+                  - subject_external_selector_value: '.org'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - marketing
                       - sales
-                  - subject_external_field: role
+                  - subject_external_selector_value: '.role'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - senior_vice_president
@@ -313,22 +321,27 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_field: fave_sport
+                  # escaped string in complex expression
+                  - subject_external_selector_value: '.data[0].favorite_things | map(tostring) | any(index(\"futbol\"))'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
-                      - futbol
-                      - soccer
-                  - subject_external_field: fave_dessert
+                      - true
+                  # unescaped string in complex expression
+                  - subject_external_selector_value: '.data[0].favorite_things | map(tostring) | any(index("soccer"))'
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subject_external_values:
+                      - true
+                  - subject_external_selector_value: '.data[0].favorite_things | map(tostring) | any(index("ice_cream"))'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
-                      - ice_cream
+                      - true
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_field: department
+                  - subject_external_selector_value: '.department'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - engineering
-                  - subject_external_field: role
+                  - subject_external_selector_value: '.role'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - manager
@@ -341,7 +354,7 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_field: some_field
+                  - subject_external_selector_value: '.some_field'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - some_value
@@ -352,7 +365,7 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_field: some_other_field123
+                  - subject_external_selector_value: '.some_other_field[1]'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - some_other_value_123
@@ -363,16 +376,33 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_field: team_name
+                  - subject_external_selector_value: '.team.name'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - CoolTool
                       - RadService
                       - ShinyThing
-                  - subject_external_field: org_name
+                  - subject_external_selector_value: '.org.name'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - marketing
+    subject_condition_set_complex_selector_value:
+      id: 4ed65609-9d98-4ce3-b073-eeec5be8db50
+      condition:
+        subject_sets:
+          - condition_groups:
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+                conditions:
+                  # escaped string in complex expression
+                  - subject_external_selector_value: '.result[0].random | map(tostring) | any(index(\"something\"))'
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subject_external_values:
+                      - false
+                  # unescaped string in complex expression
+                  - subject_external_selector_value: '.result[1].decided | map(tostring) | any(index("something_else"))'
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subject_external_values:
+                      - true
 
 ##
 # Resource Mappings

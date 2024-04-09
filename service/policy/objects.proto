@@ -145,25 +145,25 @@ message SubjectMapping {
 
 
 /**
-    A Condition defines a rule of <subject external field name> <operator> <subject external values>
+    A Condition defines a rule of <the value by a jq 'selector value' expression> <operator> <subject external values>
 
-   Example:  Subjects with field "division" and a value of "Accounting" or "Marketing":
+   Example:  Subjects with a field selected by the jq syntax "'.division'" and a value of "Accounting" or "Marketing":
    {
-     "subject_external_field": "division",
+     "subject_external_selector_value": "'.division'",
      "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
      "subject_external_values" : ["Accounting", "Marketing"]
    }
 
-   Example: Subjects that are not part of the Fantastic Four:
+   Example: Subjects that are not part of the Fantastic Four according to their alias field:
    {
-     "subject_external_field": "superhero_name",
+     "subject_external_selector_value": "'.data[0].alias'",
      "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
      "subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
    }
 */
 message Condition {
-  // externally known field name (such as from idP/LDAP)
-  string subject_external_field = 1;
+  // a jq syntax expression to select a value from an externally known field (such as from idP/LDAP)
+  string subject_external_selector_value = 1;
 
   // the evaluation operator of relation
   SubjectMappingOperatorEnum operator = 2 [
@@ -171,7 +171,7 @@ message Condition {
     (buf.validate.field).required = true
   ];
 
-  // list of comparison values for the subject_external_field, evaluated by the operator
+  // list of comparison values for the result of applying the subject_external_selector_value with jq on a Subject, evaluated by the operator
   repeated string subject_external_values = 3;
 }
 
@@ -206,12 +206,16 @@ message SubjectConditionSet {
 }
 
 /*
-  A property of a Subject/Entity as a field->value pair.  This would mirror external user attributes retrieved
-  from an authoritative source such as an IDP (Identity Provider) or User Store.  Examples include such ADFS/LDAP, OKTA, etc.
-  For now, a valid property must contain both field & value. 
+
+  A property of a Subject/Entity as its selector expression -> value result pair. This would mirror external user attributes retrieved
+  from an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.
+  For now, a valid property must contain both a selector expression & a resulting value. 
+
+  The external_selector_value is a jq syntax expression to select a value from an externally known field (such as from idP/LDAP),
+  and the external_value is the value selected by the external_selector_value on that Subject's Context. These mirror the Condition.
 */
 message SubjectProperty {
-  string external_field = 1 [(buf.validate.field).required = true];
+  string external_selector_value = 1 [(buf.validate.field).required = true];
   string external_value = 2 [(buf.validate.field).required = true];
 }
 

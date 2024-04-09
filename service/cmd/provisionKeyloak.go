@@ -67,6 +67,8 @@ var (
 			realmName, _ := cmd.Flags().GetString(provKcRealm)
 			kcUsername, _ := cmd.Flags().GetString(provKcUsername)
 			kcPassword, _ := cmd.Flags().GetString(provKcPassword)
+			configFile, _ := cmd.Flags().GetString(configFileFlag)
+			configKey, _ := cmd.Flags().GetString(configKeyFlag)
 
 			kcConnectParams := keycloakConnectParams{
 				BasePath:         kcEndpoint,
@@ -76,7 +78,7 @@ var (
 				AllowInsecureTLS: true,
 			}
 
-			config, err := config.LoadConfig("")
+			config, err := config.LoadConfig(configKey, configFile)
 			if err != nil {
 				return err
 			}

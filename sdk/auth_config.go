@@ -259,6 +259,10 @@ func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
 			slog.Error("Fail to close HTTP response")
 		}
 	}()
+	if err != nil {
+		slog.Error("failed http request")
+		return "", fmt.Errorf("client.Do error: %w", err)
+	}
 	if response.StatusCode != kHTTPOk {
 		return "", fmt.Errorf("client.Do failed: %w", err)
 	}

@@ -19,9 +19,9 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
-	github.com/opentdf/platform/lib/ocrypto v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/ocrypto v0.0.0-20240409133529-9d7b951a26c6
+	github.com/opentdf/platform/protocol/go v0.0.0-20240409133529-9d7b951a26c6
+	github.com/opentdf/platform/sdk v0.0.0-20240409133529-9d7b951a26c6
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -56,12 +56,6 @@ require (
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-)
-
-replace (
-	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
-	github.com/opentdf/platform/protocol/go => ../protocol/go
-	github.com/opentdf/platform/sdk => ../sdk
 )
 
 require (

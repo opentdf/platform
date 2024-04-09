@@ -48,7 +48,6 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum
-      - run: make go.work
       - run: go mod download
       - run: go mod verify
       - name: golangci-lint
@@ -88,7 +87,6 @@ jobs:
             examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
-      - run: make go.work
       - run: go mod download
       - run: go mod verify
       - run: go test ./service/integration -race -failfast
@@ -189,7 +187,6 @@ jobs:
         with:
           go-version: "1.21.8"
           cache: false
-      - run: make go.work
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: deps-changed
         with:

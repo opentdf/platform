@@ -59,8 +59,6 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
 	require.NoError(t, err)
 
-	fmt.Printf("here is the access token: %s", tok.AccessToken)
-
 	cnfClaim, ok := tokenDetails.Get("cnf")
 	require.True(t, ok)
 	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
@@ -393,7 +391,7 @@ func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 	return clientTok
 }
 
-func setupKeycloak(t *testing.T, ctx context.Context) (tc.Container, string) {
+func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 	containerReq := tc.ContainerRequest{
 		Image:        "ghcr.io/opentdf/keycloak:sha-8a6d35a",
 		ExposedPorts: []string{"8082/tcp"},

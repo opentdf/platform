@@ -78,7 +78,7 @@ func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, cli
 func setClientAuth(cc ClientCredentials, formData *url.Values, req *http.Request, tokenEndpoint string) error {
 	switch ca := cc.ClientAuth.(type) {
 	case string:
-		req.SetBasicAuth(cc.ClientID, string(ca))
+		req.SetBasicAuth(cc.ClientID, ca)
 	case jwk.Key:
 		signedToken, err := getSignedToken(cc.ClientID, tokenEndpoint, ca)
 		if err != nil {
@@ -235,7 +235,6 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 }
 
 func DoTokenExchange(ctx context.Context, clientCredentials ClientCredentials, scope []string, tokenEndpoint url.URL, subjectToken string, key jwk.Key) (*Token, error) {
-
 	req, err := getTokenExchangeRequest(ctx, tokenEndpoint.String(), "", subjectToken, scope, clientCredentials, &key)
 	if err != nil {
 		return nil, err

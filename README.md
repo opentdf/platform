@@ -1,8 +1,4 @@
-# OpenTDF Enhancements POC
-
-![CI](https://github.com/opentdf/platform/actions/workflows/checks.yaml/badge.svg?branch=main)
-
-![lint](https://github.com/opentdf/platform/actions/workflows/lint-all.yaml/badge.svg?branch=main)
+# OpenTDF
 
 ![Vulnerability Check](https://github.com/opentdf/platform/actions/workflows/vulnerability-check.yaml/badge.svg?branch=main)
 

@@ -42,19 +42,14 @@
                     {
                       "conditions": [
                         {
-                          "subject_external_field": "groups",
+                          "subject_external_selector_value": "groups",
                           "operator": 1,
-                          "subject_external_values": [
-                            "/medical"
-                          ]
+                          "subject_external_values": ["/medical"]
                         },
                         {
-                          "subject_external_field": "roles",
+                          "subject_external_selector_value": "roles",
                           "operator": 1,
-                          "subject_external_values": [
-                            "nurse",
-                            "doctor"
-                          ]
+                          "subject_external_values": ["nurse", "doctor"]
                         }
                       ],
                       "boolean_operator": 1

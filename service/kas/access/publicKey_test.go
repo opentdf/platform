@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net/url"
 	"os"
@@ -59,6 +60,23 @@ var (
 		},
 	}
 )
+
+// Skips if not in CI and failure due to library missing
+func maybeSkip(t *testing.T, err error) {
+	if os.Getenv("CI") != "" {
+		return
+	}
+	if errors.Is(err, security.ErrHSMNotFound) {
+		t.Skip(`WARNING Unable to load PKCS11 library
+
+		Please install a PKCS 11 library, such as
+
+			brew install softhsm
+
+
+		`)
+	}
+}
 
 func TestExportRsaPublicKeyAsPemStrSuccess(t *testing.T) {
 	mockKey := &rsa.PublicKey{
@@ -194,6 +212,7 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 
 func mustNewCryptoProvider(t *testing.T, config security.Config) security.CryptoProvider {
 	hsmSession, err := security.NewCryptoProvider(config)
+	maybeSkip(t, err)
 	require.NoError(t, err)
 	return hsmSession
 }

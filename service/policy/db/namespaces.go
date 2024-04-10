@@ -180,7 +180,7 @@ func createNamespaceSql(name string, metadata []byte) (string, []interface{}, er
 		Insert(t.Name()).
 		Columns("name", "metadata").
 		Values(name, metadata).
-		Suffix("RETURNING \"id\"").
+		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
 		ToSql()
 }
 
@@ -199,8 +199,15 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	var id string
 	if r, e := c.QueryRow(ctx, sql, args); e != nil {
 		return nil, e
-	} else if e := r.Scan(&id); e != nil {
+	} else if e := r.Scan(&id, &metadataJSON); e != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(e)
+	}
+
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
 	// Update FQN

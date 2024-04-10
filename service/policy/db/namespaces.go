@@ -274,6 +274,23 @@ func deactivateNamespaceSql(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+	attrs, err := c.GetAttributesByNamespace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	allAttrsDeactivated := true
+	for _, attr := range attrs {
+		if attr.GetActive().GetValue() {
+			allAttrsDeactivated = false
+			break
+		}
+	}
+
+	if !allAttrsDeactivated {
+		slog.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
+	}
+
 	sql, args, err := deactivateNamespaceSql(id)
 	if err != nil {
 		return nil, err

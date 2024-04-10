@@ -4,18 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"net/url"
-
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"golang.org/x/oauth2"
+	"log/slog"
+	"net/url"
 )
 
 func loadIdentityProvider(cfg serviceregistry.ServiceConfig) *oidc.IDTokenVerifier {
+	ctx := context.Background()
 	if cfg.ExtraProps == nil || cfg.ExtraProps["issuer"] == nil {
 		panic(errors.New("services.kas.issuer is required"))
 	}
@@ -23,9 +23,19 @@ func loadIdentityProvider(cfg serviceregistry.ServiceConfig) *oidc.IDTokenVerifi
 	if !ok {
 		panic(errors.New("services.kas.issuer must be a string"))
 	}
-	ctx := context.Background()
-	ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)
-	provider, err := oidc.NewProvider(ctx, oidcIssuerURL)
+	if cfg.ExtraProps == nil || cfg.ExtraProps["discovery"] == nil {
+		panic(errors.New("services.kas.discovery is required"))
+	}
+	discoveryBaseURL, ok := cfg.ExtraProps["discovery"].(string)
+	if !ok {
+		panic(errors.New("services.kas.discovery must be a string"))
+	}
+	if discoveryBaseURL != "" {
+		ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)
+	} else {
+		discoveryBaseURL = oidcIssuerURL
+	}
+	provider, err := oidc.NewProvider(ctx, discoveryBaseURL)
 	if err != nil {
 		panic(err)
 	}

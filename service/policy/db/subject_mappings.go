@@ -303,7 +303,7 @@ func createSubjectConditionSetSql(subjectSets []*policy.SubjectSet, metadataJSON
 		Insert(t.Name()).
 		Columns(columns...).
 		Values(values...).
-		Suffix("RETURNING \"id\"").
+		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
 		ToSql()
 }
 
@@ -324,9 +324,17 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 	if err != nil {
 		return nil, err
 	}
-	if err = r.Scan(&id); err != nil {
+	if err = r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	return &policy.SubjectConditionSet{
 		Id:          id,
 		SubjectSets: s.GetSubjectSets(),
@@ -486,7 +494,7 @@ func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata
 		Insert(t.Name()).
 		Columns(columns...).
 		Values(values...).
-		Suffix("RETURNING \"id\"").
+		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
 		ToSql()
 }
 
@@ -540,8 +548,15 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
-	} else if err := r.Scan(&id); err != nil {
+	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
 	return &policy.SubjectMapping{

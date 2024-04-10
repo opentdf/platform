@@ -15,9 +15,9 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func loadIdentityProvider() *oidc.IDTokenVerifier {
-	oidcIssuerURL := "http://localhost:8888/auth/realms/opentdf"
-	discoveryBaseURL := "http://localhost:8888/auth/realms/opentdf"
+func loadIdentityProvider(cfg serviceregistry.ServiceConfig) *oidc.IDTokenVerifier {
+	oidcIssuerURL := cfg.ExtraProps["issuer"].(string)
+	discoveryBaseURL := cfg.ExtraProps["issuer"].(string)
 	ctx := context.Background()
 	if discoveryBaseURL != "" {
 		ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)
@@ -68,7 +68,7 @@ func NewRegistration() serviceregistry.Registration {
 				URI:            *kasURI,
 				AttributeSvc:   nil,
 				CryptoProvider: srp.OTDF.CryptoProvider,
-				OIDCVerifier:   loadIdentityProvider(),
+				OIDCVerifier:   loadIdentityProvider(srp.Config),
 			}
 			return &p, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				kas, ok := server.(*access.Provider)

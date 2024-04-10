@@ -11,6 +11,7 @@ logger:
 services:
   kas:
     enabled: true
+    issuer: http://localhost:8888/auth/realms/opentdf
   policy:
     enabled: true
   authorization:

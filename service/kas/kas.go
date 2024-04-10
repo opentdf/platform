@@ -2,10 +2,10 @@ package kas
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
-	"os"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -16,17 +16,14 @@ import (
 )
 
 func loadIdentityProvider(cfg serviceregistry.ServiceConfig) *oidc.IDTokenVerifier {
-	oidcIssuerURL := cfg.ExtraProps["issuer"].(string)
-	discoveryBaseURL := cfg.ExtraProps["issuer"].(string)
-	ctx := context.Background()
-	if discoveryBaseURL != "" {
-		ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)
-	} else {
-		discoveryBaseURL = oidcIssuerURL
+	if cfg.ExtraProps["issuer"] == nil {
+		panic(errors.New("services.kas.issuer is required"))
 	}
-	provider, err := oidc.NewProvider(ctx, discoveryBaseURL)
+	oidcIssuerURL := cfg.ExtraProps["issuer"].(string)
+	ctx := context.Background()
+	ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)
+	provider, err := oidc.NewProvider(ctx, oidcIssuerURL)
 	if err != nil {
-		slog.Error("OIDC_ISSUER_URL provider fail", "err", err, "OIDC_ISSUER_URL", oidcIssuerURL, "OIDC_DISCOVERY_BASE_URL", os.Getenv("OIDC_DISCOVERY_BASE_URL"))
 		panic(err)
 	}
 	// Configure an OpenID Connect aware OAuth2 client.

@@ -19,7 +19,10 @@ func loadIdentityProvider(cfg serviceregistry.ServiceConfig) *oidc.IDTokenVerifi
 	if cfg.ExtraProps == nil || cfg.ExtraProps["issuer"] == nil {
 		panic(errors.New("services.kas.issuer is required"))
 	}
-	oidcIssuerURL := cfg.ExtraProps["issuer"].(string)
+	oidcIssuerURL, ok := cfg.ExtraProps["issuer"].(string)
+	if !ok {
+		panic(errors.New("services.kas.issuer must be a string"))
+	}
 	ctx := context.Background()
 	ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)
 	provider, err := oidc.NewProvider(ctx, oidcIssuerURL)

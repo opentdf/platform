@@ -40,7 +40,7 @@ type KeycloakConnectParams struct {
 	AllowInsecureTLS bool
 }
 
-func CreateStockKeycloakSetup(kcConnectParams KeycloakConnectParams) error {
+func SetupKeycloak(kcConnectParams KeycloakConnectParams) error {
 	ctx := context.Background()
 
 	// Create realm, if it does not exist.

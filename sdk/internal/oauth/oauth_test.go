@@ -8,12 +8,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +18,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/lib/fixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -30,7 +28,7 @@ import (
 func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	ctx := context.Background()
 
-	keycloak, idpEndpoint := setupKeycloak(t, ctx)
+	keycloak, idpEndpoint := setupKeycloak(ctx, t)
 	defer func() { require.NoError(t, keycloak.Terminate(ctx)) }()
 
 	// Generate RSA Key to use for DPoP
@@ -45,13 +43,13 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientCredentials := ClientCredentials{
-		ClientID:   "testclient",
-		ClientAuth: "abcd1234",
+		ClientID:   "opentdf",
+		ClientAuth: "secret",
 	}
 
 	tok, err := GetAccessToken(
 		idpEndpoint,
-		[]string{"testscope"},
+		[]string{},
 		clientCredentials,
 		dpopJWK)
 	require.NoError(t, err)
@@ -75,6 +73,64 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
 	assert.Greaterf(t, tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
 	assert.Falsef(t, tok.Expired(), "got a token that is currently expired: %v", tok)
+}
+
+func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
+	ctx := context.Background()
+
+	keycloak, idpEndpoint := setupKeycloak(ctx, t)
+	defer func() { require.NoError(t, keycloak.Terminate(ctx)) }()
+
+	// Generate RSA Key to use for DPoP
+	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic(err)
+	}
+
+	dpopJWK, err := jwk.FromRaw(dpopKey)
+	require.NoError(t, err)
+	require.NoError(t, dpopJWK.Set("use", "sig"))
+	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
+
+	clientCredentials := ClientCredentials{
+		ClientID:   "opentdf-sdk",
+		ClientAuth: "secret",
+	}
+
+	subjectToken, err := GetAccessToken(
+		idpEndpoint,
+		[]string{},
+		clientCredentials,
+		dpopJWK)
+	require.NoError(t, err)
+
+	exchangeCredentials := ClientCredentials{
+		ClientID:   "opentdf",
+		ClientAuth: "secret",
+	}
+
+	exchangedTok, err := DoTokenExchange(ctx, idpEndpoint, []string{}, exchangeCredentials, subjectToken.AccessToken, dpopJWK)
+	require.NoError(t, err)
+
+	tokenDetails, err := jwt.ParseString(exchangedTok.AccessToken, jwt.WithVerify(false))
+	require.NoError(t, err)
+
+	cnfClaim, ok := tokenDetails.Get("cnf")
+	require.True(t, ok)
+	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
+	require.True(t, ok)
+	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, idpKeyFingerprint)
+	pk, err := dpopJWK.PublicKey()
+	require.NoError(t, err)
+	hash, err := pk.Thumbprint(crypto.SHA256)
+	require.NoError(t, err)
+
+	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
+	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
+	assert.Greaterf(t, subjectToken.ExpiresIn, int64(0), "invalid expiration is before current time: %v", subjectToken)
+	assert.Falsef(t, subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
 }
 
 func TestClientSecretNoNonce(t *testing.T) {
@@ -395,7 +451,7 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 	containerReq := tc.ContainerRequest{
 		Image:        "ghcr.io/opentdf/keycloak:sha-8a6d35a",
 		ExposedPorts: []string{"8082/tcp"},
-		Cmd:          []string{"start-dev", "--http-port=8082"},
+		Cmd:          []string{"start-dev", "--http-port=8082", "--features=preview"},
 		Files:        []tc.ContainerFile{},
 		Env: map[string]string{
 			"KEYCLOAK_ADMIN":          "admin",
@@ -423,45 +479,18 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 	port, _ := keycloak.MappedPort(ctx, "8082")
 	keycloakBase := fmt.Sprintf("http://localhost:%s", port.Port())
 
-	client := http.Client{}
+	realm := "test"
 
-	formData := url.Values{}
-	formData.Add("username", "admin")
-	formData.Add("password", "admin")
-	formData.Add("grant_type", "password")
-	formData.Add("client_id", "admin-cli")
-
-	req, _ := http.NewRequest(http.MethodPost, keycloakBase+"/realms/master/protocol/openid-connect/token", strings.NewReader(formData.Encode()))
-	req.Header.Add("content-type", "application/x-www-form-urlencoded")
-
-	res, err := client.Do(req)
-	if err != nil {
-		panic(err)
+	connectParams := fixtures.KeycloakConnectParams{
+		BasePath:         keycloakBase,
+		Username:         "admin",
+		Password:         "admin",
+		Realm:            realm,
+		Audience:         "https://test.example.org",
+		AllowInsecureTLS: true,
 	}
 
-	var responseMap map[string]interface{}
-	decoder := json.NewDecoder(res.Body)
-	err = decoder.Decode(&responseMap)
-	require.NoError(t, err, "error decoding response")
+	require.NoError(t, fixtures.SetupKeycloak(connectParams))
 
-	accessToken, ok := responseMap["access_token"].(string)
-	require.True(t, ok, "missing access_token")
-	realmFile, err := os.ReadFile("./realm.json")
-	require.NoError(t, err)
-
-	req, _ = http.NewRequest(http.MethodPost, keycloakBase+"/admin/realms", strings.NewReader(string(realmFile)))
-	req.Header.Add("authorization", "Bearer "+accessToken)
-	req.Header.Add("content-type", "application/json")
-
-	res, err = client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-
-	if res.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(res.Body)
-		t.Fatalf("error creating realm: %s", string(body))
-	}
-
-	return keycloak, keycloakBase + "/realms/test/protocol/openid-connect/token"
+	return keycloak, keycloakBase + "/realms/" + realm + "/protocol/openid-connect/token"
 }

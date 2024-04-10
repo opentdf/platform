@@ -234,8 +234,8 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 	return string(proof), nil
 }
 
-func DoTokenExchange(ctx context.Context, clientCredentials ClientCredentials, scope []string, tokenEndpoint url.URL, subjectToken string, key jwk.Key) (*Token, error) {
-	req, err := getTokenExchangeRequest(ctx, tokenEndpoint.String(), "", subjectToken, scope, clientCredentials, &key)
+func DoTokenExchange(ctx context.Context, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, subjectToken string, key jwk.Key) (*Token, error) {
+	req, err := getTokenExchangeRequest(ctx, tokenEndpoint, "", subjectToken, scopes, clientCredentials, &key)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +247,7 @@ func DoTokenExchange(ctx context.Context, clientCredentials ClientCredentials, s
 	defer resp.Body.Close()
 
 	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
-		nonceReq, err := getTokenExchangeRequest(ctx, tokenEndpoint.String(), nonceHeader, subjectToken, scope, clientCredentials, &key)
+		nonceReq, err := getTokenExchangeRequest(ctx, tokenEndpoint, nonceHeader, subjectToken, scopes, clientCredentials, &key)
 		if err != nil {
 			return nil, err
 		}
@@ -269,7 +269,7 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce, subj
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":        {subjectToken},
 		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
-		"audience":             {"opentdf-sdk"},
+		"audience":             {clientCredentials.ClientID},
 	}
 
 	if len(scopes) > 0 {

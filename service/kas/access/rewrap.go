@@ -16,6 +16,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/opentdf/platform/sdk"
 	"log/slog"
 	"strings"
 
@@ -23,7 +24,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/kas/nanotdf"
 	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -320,7 +320,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 func (p *Provider) nanoTDFRewrap(body verifiedRequest) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
 
-	header, err := nanotdf.ReadNanoTDFHeader(headerReader)
+	header, err := sdk.ReadNanoTDFHeader(headerReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}

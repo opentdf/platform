@@ -1,4 +1,4 @@
-package nanotdf
+package sdk
 
 import (
 	"encoding/binary"
@@ -228,10 +228,4 @@ func ReadNanoTDFHeader(reader io.Reader) (*nanoTdf, error) {
 	nanoTDF.EphemeralPublicKey, err = readEphemeralPublicKey(reader, nanoTDF.binding.bindingBody)
 
 	return &nanoTDF, err
-}
-
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
 }

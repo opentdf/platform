@@ -197,7 +197,7 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 	}
 	hsmSession := mustNewCryptoProvider(t, config)
 	defer hsmSession.Close()
-	kasURI := mustParseURI(t, "https://"+hostname+":5000")
+	kasURI := urlHost(t)
 
 	kas := Provider{
 		URI:            *kasURI,
@@ -217,10 +217,10 @@ func mustNewCryptoProvider(t *testing.T, config security.Config) security.Crypto
 	return hsmSession
 }
 
-func mustParseURI(t *testing.T, hostname string) *url.URL {
-	uri, err := url.Parse("https://" + hostname + ":5000")
+func urlHost(t *testing.T) *url.URL {
+	url, err := url.Parse("https://" + hostname + ":5000")
 	require.NoError(t, err)
-	return uri
+	return url
 }
 
 func TestCertificateHandlerWithEc256(t *testing.T) {
@@ -236,7 +236,7 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 	}
 	hsmSession := mustNewCryptoProvider(t, config)
 	defer hsmSession.Close()
-	kasURI := mustParseURI(t, "https://"+hostname+":5000")
+	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
@@ -265,7 +265,7 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 	}
 	hsmSession := mustNewCryptoProvider(t, config)
 	defer hsmSession.Close()
-	kasURI := mustParseURI(t, "https://"+hostname+":5000")
+	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
@@ -294,7 +294,7 @@ func TestPublicKeyHandlerV2(t *testing.T) {
 	}
 	hsmSession := mustNewCryptoProvider(t, config)
 	defer hsmSession.Close()
-	kasURI := mustParseURI(t, "https://"+hostname+":5000")
+	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
@@ -317,7 +317,7 @@ func TestPublicKeyHandlerV2Failure(t *testing.T) {
 	}
 	hsmSession := mustNewCryptoProvider(t, config)
 	defer hsmSession.Close()
-	kasURI := mustParseURI(t, "https://"+hostname+":5000")
+	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
@@ -343,7 +343,7 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 	}
 	hsmSession := mustNewCryptoProvider(t, config)
 	defer hsmSession.Close()
-	kasURI := mustParseURI(t, "https://"+hostname+":5000")
+	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
@@ -373,7 +373,7 @@ func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
 	}
 	hsmSession := mustNewCryptoProvider(t, config)
 	defer hsmSession.Close()
-	kasURI := mustParseURI(t, "https://"+hostname+":5000")
+	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,

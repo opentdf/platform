@@ -79,7 +79,7 @@ func resourceMappingSelect() sq.SelectBuilder {
 		")) FILTER (WHERE vmv.id IS NOT NULL ), '[]')"
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		getMetadataField(t.Name(), false),
+		constructMetadata(t.Name(), false),
 		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
 			"'id', av.id,"+
@@ -111,7 +111,7 @@ func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []
 			metadata,
 			terms,
 		).
-		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
+		Suffix(createSuffix).
 		ToSql()
 }
 

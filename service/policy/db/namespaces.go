@@ -77,7 +77,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		getMetadataField("", false),
+		constructMetadata("", false),
 	}
 
 	if opts.withFqn {
@@ -126,7 +126,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		getMetadataField("", false),
+		constructMetadata("", false),
 	}
 
 	if opts.withFqn {
@@ -180,7 +180,7 @@ func createNamespaceSql(name string, metadata []byte) (string, []interface{}, er
 		Insert(t.Name()).
 		Columns("name", "metadata").
 		Values(name, metadata).
-		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
+		Suffix(createSuffix).
 		ToSql()
 }
 

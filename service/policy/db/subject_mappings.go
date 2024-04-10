@@ -105,7 +105,7 @@ func subjectConditionSetSelect() sq.SelectBuilder {
 	t := Tables.SubjectConditionSet
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		getMetadataField("", false),
+		constructMetadata("", false),
 		t.Field("condition"),
 	)
 }
@@ -171,10 +171,10 @@ func subjectMappingSelect() sq.SelectBuilder {
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("actions"),
-		getMetadataField(t.Name(), false),
+		constructMetadata(t.Name(), false),
 		"JSON_BUILD_OBJECT("+
 			"'id', "+scsT.Field("id")+", "+
-			getMetadataField(scsT.Name(), true)+
+			constructMetadata(scsT.Name(), true)+
 			"'subject_sets', "+scsT.Field("condition")+
 			") AS subject_condition_set",
 		"JSON_BUILD_OBJECT("+
@@ -303,7 +303,7 @@ func createSubjectConditionSetSql(subjectSets []*policy.SubjectSet, metadataJSON
 		Insert(t.Name()).
 		Columns(columns...).
 		Values(values...).
-		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -494,7 +494,7 @@ func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata
 		Insert(t.Name()).
 		Columns(columns...).
 		Values(values...).
-		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
+		Suffix(createSuffix).
 		ToSql()
 }
 

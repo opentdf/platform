@@ -145,7 +145,7 @@ func createAttributeValueSql(
 			value,
 			metadata,
 		).
-		Suffix("RETURNING id, " + getMetadataField("", false)).
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -162,6 +162,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		value,
 		metadataJSON,
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +224,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		getMetadataField("vmv", true) +
+		constructMetadata("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -235,7 +236,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"av.value",
 		"av.active",
 		members,
-		getMetadataField("av", false),
+		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
@@ -288,7 +289,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		getMetadataField("vmv", true) +
+		constructMetadata("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -300,7 +301,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		"av.value",
 		"av.active",
 		members,
-		getMetadataField("av", false),
+		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
@@ -359,7 +360,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		getMetadataField("vmv", true) +
+		constructMetadata("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -371,7 +372,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		"av.value",
 		"av.active",
 		members,
-		getMetadataField("av", false),
+		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {

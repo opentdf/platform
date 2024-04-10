@@ -1,6 +1,6 @@
 package db
 
-func getMetadataField(table string, isJSON bool) string {
+func constructMetadata(table string, isJSON bool) string {
 	if table != "" {
 		table += "."
 	}
@@ -13,3 +13,5 @@ func getMetadataField(table string, isJSON bool) string {
 	}
 	return metadata
 }
+
+var createSuffix = "RETURNING id, " + constructMetadata("", false)

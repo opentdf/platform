@@ -199,12 +199,12 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	var id string
 	if r, e := c.QueryRow(ctx, sql, args); e != nil {
 		return nil, e
-	} else if e := r.Scan(&id, &metadataJSON); e != nil {
+	} else if e = r.Scan(&id, &metadataJSON); e != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(e)
 	}
 
 	if metadataJSON != nil {
-		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+		if err = protojson.Unmarshal(metadataJSON, m); err != nil {
 			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}

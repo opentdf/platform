@@ -329,7 +329,7 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 	}
 
 	if metadataJSON != nil {
-		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+		if err = protojson.Unmarshal(metadataJSON, m); err != nil {
 			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}
@@ -553,7 +553,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	}
 
 	if metadataJSON != nil {
-		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+		if err = protojson.Unmarshal(metadataJSON, m); err != nil {
 			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}

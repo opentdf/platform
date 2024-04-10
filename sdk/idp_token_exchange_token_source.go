@@ -10,18 +10,18 @@ import (
 
 type IDPTokenExchangeTokenSource struct {
 	IDPAccessTokenSource
-	subjectToken string
+	oauth.TokenExchangeInfo
 }
 
-func NewIDPTokenExchangeTokenSource(subjectToken string, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (*IDPTokenExchangeTokenSource, error) {
+func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (*IDPTokenExchangeTokenSource, error) {
 	idpSource, err := NewIDPAccessTokenSource(credentials, idpTokenEndpoint, scopes)
 	if err != nil {
 		return nil, err
 	}
 
 	exchangeSource := IDPTokenExchangeTokenSource{
-		subjectToken:         subjectToken,
 		IDPAccessTokenSource: *idpSource,
+		TokenExchangeInfo:    exchangeInfo,
 	}
 
 	return &exchangeSource, nil
@@ -32,7 +32,7 @@ func (i IDPTokenExchangeTokenSource) AccessToken() (auth.AccessToken, error) {
 	defer i.IDPAccessTokenSource.tokenMutex.Unlock()
 
 	if i.IDPAccessTokenSource.token == nil || i.IDPAccessTokenSource.token.Expired() {
-		tok, err := oauth.DoTokenExchange(context.TODO(), i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.subjectToken, i.dpopKey)
+		tok, err := oauth.DoTokenExchange(context.TODO(), i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 
 		if err != nil {
 			return "", err

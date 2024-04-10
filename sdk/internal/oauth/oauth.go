@@ -27,6 +27,11 @@ type ClientCredentials struct {
 	ClientID   string
 }
 
+type TokenExchangeInfo struct {
+	SubjectToken string
+	Audience     string
+}
+
 type Token struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
@@ -234,8 +239,8 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 	return string(proof), nil
 }
 
-func DoTokenExchange(ctx context.Context, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, subjectToken string, key jwk.Key) (*Token, error) {
-	req, err := getTokenExchangeRequest(ctx, tokenEndpoint, "", subjectToken, scopes, clientCredentials, &key)
+func DoTokenExchange(ctx context.Context, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, key jwk.Key) (*Token, error) {
+	req, err := getTokenExchangeRequest(ctx, tokenEndpoint, "", scopes, clientCredentials, tokenExchange, &key)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +252,7 @@ func DoTokenExchange(ctx context.Context, tokenEndpoint string, scopes []string,
 	defer resp.Body.Close()
 
 	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
-		nonceReq, err := getTokenExchangeRequest(ctx, tokenEndpoint, nonceHeader, subjectToken, scopes, clientCredentials, &key)
+		nonceReq, err := getTokenExchangeRequest(ctx, tokenEndpoint, nonceHeader, scopes, clientCredentials, tokenExchange, &key)
 		if err != nil {
 			return nil, err
 		}
@@ -264,12 +269,12 @@ func DoTokenExchange(ctx context.Context, tokenEndpoint string, scopes []string,
 	return processResponse(resp)
 }
 
-func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce, subjectToken string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
+func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, privateJWK *jwk.Key) (*http.Request, error) {
 	data := url.Values{
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
-		"subject_token":        {subjectToken},
+		"subject_token":        {tokenExchange.SubjectToken},
 		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
-		"audience":             {clientCredentials.ClientID},
+		"audience":             {tokenExchange.Audience},
 	}
 
 	if len(scopes) > 0 {

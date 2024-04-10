@@ -11,9 +11,8 @@ type Option func(*config)
 // Internal config struct for building SDK options.
 type config struct {
 	tls               grpc.DialOption
-	clientCredentials oauth.ClientCredentials
-	subjectToken      string
-	subjectClientID   string
+	clientCredentials *oauth.ClientCredentials
+	tokenExchange     *oauth.TokenExchangeInfo
 	tokenEndpoint     string
 	scopes            []string
 	authConfig        *AuthConfig
@@ -35,7 +34,7 @@ func WithInsecureConn() Option {
 // WithClientCredentials returns an Option that sets up authentication with client credentials.
 func WithClientCredentials(clientID, clientSecret string, scopes []string) Option {
 	return func(c *config) {
-		c.clientCredentials = oauth.ClientCredentials{ClientID: clientID, ClientAuth: clientSecret}
+		c.clientCredentials = &oauth.ClientCredentials{ClientID: clientID, ClientAuth: clientSecret}
 		c.scopes = scopes
 	}
 }
@@ -68,9 +67,11 @@ func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	}
 }
 
-func WithTokenExchange(subjectToken, subjectClientID string) Option {
+func WithTokenExchange(subjectToken, audience string) Option {
 	return func(c *config) {
-		c.subjectToken = subjectToken
-		c.subjectClientID = subjectClientID
+		c.tokenExchange = &oauth.TokenExchangeInfo{
+			SubjectToken: subjectToken,
+			Audience:     audience,
+		}
 	}
 }

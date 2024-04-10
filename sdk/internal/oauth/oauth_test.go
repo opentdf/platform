@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -109,7 +110,12 @@ func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
 		ClientAuth: "secret",
 	}
 
-	exchangedTok, err := DoTokenExchange(ctx, idpEndpoint, []string{}, exchangeCredentials, subjectToken.AccessToken, dpopJWK)
+	tokenExchange := TokenExchangeInfo{
+		SubjectToken: subjectToken.AccessToken,
+		Audience:     "opentdf-sdk",
+	}
+
+	exchangedTok, err := DoTokenExchange(ctx, idpEndpoint, []string{}, exchangeCredentials, tokenExchange, dpopJWK)
 	require.NoError(t, err)
 
 	tokenDetails, err := jwt.ParseString(exchangedTok.AccessToken, jwt.WithVerify(false))
@@ -131,6 +137,22 @@ func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
 	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
 	assert.Greaterf(t, subjectToken.ExpiresIn, int64(0), "invalid expiration is before current time: %v", subjectToken)
 	assert.Falsef(t, subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
+
+	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
+	ra, ok := tokenDetails.Get("realm_access")
+	require.True(t, ok)
+	raMap, ok := ra.(map[string]interface{})
+	require.True(t, ok)
+	roles, ok := raMap["roles"]
+	require.True(t, ok)
+	rolesList, ok := roles.([]interface{})
+	require.True(t, ok)
+	require.True(t, slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+
+	// verify that the calling client is the authorized party
+	azpClaim, ok := tokenDetails.Get("azp")
+	require.True(t, ok)
+	require.Equal(t, exchangeCredentials.ClientID, azpClaim)
 }
 
 func TestClientSecretNoNonce(t *testing.T) {

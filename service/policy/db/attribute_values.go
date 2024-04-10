@@ -145,7 +145,7 @@ func createAttributeValueSql(
 			value,
 			metadata,
 		).
-		Suffix("RETURNING id").
+		Suffix("RETURNING id, " + getMetadataField("", false)).
 		ToSql()
 }
 
@@ -169,7 +169,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
-	} else if err := r.Scan(&id); err != nil {
+	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -192,6 +192,13 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 			return nil, err
 		}
 		members = append(members, attr)
+	}
+
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
 	// Update FQN

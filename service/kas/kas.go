@@ -16,7 +16,7 @@ import (
 )
 
 func loadIdentityProvider(cfg serviceregistry.ServiceConfig) *oidc.IDTokenVerifier {
-	if cfg.ExtraProps != nil && cfg.ExtraProps["issuer"] == nil {
+	if cfg.ExtraProps == nil || cfg.ExtraProps["issuer"] == nil {
 		panic(errors.New("services.kas.issuer is required"))
 	}
 	oidcIssuerURL := cfg.ExtraProps["issuer"].(string)

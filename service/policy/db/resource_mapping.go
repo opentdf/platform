@@ -111,7 +111,7 @@ func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []
 			metadata,
 			terms,
 		).
-		Suffix("RETURNING \"id\"").
+		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
 		ToSql()
 }
 
@@ -132,7 +132,7 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 	}
 
 	var id string
-	if err := row.Scan(&id); err != nil {
+	if err := row.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -140,6 +140,13 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 	if err != nil {
 		slog.Error("failed to get attribute value", "id", r.GetAttributeValueId(), "err", err)
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
 	return &policy.ResourceMapping{

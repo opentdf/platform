@@ -468,7 +468,7 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		Insert(t.Name()).
 		Columns("namespace_id", "name", "rule", "metadata").
 		Values(namespaceId, name, rule, metadata).
-		Suffix("RETURNING \"id\"").
+		Suffix("RETURNING \"id\", " + getMetadataField("", false)).
 		ToSql()
 }
 
@@ -488,8 +488,15 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
-	} else if err := r.Scan(&id); err != nil {
+	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
 	// Update the FQN

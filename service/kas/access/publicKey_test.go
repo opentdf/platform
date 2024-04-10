@@ -214,6 +214,7 @@ func mustNewCryptoProvider(t *testing.T, config security.Config) security.Crypto
 	hsmSession, err := security.NewCryptoProvider(config)
 	maybeSkip(t, err)
 	require.NoError(t, err)
+	require.NotNil(t, hsmSession)
 	return hsmSession
 }
 

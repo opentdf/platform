@@ -25,6 +25,9 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKe
 	algorithm := in.GetAlgorithm()
 	var pem string
 	var err error
+	if p.CryptoProvider == nil {
+		return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
+	}
 	if algorithm == algorithmEc256 {
 		pem, err = p.CryptoProvider.ECPublicKey("unknown")
 		if err != nil {

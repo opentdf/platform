@@ -30,8 +30,7 @@
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 ```sh
-brew install buf golangci-lint goose grpcurl openssl
-
+brew install buf go golangci-lint goose grpcurl openssl
 ```
 
 ### Run

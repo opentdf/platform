@@ -13,32 +13,24 @@
 
 ### Prerequisites
 
-#### Required
-
-- Go (_see go.mod for specific version_)
+- [Go](https://go.dev/) (_see go.mod for specific version_)
 - Container runtime
   - [Docker](https://www.docker.com/get-started/)
   - [Podman](https://podman.io/docs/installation)
 - Compose - used to manage multi-container applications
   - [Docker Compose](https://docs.docker.com/compose/install/)
   - [Podman Compose](https://github.com/containers/podman-compose)
-
-#### Optional
-
-- [Air](https://github.com/cosmtrek/air) is used for hot-reload development
-  - install with `go install github.com/cosmtrek/air`
-- [Buf](https://buf.build/docs/ecosystem/cli-overview) is used for managing protobuf files
-  - install with `go install github.com/bufbuild/buf/cmd/buf`
-- [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices
+- [Buf](https://buf.build/docs/ecosystem/cli-overview) is used for managing protobuf files.
+  Required for developing services.
+- _Optional_ [Air](https://github.com/cosmtrek/air) is used for hot-reload development
+- _Optional_ [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices
   - install with `brew install golangci-lint`
-- [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
-  - install with `go install github.com/fullstorydev/grpcurl/cmd/grpcurl`
+- _Optional_ [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 ```sh
-brew install buf golangci-lint goose grpcurl openssl
-
+brew install buf go golangci-lint goose grpcurl openssl
 ```
 
 ### Run

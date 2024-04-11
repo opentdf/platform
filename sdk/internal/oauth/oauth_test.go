@@ -94,7 +94,6 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	rolesList, ok := roles.([]interface{})
 	require.True(t, ok)
 	require.True(t, slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
-
 }
 
 func TestDoingTokenExchangeWithKeycloak(t *testing.T) {

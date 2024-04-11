@@ -1,4 +1,4 @@
-package nanotdf
+package sdk
 
 import (
 	"bytes"

@@ -24,12 +24,12 @@ func loadIdentityProvider(cfg serviceregistry.ServiceConfig) *oidc.IDTokenVerifi
 	if !ok {
 		panic(errors.New("services.kas.issuer must be a string"))
 	}
-	if cfg.ExtraProps == nil || cfg.ExtraProps["discovery"] == nil {
-		panic(errors.New("services.kas.discovery is required"))
-	}
-	discoveryBaseURL, ok := cfg.ExtraProps["discovery"].(string)
-	if !ok {
-		panic(errors.New("services.kas.discovery must be a string"))
+	discoveryBaseURL := ""
+	if cfg.ExtraProps != nil && cfg.ExtraProps["discovery"] != nil {
+		db, ok := cfg.ExtraProps["discovery"].(string)
+		if ok {
+			discoveryBaseURL = db
+		}
 	}
 	if discoveryBaseURL != "" {
 		ctx = oidc.InsecureIssuerURLContext(ctx, oidcIssuerURL)

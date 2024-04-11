@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/opentdf/platform/lib/fixtures"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/spf13/cobra"
@@ -49,7 +51,7 @@ var (
 				AllowInsecureTLS: true,
 			}
 
-			return fixtures.SetupKeycloak(kcConnectParams)
+			return fixtures.SetupKeycloak(context.Background(), kcConnectParams)
 		},
 	}
 )

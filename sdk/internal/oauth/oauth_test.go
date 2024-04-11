@@ -528,7 +528,7 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 		AllowInsecureTLS: true,
 	}
 
-	err = fixtures.SetupKeycloak(connectParams)
+	err = fixtures.SetupKeycloak(ctx, connectParams)
 	require.NoError(t, err)
 
 	return keycloak, keycloakBase + "/realms/" + realm + "/protocol/openid-connect/token"

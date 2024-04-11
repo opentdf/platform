@@ -19,7 +19,7 @@ COPY cmd/ cmd/
 COPY internal/ internal/
 COPY migrations/ migrations/
 COPY policies/ policies/
-COPY services/ services/
+COPY service service/
 COPY protocol/ protocol/
 COPY pkg/ pkg/
 

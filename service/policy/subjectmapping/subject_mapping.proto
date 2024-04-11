@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+package policy.subjectmapping;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+
+import "common/common.proto";
+import "policy/objects.proto";
+
+// MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
+// if there is any single condition found among the structures that matches for one of the provided properties:
+// 1. The external selector value, external value, and an IN operator
+// 2. The external selector value, _no_ external value, and a NOT_IN operator
+//
+// Without this filtering, if a selector value was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping
+// in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no
+// logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
+// initial filter.
+//
+// NOTE: if you have any issues, debug logs are available within the service to help identify why a mapping was or was not returned.
+message MatchSubjectMappingsRequest {
+  repeated policy.SubjectProperty subject_properties = 1;
+}
+
+message MatchSubjectMappingsResponse {
+  repeated policy.SubjectMapping subject_mappings = 1;
+}
+
+/*
+  Subject Mappings CRUD Operations
+*/
+
+message GetSubjectMappingRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message GetSubjectMappingResponse {
+  policy.SubjectMapping subject_mapping = 1;
+}
+
+message ListSubjectMappingsRequest {}
+message ListSubjectMappingsResponse {
+  repeated policy.SubjectMapping subject_mappings = 1;
+}
+
+message CreateSubjectMappingRequest{
+  // Required
+  // Attribute Value to be mapped to
+  string attribute_value_id = 1 [(buf.validate.field).required = true];
+  // The actions permitted by subjects in this mapping
+  repeated policy.Action actions = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Either of the following:
+  // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+  string existing_subject_condition_set_id = 3;
+  // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+  SubjectConditionSetCreate new_subject_condition_set = 4;
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+}
+message CreateSubjectMappingResponse {
+  policy.SubjectMapping subject_mapping = 1;
+}
+
+message UpdateSubjectMappingRequest {
+  // Required
+  string id = 1 [(buf.validate.field).required = true];
+
+  // Optional
+  // Replaces the existing SubjectConditionSet id with a new one
+  string subject_condition_set_id = 2;
+  // Replaces entire list of actions permitted by subjects
+  repeated policy.Action actions = 3;
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateSubjectMappingResponse {
+  // Only ID of the updated Subject Mapping provided
+  policy.SubjectMapping subject_mapping = 1;
+}
+
+message DeleteSubjectMappingRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeleteSubjectMappingResponse {
+  // Only ID of the updated Subject Mapping provided
+  policy.SubjectMapping subject_mapping = 1;
+}
+
+/**
+  SubjectConditionSet CRUD operations
+*/
+
+message GetSubjectConditionSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message GetSubjectConditionSetResponse {
+  policy.SubjectConditionSet subject_condition_set = 1;
+  // contextualized Subject Mappings associated with this SubjectConditionSet
+  repeated policy.SubjectMapping associated_subject_mappings = 2;
+}
+
+message ListSubjectConditionSetsRequest {}
+message ListSubjectConditionSetsResponse {
+  repeated policy.SubjectConditionSet subject_condition_sets = 1;
+}
+
+message SubjectConditionSetCreate {
+  // Required
+  repeated policy.SubjectSet subject_sets = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateSubjectConditionSetRequest {
+  SubjectConditionSetCreate subject_condition_set = 1;
+}
+message CreateSubjectConditionSetResponse {
+  SubjectConditionSet subject_condition_set = 1;
+}
+
+message UpdateSubjectConditionSetRequest {
+  // Required
+  string id = 1 [(buf.validate.field).required = true];
+
+  // Optional
+  // If provided, replaces entire existing structure of Subject Sets, Condition Groups, & Conditions
+  repeated policy.SubjectSet subject_sets = 2;
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateSubjectConditionSetResponse {
+  // Only ID of updated Subject Condition Set provided
+  policy.SubjectConditionSet subject_condition_set = 1;
+}
+
+message DeleteSubjectConditionSetRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeleteSubjectConditionSetResponse {
+  // Only ID of deleted Subject Condition Set provided
+  policy.SubjectConditionSet subject_condition_set = 1;
+}
+
+service SubjectMappingService {
+
+  // Find matching Subject Mappings for a given Subject
+  rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse) {
+    option (google.api.http) = {
+      post: "/subject-mappings/match"
+      body: "subject_properties"
+    };
+  }
+
+  rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
+    option (google.api.http) = {get: "/subject-mappings"};
+  }
+  rpc GetSubjectMapping(GetSubjectMappingRequest) returns (GetSubjectMappingResponse) {
+    option (google.api.http) = {get: "/subject-mappings/{id}"};
+  }
+
+  rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {
+    option (google.api.http) = {
+      post: "/subject-mappings"
+      body: "*"
+    };
+  }
+
+  rpc UpdateSubjectMapping(UpdateSubjectMappingRequest) returns (UpdateSubjectMappingResponse) {
+    option (google.api.http) = {
+      patch: "/subject-mappings/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteSubjectMapping(DeleteSubjectMappingRequest) returns (DeleteSubjectMappingResponse) {
+    option (google.api.http) = {delete: "/subject-mappings/{id}"};
+  }
+
+  rpc ListSubjectConditionSets(ListSubjectConditionSetsRequest) returns (ListSubjectConditionSetsResponse) {
+    option (google.api.http) = {get: "/subject-condition-sets"};
+  }
+
+  rpc GetSubjectConditionSet(GetSubjectConditionSetRequest) returns (GetSubjectConditionSetResponse) {
+    option (google.api.http) = {get: "/subject-condition-sets/{id}"};
+  }
+
+  rpc CreateSubjectConditionSet(CreateSubjectConditionSetRequest) returns (CreateSubjectConditionSetResponse) {
+    option (google.api.http) = {
+      post: "/subject-condition-sets"
+      body: "*"
+    };
+  }
+
+  rpc UpdateSubjectConditionSet(UpdateSubjectConditionSetRequest) returns (UpdateSubjectConditionSetResponse) {
+    option (google.api.http) = {
+      patch: "/subject-condition-sets/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteSubjectConditionSet(DeleteSubjectConditionSetRequest) returns (DeleteSubjectConditionSetResponse) {
+    option (google.api.http) = {delete: "/subject-condition-sets/{id}"};
+  }
+
+}

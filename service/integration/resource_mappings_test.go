@@ -193,7 +193,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	updateTerms := []string{"updated term1", "updated term 2"}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
-	start := time.Now()
+	start := time.Now().Add(-time.Second)
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Metadata: &common.MetadataMutable{

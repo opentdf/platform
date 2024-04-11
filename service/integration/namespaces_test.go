@@ -159,7 +159,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 		"update": updatedLabel,
 		"new":    newLabel,
 	}
-	start := time.Now()
+	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "updating-namespace.com",
 		Metadata: &common.MetadataMutable{

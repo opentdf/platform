@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	provKcEndpoint = "endpoint"
-	provKcUsername = "admin"
-	provKcPassword = "password"
-	provKcRealm    = "realm"
+	provKcEndpointFlag = "endpoint"
+	provKcUsernameFlag = "username"
+	provKcPasswordFlag = "password"
+	provKcRealmFlag    = "realm"
 )
 
 var (
@@ -27,11 +27,11 @@ var (
 
  This command is intended for local development and testing purposes only.
  `,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			kcEndpoint, _ := cmd.Flags().GetString(provKcEndpoint)
-			realmName, _ := cmd.Flags().GetString(provKcRealm)
-			kcUsername, _ := cmd.Flags().GetString(provKcUsername)
-			kcPassword, _ := cmd.Flags().GetString(provKcPassword)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			kcEndpoint, _ := cmd.Flags().GetString(provKcEndpointFlag)
+			realmName, _ := cmd.Flags().GetString(provKcRealmFlag)
+			kcUsername, _ := cmd.Flags().GetString(provKcUsernameFlag)
+			kcPassword, _ := cmd.Flags().GetString(provKcPasswordFlag)
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
 
@@ -55,10 +55,10 @@ var (
 )
 
 func init() {
-	provisionKeycloakCmd.Flags().StringP(provKcEndpoint, "e", "http://localhost:8888/auth", "Keycloak endpoint")
-	provisionKeycloakCmd.Flags().StringP(provKcUsername, "u", "admin", "Keycloak username")
-	provisionKeycloakCmd.Flags().StringP(provKcPassword, "p", "changeme", "Keycloak password")
-	provisionKeycloakCmd.Flags().StringP(provKcRealm, "r", "opentdf", "OpenTDF Keycloak Realm name")
+	provisionKeycloakCmd.Flags().StringP(provKcEndpointFlag, "e", "http://localhost:8888/auth", "Keycloak endpoint")
+	provisionKeycloakCmd.Flags().StringP(provKcUsernameFlag, "u", "admin", "Keycloak username")
+	provisionKeycloakCmd.Flags().StringP(provKcPasswordFlag, "p", "changeme", "Keycloak password")
+	provisionKeycloakCmd.Flags().StringP(provKcRealmFlag, "r", "opentdf", "OpenTDF Keycloak Realm name")
 
 	provisionCmd.AddCommand(provisionKeycloakCmd)
 

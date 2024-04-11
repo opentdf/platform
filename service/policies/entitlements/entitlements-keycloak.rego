@@ -10,11 +10,19 @@ import rego.v1
  	"legacykeycloak": input.idp.legacy,
  }}
 
+# proto oneof only allows for one of the fields in the entity struct
 idp_request := {"entities": [{
 	"id": input.entity.id,
-	"emailAddress": input.entity.email_address,
 	"clientId": input.entity.client_id,
-}]}
+}]} if { input.entity.client_id }
+else := {"entities": [{
+	"id": input.entity.id,
+	"emailAddress": input.entity.email_address,
+}]} if { input.entity.email_address }
+else := {"entities": [{
+	"id": input.entity.id,
+	"userName": input.entity.username,
+}]} if { input.entity.username }
 
 attributes := [attribute |
 	# external entity
@@ -34,13 +42,22 @@ condition_group_evaluate(payload, boolean_operator, conditions) if {
 	# AND
 	boolean_operator == 1
 	some condition in conditions
-	condition_evaluate(payload[condition.subject_external_selector_value], condition.operator, condition.subject_external_values)
+	# TODO: additional_props is a list of entity representations
+	# (for when an email provided is for a group)
+	# how do we handle the situation when multiple entities returned
+	# add to the list for each entity?
+	# or do they all have to have the attribtue for it to be returned?
+	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_selector_value),
+         condition.operator, condition.subject_external_values
+    )
 } else if {
 	# OR
 	boolean_operator == 2
 	payload[key]
 	some condition in conditions
-	condition_evaluate(payload[condition.subject_external_selector_value], condition.operator, condition.subject_external_values)
+	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_selector_value),
+         condition.operator, condition.subject_external_values
+    )
 }
 
 # condition

@@ -83,6 +83,18 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
 	assert.Greaterf(t, tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
 	assert.Falsef(t, tok.Expired(), "got a token that is currently expired: %v", tok)
+
+	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
+	ra, ok := tokenDetails.Get("realm_access")
+	require.True(t, ok)
+	raMap, ok := ra.(map[string]interface{})
+	require.True(t, ok)
+	roles, ok := raMap["roles"]
+	require.True(t, ok)
+	rolesList, ok := roles.([]interface{})
+	require.True(t, ok)
+	require.True(t, slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+
 }
 
 func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
@@ -109,7 +121,7 @@ func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
 
 	subjectToken, err := GetAccessToken(
 		idpEndpoint,
-		[]string{},
+		[]string{"testscope"},
 		clientCredentials,
 		dpopJWK)
 	require.NoError(t, err)

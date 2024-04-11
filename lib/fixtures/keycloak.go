@@ -199,10 +199,10 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create TDF SDK Client
-	_, err = createClient(&kcConnectParams, gocloak.Client{
-		ClientID:                gocloak.StringP(opentdfSdkClientId),
-		Enabled:                 gocloak.BoolP(true),
-		OptionalClientScopes:    &[]string{"testscope"},
+	sdkNumericID, err := createClient(&kcConnectParams, gocloak.Client{
+		ClientID: gocloak.StringP(opentdfSdkClientId),
+		Enabled:  gocloak.BoolP(true),
+		// OptionalClientScopes:    &[]string{"testscope"},
 		Name:                    gocloak.StringP(opentdfSdkClientId),
 		ServiceAccountsEnabled:  gocloak.BoolP(true),
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
@@ -210,6 +210,12 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ProtocolMappers:         &protocolMappers,
 	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil, "")
 	if err != nil {
+		return err
+	}
+
+	err = client.AddOptionalScopeToClient(ctx, token.AccessToken, kcConnectParams.Realm, sdkNumericID, testScopeID)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error adding scope to client: %s", err))
 		return err
 	}
 

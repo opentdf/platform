@@ -5,7 +5,6 @@ go 1.21.8
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v11 v11.2.0
-	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bufbuild/protovalidate-go v0.6.0
 	github.com/casbin/casbin/v2 v2.84.0
 	github.com/coreos/go-oidc/v3 v3.9.0
@@ -19,6 +18,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
+	github.com/opentdf/platform/lib/fixtures v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/lib/ocrypto v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
@@ -38,6 +38,7 @@ require (
 
 require (
 	github.com/Microsoft/hcsshim v0.12.0 // indirect
+	github.com/Nerzal/gocloak/v13 v13.9.0 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
@@ -59,6 +60,7 @@ require (
 )
 
 replace (
+	github.com/opentdf/platform/lib/fixtures => ../lib/fixtures
 	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
 	github.com/opentdf/platform/protocol/go => ../protocol/go
 	github.com/opentdf/platform/sdk => ../sdk

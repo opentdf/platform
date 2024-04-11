@@ -11,6 +11,7 @@ require (
 )
 
 replace (
+	github.com/opentdf/platform/lib/fixtures => ../lib/fixtures
 	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
 	github.com/opentdf/platform/protocol/go => ../protocol/go
 	github.com/opentdf/platform/sdk => ../sdk

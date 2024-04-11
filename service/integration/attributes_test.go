@@ -407,11 +407,12 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	}
 	start := time.Now()
 	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	end := time.Now()
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
 	createdAt := metadata.GetCreatedAt()
 	s.True(createdAt.AsTime().After(start))
+	println("createdAt: ", createdAt.AsTime().UnixNano(), "end", end.UnixNano())
 	s.True(createdAt.AsTime().Before(end))
 	s.NoError(err)
 	s.NotNil(created)

@@ -142,11 +142,8 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if metadataJSON != nil {
-		if err = protojson.Unmarshal(metadataJSON, metadata); err != nil {
-			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
-			return nil, err
-		}
+	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+		return nil, err
 	}
 
 	return &policy.ResourceMapping{

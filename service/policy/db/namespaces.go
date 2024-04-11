@@ -203,7 +203,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 		return nil, db.WrapIfKnownInvalidQueryErr(e)
 	}
 
-	if m, err = unmarshalMetadata(metadataJSON, m); err != nil {
+	if err = unmarshalMetadata(metadataJSON, m); err != nil {
 		return nil, err
 	}
 

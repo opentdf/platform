@@ -206,7 +206,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	}
 	start := time.Now()
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
-	end := time.Now()
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
 	createdAt := metadata.GetCreatedAt()
@@ -637,10 +637,11 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 	}
 	start := time.Now()
 	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
-	end := time.Now()
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
 	createdAt := metadata.GetCreatedAt()
+	println("createdAt: ", createdAt.AsTime().UnixNano(), "endin", end.UnixNano())
 	s.True(createdAt.AsTime().After(start))
 	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)

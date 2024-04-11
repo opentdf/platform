@@ -195,11 +195,8 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		members = append(members, attr)
 	}
 
-	if metadataJSON != nil {
-		if err = protojson.Unmarshal(metadataJSON, metadata); err != nil {
-			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
-			return nil, err
-		}
+	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+		return nil, err
 	}
 
 	// Update FQN

@@ -24,16 +24,15 @@ func constructMetadata(table string, isJSON bool) string {
 var createSuffix = "RETURNING id, " + constructMetadata("", false)
 
 func unmarshalMetadata(metadataJSON []byte, m *common.Metadata) (
-	metadata *common.Metadata,
 	err error,
 ) {
 	if metadataJSON != nil {
 		if err = protojson.Unmarshal(metadataJSON, m); err != nil {
 			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
-			return nil, err
-			// return err
+			// return nil, err
+			return err
 		}
 	}
-	return m, nil
-	// return nil
+	// return m, nil
+	return nil
 }

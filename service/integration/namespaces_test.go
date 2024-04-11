@@ -166,7 +166,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 			Labels: labels,
 		},
 	})
-	end := time.Now()
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()

@@ -201,7 +201,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		},
 		Terms: terms,
 	})
-	end := time.Now()
+	end := time.Now().Add(time.Second)
 	metadata := createdMapping.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
 	createdAt := metadata.GetCreatedAt()

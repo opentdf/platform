@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -30,6 +31,7 @@ func (c Error) Error() string {
 type SDK struct {
 	conn                    *grpc.ClientConn
 	unwrapper               Unwrapper
+	WellKnown               wellknownconfiguration.WellKnownServiceClient
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
@@ -103,6 +105,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	return &SDK{
 		conn:                    defaultConn,
 		unwrapper:               unwrapper,
+		WellKnown:               wellknownconfiguration.NewWellKnownServiceClient(defaultConn),
 		Attributes:              attributes.NewAttributesServiceClient(policyConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),

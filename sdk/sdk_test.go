@@ -48,6 +48,9 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	if sdk.KeyAccessServerRegistry == nil {
 		t.Errorf("Expected KeyAccessGrants client, got nil")
 	}
+	if sdk.WellKnown == nil {
+		t.Errorf("Expected WellKnown client, got nil")
+	}
 }
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {

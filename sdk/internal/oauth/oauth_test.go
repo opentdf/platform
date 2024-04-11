@@ -109,7 +109,7 @@ func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
 
 	subjectToken, err := GetAccessToken(
 		idpEndpoint,
-		[]string{"testscope"},
+		[]string{},
 		clientCredentials,
 		dpopJWK)
 	require.NoError(t, err)

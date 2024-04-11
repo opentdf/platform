@@ -97,6 +97,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	opentdfOrgAdminRoleName := "opentdf-org-admin"
 	opentdfAdminRoleName := "opentdf-admin"
 	opentdfReadonlyRoleName := "opentdf-readonly"
+	testingOnlyRoleName := "opentdf-testing-role"
 	opentdfERSClientId := "tdf-entity-resolution"
 	realmMangementClientName := "realm-management"
 
@@ -127,7 +128,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create Roles
-	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfReadonlyRoleName}
+	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfReadonlyRoleName, testingOnlyRoleName}
 	for _, role := range roles {
 		_, err := client.CreateRealmRole(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.Role{
 			Name: gocloak.StringP(role),
@@ -148,6 +149,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	var opentdfOrgAdminRole *gocloak.Role
 	// var opentdfAdminRole *gocloak.Role
 	var opentdfReadonlyRole *gocloak.Role
+	var testingOnlyRole *gocloak.Role
 	realmRoles, err := client.GetRealmRoles(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.GetRoleParams{
 		Search: gocloak.StringP("opentdf"),
 	})
@@ -164,6 +166,8 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		// 	opentdfAdminRole = role
 		case opentdfReadonlyRoleName:
 			opentdfReadonlyRole = role
+		case testingOnlyRoleName:
+			testingOnlyRole = role
 		}
 	}
 
@@ -181,37 +185,37 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		return err
 	}
 
-	scopeName := "testscope"
-	optional := "true"
-	oidc := "openid-connect"
-	clientScopeAttributes := gocloak.ClientScopeAttributes{IncludeInTokenScope: &optional}
 	testScope := gocloak.ClientScope{
-		Name:                  &scopeName,
-		Description:           &scopeName,
-		Protocol:              &oidc,
-		ClientScopeAttributes: &clientScopeAttributes,
+		Name:                  gocloak.StringP("testscope"),
+		Description:           gocloak.StringP("a scope for testing"),
+		Protocol:              gocloak.StringP("openid-connect"),
+		ClientScopeAttributes: &gocloak.ClientScopeAttributes{IncludeInTokenScope: gocloak.StringP("true")},
 	}
 
-	_, err = client.CreateClientScope(ctx, token.AccessToken, kcConnectParams.Realm, testScope)
+	testScopeID, err := client.CreateClientScope(ctx, token.AccessToken, kcConnectParams.Realm, testScope)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error creating a test scope: %s", err))
 		return err
 	}
 
-	scopes := []string{scopeName}
-
 	// Create TDF SDK Client
 	_, err = createClient(&kcConnectParams, gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfSdkClientId),
 		Enabled:                 gocloak.BoolP(true),
-		OptionalClientScopes:    &scopes,
+		OptionalClientScopes:    &[]string{"testscope"},
 		Name:                    gocloak.StringP(opentdfSdkClientId),
 		ServiceAccountsEnabled:  gocloak.BoolP(true),
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
-	}, []gocloak.Role{*opentdfReadonlyRole}, nil, "")
+	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil, "")
 	if err != nil {
+		return err
+	}
+
+	err = client.CreateClientScopesScopeMappingsRealmRoles(ctx, token.AccessToken, kcConnectParams.Realm, testScopeID, []gocloak.Role{*testingOnlyRole})
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error creating a client scope mapping: %s", err))
 		return err
 	}
 

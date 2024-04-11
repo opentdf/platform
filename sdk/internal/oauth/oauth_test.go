@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,7 +31,9 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	ctx := context.Background()
 
 	keycloak, idpEndpoint := setupKeycloak(ctx, t)
-	defer func() { require.NoError(t, keycloak.Terminate(ctx)) }()
+	defer func() {
+		require.NoError(t, keycloak.Terminate(ctx))
+	}()
 
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -44,13 +47,13 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientCredentials := ClientCredentials{
-		ClientID:   "opentdf",
+		ClientID:   "opentdf-sdk",
 		ClientAuth: "secret",
 	}
 
 	tok, err := GetAccessToken(
 		idpEndpoint,
-		[]string{},
+		[]string{"testscope"},
 		clientCredentials,
 		dpopJWK)
 	require.NoError(t, err)
@@ -69,6 +72,12 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	require.NoError(t, err)
 	hash, err := pk.Thumbprint(crypto.SHA256)
 	require.NoError(t, err)
+
+	scope, ok := tokenDetails.Get("scope")
+	require.True(t, ok)
+	scopeString, ok := scope.(string)
+	require.True(t, ok)
+	require.True(t, strings.Contains(scopeString, "testscope"))
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
 	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
@@ -100,7 +109,7 @@ func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
 
 	subjectToken, err := GetAccessToken(
 		idpEndpoint,
-		[]string{},
+		[]string{"testscope"},
 		clientCredentials,
 		dpopJWK)
 	require.NoError(t, err)
@@ -153,6 +162,13 @@ func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
 	azpClaim, ok := tokenDetails.Get("azp")
 	require.True(t, ok)
 	require.Equal(t, exchangeCredentials.ClientID, azpClaim)
+
+	// verify that the exchanged token has a scope that is only allowed for the client that got the original token
+	scope, ok := tokenDetails.Get("scope")
+	require.True(t, ok)
+	scopeString, ok := scope.(string)
+	require.True(t, ok)
+	require.True(t, strings.Contains(scopeString, "testscope"))
 }
 
 func TestClientSecretNoNonce(t *testing.T) {
@@ -512,7 +528,8 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 		AllowInsecureTLS: true,
 	}
 
-	require.NoError(t, fixtures.SetupKeycloak(connectParams))
+	err = fixtures.SetupKeycloak(connectParams)
+	require.NoError(t, err)
 
 	return keycloak, keycloakBase + "/realms/" + realm + "/protocol/openid-connect/token"
 }

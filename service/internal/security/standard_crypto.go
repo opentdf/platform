@@ -80,7 +80,7 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 
 func (s StandardCrypto) RSAPublicKey(keyID string) (string, error) {
 	if len(s.rsaKeys) == 0 {
-		return "", errStandardCryptoObjIsInvalid
+		return "", ErrCertNotFound
 	}
 
 	// TODO: For now ignore the key id
@@ -95,7 +95,7 @@ func (s StandardCrypto) RSAPublicKey(keyID string) (string, error) {
 }
 
 func (s StandardCrypto) ECPublicKey(string) (string, error) {
-	return "", nil
+	return "", ErrCertNotFound
 }
 
 func (s StandardCrypto) RSADecrypt(_ crypto.Hash, keyID string, _ string, ciphertext []byte) ([]byte, error) {

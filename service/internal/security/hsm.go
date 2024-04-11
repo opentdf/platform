@@ -677,6 +677,9 @@ func (h *HSMSession) RSAPublicKeyAsJSON(keyID string) (string, error) {
 	// TODO: For now ignore the key id
 	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
+	if h.RSA == nil || h.RSA.PublicKey == nil {
+		return "", ErrCertNotFound
+	}
 	rsaPublicKeyJwk, err := jwk.FromRaw(h.RSA.PublicKey)
 	if err != nil {
 		return "", fmt.Errorf("jwk.FromRaw: %w", err)
@@ -691,6 +694,9 @@ func (h *HSMSession) RSAPublicKeyAsJSON(keyID string) (string, error) {
 }
 
 func (h *HSMSession) ECPublicKey(string) (string, error) {
+	if h.EC == nil || h.EC.PublicKey == nil {
+		return "", ErrCertNotFound
+	}
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.EC.PublicKey)
 	if err != nil {
 		return "", errors.Join(ErrPublicKeyMarshal, err)

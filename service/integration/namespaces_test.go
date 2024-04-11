@@ -450,6 +450,30 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_DoesNotExist_ShouldFail() {
 	s.Nil(ns)
 }
 
+func (s *NamespacesSuite) Test_DeactivateNamespace_AllAttributesDeactivated() {
+	// Create a namespace
+	n, _ := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deactivating-namespace.com"})
+
+	// Create an attribute under that namespace
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__deactivate-attribute",
+		NamespaceId: n.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	_, _ = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+
+	// Deactivate the namespace
+	_, _ = s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
+
+	// Get the attributes of the namespace
+	attrs, _ := s.db.PolicyClient.GetAttributesByNamespace(s.ctx, n.GetId())
+
+	// Check if all attributes are deactivated
+	for _, attr := range attrs {
+		s.False(attr.GetActive().GetValue())
+	}
+}
+
 func TestNamespacesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping namespaces integration tests")

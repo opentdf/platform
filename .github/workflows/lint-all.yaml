@@ -27,7 +27,6 @@ jobs:
             sdk/go.sum
             examples/go.sum
             service/go.sum
-      - run: make go.work
       - name: golangci-lint
         # uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc
         uses: strantalis/golangci-lint-action@f4e979f5b36068d69d340547f66c991dca8b70ef

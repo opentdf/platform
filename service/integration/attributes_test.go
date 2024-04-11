@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -404,9 +405,14 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 			Labels: labels,
 		},
 	}
+	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
+	createdAt := metadata.GetCreatedAt()
+	s.True(createdAt.AsTime().After(start))
+	s.True(createdAt.AsTime().Before(end))
 	s.NoError(err)
 	s.NotNil(created)
 

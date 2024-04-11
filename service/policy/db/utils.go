@@ -1,6 +1,13 @@
 package db
 
-func getMetadataField(table string, isJSON bool) string {
+import (
+	"log/slog"
+
+	"github.com/opentdf/platform/protocol/go/common"
+	"google.golang.org/protobuf/encoding/protojson"
+)
+
+func constructMetadata(table string, isJSON bool) string {
 	if table != "" {
 		table += "."
 	}
@@ -12,4 +19,16 @@ func getMetadataField(table string, isJSON bool) string {
 		metadata += " AS metadata"
 	}
 	return metadata
+}
+
+var createSuffix = "RETURNING id, " + constructMetadata("", false)
+
+func unmarshalMetadata(metadataJSON []byte, m *common.Metadata) error {
+	if metadataJSON != nil {
+		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return err
+		}
+	}
+	return nil
 }

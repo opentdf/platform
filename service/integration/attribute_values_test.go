@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -285,14 +286,19 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 
 	// create a value
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
+	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, &attributes.CreateAttributeValueRequest{
 		Value: "created value testing update",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
+	createdAt := metadata.GetCreatedAt()
+	s.True(createdAt.AsTime().After(start))
+	s.True(createdAt.AsTime().Before(end))
 	s.NoError(err)
 	s.NotNil(created)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -203,10 +204,14 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 		Actions:                       []*policy.Action{aTransmit, aCustomUpload},
 		ExistingSubjectConditionSetId: fixtureScs.Id,
 	}
-
+	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
+	createdAt := metadata.GetCreatedAt()
+	s.True(createdAt.AsTime().After(start))
+	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -630,10 +635,14 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 			{},
 		},
 	}
-
+	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
+	createdAt := metadata.GetCreatedAt()
+	s.True(createdAt.AsTime().After(start))
+	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)
 	s.NotNil(created)
 

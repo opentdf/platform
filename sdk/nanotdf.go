@@ -78,26 +78,6 @@ const (
 	urlProtocolShared urlProtocol = 255
 )
 
-type eccMode uint8
-
-const (
-	eccModeSecp256r1 eccMode = 0
-	eccModeSecp384r1 eccMode = 1
-	eccModeSecp521r1 eccMode = 2
-	eccModeSecp256k1 eccMode = 3
-)
-
-type cipherMode int
-
-const (
-	cipherModeAes256gcm64Bit  cipherMode = 0
-	cipherModeAes256gcm96Bit  cipherMode = 1
-	cipherModeAes256gcm104Bit cipherMode = 2
-	cipherModeAes256gcm112Bit cipherMode = 3
-	cipherModeAes256gcm120Bit cipherMode = 4
-	cipherModeAes256gcm128Bit cipherMode = 5
-)
-
 type policyType uint8
 
 const (

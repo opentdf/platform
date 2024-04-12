@@ -77,7 +77,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		getMetadataField("", false),
+		constructMetadata("", false),
 	}
 
 	if opts.withFqn {
@@ -126,7 +126,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		getMetadataField("", false),
+		constructMetadata("", false),
 	}
 
 	if opts.withFqn {
@@ -180,7 +180,7 @@ func createNamespaceSql(name string, metadata []byte) (string, []interface{}, er
 		Insert(t.Name()).
 		Columns("name", "metadata").
 		Values(name, metadata).
-		Suffix("RETURNING \"id\"").
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -199,8 +199,12 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	var id string
 	if r, e := c.QueryRow(ctx, sql, args); e != nil {
 		return nil, e
-	} else if e := r.Scan(&id); e != nil {
+	} else if e = r.Scan(&id, &metadataJSON); e != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(e)
+	}
+
+	if err = unmarshalMetadata(metadataJSON, m); err != nil {
+		return nil, err
 	}
 
 	// Update FQN

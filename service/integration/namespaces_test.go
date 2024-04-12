@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -158,14 +159,19 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 		"update": updatedLabel,
 		"new":    newLabel,
 	}
+	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "updating-namespace.com",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
+	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
+	s.True(createdAt.AsTime().After(start))
+	s.True(createdAt.AsTime().Before(end))
 
 	s.NoError(err)
 	s.NotNil(created)

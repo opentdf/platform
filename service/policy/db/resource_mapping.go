@@ -79,7 +79,7 @@ func resourceMappingSelect() sq.SelectBuilder {
 		")) FILTER (WHERE vmv.id IS NOT NULL ), '[]')"
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		getMetadataField(t.Name(), false),
+		constructMetadata(t.Name(), false),
 		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
 			"'id', av.id,"+
@@ -111,7 +111,7 @@ func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []
 			metadata,
 			terms,
 		).
-		Suffix("RETURNING \"id\"").
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -132,7 +132,7 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 	}
 
 	var id string
-	if err := row.Scan(&id); err != nil {
+	if err := row.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -140,6 +140,10 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 	if err != nil {
 		slog.Error("failed to get attribute value", "id", r.GetAttributeValueId(), "err", err)
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+		return nil, err
 	}
 
 	return &policy.ResourceMapping{

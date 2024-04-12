@@ -48,7 +48,7 @@ type TDFConfig struct {
 	metaData                  string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
-	assertions                []Assertion //nolint:unused // TODO
+	assertions                []Assertion
 	attributes                []string
 	kasInfoList               []KASInfo
 }
@@ -122,6 +122,16 @@ func WithMetaData(metaData string) TDFOption {
 func WithSegmentSize(size int64) TDFOption {
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
+		return nil
+	}
+}
+
+// WithAssertions  returns an Option that add assertions to TDF.
+func WithAssertions(assertionList ...Assertion) TDFOption {
+	return func(c *TDFConfig) error {
+		newAssertions := make([]Assertion, 0)
+		newAssertions = append(newAssertions, assertionList...)
+		c.assertions = newAssertions
 		return nil
 	}
 }

@@ -220,11 +220,11 @@ type partialReadTdfTest struct {
 	readAtTests []TestReadAt
 }
 
-const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const testPayload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 	{
-		payload: payload, // len: 62
+		payload: testPayload, // len: 62
 		kasInfoList: []KASInfo{
 			{
 				URL:       "http://localhost:65432/api/kas",
@@ -252,13 +252,13 @@ var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals //
 				segmentSize:     2,
 				dataOffset:      0,
 				dataLength:      62,
-				expectedPayload: payload,
+				expectedPayload: testPayload,
 			},
 			{
-				segmentSize:     int64(len(payload)),
+				segmentSize:     int64(len(testPayload)),
 				dataOffset:      0,
-				dataLength:      len(payload),
-				expectedPayload: payload,
+				dataLength:      len(testPayload),
+				expectedPayload: testPayload,
 			},
 			{
 				segmentSize:     1,
@@ -291,6 +291,31 @@ func TestSimpleTDF(t *testing.T) {
 		"https://example.com/attr/Classification/value/X",
 	}
 
+	assertions := []Assertion{
+		{
+			EncryptionInformation: EncryptionInformation{},
+			AppliedState:          unencrypted.String(),
+			Id:                    "assertion1",
+			Scope:                 trustedDataObj.String(),
+			Statement: Statement{
+				Type:  HandlingStatement.String(),
+				Value: "ICAgIDxlZGoOkVkaD4=",
+			},
+			Type: handlingAssertion.String(),
+		},
+		{
+			Id:    "assertion2",
+			Scope: trustedDataObj.String(),
+			Statement: Statement{
+				IsEncrypted: true,
+				Type:        XMLBase64.String(),
+				Value:       "ICAgIDxlZGoOkVkaD4=",
+			},
+			StatementMetadata: []string{"some data"},
+			Type:              baseAssertion.String(),
+		},
+	}
+
 	expectedTdfSize := int64(2069)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
@@ -319,7 +344,8 @@ func TestSimpleTDF(t *testing.T) {
 		tdfObj, err := sdk.CreateTDF(fileWriter, bufReader,
 			WithKasInformation(kasURLs...),
 			WithMetaData(string(metaData)),
-			WithDataAttributes(attributes...))
+			WithDataAttributes(attributes...),
+			WithAssertions(assertions...))
 		if err != nil {
 			t.Fatalf("tdf.CreateTDF failed: %v", err)
 		}

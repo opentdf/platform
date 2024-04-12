@@ -51,9 +51,29 @@ type EncryptionInformation struct {
 	IntegrityInformation `json:"integrityInformation"`
 }
 
+type Statement struct {
+	IsEncrypted bool   `json:"isEncrypted"`
+	Type        string `json:"type,omitempty"`
+	Value       string `json:"value"`
+	Filename    string `json:"filename,omitempty"`
+	MediaType   string `json:"mediaType,omitempty"`
+	Uri         string `json:"uri,omitempty"`
+}
+
+type Assertion struct {
+	EncryptionInformation `json:"encryptionInformation,omitempty"`
+	AppliedState          string    `json:"appliesToState,omitempty"`
+	Id                    string    `json:"id"`
+	Scope                 string    `json:"scope"`
+	Statement             Statement `json:"statement"`
+	StatementMetadata     []string  `json:"statementMetadata"`
+	Type                  string    `json:"type"`
+}
+
 type Manifest struct {
 	EncryptionInformation `json:"encryptionInformation"`
 	Payload               `json:"payload"`
+	Assertions            []Assertion `json:"assertions"`
 }
 
 type attributeObject struct {

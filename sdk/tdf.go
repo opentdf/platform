@@ -211,6 +211,9 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
 	tdfObject.manifest.Payload.IsEncrypted = true
 
+	// add assertion
+	tdfObject.manifest.Assertions = tdfConfig.assertions
+
 	manifestAsStr, err := json.Marshal(tdfObject.manifest)
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal failed:%w", err)

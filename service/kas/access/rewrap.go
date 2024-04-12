@@ -159,7 +159,12 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 	}
 
 	slog.DebugContext(ctx, "okay now we can check", "bodyClaims.requestBody", eb)
-	decoder := json.NewDecoder(strings.NewReader(eb.(string)))
+	sb, ok := eb.(string)
+	if !ok {
+		return nil, err400("bad request")
+	}
+	decoder := json.NewDecoder(strings.NewReader(sb))
+
 	var requestBody RequestBody
 	err = decoder.Decode(&requestBody)
 	if err != nil {

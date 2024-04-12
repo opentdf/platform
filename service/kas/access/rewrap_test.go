@@ -262,10 +262,19 @@ func standardClaims() ClaimsObject {
 
 func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
 	tok := jwt.New()
-	tok.Set(jwt.IssuerKey, mockIdPOrigin)
-	tok.Set(jwt.AudienceKey, `testonly`)
-	tok.Set(jwt.SubjectKey, `testuser1`)
-	tok.Set("tdf_claims", standardClaims())
+
+	var err error
+	set := func(k string, v interface{}) {
+		if err != nil {
+			return
+		}
+		err = tok.Set(k, v)
+	}
+	set(jwt.IssuerKey, mockIdPOrigin)
+	set(jwt.AudienceKey, `testonly`)
+	set(jwt.SubjectKey, `testuser1`)
+	set("tdf_claims", standardClaims())
+	require.NoError(t, err)
 
 	raw, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, signer))
 	require.NoError(t, err)
@@ -273,17 +282,24 @@ func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
 }
 
 func jwtStandard(t *testing.T) []byte {
-	j := signedMockJWT(t, privateKey(t))
-	jwt.Parse(j, jwt.WithKey(jwa.RS256, publicKey(t)))
-	return j
+	return signedMockJWT(t, privateKey(t))
 }
 
 func jwtWrongIssuer(t *testing.T) []byte {
 	tok := jwt.New()
-	tok.Set(jwt.IssuerKey, "https://someone.else/")
-	tok.Set(jwt.AudienceKey, `testonly`)
-	tok.Set(jwt.SubjectKey, `testuser1`)
-	tok.Set("tdf_claims", standardClaims())
+
+	var err error
+	set := func(k string, v interface{}) {
+		if err != nil {
+			return
+		}
+		err = tok.Set(k, v)
+	}
+	set(jwt.IssuerKey, "https://someone.else/")
+	set(jwt.AudienceKey, `testonly`)
+	set(jwt.SubjectKey, `testuser1`)
+	set("tdf_claims", standardClaims())
+	require.NoError(t, err)
 
 	raw, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, privateKey(t)))
 	require.NoError(t, err)
@@ -302,7 +318,7 @@ func mockVerifier(t *testing.T) *oidc.IDTokenVerifier {
 	)
 }
 
-func makeRewrapBody(t *testing.T, policy []byte) ([]byte, error) {
+func makeRewrapBody(t *testing.T, policy []byte) []byte {
 	mockBody := RequestBody{
 		KeyAccess:       keyAccessWrappedRaw(t),
 		Policy:          string(policy),
@@ -311,19 +327,17 @@ func makeRewrapBody(t *testing.T, policy []byte) ([]byte, error) {
 	bodyData, err := json.Marshal(mockBody)
 	require.NoError(t, err)
 	tok := jwt.New()
-	tok.Set("requestBody", string(bodyData))
+	err = tok.Set("requestBody", string(bodyData))
+	require.NoError(t, err)
 
 	s, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, entityPrivateKey(t)))
 	require.NoError(t, err)
-	return s, nil
+	return s
 }
 
 func TestParseAndVerifyRequest(t *testing.T) {
-	srt, err := makeRewrapBody(t, fauxPolicyBytes(t))
-	require.NoError(t, err, "failed to generate srt=[%s]", srt)
-
-	badPolicySrt, err := makeRewrapBody(t, emptyPolicyBytes())
-	require.NoError(t, err, "failed to generate badPolicySrt=[%s]", badPolicySrt)
+	srt := makeRewrapBody(t, fauxPolicyBytes(t))
+	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes())
 
 	p := &Provider{
 		OIDCVerifier: mockVerifier(t),
@@ -369,13 +383,13 @@ func TestParseAndVerifyRequest(t *testing.T) {
 
 				policy, err := p.verifyAndParsePolicy(context.Background(), verified.requestBody, []byte(plainKey))
 				if tt.polite {
-					assert.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
+					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)
 				} else {
-					assert.Error(t, err, "failed to fail policy body=[%v]", tt.body)
+					require.Error(t, err, "failed to fail policy body=[%v]", tt.body)
 				}
 			} else {
-				assert.Error(t, err, "failed to fail srt=[%s], tok=[%s]", tt.body, tt.bearer)
+				require.Error(t, err, "failed to fail srt=[%s], tok=[%s]", tt.body, tt.bearer)
 			}
 		})
 	}
@@ -397,7 +411,7 @@ func TestLegacyBearerTokenFails(t *testing.T) {
 			ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(tt.metadata...))
 			p, err := legacyBearerToken(ctx, "")
 			assert.Empty(t, p)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.msg)
 		})
 	}
@@ -406,17 +420,17 @@ func TestLegacyBearerTokenFails(t *testing.T) {
 func TestLegacyBearerTokenEtc(t *testing.T) {
 	p, err := legacyBearerToken(context.Background(), "")
 	assert.Empty(t, p)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no auth token")
 
 	p, err = legacyBearerToken(context.Background(), "something")
 	assert.Equal(t, "something", p)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("Authorization", "Bearer TOKEN"))
 	p, err = legacyBearerToken(ctx, "")
 	assert.Equal(t, "TOKEN", p)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestHandlerAuthFailure0(t *testing.T) {
@@ -432,7 +446,7 @@ func TestHandlerAuthFailure0(t *testing.T) {
 	_, err := kas.Rewrap(context.Background(), &kaspb.RewrapRequest{SignedRequestToken: body})
 	status, ok := status.FromError(err)
 	assert.True(t, ok)
-	assert.Equal(t, status.Code(), codes.Unauthenticated)
+	assert.Equal(t, codes.Unauthenticated, status.Code())
 }
 
 func TestHandlerAuthFailure1(t *testing.T) {
@@ -452,7 +466,7 @@ func TestHandlerAuthFailure1(t *testing.T) {
 	_, err := kas.Rewrap(ctx, &kaspb.RewrapRequest{SignedRequestToken: body})
 	status, ok := status.FromError(err)
 	assert.True(t, ok)
-	assert.Equal(t, status.Code(), codes.PermissionDenied)
+	assert.Equal(t, codes.PermissionDenied, status.Code())
 }
 
 func TestHandlerAuthFailure2(t *testing.T) {
@@ -468,5 +482,5 @@ func TestHandlerAuthFailure2(t *testing.T) {
 	_, err := kas.Rewrap(context.Background(), &kaspb.RewrapRequest{SignedRequestToken: body, Bearer: "invalidToken"})
 	status, ok := status.FromError(err)
 	assert.True(t, ok)
-	assert.Equal(t, status.Code(), codes.PermissionDenied)
+	assert.Equal(t, codes.PermissionDenied, status.Code())
 }

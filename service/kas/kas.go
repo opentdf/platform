@@ -58,7 +58,11 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &kaspb.AccessService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
-			kasURLString := "http://localhost" + srp.OTDF.HTTPServer.Addr
+			hostWithPort := srp.OTDF.HTTPServer.Addr
+			if strings.HasPrefix(hostWithPort, ":") {
+				hostWithPort = "localhost" + hostWithPort
+			}
+			kasURLString := "http://" + hostWithPort
 			kasURI, err := url.Parse(kasURLString)
 			if err != nil {
 				panic(fmt.Errorf("invalid kas address [%s] %w", kasURLString, err))

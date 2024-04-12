@@ -295,7 +295,6 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		jwt.WithValidate(true),
 		jwt.WithIssuer(issuer),
 		jwt.WithAudience(oidc.Audience),
-		jwt.WithValidator(jwt.ValidatorFunc(a.claimsValidator)),
 	)
 
 	if err != nil {
@@ -446,46 +445,4 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
 	return &dpopKey, nil
-}
-
-// claimsValidator is a custom validator to check extra claims in the token.
-// right now it only checks for client_id
-func (a Authentication) claimsValidator(_ context.Context, token jwt.Token) jwt.ValidationError {
-	var (
-		clientID string
-	)
-
-	// Need to check for cid and client_id as this claim seems to be different between idp's
-	cidClaim, cidExists := token.Get("cid")
-	clientIDClaim, clientIDExists := token.Get("client_id")
-
-	// Check to see if we have a client id claim
-	switch {
-	case cidExists:
-		if cid, ok := cidClaim.(string); ok {
-			clientID = cid
-			break
-		}
-	case clientIDExists:
-		if cid, ok := clientIDClaim.(string); ok {
-			clientID = cid
-			break
-		}
-	default:
-		return jwt.NewValidationError(fmt.Errorf("client id required"))
-	}
-
-	// Check if the client id is allowed in list of clients
-	foundClientID := false
-	for _, c := range a.oidcConfigurations[token.Issuer()].Clients {
-		if c == clientID {
-			foundClientID = true
-			break
-		}
-	}
-	if !foundClientID {
-		return jwt.NewValidationError(fmt.Errorf("invalid client id"))
-	}
-
-	return nil
 }

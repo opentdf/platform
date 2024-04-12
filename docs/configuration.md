@@ -41,7 +41,6 @@ The server configuration is used to define how the application runs its server.
 | `tls.key` | The path to the tls key. | |
 | `auth.audience` | The audience for the IDP. | |
 | `auth.issuer` | The issuer for the IDP. | |
-| `auth.clients` | A list of client id's that are allowed. | |
 
 Example:
 
@@ -58,9 +57,6 @@ server:
     enabled: true
     audience: https://example.com
     issuer: https://example.com
-    clients:
-      - client_id
-      - client_id2
 ```
 
 ## Database Configuration

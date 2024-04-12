@@ -132,7 +132,7 @@ func TestDoingTokenExchangeWithKeycloak(t *testing.T) {
 
 	tokenExchange := TokenExchangeInfo{
 		SubjectToken: subjectToken.AccessToken,
-		Audience:     "opentdf-sdk",
+		Audience:     []string{"opentdf-sdk"},
 	}
 
 	exchangedTok, err := DoTokenExchange(ctx, idpEndpoint, []string{}, exchangeCredentials, tokenExchange, dpopJWK)

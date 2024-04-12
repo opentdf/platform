@@ -29,7 +29,7 @@ type ClientCredentials struct {
 
 type TokenExchangeInfo struct {
 	SubjectToken string
-	Audience     string
+	Audience     []string
 }
 
 type Token struct {
@@ -274,7 +274,10 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":        {tokenExchange.SubjectToken},
 		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
-		"audience":             {tokenExchange.Audience},
+	}
+
+	for _, a := range tokenExchange.Audience {
+		data.Add("audience", a)
 	}
 
 	if len(scopes) > 0 {

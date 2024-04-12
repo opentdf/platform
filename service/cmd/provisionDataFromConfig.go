@@ -87,7 +87,7 @@ var (
 var provisionDataFromConfigCmd = &cobra.Command{
 	Use:   "custom-policy-data",
 	Short: "Provision custom policy data",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		dataFilename, _ := cmd.Flags().GetString(provDataFilename)
 
 		err := LoadConfigData(dataFilename)
@@ -118,14 +118,14 @@ var provisionDataFromConfigCmd = &cobra.Command{
 
 			for ai, attrConfig := range policyConfigData.Namespaces[ni].Attributes {
 				// create the attribute definitions
-				id, err = createAttribute(s, ctx, policyConfigData.Namespaces[ni].ID, attrConfig)
+				id, err = createAttribute(ctx, s, policyConfigData.Namespaces[ni].ID, attrConfig)
 				if err != nil {
 					return err
 				}
 				policyConfigData.Namespaces[ni].Attributes[ai].ID = id
 				for _, value := range policyConfigData.Namespaces[ni].Attributes[ai].Values {
 					// create the value
-					id, err = createAttributeValue(s, ctx, policyConfigData.Namespaces[ni].Attributes[ai].ID, value)
+					id, err = createAttributeValue(ctx, s, policyConfigData.Namespaces[ni].Attributes[ai].ID, value)
 					if err != nil {
 						return err
 					}
@@ -148,7 +148,7 @@ var provisionDataFromConfigCmd = &cobra.Command{
 
 			// create the mapping
 			for _, smConfig := range policyConfigData.SubjectConditionSets[sci].SubjectMappings {
-				_, err := createSubjectMapping(s, ctx, policyConfigData.SubjectConditionSets[sci].ID, smConfig)
+				_, err := createSubjectMapping(ctx, s, policyConfigData.SubjectConditionSets[sci].ID, smConfig)
 				if err != nil {
 					return err
 				}
@@ -159,7 +159,7 @@ var provisionDataFromConfigCmd = &cobra.Command{
 	},
 }
 
-func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsID string, smConfig SubjectMappingConfig) (string, error) {
+func createSubjectMapping(ctx context.Context, s *sdk.SDK, scsID string, smConfig SubjectMappingConfig) (string, error) {
 	slog.Info("creating subject mapping")
 	// lookup attribute value
 	var attrID string
@@ -206,9 +206,9 @@ func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsID string, smConfi
 				return "", err
 			}
 			for _, sm := range allSms.GetSubjectMappings() {
-				if (sm.GetSubjectConditionSet().GetId() == req.ExistingSubjectConditionSetId) &&
-					(sm.GetAttributeValue().GetId() == req.AttributeValueId) &&
-					(reflect.DeepEqual(sm.GetActions(), req.Actions)) {
+				if (sm.GetSubjectConditionSet().GetId() == req.GetExistingSubjectConditionSetId()) &&
+					(sm.GetAttributeValue().GetId() == req.GetAttributeValueId()) &&
+					(reflect.DeepEqual(sm.GetActions(), req.GetActions())) {
 					smID = sm.GetId()
 					break
 				}
@@ -268,7 +268,7 @@ func createSubjectConditionSet(ctx context.Context, s *sdk.SDK, scsConfig SCSCon
 				return "", err
 			}
 			for _, scs := range allScs.GetSubjectConditionSets() {
-				if reflect.DeepEqual(scs.GetSubjectSets(), req.SubjectConditionSet.SubjectSets) {
+				if reflect.DeepEqual(scs.GetSubjectSets(), req.GetSubjectConditionSet().GetSubjectSets()) {
 					scsID = scs.GetId()
 					break
 				}
@@ -316,7 +316,7 @@ func createNamespace(ctx context.Context, s *sdk.SDK, name string) (string, erro
 	return exampleNamespace.GetId(), nil
 }
 
-func createAttribute(s *sdk.SDK, ctx context.Context, namespaceID string, attrConf AttributeConfig) (string, error) {
+func createAttribute(ctx context.Context, s *sdk.SDK, namespaceID string, attrConf AttributeConfig) (string, error) {
 	slog.Info("creating new attribute rule")
 
 	rule := policy.AttributeRuleTypeEnum(policy.AttributeRuleTypeEnum_value[attrConf.Rule])
@@ -357,7 +357,7 @@ func createAttribute(s *sdk.SDK, ctx context.Context, namespaceID string, attrCo
 	return attrID, nil
 }
 
-func createAttributeValue(s *sdk.SDK, ctx context.Context, attrID string, value string) (string, error) {
+func createAttributeValue(ctx context.Context, s *sdk.SDK, attrID string, value string) (string, error) {
 	slog.Info("creating new attribute value")
 
 	resp, err := s.Attributes.CreateAttributeValue(ctx, &attributes.CreateAttributeValueRequest{

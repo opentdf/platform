@@ -57,9 +57,9 @@ type ConditionGroupConfig struct {
 }
 
 type ConditionConfig struct {
-	Operator              string   `yaml:"operator" json:"operator"`
-	SubjectExternalField  string   `yaml:"subject_external_field" json:"subject_external_field"`
-	SubjectExternalValues []string `yaml:"subject_external_values"  json:"subject_external_values"`
+	Operator                     string   `yaml:"operator" json:"operator"`
+	SubjectExternalSelectorValue string   `yaml:"subject_external_selector_value" json:"subject_external_selector_value"`
+	SubjectExternalValues        []string `yaml:"subject_external_values"  json:"subject_external_values"`
 }
 
 type SubjectMappingConfig struct {
@@ -241,9 +241,9 @@ func createSubjectConditionSet(s *sdk.SDK, ctx context.Context, scsConfig SCSCon
 			for _, cond := range condgr.Conditions {
 				rule := policy.SubjectMappingOperatorEnum(policy.SubjectMappingOperatorEnum_value[cond.Operator])
 				c := policy.Condition{
-					SubjectExternalField:  cond.SubjectExternalField,
-					SubjectExternalValues: cond.SubjectExternalValues,
-					Operator:              rule,
+					SubjectExternalSelectorValue: cond.SubjectExternalSelectorValue,
+					SubjectExternalValues:        cond.SubjectExternalValues,
+					Operator:                     rule,
 				}
 				cg.Conditions = append(cg.Conditions, &c)
 			}
@@ -415,71 +415,6 @@ func LoadConfigData(filename string) error {
 		slog.Error("could not unmarshal "+filename, slog.String("error", err.Error()))
 		panic(err)
 	}
-	slog.Info("Fully loaded policy config", slog.Any("policyConfigData", policyConfigData))
+	// slog.Info("Fully loaded policy config", slog.Any("policyConfigData", policyConfigData))
 	return nil
 }
-
-// func attributesExample(examplesConfig *ExampleConfig) error {
-// 	s, err := sdk.New(examplesConfig.PlatformEndpoint, sdk.WithInsecureConn())
-// 	if err != nil {
-// 		slog.Error("could not connect", slog.String("error", err.Error()))
-// 		return err
-// 	}
-// 	defer s.Close()
-
-// 	var exampleNamespace *policy.Namespace
-// 	slog.Info("listing namespaces")
-// 	listResp, err := s.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
-// 	if err != nil {
-// 		return err
-// 	}
-// 	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Namespaces)))
-// 	for _, ns := range listResp.GetNamespaces() {
-// 		slog.Info(fmt.Sprintf("existing namespace; name: %s, id: %s", ns.Name, ns.Id))
-// 		if ns.Name == "example" {
-// 			exampleNamespace = ns
-// 		}
-// 	}
-
-// 	if exampleNamespace == nil {
-// 		slog.Info("creating new namespace")
-// 		resp, err := s.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
-// 			Name: "example",
-// 		})
-// 		if err != nil {
-// 			return err
-// 		}
-// 		exampleNamespace = resp.Namespace
-// 	}
-
-// 	slog.Info("creating new attribute with hierarchy rule")
-// 	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
-// 		Name:        "IntellectualProperty",
-// 		NamespaceId: exampleNamespace.Id,
-// 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
-// 		// Values: []*attributes.ValueCreateUpdate{
-// 		// 	{Value: "TradeSecret"},
-// 		// 	{Value: "Proprietary"},
-// 		// 	{Value: "BusinessSensitive"},
-// 		// 	{Value: "Open"},
-// 		// },
-// 	})
-// 	if err != nil {
-// 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
-// 			slog.Info("attribute already exists")
-// 		} else {
-// 			slog.Error("could not create attribute", slog.String("error", err.Error()))
-// 			return err
-// 		}
-// 	} else {
-// 		slog.Info("attribute created")
-// 	}
-
-// 	allAttr, err := s.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
-// 	if err != nil {
-// 		slog.Error("could not list attributes", slog.String("error", err.Error()))
-// 		return err
-// 	}
-// 	slog.Info(fmt.Sprintf("list attributes response: %s", protojson.Format(allAttr)))
-// 	return nil
-// }

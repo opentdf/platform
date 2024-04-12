@@ -12,11 +12,11 @@ subject_condition_sets:
       - operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
         conditions:
           - operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-            subject_external_field: externalfield1
+            subject_external_selector_value: externalfield1
             subject_external_values:
               - externalvalue1
           - operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-            subject_external_field: externalfield1
+            subject_external_selector_value: externalfield2
             subject_external_values:
               - externalvalue2
               - externalvalue3

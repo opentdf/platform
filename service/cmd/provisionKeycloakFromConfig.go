@@ -425,6 +425,9 @@ func createCustomUser(ctx context.Context, client *gocloak.GoCloak, token *goclo
 			if err != nil {
 				return err
 			}
+			if len(users) == 1 {
+				longUserId = *users[0].ID
+			}
 			if len(users) != 1 {
 				err = fmt.Errorf("error, %s user not found", *userToCreate.Username)
 				return err
@@ -532,7 +535,7 @@ func LoadKeycloakData(file string) {
 		panic(err)
 	}
 
-	slog.Info("Fully loaded keycloak data", slog.Any("keycloakData", keycloakData))
+	// slog.Info("Fully loaded keycloak data", slog.Any("keycloakData", keycloakData))
 	// panic("hi")
 }
 

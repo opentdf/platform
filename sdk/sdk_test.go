@@ -18,8 +18,9 @@ var (
 	badPlatformEndpoint  = "localhost:9999"
 )
 
-func GetMethods(i interface{}) (m []string) {
+func GetMethods(i interface{}) []string {
 	r := reflect.TypeOf(i)
+	m := make([]string, 0)
 	for i := 0; i < r.NumMethod(); i++ {
 		m = append(m, r.Method(i).Name)
 	}

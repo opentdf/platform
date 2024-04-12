@@ -1,7 +1,34 @@
 # CODEOWNERS
 
-* @opentdf/developers
+* @opentdf/opentdf-architecture
 
-# Suppresses generated files in diffs
-# TODO: change these to known groups instead of individuals
-.gitattributes @biscoe916 @jrschumacher @strantalis @ttschampel
+## Lib
+
+/.github/     @opentdf/opentdf-architecture
+/lib/         @opentdf/opentdf-architecture
+/protocol/go/ @opentdf/opentdf-architecture
+
+## General
+
+.gitignore               @opentdf/developers
+README.md                @opentdf/developers
+/docs/                   @opentdf/developers
+/examples/               @opentdf/developers
+/service/integration/    @opentdf/developers
+
+## Policy
+
+/service/migrations/ @opentdf/opentdf-policy @opentdf/opentdf-architecture
+/service/policy/ @opentdf/opentdf-policy @opentdf/opentdf-architecture
+
+## SDK
+
+/sdk/ @opentdf/opentdf-go-sdk @opentdf/opentdf-architecture
+
+## Authorization
+
+/service/authorization/ @opentdf/opentdf-authorization @opentdf/opentdf-architecture
+
+## Key Access Server
+
+/service/kas/ @opentdf/opentdf-kas @opentdf/opentdf-architecture

@@ -4,15 +4,14 @@ WORKDIR /app
 # dependencies, add local,dependant package here
 COPY protocol/ protocol/
 COPY sdk/ sdk/
-COPY lib/crypto lib/crypto
-COPY services/ services/
+COPY lib/ocrypto lib/ocrypto
+COPY service/ service/
 COPY examples/ examples/
-COPY Makefile ./
-RUN cd services \
+COPY go.work go.work.sum ./
+RUN cd service \
     && go mod download \
     && go mod verify
-RUN make go.work \
-    && go build -o opentdf ./services
+RUN go build -o opentdf ./service
 
 FROM cgr.dev/chainguard/glibc-dynamic
 

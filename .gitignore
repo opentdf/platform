@@ -30,13 +30,11 @@ opentdf.yaml
 # Generated files
 tmp-gen/
 /examples/examples
-/go.work.sum
-/go.work
 /kas-*.pem
 /opentdf
 /sdkjava/target
 /serviceapp
-/services/opentdf
+/service/opentdf
 
 *.zip
 sensitive.txt.tdf

@@ -78,6 +78,17 @@ const (
 	urlProtocolShared urlProtocol = 255
 )
 
+type cipherMode int
+
+const (
+	cipherModeAes256gcm64Bit  cipherMode = 0
+	cipherModeAes256gcm96Bit  cipherMode = 1
+	cipherModeAes256gcm104Bit cipherMode = 2
+	cipherModeAes256gcm112Bit cipherMode = 3
+	cipherModeAes256gcm120Bit cipherMode = 4
+	cipherModeAes256gcm128Bit cipherMode = 5
+)
+
 type policyType uint8
 
 const (

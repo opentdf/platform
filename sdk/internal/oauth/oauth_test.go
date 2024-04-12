@@ -59,7 +59,7 @@ func (s *OAuthSuite) SetupSuite() {
 }
 
 func (s *OAuthSuite) TearDownSuite() {
-	s.keycloakContainer.Terminate(context.Background())
+	_ = s.keycloakContainer.Terminate(context.Background())
 }
 
 func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {

@@ -21,13 +21,13 @@ condition_group_evaluate(payload, boolean_operator, conditions) if {
 	# AND
 	boolean_operator == 1
 	some condition in conditions
-	condition_evaluate(payload[condition.subject_external_selector_value], condition.operator, condition.subject_external_values)
+	condition_evaluate(jq.evaluate(payload, condition.subject_external_selector_value), condition.operator, condition.subject_external_values)
 } else if {
 	# OR
 	boolean_operator == 2
 	payload[key]
 	some condition in conditions
-	condition_evaluate(payload[condition.subject_external_selector_value], condition.operator, condition.subject_external_values)
+	condition_evaluate(jq.evaluate(payload, condition.subject_external_selector_value), condition.operator, condition.subject_external_values)
 }
 
 # condition

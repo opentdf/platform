@@ -105,7 +105,7 @@ func subjectConditionSetSelect() sq.SelectBuilder {
 	t := Tables.SubjectConditionSet
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
-		getMetadataField("", false),
+		constructMetadata("", false),
 		t.Field("condition"),
 	)
 }
@@ -171,10 +171,10 @@ func subjectMappingSelect() sq.SelectBuilder {
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("actions"),
-		getMetadataField(t.Name(), false),
+		constructMetadata(t.Name(), false),
 		"JSON_BUILD_OBJECT("+
 			"'id', "+scsT.Field("id")+", "+
-			getMetadataField(scsT.Name(), true)+
+			constructMetadata(scsT.Name(), true)+
 			"'subject_sets', "+scsT.Field("condition")+
 			") AS subject_condition_set",
 		"JSON_BUILD_OBJECT("+
@@ -303,7 +303,7 @@ func createSubjectConditionSetSql(subjectSets []*policy.SubjectSet, metadataJSON
 		Insert(t.Name()).
 		Columns(columns...).
 		Values(values...).
-		Suffix("RETURNING \"id\"").
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -324,9 +324,14 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 	if err != nil {
 		return nil, err
 	}
-	if err = r.Scan(&id); err != nil {
+	if err = r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+
+	if err = unmarshalMetadata(metadataJSON, m); err != nil {
+		return nil, err
+	}
+
 	return &policy.SubjectConditionSet{
 		Id:          id,
 		SubjectSets: s.GetSubjectSets(),
@@ -486,7 +491,7 @@ func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata
 		Insert(t.Name()).
 		Columns(columns...).
 		Values(values...).
-		Suffix("RETURNING \"id\"").
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -540,8 +545,12 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
-	} else if err := r.Scan(&id); err != nil {
+	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if err = unmarshalMetadata(metadataJSON, m); err != nil {
+		return nil, err
 	}
 
 	return &policy.SubjectMapping{

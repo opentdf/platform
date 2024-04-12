@@ -47,9 +47,9 @@ func (s *OAuthSuite) SetupSuite() {
 	}
 
 	dpopJWK, err := jwk.FromRaw(dpopKey)
-	require.NoError(s.T(), err)
-	require.NoError(s.T(), dpopJWK.Set("use", "sig"))
-	require.NoError(s.T(), dpopJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(err)
+	s.Require().NoError(dpopJWK.Set("use", "sig"))
+	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
 
 	s.dpopJWK = dpopJWK
 	ctx := context.Background()
@@ -74,28 +74,28 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 		[]string{"testscope"},
 		clientCredentials,
 		s.dpopJWK)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	cnfClaim, ok := tokenDetails.Get("cnf")
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
-	require.True(s.T(), ok)
-	require.NotEmpty(s.T(), idpKeyFingerprint)
+	s.Require().True(ok)
+	s.Require().NotEmpty(idpKeyFingerprint)
 	pk, err := s.dpopJWK.PublicKey()
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	hash, err := pk.Thumbprint(crypto.SHA256)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	scope, ok := tokenDetails.Get("scope")
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	scopeString, ok := scope.(string)
-	require.True(s.T(), ok)
-	require.True(s.T(), strings.Contains(scopeString, "testscope"))
+	s.Require().True(ok)
+	s.Require().True(strings.Contains(scopeString, "testscope"))
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
 	assert.Equal(s.T(), expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
@@ -104,14 +104,14 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 
 	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
 	ra, ok := tokenDetails.Get("realm_access")
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	raMap, ok := ra.(map[string]interface{})
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	roles, ok := raMap["roles"]
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	rolesList, ok := roles.([]interface{})
-	require.True(s.T(), ok)
-	require.True(s.T(), slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+	s.Require().True(ok)
+	s.Require().True(slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
 }
 
 func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
@@ -127,7 +127,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 		[]string{"testscope"},
 		clientCredentials,
 		s.dpopJWK)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	exchangeCredentials := ClientCredentials{
 		ClientID:   "opentdf",
@@ -140,22 +140,22 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	}
 
 	exchangedTok, err := DoTokenExchange(ctx, s.keycloakEndpoint, []string{}, exchangeCredentials, tokenExchange, s.dpopJWK)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	tokenDetails, err := jwt.ParseString(exchangedTok.AccessToken, jwt.WithVerify(false))
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	cnfClaim, ok := tokenDetails.Get("cnf")
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
-	require.True(s.T(), ok)
-	require.NotEmpty(s.T(), idpKeyFingerprint)
+	s.Require().True(ok)
+	s.Require().NotEmpty(idpKeyFingerprint)
 	pk, err := s.dpopJWK.PublicKey()
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	hash, err := pk.Thumbprint(crypto.SHA256)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
 	assert.Equal(s.T(), expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
@@ -164,32 +164,32 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 
 	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
 	ra, ok := tokenDetails.Get("realm_access")
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	raMap, ok := ra.(map[string]interface{})
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	roles, ok := raMap["roles"]
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	rolesList, ok := roles.([]interface{})
-	require.True(s.T(), ok)
-	require.True(s.T(), slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+	s.Require().True(ok)
+	s.Require().True(slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
 
 	// verify that the calling client is the authorized party
 	azpClaim, ok := tokenDetails.Get("azp")
-	require.True(s.T(), ok)
-	require.Equal(s.T(), exchangeCredentials.ClientID, azpClaim)
+	s.Require().True(ok)
+	s.Require().Equal(exchangeCredentials.ClientID, azpClaim)
 
 	// verify that the exchanged token has a scope that is only allowed for the client that got the original token
 	scope, ok := tokenDetails.Get("scope")
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	scopeString, ok := scope.(string)
-	require.True(s.T(), ok)
-	require.True(s.T(), strings.Contains(scopeString, "testscope"))
+	s.Require().True(ok)
+	s.Require().True(strings.Contains(scopeString, "testscope"))
 }
 
 func (s *OAuthSuite) TestClientSecretNoNonce() {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(s.T(), "/token", r.URL.Path)
-		require.NoError(s.T(), r.ParseForm())
+		s.Require().NoError(r.ParseForm())
 
 		validateBasicAuth(r, s.T())
 		extractDPoPToken(r, s.T())
@@ -198,14 +198,14 @@ func (s *OAuthSuite) TestClientSecretNoNonce() {
 			Issuer("example.org/fake").
 			IssuedAt(time.Now()).
 			Build()
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 
 		responseBytes, err := json.Marshal(tok)
-		require.NoError(s.T(), err, "error writing response")
+		s.Require().NoError(err, "error writing response")
 
 		w.Header().Add("content-type", "application/json")
 		_, err = w.Write(responseBytes)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}))
 	defer server.Close()
 
@@ -214,7 +214,7 @@ func (s *OAuthSuite) TestClientSecretNoNonce() {
 		ClientAuth: "thesecret",
 	}
 	_, err := GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
-	require.NoError(s.T(), err, "didn't get a token back from the IdP")
+	s.Require().NoError(err, "didn't get a token back from the IdP")
 }
 
 func (s *OAuthSuite) TestClientSecretWithNonce() {
@@ -224,7 +224,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 		timesCalled++
 		assert.Equal(s.T(), "/token", r.URL.Path, "surprise http request to mock oauth service")
 		err := r.ParseForm()
-		require.NoError(s.T(), err, "error parsing oauth request")
+		s.Require().NoError(err, "error parsing oauth request")
 
 		validateBasicAuth(r, s.T())
 
@@ -232,7 +232,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte{})
-			require.NoError(s.T(), err, "error writing response")
+			s.Require().NoError(err, "error writing response")
 			return
 		} else if timesCalled > 2 {
 			s.T().Logf("made more than two calls to the server: %d", timesCalled)
@@ -268,7 +268,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 		w.Header().Add("content-type", "application/json")
 		l, err := w.Write(responseBytes)
 		assert.Equal(s.T(), len(responseBytes), l)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}))
 	defer server.Close()
 
@@ -313,20 +313,20 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 func (s *OAuthSuite) TestSignedJWTWithNonce() {
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	require.NoError(s.T(), err, "error generating dpop key")
+	s.Require().NoError(err, "error generating dpop key")
 	dpopJWK, err := jwk.FromRaw(dpopKey)
-	require.NoError(s.T(), err)
-	require.NoError(s.T(), dpopJWK.Set("use", "sig"))
-	require.NoError(s.T(), dpopJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(err)
+	s.Require().NoError(dpopJWK.Set("use", "sig"))
+	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientAuthKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	require.NoError(s.T(), err, "error generating clientAuth key")
+	s.Require().NoError(err, "error generating clientAuth key")
 	clientAuthJWK, err := jwk.FromRaw(clientAuthKey)
-	require.NoError(s.T(), err, "error constructing raw JWK")
-	require.NoError(s.T(), clientAuthJWK.Set("use", "sig"))
-	require.NoError(s.T(), clientAuthJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(err, "error constructing raw JWK")
+	s.Require().NoError(clientAuthJWK.Set("use", "sig"))
+	s.Require().NoError(clientAuthJWK.Set("alg", jwa.RS256.String()))
 	clientPublicKey, err := clientAuthJWK.PublicKey()
-	require.NoError(s.T(), err, "error getting public JWK from client auth JWK [%v]", clientAuthJWK)
+	s.Require().NoError(err, "error getting public JWK from client auth JWK [%v]", clientAuthJWK)
 
 	timesCalled := 0
 
@@ -341,7 +341,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 		if r.URL.Path != "/token" {
 			s.T().Errorf("Expected to request '/token', got: %s", r.URL.Path)
 		}
-		require.NoError(s.T(), r.ParseForm())
+		s.Require().NoError(r.ParseForm())
 
 		validateClientAssertionAuth(r, s.T(), getURL, "theclient", clientPublicKey)
 
@@ -385,7 +385,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 		w.Header().Add("content-type", "application/json")
 		l, err := w.Write(responseBytes)
 		assert.Equal(s.T(), len(responseBytes), l)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}))
 	defer server.Close()
 

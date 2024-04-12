@@ -356,18 +356,19 @@ func createClient(connectParams *KeycloakConnectParams, newClient gocloak.Client
 	return longClientId, nil
 }
 
-func createUser(connectParams *KeycloakConnectParams, newUser gocloak.User) (*string, error) {
+func createUser(connectParams *KeycloakConnectParams, newUser gocloak.User, password string) (*string, error) {
 	client, token, err := keycloakLogin(connectParams)
 	if err != nil {
 		return nil, err
 	}
+	ctx := context.Background()
 	username := *newUser.Username
-	longUserId, err := client.CreateUser(context.Background(), token.AccessToken, connectParams.Realm, newUser)
+	longUserId, err := client.CreateUser(ctx, token.AccessToken, connectParams.Realm, newUser)
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
 			slog.Warn(fmt.Sprintf("user %s already exists", username))
-			users, err := client.GetUsers(context.Background(), token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{Username: newUser.Username})
+			users, err := client.GetUsers(ctx, token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{Username: newUser.Username})
 			if err != nil {
 				return nil, err
 			}
@@ -383,6 +384,13 @@ func createUser(connectParams *KeycloakConnectParams, newUser gocloak.User) (*st
 		}
 	} else {
 		slog.Info(fmt.Sprintf("✅ User created: username = %s, user identifier=%s", username, longUserId))
+	}
+
+	if password != "" {
+		err = client.SetPassword(ctx, token.AccessToken, longUserId, connectParams.Realm, password, false)
+		if err != nil {
+			slog.Error("unable to set password", "username", username, "err", err)
+		}
 	}
 	return &longUserId, nil
 }

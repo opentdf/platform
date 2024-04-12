@@ -29,21 +29,21 @@ type PolicyConfigData struct {
 
 type NamespaceConfig struct {
 	Name       string `yaml:"name" json:"name"`
-	Id         string
+	ID         string
 	Attributes []AttributeConfig `yaml:"attributes" json:"attributes"`
 }
 
 type AttributeConfig struct {
 	Name     string `yaml:"name" json:"name"`
 	Rule     string `yaml:"rule" json:"rule"`
-	Id       string
+	ID       string
 	Values   []string `yaml:"values" json:"values"`
-	ValueIds map[string]string
+	ValueIDs map[string]string
 }
 
 type SCSConfig struct {
 	SubjectSets     []SubjectSetConfig `yaml:"subject_sets" json:"subject_sets"`
-	Id              string
+	ID              string
 	SubjectMappings []SubjectMappingConfig `yaml:"subject_mappings" json:"subject_mappings"`
 }
 
@@ -90,7 +90,11 @@ var provisionDataFromConfigCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dataFilename, _ := cmd.Flags().GetString(provDataFilename)
 
-		LoadConfigData(dataFilename)
+		err := LoadConfigData(dataFilename)
+		if err != nil {
+			slog.Error("could not load data from file", slog.String("error", err.Error()))
+			return err
+		}
 		ctx := context.Background()
 
 		// do the work
@@ -106,45 +110,45 @@ var provisionDataFromConfigCmd = &cobra.Command{
 		// create the namespaces, store the ids
 		for ni, nsConfig := range policyConfigData.Namespaces {
 			// create the namespace
-			id, err := createNamespace(s, ctx, nsConfig.Name)
+			id, err := createNamespace(ctx, s, nsConfig.Name)
 			if err != nil {
 				return err
 			}
-			policyConfigData.Namespaces[ni].Id = id
+			policyConfigData.Namespaces[ni].ID = id
 
 			for ai, attrConfig := range policyConfigData.Namespaces[ni].Attributes {
 				// create the attribute definitions
-				id, err = createAttribute(s, ctx, policyConfigData.Namespaces[ni].Id, attrConfig)
+				id, err = createAttribute(s, ctx, policyConfigData.Namespaces[ni].ID, attrConfig)
 				if err != nil {
 					return err
 				}
-				policyConfigData.Namespaces[ni].Attributes[ai].Id = id
+				policyConfigData.Namespaces[ni].Attributes[ai].ID = id
 				for _, value := range policyConfigData.Namespaces[ni].Attributes[ai].Values {
 					// create the value
-					id, err = createAttributeValue(s, ctx, policyConfigData.Namespaces[ni].Attributes[ai].Id, value)
+					id, err = createAttributeValue(s, ctx, policyConfigData.Namespaces[ni].Attributes[ai].ID, value)
 					if err != nil {
 						return err
 					}
-					if policyConfigData.Namespaces[ni].Attributes[ai].ValueIds == nil {
-						policyConfigData.Namespaces[ni].Attributes[ai].ValueIds = make(map[string]string)
+					if policyConfigData.Namespaces[ni].Attributes[ai].ValueIDs == nil {
+						policyConfigData.Namespaces[ni].Attributes[ai].ValueIDs = make(map[string]string)
 					}
-					policyConfigData.Namespaces[ni].Attributes[ai].ValueIds[value] = id
+					policyConfigData.Namespaces[ni].Attributes[ai].ValueIDs[value] = id
 				}
 			}
 
 		}
 
-		//create the subject condition sets
+		// create the subject condition sets
 		for sci, scsConfig := range policyConfigData.SubjectConditionSets {
-			id, err := createSubjectConditionSet(s, ctx, scsConfig)
+			id, err := createSubjectConditionSet(ctx, s, scsConfig)
 			if err != nil {
 				return err
 			}
-			policyConfigData.SubjectConditionSets[sci].Id = id
+			policyConfigData.SubjectConditionSets[sci].ID = id
 
 			// create the mapping
 			for _, smConfig := range policyConfigData.SubjectConditionSets[sci].SubjectMappings {
-				_, err := createSubjectMapping(s, ctx, policyConfigData.SubjectConditionSets[sci].Id, smConfig)
+				_, err := createSubjectMapping(s, ctx, policyConfigData.SubjectConditionSets[sci].ID, smConfig)
 				if err != nil {
 					return err
 				}
@@ -155,10 +159,10 @@ var provisionDataFromConfigCmd = &cobra.Command{
 	},
 }
 
-func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsId string, smConfig SubjectMappingConfig) (string, error) {
+func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsID string, smConfig SubjectMappingConfig) (string, error) {
 	slog.Info("creating subject mapping")
 	// lookup attribute value
-	var attrId string
+	var attrID string
 	for _, ns := range policyConfigData.Namespaces {
 		if ns.Name == smConfig.AttributeValue.Namespace {
 			slog.Info("namesapce the same")
@@ -166,22 +170,21 @@ func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsId string, smConfi
 				slog.Info("my attribute: %s, their attribute %s", attr.Name, smConfig.AttributeValue.Attribute)
 				if attr.Name == smConfig.AttributeValue.Attribute {
 					slog.Info("assigning")
-					fmt.Println(attr.ValueIds)
-					val, ok := attr.ValueIds[smConfig.AttributeValue.Value]
+					val, ok := attr.ValueIDs[smConfig.AttributeValue.Value]
 					if ok {
-						attrId = val
+						attrID = val
 					}
 				}
 			}
 		}
 	}
-	if attrId == "" {
+	if attrID == "" {
 		return "", errors.New("could not find attribute id")
 	}
 
 	req := &subjectmapping.CreateSubjectMappingRequest{
-		ExistingSubjectConditionSetId: scsId,
-		AttributeValueId:              attrId,
+		ExistingSubjectConditionSetId: scsID,
+		AttributeValueId:              attrID,
 		Actions:                       []*policy.Action{},
 	}
 	for _, act := range smConfig.Actions {
@@ -192,8 +195,8 @@ func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsId string, smConfi
 
 	res, err := s.SubjectMapping.CreateSubjectMapping(ctx, req)
 
-	var smId string
-	if err != nil {
+	var smID string
+	if err != nil { //nolint:nestif // subject mapping exists
 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
 			slog.Info("Subject mapping set already exists")
 			// list by name
@@ -203,14 +206,14 @@ func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsId string, smConfi
 				return "", err
 			}
 			for _, sm := range allSms.GetSubjectMappings() {
-				if (sm.SubjectConditionSet.Id == req.ExistingSubjectConditionSetId) &&
-					(sm.AttributeValue.Id == req.AttributeValueId) &&
-					(reflect.DeepEqual(sm.Actions, req.Actions)) {
-					smId = sm.Id
+				if (sm.GetSubjectConditionSet().GetId() == req.ExistingSubjectConditionSetId) &&
+					(sm.GetAttributeValue().GetId() == req.AttributeValueId) &&
+					(reflect.DeepEqual(sm.GetActions(), req.Actions)) {
+					smID = sm.GetId()
 					break
 				}
 			}
-			if smId == "" {
+			if smID == "" {
 				slog.Error("Already exists code returned on subject mapping creation but could not find subject mapping in list")
 				return "", errors.New("already exists code returned on subject mapping creation but could not find subject mapping in list")
 			}
@@ -220,12 +223,12 @@ func createSubjectMapping(s *sdk.SDK, ctx context.Context, scsId string, smConfi
 		}
 	} else {
 		slog.Info("subject mapping created")
-		smId = res.SubjectMapping.Id
+		smID = res.GetSubjectMapping().GetId()
 	}
-	return smId, nil
+	return smID, nil
 }
 
-func createSubjectConditionSet(s *sdk.SDK, ctx context.Context, scsConfig SCSConfig) (string, error) {
+func createSubjectConditionSet(ctx context.Context, s *sdk.SDK, scsConfig SCSConfig) (string, error) {
 	slog.Info("creating subject condition set")
 	req := &subjectmapping.CreateSubjectConditionSetRequest{SubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{SubjectSets: []*policy.SubjectSet{}}}
 	for _, subset := range scsConfig.SubjectSets {
@@ -254,8 +257,8 @@ func createSubjectConditionSet(s *sdk.SDK, ctx context.Context, scsConfig SCSCon
 	// iterate through to create request
 	res, err := s.SubjectMapping.CreateSubjectConditionSet(ctx, req)
 
-	var scsId string
-	if err != nil {
+	var scsID string
+	if err != nil { //nolint:nestif // subject condition set exists
 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
 			slog.Info("Subject condition set already exists")
 			// list by name
@@ -265,12 +268,12 @@ func createSubjectConditionSet(s *sdk.SDK, ctx context.Context, scsConfig SCSCon
 				return "", err
 			}
 			for _, scs := range allScs.GetSubjectConditionSets() {
-				if reflect.DeepEqual(scs.SubjectSets, req.SubjectConditionSet.SubjectSets) {
-					scsId = scs.Id
+				if reflect.DeepEqual(scs.GetSubjectSets(), req.SubjectConditionSet.SubjectSets) {
+					scsID = scs.GetId()
 					break
 				}
 			}
-			if scsId == "" {
+			if scsID == "" {
 				slog.Error("Already exists code returned on subject condition set creation but could not find subject condition set in list")
 				return "", errors.New("already exists code returned on subject condition set creation but could not find subject condition set in list")
 			}
@@ -280,22 +283,22 @@ func createSubjectConditionSet(s *sdk.SDK, ctx context.Context, scsConfig SCSCon
 		}
 	} else {
 		slog.Info("subject condition set created")
-		scsId = res.SubjectConditionSet.Id
+		scsID = res.GetSubjectConditionSet().GetId()
 	}
-	return scsId, nil
+	return scsID, nil
 }
 
-func createNamespace(s *sdk.SDK, ctx context.Context, name string) (string, error) {
+func createNamespace(ctx context.Context, s *sdk.SDK, name string) (string, error) {
 	var exampleNamespace *policy.Namespace
 	slog.Info("listing namespaces")
 	listResp, err := s.Namespaces.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{})
 	if err != nil {
 		return "", err
 	}
-	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Namespaces)))
+	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.GetNamespaces())))
 	for _, ns := range listResp.GetNamespaces() {
-		slog.Info(fmt.Sprintf("existing namespace; name: %s, id: %s", ns.Name, ns.Id))
-		if ns.Name == name {
+		slog.Info(fmt.Sprintf("existing namespace; name: %s, id: %s", ns.GetName(), ns.GetId()))
+		if ns.GetName() == name {
 			exampleNamespace = ns
 		}
 	}
@@ -308,23 +311,23 @@ func createNamespace(s *sdk.SDK, ctx context.Context, name string) (string, erro
 		if err != nil {
 			return "", err
 		}
-		exampleNamespace = resp.Namespace
+		exampleNamespace = resp.GetNamespace()
 	}
-	return exampleNamespace.Id, nil
+	return exampleNamespace.GetId(), nil
 }
 
-func createAttribute(s *sdk.SDK, ctx context.Context, namespaceId string, attrConf AttributeConfig) (string, error) {
+func createAttribute(s *sdk.SDK, ctx context.Context, namespaceID string, attrConf AttributeConfig) (string, error) {
 	slog.Info("creating new attribute rule")
 
 	rule := policy.AttributeRuleTypeEnum(policy.AttributeRuleTypeEnum_value[attrConf.Rule])
 
 	resp, err := s.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
 		Name:        attrConf.Name,
-		NamespaceId: namespaceId,
+		NamespaceId: namespaceID,
 		Rule:        rule,
 	})
-	var attrId string
-	if err != nil {
+	var attrID string
+	if err != nil { //nolint:nestif // attribute exists
 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
 			slog.Info("attribute already exists")
 			// list by name
@@ -334,12 +337,12 @@ func createAttribute(s *sdk.SDK, ctx context.Context, namespaceId string, attrCo
 				return "", err
 			}
 			for _, attr := range allAttr.GetAttributes() {
-				if attr.Name == attrConf.Name && attr.Namespace.Id == namespaceId {
-					attrId = attr.Id
+				if attr.GetName() == attrConf.Name && attr.GetNamespace().GetId() == namespaceID {
+					attrID = attr.GetId()
 					break
 				}
 			}
-			if attrId == "" {
+			if attrID == "" {
 				slog.Error("Already exists code returned on attribute creation but could not find attribute in list", slog.String("attribute", attrConf.Name))
 				return "", errors.New("already exists code returned on attribute creation but could not find attribute in list")
 			}
@@ -349,37 +352,37 @@ func createAttribute(s *sdk.SDK, ctx context.Context, namespaceId string, attrCo
 		}
 	} else {
 		slog.Info("attribute created")
-		attrId = resp.Attribute.Id
+		attrID = resp.GetAttribute().GetId()
 	}
-	return attrId, nil
+	return attrID, nil
 }
 
-func createAttributeValue(s *sdk.SDK, ctx context.Context, attrId string, value string) (string, error) {
+func createAttributeValue(s *sdk.SDK, ctx context.Context, attrID string, value string) (string, error) {
 	slog.Info("creating new attribute value")
 
 	resp, err := s.Attributes.CreateAttributeValue(ctx, &attributes.CreateAttributeValueRequest{
-		AttributeId: attrId,
+		AttributeId: attrID,
 		Value:       value,
 	})
-	var valId string
-	if err != nil {
+	var valID string
+	if err != nil { //nolint:nestif // attribute value exists
 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
 			slog.Info("attribute value already exists")
 			// list by name
 			allAttrVals, err := s.Attributes.ListAttributeValues(ctx, &attributes.ListAttributeValuesRequest{
-				AttributeId: attrId,
+				AttributeId: attrID,
 			})
 			if err != nil {
 				slog.Error("could not list attribute values", slog.String("error", err.Error()))
 				return "", err
 			}
 			for _, val := range allAttrVals.GetValues() {
-				if val.Value == value {
-					valId = val.Id
+				if val.GetValue() == value {
+					valID = val.GetId()
 					break
 				}
 			}
-			if valId == "" {
+			if valID == "" {
 				slog.Error("Already exists code returned on attribute value creation but could not find attribute value in list", slog.String("value", value))
 				return "", errors.New("already exists code returned on attribute value creation but could not find attribute value in list")
 			}
@@ -389,19 +392,17 @@ func createAttributeValue(s *sdk.SDK, ctx context.Context, attrId string, value 
 		}
 	} else {
 		slog.Info("attribute value created")
-		valId = resp.Value.Id
+		valID = resp.GetValue().GetId()
 	}
-	return valId, nil
+	return valID, nil
 }
 
 func init() {
-
 	provisionDataFromConfigCmd.Flags().StringP(provDataFilename, "f", "./cmd/simple_policy_data.yaml", "config file to use")
 
 	provisionCmd.AddCommand(provisionDataFromConfigCmd)
 
 	rootCmd.AddCommand(provisionDataFromConfigCmd)
-
 }
 
 func LoadConfigData(filename string) error {

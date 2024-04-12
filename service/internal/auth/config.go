@@ -10,9 +10,8 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct {
-	Issuer            string   `yaml:"issuer" json:"issuer"`
-	Audience          string   `yaml:"audience" json:"audience"`
-	Clients           []string `yaml:"clients" json:"clients"`
+	Issuer            string `yaml:"issuer" json:"issuer"`
+	Audience          string `yaml:"audience" json:"audience"`
 	OIDCConfiguration `yaml:"-" json:"-"`
 	Policy            PolicyConfig `yaml:"policy" json:"policy" mapstructure:"policy"`
 }
@@ -32,10 +31,6 @@ func (c AuthNConfig) validateAuthNConfig() error {
 
 	if c.Audience == "" {
 		return fmt.Errorf("config Auth.Audience is required")
-	}
-
-	if len(c.Clients) == 0 {
-		return fmt.Errorf("config Auth.Clients is required")
 	}
 
 	return nil

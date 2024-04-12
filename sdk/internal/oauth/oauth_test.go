@@ -21,7 +21,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/fixtures"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -98,9 +97,9 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	s.Require().True(strings.Contains(scopeString, "testscope"))
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
-	assert.Equal(s.T(), expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-	assert.Greaterf(s.T(), tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
-	assert.Falsef(s.T(), tok.Expired(), "got a token that is currently expired: %v", tok)
+	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
+	s.Greaterf(tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
+	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
 
 	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
 	ra, ok := tokenDetails.Get("realm_access")
@@ -158,9 +157,9 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Require().NoError(err)
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
-	assert.Equal(s.T(), expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-	assert.Greaterf(s.T(), subjectToken.ExpiresIn, int64(0), "invalid expiration is before current time: %v", subjectToken)
-	assert.Falsef(s.T(), subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
+	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
+	s.Greaterf(subjectToken.ExpiresIn, int64(0), "invalid expiration is before current time: %v", subjectToken)
+	s.Falsef(subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
 
 	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
 	ra, ok := tokenDetails.Get("realm_access")
@@ -188,7 +187,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 
 func (s *OAuthSuite) TestClientSecretNoNonce() {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(s.T(), "/token", r.URL.Path)
+		s.Equal("/token", r.URL.Path)
 		s.Require().NoError(r.ParseForm())
 
 		validateBasicAuth(r, s.T())
@@ -222,7 +221,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		timesCalled++
-		assert.Equal(s.T(), "/token", r.URL.Path, "surprise http request to mock oauth service")
+		s.Equal("/token", r.URL.Path, "surprise http request to mock oauth service")
 		err := r.ParseForm()
 		s.Require().NoError(err, "error parsing oauth request")
 
@@ -267,7 +266,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 
 		w.Header().Add("content-type", "application/json")
 		l, err := w.Write(responseBytes)
-		assert.Equal(s.T(), len(responseBytes), l)
+		s.Equal(len(responseBytes), l)
 		s.Require().NoError(err)
 	}))
 	defer server.Close()
@@ -384,7 +383,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 
 		w.Header().Add("content-type", "application/json")
 		l, err := w.Write(responseBytes)
-		assert.Equal(s.T(), len(responseBytes), l)
+		s.Equal(len(responseBytes), l)
 		s.Require().NoError(err)
 	}))
 	defer server.Close()

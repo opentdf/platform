@@ -161,7 +161,7 @@ func createRealm(ctx context.Context, kcConnectParams keycloakConnectParams, rea
 	// Create realm
 	r, err := client.GetRealm(ctx, token.AccessToken, *realm.Realm)
 	if err != nil {
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint // kc error checked below
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == keycloakAlreadyExistsCode {
 			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
 		} else if kcErr.Code != http.StatusNotFound {
@@ -205,7 +205,7 @@ func createGroup(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JW
 	}
 	_, err := client.CreateGroup(ctx, token.AccessToken, realmName, group)
 	if err != nil {
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint // kc error checked below
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == keycloakAlreadyExistsCode {
 			slog.Warn(fmt.Sprintf("⏭️  group %s already exists", *group.Name))
 		} else {
@@ -223,7 +223,7 @@ func createRealmRole(ctx context.Context, client *gocloak.GoCloak, token *gocloa
 	}
 	_, err := client.CreateRealmRole(ctx, token.AccessToken, realmName, role)
 	if err != nil {
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint // kc error checked below
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == keycloakAlreadyExistsCode {
 			slog.Warn(fmt.Sprintf("⏭️  role %s already exists", *role.Name))
 		} else {
@@ -248,7 +248,7 @@ func createClientRole(ctx context.Context, client *gocloak.GoCloak, token *goclo
 
 	_, err = client.CreateClientRole(ctx, token.AccessToken, realmName, *idOfClient, role)
 	if err != nil {
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint // kc error checked below
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == keycloakAlreadyExistsCode {
 			slog.Warn(fmt.Sprintf("⏭️  role %s already exists for client %s", *role.Name, clientID))
 		} else {
@@ -268,7 +268,7 @@ func createCustomClient(ctx context.Context, client *gocloak.GoCloak, token *goc
 	longClientID, err := client.CreateClient(ctx, token.AccessToken, realmName, clientToCreate.Client)
 
 	if err != nil { //nolint:nestif // handle user exists
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint // kc error checked below
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == keycloakAlreadyExistsCode {
 			slog.Warn(fmt.Sprintf("⏭️  client %s already exists", *clientToCreate.Client.ClientID))
 			clients, err := client.GetClients(ctx, token.AccessToken, realmName, gocloak.GetClientsParams{ClientID: clientToCreate.Client.ClientID})
@@ -409,7 +409,7 @@ func createCustomUser(ctx context.Context, client *gocloak.GoCloak, token *goclo
 	}
 	longUserID, err := client.CreateUser(ctx, token.AccessToken, realmName, userToCreate)
 	if err != nil { //nolint:nestif // handle user exists
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint // kc error checked below
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == keycloakAlreadyExistsCode {
 			slog.Warn(fmt.Sprintf("user %s already exists", *userToCreate.Username))
 			users, err := client.GetUsers(ctx, token.AccessToken, realmName, gocloak.GetUsersParams{Username: userToCreate.Username})
@@ -446,7 +446,6 @@ func createCustomUser(ctx context.Context, client *gocloak.GoCloak, token *goclo
 	// assign client roles to user
 	if userToCreate.ClientRoles != nil {
 		for clientID, roles := range *userToCreate.ClientRoles {
-
 			results, err := client.GetClients(ctx, token.AccessToken, realmName, gocloak.GetClientsParams{ClientID: &clientID})
 			if err != nil || len(results) == 0 {
 				slog.Error(fmt.Sprintf("Error getting %s's client: %s", clientID, err))

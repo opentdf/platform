@@ -139,10 +139,12 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	auth, err := NewAuthenticator(AuthNConfig{
-		Issuer:   s.server.URL,
-		Audience: "test",
-	}, nil)
+	auth, err := NewAuthenticator(
+		context.Background(),
+		AuthNConfig{
+			Issuer:   s.server.URL,
+			Audience: "test",
+		}, nil)
 
 	s.Require().NoError(err)
 

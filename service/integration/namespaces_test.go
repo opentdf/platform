@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -241,7 +240,6 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 
 	// Deleted namespace should not be found on Get
 	_, err = s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	fmt.Println(err)
 	s.NotNil(err)
 }
 

@@ -56,6 +56,8 @@ var (
 	}
 )
 
+const refreshInterval = 15 * time.Minute
+
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
 	// cache holds the jwks cache
@@ -67,7 +69,7 @@ type Authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 	a := &Authentication{}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
@@ -75,8 +77,6 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 	if err := cfg.validateAuthNConfig(); err != nil {
 		return nil, err
 	}
-
-	ctx := context.Background()
 
 	a.cache = jwk.NewCache(ctx)
 
@@ -89,8 +89,14 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 
 	cfg.OIDCConfiguration = *oidcConfig
 
+	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
+	if err != nil {
+		slog.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
+		cacheInterval = refreshInterval
+	}
+
 	// Register the jwks_uri with the cache
-	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
 		return nil, err
 	}
 

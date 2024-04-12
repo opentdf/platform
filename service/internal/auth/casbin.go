@@ -48,6 +48,7 @@ p,	role:org-admin,		policy.*,																*,			allow
 p,	role:org-admin,		kasregistry.*,													*,			allow
 p,	role:org-admin,		kas.AccessService/LegacyPublicKey,			*,			allow
 p,	role:org-admin,		kas.AccessService/PublicKey,						*,			allow
+p,	role:org-admin,		kas.AccessService/Rewrap, 			            *,			allow
 ## HTTP routes
 p,	role:org-admin,		/health,																*,			allow
 p,	role:org-admin,		/attributes*,														*,			allow

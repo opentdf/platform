@@ -3,17 +3,11 @@ module github.com/opentdf/platform/examples
 go 1.21.8
 
 require (
-	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/protocol/go v0.0.0-20240409133529-9d7b951a26c6
+	github.com/opentdf/platform/sdk v0.0.0-20240409133529-9d7b951a26c6
 	github.com/spf13/cobra v1.8.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
-)
-
-replace (
-	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
-	github.com/opentdf/platform/protocol/go => ../protocol/go
-	github.com/opentdf/platform/sdk => ../sdk
 )
 
 require (
@@ -32,7 +26,7 @@ require (
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.0.21 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
-	github.com/opentdf/platform/lib/ocrypto v0.0.0-00010101000000-000000000000 // indirect
+	github.com/opentdf/platform/lib/ocrypto v0.0.0-20240409133529-9d7b951a26c6 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect

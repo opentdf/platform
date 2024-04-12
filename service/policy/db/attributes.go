@@ -80,7 +80,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("rule"),
-		getMetadataField(t.Name(), false),
+		constructMetadata(t.Name(), false),
 		t.Field("namespace_id"),
 		t.Field("active"),
 		nt.Field("name"),
@@ -152,10 +152,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"JSON_AGG(JSON_BUILD_OBJECT(" +
 				"'id', " + smT.Field("id") + "," +
 				"'actions', " + smT.Field("actions") + "," +
-				getMetadataField(smT.Name(), true) +
+				constructMetadata(smT.Name(), true) +
 				"'subject_condition_set', JSON_BUILD_OBJECT(" +
 				"'id', " + scsT.Field("id") + "," +
-				getMetadataField(scsT.Name(), true) +
+				constructMetadata(scsT.Name(), true) +
 				"'subject_sets', " + scsT.Field("condition") +
 				")" +
 				")) AS sub_maps_arr " +
@@ -468,7 +468,7 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		Insert(t.Name()).
 		Columns("namespace_id", "name", "rule", "metadata").
 		Values(namespaceId, name, rule, metadata).
-		Suffix("RETURNING \"id\"").
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -488,8 +488,12 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
-	} else if err := r.Scan(&id); err != nil {
+	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+		return nil, err
 	}
 
 	// Update the FQN

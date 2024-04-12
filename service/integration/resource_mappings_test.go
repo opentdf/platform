@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
@@ -192,6 +193,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	updateTerms := []string{"updated term1", "updated term 2"}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	start := time.Now().Add(-time.Second)
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Metadata: &common.MetadataMutable{
@@ -199,8 +201,12 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		},
 		Terms: terms,
 	})
+	end := time.Now().Add(time.Second)
 	metadata := createdMapping.GetMetadata()
 	updatedAt := metadata.GetUpdatedAt()
+	createdAt := metadata.GetCreatedAt()
+	s.True(createdAt.AsTime().After(start))
+	s.True(createdAt.AsTime().Before(end))
 	s.NoError(err)
 	s.NotNil(createdMapping)
 

@@ -11,7 +11,7 @@ import (
 	opalog "github.com/open-policy-agent/opa/logging"
 	"github.com/open-policy-agent/opa/sdk"
 	"github.com/opentdf/platform/service/internal/idpplugin"
-	"github.com/opentdf/platform/service/internal/jqbuiltin"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 )
 
 type Engine struct {
@@ -56,7 +56,7 @@ func NewEngine(config Config) (*Engine, error) {
 	}
 	slog.Debug("plugging in plugins")
 	idpplugin.KeycloakBuiltins()
-	jqbuiltin.JQBuiltin()
+	subjectmappingbuiltin.SubjectMappingBuiltin()
 	opa, err := sdk.New(context.Background(), sdk.Options{
 		Config:        bytes.NewReader(bConfig),
 		Logger:        &logger,

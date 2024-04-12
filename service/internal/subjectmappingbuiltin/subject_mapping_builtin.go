@@ -56,7 +56,7 @@ func SubjectMappingBuiltin() {
 func EvaluateSubjectMappings(attribute_mappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entity_representations []map[string]any) ([]string, error) {
 	// for now just look at first entity
 	entity := entity_representations[0]
-	var entitlements []string
+	var entitlements []string = []string{}
 	for attr, mapping := range attribute_mappings {
 		// subject mapping results or-ed togethor
 		mapping_result := false

@@ -142,7 +142,6 @@ func (s *AuthSuite) SetupTest() {
 	auth, err := NewAuthenticator(AuthNConfig{
 		Issuer:   s.server.URL,
 		Audience: "test",
-		Clients:  []string{"client1", "client2", "client3"},
 	}, nil)
 
 	s.Require().NoError(err)
@@ -252,69 +251,6 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_ClientID_Missing_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("client id required", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_ClientID_Invalid_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("client_id", "invalid"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("invalid client id", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", "invalid"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("invalid client id", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_INT_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", 1))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("invalid client id", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {

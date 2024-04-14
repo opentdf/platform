@@ -42,6 +42,7 @@ message PublicKeyResponse {
 }
 
 message RewrapRequest {
+  reserved 2;
   string signed_request_token = 1;
 }
 

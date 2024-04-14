@@ -78,11 +78,6 @@ type TDFObject struct {
 	payloadKey [kKeySize]byte
 }
 
-type Unwrapper interface {
-	unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
-	getPublicKey(kas KASInfo) (string, error)
-}
-
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)

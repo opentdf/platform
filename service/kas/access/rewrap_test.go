@@ -344,14 +344,15 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			if tt.addDPoP {
 				key, err := jwk.FromRaw(entityPublicKey(t))
 				require.NoError(t, err, "couldn't get JWK from key")
-				key.Set(jwk.AlgorithmKey, jwa.RS256)
+				err = key.Set(jwk.AlgorithmKey, jwa.RS256) // Check the error return value
+				require.NoError(t, err, "failed to set algorithm key")
 				ctx = auth.ContextWithJWK(ctx, key)
 			}
 
 			md := metadata.New(map[string]string{"token": string(tt.bearer)})
 			ctx = metadata.NewIncomingContext(ctx, md)
 
-			verified, _, err := verifySignedRequesToken(
+			verified, err := verifySignedRequestToken(
 				ctx,
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),

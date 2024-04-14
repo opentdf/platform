@@ -83,14 +83,14 @@ func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 	return mac.Sum(nil), nil
 }
 
-func verifySignedRequesToken(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody, jwt.Token, error) {
+func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody, error) {
 	// get dpop public key from context
 	dpopJWK := auth.GetJWKFromContext(ctx)
 
 	// if we don't have a dpop public key then we can't verify the request
 	if dpopJWK == nil {
 		slog.ErrorContext(ctx, "missing dpop public key")
-		return nil, nil, err401("dpop public key missing")
+		return nil, err401("dpop public key missing")
 	}
 
 	// verify and validate the request token
@@ -101,13 +101,13 @@ func verifySignedRequesToken(ctx context.Context, in *kaspb.RewrapRequest) (*Req
 	// we have failed to verify the signed request token
 	if err != nil {
 		slog.WarnContext(ctx, "unable to verify request token", "err", err)
-		return nil, nil, err401("unable to verify request token")
+		return nil, err401("unable to verify request token")
 	}
 
 	rb, exists := token.Get("requestBody")
 	if !exists {
 		slog.WarnContext(ctx, "missing request body")
-		return nil, nil, err400("missing request body")
+		return nil, err400("missing request body")
 	}
 
 	var requestBody = new(RequestBody)
@@ -115,39 +115,39 @@ func verifySignedRequesToken(ctx context.Context, in *kaspb.RewrapRequest) (*Req
 	rbString, ok := rb.(string)
 	if !ok {
 		slog.WarnContext(ctx, "invalid request body")
-		return nil, nil, err400("invalid request body")
+		return nil, err400("invalid request body")
 	}
 
 	err = json.Unmarshal([]byte(rbString), &requestBody)
 	if err != nil {
 		slog.WarnContext(ctx, "invalid request body")
-		return nil, nil, err400("invalid request body")
+		return nil, err400("invalid request body")
 	}
 
 	slog.DebugContext(ctx, "extract public key", "requestBody.ClientPublicKey", requestBody.ClientPublicKey)
 	block, _ := pem.Decode([]byte(requestBody.ClientPublicKey))
 	if block == nil {
 		slog.WarnContext(ctx, "missing clientPublicKey")
-		return nil, nil, err400("clientPublicKey failure")
+		return nil, err400("clientPublicKey failure")
 	}
 
 	// Try to parse the clientPublicKey
 	clientPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		slog.WarnContext(ctx, "failure to parse clientPublicKey", "err", err)
-		return nil, nil, err400("clientPublicKey parse failure")
+		return nil, err400("clientPublicKey parse failure")
 	}
 	// Check to make sure the clientPublicKey is a supported key type
 	switch publicKey := clientPublicKey.(type) {
 	case *rsa.PublicKey:
 		requestBody.PublicKey = publicKey
-		return requestBody, token, nil
+		return requestBody, nil
 	case *ecdsa.PublicKey:
 		requestBody.PublicKey = publicKey
-		return requestBody, token, nil
+		return requestBody, nil
 	default:
 		slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
-		return nil, nil, err400("clientPublicKey unsupported type")
+		return nil, err400("clientPublicKey unsupported type")
 	}
 }
 
@@ -196,14 +196,28 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 		return nil, errors.New("missing metadata")
 	}
 
-	// if token is missing something went wrong in the authn interceptor
-	t, exists := md["entityToken"]
+	// if access token is missing something went wrong in the authn interceptor
+	var tokenRaw string
+
+	header, exists := md["authorization"]
 	if !exists {
 		slog.WarnContext(ctx, "missing authorization header")
 		return nil, errors.New("missing authorization header")
 	}
+	if len(header) < 1 {
+		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
+	}
 
-	token, err := jwt.ParseInsecure([]byte(t[0]))
+	switch {
+	case strings.HasPrefix(header[0], "DPoP "):
+		tokenRaw = strings.TrimPrefix(header[0], "DPoP ")
+	case strings.HasPrefix(header[0], "Bearer "):
+		tokenRaw = strings.TrimPrefix(header[0], "Bearer ")
+	default:
+		return nil, status.Error(codes.Unauthenticated, "not of type bearer or dpop")
+	}
+
+	token, err := jwt.ParseInsecure([]byte(tokenRaw))
 	if err != nil {
 		slog.WarnContext(ctx, "unable to get token")
 		return nil, errors.New("unable to get token")
@@ -227,21 +241,20 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 			if clientID, ok := value.(string); ok {
 				info.ClientID = clientID
 				break // Stop looping once a valid key is found and successfully asserted
-			} else {
-				slog.WarnContext(ctx, "clientID not a string", slog.Any("clientID", value))
 			}
 		}
 	}
 
-	info.Token = string(t[0])
+	info.Token = tokenRaw
 
 	return info, nil
 }
 
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	slog.DebugContext(ctx, "REWRAP")
+	slog.Info("kas context", slog.Any("ctx", ctx))
 
-	body, _, err := verifySignedRequesToken(ctx, in)
+	body, err := verifySignedRequestToken(ctx, in)
 	if err != nil {
 		return nil, err
 	}

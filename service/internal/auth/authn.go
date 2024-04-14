@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -250,15 +249,8 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 
 	// add dpop key to context
 	ctx = ContextWithJWK(ctx, dpopJWK)
-	jsonToken, err := json.Marshal(token)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to marshal token")
-	}
-	md.Append("token", string(jsonToken))
-	// add verified token
-	newCtx := metadata.NewIncomingContext(ctx, md)
 
-	return handler(newCtx, req)
+	return handler(ctx, req)
 }
 
 // checkToken is a helper function to verify the token.

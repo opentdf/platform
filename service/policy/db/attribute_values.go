@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -144,7 +145,7 @@ func createAttributeValueSql(
 			value,
 			metadata,
 		).
-		Suffix("RETURNING id").
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -154,11 +155,14 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		return nil, err
 	}
 
+	value := strings.ToLower(v.GetValue())
+
 	sql, args, err := createAttributeValueSql(
 		attributeID,
-		v.GetValue(),
+		value,
 		metadataJSON,
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +170,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
-	} else if err := r.Scan(&id); err != nil {
+	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -191,13 +195,17 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		members = append(members, attr)
 	}
 
+	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+		return nil, err
+	}
+
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
 
 	rV := &policy.Value{
 		Id:        id,
 		Attribute: &policy.Attribute{Id: attributeID},
-		Value:     v.GetValue(),
+		Value:     value,
 		Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
@@ -213,7 +221,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		"'metadata', vmv.metadata, " +
+		constructMetadata("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -225,7 +233,7 @@ func getAttributeValueSql(id string, opts attributeValueSelectOptions) (string, 
 		"av.value",
 		"av.active",
 		members,
-		"av.metadata",
+		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
@@ -278,7 +286,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		"'metadata', vmv.metadata, " +
+		constructMetadata("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -290,7 +298,7 @@ func listAttributeValuesSql(attribute_id string, opts attributeValueSelectOption
 		"av.value",
 		"av.active",
 		members,
-		"av.metadata",
+		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
@@ -349,7 +357,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		"'value', vmv.value, " +
 		"'active', vmv.active, " +
 		"'members', vmv.members || ARRAY[]::UUID[], " +
-		"'metadata', vmv.metadata, " +
+		constructMetadata("vmv", true) +
 		"'attribute', JSON_BUILD_OBJECT(" +
 		"'id', vmv.attribute_definition_id )"
 	if opts.withFqn {
@@ -361,7 +369,7 @@ func listAllAttributeValuesSql(opts attributeValueSelectOptions) (string, []inte
 		"av.value",
 		"av.active",
 		members,
-		"av.metadata",
+		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {

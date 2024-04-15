@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/service
 
-go 1.21.8
+go 1.21.9
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -14,14 +14,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
+	github.com/itchyny/gojq v0.12.15
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.62.1
-	github.com/opentdf/platform/lib/ocrypto v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/ocrypto v0.0.0-20240409133529-9d7b951a26c6
+	github.com/opentdf/platform/protocol/go v0.0.0-20240409133529-9d7b951a26c6
+	github.com/opentdf/platform/sdk v0.0.0-20240409133529-9d7b951a26c6
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -32,7 +33,6 @@ require (
 	golang.org/x/oauth2 v0.18.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
-	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -56,12 +56,7 @@ require (
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-)
-
-replace (
-	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
-	github.com/opentdf/platform/protocol/go => ../protocol/go
-	github.com/opentdf/platform/sdk => ../sdk
+	github.com/itchyny/timefmt-go v0.1.5 // indirect
 )
 
 require (

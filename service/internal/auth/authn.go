@@ -56,6 +56,8 @@ var (
 	}
 )
 
+const refreshInterval = 15 * time.Minute
+
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
 	// cache holds the jwks cache
@@ -67,7 +69,7 @@ type Authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 	a := &Authentication{}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
@@ -75,8 +77,6 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 	if err := cfg.validateAuthNConfig(); err != nil {
 		return nil, err
 	}
-
-	ctx := context.Background()
 
 	a.cache = jwk.NewCache(ctx)
 
@@ -89,8 +89,14 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 
 	cfg.OIDCConfiguration = *oidcConfig
 
+	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
+	if err != nil {
+		slog.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
+		cacheInterval = refreshInterval
+	}
+
 	// Register the jwks_uri with the cache
-	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
 		return nil, err
 	}
 
@@ -295,7 +301,6 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		jwt.WithValidate(true),
 		jwt.WithIssuer(issuer),
 		jwt.WithAudience(oidc.Audience),
-		jwt.WithValidator(jwt.ValidatorFunc(a.claimsValidator)),
 	)
 
 	if err != nil {
@@ -446,46 +451,4 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
 	return &dpopKey, nil
-}
-
-// claimsValidator is a custom validator to check extra claims in the token.
-// right now it only checks for client_id
-func (a Authentication) claimsValidator(_ context.Context, token jwt.Token) jwt.ValidationError {
-	var (
-		clientID string
-	)
-
-	// Need to check for cid and client_id as this claim seems to be different between idp's
-	cidClaim, cidExists := token.Get("cid")
-	clientIDClaim, clientIDExists := token.Get("client_id")
-
-	// Check to see if we have a client id claim
-	switch {
-	case cidExists:
-		if cid, ok := cidClaim.(string); ok {
-			clientID = cid
-			break
-		}
-	case clientIDExists:
-		if cid, ok := clientIDClaim.(string); ok {
-			clientID = cid
-			break
-		}
-	default:
-		return jwt.NewValidationError(fmt.Errorf("client id required"))
-	}
-
-	// Check if the client id is allowed in list of clients
-	foundClientID := false
-	for _, c := range a.oidcConfigurations[token.Issuer()].Clients {
-		if c == clientID {
-			foundClientID = true
-			break
-		}
-	}
-	if !foundClientID {
-		return jwt.NewValidationError(fmt.Errorf("invalid client id"))
-	}
-
-	return nil
 }

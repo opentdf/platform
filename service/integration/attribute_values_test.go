@@ -4,7 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"sort"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -80,6 +82,11 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	s.Equal(len(f.Members), len(v.GetMembers()))
 	// s.Equal(f.AttributeDefinitionId, v.AttributeId)
 	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
+	metadata := v.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
@@ -99,6 +106,24 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDe
 	s.NoError(err)
 	s.NotNil(createdValue)
 	s.Equal(true, createdValue.GetActive().GetValue())
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_NormalizesValueToLowerCase() {
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
+	v := "VaLuE_12_ShOuLdBe-NoRmAlIzEd"
+
+	req := &attributes.CreateAttributeValueRequest{
+		Value: v,
+	}
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, req)
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+	s.Equal(strings.ToLower(v), createdValue.GetValue())
+
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(strings.ToLower(v), createdValue.GetValue(), got.GetValue())
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
@@ -137,6 +162,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	s.Equal(len(createdValue.GetMembers()), len(got.GetMembers()))
 	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
 }
+
 func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool) {
 	m1 := v1.GetMembers()
 	m2 := v2.GetMembers()
@@ -155,6 +181,7 @@ func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool
 		assert.Equal(t, m1[idx].GetActive().GetValue(), m2[idx].GetActive().GetValue())
 	}
 }
+
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{
@@ -259,12 +286,19 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 
 	// create a value
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
+	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, &attributes.CreateAttributeValueRequest{
 		Value: "created value testing update",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
+	end := time.Now().Add(time.Second)
+	metadata := created.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
+	createdAt := metadata.GetCreatedAt()
+	s.True(createdAt.AsTime().After(start))
+	s.True(createdAt.AsTime().Before(end))
 	s.NoError(err)
 	s.NotNil(created)
 
@@ -294,6 +328,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {

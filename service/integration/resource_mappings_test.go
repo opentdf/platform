@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
@@ -132,6 +133,11 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 			s.True(testedMembers, "expected to test at least one attribute value member")
 		}
 		equalMembers(s.T(), av, mapping.GetAttributeValue(), false)
+		metadata := mapping.GetMetadata()
+		createdAt := metadata.GetCreatedAt()
+		updatedAt := metadata.GetUpdatedAt()
+		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 	}
 }
 
@@ -187,6 +193,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	updateTerms := []string{"updated term1", "updated term 2"}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	start := time.Now().Add(-time.Second)
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.Id,
 		Metadata: &common.MetadataMutable{
@@ -194,6 +201,12 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		},
 		Terms: terms,
 	})
+	end := time.Now().Add(time.Second)
+	metadata := createdMapping.GetMetadata()
+	updatedAt := metadata.GetUpdatedAt()
+	createdAt := metadata.GetCreatedAt()
+	s.True(createdAt.AsTime().After(start))
+	s.True(createdAt.AsTime().Before(end))
 	s.NoError(err)
 	s.NotNil(createdMapping)
 
@@ -232,6 +245,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
 	s.Equal(updateTerms, got.GetTerms())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {

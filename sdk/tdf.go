@@ -81,7 +81,7 @@ type Unwrapper interface {
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
-func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll
+func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -238,7 +238,7 @@ func (r *Reader) Manifest() Manifest {
 }
 
 // prepare the manifest for TDF
-func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit
+func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
 	if len(tdfConfig.kasInfoList) == 0 {
 		return errInvalidKasInfo
@@ -464,7 +464,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
-func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit
+func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit // Better readability keeping it as is for now
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
@@ -610,7 +610,7 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 // Unwraps the payload key, if possible, using the access service
-func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit
+func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readability keeping it as is
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {

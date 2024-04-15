@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -76,7 +77,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		t.Field("metadata"),
+		constructMetadata("", false),
 	}
 
 	if opts.withFqn {
@@ -125,7 +126,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("active"),
-		t.Field("metadata"),
+		constructMetadata("", false),
 	}
 
 	if opts.withFqn {
@@ -179,7 +180,7 @@ func createNamespaceSql(name string, metadata []byte) (string, []interface{}, er
 		Insert(t.Name()).
 		Columns("name", "metadata").
 		Values(name, metadata).
-		Suffix("RETURNING \"id\"").
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -189,7 +190,8 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 		return nil, err
 	}
 
-	sql, args, err := createNamespaceSql(r.GetName(), metadataJSON)
+	name := strings.ToLower(r.GetName())
+	sql, args, err := createNamespaceSql(name, metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -197,8 +199,12 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	var id string
 	if r, e := c.QueryRow(ctx, sql, args); e != nil {
 		return nil, e
-	} else if e := r.Scan(&id); e != nil {
+	} else if e = r.Scan(&id, &metadataJSON); e != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(e)
+	}
+
+	if err = unmarshalMetadata(metadataJSON, m); err != nil {
+		return nil, err
 	}
 
 	// Update FQN
@@ -206,7 +212,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 
 	return &policy.Namespace{
 		Id:       id,
-		Name:     r.GetName(),
+		Name:     name,
 		Active:   &wrapperspb.BoolValue{Value: true},
 		Metadata: m,
 	}, nil
@@ -272,6 +278,23 @@ func deactivateNamespaceSql(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+	attrs, err := c.GetAttributesByNamespace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	allAttrsDeactivated := true
+	for _, attr := range attrs {
+		if attr.GetActive().GetValue() {
+			allAttrsDeactivated = false
+			break
+		}
+	}
+
+	if !allAttrsDeactivated {
+		slog.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
+	}
+
 	sql, args, err := deactivateNamespaceSql(id)
 	if err != nil {
 		return nil, err

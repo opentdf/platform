@@ -45,8 +45,7 @@ func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 		value := &policy.Value{}
 		err := protojson.Unmarshal(r, value)
 		if err != nil {
-			fmt.Println("error unmarshaling a value: ", err, string(r))
-			return nil, err
+			return nil, fmt.Errorf("error unmarshaling a value: %w", err)
 		}
 		values = append(values, value)
 	}
@@ -80,7 +79,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("id"),
 		t.Field("name"),
 		t.Field("rule"),
-		t.Field("metadata"),
+		constructMetadata(t.Name(), false),
 		t.Field("namespace_id"),
 		t.Field("active"),
 		nt.Field("name"),
@@ -152,10 +151,10 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"JSON_AGG(JSON_BUILD_OBJECT(" +
 				"'id', " + smT.Field("id") + "," +
 				"'actions', " + smT.Field("actions") + "," +
-				"'metadata', " + smT.Field("metadata") + "," +
+				constructMetadata(smT.Name(), true) +
 				"'subject_condition_set', JSON_BUILD_OBJECT(" +
 				"'id', " + scsT.Field("id") + "," +
-				"'metadata', " + scsT.Field("metadata") + "," +
+				constructMetadata(scsT.Name(), true) +
 				"'subject_sets', " + scsT.Field("condition") +
 				")" +
 				")) AS sub_maps_arr " +
@@ -468,7 +467,7 @@ func createAttributeSql(namespaceId string, name string, rule string, metadata [
 		Insert(t.Name()).
 		Columns("namespace_id", "name", "rule", "metadata").
 		Values(namespaceId, name, rule, metadata).
-		Suffix("RETURNING \"id\"").
+		Suffix(createSuffix).
 		ToSql()
 }
 
@@ -478,7 +477,9 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, err
 	}
 
-	sql, args, err := createAttributeSql(r.GetNamespaceId(), r.GetName(), attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
+	name := strings.ToLower(r.GetName())
+
+	sql, args, err := createAttributeSql(r.GetNamespaceId(), name, attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -486,8 +487,12 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	var id string
 	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
-	} else if err := r.Scan(&id); err != nil {
+	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+		return nil, err
 	}
 
 	// Update the FQN
@@ -506,7 +511,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 	a := &policy.Attribute{
 		Id:       id,
-		Name:     r.GetName(),
+		Name:     name,
 		Rule:     r.GetRule(),
 		Metadata: metadata,
 		Namespace: &policy.Namespace{

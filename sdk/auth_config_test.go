@@ -22,8 +22,8 @@ func TestNewOIDCAuthConfig(t *testing.T) {
 	s := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			body, err := io.ReadAll(req.Body)
-			if "" == req.Header.Get("X-VirtruPubKey") || err != nil || string(body) != expectedBody {
-				w.WriteHeader(400)
+			if req.Header.Get("X-VirtruPubKey") == "" || err != nil || string(body) != expectedBody {
+				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 

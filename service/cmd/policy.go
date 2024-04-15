@@ -29,37 +29,37 @@ var (
 		Long:  policyFqnReindexCmdLong,
 
 		Run: func(cmd *cobra.Command, args []string) {
-			dbClient, err := policyDBClient()
+			configFile, _ := cmd.Flags().GetString(configFileFlag)
+			configKey, _ := cmd.Flags().GetString(configKeyFlag)
+			cfg, err := config.LoadConfig(configKey, configFile)
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
+			dbClient, err := policyDBClient(cfg)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
 			res := dbClient.AttrFqnReindex()
-			fmt.Print("Namespace FQNs reindexed:\n")
+			cmd.Print("Namespace FQNs reindexed:\n")
 			for _, r := range res.Namespaces {
-				fmt.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
 			}
 
-			fmt.Print("Attribute FQNs reindexed:\n")
+			cmd.Print("Attribute FQNs reindexed:\n")
 			for _, r := range res.Attributes {
-				fmt.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
 			}
 
-			fmt.Print("Attribute Value FQNs reindexed:\n")
+			cmd.Print("Attribute Value FQNs reindexed:\n")
 			for _, r := range res.Values {
-				fmt.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
 			}
 		},
 	}
 )
 
-func policyDBClient() (*policydb.PolicyDBClient, error) {
-	// Load the config
-	conf, err := config.LoadConfig("opentdf")
-	if err != nil {
-		return nil, err
-	}
-
+func policyDBClient(conf *config.Config) (*policydb.PolicyDBClient, error) {
 	slog.Info("creating database client")
 	dbClient, err := db.NewClient(conf.DB)
 	if err != nil {

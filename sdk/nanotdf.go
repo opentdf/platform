@@ -4,8 +4,8 @@ package sdk
 import (
 	"encoding/binary"
 	"errors"
-	_ "github.com/opentdf/platform/lib/ocrypto"
 	"io"
+	"ocrypto"
 )
 
 const (

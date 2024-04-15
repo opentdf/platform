@@ -3,7 +3,6 @@ package sdk
 import (
 	"bytes"
 	"encoding/gob"
-	"ocrypto"
 	"os"
 	"testing"
 )
@@ -104,11 +103,11 @@ func TestReadNanoTDFHeader(t *testing.T) {
 		binding: &bindingCfg{
 			useEcdsaBinding: true,
 			padding:         0,
-			bindingBody:     ECCModeSecp256r1,
+			bindingBody:     eccModeSecp256r1,
 		},
 		sigCfg: &signatureConfig{
 			hasSignature:  true,
-			signatureMode: ECCModeSecp256r1,
+			signatureMode: eccModeSecp256r1,
 			cipher:        cipherModeAes256gcm64Bit,
 		},
 		policy: &policyInfo{

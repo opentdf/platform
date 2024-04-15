@@ -27,17 +27,16 @@ func TestECKeyPair(t *testing.T) {
 		}
 
 		// Set expected size based on mode
-		size := 0
+		var size int
 		switch modeGood {
 		case ECCModeSecp256r1:
 			size = 256
-			break
 		case ECCModeSecp384r1:
 			size = 384
-			break
 		case ECCModeSecp521r1:
 			size = 521
-			break
+		case ECCModeSecp256k1:
+			fallthrough
 		default:
 			size = 99999 // deliberately bad value
 		}

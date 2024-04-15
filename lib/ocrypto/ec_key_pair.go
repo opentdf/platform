@@ -25,7 +25,6 @@ type ECKeyPair struct {
 
 // NewECKeyPair Generates an EC key pair of the given bit size.
 func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
-
 	var c elliptic.Curve
 	switch mode {
 	case ECCModeSecp256r1:

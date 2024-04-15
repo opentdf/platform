@@ -1,3 +1,4 @@
+//nolint:gomnd // nanotdf magics and lengths are inlined for clarity
 package sdk
 
 import (

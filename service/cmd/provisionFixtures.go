@@ -53,7 +53,7 @@ You can clear/recycle your database with 'docker-compose down' and 'docker-compo
 			fixtures.LoadFixtureData("./service/internal/fixtures/policy_fixtures.yaml")
 			f.Provision()
 
-			fmt.Print("fixtures provision fully applied")
+			cmd.Print("fixtures provision fully applied\n")
 		},
 	}
 )

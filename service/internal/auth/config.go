@@ -14,6 +14,7 @@ type AuthNConfig struct {
 	Audience          string `yaml:"audience" json:"audience"`
 	OIDCConfiguration `yaml:"-" json:"-"`
 	Policy            PolicyConfig `yaml:"policy" json:"policy" mapstructure:"policy"`
+	CacheRefresh      string       `mapstructure:"cache_refresh_interval"`
 }
 
 type PolicyConfig struct {

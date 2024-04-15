@@ -7,9 +7,7 @@ import (
 func TestECKeyPair(t *testing.T) {
 	for _, modeGood := range []ECCMode{ECCModeSecp256r1, ECCModeSecp384r1, ECCModeSecp521r1} {
 		ecKeyPair, err := NewECKeyPair(modeGood)
-		if err != nil {
-			t.Fatalf("NewECKeyPair(%d): %v", modeGood, err)
-		}
+		require.NoError(t,err, "message....")
 
 		_, err = ecKeyPair.PublicKeyInPemFormat()
 		if err != nil {

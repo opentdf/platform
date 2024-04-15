@@ -5,7 +5,7 @@ import (
 )
 
 func TestECKeyPair(t *testing.T) {
-	for _, modeGood := range []eccMode{eccModeSecp256r1, eccModeSecp384r1, eccModeSecp521r1} {
+	for _, modeGood := range []ECCMode{ECCModeSecp256r1, ECCModeSecp384r1, ECCModeSecp521r1} {
 		ecKeyPair, err := NewECKeyPair(modeGood)
 		if err != nil {
 			t.Fatalf("NewECKeyPair(%d): %v", modeGood, err)
@@ -29,13 +29,13 @@ func TestECKeyPair(t *testing.T) {
 		// Set expected size based on mode
 		size := 0
 		switch modeGood {
-		case eccModeSecp256r1:
+		case ECCModeSecp256r1:
 			size = 256
 			break
-		case eccModeSecp384r1:
+		case ECCModeSecp384r1:
 			size = 384
 			break
-		case eccModeSecp521r1:
+		case ECCModeSecp521r1:
 			size = 521
 			break
 		default:
@@ -66,7 +66,7 @@ func TestECKeyPair(t *testing.T) {
 		t.Fatal("EcKeyPair.keySize() fail to return error")
 	}
 
-	for _, modeBad := range []eccMode{eccModeSecp256k1} {
+	for _, modeBad := range []ECCMode{ECCModeSecp256k1} {
 		_, err := NewECKeyPair(modeBad)
 		if err == nil {
 			t.Fatalf("did not fail as expected: NewECKeyPair(%d): %v", modeBad, err)

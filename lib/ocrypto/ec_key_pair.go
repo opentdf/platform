@@ -10,56 +10,53 @@ import (
 	"fmt"
 )
 
-type eccMode uint8
+type ECCMode uint8
 
 const (
-	eccModeSecp256r1 eccMode = 0
-	eccModeSecp384r1 eccMode = 1
-	eccModeSecp521r1 eccMode = 2
-	eccModeSecp256k1 eccMode = 3
+	ECCModeSecp256r1 ECCMode = 0
+	ECCModeSecp384r1 ECCMode = 1
+	ECCModeSecp521r1 ECCMode = 2
+	ECCModeSecp256k1 ECCMode = 3
 )
 
-type EcKeyPair struct {
-	privateKey *ecdsa.PrivateKey
+type ECKeyPair struct {
+	PrivateKey *ecdsa.PrivateKey
 }
 
 // NewECKeyPair Generates an EC key pair of the given bit size.
-func NewECKeyPair(mode eccMode) (EcKeyPair, error) {
+func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 
 	var c elliptic.Curve
 	switch mode {
-	case eccModeSecp256r1:
+	case ECCModeSecp256r1:
 		c = elliptic.P256()
-		break
-	case eccModeSecp384r1:
+	case ECCModeSecp384r1:
 		c = elliptic.P384()
-		break
-	case eccModeSecp521r1:
+	case ECCModeSecp521r1:
 		c = elliptic.P521()
-		break
-	case eccModeSecp256k1:
+	case ECCModeSecp256k1:
 		// TODO FIXME - unsupported?
-		return EcKeyPair{}, errors.New("unsupported ec key pair mode")
+		return ECKeyPair{}, errors.New("unsupported ec key pair mode")
 	default:
-		return EcKeyPair{}, fmt.Errorf("invalid ec key pair mode %d", mode)
+		return ECKeyPair{}, fmt.Errorf("invalid ec key pair mode %d", mode)
 	}
 
 	privateKey, err := ecdsa.GenerateKey(c, rand.Reader)
 	if err != nil {
-		return EcKeyPair{}, fmt.Errorf("ec.GenerateKey failed: %w", err)
+		return ECKeyPair{}, fmt.Errorf("ec.GenerateKey failed: %w", err)
 	}
 
-	ecKeyPair := EcKeyPair{privateKey: privateKey}
+	ecKeyPair := ECKeyPair{PrivateKey: privateKey}
 	return ecKeyPair, nil
 }
 
 // PrivateKeyInPemFormat Returns private key in pem format.
-func (keyPair EcKeyPair) PrivateKeyInPemFormat() (string, error) {
-	if keyPair.privateKey == nil {
+func (keyPair ECKeyPair) PrivateKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
 		return "", errors.New("failed to generate PEM formatted private key")
 	}
 
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(keyPair.privateKey)
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(keyPair.PrivateKey)
 	if err != nil {
 		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
 	}
@@ -74,12 +71,12 @@ func (keyPair EcKeyPair) PrivateKeyInPemFormat() (string, error) {
 }
 
 // PublicKeyInPemFormat Returns public key in pem format.
-func (keyPair EcKeyPair) PublicKeyInPemFormat() (string, error) {
-	if keyPair.privateKey == nil {
+func (keyPair ECKeyPair) PublicKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&keyPair.privateKey.PublicKey)
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&keyPair.PrivateKey.PublicKey)
 	if err != nil {
 		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
 	}
@@ -95,9 +92,9 @@ func (keyPair EcKeyPair) PublicKeyInPemFormat() (string, error) {
 }
 
 // KeySize Return the size of this ec key pair.
-func (keyPair EcKeyPair) KeySize() (int, error) {
-	if keyPair.privateKey == nil {
+func (keyPair ECKeyPair) KeySize() (int, error) {
+	if keyPair.PrivateKey == nil {
 		return -1, errors.New("failed to return key size")
 	}
-	return keyPair.privateKey.Params().N.BitLen(), nil
+	return keyPair.PrivateKey.Params().N.BitLen(), nil
 }

@@ -3,6 +3,7 @@ package sdk
 import (
 	"encoding/binary"
 	"errors"
+	_ "github.com/opentdf/platform/lib/ocrypto"
 	"io"
 )
 
@@ -30,12 +31,12 @@ func (resourceLocator) isPolicyBody() {}
 type bindingCfg struct {
 	useEcdsaBinding bool
 	padding         uint8
-	bindingBody     eccMode
+	bindingBody     ECCMode
 }
 
 type signatureConfig struct {
 	hasSignature  bool
-	signatureMode eccMode
+	signatureMode ECCMode
 	cipher        cipherMode
 }
 
@@ -102,7 +103,7 @@ func deserializeBindingCfg(b byte) *bindingCfg {
 	cfg := bindingCfg{}
 	cfg.useEcdsaBinding = (b >> 7 & 0x01) == 1
 	cfg.padding = 0
-	cfg.bindingBody = eccMode((b >> 4) & 0x07)
+	cfg.bindingBody = ECCMode((b >> 4) & 0x07)
 
 	return &cfg
 }
@@ -110,7 +111,7 @@ func deserializeBindingCfg(b byte) *bindingCfg {
 func deserializeSignatureCfg(b byte) *signatureConfig {
 	cfg := signatureConfig{}
 	cfg.hasSignature = (b >> 7 & 0x01) == 1
-	cfg.signatureMode = eccMode((b >> 4) & 0x07)
+	cfg.signatureMode = ECCMode((b >> 4) & 0x07)
 	cfg.cipher = cipherMode(b & 0x0F)
 
 	return &cfg
@@ -146,14 +147,14 @@ func readPolicyBody(reader io.Reader, mode uint8) (PolicyBody, error) {
 	}
 }
 
-func readEphemeralPublicKey(reader io.Reader, curve eccMode) (*eccKey, error) {
+func readEphemeralPublicKey(reader io.Reader, curve ECCMode) (*eccKey, error) {
 	var numberOfBytes uint8
 	switch curve {
-	case eccModeSecp256r1:
+	case ECCModeSecp256r1:
 		numberOfBytes = 33
-	case eccModeSecp384r1:
+	case ECCModeSecp384r1:
 		numberOfBytes = 49
-	case eccModeSecp521r1:
+	case ECCModeSecp521r1:
 		numberOfBytes = 67
 	}
 	buffer := make([]byte, numberOfBytes)

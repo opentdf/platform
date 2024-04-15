@@ -80,4 +80,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/opentdf/platform/ocrypto => ../lib/ocrypto
+replace github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto

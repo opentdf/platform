@@ -70,7 +70,8 @@ func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 // WithTokenExchange specifies that the SDK should obtain its
 // access token by exchanging the given token for a new one. If
 // the subjectToken is for another client keycloak requires that
-// this ClientID is included in the audience
+// the ClientID that was granted the `subjectToken` is include
+// in the `audience`
 func WithTokenExchange(subjectToken string, audience []string) Option {
 	return func(c *config) {
 		c.tokenExchange = &oauth.TokenExchangeInfo{

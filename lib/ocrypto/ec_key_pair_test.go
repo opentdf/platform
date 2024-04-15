@@ -2,29 +2,23 @@ package ocrypto
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestECKeyPair(t *testing.T) {
 	for _, modeGood := range []ECCMode{ECCModeSecp256r1, ECCModeSecp384r1, ECCModeSecp521r1} {
 		ecKeyPair, err := NewECKeyPair(modeGood)
-		if err != nil {
-			t.Fatalf("NewECKeyPair(%d): %v", modeGood, err)
-		}
+		require.NoError(t, err, "fail on NewECKeyPair")
 
 		_, err = ecKeyPair.PublicKeyInPemFormat()
-		if err != nil {
-			t.Fatalf("ec PublicKeyInPemFormat() error - %v", err)
-		}
+		require.NoError(t, err, "fail on PublicKeyInPemFormat")
 
 		_, err = ecKeyPair.PrivateKeyInPemFormat()
-		if err != nil {
-			t.Fatalf("ec PrivateKeyInPemFormat() error - %v", err)
-		}
+		require.NoError(t, err, "fail on PrivateKeyInPemFormat")
 
 		keySize, err := ecKeyPair.KeySize()
-		if err != nil {
-			t.Fatalf("ec keysize error - %v", err)
-		}
+		require.NoError(t, err, "fail on KeySize")
 
 		// Set expected size based on mode
 		var size int

@@ -211,8 +211,6 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 	switch {
 	case strings.HasPrefix(header[0], "DPoP "):
 		tokenRaw = strings.TrimPrefix(header[0], "DPoP ")
-	case strings.HasPrefix(header[0], "Bearer "):
-		tokenRaw = strings.TrimPrefix(header[0], "Bearer ")
 	default:
 		return nil, status.Error(codes.Unauthenticated, "not of type dpop")
 	}

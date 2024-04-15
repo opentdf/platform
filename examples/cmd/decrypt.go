@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
@@ -47,13 +45,12 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	buf := new(strings.Builder)
-	_, err = io.Copy(buf, tdfreader)
+
+	//Print decrypted string
+	_, err = io.Copy(os.Stdout, tdfreader)
 	if err != nil && err != io.EOF {
 		return err
 	}
 
-	//Print decrypted string
-	fmt.Println(buf.String())
 	return nil
 }

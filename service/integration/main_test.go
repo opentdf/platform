@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -40,7 +39,7 @@ const note = `
 ====================================================================================`
 
 func init() {
-	fmt.Println(note)
+	os.Stderr.Write([]byte(note))
 }
 
 func TestMain(m *testing.M) {

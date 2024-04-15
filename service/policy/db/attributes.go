@@ -45,8 +45,7 @@ func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 		value := &policy.Value{}
 		err := protojson.Unmarshal(r, value)
 		if err != nil {
-			fmt.Println("error unmarshaling a value: ", err, string(r))
-			return nil, err
+			return nil, fmt.Errorf("error unmarshaling a value: %w", err)
 		}
 		values = append(values, value)
 	}

@@ -91,7 +91,11 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
 	if config.Auth.Enabled {
 		slog.Info("authentication enabled")
-		authN, err = auth.NewAuthenticator(config.Auth.AuthNConfig, d)
+		authN, err = auth.NewAuthenticator(
+			context.Background(),
+			config.Auth.AuthNConfig,
+			d,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}

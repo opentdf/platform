@@ -214,7 +214,7 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 	case strings.HasPrefix(header[0], "Bearer "):
 		tokenRaw = strings.TrimPrefix(header[0], "Bearer ")
 	default:
-		return nil, status.Error(codes.Unauthenticated, "not of type bearer or dpop")
+		return nil, status.Error(codes.Unauthenticated, "not of type dpop")
 	}
 
 	token, err := jwt.ParseInsecure([]byte(tokenRaw))

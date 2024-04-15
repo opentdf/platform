@@ -377,3 +377,61 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		})
 	}
 }
+
+func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
+	ctx := context.Background()
+	key, err := jwk.FromRaw([]byte("bad key"))
+	require.NoError(t, err, "couldn't get JWK from key")
+
+	err = key.Set(jwk.AlgorithmKey, jwa.NoSignature)
+	require.NoError(t, err, "failed to set algorithm key")
+	ctx = auth.ContextWithJWK(ctx, key)
+
+	md := metadata.New(map[string]string{"token": string(jwtWrongKey(t))})
+	ctx = metadata.NewIncomingContext(ctx, md)
+
+	verified, err := verifySignedRequestToken(
+		ctx,
+		&kaspb.RewrapRequest{
+			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t))),
+		},
+	)
+	require.Error(t, err)
+	require.Nil(t, verified)
+}
+
+func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
+	ctx := context.Background()
+	_, err := getEntityInfo(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "missing metadata")
+}
+
+func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T) {
+	ctx := context.Background()
+	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"token": "test"}))
+
+	_, err := getEntityInfo(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "missing authorization header")
+}
+
+func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T) {
+	ctx := context.Background()
+	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"authorization": "pop test"}))
+
+	_, err := getEntityInfo(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not of type dpop")
+}
+
+func Test_GetEntityInfo_When_Authorization_MD_Valid_Expect_Success(t *testing.T) {
+	ctx := context.Background()
+	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"authorization": "DPoP eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiY2xpZW50X2lkIjoib3BlbnRkZiIsIm5hbWUiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.qB9V3yqkvkrJgGPWouXGwhHYtd7ZqYydktH8AZ7ETKQ"}))
+
+	entity, err := getEntityInfo(ctx)
+	require.NoError(t, err)
+
+	assert.Equal(t, "1234567890", entity.EntityID)
+	assert.Equal(t, "opentdf", entity.ClientID)
+}

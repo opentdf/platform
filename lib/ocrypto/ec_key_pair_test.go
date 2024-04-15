@@ -49,7 +49,7 @@ func TestECKeyPair(t *testing.T) {
 	}
 
 	// Fail case
-	emptyECKeyPair := EcKeyPair{}
+	emptyECKeyPair := ECKeyPair{}
 
 	_, err := emptyECKeyPair.PrivateKeyInPemFormat()
 	if err == nil {

@@ -133,7 +133,12 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 			c.scopes,
 		)
 	} else {
-		ts, err = NewIDPTokenExchangeTokenSource(*c.tokenExchange, *c.clientCredentials, c.tokenEndpoint, c.scopes)
+		ts, err = NewIDPTokenExchangeTokenSource(
+			*c.tokenExchange,
+			*c.clientCredentials,
+			c.tokenEndpoint,
+			c.scopes,
+		)
 	}
 
 	return ts, err

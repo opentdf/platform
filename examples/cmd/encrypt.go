@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
@@ -32,7 +33,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
 		sdk.WithInsecureConn(),
-		sdk.WithClientCredentials("opentdf", "secret", nil),
+		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)
 	if err != nil {
@@ -46,10 +47,11 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	defer tdfFile.Close()
 
 	tdf, err := client.CreateTDF(tdfFile, strReader,
-		//sdk.WithDataAttributes("https://example.com/attributes/1", "https://example.com/attributes/2"),
+		//sdk.WithDataAttributes("https://example.com/attr/attr1/value/value1"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				URL:       "http://localhost:8080",
+				// examples assume unsecure http
+				URL:       fmt.Sprintf("http://%s", cmd.Flag("platformEndpoint").Value.String()),
 				PublicKey: "",
 			}))
 	if err != nil {

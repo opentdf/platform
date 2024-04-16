@@ -15,20 +15,41 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"golang.org/x/oauth2"
+)
+
+const (
+	tokenExpirationBuffer = 10 * time.Second
 )
 
 type ClientCredentials struct {
 	ClientAuth interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
-	ClientId   string
+	ClientID   string
+}
+
+type Token struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int64  `json:"expires_in,omitempty"`
+	Scope       string `json:"scope,omitempty"`
+	received    time.Time
+}
+
+func (t Token) Expired() bool {
+	if t.ExpiresIn == 0 {
+		return false
+	}
+
+	expirationTime := t.received.Add(time.Second * time.Duration(t.ExpiresIn))
+
+	return time.Now().After(expirationTime.Add(-tokenExpirationBuffer))
 }
 
 func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
-	req, err := http.NewRequest("POST", tokenEndpoint, nil)
+	req, err := http.NewRequest(http.MethodPost, tokenEndpoint, nil) //nolint: noctx // TODO(#455): AccessToken methods should take contexts
 	if err != nil {
 		return nil, err
 	}
-	dpop, err := getDPoPAssertion(*privateJWK, "POST", tokenEndpoint, dpopNonce)
+	dpop, err := getDPoPAssertion(*privateJWK, http.MethodPost, tokenEndpoint, dpopNonce)
 	if err != nil {
 		return nil, err
 	}
@@ -38,16 +59,16 @@ func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredenti
 
 	formData := url.Values{}
 	formData.Set("grant_type", "client_credentials")
-	formData.Set("client_id", clientCredentials.ClientId)
+	formData.Set("client_id", clientCredentials.ClientID)
 	if len(scopes) > 0 {
 		formData.Set("scope", strings.Join(scopes, " "))
 	}
 
 	switch ca := clientCredentials.ClientAuth.(type) {
 	case string:
-		req.SetBasicAuth(clientCredentials.ClientId, string(ca))
+		req.SetBasicAuth(clientCredentials.ClientID, ca)
 	case jwk.Key:
-		signedToken, err := getSignedToken(clientCredentials.ClientId, tokenEndpoint, ca)
+		signedToken, err := getSignedToken(clientCredentials.ClientID, tokenEndpoint, ca)
 		if err != nil {
 			return nil, fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
 		}
@@ -63,12 +84,14 @@ func getRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredenti
 }
 
 func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error) {
+	const tokenExpiration = 5 * time.Minute
+
 	tok, err := jwt.NewBuilder().
 		Issuer(clientID).
 		Subject(clientID).
 		Audience([]string{tokenEndpoint}).
 		IssuedAt(time.Now()).
-		Expiration(time.Now().Add(5 * time.Minute)).
+		Expiration(time.Now().Add(tokenExpiration)).
 		JwtID(uuid.NewString()).
 		Build()
 	if err != nil {
@@ -96,7 +119,7 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 // this misses the flow where the Authorization server can tell us the next nonce to use.
 // missing this flow costs us a bit in efficiency (a round trip per access token) but this is
 // still correct because
-func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*oauth2.Token, error) {
+func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
 	req, err := getRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
 	if err != nil {
 		return nil, err
@@ -128,7 +151,7 @@ func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials Cli
 	return processResponse(resp)
 }
 
-func processResponse(resp *http.Response) (*oauth2.Token, error) {
+func processResponse(resp *http.Response) (*Token, error) {
 	respBytes, err := io.ReadAll(resp.Body)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -139,10 +162,12 @@ func processResponse(resp *http.Response) (*oauth2.Token, error) {
 		return nil, fmt.Errorf("error reading bytes from response: %w", err)
 	}
 
-	var token *oauth2.Token
+	var token *Token
 	if err := json.Unmarshal(respBytes, &token); err != nil {
 		return nil, fmt.Errorf("error unmarshaling token from response: %w", err)
 	}
+
+	token.received = time.Now()
 
 	return token, nil
 }
@@ -150,6 +175,8 @@ func processResponse(resp *http.Response) (*oauth2.Token, error) {
 func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce string) (string, error) {
 	slog.Debug("Building DPoP Proof")
 	publicKey, err := jwk.PublicKeyOf(dpopJWK)
+	const expirationTime = 5 * time.Minute
+
 	if err != nil {
 		panic(err)
 	}
@@ -159,7 +186,7 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 		Claim("htm", method).
 		Claim("htu", endpoint).
 		Claim("iat", time.Now().Unix()).
-		Claim("exp", time.Now().Add(5*time.Minute).Unix())
+		Claim("exp", time.Now().Add(expirationTime).Unix())
 
 	if nonce != "" {
 		tokenBuilder.Claim("nonce", nonce)

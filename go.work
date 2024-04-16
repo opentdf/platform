@@ -1,0 +1,9 @@
+go 1.21.9
+
+use (
+	./examples
+	./lib/ocrypto
+	./protocol/go
+	./sdk
+	./service
+)

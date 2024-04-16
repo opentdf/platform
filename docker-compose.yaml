@@ -1,7 +1,7 @@
 services:
   keycloak:
-    #image: ghcr.io/opentdf/keycloak:21.1.2-1.4.2
-    image: quay.io/keycloak/keycloak:latest
+    # This is kc 24.0.1 with opentdf protocol mapper on board
+    image: ghcr.io/opentdf/keycloak:sha-8a6d35a
     restart: always
     command: ["start-dev"]
     environment:
@@ -31,7 +31,7 @@ services:
       retries: 3
       start_period: 2m
   keycloakdb:
-    image: postgres
+    image: postgres:15-alpine
     restart: always
     user: postgres
     environment:
@@ -44,7 +44,7 @@ services:
       timeout: 5s
       retries: 10
   opentdfdb:
-    image: public.ecr.aws/docker/library/postgres:15-alpine
+    image: postgres:15-alpine
     restart: always
     user: postgres
     environment:

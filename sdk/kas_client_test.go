@@ -2,42 +2,34 @@ package sdk
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
+
+	"google.golang.org/grpc"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/sdk/internal/crypto"
 )
 
 type FakeAccessTokenSource struct {
 	dpopKey        jwk.Key
-	asymDecryption crypto.AsymDecryption
+	asymDecryption ocrypto.AsymDecryption
 	accessToken    string
 }
 
 func (fake FakeAccessTokenSource) AccessToken() (auth.AccessToken, error) {
 	return auth.AccessToken(fake.accessToken), nil
 }
-func (fake FakeAccessTokenSource) DecryptWithDPoPKey(encrypted []byte) ([]byte, error) {
-	return fake.asymDecryption.Decrypt(encrypted)
-}
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(fake.dpopKey)
 }
-func (fake FakeAccessTokenSource) DPoPPublicKeyPEM() string {
-	return "this is the PEM"
-}
-func (fake FakeAccessTokenSource) RefreshAccessToken() error {
-	return errors.New("can't refresh this one")
-}
 
 func getTokenSource(t *testing.T) FakeAccessTokenSource {
-	dpopKey, _ := crypto.NewRSAKeyPair(2048)
+	dpopKey, _ := ocrypto.NewRSAKeyPair(2048)
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
-	decryption, _ := crypto.NewAsymDecryption(dpopPEM)
+	decryption, _ := ocrypto.NewAsymDecryption(dpopPEM)
 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
 	if err != nil {
 		t.Fatalf("error creating JWK: %v", err)
@@ -55,8 +47,13 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 }
 
 func TestCreatingRequest(t *testing.T) {
+	var dialOption []grpc.DialOption
 	tokenSource := getTokenSource(t)
-	client := KASClient{accessTokenSource: tokenSource}
+	client, err := newKASClient(dialOption, tokenSource)
+	if err != nil {
+		t.Fatalf("error setting KASClient: %v", err)
+	}
+
 	keyAccess := KeyAccess{
 		KeyType:           "type1",
 		KasURL:            "https://kas.example.org",
@@ -71,7 +68,7 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("failed to create a rewrap request: %v", err)
 	}
 
-	if req.SignedRequestToken == "" {
+	if req.GetSignedRequestToken() == "" {
 		t.Fatalf("didn't produce a signed request token")
 	}
 
@@ -94,9 +91,11 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("error unmarshaling request body: %v", err)
 	}
 
-	if requestBody["clientPublicKey"] != "this is the PEM" {
-		t.Fatalf("incorrect public key included")
+	_, err = ocrypto.NewAsymEncryption(requestBody["clientPublicKey"].(string))
+	if err != nil {
+		t.Fatalf("NewAsymEncryption failed, incorrect public key include: %v", err)
 	}
+
 	if requestBody["policy"] != "a policy" {
 		t.Fatalf("incorrect policy")
 	}

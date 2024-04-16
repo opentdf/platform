@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -17,8 +18,9 @@ var (
 	badPlatformEndpoint  = "localhost:9999"
 )
 
-func GetMethods(i interface{}) (m []string) {
+func GetMethods(i interface{}) []string {
 	r := reflect.TypeOf(i)
+	m := make([]string, 0)
 	for i := 0; i < r.NumMethod(); i++ {
 		m = append(m, r.Method(i).Name)
 	}
@@ -30,11 +32,8 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, sdk)
-	if t.Failed() {
-		return
-	}
+	require.NoError(t, err)
+	require.NotNil(t, sdk)
 
 	// check if the clients are available
 	if sdk.Attributes == nil {
@@ -55,7 +54,7 @@ func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	// When
 	sdk, err := sdk.New(goodPlatformEndpoint)
 	// Then
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, sdk)
 }
 
@@ -64,10 +63,8 @@ func TestNew_ShouldCloseConnections(t *testing.T) {
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
-	assert.NoError(t, err)
-	if !t.Failed() {
-		assert.NoError(t, sdk.Close())
-	}
+	require.NoError(t, err)
+	require.NoError(t, sdk.Close())
 }
 
 func TestNew_ShouldHaveSameMethods(t *testing.T) {

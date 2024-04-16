@@ -3,7 +3,6 @@ package cmd
 import (
 	"io"
 	"os"
-	"strings"
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
@@ -29,7 +28,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	// Create new client
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
 		sdk.WithInsecureConn(),
-		sdk.WithClientCredentials("opentdf", "secret", nil),
+		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)
 	if err != nil {
@@ -46,13 +45,12 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	buf := new(strings.Builder)
-	_, err = io.Copy(buf, tdfreader)
+
+	//Print decrypted string
+	_, err = io.Copy(os.Stdout, tdfreader)
 	if err != nil && err != io.EOF {
 		return err
 	}
 
-	//Print decrypted string
-	cmd.Println(buf.String())
 	return nil
 }

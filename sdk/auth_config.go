@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/opentdf/platform/sdk/internal/crypto"
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 type AuthConfig struct {
@@ -35,38 +35,38 @@ type rewrapJWTClaims struct {
 
 // NewAuthConfig Create a new instance of authConfig
 func NewAuthConfig() (*AuthConfig, error) {
-	rsaKeyPair, err := crypto.NewRSAKeyPair(tdf3KeySize)
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
-		return nil, fmt.Errorf("crypto.NewRSAKeyPair failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
 	}
 
 	publicKey, err := rsaKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("crypto.PublicKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
 	privateKey, err := rsaKeyPair.PrivateKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("crypto.PrivateKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
 	return &AuthConfig{dpopPublicKeyPEM: publicKey, dpopPrivateKeyPEM: privateKey}, nil
 }
 
-func NewOIDCAuthConfig(ctx context.Context, host, realm, clientId, clientSecret, subjectToken string) (*AuthConfig, error) {
+func NewOIDCAuthConfig(ctx context.Context, host, realm, clientID, clientSecret, subjectToken string) (*AuthConfig, error) {
 	authConfig, err := NewAuthConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	authConfig.accessToken, err = authConfig.fetchOIDCAccessToken(ctx, host, realm, clientId, clientSecret, subjectToken)
+	authConfig.accessToken, err = authConfig.fetchOIDCAccessToken(ctx, host, realm, clientID, clientSecret, subjectToken)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to fetch acces token:%w", err)
+		return nil, fmt.Errorf("failed to fetch acces token: %w", err)
 	}
 	return authConfig, nil
 }
-func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clientId, clientSecret, subjectToken string) (string, error) {
-	data := url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:token-exchange"}, "client_id": {clientId}, "client_secret": {clientSecret}, "subject_token": {subjectToken}, "requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"}}
+func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clientID, clientSecret, subjectToken string) (string, error) {
+	data := url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:token-exchange"}, "client_id": {clientID}, "client_secret": {clientSecret}, "subject_token": {subjectToken}, "requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"}}
 
 	body := strings.NewReader(data.Encode())
 	kcURL := fmt.Sprintf("%s/auth/realms/%s/protocol/openid-connect/token", host, realm)
@@ -77,7 +77,7 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	certB64 := crypto.Base64Encode([]byte(a.dpopPublicKeyPEM))
+	certB64 := ocrypto.Base64Encode([]byte(a.dpopPublicKeyPEM))
 	req.Header.Set("X-VirtruPubKey", string(certB64))
 
 	client := &http.Client{}
@@ -85,6 +85,8 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 	if err != nil {
 		return "", fmt.Errorf("error making request to IdP for token exchange: %w", err)
 	}
+	defer resp.Body.Close()
+
 	type keycloakResponsePayload struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`
@@ -211,19 +213,19 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 		return nil, fmt.Errorf("entityWrappedKey is missing in key access object")
 	}
 
-	asymDecrypt, err := crypto.NewAsymDecryption(clientPrivateKey)
+	asymDecrypt, err := ocrypto.NewAsymDecryption(clientPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAsymDecryption failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
 	}
 
-	entityWrappedKeyDecoded, err := crypto.Base64Decode([]byte(fmt.Sprintf("%v", entityWrappedKey)))
+	entityWrappedKeyDecoded, err := ocrypto.Base64Decode([]byte(fmt.Sprintf("%v", entityWrappedKey)))
 	if err != nil {
-		return nil, fmt.Errorf("crypto.Base64Decode failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.Base64Decode failed: %w", err)
 	}
 
 	key, err := asymDecrypt.Decrypt(entityWrappedKeyDecoded)
 	if err != nil {
-		return nil, fmt.Errorf("crypto.Decrypt failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.Decrypt failed: %w", err)
 	}
 
 	return key, nil
@@ -257,6 +259,10 @@ func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
 			slog.Error("Fail to close HTTP response")
 		}
 	}()
+	if err != nil {
+		slog.Error("failed http request")
+		return "", fmt.Errorf("client.Do error: %w", err)
+	}
 	if response.StatusCode != kHTTPOk {
 		return "", fmt.Errorf("client.Do failed: %w", err)
 	}

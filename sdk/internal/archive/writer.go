@@ -1,3 +1,4 @@
+//nolint:gomnd // pkzip magics and lengths are inlined for clarity
 package archive
 
 import (
@@ -108,7 +109,7 @@ func (writer *Writer) AddData(data []byte) error {
 	localFileHeader := LocalFileHeader{}
 	fileTime, fileDate := writer.getTimeDateUnMSDosFormat()
 
-	if writer.writeState == Initial {
+	if writer.writeState == Initial { //nolint:nestif // pkzip is complicated
 		localFileHeader.Signature = fileHeaderSignature
 		localFileHeader.Version = zipVersion
 		// since payload is added by chunks we set General purpose bit flag to 0x08
@@ -195,11 +196,10 @@ func (writer *Writer) AddData(data []byte) error {
 		writer.FileInfo.offset = int64(writer.currentOffset)
 		writer.FileInfo.flag = 0x08
 
-		newFileInfoEntries := append(writer.fileInfoEntries, writer.FileInfo)
-		writer.fileInfoEntries = newFileInfoEntries
+		writer.fileInfoEntries = append(writer.fileInfoEntries, writer.FileInfo)
 	}
 
-	if writer.writeState == Finished {
+	if writer.writeState == Finished { //nolint:nestif // pkzip is complicated
 		if writer.isZip64 {
 			zip64DataDescriptor := Zip64DataDescriptor{}
 			zip64DataDescriptor.Signature = dataDescriptorSignature
@@ -452,10 +452,18 @@ func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
 }
 
 // GetTimeDateUnMSDosFormat Get the time and date in MSDOS format.
+const defaultSecondValue = 29
+
+const monthShift = 5
+
+const baseYear = 80
+
+const halfSecond = 2
+
 func (writer *Writer) getTimeDateUnMSDosFormat() (uint16, uint16) {
 	t := time.Now().UTC()
-	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/2), 29))
-	dateInDos := (t.Year()-80)<<9 | int((t.Month()+1)<<5) | t.Day()
+	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/halfSecond), float64(defaultSecondValue)))
+	dateInDos := (t.Year()-baseYear)<<9 | int((t.Month()+1)<<monthShift) | t.Day()
 	return uint16(timeInDos), uint16(dateInDos)
 }
 

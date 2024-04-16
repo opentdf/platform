@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"net"
+	"net/http"
 	"slices"
 	"testing"
 
@@ -96,7 +97,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 
 	parsedToken, _ := jwt.Parse([]byte(dpopToken), jwt.WithVerify(false))
 
-	if method, _ := parsedToken.Get("htm"); method != "POST" {
+	if method, _ := parsedToken.Get("htm"); method != http.MethodPost {
 		t.Fatalf("we got a bad method: %v", method)
 	}
 
@@ -131,6 +132,7 @@ func Test_InvalidCredentials_StillSendMessage(t *testing.T) {
 type FakeAccessServiceServer struct {
 	accessToken []string
 	dpopToken   []string
+	dpopKey     jwk.Key
 	kas.UnimplementedAccessServiceServer
 }
 
@@ -139,7 +141,11 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 		f.accessToken = md.Get("authorization")
 		f.dpopToken = md.Get("dpop")
 	}
-
+	var ok bool
+	f.dpopKey, ok = ctx.Value("dpop-jwk").(jwk.Key)
+	if !ok {
+		f.dpopKey = nil
+	}
 	return &kas.InfoResponse{}, nil
 }
 func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
@@ -160,22 +166,12 @@ type FakeTokenSource struct {
 func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
 	return AccessToken(fts.accessToken), nil
 }
-func (*FakeTokenSource) DecryptWithDPoPKey([]byte) ([]byte, error) {
-	return nil, nil
-}
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	if fts.key == nil {
 		return nil, errors.New("no such key")
 	}
 	return f(fts.key)
 }
-func (*FakeTokenSource) DPoPPublicKeyPEM() string {
-	return ""
-}
-func (*FakeTokenSource) RefreshAccessToken() error {
-	return nil
-}
-
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024

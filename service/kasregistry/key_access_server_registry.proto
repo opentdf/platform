@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package kasregistry;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "google/api/annotations.proto";
+
+/*
+   Descriptor for a KAS
+*/
+message KeyAccessServer {
+  string id = 1;
+  // Address of a KAS instance
+  string uri = 2;
+  PublicKey public_key = 3;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message PublicKey {
+  oneof public_key {
+    // kas public key url - optional since can also be retrieved via public key
+    string remote = 1 [(buf.validate.field).cel = {
+      id: "uri_format",
+      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
+    }];
+
+    // public key - optional since can also be retrieved via url
+    string local = 2;
+  }
+}
+
+message GetKeyAccessServerRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message GetKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message ListKeyAccessServersRequest {}
+message ListKeyAccessServersResponse {
+  repeated KeyAccessServer key_access_servers = 1;
+}
+
+message CreateKeyAccessServerRequest {
+  // Required
+  string uri = 1 [(buf.validate.field).required = true];
+  PublicKey public_key = 2 [(buf.validate.field).required = true];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message UpdateKeyAccessServerRequest {
+  // Required
+  string id = 1 [(buf.validate.field).required = true];
+  string uri = 2;
+  PublicKey public_key = 3;
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message DeleteKeyAccessServerRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message DeleteKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+service KeyAccessServerRegistryService {
+  rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
+    option (google.api.http) = {get: "/key-access-servers"};
+  }
+
+  rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
+    option (google.api.http) = {get: "/key-access-servers/{id}"};
+  }
+
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
+    option (google.api.http) = {
+      post: "/key-access-servers"
+      body: "*"
+    };
+  }
+
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
+    option (google.api.http) = {
+      patch: "/key-access-servers/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
+    option (google.api.http) = {delete: "/key-access-servers/{id}"};
+  }
+}

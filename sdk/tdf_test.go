@@ -481,60 +481,6 @@ func (s *TDFSuite) Test_TDF() {
 	}
 }
 
-/* func BenchmarkTDF(b *testing.B) {
-	s := new(TDFSuite)
-	s.SetT(&testing.T{})
-	s.SetupSuite()
-	b.StartTimer()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		benchmarkReader(s.serverURL, s.sdk, b)
-	}
-	b.StopTimer()
-	s.TearDownSuite()
-}
-
-func benchmarkReader(serverURL string, sdk *SDK, b *testing.B) {
-	test := tdfTest{
-		fileSize: 10 * oneMB,
-		kasInfoList: []KASInfo{
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: mockKasPublicKey,
-			},
-		},
-	}
-
-	kasInfoList := test.kasInfoList
-	for index := range kasInfoList {
-		kasInfoList[index].URL = serverURL
-		kasInfoList[index].PublicKey = ""
-	}
-
-	// encrypt
-	// create a buffer and write with 0xff
-	inBuf := make([]byte, test.fileSize)
-	for index := 0; index < len(inBuf); index++ {
-		inBuf[index] = char
-	}
-
-	tdfBuf := bytes.Buffer{}
-	readSeeker := bytes.NewReader(inBuf)
-	_, err := sdk.CreateTDF(io.Writer(&tdfBuf), readSeeker, WithKasInformation(kasInfoList...))
-	require.NoError(b, err)
-
-	readSeeker = bytes.NewReader(tdfBuf.Bytes())
-	r, err := sdk.LoadTDF(readSeeker)
-	require.NoError(b, err)
-
-	outBuf := bytes.Buffer{}
-	for i := 0; i < b.N; i++ {
-		n, err := r.WriteTo(io.Writer(&outBuf))
-		require.NoError(b, err)
-		assert.Equal(b, inBuf, outBuf.Bytes()[:n])
-	}
-}
-*/
 // create tdf
 func testEncrypt(t *testing.T, sdk *SDK, kasInfoList []KASInfo, plainTextFilename, tdfFileName string, test tdfTest) {
 	// create a plain text file

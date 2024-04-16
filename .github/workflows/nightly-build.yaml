@@ -6,6 +6,7 @@ on:
 
 jobs:
   nightly:
+    if: (github.event_name == 'schedule' && github.repository == 'opentdf/platform')
     name: Nightly Container Build
     runs-on: ubuntu-22.04
     permissions:

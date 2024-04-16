@@ -5,6 +5,8 @@ import (
 	"encoding/gob"
 	"os"
 	"testing"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 // nanotdfEqual compares two nanoTdf structures for equality.
@@ -103,11 +105,11 @@ func TestReadNanoTDFHeader(t *testing.T) {
 		binding: &bindingCfg{
 			useEcdsaBinding: true,
 			padding:         0,
-			bindingBody:     eccModeSecp256r1,
+			bindingBody:     ocrypto.ECCModeSecp256r1,
 		},
 		sigCfg: &signatureConfig{
 			hasSignature:  true,
-			signatureMode: eccModeSecp256r1,
+			signatureMode: ocrypto.ECCModeSecp256r1,
 			cipher:        cipherModeAes256gcm64Bit,
 		},
 		policy: &policyInfo{

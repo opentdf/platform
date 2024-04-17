@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/internal"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -127,13 +128,13 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	var ts auth.AccessTokenSource
 	var err error
 	if c.tokenExchange == nil {
-		ts, err = NewIDPAccessTokenSource(
+		ts, err = internal.NewIDPAccessTokenSource(
 			*c.clientCredentials,
 			c.tokenEndpoint,
 			c.scopes,
 		)
 	} else {
-		ts, err = NewIDPTokenExchangeTokenSource(
+		ts, err = internal.NewIDPTokenExchangeTokenSource(
 			*c.tokenExchange,
 			*c.clientCredentials,
 			c.tokenEndpoint,

@@ -36,6 +36,9 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if subjectToken == "" {
 		options = append(options, sdk.WithClientCredentials("opentdf-sdk", "secret", nil))
 	} else {
+		// the subjectToken must be a token obtained using `opentdf-sdk`. we have a policy that
+		// allows `opentdf` to exchange tokens. `opentdf-sdk` must be in the audience for the
+		// token exchange
 		options = append(options,
 			sdk.WithClientCredentials("opentdf", "secret", nil),
 			sdk.WithTokenExchange(subjectToken, "opentdf-sdk"),

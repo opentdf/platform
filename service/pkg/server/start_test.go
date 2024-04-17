@@ -80,7 +80,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 				Issuer:   fmt.Sprintf("http://%s/auth", host),
 				Audience: "opentdf",
 			},
-			PublicRoutes: []string{"/testpath*"},
+			PublicRoutes: []string{"/testpath/*"},
 		},
 		Port: 43481,
 	}, d)

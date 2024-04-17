@@ -10,13 +10,6 @@ require (
 	google.golang.org/protobuf v1.33.0
 )
 
-replace (
-	github.com/opentdf/platform/lib/fixtures => ../lib/fixtures
-	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
-	github.com/opentdf/platform/protocol/go => ../protocol/go
-	github.com/opentdf/platform/sdk => ../sdk
-)
-
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.33.0-20240221180331-f05a6f4403ce.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect

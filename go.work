@@ -1,9 +1,11 @@
-go 1.21.9
+go 1.22
+
+toolchain go1.22.2
 
 use (
 	./examples
+	./lib/fixtures
 	./lib/ocrypto
-        ./lib/fixtures
 	./protocol/go
 	./sdk
 	./service

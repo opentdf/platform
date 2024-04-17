@@ -2,8 +2,6 @@ module github.com/opentdf/platform/sdk
 
 go 1.21.9
 
-toolchain go1.22.2
-
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.6.0

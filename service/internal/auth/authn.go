@@ -135,7 +135,7 @@ type dpopInfo struct {
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.ContainsFunc(a.publicRoutes[:], a.isPublicRoute(r.URL.Path)) {
+		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -191,7 +191,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
-	if slices.ContainsFunc(a.publicRoutes[:], a.isPublicRoute(info.FullMethod)) {
+	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) {
 		return handler(ctx, req)
 	}
 

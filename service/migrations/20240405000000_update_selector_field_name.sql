@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-UPDATE opentdf.subject_condition_set
+UPDATE subject_condition_set
 SET condition = jsonb_set(
     condition,
     '{0,condition_groups}',
@@ -30,7 +30,7 @@ WHERE condition IS NOT NULL;
 
 -- +goose Down
 -- +goose StatementBegin
-UPDATE opentdf.subject_condition_set
+UPDATE subject_condition_set
 SET condition = jsonb_set(
     condition,
     '{0,condition_groups}',

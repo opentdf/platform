@@ -6,6 +6,7 @@ WORKDIR /app
 COPY protocol/ protocol/
 COPY sdk/ sdk/
 COPY lib/ocrypto lib/ocrypto
+COPY lib/fixtures lib/fixtures
 COPY service/ service/
 COPY examples/ examples/
 COPY go.work go.work.sum ./

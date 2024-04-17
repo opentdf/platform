@@ -16,6 +16,7 @@ func init() {
 		Args:  cobra.MinimumNArgs(1),
 	}
 	ExamplesCmd.AddCommand(decryptCmd)
+	decryptCmd.Flags().String("subjectToken", "", "the subject token to use for token exchange")
 }
 
 func decrypt(cmd *cobra.Command, args []string) error {
@@ -24,13 +25,25 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	tdfFile := args[0]
+	options := []sdk.Option{
+		sdk.WithInsecureConn(),
+		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
+	}
+	subjectToken, err := cmd.Flags().GetString("subjectToken")
+	if err != nil {
+		return err
+	}
+	if subjectToken == "" {
+		options = append(options, sdk.WithClientCredentials("opentdf-sdk", "secret", nil))
+	} else {
+		options = append(options,
+			sdk.WithClientCredentials("opentdf", "secret", nil),
+			sdk.WithTokenExchange(subjectToken, "opentdf-sdk"),
+		)
+	}
 
 	// Create new client
-	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
-		sdk.WithInsecureConn(),
-		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
-	)
+	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint, options...)
 	if err != nil {
 		return err
 	}

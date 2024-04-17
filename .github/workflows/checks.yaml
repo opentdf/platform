@@ -100,7 +100,7 @@ jobs:
       - name: Install softHSM
         if: matrix.crypto == 'hsm'
         run: |-
-          sudo apt-get install -y softhsm opensc openssl
+          sudo apt-get install -y softhsm opensc openssl jq
           sudo chmod +x /etc/softhsm
           sudo chmod +r /etc/softhsm/softhsm2.conf
           mkdir -p $(pwd)/.tmp/tokens
@@ -134,6 +134,13 @@ jobs:
       - run: go run ./examples encrypt "Hello Virtru"
       - run: go run ./examples decrypt sensitive.txt.tdf
       - run: go run ./examples decrypt sensitive.txt.tdf | grep "Hello Virtru"
+      - run: |
+        subject_token=$(curl -s -u opentdf-sdk:secret \
+          -H "Accept: application/json" \
+          -X POST \
+          -d 'grant_type=client_credentials&client_id=opentdf-sdk' \
+          http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token | jq -r .access_token)
+        go run ./examples decrypt --subjectToken="${subject_token}" sensitive.txt.tdf | grep "Hello Virtru"
 
   image:
     name: image build

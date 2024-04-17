@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 )
 
@@ -27,6 +28,7 @@ type OIDCConfiguration struct {
 
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided
 func DiscoverOIDCConfiguration(ctx context.Context, issuer string) (*OIDCConfiguration, error) {
+	slog.DebugContext(ctx, "discovering openid configuration", slog.String("issuer", issuer))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s", issuer, DiscoveryPath), nil)
 	if err != nil {
 		return nil, err

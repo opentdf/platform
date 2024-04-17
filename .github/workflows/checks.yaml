@@ -139,7 +139,7 @@ jobs:
             -H "Accept: application/json" \
             -X POST \
             -d 'grant_type=client_credentials&client_id=opentdf-sdk' \
-            http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token | jq -r .access_token)
+            http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token | jq -r .access_token) &&
           go run ./examples decrypt --subjectToken="${subject_token}" sensitive.txt.tdf | grep "Hello Virtru"
 
   image:

@@ -112,29 +112,36 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
-func buildIDPTokenSource(c *config) (*IDPAccessTokenSource, error) {
-	if (c.clientCredentials.ClientID == "") != (c.clientCredentials.ClientAuth == nil) {
-		return nil,
-			errors.New("if specifying client credentials must specify both client id and authentication secret")
-	}
-	if (c.clientCredentials.ClientID == "") != (c.tokenEndpoint == "") {
+func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
+	if (c.clientCredentials == nil) != (c.tokenEndpoint == "") {
 		return nil, errors.New("either both or neither of client credentials and token endpoint must be specified")
 	}
 
 	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
 	// any just return a KAS client that can only get public keys
-	if c.clientCredentials.ClientID == "" {
+	if c.clientCredentials == nil {
 		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
-	ts, err := NewIDPAccessTokenSource(
-		c.clientCredentials,
-		c.tokenEndpoint,
-		c.scopes,
-	)
+	var ts auth.AccessTokenSource
+	var err error
+	if c.tokenExchange == nil {
+		ts, err = NewIDPAccessTokenSource(
+			*c.clientCredentials,
+			c.tokenEndpoint,
+			c.scopes,
+		)
+	} else {
+		ts, err = NewIDPTokenExchangeTokenSource(
+			*c.tokenExchange,
+			*c.clientCredentials,
+			c.tokenEndpoint,
+			c.scopes,
+		)
+	}
 
-	return &ts, err
+	return ts, err
 }
 
 // Close closes the underlying grpc.ClientConn.
@@ -151,9 +158,4 @@ func (s SDK) Close() error {
 // Conn returns the underlying grpc.ClientConn.
 func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
-}
-
-// TokenExchange exchanges a access token for a new token. https://datatracker.ietf.org/doc/html/rfc8693
-func (s SDK) TokenExchange(_ string) (string, error) {
-	return "", nil
 }

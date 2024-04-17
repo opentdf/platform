@@ -3,6 +3,7 @@ go 1.21.9
 use (
 	./examples
 	./lib/ocrypto
+        ./lib/fixtures
 	./protocol/go
 	./sdk
 	./service

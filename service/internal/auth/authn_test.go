@@ -147,7 +147,7 @@ func (s *AuthSuite) SetupTest() {
 				Issuer:   s.server.URL,
 				Audience: "test",
 			},
-			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static*"},
+			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
 		},
 		nil)
 
@@ -558,4 +558,6 @@ func (s *AuthSuite) Test_PublicPath_Matches() {
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/")))
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2")))
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/private")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test/fail")))
+
 }

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"regexp"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -459,14 +459,12 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 
 func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
-		pattern := fmt.Sprintf("^%s$", route)
-		pattern = strings.ReplaceAll(pattern, "*", ".*")
-		matched, err := regexp.MatchString(pattern, path)
+		matched, err := filepath.Match(route, path)
 		if err != nil {
 			slog.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
 			return false
 		}
-		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.String("pattern", pattern), slog.Bool("matched", matched))
+		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
 		return matched
 	}
 }

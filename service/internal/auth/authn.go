@@ -65,12 +65,15 @@ type Authentication struct {
 	// openidConfigurations holds the openid configuration for each issuer
 	oidcConfigurations map[string]AuthNConfig
 	// Casbin enforcer
-	enforcer *Enforcer
+	enforcer    *Enforcer
+	requireDPoP bool
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg AuthNConfig, d *db.Client) (*Authentication, error) {
-	a := &Authentication{}
+	a := &Authentication{
+		requireDPoP: cfg.RequireDPoP,
+	}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	// validate the configuration
@@ -316,7 +319,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		return nil, nil, err
 	}
 
-	return accessToken, *key, nil
+	return accessToken, key, nil
 }
 
 func ContextWithJWK(ctx context.Context, key jwk.Key) context.Context {
@@ -335,7 +338,7 @@ func GetJWKFromContext(ctx context.Context) jwk.Key {
 	return nil
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (*jwk.Key, error) {
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (jwk.Key, error) {
 	if len(dpopInfo.headers) != 1 {
 		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
 	}
@@ -450,5 +453,5 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
-	return &dpopKey, nil
+	return dpopKey, nil
 }

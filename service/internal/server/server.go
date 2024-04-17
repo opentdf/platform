@@ -89,16 +89,13 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 
 	// Add authN interceptor
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
-	if config.Auth.Enabled {
-		slog.Info("authentication enabled")
-		authN, err = auth.NewAuthenticator(
-			context.Background(),
-			config.Auth.AuthNConfig,
-			d,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
-		}
+	authN, err = auth.NewAuthenticator(
+		context.Background(),
+		config.Auth.AuthNConfig,
+		d,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 	}
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
@@ -160,9 +157,7 @@ func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 
 	// Add authN interceptor
 	// TODO check if this is needed or if it is handled by gRPC
-	if c.Auth.Enabled {
-		h = a.MuxHandler(h)
-	}
+	h = a.MuxHandler(h)
 
 	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
 	h = cors.New(cors.Options{
@@ -218,10 +213,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 		slog.Warn("failed to create proto validator", slog.String("error", err.Error()))
 	}
 
-	// Add authN interceptor
-	if c.Auth.Enabled {
-		i = append(i, a.UnaryServerInterceptor)
-	}
+	i = append(i, a.UnaryServerInterceptor)
 
 	// Add tls creds if tls is not nil
 	if c.TLS.Enabled {

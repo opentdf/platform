@@ -54,7 +54,6 @@ server:
     cert: /path/to/cert
     key: /path/to/key
   auth:
-    enabled: true
     audience: https://example.com
     issuer: https://example.com
 ```

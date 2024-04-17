@@ -13,10 +13,10 @@ jobs:
         id: generate_token
         uses: actions/create-github-app-token@f2acddfb5195534d487896a656232b016a682f3c # v1.9.0
         with:
-          app-id: '${{ secrets.APP_ID }}'
-          private-key: '${{ secrets.AUTOMATION_KEY }}'
+          app-id: "${{ secrets.APP_ID }}"
+          private-key: "${{ secrets.AUTOMATION_KEY }}"
       - uses: google-github-actions/release-please-action@v4
         with:
-          token: '${{ steps.generate_token.outputs.token }}'
+          token: "${{ steps.generate_token.outputs.token }}"
           config-file: release-please.json
           manifest-file: .release-please-manifest.json

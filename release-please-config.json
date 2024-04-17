@@ -6,8 +6,18 @@
   "tag-separator": "/",
   "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
   "packages": {
-    "service": {
-      "component": "service",
+    "lib/fixtures": {
+      "component": "lib/fixtures",
+      "separate-pull-requests": true,
+      "include-component-in-tag": true
+    },
+    "lib/ocrypto": {
+      "component": "lib/ocrypto",
+      "separate-pull-requests": true,
+      "include-component-in-tag": true
+    },
+    "protocol/go": {
+      "component": "protocol/go",
       "separate-pull-requests": true,
       "include-component-in-tag": true
     },
@@ -16,13 +26,8 @@
       "separate-pull-requests": true,
       "include-component-in-tag": true
     },
-    "protocol": {
-      "component": "protocol",
-      "separate-pull-requests": true,
-      "include-component-in-tag": true
-    },
-    "lib": {
-      "component": "lib",
+    "service": {
+      "component": "service",
       "separate-pull-requests": true,
       "include-component-in-tag": true
     }

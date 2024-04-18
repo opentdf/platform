@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -51,35 +50,6 @@ func ServiceRegistrationTest() serviceregistry.Registration {
 }
 
 func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
-	discoveryURL := "not set yet"
-
-	discoveryEndpoint := httptest.NewServer(
-		http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			var resp string
-			switch req.URL.Path {
-			case "/.well-known/openid-configuration":
-				resp = `{
-					"issuer":	"https://example.com",
-					"authorization_endpoint":	"https://example.com/oauth2/v1/authorize",
-					"token_endpoint":	"https://example.com/oauth2/v1/token",
-					"userinfo_endpoint": "https://example.com/oauth2/v1/userinfo",
-					"registration_endpoint": "https://example.com/oauth2/v1/clients",
-					"jwks_uri": "` + discoveryURL + `/oauth2/v1/keys"
-				}`
-			case "/oauth2/v1/keys":
-				resp = `{
-					"keys":[{"kty":"RSA","alg":"RS256","kid":"saqvCEEc1QX1kjGRh3sf0o4bdPMiiQBVj9xYz95M-X0","use":"sig","e":"AQAB","n":"yXgJvKqNfKoOoc1KiTg8QYfAO2AA47PjHtqZFsPSh93FI3tobD52t1I9cbD7ZotIYfYmZ6KwDvtrAIMVAPKvqvVUji3xSsNQ_Vv4XRmoWwP1vgJNJxoHOyj7pfDdhjplZZaQEcEEpm_J9rXN6V2lLyL6zYLJr_SlI5JeMc8i0tigFW_yLTUpSQ_85r5fAvkr0VDeUHfonaueaFhF5r-fne-F9EZzAVZvG3P8IG8_K6NEoM6muzsplPWJ-95hheRa3Zh58vYTVHcX8DXd8rpS3laUlLuEmIVs-FlqYrIBKpP2spQYGRvf-P1wpNftMH7OTB4j6ULQjwlNRmiQ34TOhw"}]
-				}`
-			default:
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			_, _ = w.Write([]byte(resp))
-		}),
-	)
-
-	discoveryURL = discoveryEndpoint.URL
-
 	// Create new opentdf server
 	d, _ := db.NewClient(db.Config{})
 	s, err := server.NewOpenTDFServer(server.Config{
@@ -87,9 +57,9 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 			return nil
 		},
 		Auth: auth.Config{
+			Enabled: false,
 			AuthNConfig: auth.AuthNConfig{
-				Issuer:   discoveryEndpoint.URL,
-				Audience: "test",
+				Issuer: "test",
 			},
 		},
 		Port: 43481,
@@ -132,7 +102,5 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	respBody, err := io.ReadAll(resp.Body)
 
 	require.NoError(t, err)
-	// FIXME: either by adding paths that do not require authentication or by writing our own auth token
-	// assert.Equal(t, "hello world from test service!", string(respBody))
-	assert.Equal(t, "missing authorization header\n", string(respBody))
+	assert.Equal(t, "hello world from test service!", string(respBody))
 }

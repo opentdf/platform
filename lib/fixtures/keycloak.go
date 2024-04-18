@@ -721,18 +721,18 @@ func getIDOfClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.
 	return clientId, nil
 }
 
-func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientID string, targetClientId string) error {
+func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientID string, targetClientID string) error {
 	client, token, err := keycloakLogin(ctx, connectParams)
 	if err != nil {
 		return err
 	}
 	// Step 1- enable permissions for target client
-	idForTargetClientID, err := getIDOfClient(ctx, client, token, connectParams, &targetClientId)
+	idForTargetClientID, err := getIDOfClient(ctx, client, token, connectParams, &targetClientID)
 	if err != nil {
 		return err
 	}
 	enabled := true
-	mgmtPermissionsRepr, err := client.UpdateClientManagementPermissions(context.Background(), token.AccessToken,
+	mgmtPermissionsRepr, err := client.UpdateClientManagementPermissions(ctx, token.AccessToken,
 		connectParams.Realm, *idForTargetClientID,
 		gocloak.ManagementPermissionRepresentation{Enabled: &enabled})
 	if err != nil {
@@ -754,7 +754,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 
 	slog.Debug("Step 3 - Add policy for token exchange")
 	policyType := "client"
-	policyName := fmt.Sprintf("%s-%s-exchange-policy", targetClientId, startClientID)
+	policyName := fmt.Sprintf("%s-%s-exchange-policy", targetClientID, startClientID)
 	realmMgmtExchangePolicyRepresentation := gocloak.PolicyRepresentation{
 		Logic: gocloak.POSITIVE,
 		Name:  &policyName,
@@ -763,7 +763,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	policyClients := []string{startClientID}
 	realmMgmtExchangePolicyRepresentation.ClientPolicyRepresentation.Clients = &policyClients
 
-	realmMgmtPolicy, err := client.CreatePolicy(context.Background(), token.AccessToken, connectParams.Realm,
+	realmMgmtPolicy, err := client.CreatePolicy(ctx, token.AccessToken, connectParams.Realm,
 		*realmManagementClientID, realmMgmtExchangePolicyRepresentation)
 	if err != nil {
 		switch kcErrCode(err) {
@@ -779,7 +779,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	slog.Info(fmt.Sprintf("✅ Created Token Exchange Policy %s", *tokenExchangePolicyId))
 
 	slog.Debug("Step 4 - Get Token Exchange Scope Identifier")
-	resourceRep, err := client.GetResource(context.Background(), token.AccessToken, connectParams.Realm, *realmManagementClientID, *tokenExchangePolicyPermissionResourceId)
+	resourceRep, err := client.GetResource(ctx, token.AccessToken, connectParams.Realm, *realmManagementClientID, *tokenExchangePolicyPermissionResourceId)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error getting resource : %s", err))
 		return err
@@ -811,7 +811,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 		Policies:         &clientPermissionPolicies,
 		Scopes:           &clientPermissionScopes,
 	}
-	if err := client.UpdatePermissionScope(context.Background(), token.AccessToken, connectParams.Realm,
+	if err := client.UpdatePermissionScope(ctx, token.AccessToken, connectParams.Realm,
 		*realmManagementClientID, tokenExchangePolicyScopePermissionId, permissionScopePolicyRepresentation); err != nil {
 		slog.Error("Error creating permission scope : %s", err)
 		return err

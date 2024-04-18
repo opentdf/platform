@@ -96,6 +96,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
+	// FIXME: either by adding paths that do not require authentication or by writing our own auth token
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 

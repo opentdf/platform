@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/lib/fixtures
 
-go 1.21.8
+go 1.22
 
 require github.com/Nerzal/gocloak/v13 v13.9.0
 

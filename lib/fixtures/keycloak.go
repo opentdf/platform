@@ -250,11 +250,11 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create TDF Entity Resolution Client
-	realmManagementClientId, err := getIdOfClient(ctx, client, token, &kcConnectParams, &realmMangementClientName)
+	realmManagementClientID, err := getIDOfClient(ctx, client, token, &kcConnectParams, &realmMangementClientName)
 	if err != nil {
 		return err
 	}
-	clientRolesToAdd, addErr := getClientRolesByList(ctx, &kcConnectParams, client, token, *realmManagementClientId, []string{"view-clients", "query-clients", "view-users", "query-users"})
+	clientRolesToAdd, addErr := getClientRolesByList(ctx, &kcConnectParams, client, token, *realmManagementClientID, []string{"view-clients", "query-clients", "view-users", "query-users"})
 	if addErr != nil {
 		slog.Error(fmt.Sprintf("Error getting client roles : %s", err))
 		return err
@@ -267,12 +267,12 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
-	}, nil, map[string][]gocloak.Role{*realmManagementClientId: clientRolesToAdd})
+	}, nil, map[string][]gocloak.Role{*realmManagementClientID: clientRolesToAdd})
 	if err != nil {
 		return err
 	}
 
-	// opentdfSdkClientNumericId, err := getIdOfClient(ctx, client, token, &kcConnectParams, &opentdfClientId)
+	// opentdfSdkClientNumericId, err := getIDOfClient(ctx, client, token, &kcConnectParams, &opentdfClientId)
 	// if err != nil {
 	// 	slog.Error(fmt.Sprintf("Error getting the SDK id: %s", err))
 	// 	return err
@@ -356,7 +356,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				}
 				clientRoleMap := make(map[string][]gocloak.Role)
 				for clientID, roleString := range customClient.SaClientRoles {
-					longClientID, err := getIdOfClient(ctx, client, token, &kcConnectParams, &clientID)
+					longClientID, err := getIDOfClient(ctx, client, token, &kcConnectParams, &clientID)
 					if err != nil {
 						return err
 					}
@@ -423,7 +423,7 @@ func keycloakLogin(ctx context.Context, connectParams *KeycloakConnectParams) (*
 
 func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, realm gocloak.RealmRepresentation) error {
 	// Create realm, if it does not exist.
-	client, token, err := keycloakLogin(ctx, &kcConnectParams) //nolint:contextcheck // helper function just uses background
+	client, token, err := keycloakLogin(ctx, &kcConnectParams)
 	if err != nil {
 		return err
 	}
@@ -711,7 +711,7 @@ func getClientRolesByList(ctx context.Context, connectParams *KeycloakConnectPar
 	return clientRoles, getErr
 }
 
-func getIdOfClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, clientName *string) (*string, error) {
+func getIDOfClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, clientName *string) (*string, error) {
 	results, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: clientName})
 	if err != nil || len(results) == 0 {
 		slog.Error(fmt.Sprintf("Error getting realm management client: %s", err))
@@ -721,19 +721,19 @@ func getIdOfClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.
 	return clientId, nil
 }
 
-func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientId string, targetClientId string) error {
+func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientID string, targetClientId string) error {
 	client, token, err := keycloakLogin(ctx, connectParams)
 	if err != nil {
 		return err
 	}
 	// Step 1- enable permissions for target client
-	idForTargetClientId, err := getIdOfClient(ctx, client, token, connectParams, &targetClientId)
+	idForTargetClientID, err := getIDOfClient(ctx, client, token, connectParams, &targetClientId)
 	if err != nil {
 		return err
 	}
 	enabled := true
 	mgmtPermissionsRepr, err := client.UpdateClientManagementPermissions(context.Background(), token.AccessToken,
-		connectParams.Realm, *idForTargetClientId,
+		connectParams.Realm, *idForTargetClientID,
 		gocloak.ManagementPermissionRepresentation{Enabled: &enabled})
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error creating management permissions : %s", err))
@@ -746,25 +746,25 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 
 	slog.Debug("Step 2 - Get realm mgmt client id")
 	realmMangementClientName := "realm-management"
-	realmManagementClientId, err := getIdOfClient(ctx, client, token, connectParams, &realmMangementClientName)
+	realmManagementClientID, err := getIDOfClient(ctx, client, token, connectParams, &realmMangementClientName)
 	if err != nil {
 		return err
 	}
-	slog.Debug(fmt.Sprintf("%s client id=%s", realmMangementClientName, *realmManagementClientId))
+	slog.Debug(fmt.Sprintf("%s client id=%s", realmMangementClientName, *realmManagementClientID))
 
 	slog.Debug("Step 3 - Add policy for token exchange")
 	policyType := "client"
-	policyName := fmt.Sprintf("%s-%s-exchange-policy", targetClientId, startClientId)
+	policyName := fmt.Sprintf("%s-%s-exchange-policy", targetClientId, startClientID)
 	realmMgmtExchangePolicyRepresentation := gocloak.PolicyRepresentation{
 		Logic: gocloak.POSITIVE,
 		Name:  &policyName,
 		Type:  &policyType,
 	}
-	policyClients := []string{startClientId}
+	policyClients := []string{startClientID}
 	realmMgmtExchangePolicyRepresentation.ClientPolicyRepresentation.Clients = &policyClients
 
 	realmMgmtPolicy, err := client.CreatePolicy(context.Background(), token.AccessToken, connectParams.Realm,
-		*realmManagementClientId, realmMgmtExchangePolicyRepresentation)
+		*realmManagementClientID, realmMgmtExchangePolicyRepresentation)
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
@@ -779,7 +779,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	slog.Info(fmt.Sprintf("✅ Created Token Exchange Policy %s", *tokenExchangePolicyId))
 
 	slog.Debug("Step 4 - Get Token Exchange Scope Identifier")
-	resourceRep, err := client.GetResource(context.Background(), token.AccessToken, connectParams.Realm, *realmManagementClientId, *tokenExchangePolicyPermissionResourceId)
+	resourceRep, err := client.GetResource(context.Background(), token.AccessToken, connectParams.Realm, *realmManagementClientID, *tokenExchangePolicyPermissionResourceId)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error getting resource : %s", err))
 		return err
@@ -796,7 +796,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	}
 	slog.Debug(fmt.Sprintf("Token exchange scope id =%s", *tokenExchangeScopeId))
 
-	clientPermissionName := fmt.Sprintf("token-exchange.permission.client.%s", *idForTargetClientId)
+	clientPermissionName := fmt.Sprintf("token-exchange.permission.client.%s", *idForTargetClientID)
 	clientType := "Scope"
 	clientPermissionResources := []string{*tokenExchangePolicyPermissionResourceId}
 	clientPermissionPolicies := []string{*tokenExchangePolicyId}
@@ -812,7 +812,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 		Scopes:           &clientPermissionScopes,
 	}
 	if err := client.UpdatePermissionScope(context.Background(), token.AccessToken, connectParams.Realm,
-		*realmManagementClientId, tokenExchangePolicyScopePermissionId, permissionScopePolicyRepresentation); err != nil {
+		*realmManagementClientID, tokenExchangePolicyScopePermissionId, permissionScopePolicyRepresentation); err != nil {
 		slog.Error("Error creating permission scope : %s", err)
 		return err
 	}

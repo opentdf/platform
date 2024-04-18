@@ -1,10 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
-
-MODS=protocol/go lib/ocrypto lib/fixtures sdk service examples
-HAND_MODS=lib/ocrypto lib/fixtures sdk service examples
+.PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint test toolcheck
 
 EXCLUDE_OPENAPI=./service/authorization/idp_plugin.proto
 
@@ -24,7 +21,7 @@ toolcheck:
 	@golangci-lint --version | grep "version v\?1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
 
 fix:
-	for m in $(HAND_MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
+	go mod tidy && go fmt ./...
 
 lint: proto-lint go-lint
 
@@ -38,7 +35,7 @@ proto-lint:
 		fi)
 
 go-lint:
-	for m in $(HAND_MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
+	golangci-lint run $(LINT_OPTIONS)
 
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
@@ -51,22 +48,19 @@ proto-generate:
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
 test:
-	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
+	go test ./... -race
 
 clean:
-	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
-	rm -f opentdf examples/examples
+	go clean
+	rm -f opentdf example
 
-build: proto-generate opentdf sdk/sdk examples/examples
+build: proto-generate opentdf example
 
 opentdf: $(shell find service)
 	go build -o opentdf -v service/main.go
 
-sdk/sdk: $(shell find sdk)
-	(cd sdk && go build ./...)
-
-examples/examples: $(shell find examples)
-	(cd examples && go build -o examples .)
+example: $(shell find examples)
+	go build -o example ./examples/main.go
 
 docker-build: build
 	docker build -t opentdf .

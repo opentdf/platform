@@ -142,8 +142,9 @@ func (s *AuthSuite) SetupTest() {
 	auth, err := NewAuthenticator(
 		context.Background(),
 		AuthNConfig{
-			Issuer:   s.server.URL,
-			Audience: "test",
+			AllowNoDPoP: false,
+			Issuer:      s.server.URL,
+			Audience:    "test",
 		}, nil)
 
 	s.Require().NoError(err)
@@ -538,4 +539,30 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 		return ""
 	}
 	return string(signedToken)
+}
+
+func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
+	auth, err := NewAuthenticator(
+		context.Background(),
+		AuthNConfig{
+			AllowNoDPoP: true,
+			Issuer:      s.server.URL,
+			Audience:    "test",
+		}, nil)
+
+	s.Require().NoError(err)
+
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("client_id", "client1"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
+
+	_, ctx, err := auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	s.Require().NoError(err)
+	s.Require().Nil(GetJWKFromContext(ctx))
 }

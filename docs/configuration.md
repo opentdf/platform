@@ -6,7 +6,7 @@ This guide provides details about the configuration setup for our application, i
 - [Server Configuration](#server-configuration)
 - [Database Configuration](#database-configuration)
 - [OPA Configuration](#opa-configuration)
--[Services Configuration](#services-configuration)
+- [Services Configuration](#services-configuration)
 
 ## Logger Configuration
 
@@ -41,6 +41,7 @@ The server configuration is used to define how the application runs its server.
 | `tls.key` | The path to the tls key. | |
 | `auth.audience` | The audience for the IDP. | |
 | `auth.issuer` | The issuer for the IDP. | |
+| `auth.allowNoDPoP` | If true, we allow access tokens that do not have DPoP bindings. | `false` |
 
 Example:
 
@@ -54,6 +55,7 @@ server:
     cert: /path/to/cert
     key: /path/to/key
   auth:
+    allowNoDPoP: false
     audience: https://example.com
     issuer: https://example.com
 ```

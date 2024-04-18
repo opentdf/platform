@@ -9,7 +9,7 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct {
-	RequireDPoP       bool   `yaml:"requireDPoP" json:"requireDPoP" default:"true"`
+	AllowNoDPoP       bool   `yaml:"allowNoDPoP" json:"allowNoDPoP" default:"true"`
 	Issuer            string `yaml:"issuer" json:"issuer"`
 	Audience          string `yaml:"audience" json:"audience"`
 	OIDCConfiguration `yaml:"-" json:"-"`

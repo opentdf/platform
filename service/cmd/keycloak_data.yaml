@@ -88,5 +88,8 @@ realms:
             - query-users
           tdf-entity-resolution:
             - entity-resolution-test-role
+    token_exchanges:
+      - start_client: opentdf
+        target_client: opentdf-sdk
 
  

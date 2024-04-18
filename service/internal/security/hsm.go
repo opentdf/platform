@@ -500,21 +500,30 @@ func (h *HSMSession) LoadECKey(info KeyInfo) (*ECKeyPair, error) {
 	return &pair, nil
 }
 
-func hashToPKCS11(hashFunction crypto.Hash) (hashAlg uint, mgfAlg uint, hashLen uint, err error) {
+func oaepForHash(hashFunction crypto.Hash, keyLabel string) (*pkcs11.OAEPParams, error) {
+	var hashAlg, mgfAlg uint
+
 	switch hashFunction {
 	case crypto.SHA1:
-		return pkcs11.CKM_SHA_1, pkcs11.CKG_MGF1_SHA1, 20, nil
+		hashAlg = pkcs11.CKM_SHA_1
+		mgfAlg = pkcs11.CKG_MGF1_SHA1
 	case crypto.SHA224:
-		return pkcs11.CKM_SHA224, pkcs11.CKG_MGF1_SHA224, 28, nil
+		hashAlg = pkcs11.CKM_SHA224
+		mgfAlg = pkcs11.CKG_MGF1_SHA224
 	case crypto.SHA256:
-		return pkcs11.CKM_SHA256, pkcs11.CKG_MGF1_SHA256, 32, nil
+		hashAlg = pkcs11.CKM_SHA256
+		mgfAlg = pkcs11.CKG_MGF1_SHA256
 	case crypto.SHA384:
-		return pkcs11.CKM_SHA384, pkcs11.CKG_MGF1_SHA384, 48, nil
+		hashAlg = pkcs11.CKM_SHA384
+		mgfAlg = pkcs11.CKG_MGF1_SHA384
 	case crypto.SHA512:
-		return pkcs11.CKM_SHA512, pkcs11.CKG_MGF1_SHA512, 64, nil
+		hashAlg = pkcs11.CKM_SHA512
+		mgfAlg = pkcs11.CKG_MGF1_SHA512
 	default:
-		return 0, 0, 0, ErrHSMUnexpected
+		return nil, ErrHSMUnexpected
 	}
+	return pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED,
+		[]byte(keyLabel)), nil
 }
 
 func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error) {
@@ -716,14 +725,11 @@ func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string,
 	// TODO: For now ignore the key id
 	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
-	hashAlg, mgfAlg, _, err := hashToPKCS11(hash)
+	oaepParams, err := oaepForHash(hash, keyLabel)
 	if err != nil {
 		return nil, errors.Join(ErrHSMDecrypt, err)
 	}
-
-	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP,
-		pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED,
-			[]byte(keyLabel)))
+	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, oaepParams)
 
 	err = h.ctx.DecryptInit(h.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(h.RSA.PrivateKey))
 	if err != nil {

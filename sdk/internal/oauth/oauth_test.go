@@ -8,36 +8,37 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/stretchr/testify/assert"
+	"github.com/opentdf/platform/lib/fixtures"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func TestGettingAccessTokenFromKeycloak(t *testing.T) {
-	ctx := context.Background()
+type OAuthSuite struct {
+	suite.Suite
+	dpopJWK           jwk.Key
+	keycloakContainer tc.Container
+	keycloakEndpoint  string
+}
 
-	wiremock, wiremockURL := setupWiremock(ctx, t)
-	defer func() { require.NoError(t, wiremock.Terminate(ctx)) }()
+func TestOAuthTestSuite(t *testing.T) {
+	suite.Run(t, new(OAuthSuite))
+}
 
-	keycloak, idpEndpoint := setupKeycloak(ctx, t, wiremockURL)
-	defer func() { require.NoError(t, keycloak.Terminate(ctx)) }()
-
+func (s *OAuthSuite) SetupSuite() {
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
@@ -45,74 +46,165 @@ func TestGettingAccessTokenFromKeycloak(t *testing.T) {
 	}
 
 	dpopJWK, err := jwk.FromRaw(dpopKey)
-	require.NoError(t, err)
-	require.NoError(t, dpopJWK.Set("use", "sig"))
-	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(err)
+	s.Require().NoError(dpopJWK.Set("use", "sig"))
+	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
 
+	s.dpopJWK = dpopJWK
+	ctx := context.Background()
+
+	keycloak, idpEndpoint := setupKeycloak(ctx, s.T())
+	s.keycloakContainer = keycloak
+	s.keycloakEndpoint = idpEndpoint
+}
+
+func (s *OAuthSuite) TearDownSuite() {
+	_ = s.keycloakContainer.Terminate(context.Background())
+}
+
+func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	clientCredentials := ClientCredentials{
-		ClientID:   "testclient",
-		ClientAuth: "abcd1234",
+		ClientID:   "opentdf-sdk",
+		ClientAuth: "secret",
 	}
 
 	tok, err := GetAccessToken(
-		idpEndpoint,
+		s.keycloakEndpoint,
 		[]string{"testscope"},
 		clientCredentials,
-		dpopJWK)
-	require.NoError(t, err)
+		s.dpopJWK)
+	s.Require().NoError(err)
 
 	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
-	require.NoError(t, err)
+	s.Require().NoError(err)
 
 	cnfClaim, ok := tokenDetails.Get("cnf")
-	require.True(t, ok)
+	s.Require().True(ok)
 	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
-	require.True(t, ok)
+	s.Require().True(ok)
 	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
-	require.True(t, ok)
-	require.NotEmpty(t, idpKeyFingerprint)
-	pk, err := dpopJWK.PublicKey()
-	require.NoError(t, err)
+	s.Require().True(ok)
+	s.Require().NotEmpty(idpKeyFingerprint)
+	pk, err := s.dpopJWK.PublicKey()
+	s.Require().NoError(err)
 	hash, err := pk.Thumbprint(crypto.SHA256)
-	require.NoError(t, err)
+	s.Require().NoError(err)
+
+	scope, ok := tokenDetails.Get("scope")
+	s.Require().True(ok)
+	scopeString, ok := scope.(string)
+	s.Require().True(ok)
+	s.Require().True(strings.Contains(scopeString, "testscope"))
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
-	assert.Equal(t, expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-	assert.Greaterf(t, tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
-	assert.Falsef(t, tok.Expired(), "got a token that is currently expired: %v", tok)
+	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
+	s.Greaterf(tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
+	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
+
+	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
+	ra, ok := tokenDetails.Get("realm_access")
+	s.Require().True(ok)
+	raMap, ok := ra.(map[string]interface{})
+	s.Require().True(ok)
+	roles, ok := raMap["roles"]
+	s.Require().True(ok)
+	rolesList, ok := roles.([]interface{})
+	s.Require().True(ok)
+	s.Require().True(slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
 }
 
-func TestClientSecretNoNonce(t *testing.T) {
-	// Generate RSA Key to use for DPoP
-	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		t.Errorf("error generating dpop key: %v", err)
+func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
+	ctx := context.Background()
+
+	clientCredentials := ClientCredentials{
+		ClientID:   "opentdf-sdk",
+		ClientAuth: "secret",
 	}
 
-	dpopJWK, err := jwk.FromRaw(dpopKey)
-	require.NoError(t, err)
-	require.NoError(t, dpopJWK.Set("use", "sig"))
-	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
+	subjectToken, err := GetAccessToken(
+		s.keycloakEndpoint,
+		[]string{"testscope"},
+		clientCredentials,
+		s.dpopJWK)
+	s.Require().NoError(err)
 
+	exchangeCredentials := ClientCredentials{
+		ClientID:   "opentdf",
+		ClientAuth: "secret",
+	}
+
+	tokenExchange := TokenExchangeInfo{
+		SubjectToken: subjectToken.AccessToken,
+		Audience:     []string{"opentdf-sdk"},
+	}
+
+	exchangedTok, err := DoTokenExchange(ctx, s.keycloakEndpoint, []string{}, exchangeCredentials, tokenExchange, s.dpopJWK)
+	s.Require().NoError(err)
+
+	tokenDetails, err := jwt.ParseString(exchangedTok.AccessToken, jwt.WithVerify(false))
+	s.Require().NoError(err)
+
+	cnfClaim, ok := tokenDetails.Get("cnf")
+	s.Require().True(ok)
+	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
+	s.Require().True(ok)
+	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
+	s.Require().True(ok)
+	s.Require().NotEmpty(idpKeyFingerprint)
+	pk, err := s.dpopJWK.PublicKey()
+	s.Require().NoError(err)
+	hash, err := pk.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+
+	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
+	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
+	s.Greaterf(subjectToken.ExpiresIn, int64(0), "invalid expiration is before current time: %v", subjectToken)
+	s.Falsef(subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
+
+	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
+	ra, ok := tokenDetails.Get("realm_access")
+	s.Require().True(ok)
+	raMap, ok := ra.(map[string]interface{})
+	s.Require().True(ok)
+	roles, ok := raMap["roles"]
+	s.Require().True(ok)
+	rolesList, ok := roles.([]interface{})
+	s.Require().True(ok)
+	s.Require().True(slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+
+	// verify that the calling client is the authorized party
+	azpClaim, ok := tokenDetails.Get("azp")
+	s.Require().True(ok)
+	s.Require().Equal(exchangeCredentials.ClientID, azpClaim)
+
+	// verify that the exchanged token has a scope that is only allowed for the client that got the original token
+	scope, ok := tokenDetails.Get("scope")
+	s.Require().True(ok)
+	scopeString, ok := scope.(string)
+	s.Require().True(ok)
+	s.Require().True(strings.Contains(scopeString, "testscope"))
+}
+
+func (s *OAuthSuite) TestClientSecretNoNonce() {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/token", r.URL.Path)
-		require.NoError(t, r.ParseForm())
+		s.Equal("/token", r.URL.Path)
+		s.Require().NoError(r.ParseForm())
 
-		validateBasicAuth(r, t)
-		extractDPoPToken(r, t)
+		validateBasicAuth(r, s.T())
+		extractDPoPToken(r, s.T())
 
 		tok, err := jwt.NewBuilder().
 			Issuer("example.org/fake").
 			IssuedAt(time.Now()).
 			Build()
-		require.NoError(t, err)
+		s.Require().NoError(err)
 
 		responseBytes, err := json.Marshal(tok)
-		require.NoError(t, err, "error writing response")
+		s.Require().NoError(err, "error writing response")
 
 		w.Header().Add("content-type", "application/json")
 		_, err = w.Write(responseBytes)
-		require.NoError(t, err)
+		s.Require().NoError(err)
 	}))
 	defer server.Close()
 
@@ -120,57 +212,46 @@ func TestClientSecretNoNonce(t *testing.T) {
 		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
-	_, err = GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
-	require.NoError(t, err, "didn't get a token back from the IdP")
+	_, err := GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
+	s.Require().NoError(err, "didn't get a token back from the IdP")
 }
 
-func TestClientSecretWithNonce(t *testing.T) {
-	// Generate RSA Key to use for DPoP
-	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		t.Errorf("error generating dpop key: %v", err)
-	}
-
-	dpopJWK, err := jwk.FromRaw(dpopKey)
-	require.NoError(t, err)
-	require.NoError(t, dpopJWK.Set("use", "sig"))
-	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
-
+func (s *OAuthSuite) TestClientSecretWithNonce() {
 	timesCalled := 0
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		timesCalled++
-		assert.Equal(t, "/token", r.URL.Path, "surprise http request to mock oauth service")
+		s.Equal("/token", r.URL.Path, "surprise http request to mock oauth service")
 		err := r.ParseForm()
-		require.NoError(t, err, "error parsing oauth request")
+		s.Require().NoError(err, "error parsing oauth request")
 
-		validateBasicAuth(r, t)
+		validateBasicAuth(r, s.T())
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte{})
-			require.NoError(t, err, "error writing response")
+			s.Require().NoError(err, "error writing response")
 			return
 		} else if timesCalled > 2 {
-			t.Logf("made more than two calls to the server: %d", timesCalled)
+			s.T().Logf("made more than two calls to the server: %d", timesCalled)
 			return
 		}
 
 		// get the key we used to sign the DPoP token from the header
-		clientTok := extractDPoPToken(r, t)
+		clientTok := extractDPoPToken(r, s.T())
 
 		nonce, exists := clientTok.Get("nonce")
 		if !exists {
-			t.Logf("didn't get nonce assertion")
+			s.T().Logf("didn't get nonce assertion")
 		}
 
 		if nonceStr, ok := nonce.(string); ok {
 			if nonceStr != "dfdffdfddf" {
-				t.Errorf("Got incorrect nonce: %v", nonce)
+				s.T().Errorf("Got incorrect nonce: %v", nonce)
 			}
 		} else {
-			t.Errorf("Nonce is not a string")
+			s.T().Errorf("Nonce is not a string")
 		}
 
 		tok, _ := jwt.NewBuilder().
@@ -180,13 +261,13 @@ func TestClientSecretWithNonce(t *testing.T) {
 
 		responseBytes, err := json.Marshal(tok)
 		if err != nil {
-			t.Errorf("error writing response: %v", err)
+			s.T().Errorf("error writing response: %v", err)
 		}
 
 		w.Header().Add("content-type", "application/json")
 		l, err := w.Write(responseBytes)
-		assert.Equal(t, len(responseBytes), l)
-		require.NoError(t, err)
+		s.Equal(len(responseBytes), l)
+		s.Require().NoError(err)
 	}))
 	defer server.Close()
 
@@ -194,9 +275,9 @@ func TestClientSecretWithNonce(t *testing.T) {
 		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
-	_, err = GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
+	_, err := GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
 	if err != nil {
-		t.Errorf("didn't get a token back from the IdP: %v", err)
+		s.T().Errorf("didn't get a token back from the IdP: %v", err)
 	}
 }
 
@@ -228,23 +309,23 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 	}
 }
 
-func TestSignedJWTWithNonce(t *testing.T) {
+func (s *OAuthSuite) TestSignedJWTWithNonce() {
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	require.NoError(t, err, "error generating dpop key")
+	s.Require().NoError(err, "error generating dpop key")
 	dpopJWK, err := jwk.FromRaw(dpopKey)
-	require.NoError(t, err)
-	require.NoError(t, dpopJWK.Set("use", "sig"))
-	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(err)
+	s.Require().NoError(dpopJWK.Set("use", "sig"))
+	s.Require().NoError(dpopJWK.Set("alg", jwa.RS256.String()))
 
 	clientAuthKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	require.NoError(t, err, "error generating clientAuth key")
+	s.Require().NoError(err, "error generating clientAuth key")
 	clientAuthJWK, err := jwk.FromRaw(clientAuthKey)
-	require.NoError(t, err, "error constructing raw JWK")
-	require.NoError(t, clientAuthJWK.Set("use", "sig"))
-	require.NoError(t, clientAuthJWK.Set("alg", jwa.RS256.String()))
+	s.Require().NoError(err, "error constructing raw JWK")
+	s.Require().NoError(clientAuthJWK.Set("use", "sig"))
+	s.Require().NoError(clientAuthJWK.Set("alg", jwa.RS256.String()))
 	clientPublicKey, err := clientAuthJWK.PublicKey()
-	require.NoError(t, err, "error getting public JWK from client auth JWK [%v]", clientAuthJWK)
+	s.Require().NoError(err, "error getting public JWK from client auth JWK [%v]", clientAuthJWK)
 
 	timesCalled := 0
 
@@ -257,37 +338,37 @@ func TestSignedJWTWithNonce(t *testing.T) {
 		timesCalled++
 
 		if r.URL.Path != "/token" {
-			t.Errorf("Expected to request '/token', got: %s", r.URL.Path)
+			s.T().Errorf("Expected to request '/token', got: %s", r.URL.Path)
 		}
-		require.NoError(t, r.ParseForm())
+		s.Require().NoError(r.ParseForm())
 
-		validateClientAssertionAuth(r, t, getURL, "theclient", clientPublicKey)
+		validateClientAssertionAuth(r, s.T(), getURL, "theclient", clientPublicKey)
 
 		if timesCalled == 1 {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
 			w.WriteHeader(http.StatusBadRequest)
 			if _, err := w.Write([]byte{}); err != nil {
-				t.Errorf("error writing response: %v", err)
+				s.T().Errorf("error writing response: %v", err)
 			}
 			return
 		} else if timesCalled > 2 {
-			t.Logf("made more than two calls to the server: %d", timesCalled)
+			s.T().Logf("made more than two calls to the server: %d", timesCalled)
 			return
 		}
 
 		// get the key we used to sign the DPoP token from the header
-		clientTok := extractDPoPToken(r, t)
+		clientTok := extractDPoPToken(r, s.T())
 
 		nonce, exists := clientTok.Get("nonce")
 		if exists {
 			value, ok := nonce.(string)
 			if !ok {
-				t.Errorf("Nonce is not a string")
+				s.T().Errorf("Nonce is not a string")
 			} else if value != "dfdffdfddf" {
-				t.Errorf("Got incorrect nonce: %v", value)
+				s.T().Errorf("Got incorrect nonce: %v", value)
 			}
 		} else {
-			t.Logf("didn't get nonce assertion")
+			s.T().Logf("didn't get nonce assertion")
 		}
 
 		tok, _ := jwt.NewBuilder().
@@ -297,13 +378,13 @@ func TestSignedJWTWithNonce(t *testing.T) {
 
 		responseBytes, err := json.Marshal(tok)
 		if err != nil {
-			t.Errorf("error writing response: %v", err)
+			s.T().Errorf("error writing response: %v", err)
 		}
 
 		w.Header().Add("content-type", "application/json")
 		l, err := w.Write(responseBytes)
-		assert.Equal(t, len(responseBytes), l)
-		require.NoError(t, err)
+		s.Equal(len(responseBytes), l)
+		s.Require().NoError(err)
 	}))
 	defer server.Close()
 
@@ -316,7 +397,7 @@ func TestSignedJWTWithNonce(t *testing.T) {
 
 	_, err = GetAccessToken(url, []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	if err != nil {
-		t.Errorf("didn't get a token back from the IdP: %v", err)
+		s.T().Errorf("didn't get a token back from the IdP: %v", err)
 	}
 }
 
@@ -396,11 +477,11 @@ func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 	return clientTok
 }
 
-func setupKeycloak(ctx context.Context, t *testing.T, claimsProviderURL *url.URL) (tc.Container, string) {
+func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 	containerReq := tc.ContainerRequest{
-		Image:        "ghcr.io/opentdf/keycloak:sha-ce2f709",
+		Image:        "ghcr.io/opentdf/keycloak:sha-8a6d35a",
 		ExposedPorts: []string{"8082/tcp"},
-		Cmd:          []string{"start-dev --http-port=8082"},
+		Cmd:          []string{"start-dev", "--http-port=8082", "--features=preview"},
 		Files:        []tc.ContainerFile{},
 		Env: map[string]string{
 			"KEYCLOAK_ADMIN":          "admin",
@@ -428,91 +509,19 @@ func setupKeycloak(ctx context.Context, t *testing.T, claimsProviderURL *url.URL
 	port, _ := keycloak.MappedPort(ctx, "8082")
 	keycloakBase := fmt.Sprintf("http://localhost:%s", port.Port())
 
-	client := http.Client{}
+	realm := "test"
 
-	formData := url.Values{}
-	formData.Add("username", "admin")
-	formData.Add("password", "admin")
-	formData.Add("grant_type", "password")
-	formData.Add("client_id", "admin-cli")
-
-	req, _ := http.NewRequest(http.MethodPost, keycloakBase+"/realms/master/protocol/openid-connect/token", strings.NewReader(formData.Encode()))
-	req.Header.Add("content-type", "application/x-www-form-urlencoded")
-
-	res, err := client.Do(req)
-	if err != nil {
-		panic(err)
+	connectParams := fixtures.KeycloakConnectParams{
+		BasePath:         keycloakBase,
+		Username:         "admin",
+		Password:         "admin",
+		Realm:            realm,
+		Audience:         "https://test.example.org",
+		AllowInsecureTLS: true,
 	}
 
-	var responseMap map[string]interface{}
-	decoder := json.NewDecoder(res.Body)
-	err = decoder.Decode(&responseMap)
-	require.NoError(t, err, "error decoding response")
-
-	accessToken, ok := responseMap["access_token"].(string)
-	require.True(t, ok, "missing access_token")
-
-	realmFile, err := os.ReadFile("./realm.json")
+	err = fixtures.SetupKeycloak(ctx, connectParams)
 	require.NoError(t, err)
 
-	realmJSON := strings.ReplaceAll(string(realmFile), "<claimsprovider url>", claimsProviderURL.String())
-
-	req, _ = http.NewRequest(http.MethodPost, keycloakBase+"/admin/realms", strings.NewReader(realmJSON))
-	req.Header.Add("authorization", "Bearer "+accessToken)
-	req.Header.Add("content-type", "application/json")
-
-	res, err = client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-
-	if res.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(res.Body)
-		t.Fatalf("error creating realm: %s", string(body))
-	}
-
-	return keycloak, keycloakBase + "/realms/test/protocol/openid-connect/token"
-}
-
-func setupWiremock(ctx context.Context, t *testing.T) (tc.Container, *url.URL) {
-	listenPort, _ := nat.NewPort("tcp", "8181")
-	req := tc.ContainerRequest{
-		Image:      "wiremock/wiremock:3.3.1",
-		Cmd:        []string{fmt.Sprintf("--port=%s", listenPort.Port())},
-		WaitingFor: wait.ForLog("extensions:"),
-		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      "./claims.json",
-				ContainerFilePath: "/home/wiremock/mappings/claims.json",
-				FileMode:          0o444,
-			},
-		},
-	}
-
-	var providerType tc.ProviderType
-
-	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
-		providerType = tc.ProviderPodman
-	} else {
-		providerType = tc.ProviderDocker
-	}
-
-	wiremock, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
-		ProviderType:     providerType,
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		panic(err)
-	}
-	containerIP, err := wiremock.ContainerIP(ctx)
-	if err != nil {
-		t.Fatalf("error getting endpoint from keycloak: %v", err)
-	}
-
-	wiremockURL, err := url.Parse(fmt.Sprintf("http://%s", net.JoinHostPort(containerIP, "8181")) + "/claims")
-	if err != nil {
-		panic(err)
-	}
-	return wiremock, wiremockURL
+	return keycloak, keycloakBase + "/realms/" + realm + "/protocol/openid-connect/token"
 }

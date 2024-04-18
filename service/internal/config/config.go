@@ -46,6 +46,9 @@ func LoadConfig(key string, file string) (*Config, error) {
 	viper.SetConfigName(key)
 	viper.SetConfigType("yaml")
 
+	// Default config values (non-zero)
+	viper.SetDefault("server.auth.cache_refresh_interval", "15m")
+
 	viper.SetEnvPrefix(key)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()

@@ -41,19 +41,19 @@ var (
 			}
 
 			res := dbClient.AttrFqnReindex()
-			fmt.Print("Namespace FQNs reindexed:\n")
+			cmd.Print("Namespace FQNs reindexed:\n")
 			for _, r := range res.Namespaces {
-				fmt.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
 			}
 
-			fmt.Print("Attribute FQNs reindexed:\n")
+			cmd.Print("Attribute FQNs reindexed:\n")
 			for _, r := range res.Attributes {
-				fmt.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
 			}
 
-			fmt.Print("Attribute Value FQNs reindexed:\n")
+			cmd.Print("Attribute Value FQNs reindexed:\n")
 			for _, r := range res.Values {
-				fmt.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
 			}
 		},
 	}

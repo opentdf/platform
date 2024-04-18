@@ -27,12 +27,12 @@ var (
 )
 
 func mockRetrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	fmt.Println("Using mocked GetAttributeValuesByFqns: " + getAttributesByValueFqnsResponse.String())
+	slog.DebugContext(ctx, "Using mocked GetAttributeValuesByFqns: "+getAttributesByValueFqnsResponse.String())
 	return getAttributesByValueFqnsResponse.GetFqnAttributeValues(), nil
 }
 
 func mockRetrieveEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest, as AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
-	fmt.Println("Using mocked GetEntitlements: " + entitlementsResponse.String())
+	slog.DebugContext(ctx, "Using mocked GetEntitlements: "+entitlementsResponse.String())
 	return &entitlementsResponse, nil
 }
 
@@ -114,7 +114,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	fmt.Print(resp.String())
+	slog.Debug(resp.String())
 	assert.Equal(t, 1, len(resp.GetDecisionResponses()))
 	assert.Equal(t, resp.GetDecisionResponses()[0].GetDecision(), authorization.DecisionResponse_DECISION_PERMIT)
 
@@ -244,7 +244,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	// NOTE: there should be two decision responses, one for each data attribute value, but authorization service
 	// only responds with one permit/deny at the moment
 	// entitlements only contain the first FQN, so we have a deny decision
-	fmt.Print(resp.String())
+	slog.Debug(resp.String())
 	assert.Equal(t, len(resp.GetDecisionResponses()), 1)
 	assert.Equal(t, resp.GetDecisionResponses()[0].GetDecision(), authorization.DecisionResponse_DECISION_DENY)
 }

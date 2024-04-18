@@ -31,7 +31,7 @@ services:
       retries: 3
       start_period: 2m
   keycloakdb:
-    image: postgres
+    image: postgres:15-alpine
     restart: always
     user: postgres
     environment:
@@ -44,7 +44,7 @@ services:
       timeout: 5s
       retries: 10
   opentdfdb:
-    image: public.ecr.aws/docker/library/postgres:15-alpine
+    image: postgres:15-alpine
     restart: always
     user: postgres
     environment:

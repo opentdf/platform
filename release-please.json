@@ -4,23 +4,10 @@
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
   "separate-pull-requests": true,
-  "include-component-in-tag": true,
-  "tag-separator": "/",
+  "include-component-in-tag": false,
   "packages": {
-    "lib/fixtures": {
-      "component": "lib/fixtures"
-    },
-    "lib/ocrypto": {
-      "component": "lib/ocrypto"
-    },
-    "protocol/go": {
-      "component": "protocol/go"
-    },
-    "sdk": {
-      "component": "sdk"
-    },
-    "service": {
-      "component": "service"
+    ".": {
+      "component": "."
     }
   }
 }

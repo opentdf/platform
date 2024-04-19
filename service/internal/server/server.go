@@ -89,13 +89,18 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 
 	// Add authN interceptor
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
-	authN, err = auth.NewAuthenticator(
-		context.Background(),
-		config.Auth.AuthNConfig,
-		d,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
+	if config.Auth.DeprecatedEnabled {
+		slog.Info("authentication enabled")
+		authN, err = auth.NewAuthenticator(
+			context.Background(),
+			config.Auth.AuthNConfig,
+			d,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
+		}
+	} else {
+		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can use `allowNoDPoP`")
 	}
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
@@ -157,7 +162,11 @@ func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 
 	// Add authN interceptor
 	// TODO check if this is needed or if it is handled by gRPC
-	h = a.MuxHandler(h)
+	if c.Auth.DeprecatedEnabled {
+		h = a.MuxHandler(h)
+	} else {
+		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can use `allowNoDPoP`")
+	}
 
 	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
 	h = cors.New(cors.Options{

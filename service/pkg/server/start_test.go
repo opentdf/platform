@@ -132,6 +132,5 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	respBody, err := io.ReadAll(resp.Body)
 
 	require.NoError(t, err)
-	// FIXME: either by adding paths that do not require authentication or by writing our own auth token
 	assert.Equal(t, "hello from test service!", string(respBody))
 }

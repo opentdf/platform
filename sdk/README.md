@@ -8,6 +8,7 @@ included in the Data Security Platform.
 ```go
 package main
 
+import "fmt"
 import "bytes"
 import "io"
 import "os"

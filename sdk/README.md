@@ -17,7 +17,7 @@ import "github.com/opentdf/platform/sdk"
 
 
 func main() {
-  s := sdk.New(
+  s, _ := sdk.New(
     sdk.WithAuth(mtls.NewGRPCAuthorizer(creds) /* or OIDC or whatever */),
     sdk.WithDataSecurityConfig(/* attribute schemas, kas multi-attribute mapping */),
   )

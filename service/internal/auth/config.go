@@ -4,8 +4,8 @@ import "fmt"
 
 // AuthConfig pulls AuthN and AuthZ together
 type Config struct {
-	DeprecatedEnabled bool `yaml:"deprecatedEnabled" default:"true"`
-	AuthNConfig       `mapstructure:",squash"`
+	DeprecatedDisabled bool `yaml:"deprecatedDisabled" default:"false"`
+	AuthNConfig        `mapstructure:",squash"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens

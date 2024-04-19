@@ -50,5 +50,4 @@ func Test_BuildConfig(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, test.want, cfg.ConnString())
 	}
-
 }

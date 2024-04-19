@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -9,39 +10,45 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/opentdf/platform/service/migrations"
 	"github.com/pressly/goose/v3"
 )
 
-func (c *Client) migrationInit(ctx context.Context) (*goose.Provider, func(), error) {
+func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose.Provider, int64, func(), error) {
 	if !c.config.RunMigrations {
-		return nil, nil, fmt.Errorf("migrations are disabled")
+		return nil, 0, nil, fmt.Errorf("migrations are disabled")
 	}
 
 	if tag, err := c.Pgx.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.config.Schema)); err != nil {
 		slog.Error("migration error", "err", err, "tag", tag)
-		return nil, nil, fmt.Errorf("failed to SET search_path [%w]", err)
+		return nil, 0, nil, fmt.Errorf("failed to SET search_path [%w]", err)
 	}
 
 	pool, ok := c.Pgx.(*pgxpool.Pool)
 	if !ok || pool == nil {
-		return nil, nil, fmt.Errorf("failed to cast pgxpool.Pool")
+		return nil, 0, nil, fmt.Errorf("failed to cast pgxpool.Pool")
 	}
 
 	conn := stdlib.OpenDBFromPool(pool)
 
-	provider, err := goose.NewProvider(goose.DialectPostgres, conn, migrations.MigrationsFS)
+	provider, err := goose.NewProvider(goose.DialectPostgres, conn, migrations)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create goose provider: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to create goose provider: %w", err)
 	}
-	return provider, func() {
+
+	v, e := provider.GetDBVersion(context.Background())
+	if e != nil {
+		return nil, 0, nil, errors.Join(fmt.Errorf("failed to get current version"), e)
+	}
+	slog.Info("DB Info: ", slog.Any("current version", v))
+
+	return provider, v, func() {
 		if err := conn.Close(); err != nil {
 			slog.Error("failed to close connection", "err", err)
 		}
 	}, nil
 }
 
-func (c *Client) RunMigrations(ctx context.Context) (int, error) {
+func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, error) {
 	var (
 		applied int
 		err     error
@@ -59,30 +66,17 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 		applied += int(tag.RowsAffected())
 	}
 
-	if !c.config.RunMigrations {
-		slog.Info("skipping migrations",
-			slog.String("reason", "runMigrations is false"),
-			slog.Bool("runMigrations", c.config.RunMigrations))
-		return applied, nil
-	}
-
 	// create the schema
 	exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema))
 	// set the search path
 	exec(fmt.Sprintf("SET search_path TO %s", c.config.Schema))
 
-	pool, ok := c.Pgx.(*pgxpool.Pool)
-	if !ok || pool == nil {
-		return applied, fmt.Errorf("failed to cast pgxpool.Pool")
-	}
-
-	conn := stdlib.OpenDBFromPool(pool)
-	defer conn.Close()
-
-	provider, err := goose.NewProvider(goose.DialectPostgres, conn, migrations.MigrationsFS)
+	provider, _, close, err := migrationInit(ctx, c, migrations)
 	if err != nil {
-		return applied, errors.Join(fmt.Errorf("failed to create goose provider"), err)
+		slog.Error("failed to create goose provider", "err", err)
+		return 0, err
 	}
+	defer close()
 
 	res, err := provider.Up(context.Background())
 	if err != nil {
@@ -101,8 +95,8 @@ func (c *Client) RunMigrations(ctx context.Context) (int, error) {
 	return applied, nil
 }
 
-func (c *Client) MigrationStatus(ctx context.Context) ([]*goose.MigrationStatus, error) {
-	provider, close, err := c.migrationInit(ctx)
+func (c *Client) MigrationStatus(ctx context.Context, migrations *embed.FS) ([]*goose.MigrationStatus, error) {
+	provider, _, close, err := migrationInit(ctx, c, migrations)
 	if err != nil {
 		slog.Error("failed to create goose provider", "err", err)
 		return nil, err
@@ -112,37 +106,13 @@ func (c *Client) MigrationStatus(ctx context.Context) ([]*goose.MigrationStatus,
 	return provider.Status(context.Background())
 }
 
-func (c *Client) MigrationDown(ctx context.Context) error {
-	if !c.config.RunMigrations {
-		slog.Info("skipping migrations",
-			slog.String("reason", "runMigrations is false"),
-			slog.Bool("runMigrations", c.config.RunMigrations))
-		return nil
-	}
-
-	if tag, err := c.Pgx.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.config.Schema)); err != nil {
-		slog.Error("migration error", "err", err, "tag", tag)
-		return fmt.Errorf("failed to SET search_path [%w]", err)
-	}
-
-	pool, ok := c.Pgx.(*pgxpool.Pool)
-	if !ok || pool == nil {
-		return fmt.Errorf("failed to cast pgxpool.Pool")
-	}
-
-	conn := stdlib.OpenDBFromPool(pool)
-	defer conn.Close()
-
-	provider, err := goose.NewProvider(goose.DialectPostgres, conn, migrations.MigrationsFS)
+func (c *Client) MigrationDown(ctx context.Context, migrations *embed.FS) error {
+	provider, v, close, err := migrationInit(ctx, c, migrations)
 	if err != nil {
-		return errors.Join(fmt.Errorf("failed to create goose provider"), err)
+		slog.Error("failed to create goose provider", "err", err)
+		return err
 	}
-
-	v, e := provider.GetDBVersion(context.Background())
-	if e != nil {
-		return errors.Join(fmt.Errorf("failed to get current version"), e)
-	}
-	slog.Info("DB Info: ", slog.Any("current version", v), slog.Any("post-migration version", v-1))
+	defer close()
 
 	res, err := provider.Down(context.Background())
 	if err != nil {
@@ -151,6 +121,8 @@ func (c *Client) MigrationDown(ctx context.Context) error {
 	if res.Error != nil {
 		return errors.Join(fmt.Errorf("failed to run migrations"), res.Error)
 	}
+
+	slog.Info("DB Info: ", slog.Any("post-op version", v-1))
 
 	return nil
 }

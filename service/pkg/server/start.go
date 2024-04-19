@@ -87,19 +87,12 @@ func Start(f ...StartOptions) error {
 	}
 	defer eng.Stop(ctx)
 
-	slog.Info("creating database client")
-	dbClient, err := db.NewClient(conf.DB)
-	if err != nil {
-		return fmt.Errorf("issue creating database client: %w", err)
-	}
-	defer dbClient.Close()
-
 	// Required services
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	otdf, err := server.NewOpenTDFServer(conf.Server, dbClient)
+	otdf, err := server.NewOpenTDFServer(conf.Server)
 	if err != nil {
 		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
@@ -130,18 +123,18 @@ func Start(f ...StartOptions) error {
 		slog.Error("issue creating sdk client", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating sdk client: %w", err)
 	}
-
 	defer client.Close()
 
 	slog.Info("starting services")
-	if err := startServices(*conf, otdf, dbClient, eng, client); err != nil {
+	closeServices, err := startServices(*conf, otdf, eng, client)
+	if err != nil {
 		slog.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
+	defer closeServices()
 
 	// Start the server
 	slog.Info("starting opentdf")
-
 	otdf.Start()
 
 	if startConfig.WaitForShutdownSignal {
@@ -158,7 +151,24 @@ func waitForShutdownSignal() {
 	<-sigs
 }
 
-func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine, client *sdk.SDK) error {
+func startServices(cfg config.Config, otdf *server.OpenTDFServer, eng *opa.Engine, client *sdk.SDK) (func(), error) {
+	// CloseServices is a function that will close all registered services
+	closeServices := func() {
+		slog.Info("stopping services")
+		for ns, registers := range serviceregistry.RegisteredServices {
+			for _, r := range registers {
+				// Only report on started services
+				if !r.Started {
+					continue
+				}
+				slog.Info("stopping service", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
+				if r.Close != nil {
+					r.Close()
+				}
+			}
+		}
+	}
+
 	// Iterate through the registered namespaces
 	for ns, registers := range serviceregistry.RegisteredServices {
 		// Check if the service is enabled
@@ -167,12 +177,35 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 			continue
 		}
 
+		var d *db.Client
+		// Conditionally set the db client if the service requires it
+
 		for _, r := range registers {
+
+			// Conditionally set the db client if the service requires it
+			// Currently, we are dynamically registering namespaces and don't offer the ability to apply
+			// config at the NS layer. This poses a problem where services under a NS want to share a
+			// database connection.
+			// TODO: this should be reassessed with how we handle registering a single namespace
+			if r.DBRegister.MigrationsFS != nil && d == nil {
+				// Wnat to make sure we only create a single db client per namespace
+				slog.Info("creating database client", slog.String("namespace", ns))
+				dbClient, err := db.New(cfg.DB,
+					db.WithService(ns),
+					db.WithVerifyConnection(),
+					db.WithMigrations(r.DBRegister.MigrationsFS),
+				)
+				if err != nil {
+					return closeServices, fmt.Errorf("issue creating database client for %s: %w", ns, err)
+				}
+				d = dbClient
+			}
+
 			// Create the service
 			impl, handler := r.RegisterFunc(serviceregistry.RegistrationParams{
 				Config:          cfg.Services[ns],
 				OTDF:            otdf,
-				DBClient:        dbClient,
+				DBClient:        d,
 				Engine:          eng,
 				SDK:             client,
 				WellKnownConfig: wellknown.RegisterConfiguration,
@@ -187,12 +220,20 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 			// Register the service with the gRPC gateway
 			if err := handler(context.Background(), otdf.Mux, impl); err != nil {
 				slog.Error("failed to start service", slog.String("namespace", r.Namespace), slog.String("error", err.Error()))
-				return err
+				return closeServices, err
 			}
 
 			slog.Info("started service", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
+			r.Started = true
+			r.Close = func() {
+				if d != nil {
+					slog.Info("closing database client", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
+					// TODO: this might be a problem if we can't call close on the db client multiple times
+					d.Close()
+				}
+			}
 		}
 	}
 
-	return nil
+	return closeServices, nil
 }

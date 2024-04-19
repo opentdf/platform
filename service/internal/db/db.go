@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 	"log/slog"
 	"net"
@@ -70,6 +71,9 @@ type Config struct {
 	RunMigrations bool   `yaml:"runMigrations" default:"true"`
 	SSLMode       string `yaml:"sslmode" default:"prefer"`
 	Schema        string `yaml:"schema" default:"opentdf"`
+
+	VerifyConnection bool
+	MigrationsFS     *embed.FS
 }
 
 type Client struct {
@@ -80,7 +84,16 @@ type Client struct {
 	SqlDB *sql.DB
 }
 
-func NewClient(config Config) (*Client, error) {
+/*
+Connections and pools seems to be pulled in from env vars
+We should be able to tell the platform how to run
+*/
+
+func New(config Config, o ...optsFunc) (*Client, error) {
+	for _, f := range o {
+		config = f(config)
+	}
+
 	c := Client{
 		config: config,
 	}
@@ -99,19 +112,30 @@ func NewClient(config Config) (*Client, error) {
 	c.SqlDB = stdlib.OpenDBFromPool(pool)
 
 	// Connect to the database to verify the connection
-	if err := c.Pgx.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	if c.config.VerifyConnection {
+		if err := c.Pgx.Ping(context.Background()); err != nil {
+			return nil, fmt.Errorf("failed to connect to database: %w", err)
+		}
 	}
 
 	// Run migrations
-	slog.Info("running database migrations")
-	appliedMigrations, err := c.RunMigrations(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("issue running database migrations: %w", err)
+	if !config.RunMigrations {
+		slog.Info("skipping migrations",
+			slog.String("reason", "runMigrations is false"),
+			slog.Bool("runMigrations", false),
+		)
+	} else if config.RunMigrations && config.MigrationsFS == nil {
+		return nil, fmt.Errorf("migrations FS is required when runMigrations is true")
+	} else {
+		slog.Info("running database migrations")
+		appliedMigrations, err := c.RunMigrations(context.Background(), config.MigrationsFS)
+		if err != nil {
+			return nil, fmt.Errorf("issue running database migrations: %w", err)
+		}
+		slog.Info("database migrations complete",
+			slog.Int("applied", appliedMigrations),
+		)
 	}
-	slog.Info("database migrations complete", slog.Int("applied", appliedMigrations))
-
-	NewTable = NewTableWithSchema(config.Schema)
 
 	return &c, nil
 }

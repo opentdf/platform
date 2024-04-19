@@ -38,10 +38,13 @@ type Registration struct {
 	Namespace    string
 	ServiceDesc  *grpc.ServiceDesc
 	RegisterFunc RegisterFunc
+	DBRegister   DBRegister
 }
 
 type Service struct {
 	Registration
+	Started bool
+	Close   func()
 }
 
 // Map of namespaces to services

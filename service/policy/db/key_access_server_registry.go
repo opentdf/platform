@@ -11,24 +11,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var (
-	TableKeyAccessServerRegistry = "key_access_servers"
-
-	Tables struct {
-		KeyAccessServerRegistry db.Table
-	}
-)
-
-type KasRegistryDBClient struct {
-	db.Client
-}
-
-func NewClient(c db.Client) *KasRegistryDBClient {
-	Tables.KeyAccessServerRegistry = db.NewTable(TableKeyAccessServerRegistry)
-
-	return &KasRegistryDBClient{c}
-}
-
 func keyAccessServerSelect() sq.SelectBuilder {
 	return db.NewStatementBuilder().
 		Select(

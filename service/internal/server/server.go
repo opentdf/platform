@@ -19,8 +19,7 @@ import (
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/internal/auth"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -81,7 +80,7 @@ type inProcessServer struct {
 	srv *grpc.Server
 }
 
-func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
@@ -91,11 +90,7 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
 	if config.Auth.Enabled {
 		slog.Info("authentication enabled")
-		authN, err = auth.NewAuthenticator(
-			context.Background(),
-			config.Auth.AuthNConfig,
-			d,
-		)
+		authN, err = auth.NewAuthenticator(config.Auth.AuthNConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}

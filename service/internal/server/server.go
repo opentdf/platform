@@ -88,7 +88,6 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 	)
 
 	// Add authN interceptor
-	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
 	authN, err = auth.NewAuthenticator(
 		context.Background(),
 		config.Auth.AuthNConfig,

@@ -25,7 +25,7 @@ type TestServiceService interface{}
 type TestService struct{}
 
 func (t TestService) TestHandler(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	_, err := w.Write([]byte("hello " + pathParams["name"] + " from test service!"))
+	_, err := w.Write([]byte("hello from test service!"))
 	if err != nil {
 		panic(err)
 	}
@@ -44,7 +44,7 @@ func ServiceRegistrationTest() serviceregistry.Registration {
 				if !ok {
 					return fmt.Errorf("Surprise! Not a TestService")
 				}
-				return mux.HandlePath(http.MethodGet, "/testpath/{name}", t.TestHandler)
+				return mux.HandlePath(http.MethodGet, "/healthz", t.TestHandler)
 			}
 		},
 	}
@@ -117,7 +117,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	var resp *http.Response
 	// Make request to test service and ensure it registered
 	for i := 3; i > 0; i-- {
-		resp, err = http.Get("http://localhost:43481/testpath/world")
+		resp, err = http.Get("http://localhost:43481/healthz")
 		if err == nil {
 			break
 		}
@@ -133,6 +133,5 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 
 	require.NoError(t, err)
 	// FIXME: either by adding paths that do not require authentication or by writing our own auth token
-	// assert.Equal(t, "hello world from test service!", string(respBody))
-	assert.Equal(t, "missing authorization header\n", string(respBody))
+	assert.Equal(t, "hello from test service!", string(respBody))
 }

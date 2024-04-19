@@ -8,10 +8,10 @@ included in the Data Security Platform.
 ```go
 package main
 
-import bytes
-import io
-import os
-import strings
+import "bytes"
+import "io"
+import "os"
+import "strings"
 import "github.com/opentdf/platform/sdk"
 
 

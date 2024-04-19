@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -185,17 +186,32 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		return err
 	}
 
-	testScope := gocloak.ClientScope{
-		Name:                  gocloak.StringP("testscope"),
-		Description:           gocloak.StringP("a scope for testing"),
-		Protocol:              gocloak.StringP("openid-connect"),
-		ClientScopeAttributes: &gocloak.ClientScopeAttributes{IncludeInTokenScope: gocloak.StringP("true")},
-	}
+	var (
+		testScopeID = "5787804c-cdd1-44db-ac74-c46fbda91ccc"
+		testScope   *gocloak.ClientScope
+	)
 
-	testScopeID, err := client.CreateClientScope(ctx, token.AccessToken, kcConnectParams.Realm, testScope)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error creating a test scope: %s", err))
+	// Try an get the test scope
+	switch _, err = client.GetClientScope(ctx, token.AccessToken, kcConnectParams.Realm, testScopeID); kcErrCode(err) {
+	case http.StatusNotFound:
+		testScope = &gocloak.ClientScope{
+			ID:                    gocloak.StringP(testScopeID),
+			Name:                  gocloak.StringP("testscope"),
+			Description:           gocloak.StringP("a scope for testing"),
+			Protocol:              gocloak.StringP("openid-connect"),
+			ClientScopeAttributes: &gocloak.ClientScopeAttributes{IncludeInTokenScope: gocloak.StringP("true")},
+		}
+
+		testScopeID, err = client.CreateClientScope(ctx, token.AccessToken, kcConnectParams.Realm, *testScope)
+		if err != nil {
+			return err
+		}
+	case kcErrNone:
+		break
+	case kcErrUnknown:
 		return err
+	default:
+		// This should never happen
 	}
 
 	// Create TDF SDK Client
@@ -226,11 +242,11 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create TDF Entity Resolution Client
-	realmManagementClientId, err := getIdOfClient(client, token, &kcConnectParams, &realmMangementClientName)
+	realmManagementClientID, err := getIdOfClient(client, token, &kcConnectParams, &realmMangementClientName)
 	if err != nil {
 		return err
 	}
-	clientRolesToAdd, addErr := getClientRolesByList(&kcConnectParams, client, token, ctx, *realmManagementClientId, []string{"view-clients", "query-clients", "view-users", "query-users"})
+	clientRolesToAdd, addErr := getClientRolesByList(&kcConnectParams, client, token, ctx, *realmManagementClientID, []string{"view-clients", "query-clients", "view-users", "query-users"})
 	if addErr != nil {
 		slog.Error(fmt.Sprintf("Error getting client roles : %s", err))
 		return err
@@ -243,7 +259,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
-	}, nil, clientRolesToAdd, *realmManagementClientId)
+	}, nil, clientRolesToAdd, *realmManagementClientID)
 	if err != nil {
 		return err
 	}
@@ -278,9 +294,9 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 
 func keycloakLogin(connectParams *KeycloakConnectParams) (*gocloak.GoCloak, *gocloak.JWT, error) {
 	client := gocloak.NewClient(connectParams.BasePath)
-	// restyClient := client.RestyClient()
+	restyClient := client.RestyClient()
 	// TODO allow insecure TLS....
-	// restyClient.SetTLSClientConfig(tlsConfig)
+	restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: connectParams.AllowInsecureTLS})
 	// Get Token from master
 	token, err := client.LoginAdmin(context.Background(), connectParams.Username, connectParams.Password, "master")
 	if err != nil {
@@ -290,44 +306,44 @@ func keycloakLogin(connectParams *KeycloakConnectParams) (*gocloak.GoCloak, *goc
 }
 
 func createClient(connectParams *KeycloakConnectParams, newClient gocloak.Client, realmRoles []gocloak.Role, clientRoles []gocloak.Role, clientIdRole string) (string, error) {
-	var longClientId string
+	var longClientID string
 	client, token, err := keycloakLogin(connectParams)
 	if err != nil {
 		return "", err
 	}
-	clientId := *newClient.ClientID
-	if longClientId, err = client.CreateClient(context.Background(), token.AccessToken, connectParams.Realm, newClient); err != nil {
+	clientID := *newClient.ClientID
+	if longClientID, err = client.CreateClient(context.Background(), token.AccessToken, connectParams.Realm, newClient); err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
-			slog.Warn(fmt.Sprintf("⏭️  client %s already exists", clientId))
+			slog.Warn(fmt.Sprintf("⏭️  client %s already exists", clientID))
 			clients, err := client.GetClients(context.Background(), token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: newClient.ClientID})
 			if err != nil {
 				return "", err
 			}
 			if len(clients) == 1 {
-				longClientId = *clients[0].ID
+				longClientID = *clients[0].ID
 			} else {
-				err = fmt.Errorf("❗️ error, %s client not found", clientId)
+				err = fmt.Errorf("❗️ error, %s client not found", clientID)
 				return "", err
 			}
 		default:
-			slog.Error(fmt.Sprintf("❗️  Error creating client %s : %s", clientId, err))
+			slog.Error(fmt.Sprintf("❗️  Error creating client %s : %s", clientID, err))
 			return "", err
 		}
 	} else {
-		slog.Info(fmt.Sprintf("✅ Client created: client id = %s, client identifier=%s", clientId, longClientId))
+		slog.Info(fmt.Sprintf("✅ Client created: client id = %s, client identifier=%s", clientID, longClientID))
 	}
 
 	// Get service account user
-	user, err := client.GetClientServiceAccount(context.Background(), token.AccessToken, connectParams.Realm, longClientId)
+	user, err := client.GetClientServiceAccount(context.Background(), token.AccessToken, connectParams.Realm, longClientID)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientId, err))
+		slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientID, err))
 		return "", err
 	}
-	slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientId, *user.Username))
+	slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientID, *user.Username))
 
 	if realmRoles != nil {
-		slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientId, *user.Username))
+		slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
 		if err := client.AddRealmRoleToUser(context.Background(), token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
 			for _, role := range realmRoles {
 				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
@@ -335,13 +351,13 @@ func createClient(connectParams *KeycloakConnectParams, newClient gocloak.Client
 			return "", err
 		} else {
 			for _, role := range realmRoles {
-				slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientId))
+				slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
 			}
 		}
 	}
 
 	if clientRoles != nil {
-		slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientId, *user.Username))
+		slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
 		if err := client.AddClientRolesToUser(context.Background(), token.AccessToken, connectParams.Realm, clientIdRole, *user.ID, clientRoles); err != nil {
 			for _, role := range clientRoles {
 				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
@@ -349,11 +365,11 @@ func createClient(connectParams *KeycloakConnectParams, newClient gocloak.Client
 			return "", err
 		}
 		for _, role := range clientRoles {
-			slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientId))
+			slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
 		}
 	}
 
-	return longClientId, nil
+	return longClientID, nil
 }
 
 func createUser(connectParams *KeycloakConnectParams, newUser gocloak.User) (*string, error) {

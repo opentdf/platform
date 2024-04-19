@@ -13,7 +13,6 @@ replace (
 	github.com/opentdf/platform/lib/ocrypto => ./opentdf/lib/ocrypto
 	github.com/opentdf/platform/sdk => ./opentdf/sdk
 	github.com/opentdf/platform/service => ./opentdf/service
-``
 )
 ```
 

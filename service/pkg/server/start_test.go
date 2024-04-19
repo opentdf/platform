@@ -57,9 +57,9 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 			return nil
 		},
 		Auth: auth.Config{
-			Enabled: false,
 			AuthNConfig: auth.AuthNConfig{
-				Issuer: "test",
+				AllowNoDPoP: false,
+				Issuer:      "test",
 			},
 		},
 		Port: 43481,

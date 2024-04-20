@@ -1,0 +1,10 @@
+{
+  "service": "0.2.0",
+  "service+FILLER": "0.0.0",
+  "sdk": "0.2.0",
+  "sdk+FILLER": "0.0.0",
+  "protocol": "0.2.0",
+  "protocol+FILLER": "0.0.0",
+  "lib": "0.2.0",
+  "lib+FILLER": "0.0.0"
+}

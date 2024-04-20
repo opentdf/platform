@@ -3,20 +3,34 @@
 A Go implementation of the OpenTDF protocol, and access library for services
 included in the Data Security Platform.
 
+Note: if you are consuming the SDK as a submodule you may need to add replace directives as follows:
+
+```go
+replace (
+  github.com/opentdf/platform/service => ./opentdf/service
+	github.com/opentdf/platform/lib/fixtures => ./opentdf/lib/fixtures
+	github.com/opentdf/platform/protocol/go => ./opentdf/protocol/go
+	github.com/opentdf/platform/lib/ocrypto => ./opentdf/lib/ocrypto
+	github.com/opentdf/platform/sdk => ./opentdf/sdk
+	github.com/opentdf/platform/service => ./opentdf/service
+)
+```
+
 ## Quick Start of the Go SDK
 
 ```go
 package main
 
-import bytes
-import io
-import os
-import strings
+import "fmt"
+import "bytes"
+import "io"
+import "os"
+import "strings"
 import "github.com/opentdf/platform/sdk"
 
 
 func main() {
-  s := sdk.New(
+  s, _ := sdk.New(
     sdk.WithAuth(mtls.NewGRPCAuthorizer(creds) /* or OIDC or whatever */),
     sdk.WithDataSecurityConfig(/* attribute schemas, kas multi-attribute mapping */),
   )

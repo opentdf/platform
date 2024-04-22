@@ -13,6 +13,7 @@ const (
 	provKcUsernameFlag = "username"
 	provKcPasswordFlag = "password"
 	provKcRealmFlag    = "realm"
+	provKcInsecure     = "insecure"
 )
 
 var (
@@ -36,6 +37,7 @@ var (
 			kcPassword, _ := cmd.Flags().GetString(provKcPasswordFlag)
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
+			insecure, _ := cmd.Flags().GetBool(provKcInsecure)
 
 			config, err := config.LoadConfig(configKey, configFile)
 			if err != nil {
@@ -48,7 +50,7 @@ var (
 				Password:         kcPassword,
 				Realm:            realmName,
 				Audience:         config.Server.Auth.Audience,
-				AllowInsecureTLS: true,
+				AllowInsecureTLS: insecure,
 			}
 
 			return fixtures.SetupKeycloak(context.Background(), kcConnectParams)
@@ -61,6 +63,7 @@ func init() {
 	provisionKeycloakCmd.Flags().StringP(provKcUsernameFlag, "u", "admin", "Keycloak username")
 	provisionKeycloakCmd.Flags().StringP(provKcPasswordFlag, "p", "changeme", "Keycloak password")
 	provisionKeycloakCmd.Flags().StringP(provKcRealmFlag, "r", "opentdf", "OpenTDF Keycloak Realm name")
+	provisionKeycloakCmd.Flags().BoolP(provKcInsecure, "", false, "Ignore tls verification when connecting to keycloak. --insecure to disable.")
 
 	provisionCmd.AddCommand(provisionKeycloakCmd)
 

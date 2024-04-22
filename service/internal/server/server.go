@@ -93,7 +93,7 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 		slog.Info("authentication enabled")
 		authN, err = auth.NewAuthenticator(
 			context.Background(),
-			config.Auth.AuthNConfig,
+			config.Auth,
 			d,
 		)
 		if err != nil {

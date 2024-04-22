@@ -20,14 +20,14 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-const token_resp string = `
+const tokenResp string = `
 { 
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
   "token_type": "Bearer",
   "expires_in": 3600,
 }`
 
-const cert_resp string = `
+const certResp string = `
 {
 	"keys": [
 		{
@@ -85,8 +85,8 @@ const group_resp = `{
 	"name": "group1"
 }`
 
-const bob_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJOS3V4RGphQldDN1U1anczNDlFdkxreW1OTWxiN3dfWndjZlJGQWFnWERBIn0.eyJleHAiOjIxNDU4MTA4NTUsImlhdCI6MTcxMzgxMDg1NSwianRpIjoiNGM2MGZkN2MtZTkyOS00NmI5LWJlMGQtNzgwNTgzN2NlODI0IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiZDRjOTNjOGQtYjY4MS00NGVhLWI4NTEtMGY3YjA3ODcwZDVjIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGVzdGNsaWVudCIsInNlc3Npb25fc3RhdGUiOiI0N2UyM2Y3Ny0xMWJjLTQ4M2UtYmI4Ni02M2EyNjcyNDVhNmUiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbImRlZmF1bHQtcm9sZXMtb3BlbnRkZiIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJzaWQiOiI0N2UyM2Y3Ny0xMWJjLTQ4M2UtYmI4Ni02M2EyNjcyNDVhNmUiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmFtZSI6ImJvYiBzbWl0aCIsInByZWZlcnJlZF91c2VybmFtZSI6ImJvYi5zbWl0aCIsImdpdmVuX25hbWUiOiJib2IiLCJmYW1pbHlfbmFtZSI6InNtaXRoIiwiZW1haWwiOiJib2JAc2FtcGxlLm9yZyJ9.ZeMOV3gq9zduwVBdAahW6yHz5RC_nC7kgEq-qL51rp7-YRESri_meXISLA1AEOdmIcorXHM55H-mV84X0D1D7g9AlSjxqwU-_wiL5qnVQwbx2KVyaJ2YfRni5lOZ4HnZi9yIo7sBQISaswf7GYieCJ4d1y6VoC2v9401sTK2q6A_EGI3XMBZfyWOdGYRjp6OuTsjlpKgW8y9IDHEVZhHujjwz7gUVzHrW74ZYWM_PQhC4dLTofDJz0DwiqcwoKtovnJHlaqfKoBWTma6bBYJ8fEiGu8gH1Yv06JNnFAG3Fav1HerB0Qow6sBOpGlswayoBMsWF9uirqHcXe6zGc65Q"
-const testclient_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJOS3V4RGphQldDN1U1anczNDlFdkxreW1OTWxiN3dfWndjZlJGQWFnWERBIn0.eyJleHAiOjIxNDU4MTEwMjYsImlhdCI6MTcxMzgxMTAyNiwianRpIjoiNTJkZjk0N2EtNmUzMS00MmQzLTkxMjUtNGI2NGFmM2I3NjE1IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiMjg4NjZjYmEtY2RkZS00MzAwLTgzNTctYWQxNzE0YTA1NWZlIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGVzdGNsaWVudCIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOltdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1vcGVudGRmIiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoiZW1haWwgcHJvZmlsZSIsImNsaWVudEhvc3QiOiIxOTIuMTY4Ljk2LjEiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6InNlcnZpY2UtYWNjb3VudC10ZXN0Y2xpZW50IiwiY2xpZW50QWRkcmVzcyI6IjE5Mi4xNjguOTYuMSIsImNsaWVudF9pZCI6InRlc3RjbGllbnQifQ.busdqj7LABioVqzWFD6cDTSkeo7F1dVdTB34EIHrjcP9BRQRNzbtLq5B-g6juIIHqRGF50rOpgmOuWPqymLCEm-9zloGeV6tj6Jv2MOrfH82vepo5yB-NutGc1o31Rw6vXvrrMj8hXKc5cNsPZDgRiToVcCs5OgjNjuS-nD1cwBzh3J-_jI64ILzugJMYVituLw85mYiBuZxA5t6_PSliw2mR-9AnBv1O1d4ZOVkbphKwHNQlaYkgm5U9TmcSX2ud_mOeIhcq9v3Ay18sKptwy9yEFOAXKSpSRxs1NDTGfJO4-k5g2l5FkRJRsGysWJdtqauow8pZxJVkVpkkA2wTw"
+const bobJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJOS3V4RGphQldDN1U1anczNDlFdkxreW1OTWxiN3dfWndjZlJGQWFnWERBIn0.eyJleHAiOjIxNDU4MTA4NTUsImlhdCI6MTcxMzgxMDg1NSwianRpIjoiNGM2MGZkN2MtZTkyOS00NmI5LWJlMGQtNzgwNTgzN2NlODI0IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiZDRjOTNjOGQtYjY4MS00NGVhLWI4NTEtMGY3YjA3ODcwZDVjIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGVzdGNsaWVudCIsInNlc3Npb25fc3RhdGUiOiI0N2UyM2Y3Ny0xMWJjLTQ4M2UtYmI4Ni02M2EyNjcyNDVhNmUiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbImRlZmF1bHQtcm9sZXMtb3BlbnRkZiIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJzaWQiOiI0N2UyM2Y3Ny0xMWJjLTQ4M2UtYmI4Ni02M2EyNjcyNDVhNmUiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmFtZSI6ImJvYiBzbWl0aCIsInByZWZlcnJlZF91c2VybmFtZSI6ImJvYi5zbWl0aCIsImdpdmVuX25hbWUiOiJib2IiLCJmYW1pbHlfbmFtZSI6InNtaXRoIiwiZW1haWwiOiJib2JAc2FtcGxlLm9yZyJ9.ZeMOV3gq9zduwVBdAahW6yHz5RC_nC7kgEq-qL51rp7-YRESri_meXISLA1AEOdmIcorXHM55H-mV84X0D1D7g9AlSjxqwU-_wiL5qnVQwbx2KVyaJ2YfRni5lOZ4HnZi9yIo7sBQISaswf7GYieCJ4d1y6VoC2v9401sTK2q6A_EGI3XMBZfyWOdGYRjp6OuTsjlpKgW8y9IDHEVZhHujjwz7gUVzHrW74ZYWM_PQhC4dLTofDJz0DwiqcwoKtovnJHlaqfKoBWTma6bBYJ8fEiGu8gH1Yv06JNnFAG3Fav1HerB0Qow6sBOpGlswayoBMsWF9uirqHcXe6zGc65Q"
+const testclientJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJOS3V4RGphQldDN1U1anczNDlFdkxreW1OTWxiN3dfWndjZlJGQWFnWERBIn0.eyJleHAiOjIxNDU4MTEwMjYsImlhdCI6MTcxMzgxMTAyNiwianRpIjoiNTJkZjk0N2EtNmUzMS00MmQzLTkxMjUtNGI2NGFmM2I3NjE1IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiMjg4NjZjYmEtY2RkZS00MzAwLTgzNTctYWQxNzE0YTA1NWZlIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGVzdGNsaWVudCIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOltdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1vcGVudGRmIiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoiZW1haWwgcHJvZmlsZSIsImNsaWVudEhvc3QiOiIxOTIuMTY4Ljk2LjEiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6InNlcnZpY2UtYWNjb3VudC10ZXN0Y2xpZW50IiwiY2xpZW50QWRkcmVzcyI6IjE5Mi4xNjguOTYuMSIsImNsaWVudF9pZCI6InRlc3RjbGllbnQifQ.busdqj7LABioVqzWFD6cDTSkeo7F1dVdTB34EIHrjcP9BRQRNzbtLq5B-g6juIIHqRGF50rOpgmOuWPqymLCEm-9zloGeV6tj6Jv2MOrfH82vepo5yB-NutGc1o31Rw6vXvrrMj8hXKc5cNsPZDgRiToVcCs5OgjNjuS-nD1cwBzh3J-_jI64ILzugJMYVituLw85mYiBuZxA5t6_PSliw2mR-9AnBv1O1d4ZOVkbphKwHNQlaYkgm5U9TmcSX2ud_mOeIhcq9v3Ay18sKptwy9yEFOAXKSpSRxs1NDTGfJO4-k5g2l5FkRJRsGysWJdtqauow8pZxJVkVpkkA2wTw"
 
 func test_keycloakConfig(server *httptest.Server) idpplugin.KeyCloakConfig {
 	return idpplugin.KeyCloakConfig{
@@ -114,13 +114,13 @@ func test_server(t *testing.T, userSearchQueryAndResp map[string]string, groupSe
 	groupByIdAndResponse map[string]string, groupMemberQueryAndResponse map[string]string, clientsSearchQueryAndResp map[string]string) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/realms/tdf/protocol/openid-connect/token" {
-			_, err := io.WriteString(w, token_resp)
+			_, err := io.WriteString(w, tokenResp)
 			if err != nil {
 				t.Error(err)
 			}
 		} else if r.URL.Path == "/realms/tdf/protocol/openid-connect/certs" {
 			w.Header().Set("Content-Type", "application/json")
-			_, err := io.WriteString(w, cert_resp)
+			_, err := io.WriteString(w, certResp)
 			if err != nil {
 				t.Error(err)
 			}
@@ -151,7 +151,7 @@ func Test_KCEntityResolutionByJwtUsername(t *testing.T) {
 	defer server.Close()
 
 	var validBody []*authorization.Entity
-	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_Jwt{Jwt: bob_jwt}})
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_Jwt{Jwt: bobJwt}})
 
 	var kcconfig = test_keycloakConfig(server)
 	var kcConfigInterface map[string]interface{}
@@ -169,15 +169,15 @@ func Test_KCEntityResolutionByJwtUsername(t *testing.T) {
 
 	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
-	assert.Nil(t, reserr)
+	require.NoError(t, reserr)
 
-	var entity_representations = resp.GetEntityRepresentations()
-	assert.NotNil(t, entity_representations)
-	assert.Equal(t, 1, len(entity_representations))
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 1)
 
-	assert.Equal(t, "1234", entity_representations[0].GetOriginalId())
-	assert.Equal(t, 1, len(entity_representations[0].GetAdditionalProps()))
-	var propMap = entity_representations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bobid", propMap["id"])
 }
 
@@ -188,7 +188,7 @@ func Test_KCEntityResolutionByJwtClientID(t *testing.T) {
 	defer server.Close()
 
 	var validBody []*authorization.Entity
-	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_Jwt{Jwt: testclient_jwt}})
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_Jwt{Jwt: testclientJwt}})
 
 	var kcconfig = test_keycloakConfig(server)
 	var kcConfigInterface map[string]interface{}
@@ -206,15 +206,15 @@ func Test_KCEntityResolutionByJwtClientID(t *testing.T) {
 
 	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
-	assert.Nil(t, reserr)
+	require.NoError(t, reserr)
 
-	var entity_representations = resp.GetEntityRepresentations()
-	assert.NotNil(t, entity_representations)
-	assert.Equal(t, 1, len(entity_representations))
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 1)
 
-	assert.Equal(t, "1234", entity_representations[0].GetOriginalId())
-	assert.Equal(t, 1, len(entity_representations[0].GetAdditionalProps()))
-	var propMap = entity_representations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bobid", propMap["id"])
 }
 
@@ -242,11 +242,11 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 		Config: kcConfigStruct,
 	})
 
-	assert.Nil(t, reserr)
+	require.NoError(t, reserr)
 	_ = json.NewEncoder(os.Stdout).Encode(resp)
-	var entity_representations = resp.GetEntityRepresentations()
-	assert.NotNil(t, entity_representations)
-	assert.Equal(t, 1, len(entity_representations))
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 1)
 }
 
 func Test_KCEntityResolutionByEmail(t *testing.T) {
@@ -276,20 +276,20 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 
 	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
-	assert.Nil(t, reserr)
+	require.NoError(t, reserr)
 
-	var entity_representations = resp.GetEntityRepresentations()
-	assert.NotNil(t, entity_representations)
-	assert.Equal(t, 2, len(entity_representations))
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 2)
 
-	assert.Equal(t, "1234", entity_representations[0].GetOriginalId())
-	assert.Equal(t, 1, len(entity_representations[0].GetAdditionalProps()))
-	var propMap = entity_representations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bobid", propMap["id"])
 
-	assert.Equal(t, "1235", entity_representations[1].GetOriginalId())
-	assert.Equal(t, 1, len(entity_representations[1].GetAdditionalProps()))
-	propMap = entity_representations[1].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "1235", entityRepresentations[1].GetOriginalId())
+	assert.Len(t, entityRepresentations[1].GetAdditionalProps(), 1)
+	propMap = entityRepresentations[1].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "aliceid", propMap["id"])
 }
 
@@ -321,20 +321,20 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 
 	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
-	assert.Nil(t, reserr)
+	require.NoError(t, reserr)
 
-	var entity_representations = resp.GetEntityRepresentations()
-	assert.NotNil(t, entity_representations)
-	assert.Equal(t, 2, len(entity_representations))
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 2)
 
-	assert.Equal(t, "1234", entity_representations[0].GetOriginalId())
-	assert.Equal(t, 1, len(entity_representations[0].GetAdditionalProps()))
-	var propMap = entity_representations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bobid", propMap["id"])
 
-	assert.Equal(t, "1235", entity_representations[1].GetOriginalId())
-	assert.Equal(t, 1, len(entity_representations[1].GetAdditionalProps()))
-	propMap = entity_representations[1].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "1235", entityRepresentations[1].GetOriginalId())
+	assert.Len(t, entityRepresentations[1].GetAdditionalProps(), 1)
+	propMap = entityRepresentations[1].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "aliceid", propMap["id"])
 }
 
@@ -370,17 +370,17 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 
 	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
-	assert.Nil(t, reserr)
+	require.NoError(t, reserr)
 
-	var entity_representations = resp.GetEntityRepresentations()
-	assert.NotNil(t, entity_representations)
-	assert.Equal(t, 1, len(entity_representations))
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Equal(t, 1, len(entityRepresentations))
 
-	assert.Equal(t, "123456", entity_representations[0].GetOriginalId())
-	assert.Equal(t, 2, len(entity_representations[0].GetAdditionalProps()))
-	var propMap = entity_representations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "123456", entityRepresentations[0].GetOriginalId())
+	assert.Equal(t, 2, len(entityRepresentations[0].GetAdditionalProps()))
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bobid", propMap["id"])
-	propMap = entity_representations[0].GetAdditionalProps()[1].AsMap()
+	propMap = entityRepresentations[0].GetAdditionalProps()[1].AsMap()
 	assert.Equal(t, "aliceid", propMap["id"])
 }
 
@@ -415,7 +415,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 
 	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
-	assert.NotNil(t, reserr)
+	assert.Error(t, reserr)
 	assert.Equal(t, &authorization.IdpPluginResponse{}, resp)
 	var entityNotFound = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
 	var expectedError = errors.New(entityNotFound.String())

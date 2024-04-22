@@ -374,10 +374,10 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 
 	var entityRepresentations = resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
-	assert.Equal(t, 1, len(entityRepresentations))
+	assert.Len(t, entityRepresentations, 1)
 
 	assert.Equal(t, "123456", entityRepresentations[0].GetOriginalId())
-	assert.Equal(t, 2, len(entityRepresentations[0].GetAdditionalProps()))
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 2)
 	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bobid", propMap["id"])
 	propMap = entityRepresentations[0].GetAdditionalProps()[1].AsMap()
@@ -415,7 +415,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 
 	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
 
-	assert.Error(t, reserr)
+	require.Error(t, reserr)
 	assert.Equal(t, &authorization.IdpPluginResponse{}, resp)
 	var entityNotFound = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
 	var expectedError = errors.New(entityNotFound.String())

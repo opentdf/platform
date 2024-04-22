@@ -89,7 +89,7 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 
 	// Add authN interceptor
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
-	if config.Auth.Disabled {
+	if config.Auth.Enabled {
 		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can use `allowNoDPoP`")
 	} else {
 		slog.Info("authentication enabled")
@@ -162,7 +162,7 @@ func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 
 	// Add authN interceptor
 	// TODO check if this is needed or if it is handled by gRPC
-	if c.Auth.Disabled {
+	if c.Auth.Enabled {
 		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can use `allowNoDPoP`")
 	} else {
 		h = a.MuxHandler(h)
@@ -222,7 +222,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 		slog.Warn("failed to create proto validator", slog.String("error", err.Error()))
 	}
 
-	if c.Auth.Disabled {
+	if c.Auth.Enabled {
 		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can use `allowNoDpop`")
 	} else {
 		i = append(i, a.UnaryServerInterceptor)

@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM cgr.dev/chainguard/go:latest AS builder
+FROM cgr.dev/chainguard/go:latest AS builder
 ARG TARGETOS TARGETARCH
 
 WORKDIR /app

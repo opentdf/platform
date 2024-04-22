@@ -30,7 +30,6 @@ require (
 	github.com/testcontainers/testcontainers-go v0.28.0
 	github.com/valyala/fasthttp v1.52.0
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
-	golang.org/x/oauth2 v0.18.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -140,6 +139,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.15.0 // indirect
+	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect

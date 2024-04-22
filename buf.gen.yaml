@@ -21,4 +21,3 @@ plugins:
     out: protocol/go
     opt:
       - paths=source_relative
-

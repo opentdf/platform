@@ -2,25 +2,31 @@ package sdk
 
 import (
 	"bytes"
-	"crypto/rand"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
-	"net/http"
-	"net/http/httptest"
+	"net"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/docker/go-connections/nat"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
+	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+	tc "github.com/testcontainers/testcontainers-go"
 )
 
 const (
@@ -280,12 +286,32 @@ func init() {
 	}
 }
 
-func TestSimpleTDF(t *testing.T) {
-	serverURL, closer, sdk := runKas()
-	defer closer()
+type TDFSuite struct {
+	suite.Suite
+	tcTerminate func()
+	sdk         *SDK
+	serverURL   string
+}
 
+func (s *TDFSuite) SetupSuite() {
+	// Set up the test environment
+	serverURL, terminate, sdk := runKas()
+	s.tcTerminate = terminate
+	s.sdk = sdk
+	s.serverURL = serverURL
+}
+
+func (s *TDFSuite) TearDownSuite() {
+	// Tear down the test environment
+	s.tcTerminate()
+}
+
+func TestTDF(t *testing.T) {
+	suite.Run(t, new(TDFSuite))
+}
+
+func (s *TDFSuite) Test_SimpleTDF() {
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
-
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",
 		"https://example.com/attr/Classification/value/X",
@@ -297,7 +323,7 @@ func TestSimpleTDF(t *testing.T) {
 	{
 		kasURLs := []KASInfo{
 			{
-				URL:       serverURL,
+				URL:       s.serverURL,
 				PublicKey: "",
 			},
 		}
@@ -306,185 +332,131 @@ func TestSimpleTDF(t *testing.T) {
 		bufReader := bytes.NewReader(inBuf.Bytes())
 
 		fileWriter, err := os.Create(tdfFilename)
-		if err != nil {
-			t.Fatalf("os.CreateTDF failed: %v", err)
-		}
+		s.Require().NoError(err)
+
 		defer func(fileWriter *os.File) {
 			err := fileWriter.Close()
-			if err != nil {
-				t.Fatalf("Fail to close the file: %v", err)
-			}
+			s.Require().NoError(err)
 		}(fileWriter)
 
-		tdfObj, err := sdk.CreateTDF(fileWriter, bufReader,
+		tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
 			WithKasInformation(kasURLs...),
 			WithMetaData(string(metaData)),
 			WithDataAttributes(attributes...))
-		if err != nil {
-			t.Fatalf("tdf.CreateTDF failed: %v", err)
-		}
 
-		if math.Abs(float64(tdfObj.size-expectedTdfSize)) > 1.01*float64(expectedTdfSize) {
-			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.size, expectedTdfSize)
-		}
+		s.Require().NoError(err)
+		s.LessOrEqual(math.Abs(float64(tdfObj.size-expectedTdfSize)), 1.01*float64(expectedTdfSize))
 	}
 
 	// test meta data
 	{
 		readSeeker, err := os.Open(tdfFilename)
-		if err != nil {
-			t.Fatalf("Fail to open archive file:%s %v", tdfFilename, err)
-		}
+		s.Require().NoError(err)
 
 		defer func(readSeeker *os.File) {
 			err := readSeeker.Close()
-			if err != nil {
-				t.Fatalf("Fail to close archive file:%v", err)
-			}
+			s.Require().NoError(err)
 		}(readSeeker)
 
-		r, err := sdk.LoadTDF(readSeeker)
-		if err != nil {
-			t.Fatalf("Fail to load the tdf:%v", err)
-		}
+		r, err := s.sdk.LoadTDF(readSeeker)
+		s.Require().NoError(err)
 
 		unencryptedMetaData, err := r.UnencryptedMetadata()
-		if err != nil {
-			t.Fatalf("Fail to get meta data from tdf:%v", err)
-		}
+		s.Require().NoError(err)
 
-		assert.EqualValues(t, metaData, unencryptedMetaData)
+		s.EqualValues(metaData, unencryptedMetaData)
 
 		dataAttributes, err := r.DataAttributes()
-		if err != nil {
-			t.Fatalf("Fail to get policy from tdf:%v", err)
-		}
+		s.Require().NoError(err)
 
-		if reflect.DeepEqual(attributes, dataAttributes) != true {
-			t.Errorf("attributes test failed expected %v, got %v", attributes, dataAttributes)
-		}
+		s.Equal(attributes, dataAttributes)
 	}
 
 	// test reader
 	{
 		readSeeker, err := os.Open(tdfFilename)
-		if err != nil {
-			t.Fatalf("Fail to open archive file:%s %v", tdfFilename, err)
-		}
+		s.Require().NoError(err)
 
 		defer func(readSeeker *os.File) {
 			err := readSeeker.Close()
-			if err != nil {
-				t.Fatalf("Fail to close archive file:%v", err)
-			}
+			s.Require().NoError(err)
 		}(readSeeker)
 
 		buf := make([]byte, 8)
 
-		r, err := sdk.LoadTDF(readSeeker)
-		if err != nil {
-			t.Fatalf("Fail to create reader:%v", err)
-		}
+		r, err := s.sdk.LoadTDF(readSeeker)
+		s.Require().NoError(err)
 
 		offset := 2
 		n, err := r.ReadAt(buf, int64(offset))
-		if err != nil && errors.Is(err, io.EOF) != true {
-			t.Fatalf("Fail to read from reader:%v", err)
+		if err != nil {
+			s.Require().ErrorIs(err, io.EOF)
 		}
 
 		expectedPlainTxt := plainText[offset : offset+n]
-		if string(buf[:n]) != expectedPlainTxt {
-			t.Errorf("decrypt test failed expected %v, got %v", expectedPlainTxt, string(buf))
-		}
+		s.Equal(expectedPlainTxt, string(buf[:n]))
 	}
 
 	_ = os.Remove(tdfFilename)
 }
 
-func TestTDFReader(t *testing.T) { //nolint:gocognit // requires for testing tdf
-	serverURL, closer, sdk := runKas()
-	defer closer()
-
+func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
 	for _, test := range partialTDFTestHarnesses { // create .txt file
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
-			kasInfoList[index].URL = serverURL
+			kasInfoList[index].URL = s.serverURL
 			kasInfoList[index].PublicKey = ""
 		}
 
 		for _, readAtTest := range test.readAtTests {
 			tdfBuf := bytes.Buffer{}
 			readSeeker := bytes.NewReader([]byte(test.payload))
-			_, err := sdk.CreateTDF(
+			_, err := s.sdk.CreateTDF(
 				io.Writer(&tdfBuf),
 				readSeeker,
 				WithKasInformation(kasInfoList...),
 				WithSegmentSize(readAtTest.segmentSize),
 			)
-
-			if err != nil {
-				t.Fatalf("tdf.CreateTDF failed: %v", err)
-			}
+			s.Require().NoError(err)
 
 			// test reader
 			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
-			r, err := sdk.LoadTDF(tdfReadSeeker)
-			if err != nil {
-				t.Fatalf("failed to read tdf: %v", err)
-			}
+			r, err := s.sdk.LoadTDF(tdfReadSeeker)
+			s.Require().NoError(err)
 
 			rbuf := make([]byte, readAtTest.dataLength)
 			n, err := r.ReadAt(rbuf, readAtTest.dataOffset)
-			if err != nil {
-				t.Fatalf("Fail to read from reader:%v", err)
-			}
+			s.Require().NoError(err)
 
-			if n != readAtTest.dataLength {
-				t.Errorf("decrypt test failed expected length %v, got %v", readAtTest.dataLength, n)
-			}
-
-			if string(rbuf) != readAtTest.expectedPayload {
-				t.Errorf("decrypt test failed expected %v, got %v", readAtTest.expectedPayload, string(rbuf))
-			}
+			s.Equal(readAtTest.dataLength, n)
+			s.Equal(readAtTest.expectedPayload, string(rbuf))
 
 			// Test Read
 			plainTextFile := "text.txt"
 			{
 				fileWriter, err := os.Create(plainTextFile)
+				s.Require().NoError(err)
 
-				if err != nil {
-					t.Fatalf("os.CreateTDF failed: %v", err)
-				}
 				defer func(fileWriter *os.File) {
 					err := fileWriter.Close()
-					if err != nil {
-						t.Fatalf("Fail to close the tdf file: %v", err)
-					}
+					s.Require().NoError(err)
 				}(fileWriter)
 
 				_, err = io.Copy(fileWriter, r)
-				if err != nil {
-					t.Fatalf("Fail to copy into file: %v", err)
-				}
+				s.Require().NoError(err)
 			}
 
 			fileData, err := os.ReadFile(plainTextFile)
-			if err != nil {
-				t.Fatalf("os.ReadFile failed: %v", err)
-			}
+			s.Require().NoError(err)
 
-			if string(fileData) != test.payload {
-				t.Errorf("decrypt test failed expected %v, got %v", test.payload, string(fileData))
-			}
+			s.Equal(test.payload, string(fileData))
+
 			_ = os.Remove(plainTextFile)
 		}
 	}
 }
 
-func TestTDF(t *testing.T) {
-	serverURL, closer, sdk := runKas()
-	defer closer()
-
+func (s *TDFSuite) Test_TDF() {
 	for index, test := range testHarnesses {
 		// create .txt file
 		plaintTextFileName := strconv.Itoa(index) + ".txt"
@@ -493,72 +465,19 @@ func TestTDF(t *testing.T) {
 
 		kasInfoList := test.kasInfoList
 		for index := range kasInfoList {
-			kasInfoList[index].URL = serverURL
+			kasInfoList[index].URL = s.serverURL
 			kasInfoList[index].PublicKey = ""
 		}
 
 		// test encrypt
-		testEncrypt(t, sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
+		testEncrypt(s.T(), s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
 
 		// test decrypt with reader
-		testDecryptWithReader(t, sdk, tdfFileName, decryptedTdfFileName, test)
+		testDecryptWithReader(s.T(), s.sdk, tdfFileName, decryptedTdfFileName, test)
 
 		// Remove the test files
 		_ = os.Remove(plaintTextFileName)
 		_ = os.Remove(tdfFileName)
-	}
-}
-
-func BenchmarkReader(b *testing.B) {
-	test := tdfTest{
-		fileSize: 10 * oneMB,
-		kasInfoList: []KASInfo{
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: mockKasPublicKey,
-			},
-		},
-	}
-
-	serverURL, closer, sdk := runKas()
-	defer closer()
-
-	kasInfoList := test.kasInfoList
-	for index := range kasInfoList {
-		kasInfoList[index].URL = serverURL
-		kasInfoList[index].PublicKey = ""
-	}
-
-	// encrypt
-	// create a buffer and write with 0xff
-	inBuf := make([]byte, test.fileSize)
-	for index := 0; index < len(inBuf); index++ {
-		inBuf[index] = char
-	}
-
-	tdfBuf := bytes.Buffer{}
-	readSeeker := bytes.NewReader(inBuf)
-	_, err := sdk.CreateTDF(io.Writer(&tdfBuf), readSeeker, WithKasInformation(kasInfoList...))
-	if err != nil {
-		b.Fatalf("tdf.CreateTDF failed: %v", err)
-	}
-
-	readSeeker = bytes.NewReader(tdfBuf.Bytes())
-	r, err := sdk.LoadTDF(readSeeker)
-	if err != nil {
-		b.Fatalf("failed to read tdf: %v", err)
-	}
-
-	outBuf := bytes.Buffer{}
-	for i := 0; i < b.N; i++ {
-		n, err := r.WriteTo(io.Writer(&outBuf))
-		if err != nil {
-			b.Fatalf("io.Writer failed: %v", err)
-		}
-
-		if !bytes.Equal(outBuf.Bytes()[:n], inBuf) {
-			b.Errorf("Input buffer is different from out buffer decrypt test failed")
-		}
 	}
 }
 
@@ -569,79 +488,54 @@ func testEncrypt(t *testing.T, sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 
 	// open file
 	readSeeker, err := os.Open(plainTextFilename)
-	if err != nil {
-		t.Fatalf("Fail to open plain text file:%s %v", plainTextFilename, err)
-	}
+	require.NoError(t, err)
 
 	defer func(readSeeker *os.File) {
 		err := readSeeker.Close()
-		if err != nil {
-			t.Fatalf("Fail to close plain text file:%v", err)
-		}
+		require.NoError(t, err)
 	}(readSeeker)
 
 	fileWriter, err := os.Create(tdfFileName)
+	require.NoError(t, err)
 
-	if err != nil {
-		t.Fatalf("os.CreateTDF failed: %v", err)
-	}
 	defer func(fileWriter *os.File) {
 		err := fileWriter.Close()
-		if err != nil {
-			t.Fatalf("Fail to close the tdf file: %v", err)
-		}
+		require.NoError(t, err)
 	}(fileWriter) // CreateTDF TDFConfig
 	tdfObj, err := sdk.CreateTDF(fileWriter, readSeeker, WithKasInformation(kasInfoList...))
-	if err != nil {
-		t.Fatalf("tdf.CreateTDF failed: %v", err)
-	}
+	require.NoError(t, err)
 
-	if math.Abs(float64(tdfObj.size-test.tdfFileSize)) > 1.01*float64(test.tdfFileSize) {
-		t.Errorf("tdf size test failed expected %v, got %v", test.tdfFileSize, tdfObj.size)
-	}
+	assert.LessOrEqual(t, math.Abs(float64(tdfObj.size-test.tdfFileSize)), 1.01*float64(test.tdfFileSize))
+
 }
 
 func testDecryptWithReader(t *testing.T, sdk *SDK, tdfFile, decryptedTdfFileName string, test tdfTest) {
 	readSeeker, err := os.Open(tdfFile)
-	if err != nil {
-		t.Fatalf("Fail to open archive file:%s %v", tdfFile, err)
-	}
+	require.NoError(t, err)
 
 	defer func(readSeeker *os.File) {
 		err := readSeeker.Close()
-		if err != nil {
-			t.Fatalf("Fail to close archive file:%v", err)
-		}
+		require.NoError(t, err)
 	}(readSeeker)
 
 	r, err := sdk.LoadTDF(readSeeker)
-	if err != nil {
-		t.Fatalf("failed to read tdf: %v", err)
-	}
+	require.NoError(t, err)
 
 	{
 		fileWriter, err := os.Create(decryptedTdfFileName)
+		require.NoError(t, err)
 
-		if err != nil {
-			t.Fatalf("os.CreateTDF failed: %v", err)
-		}
 		defer func(fileWriter *os.File) {
 			err := fileWriter.Close()
-			if err != nil {
-				t.Fatalf("Fail to close the tdf file: %v", err)
-			}
+			require.NoError(t, err)
 		}(fileWriter)
 
 		_, err = io.Copy(fileWriter, r)
-		if err != nil {
-			t.Fatalf("Fail to copy into file: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	res := checkIdentical(t, decryptedTdfFileName, test.checksum)
-	if !res {
-		t.Errorf("decrypted text didn't match palin text")
-	}
+	assert.True(t, res, "decrypted text didn't match plain text")
 
 	var bufSize int64 = 5
 	buf := make([]byte, bufSize)
@@ -649,13 +543,10 @@ func testDecryptWithReader(t *testing.T, sdk *SDK, tdfFile, decryptedTdfFileName
 
 	// read last 5 bytes
 	n, err := r.ReadAt(buf, test.fileSize-(bufSize))
-	if err != nil && errors.Is(err, io.EOF) != true {
-		t.Fatalf("sdk.Reader.ReadAt failed: %v", err)
+	if err != nil {
+		require.ErrorIs(t, err, io.EOF)
 	}
-
-	if !bytes.Equal(buf[:n], resultBuf[:n]) {
-		t.Errorf("decrypted text didn't match palin text with ReadAt interface")
-	}
+	assert.Equal(t, resultBuf[:n], buf[:n], "decrypted text didn't match plain text with ReadAt interface")
 
 	_ = os.Remove(decryptedTdfFileName)
 }
@@ -687,124 +578,122 @@ func createFileName(buf []byte, filename string, size int64) {
 	}
 }
 
-// if we have credentials for a local keycloak we assume that
-// we are running against a local cluster and dont' need a fake KAS
-// in this case we return a GRPC rewrapper and authenticate against
-// keycloak
 func runKas() (string, func(), *SDK) {
-	clientID := os.Getenv("SDK_OIDC_CLIENT_ID")
-	clientSecret := os.Getenv("SDK_OIDC_CLIENT_SECRET")
-	if clientID != "" && clientSecret != "" {
-		opts := make([]Option, 0)
-		opts = append(opts,
-			WithClientCredentials(clientID, clientSecret, []string{}),
-			WithTokenEndpoint("http://localhost:65432/auth/realms/tdf/protocol/openid-connect/token"),
-			WithInsecureConn(),
-		)
+	listenPort, _ := nat.NewPort("tcp", "8184")
+	req := tc.ContainerRequest{
+		FromDockerfile: tc.FromDockerfile{
+			Repo:       "platform/mocks",
+			KeepImage:  false,
+			Context:    "../service/integration/wiremock",
+			Dockerfile: "Dockerfile",
+		},
+		ExposedPorts: []string{fmt.Sprintf("%s/tcp", listenPort.Port())},
+		Cmd:          []string{fmt.Sprintf("--port=%s", listenPort.Port()), "--verbose"},
+		WaitingFor:   wait.ForLog("extensions:"),
+		Files: []tc.ContainerFile{
+			{
+				HostFilePath:      "../service/integration/wiremock/mappings",
+				ContainerFilePath: "/home/wiremock/mappings",
+				FileMode:          0o444,
+			},
+			{
+				HostFilePath:      "../service/integration/wiremock/messages",
+				ContainerFilePath: "/home/wiremock/__files/messages",
+				FileMode:          0o444,
+			},
+			{
+				HostFilePath:      "../service/integration/wiremock/grpc",
+				ContainerFilePath: "/home/wiremock/grpc",
+				FileMode:          0o444,
+			},
+		},
+	}
 
-		sdk, err := New("http://doesntmatterhere.example.org", opts...)
-		if err != nil {
-			panic(fmt.Sprintf("error creating SDK: %v", err))
+	var providerType tc.ProviderType
+
+	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
+		providerType = tc.ProviderPodman
+	} else {
+		providerType = tc.ProviderDocker
+	}
+
+	wiremock, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+		ProviderType:     providerType,
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	port, err := wiremock.MappedPort(context.Background(), "8184/tcp")
+	if err != nil {
+		slog.Error("could not get wiremock mapped port", slog.String("error", err.Error()))
+		panic(err)
+	}
+
+	grpcListener := bufconn.Listen(1024 * 1024)
+	grpcServer := grpc.NewServer()
+	kaspb.RegisterAccessServiceServer(grpcServer, &FakeKas{})
+	go func() {
+		if err := grpcServer.Serve(grpcListener); err != nil {
+			panic(fmt.Sprintf("failed to serve: %v", err))
 		}
-
-		return "grpc://localhost:8080", func() {}, sdk
+	}()
+	dialer := func(_ context.Context, _ string) (net.Conn, error) {
+		return grpcListener.Dial()
 	}
 
-	signingKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		panic(fmt.Sprintf("ocrypto.NewRSAKeyPair: %v", err))
-	}
-
-	signingPubKey, err := signingKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		panic(fmt.Sprintf("ocrypto.PublicKeyInPemFormat failed: %v", err))
-	}
-
-	signingPrivateKey, err := signingKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		panic(fmt.Sprintf("ocrypto.PrivateKeyInPemFormat failed: %v", err))
-	}
-
-	accessTokenBytes := make([]byte, 10)
-	if _, err := rand.Read(accessTokenBytes); err != nil {
-		panic("failed to create random access token")
-	}
-	accessToken := ocrypto.Base64Encode(accessTokenBytes)
-
-	server := httptest.NewServer(http.HandlerFunc(getKASRequestHandler(string(accessToken), signingPubKey)))
-
-	authConfig := AuthConfig{dpopPublicKeyPEM: signingPubKey, dpopPrivateKeyPEM: signingPrivateKey, accessToken: string(accessToken)}
-
-	sdk, err := New("http://thisdoesnotmatterhere.example.org", WithAuthConfig(authConfig))
+	host := net.JoinHostPort("localhost", port.Port())
+	sdk, err := New(host,
+		WithClientCredentials("test", "test", nil),
+		WithTokenEndpoint(fmt.Sprintf("http://%s/auth/token", host)),
+		WithInsecureConn(),
+		WithExtraDialOptions(grpc.WithContextDialer(dialer)))
 	if err != nil {
 		panic(fmt.Sprintf("error creating SDK with authconfig: %v", err))
 	}
-	return server.URL, func() { server.Close() }, sdk
-}
-
-func getKASRequestHandler(expectedAccessToken, //nolint:gocognit // KAS is pretty complicated
-	dpopPublicKeyPEM string) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get(kAcceptKey) != kContentTypeJSONValue {
-			panic(fmt.Sprintf("expected Accept: application/json header, got: %s", r.Header.Get("Accept")))
+	terminate := func() {
+		if err := wiremock.Terminate(context.Background()); err != nil {
+			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
+			return
 		}
 
-		r.Header.Set(kContentTypeKey, kContentTypeJSONValue)
-
-		switch {
-		case r.URL.Path == kasPublicKeyPath:
-			sendPublicKey(w)
-		case r.URL.Path == kRewrapV2:
-			requestBody, err := io.ReadAll(r.Body)
-			if err != nil {
-				panic(fmt.Sprintf("io.ReadAll failed: %v", err))
-			}
-			if r.Header.Get("authorization") != fmt.Sprintf("Bearer %s", expectedAccessToken) {
-				panic(fmt.Sprintf("got a bad auth header: [%s]", r.Header.Get("authorization")))
-			}
-
-			var data map[string]string
-			err = json.Unmarshal(requestBody, &data)
-			if err != nil {
-				panic(fmt.Sprintf("json.Unmarsha failed: %v", err))
-			}
-			tokenString, ok := data[kSignedRequestToken]
-			if !ok {
-				panic("signed token missing in rewrap response")
-			}
-			token, err := jwt.ParseWithClaims(tokenString, &rewrapJWTClaims{}, func(_ *jwt.Token) (interface{}, error) {
-				signingRSAPublicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(dpopPublicKeyPEM))
-				if err != nil {
-					return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
-				}
-
-				return signingRSAPublicKey, nil
-			})
-			var rewrapRequest string
-			if err != nil {
-				panic(fmt.Sprintf("jwt.ParseWithClaims failed:%v", err))
-			} else if claims, fine := token.Claims.(*rewrapJWTClaims); fine {
-				rewrapRequest = claims.Body
-			} else {
-				panic("unknown claims type, cannot proceed")
-			}
-
-			entityWrappedKey := getRewrappedKey(rewrapRequest)
-			response, err := json.Marshal(map[string]string{
-				kEntityWrappedKey: string(ocrypto.Base64Encode(entityWrappedKey)),
-			})
-			if err != nil {
-				panic(fmt.Sprintf("json.Marshal failed: %v", err))
-			}
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(response)
-			if err != nil {
-				panic(fmt.Sprintf("http.ResponseWriter.Write failed: %v", err))
-			}
-		default:
-			panic(fmt.Sprintf("expected to request: %s", r.URL.Path))
+		if err := recover(); err != nil {
+			os.Exit(1)
 		}
 	}
+	return "", terminate, sdk
+}
+
+type FakeKas struct {
+	kaspb.UnimplementedAccessServiceServer
+}
+
+func (f *FakeKas) Rewrap(_ context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
+	signedRequestToken := in.GetSignedRequestToken()
+
+	token, err := jwt.ParseInsecure([]byte(signedRequestToken))
+	if err != nil {
+		return nil, fmt.Errorf("jwt.ParseInsecure failed: %w", err)
+	}
+
+	requestBody, found := token.Get("requestBody")
+	if !found {
+		return nil, fmt.Errorf("requestBody not found in token")
+	}
+
+	requestBodyStr, ok := requestBody.(string)
+	if !ok {
+		return nil, fmt.Errorf("requestBody not a string")
+	}
+	entityWrappedKey := getRewrappedKey(requestBodyStr)
+
+	return &kaspb.RewrapResponse{EntityWrappedKey: entityWrappedKey}, nil
+}
+
+func (f *FakeKas) PublicKey(_ context.Context, _ *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
+	return &kaspb.PublicKeyResponse{PublicKey: mockKasPublicKey}, nil
 }
 
 func getRewrappedKey(rewrapRequest string) []byte {
@@ -835,18 +724,6 @@ func getRewrappedKey(rewrapRequest string) []byte {
 		panic(fmt.Sprintf("ocrypto.encrypt failed: %v", err))
 	}
 	return entityWrappedKey
-}
-
-func sendPublicKey(w http.ResponseWriter) {
-	kasPublicKeyResponse, err := json.Marshal(mockKasPublicKey)
-	if err != nil {
-		panic(fmt.Sprintf("json.Marshal failed: %v", err))
-	}
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(kasPublicKeyResponse)
-	if err != nil {
-		panic(fmt.Sprintf("http.ResponseWriter.Write failed: %v", err))
-	}
 }
 
 func checkIdentical(t *testing.T, file, checksum string) bool {

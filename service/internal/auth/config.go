@@ -4,8 +4,9 @@ import "fmt"
 
 // AuthConfig pulls AuthN and AuthZ together
 type Config struct {
-	Enabled     bool `yaml:"enabled" default:"true" `
-	AuthNConfig `mapstructure:",squash"`
+	Enabled      bool     `yaml:"enabled" default:"true" `
+	PublicRoutes []string `mapstructure:"-"`
+	AuthNConfig  `mapstructure:",squash"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens

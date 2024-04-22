@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
@@ -16,6 +19,8 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
 )
@@ -50,6 +55,19 @@ func ServiceRegistrationTest() serviceregistry.Registration {
 }
 
 func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
+	// Start wiremock
+	wiremock, err := startWireMock()
+	require.NoError(t, err)
+
+	defer func() {
+		err := wiremock.Terminate(context.Background())
+		require.NoError(t, err)
+	}()
+
+	port, err := wiremock.MappedPort(context.Background(), "8184/tcp")
+	require.NoError(t, err)
+
+	host := net.JoinHostPort("localhost", port.Port())
 	// Create new opentdf server
 	d, _ := db.NewClient(db.Config{})
 	s, err := server.NewOpenTDFServer(server.Config{
@@ -57,10 +75,12 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 			return nil
 		},
 		Auth: auth.Config{
-			Enabled: false,
+			Enabled: true,
 			AuthNConfig: auth.AuthNConfig{
-				Issuer: "test",
+				Issuer:   fmt.Sprintf("http://%s/auth", host),
+				Audience: "opentdf",
 			},
+			PublicRoutes: []string{"/testpath/*"},
 		},
 		Port: 43481,
 	}, d)
@@ -103,4 +123,51 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "hello world from test service!", string(respBody))
+}
+
+func startWireMock() (tc.Container, error) {
+	var providerType tc.ProviderType
+
+	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
+		providerType = tc.ProviderPodman
+	} else {
+		providerType = tc.ProviderDocker
+	}
+
+	listenPort, _ := nat.NewPort("tcp", "8184")
+
+	req := tc.ContainerRequest{
+		FromDockerfile: tc.FromDockerfile{
+			Repo:       "platform/mocks",
+			KeepImage:  true,
+			Context:    "../../integration/wiremock",
+			Dockerfile: "Dockerfile",
+		},
+		ExposedPorts: []string{fmt.Sprintf("%s/tcp", listenPort.Port())},
+		Cmd:          []string{fmt.Sprintf("--port=%s", listenPort.Port()), "--verbose"},
+		WaitingFor:   wait.ForLog("extensions:"),
+		Files: []tc.ContainerFile{
+			{
+				HostFilePath:      "../../integration/wiremock/mappings",
+				ContainerFilePath: "/home/wiremock/mappings",
+				FileMode:          0o444,
+			},
+			{
+				HostFilePath:      "../../integration/wiremock/messages",
+				ContainerFilePath: "/home/wiremock/__files/messages",
+				FileMode:          0o444,
+			},
+			{
+				HostFilePath:      "../../integration/wiremock/grpc",
+				ContainerFilePath: "/home/wiremock/grpc",
+				FileMode:          0o444,
+			},
+		},
+	}
+
+	return tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+		ProviderType:     providerType,
+		ContainerRequest: req,
+		Started:          true,
+	})
 }

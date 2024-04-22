@@ -92,7 +92,7 @@ func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*Re
 	if dpopJWK == nil {
 		slog.InfoContext(ctx, "no DPoP key provided")
 		// if we have no DPoP key it's for one of two reasons:
-		// 1. auth is disabled we we can't get a DPoP JWK
+		// 1. auth is disabled so we can't get a DPoP JWK
 		// 2. auth is enabled _but_ we aren't requiring DPoP
 		// in either case letting the request through makes sense
 		token, err = jwt.Parse([]byte(in.GetSignedRequestToken()), jwt.WithValidate(false))

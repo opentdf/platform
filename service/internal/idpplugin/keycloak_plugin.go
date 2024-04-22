@@ -58,14 +58,47 @@ func EntityResolution(ctx context.Context,
 		slog.DebugContext(ctx, "Lookup", "entity", ident.GetEntityType())
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
+		var getClientParams gocloak.GetClientsParams
 		exactMatch := true
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_ClientId:
 			slog.DebugContext(ctx, "GetClient", "client_id", ident.GetClientId())
 			clientID := ident.GetClientId()
-			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
+			getClientParams = gocloak.GetClientsParams{
 				ClientID: &clientID,
-			})
+			}
+		case *authorization.Entity_EmailAddress:
+			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := ident.GetEmailAddress(); return &t }(), Exact: &exactMatch}
+		case *authorization.Entity_UserName:
+			getUserParams = gocloak.GetUsersParams{Username: func() *string { t := ident.GetUserName(); return &t }(), Exact: &exactMatch}
+		case *authorization.Entity_Jwt:
+			entityJwt := ident.GetJwt()
+			// decode the jwt
+			_, mapClaims, err := connector.client.DecodeAccessToken(ctx, entityJwt, kcConfig.Realm)
+			if err != nil {
+				return &authorization.IdpPluginResponse{},
+					status.Error(codes.Internal, db.ErrTextCreationFailed)
+			}
+			// if it has client ID use that
+			clientID, ok := (*mapClaims)["client_id"].(string)
+			if !ok {
+				username, ok := (*mapClaims)["preferred_username"].(string)
+				if !ok {
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, db.ErrTextCreationFailed)
+				}
+				getUserParams = gocloak.GetUsersParams{Username: &username, Exact: &exactMatch}
+			} else {
+				getClientParams = gocloak.GetClientsParams{
+					ClientID: &clientID,
+				}
+			}
+		default:
+			return &authorization.IdpPluginResponse{}, errors.New((&authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.String()}).String())
+		}
+		// if getClientParams not empty
+		if getClientParams != (gocloak.GetClientsParams{}) {
+			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, getClientParams)
 			if err != nil {
 				slog.Error(err.Error())
 				return &authorization.IdpPluginResponse{},
@@ -94,95 +127,89 @@ func EntityResolution(ctx context.Context,
 					AdditionalProps: jsonEntities,
 				},
 			)
-			return &authorization.IdpPluginResponse{
-				EntityRepresentations: resolvedEntities,
-			}, nil
-		case *authorization.Entity_EmailAddress:
-			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := ident.GetEmailAddress(); return &t }(), Exact: &exactMatch}
-		case *authorization.Entity_UserName:
-			getUserParams = gocloak.GetUsersParams{Username: func() *string { t := ident.GetUserName(); return &t }(), Exact: &exactMatch}
-		}
-
-		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
-		if err != nil {
-			slog.Error(err.Error())
-			return &authorization.IdpPluginResponse{},
-				status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
-		} else if len(users) == 1 {
-			user := users[0]
-			slog.Debug("User found", "user", *user.ID, "entity", ident.String())
-			slog.Debug("User", "details", fmt.Sprintf("%+v", user))
-			slog.Debug("User", "attributes", fmt.Sprintf("%+v", user.Attributes))
-			keycloakEntities = append(keycloakEntities, user)
-		} else {
-			slog.Error("No user found for", "entity", ident.String())
-			if ident.GetEmailAddress() != "" {
-				// try by group
-				groups, groupErr := connector.client.GetGroups(
-					ctx,
-					connector.token.AccessToken,
-					kcConfig.Realm,
-					gocloak.GetGroupsParams{Search: func() *string { t := ident.GetEmailAddress(); return &t }()},
-				)
-				if groupErr != nil {
-					slog.Error("Error getting group", "group", groupErr)
-					return &authorization.IdpPluginResponse{},
-						status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
-				} else if len(groups) == 1 {
-					slog.Info("Group found for", "entity", ident.String())
-					group := groups[0]
-					expandedRepresentations, exErr := expandGroup(*group.ID, connector, &kcConfig, ctx)
-					if exErr != nil {
+		} else if getUserParams != (gocloak.GetUsersParams{}) {
+			// if getUserParams not empty
+			users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
+			if err != nil {
+				slog.Error(err.Error())
+				return &authorization.IdpPluginResponse{},
+					status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
+			} else if len(users) == 1 {
+				user := users[0]
+				slog.Debug("User found", "user", *user.ID, "entity", ident.String())
+				slog.Debug("User", "details", fmt.Sprintf("%+v", user))
+				slog.Debug("User", "attributes", fmt.Sprintf("%+v", user.Attributes))
+				keycloakEntities = append(keycloakEntities, user)
+			} else {
+				slog.Error("No user found for", "entity", ident.String())
+				if ident.GetEmailAddress() != "" {
+					// try by group
+					groups, groupErr := connector.client.GetGroups(
+						ctx,
+						connector.token.AccessToken,
+						kcConfig.Realm,
+						gocloak.GetGroupsParams{Search: func() *string { t := ident.GetEmailAddress(); return &t }()},
+					)
+					if groupErr != nil {
+						slog.Error("Error getting group", "group", groupErr)
 						return &authorization.IdpPluginResponse{},
-							status.Error(codes.Internal, db.ErrTextNotFound)
+							status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
+					} else if len(groups) == 1 {
+						slog.Info("Group found for", "entity", ident.String())
+						group := groups[0]
+						expandedRepresentations, exErr := expandGroup(*group.ID, connector, &kcConfig, ctx)
+						if exErr != nil {
+							return &authorization.IdpPluginResponse{},
+								status.Error(codes.Internal, db.ErrTextNotFound)
+						} else {
+							keycloakEntities = expandedRepresentations
+						}
 					} else {
-						keycloakEntities = expandedRepresentations
+						slog.Error("No group found for", "entity", ident.String())
+						var entityNotFoundErr authorization.EntityNotFoundError
+						switch ident.GetEntityType().(type) {
+						case *authorization.Entity_EmailAddress:
+							entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.GetEmailAddress()}
+						case *authorization.Entity_UserName:
+							entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.GetUserName()}
+						// case "":
+						// 	return &authorization.IdpPluginResponse{},
+						// 		status.Error(codes.InvalidArgument, db.ErrTextNotFound)
+						default:
+							slog.Error("Unsupported/unknown type for", "entity", ident.String())
+							entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.String()}
+						}
+						slog.Error(entityNotFoundErr.String())
+						return &authorization.IdpPluginResponse{}, errors.New(entityNotFoundErr.String())
 					}
-				} else {
-					slog.Error("No group found for", "entity", ident.String())
-					var entityNotFoundErr authorization.EntityNotFoundError
-					switch ident.GetEntityType().(type) {
-					case *authorization.Entity_EmailAddress:
-						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.GetEmailAddress()}
-					case *authorization.Entity_UserName:
-						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.GetUserName()}
-					// case "":
-					// 	return &authorization.IdpPluginResponse{},
-					// 		status.Error(codes.InvalidArgument, db.ErrTextNotFound)
-					default:
-						slog.Error("Unsupported/unknown type for", "entity", ident.String())
-						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.String()}
-					}
-					slog.Error(entityNotFoundErr.String())
-					return &authorization.IdpPluginResponse{}, errors.New(entityNotFoundErr.String())
 				}
 			}
-		}
 
-		var jsonEntities []*structpb.Struct
-		for _, er := range keycloakEntities {
-			json, err := typeToGenericJSONMap(er)
-			if err != nil {
-				slog.Error("Error serializing entity representation!", "error", err)
-				return &authorization.IdpPluginResponse{},
-					status.Error(codes.Internal, db.ErrTextCreationFailed)
+			var jsonEntities []*structpb.Struct
+			for _, er := range keycloakEntities {
+				json, err := typeToGenericJSONMap(er)
+				if err != nil {
+					slog.Error("Error serializing entity representation!", "error", err)
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, db.ErrTextCreationFailed)
+				}
+				var mystruct, struct_err = structpb.NewStruct(json)
+				if struct_err != nil {
+					slog.Error("Error making struct!", "error", err)
+					return &authorization.IdpPluginResponse{},
+						status.Error(codes.Internal, db.ErrTextCreationFailed)
+				}
+				jsonEntities = append(jsonEntities, mystruct)
 			}
-			var mystruct, struct_err = structpb.NewStruct(json)
-			if struct_err != nil {
-				slog.Error("Error making struct!", "error", err)
-				return &authorization.IdpPluginResponse{},
-					status.Error(codes.Internal, db.ErrTextCreationFailed)
-			}
-			jsonEntities = append(jsonEntities, mystruct)
-		}
 
-		resolvedEntities = append(
-			resolvedEntities,
-			&authorization.IdpEntityRepresentation{
-				OriginalId:      ident.GetId(),
-				AdditionalProps: jsonEntities},
-		)
-		slog.DebugContext(ctx, "Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))
+			resolvedEntities = append(
+				resolvedEntities,
+				&authorization.IdpEntityRepresentation{
+					OriginalId:      ident.GetId(),
+					AdditionalProps: jsonEntities},
+			)
+			slog.DebugContext(ctx, "Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))
+		}
 	}
 
 	return &authorization.IdpPluginResponse{

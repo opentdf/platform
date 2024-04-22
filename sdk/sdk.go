@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"io/ioutil"
 	"log/slog"
+	"net/http"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/kasregistry"
@@ -101,7 +103,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.platformConfiguration == nil && platformEndpoint != "" {
 		configMap, err := getPlatformConfiguration(wellknownConn)
 
-		platformConfiguration = configMap
+		platformConfiguration = &configMap
 		if err != nil {
 			return nil, errors.Join(ErrPlatformConfigFailed, err)
 		}
@@ -179,4 +181,65 @@ func (s SDK) Close() error {
 // Conn returns the underlying grpc.ClientConn.
 func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
+}
+
+func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfigurationType, error) {
+	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
+	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
+
+	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
+
+	if err != nil {
+		return nil, errors.New("Unable to retrieve config information, and none was provided")
+	}
+	// Get token endpoint
+	configuration := response.GetConfiguration()
+
+	return configuration.AsMap(), nil
+}
+
+type OIDCConfig struct {
+	TokenEndpoint string `json:"token_endpoint"`
+}
+
+func setTokenEndpoint(c *config) error {
+
+	platformConfiguration := *c.platformConfiguration
+
+	issuerUrl, ok := platformConfiguration["platform_issuer"].(string)
+
+	if !ok {
+		return errors.New("platform_issuer is not set, or is not a string")
+	}
+
+	tokenEndpoint, err := fetchTokenEndpoint(issuerUrl)
+
+	if err != nil {
+		return errors.New("Unable to retrieve token endpoint")
+	}
+
+	c.tokenEndpoint = tokenEndpoint
+
+	return nil
+}
+func fetchTokenEndpoint(issuerURL string) (string, error) {
+	wellKnownConfigURL := issuerURL + "/.well-known/openid-configuration"
+
+	resp, err := http.Get(wellKnownConfigURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var config OIDCConfig
+	if err = json.Unmarshal(body, &config); err != nil {
+		return "", err
+	}
+
+	return config.TokenEndpoint, nil
 }

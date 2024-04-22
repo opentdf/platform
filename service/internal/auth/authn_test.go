@@ -140,16 +140,20 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	config := Config{}
-	authnConfig := AuthNConfig{
-		AllowNoDPoP: false,
-		Issuer:      s.server.URL,
-		Audience:    "test",
-	}
-	config.AuthNConfig = authnConfig
+	auth, err := NewAuthenticator(
+		context.Background(),
+		Config{
+			AuthNConfig: AuthNConfig{
+				AllowNoDPoP: false,
+				Issuer:      s.server.URL,
+				Audience:    "test",
+			},
+			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
+		},
+		nil)
 
-	auth, err := NewAuthenticator(context.Background(), config, nil)
 	s.Require().NoError(err)
+
 	s.auth = auth
 }
 

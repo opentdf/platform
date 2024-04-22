@@ -153,6 +153,7 @@ func (s *AuthSuite) SetupTest() {
 		nil)
 
 	s.Require().NoError(err)
+
 	s.auth = auth
 }
 

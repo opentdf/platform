@@ -10,16 +10,20 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	tls               grpc.DialOption
-	clientCredentials *oauth.ClientCredentials
-	tokenExchange     *oauth.TokenExchangeInfo
-	tokenEndpoint     string
-	scopes            []string
-	authConfig        *AuthConfig
-	policyConn        *grpc.ClientConn
-	authorizationConn *grpc.ClientConn
-	extraDialOptions  []grpc.DialOption
+	tls                   grpc.DialOption
+	clientCredentials     *oauth.ClientCredentials
+	tokenExchange         *oauth.TokenExchangeInfo
+	tokenEndpoint         string
+	scopes                []string
+	authConfig            *AuthConfig
+	policyConn            *grpc.ClientConn
+	authorizationConn     *grpc.ClientConn
+	extraDialOptions      []grpc.DialOption
+	wellknownConn         *grpc.ClientConn
+	platformConfiguration *PlatformConfigurationType
 }
+
+type PlatformConfigurationType map[string]interface{}
 
 func (c *config) build() []grpc.DialOption {
 	return []grpc.DialOption{c.tls}
@@ -82,5 +86,11 @@ func WithTokenExchange(subjectToken string, audience []string) Option {
 func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	return func(c *config) {
 		c.extraDialOptions = dialOptions
+	}
+}
+
+func WithPlatformConfiguration(platformConfiguration *PlatformConfigurationType) Option {
+	return func(c *config) {
+		c.platformConfiguration = platformConfiguration
 	}
 }

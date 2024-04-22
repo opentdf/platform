@@ -3,6 +3,7 @@ package sdk
 import (
 	"crypto/tls"
 	"errors"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -37,6 +38,8 @@ type SDK struct {
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
+	platformConfiguration   PlatformConfigurationType
+	WellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -61,19 +64,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
-	accessTokenSource, err := buildIDPTokenSource(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
-	}
-
 	var (
-		defaultConn       *grpc.ClientConn
-		policyConn        *grpc.ClientConn
-		authorizationConn *grpc.ClientConn
+		defaultConn           *grpc.ClientConn
+		policyConn            *grpc.ClientConn
+		authorizationConn     *grpc.ClientConn
+		wellknownConn         *grpc.ClientConn
+		platformConfiguration PlatformConfigurationType
 	)
 
 	if platformEndpoint != "" {
@@ -94,6 +90,34 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		authorizationConn = cfg.authorizationConn
 	} else {
 		authorizationConn = defaultConn
+	}
+
+	if cfg.wellknownConn != nil {
+		wellknownConn = cfg.wellknownConn
+	} else {
+		wellknownConn = defaultConn
+	}
+
+	if cfg.platformConfiguration == nil && platformEndpoint != "" {
+		configMap, err := getPlatformConfiguration(wellknownConn)
+
+		platformConfiguration = configMap
+		if err != nil {
+			return nil, errors.Join(ErrPlatformConfigFailed, err)
+		}
+
+	} else {
+		platformConfiguration = cfg.platformConfiguration
+	}
+
+	accessTokenSource, err := buildIDPTokenSource(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if accessTokenSource != nil {
+		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
 	}
 
 	return &SDK{

@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/sdk
 
-go 1.22
+go 1.22.0
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0

@@ -3,7 +3,7 @@ module github.com/opentdf/platform/examples
 go 1.22
 
 require (
-	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/protocol/go v0.1.0
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.8.0
 	google.golang.org/grpc v1.62.1
@@ -13,7 +13,6 @@ require (
 replace (
 	github.com/opentdf/platform/lib/fixtures => ../lib/fixtures
 	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
-	github.com/opentdf/platform/protocol/go => ../protocol/go
 	github.com/opentdf/platform/sdk => ../sdk
 )
 

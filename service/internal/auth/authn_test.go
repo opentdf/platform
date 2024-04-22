@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -139,16 +140,16 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	auth, err := NewAuthenticator(
-		context.Background(),
-		AuthNConfig{
-			AllowNoDPoP: false,
-			Issuer:      s.server.URL,
-			Audience:    "test",
-		}, nil)
+	config := Config{}
+	authnConfig := AuthNConfig{
+		AllowNoDPoP: false,
+		Issuer:      s.server.URL,
+		Audience:    "test",
+	}
+	config.AuthNConfig = authnConfig
 
+	auth, err := NewAuthenticator(context.Background(), config, nil)
 	s.Require().NoError(err)
-
 	s.auth = auth
 }
 
@@ -542,13 +543,14 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 }
 
 func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
-	auth, err := NewAuthenticator(
-		context.Background(),
-		AuthNConfig{
-			AllowNoDPoP: true,
-			Issuer:      s.server.URL,
-			Audience:    "test",
-		}, nil)
+	authnConfig := AuthNConfig{
+		AllowNoDPoP: true,
+		Issuer:      s.server.URL,
+		Audience:    "test",
+	}
+	config := Config{}
+	config.AuthNConfig = authnConfig
+	auth, err := NewAuthenticator(context.Background(), config, nil)
 
 	s.Require().NoError(err)
 
@@ -565,4 +567,20 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	_, ctx, err := auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
 	s.Require().NoError(err)
 	s.Require().Nil(GetJWKFromContext(ctx))
+}
+
+func (s *AuthSuite) Test_PublicPath_Matches() {
+	// Passing routes
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/static")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test/next")))
+
+	// Failing routes
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/private")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test/fail")))
 }

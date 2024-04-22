@@ -6,7 +6,7 @@ This guide provides details about the configuration setup for our application, i
 - [Server Configuration](#server-configuration)
 - [Database Configuration](#database-configuration)
 - [OPA Configuration](#opa-configuration)
-- [Services Configuration](#services-configuration)
+-[Services Configuration](#services-configuration)
 
 ## Logger Configuration
 
@@ -55,7 +55,7 @@ server:
     cert: /path/to/cert
     key: /path/to/key
   auth:
-    allowNoDPoP: false
+    enabled: true
     audience: https://example.com
     issuer: https://example.com
 ```

@@ -140,7 +140,7 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	cauth, err := NewAuthenticator(
+	auth, err := NewAuthenticator(
 		context.Background(),
 		Config{
 			AuthNConfig: AuthNConfig{
@@ -152,7 +152,6 @@ func (s *AuthSuite) SetupTest() {
 		},
 		nil)
 
-	auth, err := NewAuthenticator(context.Background(), config, nil)
 	s.Require().NoError(err)
 	s.auth = auth
 }

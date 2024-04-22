@@ -194,8 +194,8 @@ func EntityResolution(ctx context.Context,
 					return &authorization.IdpPluginResponse{},
 						status.Error(codes.Internal, db.ErrTextCreationFailed)
 				}
-				var mystruct, struct_err = structpb.NewStruct(json)
-				if struct_err != nil {
+				var mystruct, structErr = structpb.NewStruct(json)
+				if structErr != nil {
 					slog.Error("Error making struct!", "error", err)
 					return &authorization.IdpPluginResponse{},
 						status.Error(codes.Internal, db.ErrTextCreationFailed)

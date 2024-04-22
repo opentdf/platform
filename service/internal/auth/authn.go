@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -30,14 +31,11 @@ const (
 type authContextKey string
 
 var (
-	// Set of allowed gRPC endpoints that do not require authentication
-	allowedGRPCEndpoints = [...]string{
+	// Set of allowed public endpoints that do not require authentication
+	allowedPublicEndpoints = [...]string{
 		"/grpc.health.v1.Health/Check",
 		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
 		"/kas.AccessService/PublicKey",
-	}
-	// Set of allowed HTTP endpoints that do not require authentication
-	allowedHTTPEndpoints = [...]string{
 		"/healthz",
 		"/.well-known/opentdf-configuration",
 		"/kas/v2/kas_public_key",
@@ -66,10 +64,12 @@ type Authentication struct {
 	oidcConfigurations map[string]AuthNConfig
 	// Casbin enforcer
 	enforcer *Enforcer
+	// Public Routes HTTP & gRPC
+	publicRoutes []string
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg AuthNConfig, d *db.Client) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, d *db.Client) (*Authentication, error) {
 	a := &Authentication{}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
@@ -117,7 +117,11 @@ func NewAuthenticator(ctx context.Context, cfg AuthNConfig, d *db.Client) (*Auth
 		return nil, err
 	}
 
-	a.oidcConfigurations[cfg.Issuer] = cfg
+	// Combine public routes
+	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
+	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
+
+	a.oidcConfigurations[cfg.Issuer] = cfg.AuthNConfig
 
 	return a, nil
 }
@@ -131,7 +135,7 @@ type dpopInfo struct {
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
+		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -187,7 +191,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
-	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
+	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) {
 		return handler(ctx, req)
 	}
 
@@ -454,4 +458,16 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
 	return &dpopKey, nil
+}
+
+func (a Authentication) isPublicRoute(path string) func(string) bool {
+	return func(route string) bool {
+		matched, err := filepath.Match(route, path)
+		if err != nil {
+			slog.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
+			return false
+		}
+		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
+		return matched
+	}
 }

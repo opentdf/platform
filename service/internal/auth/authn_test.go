@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -141,10 +142,14 @@ func (s *AuthSuite) SetupTest() {
 
 	auth, err := NewAuthenticator(
 		context.Background(),
-		AuthNConfig{
-			Issuer:   s.server.URL,
-			Audience: "test",
-		}, nil)
+		Config{
+			AuthNConfig: AuthNConfig{
+				Issuer:   s.server.URL,
+				Audience: "test",
+			},
+			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
+		},
+		nil)
 
 	s.Require().NoError(err)
 
@@ -538,4 +543,20 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 		return ""
 	}
 	return string(signedToken)
+}
+
+func (s *AuthSuite) Test_PublicPath_Matches() {
+	// Passing routes
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/static")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test/next")))
+
+	// Failing routes
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/private")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test/fail")))
 }

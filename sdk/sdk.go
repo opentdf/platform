@@ -1,7 +1,9 @@
 package sdk
 
 import (
+	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"io/ioutil"
@@ -20,8 +22,9 @@ import (
 )
 
 const (
-	ErrGrpcDialFailed = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed = Error("failed to shutdown sdk")
+	ErrGrpcDialFailed       = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed       = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed = Error("failed to retrieve platform configuration")
 )
 
 type Error string
@@ -40,7 +43,7 @@ type SDK struct {
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
-	platformConfiguration   PlatformConfigurationType
+	platformConfiguration   *PlatformConfigurationType
 	WellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
@@ -71,7 +74,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		policyConn            *grpc.ClientConn
 		authorizationConn     *grpc.ClientConn
 		wellknownConn         *grpc.ClientConn
-		platformConfiguration PlatformConfigurationType
+		platformConfiguration *PlatformConfigurationType
 	)
 
 	if platformEndpoint != "" {
@@ -112,6 +115,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		platformConfiguration = cfg.platformConfiguration
 	}
 
+	err := setTokenEndpoint(cfg)
+
+	if err != nil {
+		return nil, err
+	}
+
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
@@ -126,6 +135,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
+		platformConfiguration:   platformConfiguration,
 		Attributes:              attributes.NewAttributesServiceClient(policyConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),

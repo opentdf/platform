@@ -20,7 +20,7 @@ type config struct {
 	authorizationConn     *grpc.ClientConn
 	extraDialOptions      []grpc.DialOption
 	wellknownConn         *grpc.ClientConn
-	platformConfiguration PlatformConfigurationType
+	platformConfiguration *PlatformConfigurationType
 }
 
 type PlatformConfigurationType map[string]interface{}

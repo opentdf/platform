@@ -19,9 +19,9 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.63.0
-	github.com/opentdf/platform/lib/fixtures v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/lib/ocrypto v0.0.0-00010101000000-000000000000
-	github.com/opentdf/platform/protocol/go v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/fixtures v0.1.0
+	github.com/opentdf/platform/lib/ocrypto v0.1.0
+	github.com/opentdf/platform/protocol/go v0.1.0
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
@@ -59,12 +59,7 @@ require (
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 )
 
-replace (
-	github.com/opentdf/platform/lib/fixtures => ../lib/fixtures
-	github.com/opentdf/platform/lib/ocrypto => ../lib/ocrypto
-	github.com/opentdf/platform/protocol/go => ../protocol/go
-	github.com/opentdf/platform/sdk => ../sdk
-)
+replace github.com/opentdf/platform/sdk => ../sdk
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.33.0-20240221180331-f05a6f4403ce.1 // indirect

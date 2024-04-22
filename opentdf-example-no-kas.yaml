@@ -15,7 +15,7 @@ services:
     enabled: true
 server:
   auth:
-    enabled: true
+    enabled: false
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/tdf
   grpc:

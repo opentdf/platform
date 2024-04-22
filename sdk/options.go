@@ -18,6 +18,7 @@ type config struct {
 	authConfig        *AuthConfig
 	policyConn        *grpc.ClientConn
 	authorizationConn *grpc.ClientConn
+	extraDialOptions  []grpc.DialOption
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -75,5 +76,11 @@ func WithTokenExchange(subjectToken string, audience []string) Option {
 			SubjectToken: subjectToken,
 			Audience:     audience,
 		}
+	}
+}
+
+func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
+	return func(c *config) {
+		c.extraDialOptions = dialOptions
 	}
 }

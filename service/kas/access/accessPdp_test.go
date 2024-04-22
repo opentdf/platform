@@ -27,7 +27,7 @@ func TestDissemSuccess(t *testing.T) {
 				"email3@example.com"},
 		},
 	}
-	entity := authorization.Entity{
+	entity := &authorization.Entity{
 		Id:         "0",
 		EntityType: &authorization.Entity_EmailAddress{EmailAddress: entityID},
 	}
@@ -51,7 +51,7 @@ func TestDissemFailure(t *testing.T) {
 				"email3@example.com"},
 		},
 	}
-	entity := authorization.Entity{
+	entity := &authorization.Entity{
 		Id:         "0",
 		EntityType: &authorization.Entity_EmailAddress{EmailAddress: entityID},
 	}

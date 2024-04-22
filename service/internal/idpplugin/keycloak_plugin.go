@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Nerzal/gocloak/v11"
+	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/service/internal/db"
 	"google.golang.org/grpc/codes"
@@ -26,7 +26,7 @@ type KeyCloakConfig struct {
 
 type KeyCloakConnector struct {
 	token  *gocloak.JWT
-	client gocloak.GoCloak
+	client *gocloak.GoCloak
 }
 
 func EntityResolution(ctx context.Context,
@@ -209,7 +209,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable) (map[string]
 }
 
 func getKCClient(kcConfig KeyCloakConfig, ctx context.Context) (*KeyCloakConnector, error) {
-	var client gocloak.GoCloak
+	var client *gocloak.GoCloak
 	if kcConfig.LegacyKeycloak {
 		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
 		client = gocloak.NewClient(kcConfig.Url)

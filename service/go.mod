@@ -1,10 +1,9 @@
 module github.com/opentdf/platform/service
 
-go 1.21.9
+go 1.22
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/Nerzal/gocloak/v11 v11.2.0
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bufbuild/protovalidate-go v0.6.0
 	github.com/casbin/casbin/v2 v2.84.0
@@ -19,10 +18,11 @@ require (
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
-	github.com/open-policy-agent/opa v0.62.1
-	github.com/opentdf/platform/lib/ocrypto v0.0.0-20240409133529-9d7b951a26c6
-	github.com/opentdf/platform/protocol/go v0.0.0-20240409133529-9d7b951a26c6
-	github.com/opentdf/platform/sdk v0.0.0-20240409133529-9d7b951a26c6
+	github.com/open-policy-agent/opa v0.63.0
+	github.com/opentdf/platform/lib/fixtures v0.1.0
+	github.com/opentdf/platform/lib/ocrypto v0.1.0
+	github.com/opentdf/platform/protocol/go v0.1.0
+	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -30,7 +30,6 @@ require (
 	github.com/testcontainers/testcontainers-go v0.28.0
 	github.com/valyala/fasthttp v1.52.0
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
-	golang.org/x/oauth2 v0.18.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -58,6 +57,8 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 )
+
+replace github.com/opentdf/platform/sdk => ../sdk
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.33.0-20240221180331-f05a6f4403ce.1 // indirect
@@ -107,7 +108,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
-	github.com/prometheus/common v0.50.0 // indirect
+	github.com/prometheus/common v0.52.3 // indirect
 	github.com/prometheus/procfs v0.13.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
@@ -138,6 +139,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.15.0 // indirect
+	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
@@ -155,7 +157,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/crypto v0.21.0
-	golang.org/x/net v0.22.0
+	golang.org/x/net v0.23.0
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

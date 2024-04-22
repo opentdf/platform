@@ -19,10 +19,10 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
+
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/auth"
@@ -38,17 +38,14 @@ type RequestBody struct {
 	Policy          string         `json:"policy,omitempty"`
 	Algorithm       string         `json:"algorithm,omitempty"`
 	ClientPublicKey string         `json:"clientPublicKey"`
+	PublicKey       interface{}    `json:"-"`
 	SchemaVersion   string         `json:"schemaVersion,omitempty"`
 }
 
-type customClaimsBody struct {
-	RequestBody string `json:"requestBody,omitempty"`
-}
-
-type customClaimsHeader struct {
-	Subject   string       `json:"sub"`
-	ClientID  string       `json:"client_id"`
-	TDFClaims ClaimsObject `json:"tdf_claims"`
+type entityInfo struct {
+	EntityID string `json:"sub"`
+	ClientID string `json:"clientId"`
+	Token    string `json:"-"`
 }
 
 const (
@@ -76,37 +73,6 @@ func err503(s string) error {
 	return errors.Join(ErrInternal, status.Error(codes.Unavailable, s))
 }
 
-func legacyBearerToken(ctx context.Context, newBearer string) (string, error) {
-	if newBearer != "" {
-		// token found in request body
-		return newBearer, nil
-	}
-	slog.DebugContext(ctx, "Bearer not set; investigating authorization header")
-	// Check for bearer token in Authorization header
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		slog.InfoContext(ctx, "no authorization header")
-		return "", err401("no auth token")
-	}
-	authHeaders := md.Get("Authorization")
-	if len(authHeaders) == 0 {
-		slog.InfoContext(ctx, "no authorization header")
-		return "", err401("no auth token")
-	}
-	if len(authHeaders) != 1 {
-		slog.InfoContext(ctx, "authorization header repetition")
-		return "", err401("auth fail")
-	}
-
-	bearer := strings.TrimPrefix(authHeaders[0], "Bearer ")
-	if bearer == authHeaders[0] || len(bearer) < 1 {
-		slog.InfoContext(ctx, "bearer token missing prefix")
-		return "", err401("auth fail")
-	}
-
-	return bearer, nil
-}
-
 func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	_, err := mac.Write(msg)
@@ -117,59 +83,45 @@ func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 	return mac.Sum(nil), nil
 }
 
-type verifiedRequest struct {
-	publicKey   crypto.PublicKey // TODO: Remove this
-	requestBody *RequestBody
-	cl          *customClaimsHeader
-	bearerToken string
-}
-
-func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kaspb.RewrapRequest) (*verifiedRequest, error) {
-	idToken, err := p.OIDCVerifier.Verify(ctx, in.GetBearer())
-	if err != nil {
-		slog.WarnContext(ctx, "unable verify bearer token", "err", err, "bearer", in.GetBearer(), "oidc", p.OIDCVerifier)
-		return nil, err403("403")
-	}
-
-	var cl customClaimsHeader
-	err = idToken.Claims(&cl)
-	if err != nil {
-		slog.WarnContext(ctx, "unable parse claims", "err", err)
-		return nil, err403("403")
-	}
-	slog.DebugContext(ctx, "verified", "claims", cl)
-
+func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody, error) {
+	// get dpop public key from context
 	dpopJWK := auth.GetJWKFromContext(ctx)
 
-	var requestToken jwt.Token
+	// if we don't have a dpop public key then we can't verify the request
 	if dpopJWK == nil {
-		slog.ErrorContext(ctx, "allowing rewrap without authentication. the authn middleware is not in use")
-		requestToken, err = jwt.Parse([]byte(in.GetSignedRequestToken()), jwt.WithVerify(false))
-	} else {
-		requestToken, err = jwt.Parse([]byte(in.GetSignedRequestToken()), jwt.WithKey(jwa.RS256, dpopJWK))
+		slog.ErrorContext(ctx, "missing dpop public key")
+		return nil, err401("dpop public key missing")
 	}
+
+	// verify and validate the request token
+	token, err := jwt.Parse([]byte(in.GetSignedRequestToken()),
+		jwt.WithKey(dpopJWK.Algorithm(), dpopJWK),
+		jwt.WithValidate(true),
+	)
+	// we have failed to verify the signed request token
 	if err != nil {
-		slog.WarnContext(ctx, "unable parse request", "err", err)
-		return nil, err400("bad request")
+		slog.WarnContext(ctx, "unable to verify request token", "err", err)
+		return nil, err401("unable to verify request token")
 	}
 
-	eb, ok := requestToken.Get("requestBody")
+	rb, exists := token.Get("requestBody")
+	if !exists {
+		slog.WarnContext(ctx, "missing request body")
+		return nil, err400("missing request body")
+	}
+
+	var requestBody = new(RequestBody)
+
+	rbString, ok := rb.(string)
 	if !ok {
-		return nil, err400("bad request")
+		slog.WarnContext(ctx, "invalid request body")
+		return nil, err400("invalid request body")
 	}
 
-	slog.DebugContext(ctx, "okay now we can check", "bodyClaims.requestBody", eb)
-	sb, ok := eb.(string)
-	if !ok {
-		return nil, err400("bad request")
-	}
-	decoder := json.NewDecoder(strings.NewReader(sb))
-
-	var requestBody RequestBody
-	err = decoder.Decode(&requestBody)
+	err = json.Unmarshal([]byte(rbString), &requestBody)
 	if err != nil {
-		slog.WarnContext(ctx, "unable decode request body", "err", err)
-		return nil, err400("bad request")
+		slog.WarnContext(ctx, "invalid request body")
+		return nil, err400("invalid request body")
 	}
 
 	slog.DebugContext(ctx, "extract public key", "requestBody.ClientPublicKey", requestBody.ClientPublicKey)
@@ -178,23 +130,29 @@ func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kasp
 		slog.WarnContext(ctx, "missing clientPublicKey")
 		return nil, err400("clientPublicKey failure")
 	}
+
+	// Try to parse the clientPublicKey
 	clientPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		slog.WarnContext(ctx, "failure to parse clientPublicKey", "err", err)
 		return nil, err400("clientPublicKey parse failure")
 	}
-	switch clientPublicKey.(type) {
+	// Check to make sure the clientPublicKey is a supported key type
+	switch publicKey := clientPublicKey.(type) {
 	case *rsa.PublicKey:
-		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.GetBearer()}, nil
+		requestBody.PublicKey = publicKey
+		return requestBody, nil
 	case *ecdsa.PublicKey:
-		return &verifiedRequest{clientPublicKey, &requestBody, &cl, in.GetBearer()}, nil
+		requestBody.PublicKey = publicKey
+		return requestBody, nil
+	default:
+		slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
+		return nil, err400("clientPublicKey unsupported type")
 	}
-	slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
-	return nil, err400("clientPublicKey unsupported type")
 }
 
-func (p *Provider) verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte) (*Policy, error) {
-	actualHMAC, err := generateHMACDigest(context.Background(), []byte(requestBody.Policy), k)
+func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte) (*Policy, error) {
+	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k)
 	if err != nil {
 		slog.WarnContext(ctx, "unable to generate policy hmac", "err", err)
 		return nil, err400("bad request")
@@ -228,61 +186,124 @@ func (p *Provider) verifyAndParsePolicy(ctx context.Context, requestBody *Reques
 	return &policy, nil
 }
 
-func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
-	slog.DebugContext(ctx, "REWRAP")
-	bearer, err := legacyBearerToken(ctx, in.GetBearer())
+func getEntityInfo(ctx context.Context) (*entityInfo, error) {
+	var info = new(entityInfo)
+
+	// check if metadata exists. if it doesn't not sure how we got to this point
+	md, exists := metadata.FromIncomingContext(ctx)
+	if !exists {
+		slog.WarnContext(ctx, "missing metadata")
+		return nil, errors.New("missing metadata")
+	}
+
+	// if access token is missing something went wrong in the authn interceptor
+	var tokenRaw string
+
+	header, exists := md["authorization"]
+	if !exists {
+		slog.WarnContext(ctx, "missing authorization header")
+		return nil, errors.New("missing authorization header")
+	}
+	if len(header) < 1 {
+		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
+	}
+
+	switch {
+	case strings.HasPrefix(header[0], "DPoP "):
+		tokenRaw = strings.TrimPrefix(header[0], "DPoP ")
+	default:
+		return nil, status.Error(codes.Unauthenticated, "not of type dpop")
+	}
+
+	token, err := jwt.ParseInsecure([]byte(tokenRaw))
 	if err != nil {
-		return nil, err
-	}
-	in.Bearer = bearer
-
-	slog.DebugContext(ctx, "not a 401, probably", "oidcRequestToken", bearer)
-	body, err := p.verifyBearerAndParseRequestBody(ctx, in)
-	if err != nil {
-		return nil, err
+		slog.WarnContext(ctx, "unable to get token")
+		return nil, errors.New("unable to get token")
 	}
 
-	if !strings.HasPrefix(body.requestBody.KeyAccess.URL, p.URI.String()) {
-		slog.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.requestBody.KeyAccess.URL, "kasURL", p.URI.String())
+	sub, found := token.Get("sub")
+	if found {
+		var subAssert bool
+		info.EntityID, subAssert = sub.(string)
+		if !subAssert {
+			slog.WarnContext(ctx, "sub not a string")
+		}
+	} else {
+		slog.WarnContext(ctx, "missing sub")
 	}
 
-	if body.requestBody.Algorithm == "" {
-		body.requestBody.Algorithm = "rsa:2048"
+	// We have to check for the different ways the clientID can be stored in the token
+	clientIDKeys := []string{"clientId", "cid", "client_id"}
+	for _, key := range clientIDKeys {
+		if value, keyExists := token.Get(key); keyExists {
+			if clientID, ok := value.(string); ok {
+				info.ClientID = clientID
+				break // Stop looping once a valid key is found and successfully asserted
+			}
+		}
 	}
 
-	if body.requestBody.Algorithm == "ec:secp256r1" {
-		return p.nanoTDFRewrap(*body)
-	}
-	return p.tdf3Rewrap(ctx, body)
+	info.Token = tokenRaw
+
+	return info, nil
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kaspb.RewrapResponse, error) {
-	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, "UnKnown", "", body.requestBody.KeyAccess.WrappedKey)
+func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
+	slog.DebugContext(ctx, "REWRAP")
+	slog.Info("kas context", slog.Any("ctx", ctx))
+
+	body, err := verifySignedRequestToken(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	entityInfo, err := getEntityInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.HasPrefix(body.KeyAccess.URL, p.URI.String()) {
+		slog.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
+	}
+
+	if body.Algorithm == "" {
+		body.Algorithm = "rsa:2048"
+	}
+
+	if body.Algorithm == "ec:secp256r1" {
+		return p.nanoTDFRewrap(body)
+	}
+	return p.tdf3Rewrap(ctx, body, entityInfo)
+}
+
+func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
+	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, "UnKnown", "", body.KeyAccess.WrappedKey)
 	if err != nil {
 		slog.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")
 	}
 
-	slog.DebugContext(ctx, "verifying policy binding", "requestBody.policy", body.requestBody.Policy)
-	policy, err := p.verifyAndParsePolicy(ctx, body.requestBody, symmetricKey)
+	slog.DebugContext(ctx, "verifying policy binding", "requestBody.policy", body.Policy)
+	policy, err := verifyAndParsePolicy(ctx, body, symmetricKey)
 	if err != nil {
 		return nil, err
 	}
 
-	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.requestBody.Policy)
+	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.Policy)
 	// changed to ClientID from Subject
-	ent := authorization.Entity{
+	ent := &authorization.Entity{
 		EntityType: &authorization.Entity_Jwt{
-			Jwt: body.bearerToken,
+			Jwt: entity.Token,
 		},
 	}
-	if body.cl.ClientID != "" {
-		ent = authorization.Entity{
+	if entity.ClientID != "" {
+		ent = &authorization.Entity{
 			EntityType: &authorization.Entity_ClientId{
-				ClientId: body.cl.ClientID,
+				ClientId: entity.ClientID,
 			},
 		}
 	}
+
 	access, err := canAccess(ctx, ent, *policy, p.SDK)
 
 	if err != nil {
@@ -295,14 +316,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 		return nil, err403("forbidden")
 	}
 
-	asymEncrypt, err := ocrypto.NewAsymEncryption(body.requestBody.ClientPublicKey)
+	asymEncrypt, err := ocrypto.NewAsymEncryption(body.ClientPublicKey)
 	if err != nil {
 		slog.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
 	}
 
 	rewrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 	if err != nil {
-		slog.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.publicKey)
+		slog.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.ClientPublicKey)
 		return nil, err400("bad key for rewrap")
 	}
 
@@ -313,8 +334,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *verifiedRequest) (*kasp
 	}, nil
 }
 
-func (p *Provider) nanoTDFRewrap(body verifiedRequest) (*kaspb.RewrapResponse, error) {
-	headerReader := bytes.NewReader(body.requestBody.KeyAccess.Header)
+func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, error) {
+	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, err := sdk.ReadNanoTDFHeader(headerReader)
 	if err != nil {
@@ -326,7 +347,7 @@ func (p *Provider) nanoTDFRewrap(body verifiedRequest) (*kaspb.RewrapResponse, e
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
 
-	pub, ok := body.publicKey.(*ecdsa.PublicKey)
+	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
 		return nil, fmt.Errorf("failed to extract public key: %w", err)
 	}

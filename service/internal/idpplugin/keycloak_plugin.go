@@ -82,8 +82,8 @@ func EntityResolution(ctx context.Context,
 			// if it has client ID use that
 			clientID, ok := (*mapClaims)["client_id"].(string)
 			if !ok {
-				username, ok := (*mapClaims)["preferred_username"].(string)
-				if !ok {
+				username, usernameok := (*mapClaims)["preferred_username"].(string)
+				if !usernameok {
 					return &authorization.IdpPluginResponse{},
 						status.Error(codes.Internal, db.ErrTextCreationFailed)
 				}
@@ -97,7 +97,7 @@ func EntityResolution(ctx context.Context,
 			return &authorization.IdpPluginResponse{}, errors.New((&authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.String()}).String())
 		}
 		// if getClientParams not empty
-		if getClientParams != (gocloak.GetClientsParams{}) {
+		if getClientParams != (gocloak.GetClientsParams{}) { //nolint:nestif // temp allow nest block
 			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, getClientParams)
 			if err != nil {
 				slog.Error(err.Error())
@@ -112,8 +112,8 @@ func EntityResolution(ctx context.Context,
 					return &authorization.IdpPluginResponse{},
 						status.Error(codes.Internal, db.ErrTextCreationFailed)
 				}
-				var mystruct, struct_err = structpb.NewStruct(json)
-				if struct_err != nil {
+				var mystruct, structErr = structpb.NewStruct(json)
+				if structErr != nil {
 					slog.Error("Error making struct!", "error", err)
 					return &authorization.IdpPluginResponse{},
 						status.Error(codes.Internal, db.ErrTextCreationFailed)
@@ -134,7 +134,8 @@ func EntityResolution(ctx context.Context,
 				slog.Error(err.Error())
 				return &authorization.IdpPluginResponse{},
 					status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
-			} else if len(users) == 1 {
+			}
+			if len(users) == 1 {
 				user := users[0]
 				slog.Debug("User found", "user", *user.ID, "entity", ident.String())
 				slog.Debug("User", "details", fmt.Sprintf("%+v", user))
@@ -154,16 +155,16 @@ func EntityResolution(ctx context.Context,
 						slog.Error("Error getting group", "group", groupErr)
 						return &authorization.IdpPluginResponse{},
 							status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
-					} else if len(groups) == 1 {
+					}
+					if len(groups) == 1 {
 						slog.Info("Group found for", "entity", ident.String())
 						group := groups[0]
 						expandedRepresentations, exErr := expandGroup(*group.ID, connector, &kcConfig, ctx)
 						if exErr != nil {
 							return &authorization.IdpPluginResponse{},
 								status.Error(codes.Internal, db.ErrTextNotFound)
-						} else {
-							keycloakEntities = expandedRepresentations
 						}
+						keycloakEntities = expandedRepresentations
 					} else {
 						slog.Error("No group found for", "entity", ident.String())
 						var entityNotFoundErr authorization.EntityNotFoundError

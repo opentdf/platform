@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"time"
 
@@ -70,7 +71,6 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 	if err != nil {
 		return nil, err
 	}
-
 	grpcAddress, err := getGRPCAddress(keyAccess.KasURL)
 	if err != nil {
 		return nil, err
@@ -113,14 +113,18 @@ func getGRPCAddress(kasURL string) (string, error) {
 		return "", fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
 	}
 
-	var address string
-	if parsedURL.Port() == "" {
-		address = fmt.Sprintf("%s:443", parsedURL.Host)
-	} else {
-		address = parsedURL.Host
+	// Needed to support buffconn for testing
+	if parsedURL.Host == "" && parsedURL.Port() == "" {
+		return "", nil
 	}
 
-	return address, nil
+	port := parsedURL.Port()
+	// if port is empty, default to 443.
+	if port == "" {
+		port = "443"
+	}
+
+	return net.JoinHostPort(parsedURL.Hostname(), port), nil
 }
 
 func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapRequest, error) {
@@ -157,25 +161,19 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
 
-	accessToken, err := k.accessTokenSource.AccessToken()
-	if err != nil {
-		return nil, fmt.Errorf("error getting access token: %w", err)
-	}
-
 	rewrapRequest := kas.RewrapRequest{
-		Bearer:             string(accessToken),
 		SignedRequestToken: string(signedToken),
 	}
 	return &rewrapRequest, nil
 }
 
-func (k *KASClient) getPublicKey(kasInfo KASInfo) (string, error) {
+func getPublicKey(kasInfo KASInfo, opts ...grpc.DialOption) (string, error) {
 	req := kas.PublicKeyRequest{}
 	grpcAddress, err := getGRPCAddress(kasInfo.URL)
 	if err != nil {
 		return "", err
 	}
-	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
+	conn, err := grpc.Dial(grpcAddress, opts...)
 	if err != nil {
 		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.URL, err)
 	}

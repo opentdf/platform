@@ -247,7 +247,10 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 
-	return handler(ContextWithJWK(ctx, dpopJWK), req)
+	// add dpop key to context
+	ctx = ContextWithJWK(ctx, dpopJWK)
+
+	return handler(ctx, req)
 }
 
 // checkToken is a helper function to verify the token.

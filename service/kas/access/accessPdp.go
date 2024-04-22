@@ -16,7 +16,7 @@ const (
 	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
 
-func canAccess(ctx context.Context, entity authorization.Entity, policy Policy, sdk *otdf.SDK) (bool, error) {
+func canAccess(ctx context.Context, entity *authorization.Entity, policy Policy, sdk *otdf.SDK) (bool, error) {
 	if len(policy.Body.Dissem) > 0 {
 		dissemAccess, err := checkDissems(policy.Body.Dissem, entity)
 		if err != nil {
@@ -35,7 +35,7 @@ func canAccess(ctx context.Context, entity authorization.Entity, policy Policy, 
 	return true, nil
 }
 
-func checkDissems(dissems []string, ent authorization.Entity) (bool, error) {
+func checkDissems(dissems []string, ent *authorization.Entity) (bool, error) {
 	if ent.GetEmailAddress() == "" {
 		return false, ErrPolicyDissemInvalid
 	}
@@ -45,9 +45,9 @@ func checkDissems(dissems []string, ent authorization.Entity) (bool, error) {
 	return false, nil
 }
 
-func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent authorization.Entity, sdk *otdf.SDK) (bool, error) {
+func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorization.Entity, sdk *otdf.SDK) (bool, error) {
 	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
-	ec.Entities = append(ec.Entities, &ent)
+	ec.Entities = append(ec.Entities, ent)
 	ras := []*authorization.ResourceAttribute{{
 		AttributeValueFqns: make([]string, 0),
 	}}

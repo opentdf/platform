@@ -8,23 +8,18 @@
   "packages": {
     "lib/fixtures": {
       "component": "lib/fixtures",
-      "release-as": "0.1.0"
     },
     "lib/ocrypto": {
       "component": "lib/ocrypto",
-      "release-as": "0.1.0"
     },
     "protocol/go": {
       "component": "protocol/go",
-      "release-as": "0.1.0"
     },
     "sdk": {
       "component": "sdk",
-      "release-as": "0.1.0"
     },
     "service": {
       "component": "service",
-      "release-as": "0.1.0"
     }
   }
 }

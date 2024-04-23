@@ -589,10 +589,9 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
 			}
 			return "", err
-		} else {
-			for _, role := range realmRoles {
-				slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
-			}
+		}
+		for _, role := range realmRoles {
+			slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
 		}
 	}
 	if clientRoles != nil {

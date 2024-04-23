@@ -32,10 +32,6 @@
 /service/migrations/   @opentdf/cli @opentdf/architecture
 /service/policy/       @opentdf/cli @opentdf/architecture
 
-### Authorization
-
-/service/authorization/ @opentdf/opentdf-authorization @opentdf/architecture
-
 ### Key Access Server
 
 /service/kas/           @opentdf/kas @opentdf/architecture

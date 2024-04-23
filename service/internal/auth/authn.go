@@ -17,7 +17,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/internal/db"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -70,7 +69,7 @@ type Authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config, d *db.Client) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP: cfg.EnforceDPoP,
 	}
@@ -105,9 +104,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, d *db.Client) (*Authentic
 
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
-	}
-	if d != nil && d.SqlDB != nil {
-		casbinConfig.DB = d.SqlDB
 	}
 	slog.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig); err != nil {

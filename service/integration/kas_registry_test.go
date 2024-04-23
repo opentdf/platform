@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
-	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy"
+	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/fixtures"
 
@@ -97,8 +98,8 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		},
 	}
 
-	pubKey := &kasr.PublicKey{
-		PublicKey: &kasr.PublicKey_Remote{
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
 			Remote: "https://remote.com/key",
 		},
 	}
@@ -121,8 +122,8 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 		},
 	}
 
-	pubKey := &kasr.PublicKey{
-		PublicKey: &kasr.PublicKey_Local{
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Local{
 			Local: "some_local_public_key_in_base64",
 		},
 	}
@@ -152,8 +153,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
 		Uri: uri,
-		PublicKey: &kasr.PublicKey{
-			PublicKey: &kasr.PublicKey_Remote{
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
 				Remote: pubKeyRemote,
 			},
 		},
@@ -170,8 +171,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	// update it with new values and metadata
 	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasr.UpdateKeyAccessServerRequest{
 		Uri: updatedUri,
-		PublicKey: &kasr.PublicKey{
-			PublicKey: &kasr.PublicKey_Remote{
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
 				Remote: updatedPubKeyRemote,
 			},
 		},
@@ -206,8 +207,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
 		Uri: uri,
-		PublicKey: &kasr.PublicKey{
-			PublicKey: &kasr.PublicKey_Remote{
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
 				Remote: pubKeyRemote,
 			},
 		},
@@ -246,8 +247,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
 		Uri: uri,
-		PublicKey: &kasr.PublicKey{
-			PublicKey: &kasr.PublicKey_Remote{
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
 				Remote: pubKeyRemote,
 			},
 		},
@@ -282,8 +283,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
 		Uri: uri,
-		PublicKey: &kasr.PublicKey{
-			PublicKey: &kasr.PublicKey_Remote{
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
 				Remote: pubKeyRemote,
 			},
 		},
@@ -298,8 +299,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 
 	// update it with new key
 	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasr.UpdateKeyAccessServerRequest{
-		PublicKey: &kasr.PublicKey{
-			PublicKey: &kasr.PublicKey_Local{
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{
 				Local: updatedPubKeyLocal,
 			},
 		},
@@ -319,8 +320,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
-	pubKey := &kasr.PublicKey{
-		PublicKey: &kasr.PublicKey_Local{
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Local{
 			Local: "this_is_a_local_key",
 		},
 	}
@@ -336,8 +337,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
 
 func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 	// create a test KAS
-	pubKey := &kasr.PublicKey{
-		PublicKey: &kasr.PublicKey_Remote{
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
 			Remote: "https://remote.com/key",
 		},
 	}

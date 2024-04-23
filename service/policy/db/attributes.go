@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/protocol/go/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/db"
@@ -227,7 +226,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 			return nil, err
 		}
 	}
-	var k []*kasregistry.KeyAccessServer
+	var k []*policy.KeyAccessServer
 	if grants != nil {
 		k, err = db.KeyAccessServerProtoJSON(grants)
 		if err != nil {

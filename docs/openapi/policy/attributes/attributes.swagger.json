@@ -856,39 +856,6 @@
       "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
       "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
-    "kasregistryKeyAccessServer": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "uri": {
-          "type": "string",
-          "title": "Address of a KAS instance"
-        },
-        "publicKey": {
-          "$ref": "#/definitions/kasregistryPublicKey"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata"
-        }
-      },
-      "title": "Descriptor for a KAS"
-    },
-    "kasregistryPublicKey": {
-      "type": "object",
-      "properties": {
-        "remote": {
-          "type": "string",
-          "title": "kas public key url - optional since can also be retrieved via public key"
-        },
-        "local": {
-          "type": "string",
-          "title": "public key - optional since can also be retrieved via url"
-        }
-      }
-    },
     "policyAction": {
       "type": "object",
       "properties": {
@@ -930,7 +897,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/kasregistryKeyAccessServer"
+            "$ref": "#/definitions/policyKeyAccessServer"
           }
         },
         "fqn": {
@@ -1034,6 +1001,26 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
+    "policyKeyAccessServer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string",
+          "title": "Address of a KAS instance"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      },
+      "title": "Key Access Server Registry"
+    },
     "policyNamespace": {
       "type": "object",
       "properties": {
@@ -1054,6 +1041,19 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
+        }
+      }
+    },
+    "policyPublicKey": {
+      "type": "object",
+      "properties": {
+        "remote": {
+          "type": "string",
+          "title": "kas public key url - optional since can also be retrieved via public key"
+        },
+        "local": {
+          "type": "string",
+          "title": "public key - optional since can also be retrieved via url"
         }
       }
     },
@@ -1154,7 +1154,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/kasregistryKeyAccessServer"
+            "$ref": "#/definitions/policyKeyAccessServer"
           },
           "title": "list of key access servers"
         },

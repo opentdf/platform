@@ -5,15 +5,15 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
+	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/db"
-	kasDB "github.com/opentdf/platform/service/kasregistry/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type KeyAccessServerRegistry struct {
 	kasr.UnimplementedKeyAccessServerRegistryServiceServer
-	dbClient *kasDB.KasRegistryDBClient
+	dbClient *policydb.PolicyDBClient
 }
 
 func NewRegistration() serviceregistry.Registration {
@@ -21,7 +21,7 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "policy",
 		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &KeyAccessServerRegistry{dbClient: kasDB.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
 				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, s.(kasr.KeyAccessServerRegistryServiceServer))
 			}
 		},

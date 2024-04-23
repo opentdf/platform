@@ -9,6 +9,7 @@ require (
 	github.com/casbin/casbin/v2 v2.84.0
 	github.com/coreos/go-oidc/v3 v3.9.0
 	github.com/creasty/defaults v1.7.0
+	github.com/docker/go-connections v0.5.0
 	github.com/go-chi/cors v1.2.1
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
@@ -22,7 +23,7 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.1.0
 	github.com/opentdf/platform/lib/ocrypto v0.1.0
 	github.com/opentdf/platform/protocol/go v0.1.0
-	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/sdk v0.1.0
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -52,13 +53,10 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/docker v25.0.5+incompatible // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 )
-
-replace github.com/opentdf/platform/sdk => ../sdk
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.33.0-20240221180331-f05a6f4403ce.1 // indirect

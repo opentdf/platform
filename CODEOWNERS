@@ -1,22 +1,22 @@
 # CODEOWNERS
 
-* @opentdf/developers
+* @opentdf/maintainers
 
 ## Lib
 
-/.github/     @opentdf/opentdf-architecture @opentdf/openstack-developers
-/lib/         @opentdf/opentdf-architecture @opentdf/openstack-developers
+/.github/     @opentdf/architecture @opentdf/maintainers
+/lib/         @opentdf/architecture @opentdf/maintainers
 
 ## General
 
-.gitignore    @opentdf/developers
-*.sum         @opentdf/developers
+.gitignore    @opentdf/maintainers
+*.sum         @opentdf/maintainers
 
 ### Documentation
 
-*.md          @opentdf/developers
-/docs/        @opentdf/developers
-/examples/    @opentdf/developers
+*.md          @opentdf/maintainers
+/docs/        @opentdf/maintainers
+/examples/    @opentdf/maintainers
 
 ### Tests
 
@@ -25,26 +25,26 @@
 
 ## Services
 
-/protocol/go/          @opentdf/opentdf-architecture @opentdf/opentdf-authorization  @opentdf/opentdf-kas @opentdf/opentdf-policy
+/protocol/go/          @opentdf/architecture @opentdf/maintainers
 
 ### Policy
 
-/service/migrations/   @opentdf/opentdf-policy @opentdf/opentdf-architecture
-/service/policy/       @opentdf/opentdf-policy @opentdf/opentdf-architecture
+/service/migrations/   @opentdf/cli @opentdf/architecture
+/service/policy/       @opentdf/cli @opentdf/architecture
 
 ### Authorization
 
-/service/authorization/ @opentdf/opentdf-authorization @opentdf/opentdf-architecture
+/service/authorization/ @opentdf/opentdf-authorization @opentdf/architecture
 
 ### Key Access Server
 
-/service/kas/           @opentdf/opentdf-kas @opentdf/opentdf-architecture
+/service/kas/           @opentdf/kas @opentdf/architecture
 
 ## SDK
 
-/sdk/ @opentdf/opentdf-go-sdk @opentdf/opentdf-architecture
+/sdk/ @opentdf/go-sdk @opentdf/architecture
 
 ## High Security Area
 
-CODEOWNERS     @opentdf/opentdf-architecture @opentdf/security
-LICENSE        @opentdf/opentdf-architecture
+CODEOWNERS     @opentdf/architecture @opentdf/security
+LICENSE        @opentdf/architecture

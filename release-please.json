@@ -20,7 +20,6 @@
     },
     "service": {
       "component": "service",
-      "release-as": "0.1.0"
     }
   }
 }

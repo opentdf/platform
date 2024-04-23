@@ -58,6 +58,7 @@ const refreshInterval = 15 * time.Minute
 
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
+	enforceDPoP bool
 	// cache holds the jwks cache
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
@@ -70,7 +71,9 @@ type Authentication struct {
 
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, d *db.Client) (*Authentication, error) {
-	a := &Authentication{}
+	a := &Authentication{
+		enforceDPoP: cfg.EnforceDPoP,
+	}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	// validate the configuration
@@ -146,7 +149,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		tok, dpopKey, err := a.checkToken(r.Context(), header, dpopInfo{
+		tok, newCtx, err := a.checkToken(r.Context(), header, dpopInfo{
 			headers: r.Header["Dpop"],
 			path:    r.URL.Path,
 			method:  r.Method,
@@ -184,7 +187,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		handler.ServeHTTP(w, r.WithContext(ContextWithJWK(r.Context(), dpopKey)))
+		handler.ServeHTTP(w, r.WithContext(newCtx))
 	})
 }
 
@@ -225,7 +228,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		action = "other"
 	}
 
-	token, dpopJWK, err := a.checkToken(
+	token, newCtx, err := a.checkToken(
 		ctx,
 		header,
 		dpopInfo{
@@ -251,26 +254,20 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 
-	// add dpop key to context
-	ctx = ContextWithJWK(ctx, dpopJWK)
-
-	return handler(ctx, req)
+	return handler(newCtx, req)
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (jwt.Token, jwk.Key, error) {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (jwt.Token, context.Context, error) {
 	var (
-		tokenRaw  string
-		tokenType string
+		tokenRaw string
 	)
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {
 	case strings.HasPrefix(authHeader[0], "DPoP "):
-		tokenType = "DPoP"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
 	case strings.HasPrefix(authHeader[0], "Bearer "):
-		tokenType = "Bearer"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
 		return nil, nil, fmt.Errorf("not of type bearer or dpop")
@@ -314,16 +311,17 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		return nil, nil, err
 	}
 
-	if tokenType == "Bearer" {
-		slog.Warn("Presented bearer token. validating as DPoP")
+	_, tokenHasCNF := accessToken.Get("cnf")
+	if !tokenHasCNF && a.enforceDPoP {
+		// this condition is not quite tight because it's possible that the `cnf` claim may
+		// come from token introspection
+		return accessToken, ctx, nil
 	}
-
 	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return accessToken, *key, nil
+	return accessToken, ContextWithJWK(ctx, key), nil
 }
 
 func ContextWithJWK(ctx context.Context, key jwk.Key) context.Context {
@@ -339,10 +337,10 @@ func GetJWKFromContext(ctx context.Context) jwk.Key {
 		return jwk
 	}
 
-	return nil
+	panic("got something that is not a jwk.Key from the JWK context")
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (*jwk.Key, error) {
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (jwk.Key, error) {
 	if len(dpopInfo.headers) != 1 {
 		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
 	}
@@ -457,7 +455,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
-	return &dpopKey, nil
+	return dpopKey, nil
 }
 
 func (a Authentication) isPublicRoute(path string) func(string) bool {

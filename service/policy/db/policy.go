@@ -13,7 +13,7 @@ const (
 )
 
 type PolicyDBClient struct {
-	db.Client
+	*db.Client
 }
 
 var (
@@ -44,20 +44,21 @@ var Tables struct {
 	KeyAccessServerRegistry       db.Table
 }
 
-func NewClient(c db.Client) *PolicyDBClient {
-	Tables.Attributes = db.NewTable(TableAttributes)
-	Tables.AttributeValues = db.NewTable(TableAttributeValues)
-	Tables.ValueMembers = db.NewTable(TableValueMembers)
-	Tables.Namespaces = db.NewTable(TableNamespaces)
-	Tables.AttrFqn = db.NewTable(TableAttrFqn)
-	Tables.AttributeKeyAccessGrants = db.NewTable(TableAttributeKeyAccessGrants)
-	Tables.AttributeValueKeyAccessGrants = db.NewTable(TableAttributeValueKeyAccessGrants)
-	Tables.ResourceMappings = db.NewTable(TableResourceMappings)
-	Tables.SubjectMappings = db.NewTable(TableSubjectMappings)
-	Tables.SubjectConditionSet = db.NewTable(TableSubjectConditionSet)
-	Tables.KeyAccessServerRegistry = db.NewTable(TableKeyAccessServerRegistry)
+func NewClient(c *db.Client) PolicyDBClient {
+	t := db.NewTable(c.Schema())
+	Tables.Attributes = t(TableAttributes)
+	Tables.AttributeValues = t(TableAttributeValues)
+	Tables.ValueMembers = t(TableValueMembers)
+	Tables.Namespaces = t(TableNamespaces)
+	Tables.AttrFqn = t(TableAttrFqn)
+	Tables.AttributeKeyAccessGrants = t(TableAttributeKeyAccessGrants)
+	Tables.AttributeValueKeyAccessGrants = t(TableAttributeValueKeyAccessGrants)
+	Tables.ResourceMappings = t(TableResourceMappings)
+	Tables.SubjectMappings = t(TableSubjectMappings)
+	Tables.SubjectConditionSet = t(TableSubjectConditionSet)
+	Tables.KeyAccessServerRegistry = t(TableKeyAccessServerRegistry)
 
-	return &PolicyDBClient{c}
+	return PolicyDBClient{c}
 }
 
 func GetDBStateTypeTransformedEnum(state common.ActiveStateEnum) string {

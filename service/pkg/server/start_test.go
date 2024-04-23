@@ -11,7 +11,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +50,6 @@ func ServiceRegistrationTest() serviceregistry.Registration {
 
 func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	// Create new opentdf server
-	d, _ := db.NewClient(db.Config{})
 	s, err := server.NewOpenTDFServer(server.Config{
 		WellKnownConfigRegister: func(namespace string, config any) error {
 			return nil
@@ -63,7 +61,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 			},
 		},
 		Port: 43481,
-	}, d)
+	})
 	require.NoError(t, err)
 
 	// Register Test Service
@@ -71,13 +69,13 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start services with test service
-	err = startServices(config.Config{
+	_, err = startServices(config.Config{
 		Services: map[string]serviceregistry.ServiceConfig{
 			"test": {
 				Enabled: true,
 			},
 		},
-	}, s, nil, nil, nil)
+	}, s, nil, nil)
 	require.NoError(t, err)
 
 	s.Start()

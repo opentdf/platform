@@ -21,7 +21,7 @@ type Table struct {
 	withSchema bool
 }
 
-func NewTableWithSchema(schema string) func(name string) Table {
+func NewTable(schema string) func(name string) Table {
 	s := schema
 	return func(name string) Table {
 		return Table{
@@ -32,10 +32,8 @@ func NewTableWithSchema(schema string) func(name string) Table {
 	}
 }
 
-var NewTable func(name string) Table
-
 func (t Table) WithoutSchema() Table {
-	nT := NewTableWithSchema(t.schema)(t.name)
+	nT := NewTable(t.schema)(t.name)
 	nT.withSchema = false
 	return nT
 }
@@ -89,7 +87,7 @@ Connections and pools seems to be pulled in from env vars
 We should be able to tell the platform how to run
 */
 
-func New(config Config, o ...optsFunc) (*Client, error) {
+func New(config Config, o ...OptsFunc) (*Client, error) {
 	for _, f := range o {
 		config = f(config)
 	}
@@ -118,26 +116,11 @@ func New(config Config, o ...optsFunc) (*Client, error) {
 		}
 	}
 
-	// Run migrations
-	if !config.RunMigrations {
-		slog.Info("skipping migrations",
-			slog.String("reason", "runMigrations is false"),
-			slog.Bool("runMigrations", false),
-		)
-	} else if config.RunMigrations && config.MigrationsFS == nil {
-		return nil, fmt.Errorf("migrations FS is required when runMigrations is true")
-	} else {
-		slog.Info("running database migrations")
-		appliedMigrations, err := c.RunMigrations(context.Background(), config.MigrationsFS)
-		if err != nil {
-			return nil, fmt.Errorf("issue running database migrations: %w", err)
-		}
-		slog.Info("database migrations complete",
-			slog.Int("applied", appliedMigrations),
-		)
-	}
-
 	return &c, nil
+}
+
+func (c *Client) Schema() string {
+	return c.config.Schema
 }
 
 func (c *Client) Close() {

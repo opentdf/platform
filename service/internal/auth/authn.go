@@ -68,7 +68,7 @@ type Authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(cfg AuthNConfig) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg AuthNConfig) (*Authentication, error) {
 	a := &Authentication{}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 

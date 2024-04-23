@@ -5,23 +5,23 @@ import (
 	"strings"
 )
 
-type optsFunc func(c Config) Config
+type OptsFunc func(c Config) Config
 
-func WithService(name string) optsFunc {
+func WithService(name string) OptsFunc {
 	return func(c Config) Config {
 		c.Schema = strings.Join([]string{c.Schema, name}, "_")
 		return c
 	}
 }
 
-func WithVerifyConnection() optsFunc {
+func WithVerifyConnection() OptsFunc {
 	return func(c Config) Config {
 		c.VerifyConnection = true
 		return c
 	}
 }
 
-func WithMigrations(fs *embed.FS) optsFunc {
+func WithMigrations(fs *embed.FS) OptsFunc {
 	return func(c Config) Config {
 		c.MigrationsFS = fs
 		return c

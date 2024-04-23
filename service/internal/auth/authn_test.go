@@ -144,7 +144,7 @@ func (s *AuthSuite) SetupTest() {
 		AuthNConfig{
 			Issuer:   s.server.URL,
 			Audience: "test",
-		}, nil)
+		})
 
 	s.Require().NoError(err)
 

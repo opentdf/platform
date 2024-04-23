@@ -13,15 +13,14 @@ import (
 
 type KeyAccessServerRegistry struct {
 	kasr.UnimplementedKeyAccessServerRegistryServiceServer
-	dbClient *policydb.PolicyDBClient
+	dbClient policydb.PolicyDBClient
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
-		Namespace:   "policy",
 		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
 				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, s.(kasr.KeyAccessServerRegistryServiceServer))
 			}
 		},

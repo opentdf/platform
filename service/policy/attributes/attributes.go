@@ -14,15 +14,14 @@ import (
 
 type AttributesService struct {
 	attributes.UnimplementedAttributesServiceServer
-	dbClient *policydb.PolicyDBClient
+	dbClient policydb.PolicyDBClient
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
-		Namespace:   "policy",
 		ServiceDesc: &attributes.AttributesService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &AttributesService{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &AttributesService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, server.(attributes.AttributesServiceServer))
 			}
 		},

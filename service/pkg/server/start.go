@@ -187,18 +187,39 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, eng *opa.Engin
 			// config at the NS layer. This poses a problem where services under a NS want to share a
 			// database connection.
 			// TODO: this should be reassessed with how we handle registering a single namespace
-			if r.DBRegister.MigrationsFS != nil && d == nil {
-				// Wnat to make sure we only create a single db client per namespace
+			if r.DB.Required && d == nil {
 				slog.Info("creating database client", slog.String("namespace", ns))
-				dbClient, err := db.New(cfg.DB,
+				// Make sure we only create a single db client per namespace
+				var err error
+				d, err = db.New(cfg.DB,
 					db.WithService(ns),
 					db.WithVerifyConnection(),
-					db.WithMigrations(r.DBRegister.MigrationsFS),
+					db.WithMigrations(r.DB.Migrations),
 				)
 				if err != nil {
 					return closeServices, fmt.Errorf("issue creating database client for %s: %w", ns, err)
 				}
-				d = dbClient
+
+				// Run migrations if required
+				if cfg.DB.RunMigrations {
+					if r.DB.Migrations == nil {
+						return closeServices, fmt.Errorf("migrations FS is required when runMigrations is true")
+					}
+
+					slog.Info("running database migrations")
+					appliedMigrations, err := d.RunMigrations(context.Background(), r.DB.Migrations)
+					if err != nil {
+						return nil, fmt.Errorf("issue running database migrations: %w", err)
+					}
+					slog.Info("database migrations complete",
+						slog.Int("applied", appliedMigrations),
+					)
+				} else {
+					slog.Info("skipping migrations",
+						slog.String("reason", "runMigrations is false"),
+						slog.Bool("runMigrations", false),
+					)
+				}
 			}
 
 			// Create the service

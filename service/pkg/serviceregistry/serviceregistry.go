@@ -2,6 +2,7 @@ package serviceregistry
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"log/slog"
 
@@ -34,11 +35,20 @@ type RegistrationParams struct {
 }
 type HandlerServer func(ctx context.Context, mux *runtime.ServeMux, server any) error
 type RegisterFunc func(RegistrationParams) (Impl any, HandlerServer HandlerServer)
+
+type DBRegister struct {
+	Required bool
+	// Required to support automatic migrations
+	Migrations *embed.FS
+}
+
 type Registration struct {
 	Namespace    string
 	ServiceDesc  *grpc.ServiceDesc
 	RegisterFunc RegisterFunc
-	DBRegister   DBRegister
+
+	// Optional to specify if the service requires a database connection
+	DB DBRegister
 }
 
 type Service struct {

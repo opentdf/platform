@@ -1,12 +1,12 @@
 package server
 
 import (
-	"github.com/opentdf/platform/pkg/serviceregistry"
-	"github.com/opentdf/platform/services/authorization"
-	"github.com/opentdf/platform/services/health"
-	"github.com/opentdf/platform/services/kas"
-	"github.com/opentdf/platform/services/policy"
-	wellknown "github.com/opentdf/platform/services/wellknownconfiguration"
+	"github.com/opentdf/platform/service/authorization"
+	"github.com/opentdf/platform/service/health"
+	"github.com/opentdf/platform/service/kas"
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/policy"
+	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
 func registerServices() error {

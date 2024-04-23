@@ -17,7 +17,6 @@
     },
     "sdk": {
       "component": "sdk",
-      "release-as": "0.1.0"
     },
     "service": {
       "component": "service",

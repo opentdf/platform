@@ -7,19 +7,19 @@
   "tag-separator": "/",
   "packages": {
     "lib/fixtures": {
-      "component": "lib/fixtures",
+      "component": "lib/fixtures"
     },
     "lib/ocrypto": {
-      "component": "lib/ocrypto",
+      "component": "lib/ocrypto"
     },
     "protocol/go": {
-      "component": "protocol/go",
+      "component": "protocol/go"
     },
     "sdk": {
-      "component": "sdk",
+      "component": "sdk"
     },
     "service": {
-      "component": "service",
+      "component": "service"
     }
   }
 }

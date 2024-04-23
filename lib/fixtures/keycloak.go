@@ -198,7 +198,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create OpenTDF Client
-	_, err = createClient(ctx, &kcConnectParams, gocloak.Client{
+	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfClientID),
 		Enabled:                 gocloak.BoolP(true),
 		Name:                    gocloak.StringP(opentdfClientID),
@@ -240,7 +240,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create TDF SDK Client
-	sdkNumericID, err := createClient(ctx, &kcConnectParams, gocloak.Client{
+	sdkNumericID, err := createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
 		ClientID: gocloak.StringP(opentdfSdkClientID),
 		Enabled:  gocloak.BoolP(true),
 		// OptionalClientScopes:    &[]string{"testscope"},
@@ -276,7 +276,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		slog.Error(fmt.Sprintf("Error getting client roles : %s", err))
 		return err
 	}
-	_, err = createClient(ctx, &kcConnectParams, gocloak.Client{
+	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfERSClientID),
 		Enabled:                 gocloak.BoolP(true),
 		Name:                    gocloak.StringP(opentdfERSClientID),
@@ -702,7 +702,6 @@ func getRealmRolesByList(ctx context.Context, realmName string, client *gocloak.
 func getClientRolesByList(ctx context.Context, connectParams *KeycloakConnectParams, client *gocloak.GoCloak, token *gocloak.JWT, idClient string, roles []string) ([]gocloak.Role, error) {
 	var notFoundRoles []string
 	var clientRoles []gocloak.Role
-	var getErr error
 
 	roleObjects, err := client.GetClientRoles(ctx, token.AccessToken, connectParams.Realm, idClient, gocloak.GetRoleParams{})
 	if err != nil {

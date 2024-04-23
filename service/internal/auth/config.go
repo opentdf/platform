@@ -11,6 +11,7 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct {
+	EnforceDPoP       bool   `yaml:"enforceDPoP" json:"enforceDPoP" default:"true"`
 	Issuer            string `yaml:"issuer" json:"issuer"`
 	Audience          string `yaml:"audience" json:"audience"`
 	OIDCConfiguration `yaml:"-" json:"-"`

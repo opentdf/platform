@@ -98,7 +98,7 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
-		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can use `allowNoDPoP`")
+		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	} else {
 		slog.Info("authentication enabled")
 	}
@@ -165,7 +165,7 @@ func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	if c.Auth.Enabled {
 		h = a.MuxHandler(h)
 	} else {
-		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can use `allowNoDPoP`")
+		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
@@ -225,7 +225,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	if c.Auth.Enabled {
 		i = append(i, a.UnaryServerInterceptor)
 	} else {
-		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can use `allowNoDpop`")
+		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
 	// Add tls creds if tls is not nil

@@ -58,7 +58,7 @@ const refreshInterval = 15 * time.Minute
 
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
-	allowNoDPoP bool
+	enforceDPoP bool
 	// cache holds the jwks cache
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
@@ -72,7 +72,7 @@ type Authentication struct {
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, d *db.Client) (*Authentication, error) {
 	a := &Authentication{
-		allowNoDPoP: cfg.AllowNoDPoP,
+		enforceDPoP: cfg.EnforceDPoP,
 	}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
@@ -312,7 +312,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")
-	if !tokenHasCNF && a.allowNoDPoP {
+	if !tokenHasCNF && a.enforceDPoP {
 		// this condition is not quite tight because it's possible that the `cnf` claim may
 		// come from token introspection
 		return accessToken, ctx, nil

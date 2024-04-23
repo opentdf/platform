@@ -144,7 +144,7 @@ func (s *AuthSuite) SetupTest() {
 		context.Background(),
 		Config{
 			AuthNConfig: AuthNConfig{
-				AllowNoDPoP: false,
+				EnforceDPoP: false,
 				Issuer:      s.server.URL,
 				Audience:    "test",
 			},
@@ -548,7 +548,7 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 
 func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	authnConfig := AuthNConfig{
-		AllowNoDPoP: true,
+		EnforceDPoP: true,
 		Issuer:      s.server.URL,
 		Audience:    "test",
 	}

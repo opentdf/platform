@@ -18,11 +18,6 @@
 /docs/        @opentdf/maintainers
 /examples/    @opentdf/maintainers
 
-### Tests
-
-*_test.go                @opentdf/developers
-/service/integration/    @opentdf/developers
-
 ## Services
 
 /protocol/go/          @opentdf/architecture @opentdf/maintainers

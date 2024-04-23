@@ -93,7 +93,6 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 		authN, err = auth.NewAuthenticator(
 			context.Background(),
 			config.Auth,
-			d,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)

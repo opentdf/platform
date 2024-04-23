@@ -87,23 +87,31 @@ func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*Re
 	// get dpop public key from context
 	dpopJWK := auth.GetJWKFromContext(ctx)
 
-	// if we don't have a dpop public key then we can't verify the request
+	var token jwt.Token
+	var err error
 	if dpopJWK == nil {
-		slog.ErrorContext(ctx, "missing dpop public key")
-		return nil, err401("dpop public key missing")
+		slog.InfoContext(ctx, "no DPoP key provided")
+		// if we have no DPoP key it's for one of two reasons:
+		// 1. auth is disabled so we can't get a DPoP JWK
+		// 2. auth is enabled _but_ we aren't requiring DPoP
+		// in either case letting the request through makes sense
+		token, err = jwt.Parse([]byte(in.GetSignedRequestToken()), jwt.WithValidate(false))
+		if err != nil {
+			slog.WarnContext(ctx, "unable to verify parse token", "err", err)
+			return nil, err401("could not parse token")
+		}
+	} else {
+		// verify and validate the request token
+		token, err = jwt.Parse([]byte(in.GetSignedRequestToken()),
+			jwt.WithKey(dpopJWK.Algorithm(), dpopJWK),
+			jwt.WithValidate(true),
+		)
+		// we have failed to verify the signed request token
+		if err != nil {
+			slog.WarnContext(ctx, "unable to verify request token", "err", err)
+			return nil, err401("unable to verify request token")
+		}
 	}
-
-	// verify and validate the request token
-	token, err := jwt.Parse([]byte(in.GetSignedRequestToken()),
-		jwt.WithKey(dpopJWK.Algorithm(), dpopJWK),
-		jwt.WithValidate(true),
-	)
-	// we have failed to verify the signed request token
-	if err != nil {
-		slog.WarnContext(ctx, "unable to verify request token", "err", err)
-		return nil, err401("unable to verify request token")
-	}
-
 	rb, exists := token.Get("requestBody")
 	if !exists {
 		slog.WarnContext(ctx, "missing request body")

@@ -9,14 +9,12 @@ import (
 	"github.com/opentdf/platform/service/internal/config"
 
 	"github.com/opentdf/platform/service/internal/db"
-	kasdb "github.com/opentdf/platform/service/kasregistry/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type DBInterface struct {
 	Client       *db.Client
 	PolicyClient *policydb.PolicyDBClient
-	KASRClient   *kasdb.KasRegistryDBClient
 	Schema       string
 }
 
@@ -32,7 +30,6 @@ func NewDBInterface(cfg config.Config) DBInterface {
 		Client:       c,
 		Schema:       config.Schema,
 		PolicyClient: policydb.NewClient(*c),
-		KASRClient:   kasdb.NewClient(*c),
 	}
 }
 

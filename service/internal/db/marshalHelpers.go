@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/protocol/go/common"
-	kasr "github.com/opentdf/platform/protocol/go/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -63,16 +63,16 @@ func MarshalUpdateMetadata(m *common.MetadataMutable, b common.MetadataUpdateEnu
 	return nil, nil, fmt.Errorf("unknown metadata update type: %s", b.String())
 }
 
-func KeyAccessServerProtoJSON(keyAccessServerJSON []byte) ([]*kasr.KeyAccessServer, error) {
+func KeyAccessServerProtoJSON(keyAccessServerJSON []byte) ([]*policy.KeyAccessServer, error) {
 	var (
-		keyAccessServers []*kasr.KeyAccessServer
+		keyAccessServers []*policy.KeyAccessServer
 		raw              []json.RawMessage
 	)
 	if err := json.Unmarshal(keyAccessServerJSON, &raw); err != nil {
 		return nil, err
 	}
 	for _, r := range raw {
-		kas := kasr.KeyAccessServer{}
+		kas := policy.KeyAccessServer{}
 		if err := protojson.Unmarshal(r, &kas); err != nil {
 			return nil, err
 		}

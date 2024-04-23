@@ -143,9 +143,6 @@ type dpopInfo struct {
 }
 
 func (a Authentication) normalizeURL(u *url.URL) []string {
-	n := *u
-	n.RawQuery = ""
-	n.Fragment = ""
 	us := make([]string, len(a.allowedHosts))
 	for i, v := range a.allowedHosts {
 		v2 := *v
@@ -461,7 +458,12 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
 
-	if !slices.Contains(dpopInfo.u, htu.(string)) {
+	htus, ok := htu.(string)
+	if !ok {
+		return nil, fmt.Errorf("`htu` claim incorrect format in DPoP JWT")
+	}
+
+	if !slices.Contains(dpopInfo.u, htus) {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; should match %v", dpopInfo.u)
 	}
 

@@ -6,6 +6,7 @@
 
 /.github/     @opentdf/architecture @opentdf/maintainers
 /lib/         @opentdf/architecture @opentdf/maintainers
+/lib/ocrypto  @opentdf/architecture
 
 ## General
 

@@ -149,8 +149,7 @@ func (s *AuthSuite) SetupTest() {
 				Audience:    "test",
 			},
 			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
-		},
-		nil)
+		})
 
 	s.Require().NoError(err)
 
@@ -554,7 +553,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config, nil)
+	auth, err := NewAuthenticator(context.Background(), config)
 
 	s.Require().NoError(err)
 

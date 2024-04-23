@@ -312,7 +312,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")
-	if !tokenHasCNF && a.enforceDPoP {
+	if !tokenHasCNF && !a.enforceDPoP {
 		// this condition is not quite tight because it's possible that the `cnf` claim may
 		// come from token introspection
 		return accessToken, ctx, nil

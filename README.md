@@ -9,6 +9,20 @@
 - [Policy Config Schema](./service/migrations/20240212000000_schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
 
+## Running the Platform Locally
+
+### Setting up pre-requisites
+
+1. Stand up the local Postgres database and Keycloak instances using `docker-compose up -d --wait`.
+2. Bootstrap Keycloak
+
+   ```sh
+      docker run --network opentdf-v2-poc_default \
+         -v ./opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml \
+         -it us-docker.pkg.dev/prj-sb-engineering-nerq/sean-test/opentdf:v2 \ 
+         provision keycloak -e http://keycloak:8888/auth
+   ```
+
 ## Development
 
 ### Prerequisites
@@ -98,7 +112,7 @@ In this folder, create your go code as usual.
 #### Add a README.md and a LICENSE File
 
 A README is recommended to assist with orientation to use of your package.
-Remember, this will be published to https://pkg.go.dev/ as part of the module documentation.
+Remember, this will be published to <https://pkg.go.dev/> as part of the module documentation.
 
 Make sure to add a LICENSE file to your module to support automated license checks.
 Feel free to copy the existing (BSD-clear) LICENSE file for most new modules.
@@ -128,7 +142,7 @@ Feel free to copy the existing (BSD-clear) LICENSE file for most new modules.
 
    ```Makefile
    lib/foo/foo: $(shell find lib/foo)
-   	(cd lib/foo && go build ./...)
+    (cd lib/foo && go build ./...)
    ```
 
 #### Updating the Docker Images

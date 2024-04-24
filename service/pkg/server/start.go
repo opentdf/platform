@@ -95,7 +95,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	slog.Info("starting services")
-	closeServices, err := startServices(*conf, otdf, eng, client)
+	closeServices, err := startServices(ctx, *conf, otdf, eng, client)
 	if err != nil {
 		slog.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
@@ -120,7 +120,7 @@ func waitForShutdownSignal() {
 	<-sigs
 }
 
-func startServices(cfg config.Config, otdf *server.OpenTDFServer, eng *opa.Engine, client *sdk.SDK) (func(), error) {
+func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, eng *opa.Engine, client *sdk.SDK) (func(), error) {
 	// CloseServices is a function that will close all registered services
 	closeServices := func() {
 		slog.Info("stopping services")
@@ -151,45 +151,8 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, eng *opa.Engin
 
 		for _, r := range registers {
 
-			// Conditionally set the db client if the service requires it
-			// Currently, we are dynamically registering namespaces and don't offer the ability to apply
-			// config at the NS layer. This poses a problem where services under a NS want to share a
-			// database connection.
-			// TODO: this should be reassessed with how we handle registering a single namespace
-			if r.DB.Required && d == nil {
-				slog.Info("creating database client", slog.String("namespace", ns))
-				// Make sure we only create a single db client per namespace
-				var err error
-				d, err = db.New(cfg.DB,
-					db.WithService(ns),
-					db.WithVerifyConnection(),
-					db.WithMigrations(r.DB.Migrations),
-				)
-				if err != nil {
-					return closeServices, fmt.Errorf("issue creating database client for %s: %w", ns, err)
-				}
-
-				// Run migrations if required
-				if cfg.DB.RunMigrations {
-					if r.DB.Migrations == nil {
-						return closeServices, fmt.Errorf("migrations FS is required when runMigrations is true")
-					}
-
-					slog.Info("running database migrations")
-					appliedMigrations, err := d.RunMigrations(context.Background(), r.DB.Migrations)
-					if err != nil {
-						return nil, fmt.Errorf("issue running database migrations: %w", err)
-					}
-					slog.Info("database migrations complete",
-						slog.Int("applied", appliedMigrations),
-					)
-				} else {
-					slog.Info("skipping migrations",
-						slog.String("reason", "runMigrations is false"),
-						slog.Bool("runMigrations", false),
-					)
-				}
-			}
+			// Create the database client if required
+			registerServiceDb(context.Background(), cfg.DB, r, d)
 
 			// Create the service
 			impl, handler := r.RegisterFunc(serviceregistry.RegistrationParams{

@@ -24,10 +24,18 @@ else := {"entities": [{
 	"userName": input.entity.username,
 }]} if { input.entity.username }
 
+
 attributes := [attribute |
 	# external entity
-    response := keycloak.resolve.entities(idp_request, idp_config)
-    entity_representations := response.entityRepresentations
+    response := http.send({
+        "method" : "POST",
+        "url": "http://localhost:8080/entityresolution/resolve",
+        "body": idp_request
+    })
+	response.body != null
+	response.status_code == 200
+
+    entity_representations := response.body.entityRepresentations
     some entity_representation in entity_representations
 
 	# mappings

@@ -7,7 +7,8 @@ import (
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"
-	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
+	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -27,9 +28,8 @@ func KeycloakBuiltins() {
 			return nil, err
 		}
 
-		var request = authorization.IdpPluginRequest{}
-		var config = authorization.IdpConfig{}
-
+		var request = entityresolution.EntityResolutionRequest{}
+		var config = keycloak.KeycloakConfig{}
 		reqJSON, err := json.Marshal(requestMap)
 		if err != nil {
 			return nil, err
@@ -43,16 +43,16 @@ func KeycloakBuiltins() {
 		if err != nil {
 			return nil, err
 		}
-		err = protojson.Unmarshal(confJSON, &config)
+		err = json.Unmarshal(confJSON, &config)
 		if err != nil {
 			return nil, err
 		}
 
-		var resp, errresp = EntityResolution(ctx.Context, &request, &config)
+		var resp, errresp = keycloak.EntityResolution(ctx.Context, &request, config)
 		if errresp != nil {
 			return nil, errresp
 		}
-		respJSON, err := protojson.Marshal(resp)
+		respJSON, err := protojson.Marshal(&resp)
 		if err != nil {
 			return nil, err
 		}

@@ -146,11 +146,10 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			continue
 		}
 
+		// Use a single database client per namespace
 		var d *db.Client
-		// Conditionally set the db client if the service requires it
 
 		for _, r := range registers {
-
 			// Create the database client if required
 			registerServiceDb(context.Background(), cfg.DB, r, d)
 

@@ -66,12 +66,12 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 	}
 	applied := int(tag.RowsAffected())
 
-	provider, version, close, err := migrationInit(ctx, c, migrations)
+	provider, version, closeProvider, err := migrationInit(ctx, c, migrations)
 	if err != nil {
 		slog.Error("failed to create goose provider", "err", err)
 		return 0, err
 	}
-	defer close()
+	defer closeProvider()
 
 	res, err := provider.Up(context.Background())
 	if err != nil {
@@ -97,24 +97,24 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 
 func (c *Client) MigrationStatus(ctx context.Context) ([]*goose.MigrationStatus, error) {
 	slog.Info("running migrations status", slog.String("schema", c.config.Schema), slog.String("database", c.config.Database))
-	provider, _, close, err := migrationInit(ctx, c, nil)
+	provider, _, closeProvider, err := migrationInit(ctx, c, nil)
 	if err != nil {
 		slog.Error("failed to create goose provider", "err", err)
 		return nil, err
 	}
-	defer close()
+	defer closeProvider()
 
 	return provider.Status(context.Background())
 }
 
 func (c *Client) MigrationDown(ctx context.Context, migrations *embed.FS) error {
 	slog.Info("running migration down", slog.String("schema", c.config.Schema), slog.String("database", c.config.Database))
-	provider, _, close, err := migrationInit(ctx, c, migrations)
+	provider, _, closeProvider, err := migrationInit(ctx, c, migrations)
 	if err != nil {
 		slog.Error("failed to create goose provider", "err", err)
 		return err
 	}
-	defer close()
+	defer closeProvider()
 
 	res, err := provider.Down(context.Background())
 	if err != nil {

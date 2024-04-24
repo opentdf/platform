@@ -17,7 +17,6 @@ type AuthNConfig struct {
 	OIDCConfiguration `yaml:"-" json:"-"`
 	Policy            PolicyConfig `yaml:"policy" json:"policy" mapstructure:"policy"`
 	CacheRefresh      string       `mapstructure:"cache_refresh_interval"`
-	AllowedHosts      []string
 }
 
 type PolicyConfig struct {

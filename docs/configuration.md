@@ -56,8 +56,6 @@ server:
     key: /path/to/key
   auth:
     enabled: true
-    allowedHosts:
-      - "https://example.com"
     audience: https://example.com
     issuer: https://example.com
 ```

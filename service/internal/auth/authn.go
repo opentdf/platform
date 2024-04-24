@@ -68,8 +68,6 @@ type Authentication struct {
 	enforcer *Enforcer
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
-	// Allowed origins for the DPoP htu field
-	allowedHosts []*url.URL
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
@@ -126,30 +124,24 @@ func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) 
 
 	a.oidcConfigurations[cfg.Issuer] = cfg.AuthNConfig
 
-	a.allowedHosts = make([]*url.URL, len(cfg.AllowedHosts))
-	for i, h := range cfg.AllowedHosts {
-		a.allowedHosts[i], err = url.Parse(h)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return a, nil
 }
 
-type dpopInfo struct {
-	u []string
+type receiverInfo struct {
+	// The URI of the request
+	u string
+	// The HTTP method of the request
 	m string
 }
 
-func (a Authentication) normalizeURL(u *url.URL) []string {
-	us := make([]string, len(a.allowedHosts))
-	for i, v := range a.allowedHosts {
-		v2 := *v
-		v2.Path = u.Path
-		us[i] = v2.String()
+func normalizeURL(o string, u *url.URL) string {
+	// Currently this does not do a full normatlization
+	ou, err := url.Parse(o)
+	if err != nil {
+		return u.String()
 	}
-	return us
+	ou.Path = u.Path
+	return ou.String()
 }
 
 // verifyTokenHandler is a http handler that verifies the token
@@ -166,8 +158,9 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		tok, newCtx, err := a.checkToken(r.Context(), header, dpopInfo{
-			u: a.normalizeURL(r.URL),
+		origin := r.Header.Get("Origin")
+		tok, newCtx, err := a.checkToken(r.Context(), header, receiverInfo{
+			u: normalizeURL(origin, r.URL),
 			m: r.Method,
 		}, r.Header["Dpop"])
 
@@ -247,8 +240,8 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	token, newCtx, err := a.checkToken(
 		ctx,
 		header,
-		dpopInfo{
-			u: []string{info.FullMethod},
+		receiverInfo{
+			u: info.FullMethod,
 			m: http.MethodPost,
 		},
 		md["dpop"],
@@ -274,7 +267,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
 	var (
 		tokenRaw string
 	)
@@ -356,7 +349,7 @@ func GetJWKFromContext(ctx context.Context) jwk.Key {
 	panic("got something that is not a jwk.Key from the JWK context")
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo, headers []string) (jwk.Key, error) {
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {
 	if len(headers) != 1 {
 		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(headers))
 	}
@@ -458,12 +451,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
 
-	htus, ok := htu.(string)
-	if !ok {
-		return nil, fmt.Errorf("`htu` claim incorrect format in DPoP JWT")
-	}
-
-	if !slices.Contains(dpopInfo.u, htus) {
+	if htu != dpopInfo.u {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; should match %v", dpopInfo.u)
 	}
 

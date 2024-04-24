@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -32,6 +34,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"gotest.tools/v3/assert"
 )
 
 type AuthSuite struct {
@@ -144,10 +147,9 @@ func (s *AuthSuite) SetupTest() {
 		context.Background(),
 		Config{
 			AuthNConfig: AuthNConfig{
-				AllowedHosts: []string{""},
-				EnforceDPoP:  true,
-				Issuer:       s.server.URL,
-				Audience:     "test",
+				EnforceDPoP: true,
+				Issuer:      s.server.URL,
+				Audience:    "test",
 			},
 			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
 		})
@@ -165,6 +167,23 @@ func TestAuthSuite(t *testing.T) {
 	suite.Run(t, new(AuthSuite))
 }
 
+func TestNormalizeUrl(t *testing.T) {
+	for _, tt := range []struct {
+		origin, path, out string
+	}{
+		{"http://localhost", "/", "http://localhost/"},
+		{"https://localhost", "/somewhere", "https://localhost/somewhere"},
+		{"http://localhost", "", "http://localhost"},
+	} {
+		t.Run(tt.origin+tt.path, func(t *testing.T) {
+			u, err := url.Parse(tt.path)
+			require.NoError(t, err)
+			s := normalizeURL(tt.origin, u)
+			assert.Equal(t, s, tt.out)
+		})
+	}
+}
+
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
@@ -174,7 +193,7 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -198,7 +217,7 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, dpopInfo{}, nil)
+	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -212,7 +231,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("missing issuer", err.Error())
 }
@@ -227,7 +246,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("invalid issuer", err.Error())
 }
@@ -241,7 +260,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -256,7 +275,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
@@ -272,7 +291,7 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -349,8 +368,8 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		_, _, err = s.auth.checkToken(
 			context.Background(),
 			[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
-			dpopInfo{
-				u: []string{"/a/path"},
+			receiverInfo{
+				u: "/a/path",
 				m: http.MethodPost,
 			},
 			[]string{dpopToken},
@@ -568,7 +587,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, ctx, err := auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{}, nil)
+	_, ctx, err := auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().NoError(err)
 	s.Require().Nil(GetJWKFromContext(ctx))
 }

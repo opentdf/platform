@@ -19,4 +19,4 @@ FROM cgr.dev/chainguard/glibc-dynamic
 
 COPY --from=builder /app/opentdf /usr/bin/
 
-CMD ["/usr/bin/opentdf"]
+ENTRYPOINT ["/usr/bin/opentdf"]

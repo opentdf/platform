@@ -37,7 +37,7 @@ jobs:
             protocol/go/go.sum
 
       - name: 'Generate Golang Test Reports'
-        run: go test ./sdk/... ./service/... ./lib/ocrypto -v -coverprofile coverage.out -json ./... | tee coverage.json
+        run: go test ./sdk/... ./service/... ./lib/ocrypto -v -coverprofile coverage.out -json | tee coverage.json
 
       - name: 'Cover report'
         run: go tool cover -func=coverage.out

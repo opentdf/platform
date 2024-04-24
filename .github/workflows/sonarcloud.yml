@@ -35,8 +35,8 @@ jobs:
       - name: 'Generate Golang Test Reports'
         run: go test -v -coverprofile coverage.out -json ./sdk/... ./service/... ./lib/ocrypto | tee coverage.json
 
-#      - name: 'Cover report'
-#        run: go tool cover -func=coverage.out
+      - name: 'Cover report'
+        run: go tool cover -func=coverage.out
 
       - name: 'Check coverage files'
         run: |

@@ -6,11 +6,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
@@ -18,8 +16,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
 )
@@ -138,49 +134,50 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	assert.Equal(t, "hello from test service!", string(respBody))
 }
 
-func startWireMock() (tc.Container, error) {
-	var providerType tc.ProviderType
+// TODO unused based on linter
+// func startWireMock() (tc.Container, error) {
+// 	var providerType tc.ProviderType
 
-	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
-		providerType = tc.ProviderPodman
-	} else {
-		providerType = tc.ProviderDocker
-	}
+// 	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
+// 		providerType = tc.ProviderPodman
+// 	} else {
+// 		providerType = tc.ProviderDocker
+// 	}
 
-	listenPort, _ := nat.NewPort("tcp", "8184")
+// 	listenPort, _ := nat.NewPort("tcp", "8184")
 
-	req := tc.ContainerRequest{
-		FromDockerfile: tc.FromDockerfile{
-			Repo:       "platform/mocks",
-			KeepImage:  true,
-			Context:    "../../integration/wiremock",
-			Dockerfile: "Dockerfile",
-		},
-		ExposedPorts: []string{fmt.Sprintf("%s/tcp", listenPort.Port())},
-		Cmd:          []string{fmt.Sprintf("--port=%s", listenPort.Port()), "--verbose"},
-		WaitingFor:   wait.ForLog("extensions:"),
-		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      "../../integration/wiremock/mappings",
-				ContainerFilePath: "/home/wiremock/mappings",
-				FileMode:          0o444,
-			},
-			{
-				HostFilePath:      "../../integration/wiremock/messages",
-				ContainerFilePath: "/home/wiremock/__files/messages",
-				FileMode:          0o444,
-			},
-			{
-				HostFilePath:      "../../integration/wiremock/grpc",
-				ContainerFilePath: "/home/wiremock/grpc",
-				FileMode:          0o444,
-			},
-		},
-	}
+// 	req := tc.ContainerRequest{
+// 		FromDockerfile: tc.FromDockerfile{
+// 			Repo:       "platform/mocks",
+// 			KeepImage:  true,
+// 			Context:    "../../integration/wiremock",
+// 			Dockerfile: "Dockerfile",
+// 		},
+// 		ExposedPorts: []string{fmt.Sprintf("%s/tcp", listenPort.Port())},
+// 		Cmd:          []string{fmt.Sprintf("--port=%s", listenPort.Port()), "--verbose"},
+// 		WaitingFor:   wait.ForLog("extensions:"),
+// 		Files: []tc.ContainerFile{
+// 			{
+// 				HostFilePath:      "../../integration/wiremock/mappings",
+// 				ContainerFilePath: "/home/wiremock/mappings",
+// 				FileMode:          0o444,
+// 			},
+// 			{
+// 				HostFilePath:      "../../integration/wiremock/messages",
+// 				ContainerFilePath: "/home/wiremock/__files/messages",
+// 				FileMode:          0o444,
+// 			},
+// 			{
+// 				HostFilePath:      "../../integration/wiremock/grpc",
+// 				ContainerFilePath: "/home/wiremock/grpc",
+// 				FileMode:          0o444,
+// 			},
+// 		},
+// 	}
 
-	return tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
-		ProviderType:     providerType,
-		ContainerRequest: req,
-		Started:          true,
-	})
-}
+// 	return tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+// 		ProviderType:     providerType,
+// 		ContainerRequest: req,
+// 		Started:          true,
+// 	})
+// }

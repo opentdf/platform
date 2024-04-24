@@ -38,7 +38,7 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 	}
 
 	// Get the current version
-	v, e := provider.GetDBVersion(context.Background())
+	v, e := provider.GetDBVersion(ctx)
 	if e != nil {
 		return nil, 0, nil, errors.Join(fmt.Errorf("failed to get current version"), e)
 	}
@@ -73,7 +73,7 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 	}
 	defer closeProvider()
 
-	res, err := provider.Up(context.Background())
+	res, err := provider.Up(ctx)
 	if err != nil {
 		return applied, errors.Join(fmt.Errorf("failed to run migrations"), err)
 	}
@@ -104,7 +104,7 @@ func (c *Client) MigrationStatus(ctx context.Context) ([]*goose.MigrationStatus,
 	}
 	defer closeProvider()
 
-	return provider.Status(context.Background())
+	return provider.Status(ctx)
 }
 
 func (c *Client) MigrationDown(ctx context.Context, migrations *embed.FS) error {
@@ -116,7 +116,7 @@ func (c *Client) MigrationDown(ctx context.Context, migrations *embed.FS) error 
 	}
 	defer closeProvider()
 
-	res, err := provider.Down(context.Background())
+	res, err := provider.Down(ctx)
 	if err != nil {
 		return errors.Join(fmt.Errorf("failed to run migrations"), err)
 	}

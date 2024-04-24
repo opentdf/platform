@@ -14,13 +14,24 @@
 ### Setting up pre-requisites
 
 1. Stand up the local Postgres database and Keycloak instances using `docker-compose up -d --wait`.
-2. Bootstrap Keycloak
+2. Copy the `opentdf-example.yaml` file to `opentdf.yaml` and update the [configuration](./docs/configuration.md) as needed.
+3. Bootstrap Keycloak
 
    ```sh
-      docker run --network opentdf-v2-poc_default \
+      docker run --network opentdf_platform \
          -v ./opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml \
-         -it us-docker.pkg.dev/prj-sb-engineering-nerq/sean-test/opentdf:v2 \ 
+         -it registry.opentdf.io/platform:nightly \ 
          provision keycloak -e http://keycloak:8888/auth
+   ```
+
+4. Initialize KAS Keys ```.github/scripts/init-temp-keys.sh -o kas-keys```
+5. Start the platform
+
+   ```sh
+   docker run --network opentdf_platform \
+      -v ./kas-keys/:/keys/ \
+      -v ./opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml \
+      -it registry.opentdf.io/platform:nightly start
    ```
 
 ## Development
@@ -56,7 +67,7 @@ brew install buf go golangci-lint goose grpcurl openssl
 
 1. `docker-compose up`. Starts both the local Postgres database (contains the ABAC policy configuration data) and Keycloak (the local IdP).
 2. Create an OpenTDF config file: `opentdf.yaml`
-   1. The `opentdf-example.yaml` file is the more secure starting point, but you will likely need to modify it to match your environment. This configuration is recommended as it is more secure but it does require valid development keypairs.
+   1. The `opentdf-dev.yaml` file is the more secure starting point, but you will likely need to modify it to match your environment. This configuration is recommended as it is more secure but it does require valid development keypairs.
    2. The `opentdf-example-no-kas.yaml` file is simpler to run but less secure. This file configures the platform to startup without a KAS instances and without endpoint authentication.
 3. Provision keycloak: `go run github.com/opentdf/platform/service provision keycloak`. Updates the local Keycloak configuration for local testing and development by creating a realm, roles, a client, and users.
 4. Configure KAS keys: `.github/scripts/init-temp-keys.sh`. Creates temporary keys for the local KAS. This step can be ignored if you are running the 'opentdf-example-no-kas' configuration in step 2.

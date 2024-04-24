@@ -1,7 +1,5 @@
 name: SonarCloud
 on:
-  push:
-    branches: feat/sonarcloud-analysis
   schedule:
     - cron: "0 5 * * 2,4,6"
 #  pull_request:

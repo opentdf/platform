@@ -1,0 +1,72 @@
+name: SonarCloud
+on:
+  push:
+    branches:
+      - feat/sonarcloud-analysis
+#  pull_request:
+#    types:
+#      - opened
+#      - synchronize
+#      - reopened
+
+jobs:
+  gotest:
+    name: 'Generate Golang Test Reports'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+
+      - name: 'Checkout repo'
+        uses: actions/checkout@v4
+
+#      - name: 'Copy go dependencies file'
+#        run: |
+#          cp ${GITHUB_WORKSPACE}/service/go.sum ${GITHUB_WORKSPACE}
+
+      - name: 'Setup Go'
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.21.8'
+          cache-dependency-path: |
+            ./service/go.sum
+            ./sdk/go.sum
+          cache: true
+
+      - name: 'Generate Golang Test Reports'
+        run: go test ./sdk/... ./service/... ./lib/ocrypto -v -coverprofile coverage.out -json ./... | tee coverage.json
+
+      - name: 'Cover report'
+        run: go tool cover -func=coverage.out
+
+      - name: 'Archive Golang Test Results'
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage-report
+          path: coverage.*
+          retention-days: 1
+
+  sonarcloud:
+    name: 'SonarCloud'
+    runs-on: ubuntu-latest
+    needs: [gotest]
+    permissions:
+      contents: read
+
+    steps:
+      - name: 'Checkout repo'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 'Download Code Coverage Report'
+        uses: actions/download-artifact@v3
+        with:
+          name: code-coverage-report
+
+      - name: 'SonarCloud Scan'
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -21,10 +21,6 @@ jobs:
       - name: 'Checkout repo'
         uses: actions/checkout@v4
 
-#      - name: 'Copy go dependencies file'
-#        run: |
-#          cp ${GITHUB_WORKSPACE}/service/go.sum ${GITHUB_WORKSPACE}
-
       - name: 'Setup Go'
         uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
@@ -39,8 +35,8 @@ jobs:
       - name: 'Generate Golang Test Reports'
         run: go test -v -coverprofile coverage.out -json ./sdk/... ./service/... ./lib/ocrypto | tee coverage.json
 
-      - name: 'Cover report'
-        run: go tool cover -func=coverage.out
+#      - name: 'Cover report'
+#        run: go tool cover -func=coverage.out
 
       - name: 'Check coverage files'
         run: |

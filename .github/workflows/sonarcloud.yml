@@ -38,11 +38,6 @@ jobs:
       - name: 'Cover report'
         run: go tool cover -func=coverage.out
 
-      - name: 'Check coverage files'
-        run: |
-          pwd
-          ls -la
-          find . -name coverage.out
       - name: 'Archive Golang Test Results'
         uses: actions/upload-artifact@v3
         with:
@@ -67,12 +62,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: code-coverage-report
-
-      - name: 'Check coverage files'
-        run: |
-          pwd
-          ls -la
-          find . -name coverage.out
 
       - name: 'SonarCloud Scan'
         uses: SonarSource/sonarcloud-github-action@master

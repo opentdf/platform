@@ -47,7 +47,7 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 		case pgerrcode.CaseNotFound:
 			return errors.Join(ErrNotFound, e)
 		case pgerrcode.InvalidTextRepresentation:
-			if strings.Contains(e.Message, "invalid input syntax for type uuid") {
+			if strings.Contains(e.Message, ErrTextUUIDInvalid) {
 				return errors.Join(ErrUUIDInvalid, e)
 			}
 			return errors.Join(ErrEnumValueInvalid, e)
@@ -102,7 +102,7 @@ const (
 	ErrTextConflict            = "resource unique field violation"
 	ErrTextRelationInvalid     = "resource relation invalid"
 	ErrTextEnumValueInvalid    = "enum value invalid"
-	ErrTextUUIDInvalid         = "value not a valid uuid"
+	ErrTextUUIDInvalid         = "invalid input syntax for type uuid"
 	ErrTextRestrictViolation   = "intended action would violate a restriction"
 	ErrTextFqnMissingValue     = "FQN must specify a valid value and be of format 'https://<namespace>/attr/<attribute name>/value/<value>'"
 )

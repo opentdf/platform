@@ -7,7 +7,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/fixtures"
 
@@ -104,7 +104,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		},
 	}
 
-	kasRegistry := &kasr.CreateKeyAccessServerRequest{
+	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       "kas.uri",
 		PublicKey: pubKey,
 		Metadata:  metadata,
@@ -128,7 +128,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 		},
 	}
 
-	kasRegistry := &kasr.CreateKeyAccessServerRequest{
+	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       "testingCreation.uri.com",
 		PublicKey: pubKey,
 		Metadata:  metadata,
@@ -151,7 +151,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	updatedPubKeyRemote := "https://remote2.com/key"
 
 	// create a test KAS
-	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
+	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: uri,
 		PublicKey: &policy.PublicKey{
 			PublicKey: &policy.PublicKey_Remote{
@@ -169,7 +169,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	s.NotNil(created)
 
 	// update it with new values and metadata
-	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasr.UpdateKeyAccessServerRequest{
+	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
 		Uri: updatedUri,
 		PublicKey: &policy.PublicKey{
 			PublicKey: &policy.PublicKey_Remote{
@@ -205,7 +205,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 	pubKeyRemote := "https://remote.com/key"
 
 	// create a test KAS
-	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
+	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: uri,
 		PublicKey: &policy.PublicKey{
 			PublicKey: &policy.PublicKey_Remote{
@@ -217,7 +217,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 	s.NotNil(created)
 
 	// update it with new metadata
-	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasr.UpdateKeyAccessServerRequest{
+	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{
 				"new": "new label",
@@ -245,7 +245,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 	updatedUri := "updatingUri.com"
 
 	// create a test KAS
-	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
+	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: uri,
 		PublicKey: &policy.PublicKey{
 			PublicKey: &policy.PublicKey_Remote{
@@ -257,7 +257,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 	s.NotNil(created)
 
 	// update it with new uri
-	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasr.UpdateKeyAccessServerRequest{
+	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
 		Uri: updatedUri,
 	})
 	s.NoError(err)
@@ -281,7 +281,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	updatedPubKeyLocal := "my_key"
 
 	// create a test KAS
-	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasr.CreateKeyAccessServerRequest{
+	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: uri,
 		PublicKey: &policy.PublicKey{
 			PublicKey: &policy.PublicKey_Remote{
@@ -298,7 +298,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	s.NotNil(created)
 
 	// update it with new key
-	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasr.UpdateKeyAccessServerRequest{
+	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
 		PublicKey: &policy.PublicKey{
 			PublicKey: &policy.PublicKey_Local{
 				Local: updatedPubKeyLocal,
@@ -325,7 +325,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
 			Local: "this_is_a_local_key",
 		},
 	}
-	updatedKas := &kasr.UpdateKeyAccessServerRequest{
+	updatedKas := &kasregistry.UpdateKeyAccessServerRequest{
 		Uri:       "someKasUri.com",
 		PublicKey: pubKey,
 	}
@@ -342,7 +342,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 			Remote: "https://remote.com/key",
 		},
 	}
-	testKas := &kasr.CreateKeyAccessServerRequest{
+	testKas := &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       "deleting.net",
 		PublicKey: pubKey,
 	}

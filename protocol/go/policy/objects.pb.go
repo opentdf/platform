@@ -1102,6 +1102,7 @@ func (x *ResourceMapping) GetTerms() []string {
 	return nil
 }
 
+// Key Access Server Registry
 type KeyAccessServer struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

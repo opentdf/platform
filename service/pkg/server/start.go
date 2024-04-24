@@ -18,43 +18,6 @@ import (
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
-type StartOptions func(StartConfig) StartConfig
-
-// Deprecated: Use WithConfigKey
-func WithConfigName(name string) StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.ConfigKey = name
-		return c
-	}
-}
-
-func WithConfigFile(file string) StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.ConfigFile = file
-		return c
-	}
-}
-
-func WithConfigKey(key string) StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.ConfigKey = key
-		return c
-	}
-}
-
-func WithWaitForShutdownSignal() StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.WaitForShutdownSignal = true
-		return c
-	}
-}
-
-type StartConfig struct {
-	ConfigKey             string
-	ConfigFile            string
-	WaitForShutdownSignal bool
-}
-
 func Start(f ...StartOptions) error {
 	startConfig := StartConfig{}
 	for _, fn := range f {
@@ -69,6 +32,11 @@ func Start(f ...StartOptions) error {
 	conf, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
+	}
+
+	// Set allowed public routes when platform is being extended
+	if len(startConfig.PublicRoutes) > 0 {
+		conf.Server.Auth.PublicRoutes = startConfig.PublicRoutes
 	}
 
 	slog.Info("starting logger")

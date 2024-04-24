@@ -576,7 +576,8 @@
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
         }
-      }
+      },
+      "title": "Key Access Server Registry"
     },
     "policyNamespace": {
       "type": "object",

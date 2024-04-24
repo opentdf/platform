@@ -29,7 +29,8 @@ func (c Error) Error() string {
 
 type SDK struct {
 	conn                    *grpc.ClientConn
-	unwrapper               Unwrapper
+	dialOptions             []grpc.DialOption
+	tokenSource             auth.AccessTokenSource
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
@@ -55,6 +56,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// once we change KAS to use standard DPoP we can put this all in the `build()` method
 	dialOptions := append([]grpc.DialOption{}, cfg.build()...)
+	// Add extra grpc dial options if provided. This is useful during tests.
+	if len(cfg.extraDialOptions) > 0 {
+		dialOptions = append(dialOptions, cfg.extraDialOptions...)
+	}
+
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
@@ -62,16 +68,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if accessTokenSource != nil {
 		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
-	}
-
-	var unwrapper Unwrapper
-	if cfg.authConfig == nil {
-		unwrapper, err = newKASClient(dialOptions, accessTokenSource)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		unwrapper = cfg.authConfig
 	}
 
 	var (
@@ -102,7 +98,8 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	return &SDK{
 		conn:                    defaultConn,
-		unwrapper:               unwrapper,
+		dialOptions:             dialOptions,
+		tokenSource:             accessTokenSource,
 		Attributes:              attributes.NewAttributesServiceClient(policyConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),

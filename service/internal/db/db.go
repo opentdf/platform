@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -96,7 +97,7 @@ func New(config Config, o ...OptsFunc) (*Client, error) {
 		config: config,
 	}
 
-	dbConfig, err := pgxpool.ParseConfig(config.buildURL())
+	dbConfig, err := config.buildConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
@@ -128,14 +129,15 @@ func (c *Client) Close() {
 	c.SqlDB.Close()
 }
 
-func (c Config) buildURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
+func (c Config) buildConfig() (*pgxpool.Config, error) {
+	u := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		c.User,
-		c.Password,
+		url.QueryEscape(c.Password),
 		net.JoinHostPort(c.Host, fmt.Sprint(c.Port)),
 		c.Database,
 		c.SSLMode,
 	)
+	return pgxpool.ParseConfig(u)
 }
 
 // Common function for all queryRow calls

@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -138,7 +138,7 @@ func createKeyAccessServerSQL(uri string, publicKey, metadata []byte) (string, [
 		ToSql()
 }
 
-func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasr.CreateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
+func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistry.CreateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
 	metadataBytes, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func updateKeyAccessServerSQL(id, uri string, publicKey, metadata []byte) (strin
 	return sb.Where(sq.Eq{"id": id}).ToSql()
 }
 
-func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasr.UpdateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
+func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasregistry.UpdateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
 	// if extend we need to merge the metadata
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		k, err := c.GetKeyAccessServer(ctx, id)

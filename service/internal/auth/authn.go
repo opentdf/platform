@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -29,14 +30,11 @@ const (
 type authContextKey string
 
 var (
-	// Set of allowed gRPC endpoints that do not require authentication
-	allowedGRPCEndpoints = [...]string{
+	// Set of allowed public endpoints that do not require authentication
+	allowedPublicEndpoints = [...]string{
 		"/grpc.health.v1.Health/Check",
 		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
 		"/kas.AccessService/PublicKey",
-	}
-	// Set of allowed HTTP endpoints that do not require authentication
-	allowedHTTPEndpoints = [...]string{
 		"/healthz",
 		"/.well-known/opentdf-configuration",
 		"/kas/v2/kas_public_key",
@@ -59,17 +57,22 @@ const refreshInterval = 15 * time.Minute
 
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
+	enforceDPoP bool
 	// cache holds the jwks cache
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
 	oidcConfigurations map[string]AuthNConfig
 	// Casbin enforcer
 	enforcer *Enforcer
+	// Public Routes HTTP & gRPC
+	publicRoutes []string
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg AuthNConfig) (*Authentication, error) {
-	a := &Authentication{}
+func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) {
+	a := &Authentication{
+		enforceDPoP: cfg.EnforceDPoP,
+	}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	// validate the configuration
@@ -113,7 +116,11 @@ func NewAuthenticator(ctx context.Context, cfg AuthNConfig) (*Authentication, er
 		return nil, err
 	}
 
-	a.oidcConfigurations[cfg.Issuer] = cfg
+	// Combine public routes
+	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
+	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
+
+	a.oidcConfigurations[cfg.Issuer] = cfg.AuthNConfig
 
 	return a, nil
 }
@@ -127,7 +134,7 @@ type dpopInfo struct {
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
+		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -138,7 +145,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		tok, dpopKey, err := a.checkToken(r.Context(), header, dpopInfo{
+		tok, newCtx, err := a.checkToken(r.Context(), header, dpopInfo{
 			headers: r.Header["Dpop"],
 			path:    r.URL.Path,
 			method:  r.Method,
@@ -176,14 +183,14 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		handler.ServeHTTP(w, r.WithContext(ContextWithJWK(r.Context(), dpopKey)))
+		handler.ServeHTTP(w, r.WithContext(newCtx))
 	})
 }
 
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
-	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
+	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) {
 		return handler(ctx, req)
 	}
 
@@ -217,7 +224,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		action = "other"
 	}
 
-	token, dpopJWK, err := a.checkToken(
+	token, newCtx, err := a.checkToken(
 		ctx,
 		header,
 		dpopInfo{
@@ -243,23 +250,20 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 
-	return handler(ContextWithJWK(ctx, dpopJWK), req)
+	return handler(newCtx, req)
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (jwt.Token, jwk.Key, error) {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (jwt.Token, context.Context, error) {
 	var (
-		tokenRaw  string
-		tokenType string
+		tokenRaw string
 	)
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {
 	case strings.HasPrefix(authHeader[0], "DPoP "):
-		tokenType = "DPoP"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
 	case strings.HasPrefix(authHeader[0], "Bearer "):
-		tokenType = "Bearer"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
 		return nil, nil, fmt.Errorf("not of type bearer or dpop")
@@ -303,16 +307,17 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		return nil, nil, err
 	}
 
-	if tokenType == "Bearer" {
-		slog.Warn("Presented bearer token. validating as DPoP")
+	_, tokenHasCNF := accessToken.Get("cnf")
+	if !tokenHasCNF && !a.enforceDPoP {
+		// this condition is not quite tight because it's possible that the `cnf` claim may
+		// come from token introspection
+		return accessToken, ctx, nil
 	}
-
 	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return accessToken, *key, nil
+	return accessToken, ContextWithJWK(ctx, key), nil
 }
 
 func ContextWithJWK(ctx context.Context, key jwk.Key) context.Context {
@@ -328,10 +333,10 @@ func GetJWKFromContext(ctx context.Context) jwk.Key {
 		return jwk
 	}
 
-	return nil
+	panic("got something that is not a jwk.Key from the JWK context")
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (*jwk.Key, error) {
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (jwk.Key, error) {
 	if len(dpopInfo.headers) != 1 {
 		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
 	}
@@ -446,5 +451,17 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
-	return &dpopKey, nil
+	return dpopKey, nil
+}
+
+func (a Authentication) isPublicRoute(path string) func(string) bool {
+	return func(route string) bool {
+		matched, err := filepath.Match(route, path)
+		if err != nil {
+			slog.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
+			return false
+		}
+		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
+		return matched
+	}
 }

@@ -230,9 +230,8 @@ message ResourceMapping {
 }
 
 /*
-   Key Access Server (KAS) Registry
+   Key Access Server Registry
 */
-
 message KeyAccessServer {
   string id = 1;
   // Address of a KAS instance

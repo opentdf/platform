@@ -31,7 +31,7 @@ func NewRegistration() serviceregistry.Registration {
 				panic(err)
 			}
 			return &EntityResolutionService{idpConfig: inputIdpConfig}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer))
+				return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer)) //nolint:forcetypeassert // allow type assert, following other services
 			}
 		},
 	}

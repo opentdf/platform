@@ -52,7 +52,7 @@ const group_resp = `{
 	"name": "group1"
 }`
 
-func test_keycloakConfig(server *httptest.Server) keycloak.KeycloakConfig {
+func testKeycloakConfig(server *httptest.Server) keycloak.KeycloakConfig {
 	return keycloak.KeycloakConfig{
 		Url:            server.URL,
 		ClientId:       "c1",
@@ -115,13 +115,8 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	}
 	server := test_server(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
-	var kcconfig = test_keycloakConfig(server)
-	// var kcConfigInterface map[string]interface{}
-	// inrec, err := json.Marshal(kcconfig)
-	// require.NoError(t, err)
+	var kcconfig = testKeycloakConfig(server)
 
-	// require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	// kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
 	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	assert.Nil(t, reserr)
@@ -142,14 +137,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@sample.org"}})
 	validBody = append(validBody, &authorization.Entity{Id: "1235", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "alice@sample.org"}})
 
-	var kcconfig = test_keycloakConfig(server)
-	// var kcConfigInterface map[string]interface{}
-	// inrec, err := json.Marshal(kcconfig)
-	// require.NoError(t, err)
-
-	// require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	// kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	// require.NoError(t, err)
+	var kcconfig = testKeycloakConfig(server)
 
 	var ctxb = context.Background()
 
@@ -187,14 +175,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}})
 	validBody = append(validBody, &authorization.Entity{Id: "1235", EntityType: &authorization.Entity_UserName{UserName: "alice.smith"}})
 
-	var kcconfig = test_keycloakConfig(server)
-	// var kcConfigInterface map[string]interface{}
-	// inrec, err := json.Marshal(kcconfig)
-	// require.NoError(t, err)
-
-	// require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	// kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	// require.NoError(t, err)
+	var kcconfig = testKeycloakConfig(server)
 
 	var ctxb = context.Background()
 
@@ -236,14 +217,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "123456", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "group1@sample.org"}})
 
-	var kcconfig = test_keycloakConfig(server)
-	// var kcConfigInterface map[string]interface{}
-	// inrec, err := json.Marshal(kcconfig)
-	// require.NoError(t, err)
-
-	// require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	// kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	// require.NoError(t, err)
+	var kcconfig = testKeycloakConfig(server)
 
 	var ctxb = context.Background()
 
@@ -281,14 +255,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random@sample.org"}})
 
-	var kcconfig = test_keycloakConfig(server)
-	// var kcConfigInterface map[string]interface{}
-	// inrec, err := json.Marshal(kcconfig)
-	// require.NoError(t, err)
-
-	// require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	// kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	// require.NoError(t, err)
+	var kcconfig = testKeycloakConfig(server)
 
 	var ctxb = context.Background()
 

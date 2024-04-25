@@ -34,7 +34,7 @@ func EntityResolution(ctx context.Context,
 	req *entityresolution.EntityResolutionRequest, kcConfig KeycloakConfig) (entityresolution.EntityResolutionResponse, error) {
 	// note this only logs when run in test not when running in the OPE engine.
 	slog.DebugContext(ctx, "EntityResolution", "req", fmt.Sprintf("%+v", req), "config", fmt.Sprintf("%+v", kcConfig))
-	connector, err := getKCClient(kcConfig, ctx)
+	connector, err := getKCClient(ctx, kcConfig)
 	if err != nil {
 		return entityresolution.EntityResolutionResponse{},
 			status.Error(codes.Internal, db.ErrTextCreationFailed)
@@ -121,7 +121,7 @@ func EntityResolution(ctx context.Context,
 				} else if len(groups) == 1 {
 					slog.Info("Group found for", "entity", ident.String())
 					group := groups[0]
-					expandedRepresentations, exErr := expandGroup(*group.ID, connector, &kcConfig, ctx)
+					expandedRepresentations, exErr := expandGroup(ctx, *group.ID, connector, &kcConfig)
 					if exErr != nil {
 						return entityresolution.EntityResolutionResponse{},
 							status.Error(codes.Internal, db.ErrTextNotFound)
@@ -198,7 +198,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable) (map[string]
 	return genericMap, nil
 }
 
-func getKCClient(kcConfig KeycloakConfig, ctx context.Context) (*KeyCloakConnector, error) {
+func getKCClient(ctx context.Context, kcConfig KeycloakConfig) (*KeyCloakConnector, error) {
 	var client *gocloak.GoCloak
 	if kcConfig.LegacyKeycloak {
 		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
@@ -225,7 +225,7 @@ func getKCClient(kcConfig KeycloakConfig, ctx context.Context) (*KeyCloakConnect
 	return &keycloakConnector, nil
 }
 
-func expandGroup(groupID string, kcConnector *KeyCloakConnector, kcConfig *KeycloakConfig, ctx context.Context) ([]*gocloak.User, error) {
+func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConnector, kcConfig *KeycloakConfig) ([]*gocloak.User, error) {
 	slog.Info("expandGroup invoked: ", groupID, kcConnector, kcConfig.Url, ctx)
 	var entityRepresentations []*gocloak.User
 

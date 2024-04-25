@@ -28,7 +28,7 @@ type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
 	eng    *opa.Engine
 	sdk    *otdf.SDK
-	ersUrl string
+	ersURL string
 }
 
 func NewRegistration() serviceregistry.Registration {
@@ -37,13 +37,16 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// default ERS endpoint
-			var ersUrl = "http://localhost:8080/entityresolution/resolve"
+			var ersURL = "http://localhost:8080/entityresolution/resolve"
 			// if its passed in the config use that
 			val, ok := srp.Config.ExtraProps["ersUrl"]
 			if ok {
-				ersUrl = val.(string)
+				ersURL, ok = val.(string)
+				if !ok {
+					panic("Error casting ersURL to string")
+				}
 			}
-			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, ersUrl: ersUrl}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, ersURL: ersURL}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
 			}
 		},

@@ -53,6 +53,10 @@ brew install buf go golangci-lint goose grpcurl openssl
 Note: support was added to provision a set of fixture data into the database.
 Run `go run github.com/opentdf/platform/service provision fixtures -h` for more information.
 
+### Provisioning Custom Keycloak and Policy Data
+
+To providion a custom keycloak setup, create a yaml following the format of [the sample keycloak config]((service/cmd/keycloak_data.yaml)). You can create different realms with seperate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak-from-config -f <path-to-your-yaml-file>`.
+
 ### Generation
 
 Our native gRPC service functions are generated from `proto` definitions using [Buf](https://buf.build/docs/introduction).

@@ -57,8 +57,6 @@ Run `go run github.com/opentdf/platform/service provision fixtures -h` for more 
 
 To providion a custom keycloak setup, create a yaml following the format of [the sample keycloak config]((service/cmd/keycloak_data.yaml)). You can create different realms with seperate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak-from-config -f <path-to-your-yaml-file>`.
 
-To provision custom policy data, you can use the database provisioning or the custom data provisioning. The custom data provisioning utilizes the sdk to make calls to the services to create the data so this must be done while the server is running. Create a yaml file specifying the data you want to create in the format of [the sample policy data config]((service/cmd/simple_policy_data.yaml)). Run the provisioning with `go run ./service provision data-from-config -f <path-to-your-yaml-file>`.
-
 ### Generation
 
 Our native gRPC service functions are generated from `proto` definitions using [Buf](https://buf.build/docs/introduction).

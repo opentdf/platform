@@ -37,7 +37,7 @@ func NewRegistration() serviceregistry.Registration {
 	}
 }
 
-func (s EntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.EntityResolutionRequest) (*entityresolution.EntityResolutionResponse, error) {
+func (s EntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
 	slog.Info("request", "", req)
 	resp, err := keycloak.EntityResolution(ctx, req, s.idpConfig)
 	return &resp, err

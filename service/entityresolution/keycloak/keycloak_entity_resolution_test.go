@@ -108,7 +108,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 
 	var ctxb = context.Background()
 
-	var req = entityresolution.EntityResolutionRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 	csqr := map[string]string{
 		"clientId=opentdf": by_email_bob_resp,
@@ -141,7 +141,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 
 	var ctxb = context.Background()
 
-	var req = entityresolution.EntityResolutionRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
 	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
@@ -179,7 +179,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 
 	var ctxb = context.Background()
 
-	var req = entityresolution.EntityResolutionRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
 	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
@@ -221,7 +221,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 
 	var ctxb = context.Background()
 
-	var req = entityresolution.EntityResolutionRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
 	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
@@ -259,13 +259,13 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 
 	var ctxb = context.Background()
 
-	var req = entityresolution.EntityResolutionRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
 	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	assert.NotNil(t, reserr)
-	assert.Equal(t, &entityresolution.EntityResolutionResponse{}, &resp)
+	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
 	var entityNotFound = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
 	var expectedError = errors.New(entityNotFound.String())
 	assert.Equal(t, expectedError, reserr)

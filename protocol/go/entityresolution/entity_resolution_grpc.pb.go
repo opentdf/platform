@@ -26,7 +26,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EntityResolutionServiceClient interface {
-	ResolveEntities(ctx context.Context, in *EntityResolutionRequest, opts ...grpc.CallOption) (*EntityResolutionResponse, error)
+	ResolveEntities(ctx context.Context, in *ResolveEntitiesRequest, opts ...grpc.CallOption) (*ResolveEntitiesResponse, error)
 }
 
 type entityResolutionServiceClient struct {
@@ -37,8 +37,8 @@ func NewEntityResolutionServiceClient(cc grpc.ClientConnInterface) EntityResolut
 	return &entityResolutionServiceClient{cc}
 }
 
-func (c *entityResolutionServiceClient) ResolveEntities(ctx context.Context, in *EntityResolutionRequest, opts ...grpc.CallOption) (*EntityResolutionResponse, error) {
-	out := new(EntityResolutionResponse)
+func (c *entityResolutionServiceClient) ResolveEntities(ctx context.Context, in *ResolveEntitiesRequest, opts ...grpc.CallOption) (*ResolveEntitiesResponse, error) {
+	out := new(ResolveEntitiesResponse)
 	err := c.cc.Invoke(ctx, EntityResolutionService_ResolveEntities_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (c *entityResolutionServiceClient) ResolveEntities(ctx context.Context, in 
 // All implementations must embed UnimplementedEntityResolutionServiceServer
 // for forward compatibility
 type EntityResolutionServiceServer interface {
-	ResolveEntities(context.Context, *EntityResolutionRequest) (*EntityResolutionResponse, error)
+	ResolveEntities(context.Context, *ResolveEntitiesRequest) (*ResolveEntitiesResponse, error)
 	mustEmbedUnimplementedEntityResolutionServiceServer()
 }
 
@@ -58,7 +58,7 @@ type EntityResolutionServiceServer interface {
 type UnimplementedEntityResolutionServiceServer struct {
 }
 
-func (UnimplementedEntityResolutionServiceServer) ResolveEntities(context.Context, *EntityResolutionRequest) (*EntityResolutionResponse, error) {
+func (UnimplementedEntityResolutionServiceServer) ResolveEntities(context.Context, *ResolveEntitiesRequest) (*ResolveEntitiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResolveEntities not implemented")
 }
 func (UnimplementedEntityResolutionServiceServer) mustEmbedUnimplementedEntityResolutionServiceServer() {
@@ -76,7 +76,7 @@ func RegisterEntityResolutionServiceServer(s grpc.ServiceRegistrar, srv EntityRe
 }
 
 func _EntityResolutionService_ResolveEntities_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EntityResolutionRequest)
+	in := new(ResolveEntitiesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func _EntityResolutionService_ResolveEntities_Handler(srv interface{}, ctx conte
 		FullMethod: EntityResolutionService_ResolveEntities_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EntityResolutionServiceServer).ResolveEntities(ctx, req.(*EntityResolutionRequest))
+		return srv.(EntityResolutionServiceServer).ResolveEntities(ctx, req.(*ResolveEntitiesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

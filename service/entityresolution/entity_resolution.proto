@@ -23,7 +23,7 @@ import "google/api/annotations.proto";
    }
 
 */
-message EntityResolutionRequest {
+message ResolveEntitiesRequest {
     repeated authorization.Entity entities = 1;
 }
 
@@ -50,7 +50,7 @@ message ERSEntityRepresentation {
    }
 
 */
-message EntityResolutionResponse {
+message ResolveEntitiesResponse {
   repeated ERSEntityRepresentation entity_representations = 1;
 }
 
@@ -63,7 +63,7 @@ message EntityNotFoundError {
 
 
 service EntityResolutionService {
-  rpc ResolveEntities(EntityResolutionRequest) returns (EntityResolutionResponse) {
+  rpc ResolveEntities(ResolveEntitiesRequest) returns (ResolveEntitiesResponse) {
     option (google.api.http) = {
         post: "/entityresolution/resolve"
         body: "*";

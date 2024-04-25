@@ -32,7 +32,7 @@ var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
 func request_EntityResolutionService_ResolveEntities_0(ctx context.Context, marshaler runtime.Marshaler, client EntityResolutionServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq EntityResolutionRequest
+	var protoReq ResolveEntitiesRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
@@ -45,7 +45,7 @@ func request_EntityResolutionService_ResolveEntities_0(ctx context.Context, mars
 }
 
 func local_request_EntityResolutionService_ResolveEntities_0(ctx context.Context, marshaler runtime.Marshaler, server EntityResolutionServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq EntityResolutionRequest
+	var protoReq ResolveEntitiesRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {

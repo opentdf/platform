@@ -23,7 +23,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/entityresolutionEntityResolutionResponse"
+              "$ref": "#/definitions/entityresolutionResolveEntitiesResponse"
             }
           },
           "default": {
@@ -39,7 +39,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/entityresolutionEntityResolutionRequest"
+              "$ref": "#/definitions/entityresolutionResolveEntitiesRequest"
             }
           }
         ],
@@ -105,7 +105,7 @@
         }
       }
     },
-    "entityresolutionEntityResolutionRequest": {
+    "entityresolutionResolveEntitiesRequest": {
       "type": "object",
       "properties": {
         "entities": {
@@ -118,7 +118,7 @@
       },
       "title": "Example: Get idp attributes for bob and alice (both represented using an email address\n{\n\"entities\": [\n{\n\"id\": \"e1\",\n\"emailAddress\": \"bob@example.org\"\n},\n{\n\"id\": \"e2\",\n\"emailAddress\": \"alice@example.org\"\n}\n]\n}"
     },
-    "entityresolutionEntityResolutionResponse": {
+    "entityresolutionResolveEntitiesResponse": {
       "type": "object",
       "properties": {
         "entityRepresentations": {

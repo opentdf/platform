@@ -364,11 +364,11 @@
                 </li>
               
                 <li>
-                  <a href="#entityresolution.EntityResolutionRequest"><span class="badge">M</span>EntityResolutionRequest</a>
+                  <a href="#entityresolution.ResolveEntitiesRequest"><span class="badge">M</span>ResolveEntitiesRequest</a>
                 </li>
               
                 <li>
-                  <a href="#entityresolution.EntityResolutionResponse"><span class="badge">M</span>EntityResolutionResponse</a>
+                  <a href="#entityresolution.ResolveEntitiesResponse"><span class="badge">M</span>ResolveEntitiesResponse</a>
                 </li>
               
               
@@ -2416,7 +2416,7 @@
 
         
       
-        <h3 id="entityresolution.EntityResolutionRequest">EntityResolutionRequest</h3>
+        <h3 id="entityresolution.ResolveEntitiesRequest">ResolveEntitiesRequest</h3>
         <p>Example: Get idp attributes for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
 
         
@@ -2440,7 +2440,7 @@
 
         
       
-        <h3 id="entityresolution.EntityResolutionResponse">EntityResolutionResponse</h3>
+        <h3 id="entityresolution.ResolveEntitiesResponse">ResolveEntitiesResponse</h3>
         <p>Example: Get idp attributes for bob and alice</p><p>{</p><p>"entity_representations": [</p><p>{</p><p>"idp_entity_id": "e1",</p><p>"additional_props": {"someAttr1":"someValue1"}</p><p>},</p><p>{</p><p>"idp_entity_id": "e2",</p><p>"additional_props": {"someAttr2":"someValue2"}</p><p>}</p><p>]</p><p>}</p>
 
         
@@ -2480,8 +2480,8 @@
             
               <tr>
                 <td>ResolveEntities</td>
-                <td><a href="#entityresolution.EntityResolutionRequest">EntityResolutionRequest</a></td>
-                <td><a href="#entityresolution.EntityResolutionResponse">EntityResolutionResponse</a></td>
+                <td><a href="#entityresolution.ResolveEntitiesRequest">ResolveEntitiesRequest</a></td>
+                <td><a href="#entityresolution.ResolveEntitiesResponse">ResolveEntitiesResponse</a></td>
                 <td><p></p></td>
               </tr>
             

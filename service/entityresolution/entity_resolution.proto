@@ -64,6 +64,9 @@ message EntityNotFoundError {
 
 service EntityResolutionService {
   rpc ResolveEntities(EntityResolutionRequest) returns (EntityResolutionResponse) {
-    option (google.api.http) = {post: "/entityresolution/resolve"};
+    option (google.api.http) = {
+        post: "/entityresolution/resolve"
+        body: "*";
+    };
   }
 }

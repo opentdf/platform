@@ -3,7 +3,7 @@ package opentdf.entitlements
 import rego.v1
 
 # proto oneof only allows for one of the fields in the entity struct
-idp_request := {"entities": [{
+ers_request := {"entities": [{
 	"id": input.entity.id,
 	"clientId": input.entity.client_id,
 }]} if { input.entity.client_id }
@@ -19,10 +19,11 @@ else := {"entities": [{
 
 attributes := [attribute |
 	# external entity
+	print(ers_request)
     response := http.send({
         "method" : "POST",
         "url": input.ers_url,
-        "body": idp_request
+        "body": ers_request
     })
 	response.body != null
 	response.status_code == 200

@@ -322,7 +322,7 @@ subject_condition_set:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
                   # escaped string in complex expression
-                  - subject_external_selector_value: '.data[0].favorite_things | map(tostring) | any(index(\"futbol\"))'
+                  - subject_external_selector_value: '.data[0].favorite_things | map(tostring) | any(index("futbol"))'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - true

@@ -147,8 +147,6 @@ func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.C
 			})
 
 			// Register the service with the gRPC server
-			slog.Info("right before register service")
-			fmt.Printf("%T\n", impl)
 			otdf.GRPCServer.RegisterService(r.ServiceDesc, impl)
 
 			// Register the service with in process gRPC server

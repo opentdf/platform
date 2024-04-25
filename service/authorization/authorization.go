@@ -28,7 +28,7 @@ type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
 	eng    *opa.Engine
 	sdk    *otdf.SDK
-	config *map[string]interface{}
+	ersUrl string
 }
 
 func NewRegistration() serviceregistry.Registration {
@@ -36,7 +36,14 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "authorization",
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, config: &srp.Config.ExtraProps}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			// default ERS endpoint
+			var ersUrl = "http://localhost:8080/entityresolution/resolve"
+			// if its passed in the config use that
+			val, ok := srp.Config.ExtraProps["ersUrl"]
+			if ok {
+				ersUrl = val.(string)
+			}
+			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, ersUrl: ersUrl}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
 			}
 		},
@@ -191,7 +198,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	for i, entity := range req.GetEntities() {
 		// OPA
-		in, err := entitlements.OpaInput(entity, subjectMappings, *as.config)
+		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersUrl)
 		if err != nil {
 			return nil, err
 		}

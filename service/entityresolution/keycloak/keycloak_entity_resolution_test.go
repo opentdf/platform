@@ -298,7 +298,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	assert.NotNil(t, reserr)
-	assert.Equal(t, &entityresolution.EntityResolutionResponse{}, resp)
+	assert.Equal(t, &entityresolution.EntityResolutionResponse{}, &resp)
 	var entityNotFound = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
 	var expectedError = errors.New(entityNotFound.String())
 	assert.Equal(t, expectedError, reserr)

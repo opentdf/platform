@@ -34,17 +34,6 @@ func EntityResolution(ctx context.Context,
 	req *entityresolution.EntityResolutionRequest, kcConfig KeycloakConfig) (entityresolution.EntityResolutionResponse, error) {
 	// note this only logs when run in test not when running in the OPE engine.
 	slog.DebugContext(ctx, "EntityResolution", "req", fmt.Sprintf("%+v", req), "config", fmt.Sprintf("%+v", kcConfig))
-	// jsonString, err := json.Marshal(config.GetConfig().AsMap())
-	// if err != nil {
-	// 	slog.Error("Error marshalling keycloak config!", "error", err)
-	// 	return nil, err
-	// }
-	// kcConfig := KeycloakConfig{}
-	// err = json.Unmarshal(jsonString, &kcConfig)
-	// if err != nil {
-	// 	return &entityresolution.EntityResolutionResponse{},
-	// 		status.Error(codes.Internal, db.ErrTextCreationFailed)
-	// }
 	connector, err := getKCClient(kcConfig, ctx)
 	if err != nil {
 		return entityresolution.EntityResolutionResponse{},

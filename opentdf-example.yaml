@@ -22,11 +22,7 @@ services:
     legacykeycloak: true
   authorization:
     enabled: true
-    url: http://localhost:8888
-    client: "tdf-entity-resolution"
-    secret: "secret"
-    realm: "opentdf"
-    legacy: true
+    ersurl: http://localhost:8080/entityresolution/resolve
 server:
   auth:
     enabled: true

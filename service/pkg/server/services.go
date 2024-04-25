@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/opentdf/platform/service/authorization"
+	"github.com/opentdf/platform/service/entityresolution"
 	"github.com/opentdf/platform/service/health"
 	"github.com/opentdf/platform/service/kas"
 	"github.com/opentdf/platform/service/kasregistry"
@@ -25,6 +26,7 @@ func registerServices() error {
 		authorization.NewRegistration(),
 		kas.NewRegistration(),
 		wellknown.NewRegistration(),
+		entityresolution.NewRegistration(),
 	} {
 		if err := serviceregistry.RegisterService(s); err != nil {
 			return err //nolint:wrapcheck // We are all friends here

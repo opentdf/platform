@@ -2,14 +2,6 @@ package opentdf.entitlements
 
 import rego.v1
 
- idp_config = {"config": {
- 	"url": input.idp.url,
- 	"realm": input.idp.realm,
- 	"clientid": input.idp.client,
- 	"clientsecret": input.idp.secret,
- 	"legacykeycloak": input.idp.legacy,
- }}
-
 # proto oneof only allows for one of the fields in the entity struct
 idp_request := {"entities": [{
 	"id": input.entity.id,
@@ -29,7 +21,7 @@ attributes := [attribute |
 	# external entity
     response := http.send({
         "method" : "POST",
-        "url": "http://localhost:8080/entityresolution/resolve",
+        "url": input.ers_url,
         "body": idp_request
     })
 	response.body != null

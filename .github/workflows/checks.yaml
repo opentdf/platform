@@ -119,7 +119,7 @@ jobs:
           cp opentdf-example.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
       - run: go run ./service provision keycloak
-      - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background
         with:
           run: |

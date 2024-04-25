@@ -27,6 +27,7 @@ var (
 	TableResourceMappings              = "resource_mappings"
 	TableSubjectMappings               = "subject_mappings"
 	TableSubjectConditionSet           = "subject_condition_set"
+	TableKeyAccessServerRegistry       = "key_access_servers"
 )
 
 var Tables struct {
@@ -40,6 +41,7 @@ var Tables struct {
 	ResourceMappings              db.Table
 	SubjectMappings               db.Table
 	SubjectConditionSet           db.Table
+	KeyAccessServerRegistry       db.Table
 }
 
 func NewClient(c db.Client) *PolicyDBClient {
@@ -53,6 +55,7 @@ func NewClient(c db.Client) *PolicyDBClient {
 	Tables.ResourceMappings = db.NewTable(TableResourceMappings)
 	Tables.SubjectMappings = db.NewTable(TableSubjectMappings)
 	Tables.SubjectConditionSet = db.NewTable(TableSubjectConditionSet)
+	Tables.KeyAccessServerRegistry = db.NewTable(TableKeyAccessServerRegistry)
 
 	return &PolicyDBClient{c}
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -37,6 +38,7 @@ var (
 		"/kas.AccessService/PublicKey",
 		"/healthz",
 		"/.well-known/opentdf-configuration",
+		"/kas/kas_public_key",
 		"/kas/v2/kas_public_key",
 	}
 	// only asymmetric algorithms and no 'none'
@@ -125,10 +127,21 @@ func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) 
 	return a, nil
 }
 
-type dpopInfo struct {
-	headers []string
-	path    string
-	method  string
+type receiverInfo struct {
+	// The URI of the request
+	u string
+	// The HTTP method of the request
+	m string
+}
+
+func normalizeURL(o string, u *url.URL) string {
+	// Currently this does not do a full normatlization
+	ou, err := url.Parse(o)
+	if err != nil {
+		return u.String()
+	}
+	ou.Path = u.Path
+	return ou.String()
 }
 
 // verifyTokenHandler is a http handler that verifies the token
@@ -145,11 +158,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		tok, newCtx, err := a.checkToken(r.Context(), header, dpopInfo{
-			headers: r.Header["Dpop"],
-			path:    r.URL.Path,
-			method:  r.Method,
-		})
+		origin := r.Header.Get("Origin")
+		tok, newCtx, err := a.checkToken(r.Context(), header, receiverInfo{
+			u: normalizeURL(origin, r.URL),
+			m: r.Method,
+		}, r.Header["Dpop"])
 
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
@@ -227,11 +240,11 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	token, newCtx, err := a.checkToken(
 		ctx,
 		header,
-		dpopInfo{
-			headers: md["dpop"],
-			path:    info.FullMethod,
-			method:  http.MethodPost,
+		receiverInfo{
+			u: info.FullMethod,
+			m: http.MethodPost,
 		},
+		md["dpop"],
 	)
 	if err != nil {
 		slog.Warn("failed to validate token", slog.String("error", err.Error()))
@@ -254,7 +267,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (jwt.Token, context.Context, error) {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
 	var (
 		tokenRaw string
 	)
@@ -313,7 +326,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		// come from token introspection
 		return accessToken, ctx, nil
 	}
-	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo)
+	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -336,11 +349,11 @@ func GetJWKFromContext(ctx context.Context) jwk.Key {
 	panic("got something that is not a jwk.Key from the JWK context")
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (jwk.Key, error) {
-	if len(dpopInfo.headers) != 1 {
-		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {
+	if len(headers) != 1 {
+		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(headers))
 	}
-	dpopHeader := dpopInfo.headers[0]
+	dpopHeader := headers[0]
 
 	cnf, ok := accessToken.Get("cnf")
 	if !ok {
@@ -401,8 +414,9 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
 	}
 
-	if base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint) != jkt {
-		return nil, fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token")
+	thumbprintStr := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)
+	if thumbprintStr != jkt {
+		return nil, fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token; cnf.jkt=[%v], computed=[%v]", jkt, thumbprintStr)
 	}
 
 	// at this point we have the right key because its thumbprint matches the `jkt` claim
@@ -428,8 +442,8 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("`htm` claim missing in DPoP JWT")
 	}
 
-	if htm != dpopInfo.method {
-		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT")
+	if htm != dpopInfo.m {
+		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; should match [%v]", dpopInfo.m)
 	}
 
 	htu, ok := dpopToken.Get("htu")
@@ -437,8 +451,8 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
 
-	if htu != dpopInfo.path {
-		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT")
+	if htu != dpopInfo.u {
+		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; should match %v", dpopInfo.u)
 	}
 
 	ath, ok := dpopToken.Get("ath")

@@ -19,7 +19,6 @@ else := {"entities": [{
 
 attributes := [attribute |
 	# external entity
-	print(ers_request)
     response := http.send({
         "method" : "POST",
         "url": input.ers_url,

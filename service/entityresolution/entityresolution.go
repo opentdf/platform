@@ -11,7 +11,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
-type EntityResolutionService struct {
+type EntityResolutionService struct { //nolint:revive // allow for simple naming
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	idpConfig keycloak.KeycloakConfig
 }

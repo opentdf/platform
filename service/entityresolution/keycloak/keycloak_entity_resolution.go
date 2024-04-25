@@ -244,6 +244,7 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConne
 		}
 	} else {
 		slog.Error("Error getting group", err)
+		return nil, err
 	}
 	return entityRepresentations, nil
 }

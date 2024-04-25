@@ -67,3 +67,22 @@ if [ "$opt_hsm" = true ]; then
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}" --write-object kas-ec-private.pem --type privkey --label "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_EC_LABEL}" --usage-derive
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}" --write-object kas-ec-cert.pem --type cert --label "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_EC_LABEL}"
 fi
+
+mkdir -p certs
+openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=ca" -keyout certs/keycloak-ca-private.pem -out certs/keycloak-ca.pem -days 365
+printf "subjectAltName=DNS:localhost,IP:127.0.0.1" > certs/sanX509.conf
+printf "[req]\ndistinguished_name=req_distinguished_name\n[req_distinguished_name]\n[alt_names]\nDNS.1=localhost\nIP.1=127.0.0.1" > certs/req.conf
+openssl req -new -nodes -newkey rsa:2048 -keyout certs/localhost.key -out certs/localhost.req -batch -subj "/CN=localhost" -config certs/req.conf
+openssl x509 -req -in certs/localhost.req -CA certs/keycloak-ca.pem  -CAkey certs/keycloak-ca-private.pem -CAcreateserial -out certs/localhost.crt -days 3650 -sha256 -extfile certs/sanX509.conf
+openssl req -new -nodes -newkey rsa:2048 -keyout certs/sampleuser.key -out certs/sampleuser.req -batch -subj "/CN=sampleuser"
+openssl x509 -req -in certs/sampleuser.req -CA certs/keycloak-ca.pem  -CAkey certs/keycloak-ca-private.pem -CAcreateserial -out certs/sampleuser.crt -days 3650
+
+openssl pkcs12 -export -in certs/keycloak-ca.pem -inkey certs/keycloak-ca-private.pem -out certs/ca.p12 -nodes -passout pass:password
+echo "here"
+keytool -importkeystore -srckeystore certs/ca.p12 \
+        -srcstoretype PKCS12 \
+        -destkeystore certs/ca.jks \
+        -deststoretype JKS \
+        -srcstorepass "password" \
+        -deststorepass "password" \
+        -noprompt

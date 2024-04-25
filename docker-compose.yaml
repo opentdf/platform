@@ -12,7 +12,6 @@ services:
     - "--verbose"
     - "-Djavax.net.ssl.trustStorePassword=password"
     - "-Djavax.net.ssl.HostnameVerifier=AllowAll"
-    - "-Djavax.net.debug=ssl"
     - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
     - "--spi-truststore-file-hostname-verification-policy=ANY"
     environment:

@@ -78,9 +78,9 @@ openssl req -new -nodes -newkey rsa:2048 -keyout certs/sampleuser.key -out certs
 openssl x509 -req -in certs/sampleuser.req -CA certs/keycloak-ca.pem  -CAkey certs/keycloak-ca-private.pem -CAcreateserial -out certs/sampleuser.crt -days 3650
 
 openssl pkcs12 -export -in certs/keycloak-ca.pem -inkey certs/keycloak-ca-private.pem -out certs/ca.p12 -nodes -passout pass:password
-docker run -v ./certs:/certs openjdk:latest keytool -importkeystore -srckeystore certs/ca.p12 \
+docker run -v $(pwd)/certs:/certs openjdk:latest keytool -importkeystore -srckeystore /certs/ca.p12 \
                                       -srcstoretype PKCS12 \
-                                      -destkeystore certs/ca.jks \
+                                      -destkeystore /certs/ca.jks \
                                       -deststoretype JKS \
                                       -srcstorepass "password" \
                                       -deststorepass "password" \

@@ -201,7 +201,7 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 	}
 	for i, entity := range req.GetEntities() {
 		// OPA
-		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersUrl)
+		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersURL)
 		if err != nil {
 			return nil, err
 		}

@@ -22,7 +22,7 @@ services:
     legacykeycloak: true
   authorization:
     enabled: true
-    ersurl: http://localhost:8080/entityresolution/resolve
+    ersUrl: http://localhost:8080/entityresolution/resolve
 server:
   auth:
     enabled: true

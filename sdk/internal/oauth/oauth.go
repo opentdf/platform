@@ -23,10 +23,6 @@ const (
 	tokenExpirationBuffer = 10 * time.Second
 )
 
-type Credentials interface {
-	ExchangeType() string
-}
-
 type CertExchangeInfo struct {
 	TLSConfig *tls.Config
 	Audience  []string

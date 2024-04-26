@@ -111,7 +111,6 @@ jobs:
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
       - run: |
           .github/scripts/init-temp-keys.sh --hsm
-          sudo chmod -R 777 ./certs 
           cp opentdf-with-hsm.yaml opentdf.yaml
         if: matrix.crypto == 'hsm'
       - run: |
@@ -120,9 +119,9 @@ jobs:
         if: matrix.crypto == 'standard'
       - name: Added Trusted Certs
         run: |
-          sudo chmod -R 777 ./certs 
+          sudo chmod -R 777 ./keys 
           sudo apt-get install -y ca-certificates
-          sudo cp ./certs/localhost.crt /usr/local/share/ca-certificates
+          sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
           sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240
       - run: go run ./service provision keycloak

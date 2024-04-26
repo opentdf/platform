@@ -15,7 +15,7 @@ services:
     enabled: true
   authorization:
     enabled: true
-    url: https://localhost:8443/auth
+    url: http://localhost:8888
     client: "tdf-entity-resolution"
     secret: "secret"
     realm: "opentdf"
@@ -24,7 +24,7 @@ server:
   auth:
     enabled: true
     audience: "http://localhost:8080"
-    issuer: https://localhost:8443/auth/realms/opentdf
+    issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
       default: #"role:readonly"

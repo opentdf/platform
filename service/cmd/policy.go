@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -62,7 +63,7 @@ var (
 
 func policyDBClient(conf *config.Config) (policydb.PolicyDBClient, error) {
 	slog.Info("creating database client")
-	dbClient, err := db.New(conf.DB, db.WithMigrations(policy.Migrations))
+	dbClient, err := db.New(context.Background(), conf.DB, db.WithMigrations(policy.Migrations))
 	if err != nil {
 		//nolint:wrapcheck // we want to return the error as is. the start command will wrap it
 		return policydb.PolicyDBClient{}, err

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"log/slog"
@@ -124,7 +125,7 @@ func migrateDBClient(cmd *cobra.Command, opts ...db.OptsFunc) (*db.Client, error
 	if err != nil {
 		panic(fmt.Errorf("could not load config: %w", err))
 	}
-	return db.New(conf.DB, opts...)
+	return db.New(context.Background(), conf.DB, opts...)
 }
 
 func init() {

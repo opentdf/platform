@@ -98,28 +98,28 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 		if err != nil {
 			return s, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
 		}
+	}
 
-		// Run migrations if required
-		if cfg.DB.RunMigrations {
-			if s.DB.Migrations == nil {
-				return s, fmt.Errorf("migrations FS is required when runMigrations is enabled")
-			}
-
-			slog.Info("running database migrations")
-			appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
-			if err != nil {
-				return s, fmt.Errorf("issue running database migrations: %w", err)
-			}
-			slog.Info("database migrations complete",
-				slog.Int("applied", appliedMigrations),
-			)
-		} else {
-			slog.Info("skipping migrations",
-				slog.String("namespace", s.Namespace),
-				slog.String("reason", "runMigrations is false"),
-				slog.Bool("runMigrations", false),
-			)
+	// Run migrations if required
+	if cfg.DB.RunMigrations && d != nil {
+		if s.DB.Migrations == nil {
+			return s, fmt.Errorf("migrations FS is required when runMigrations is enabled")
 		}
+
+		slog.Info("running database migrations")
+		appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
+		if err != nil {
+			return s, fmt.Errorf("issue running database migrations: %w", err)
+		}
+		slog.Info("database migrations complete",
+			slog.Int("applied", appliedMigrations),
+		)
+	} else {
+		slog.Info("skipping migrations",
+			slog.String("namespace", s.Namespace),
+			slog.String("reason", "runMigrations is false"),
+			slog.Bool("runMigrations", false),
+		)
 	}
 
 	// Create the service

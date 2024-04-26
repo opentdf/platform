@@ -88,7 +88,7 @@ Connections and pools seems to be pulled in from env vars
 We should be able to tell the platform how to run
 */
 
-func New(config Config, o ...OptsFunc) (*Client, error) {
+func New(ctx context.Context, config Config, o ...OptsFunc) (*Client, error) {
 	for _, f := range o {
 		config = f(config)
 	}
@@ -102,7 +102,7 @@ func New(config Config, o ...OptsFunc) (*Client, error) {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
 
-	pool, err := pgxpool.NewWithConfig(context.Background(), dbConfig)
+	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
@@ -112,7 +112,7 @@ func New(config Config, o ...OptsFunc) (*Client, error) {
 
 	// Connect to the database to verify the connection
 	if c.config.VerifyConnection {
-		if err := c.Pgx.Ping(context.Background()); err != nil {
+		if err := c.Pgx.Ping(ctx); err != nil {
 			return nil, fmt.Errorf("failed to connect to database: %w", err)
 		}
 	}

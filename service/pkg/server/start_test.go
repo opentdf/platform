@@ -82,8 +82,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	// Register Test Service
 	registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
 		serviceObject: &TestService{},
-		serviceHandler: func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-			fmt.Print("registering test service")
+		serviceHandler: func(_ context.Context, mux *runtime.ServeMux, server any) error {
 			t, ok := server.(*TestService)
 			if !ok {
 				return fmt.Errorf("Surprise! Not a TestService")

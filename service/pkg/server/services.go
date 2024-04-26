@@ -91,7 +91,7 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 		// TODO: this should be reassessed with how we handle registering a single namespace
 		slog.Info("creating database client", slog.String("namespace", s.Namespace))
 		// Make sure we only create a single db client per namespace
-		d, err = db.New(cfg.DB,
+		d, err = db.New(ctx, cfg.DB,
 			db.WithService(s.Namespace),
 			db.WithMigrations(s.DB.Migrations),
 		)

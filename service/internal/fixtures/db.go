@@ -21,7 +21,7 @@ type DBInterface struct {
 func NewDBInterface(cfg config.Config) DBInterface {
 	config := cfg.DB
 	config.Schema = cfg.DB.Schema
-	c, err := db.New(config)
+	c, err := db.New(context.Background(), config)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		panic(err)

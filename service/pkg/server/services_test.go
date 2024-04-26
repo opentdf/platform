@@ -33,7 +33,7 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (func() error, *spyTes
 		namespace:          "test",
 		serviceName:        "TestService",
 		serviceHandlerType: (*interface{})(nil),
-		serviceHandler: func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+		serviceHandler: func(_ context.Context, _ *runtime.ServeMux, _ any) error {
 			return nil
 		},
 	}
@@ -83,7 +83,8 @@ func Test_startServices(t *testing.T) {
 
 	// Test service which will be enabled
 	registerTest, testSpy := mockTestServiceRegistry(mockTestServiceOptions{})
-	registerTest()
+	err := registerTest()
+	require.NoError(t, err)
 
 	// Test service with DB which will be enabled
 	registerTestWithDB, testWithDBSpy := mockTestServiceRegistry(mockTestServiceOptions{
@@ -93,14 +94,16 @@ func Test_startServices(t *testing.T) {
 			Required: true,
 		},
 	})
-	registerTestWithDB()
+	err = registerTestWithDB()
+	require.NoError(t, err)
 
 	// FooBar service which won't be enabled
 	registerFoobar, foobarSpy := mockTestServiceRegistry(mockTestServiceOptions{
 		namespace:   "foobar",
 		serviceName: "FooBarService",
 	})
-	registerFoobar()
+	err = registerFoobar()
+	require.NoError(t, err)
 
 	otdf, err := mockOpenTDFServer()
 	require.NoError(t, err)
@@ -132,11 +135,15 @@ func Test_startServices(t *testing.T) {
 
 	// Expecting a test service with no DBClient
 	assert.True(t, testSpy.wasCalled)
-	assert.Nil(t, testSpy.callParams[0].(serviceregistry.RegistrationParams).DBClient)
+	regParams, ok := testSpy.callParams[0].(serviceregistry.RegistrationParams)
+	require.True(t, ok)
+	assert.Nil(t, regParams.DBClient)
 
 	// Expecting a test service with a DBClient
 	assert.True(t, testWithDBSpy.wasCalled)
-	assert.NotNil(t, testWithDBSpy.callParams[0].(serviceregistry.RegistrationParams).DBClient)
+	regParams, ok = testWithDBSpy.callParams[0].(serviceregistry.RegistrationParams)
+	require.True(t, ok)
+	assert.NotNil(t, regParams.DBClient)
 
 	// Not expecting a foobar service since it's not enabled
 	assert.False(t, foobarSpy.wasCalled)

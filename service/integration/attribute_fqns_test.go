@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/fixtures"
 
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -112,7 +113,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
-	s.NoError(err)
+	require.NoError(s.T(), err)
 	s.NotNil(attr)
 	s.Equal(valueFixture.AttributeDefinitionId, attr.GetId())
 

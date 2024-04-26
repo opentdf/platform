@@ -32,7 +32,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	// Create new offline client
 
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
-		sdk.WithInsecureConn(),
+		sdk.WithInsecurePlaintextGrpcConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)

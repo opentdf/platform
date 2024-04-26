@@ -25,8 +25,15 @@ func (c *config) build() []grpc.DialOption {
 	return []grpc.DialOption{c.tls}
 }
 
-// WithInsecureConn returns an Option that sets up an http connection.
-func WithInsecureConn() Option {
+// WithInsecureSkipVerifyGrpcConn returns an Option that sets up HTTPS connection without verification.
+func WithInsecureSkipVerifyGrpcConn() Option {
+	return func(c *config) {
+		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
+	}
+}
+
+// WithInsecurePlaintextGrpcConn returns an Option that sets up HTTP connection sent in the clear.
+func WithInsecurePlaintextGrpcConn() Option {
 	return func(c *config) {
 		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
@@ -40,14 +47,14 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 	}
 }
 
-// When we implement service discovery using a .well-known endpoint this option may become deprecated
+// WithTokenEndpoint When we implement service discovery using a .well-known endpoint this option may become deprecated
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint
 	}
 }
 
-// temporary option to allow the for token exchange and the
+// WithAuthConfig temporary option to allow the for token exchange and the
 // use of REST-ful KASs. this will likely change as we
 // make these options more robust
 func WithAuthConfig(authConfig AuthConfig) Option {

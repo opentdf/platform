@@ -116,7 +116,7 @@ jobs:
         if: matrix.crypto == 'hsm'
       - run: |
           .github/scripts/init-temp-keys.sh
-          cp opentdf-example.yaml opentdf.yaml
+          cp opentdf-dev.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
       - run: go run ./service provision keycloak
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635

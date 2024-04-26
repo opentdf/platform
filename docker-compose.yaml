@@ -1,3 +1,6 @@
+networks:
+  default:
+    name: opentdf_platform
 services:
   keycloak:
     # This is kc 24.0.1 with opentdf protocol mapper on board

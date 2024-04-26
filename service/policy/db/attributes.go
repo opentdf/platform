@@ -403,6 +403,8 @@ func getAttributeByFqnSql(fqn string, opts attributesSelectOptions) (string, []i
 }
 
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
+	// normalize to lower case
+	fqn = strings.ToLower(fqn)
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: false,

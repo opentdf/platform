@@ -178,6 +178,8 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	}
 	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(r.GetFqns()))
 	for _, fqn := range r.GetFqns() {
+		// normalize to lower case
+		fqn = strings.ToLower(fqn)
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
 		if !strings.Contains(fqn, "/value/") {
 			return nil, db.ErrFqnMissingValue

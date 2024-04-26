@@ -2,7 +2,7 @@
 # init-temporary-keys.sh
 # Initialize temporary keys for use with a KAS
 
-USAGE="Usage:  ${CMD:=${0##*/}} [(-v|--verbose)] [-H|--hsm]"
+USAGE="Usage:  ${CMD:=${0##*/}} [(-v|--verbose)] [-H|--hsm] [-o|--output <path>]"
 
 # helper functions
 exit2() {
@@ -10,6 +10,8 @@ exit2() {
   exit 2
 }
 check() { { [ "$1" != "$EOL" ] && [ "$1" != '--' ]; } || exit2 "missing argument" "$2"; }
+
+opt_output="."
 
 # parse command-line options
 set -- "$@" "${EOL:=$(printf '\1\3\3\7')}" # end-of-list marker
@@ -23,7 +25,11 @@ while [ "$1" != "$EOL" ]; do
       printf "%s\n" "$USAGE"
       exit 0
       ;;
-
+    -o | --output)
+      check "$1" "-o|--output"
+      opt_output="$1"
+      shift
+      ;;
     # process special cases
     -[A-Za-z0-9] | -*[!A-Za-z0-9]*) exit2 "invalid option" "$opt" ;;
   esac
@@ -33,6 +39,8 @@ shift
 if [ "$opt_verbose" = true ]; then
   set -x
 fi
+
+mkdir -p "$opt_output"
 
 if [ "$opt_hsm" = true ]; then
   : "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN:=12345}"
@@ -56,9 +64,9 @@ if [ "$opt_hsm" = true ]; then
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --show-info --list-objects --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}"
 fi
 
-openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-private.pem -out kas-cert.pem -days 365
+openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout "$opt_output/kas-private.pem" -out "$opt_output/kas-cert.pem" -days 365
 openssl ecparam -name prime256v1 >ecparams.tmp
-openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-ec-private.pem -out kas-ec-cert.pem -days 365
+openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
 
 if [ "$opt_hsm" = true ]; then
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}" --write-object kas-private.pem --type privkey --label "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_RSA_LABEL}"

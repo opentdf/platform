@@ -17,7 +17,7 @@ server:
   auth:
     enabled: false
     audience: "http://localhost:8080"
-    issuer: http://localhost:8888/auth/realms/tdf
+    issuer: https://localhost:8443/auth/realms/opentdf
   grpc:
     reflectionEnabled: true # Default is false
   hsm:

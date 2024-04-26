@@ -111,12 +111,12 @@ jobs:
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
       - run: |
           .github/scripts/init-temp-keys.sh --hsm
-          chmod -R 777 ./certs 
+          sudo chmod -R 777 ./certs 
           cp opentdf-with-hsm.yaml opentdf.yaml
         if: matrix.crypto == 'hsm'
       - run: |
           .github/scripts/init-temp-keys.sh
-          chmod -R 777 ./certs 
+          sudo chmod -R 777 ./certs 
           cp opentdf-example.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
       - run: docker compose up

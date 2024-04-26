@@ -115,6 +115,8 @@ jobs:
         if: matrix.crypto == 'hsm'
       - run: |
           .github/scripts/init-temp-keys.sh
+          ls -la certs
+          echo $(pwd)
           cp opentdf-example.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
       - run: docker compose up -d --wait --wait-timeout 240

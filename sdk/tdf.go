@@ -11,6 +11,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/gowebpki/jcs"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
@@ -149,26 +152,43 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 			return nil, fmt.Errorf("io.ReadSeeker.Read size missmatch")
 		}
 
-		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])
-		if err != nil {
-			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
-		}
+		var segmentInfo Segment
+		if tdfConfig.enableEncryption {
+			cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])
+			if err != nil {
+				return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+			}
 
-		err = tdfWriter.AppendPayload(cipherData)
-		if err != nil {
-			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
-		}
+			err = tdfWriter.AppendPayload(cipherData)
+			if err != nil {
+				return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+			}
 
-		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:], tdfConfig.segmentIntegrityAlgorithm)
-		if err != nil {
-			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
-		}
+			segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:], tdfConfig.segmentIntegrityAlgorithm)
+			if err != nil {
+				return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+			}
 
-		aggregateHash += segmentSig
-		segmentInfo := Segment{
-			Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
-			Size:          readSize,
-			EncryptedSize: int64(len(cipherData)),
+			aggregateHash += segmentSig
+			segmentInfo = Segment{
+				Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
+				Size:          readSize,
+				EncryptedSize: int64(len(cipherData)),
+			}
+		} else {
+			err = tdfWriter.AppendPayload(readBuf.Bytes()[:readSize])
+			if err != nil {
+				return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+			}
+
+			segmentHash := ocrypto.SHA256AsHex(readBuf.Bytes()[:readSize])
+			aggregateHash += string(segmentHash)
+
+			segmentInfo = Segment{
+				Hash:          string(segmentHash),
+				Size:          readSize,
+				EncryptedSize: readSize,
+			}
 		}
 
 		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments =
@@ -208,10 +228,53 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	tdfObject.manifest.Payload.Protocol = tdfAsZip
 	tdfObject.manifest.Payload.Type = tdfZipReference
 	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
-	tdfObject.manifest.Payload.IsEncrypted = true
+	tdfObject.manifest.Payload.IsEncrypted = tdfConfig.enableEncryption
 
-	// add assertion
-	tdfObject.manifest.Assertions = tdfConfig.assertions
+	var signedAssertion []Assertion
+	for _, assertion := range tdfConfig.assertions {
+
+		if assertion.Type != handlingAssertion.String() {
+			continue
+		}
+
+		assertionJson, err := json.Marshal(assertion)
+		if err != nil {
+			return nil, fmt.Errorf("json.Marshal failed:%w", err)
+		}
+
+		transformedJson, err := jcs.Transform(assertionJson)
+		if err != nil {
+			return nil, fmt.Errorf("jcs.Transform failed:%w", err)
+		}
+
+		hashOfAssertion := ocrypto.SHA256AsHex(transformedJson)
+		completeHash := aggregateHash + string(hashOfAssertion)
+		base64Hash, err := ocrypto.Base64Decode([]byte(completeHash))
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
+		}
+
+		token, err := jwt.NewBuilder().
+			Claim("assertionHash", base64Hash).
+			Build()
+
+		signingKey, err := ocrypto.PemToRSAPrivate(tdfConfig.assertionSigningKey)
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.PemToRSAPrivate: %w", err)
+		}
+
+		signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.RS256, signingKey))
+		if err != nil {
+			return nil, fmt.Errorf("jwt.Sign: %w", err)
+		}
+
+		assertion.Binding.Method = JWT.String()
+		assertion.Binding.Signature = string(signedToken)
+
+		signedAssertion = append(signedAssertion, assertion)
+	}
+
+	tdfObject.manifest.Assertions = signedAssertion
 
 	manifestAsStr, err := json.Marshal(tdfObject.manifest)
 	if err != nil {

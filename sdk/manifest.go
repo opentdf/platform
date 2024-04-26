@@ -52,22 +52,22 @@ type EncryptionInformation struct {
 }
 
 type Statement struct {
-	IsEncrypted bool   `json:"isEncrypted"`
-	Type        string `json:"type,omitempty"`
-	Value       string `json:"value"`
-	Filename    string `json:"filename,omitempty"`
-	MediaType   string `json:"mediaType,omitempty"`
-	Uri         string `json:"uri,omitempty"`
+	Format string `json:"format,omitempty"`
+	Value  string `json:"value,omitempty"`
+}
+
+type Binding struct {
+	Method    string `json:"method,omitempty"`
+	Signature string `json:"signature,omitempty"`
 }
 
 type Assertion struct {
-	EncryptionInformation `json:"encryptionInformation,omitempty"`
-	AppliedState          string    `json:"appliesToState,omitempty"`
-	Id                    string    `json:"id"`
-	Scope                 string    `json:"scope"`
-	Statement             Statement `json:"statement"`
-	StatementMetadata     []string  `json:"statementMetadata"`
-	Type                  string    `json:"type"`
+	Id           string    `json:"id"`
+	Type         string    `json:"type"`
+	Scope        string    `json:"scope"`
+	AppliedState string    `json:"appliesToState,omitempty"`
+	Statement    Statement `json:"statement"`
+	Binding      Binding   `json:"binding"`
 }
 
 type Manifest struct {

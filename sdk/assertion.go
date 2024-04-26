@@ -22,7 +22,11 @@ const (
 )
 
 func (s Scope) String() string {
-	return [...]string{"TDO", "PAYL", "EXPLICIT"}[s]
+	return [...]string{
+		"TDO",
+		"PAYL",
+		"EXPLICIT",
+	}[s]
 }
 
 // AppliesToState - Custom type to hold value for the assertion ranging from 0-1
@@ -34,14 +38,16 @@ const (
 )
 
 func (a AppliesToState) String() string {
-	return [...]string{"encrypted", "unencrypted"}[a]
+	return [...]string{
+		"encrypted",
+		"unencrypted"}[a]
 }
 
-// StatementType - Custom type to hold value for the assertion ranging from 0-1
-type StatementType uint
+// StatementFormat - Custom type to hold value for the assertion ranging from 0-1
+type StatementFormat uint
 
 const (
-	ReferenceStatement StatementType = iota
+	ReferenceStatement StatementFormat = iota
 	StructuredStatement
 	StringStatement
 	Base64BinaryStatement
@@ -50,7 +56,26 @@ const (
 	StringType
 )
 
-func (s StatementType) String() string {
-	return [...]string{"ReferenceStatement", "StructuredStatement", "StringStatement",
-		"Base64BinaryStatement", "XMLBase64", "HandlingStatement", "String"}[s]
+func (s StatementFormat) String() string {
+	return [...]string{
+		"ReferenceStatement",
+		"StructuredStatement",
+		"StringStatement",
+		"Base64BinaryStatement",
+		"XMLBase64",
+		"HandlingStatement",
+		"String"}[s]
+}
+
+// BindingMethod -  Custom type to hold value for the binding method from 0
+type BindingMethod uint
+
+const (
+	JWT BindingMethod = iota
+)
+
+func (b BindingMethod) String() string {
+	return [...]string{
+		"jwt",
+	}[b]
 }

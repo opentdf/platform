@@ -57,15 +57,18 @@ type Service struct {
 	Close   func()
 }
 
+type ServiceMap map[string]Service
+type NamespaceMap map[string]ServiceMap
+
 // Map of namespaces to services
-var RegisteredServices map[string]map[string]Service
+var RegisteredServices NamespaceMap
 
 func RegisterService(r Registration) error {
 	if RegisteredServices == nil {
-		RegisteredServices = make(map[string]map[string]Service, 0)
+		RegisteredServices = make(NamespaceMap, 0)
 	}
 	if RegisteredServices[r.Namespace] == nil {
-		RegisteredServices[r.Namespace] = make(map[string]Service, 0)
+		RegisteredServices[r.Namespace] = make(ServiceMap, 0)
 	}
 
 	if RegisteredServices[r.Namespace][r.ServiceDesc.ServiceName].RegisterFunc != nil {

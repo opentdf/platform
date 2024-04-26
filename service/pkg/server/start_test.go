@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slog"
-	"google.golang.org/grpc"
 )
 
 type TestServiceService interface{}
@@ -30,26 +29,7 @@ func (t TestService) TestHandler(w http.ResponseWriter, r *http.Request, pathPar
 	}
 }
 
-func ServiceRegistrationTest() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace: "test",
-		ServiceDesc: &grpc.ServiceDesc{
-			ServiceName: "TestService",
-			HandlerType: (*TestServiceService)(nil),
-		},
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &TestService{}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				t, ok := server.(*TestService)
-				if !ok {
-					return fmt.Errorf("Surprise! Not a TestService")
-				}
-				return mux.HandlePath(http.MethodGet, "/healthz", t.TestHandler)
-			}
-		},
-	}
-}
-
-func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
+func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 	discoveryURL := "not set yet"
 
 	discoveryEndpoint := httptest.NewServer(
@@ -80,7 +60,7 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	discoveryURL = discoveryEndpoint.URL
 
 	// Create new opentdf server
-	s, err := server.NewOpenTDFServer(server.Config{
+	return server.NewOpenTDFServer(server.Config{
 		WellKnownConfigRegister: func(namespace string, config any) error {
 			return nil
 		},
@@ -93,14 +73,28 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 		},
 		Port: 43481,
 	})
+}
+
+func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
+	s, err := mockOpenTDFServer()
 	require.NoError(t, err)
 
 	// Register Test Service
-	err = serviceregistry.RegisterService(ServiceRegistrationTest())
-	require.NoError(t, err)
+	registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
+		serviceObject: &TestService{},
+		serviceHandler: func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			fmt.Print("registering test service")
+			t, ok := server.(*TestService)
+			if !ok {
+				return fmt.Errorf("Surprise! Not a TestService")
+			}
+			return mux.HandlePath(http.MethodGet, "/healthz", t.TestHandler)
+		},
+	})
+	registerTestService()
 
 	// Start services with test service
-	_, err = startServices(config.Config{
+	_, _, err = startServices(context.Background(), config.Config{
 		Services: map[string]serviceregistry.ServiceConfig{
 			"test": {
 				Enabled: true,

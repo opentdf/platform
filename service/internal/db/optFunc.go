@@ -14,13 +14,6 @@ func WithService(name string) OptsFunc {
 	}
 }
 
-func WithVerifyConnection() OptsFunc {
-	return func(c Config) Config {
-		c.VerifyConnection = true
-		return c
-	}
-}
-
 func WithMigrations(fs *embed.FS) OptsFunc {
 	return func(c Config) Config {
 		c.MigrationsFS = fs

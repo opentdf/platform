@@ -71,7 +71,7 @@ type Config struct {
 	SSLMode       string `yaml:"sslmode" default:"prefer"`
 	Schema        string `yaml:"schema" default:"opentdf"`
 
-	VerifyConnection bool
+	VerifyConnection bool `yaml:"verifyConnection" default:"true"`
 	MigrationsFS     *embed.FS
 }
 

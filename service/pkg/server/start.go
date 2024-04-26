@@ -10,11 +10,9 @@ import (
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
@@ -95,7 +93,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	slog.Info("starting services")
-	closeServices, err := startServices(ctx, *conf, otdf, eng, client)
+	closeServices, services, err := startServices(ctx, *conf, otdf, eng, client)
 	if err != nil {
 		slog.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
@@ -105,6 +103,17 @@ func Start(f ...StartOptions) error {
 	// Start the server
 	slog.Info("starting opentdf")
 	otdf.Start()
+
+	// Print out the registered services
+	slog.Info("services running")
+	for _, service := range services {
+		slog.Info(
+			"service running",
+			slog.String("namespace", service.Registration.Namespace),
+			slog.String("service", service.ServiceDesc.ServiceName),
+			slog.Bool("database", service.Registration.DB.Required),
+		)
+	}
 
 	if startConfig.WaitForShutdownSignal {
 		waitForShutdownSignal()
@@ -118,74 +127,4 @@ func waitForShutdownSignal() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
-}
-
-func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, eng *opa.Engine, client *sdk.SDK) (func(), error) {
-	// CloseServices is a function that will close all registered services
-	closeServices := func() {
-		slog.Info("stopping services")
-		for ns, registers := range serviceregistry.RegisteredServices {
-			for _, r := range registers {
-				// Only report on started services
-				if !r.Started {
-					continue
-				}
-				slog.Info("stopping service", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
-				if r.Close != nil {
-					r.Close()
-				}
-			}
-		}
-	}
-
-	// Iterate through the registered namespaces
-	for ns, registers := range serviceregistry.RegisteredServices {
-		// Check if the service is enabled
-		if !cfg.Services[ns].Enabled {
-			slog.Debug("start service skipped", slog.String("namespace", ns))
-			continue
-		}
-
-		// Use a single database client per namespace
-		var d *db.Client
-
-		for _, r := range registers {
-			// Create the database client if required
-			registerServiceDb(context.Background(), cfg.DB, r, d)
-
-			// Create the service
-			impl, handler := r.RegisterFunc(serviceregistry.RegistrationParams{
-				Config:          cfg.Services[ns],
-				OTDF:            otdf,
-				DBClient:        d,
-				Engine:          eng,
-				SDK:             client,
-				WellKnownConfig: wellknown.RegisterConfiguration,
-			})
-
-			// Register the service with the gRPC server
-			otdf.GRPCServer.RegisterService(r.ServiceDesc, impl)
-
-			// Register the service with in process gRPC server
-			otdf.GRPCInProcess.GetGrpcServer().RegisterService(r.ServiceDesc, impl)
-
-			// Register the service with the gRPC gateway
-			if err := handler(context.Background(), otdf.Mux, impl); err != nil {
-				slog.Error("failed to start service", slog.String("namespace", r.Namespace), slog.String("error", err.Error()))
-				return closeServices, err
-			}
-
-			slog.Info("started service", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
-			r.Started = true
-			r.Close = func() {
-				if d != nil {
-					slog.Info("closing database client", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
-					// TODO: this might be a problem if we can't call close on the db client multiple times
-					d.Close()
-				}
-			}
-		}
-	}
-
-	return closeServices, nil
 }

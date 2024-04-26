@@ -1,8 +1,10 @@
 package sdk
 
 import (
+	"crypto/tls"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -28,7 +30,9 @@ func (c *config) build() []grpc.DialOption {
 // WithInsecureSkipVerifyGrpcConn returns an Option that sets up HTTPS connection without verification.
 func WithInsecureSkipVerifyGrpcConn() Option {
 	return func(c *config) {
-		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
+		c.tls = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		}))
 	}
 }
 

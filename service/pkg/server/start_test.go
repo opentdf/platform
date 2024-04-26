@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/slog"
 )
 
@@ -75,7 +76,19 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 	})
 }
 
-func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
+type StartTestSuite struct {
+	suite.Suite
+}
+
+func TestStartTestSuite(t *testing.T) {
+	suite.Run(t, new(StartTestSuite))
+}
+
+func (suite *StartTestSuite) BeforeTest(_, _ string) {
+	serviceregistry.RegisteredServices = make(serviceregistry.NamespaceMap)
+}
+
+func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 	s, err := mockOpenTDFServer()
 	require.NoError(t, err)
 

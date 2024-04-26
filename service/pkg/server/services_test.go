@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
 
@@ -73,12 +74,24 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (func() error, *spyTes
 	}, spy
 }
 
-func Test_registerServices(t *testing.T) {
+type ServiceTestSuite struct {
+	suite.Suite
+}
+
+func TestServiceTestSuite(t *testing.T) {
+	suite.Run(t, new(StartTestSuite))
+}
+
+func (suite *ServiceTestSuite) BeforeTest(_, _ string) {
+	serviceregistry.RegisteredServices = make(serviceregistry.NamespaceMap)
+}
+
+func (suite *ServiceTestSuite) TestRegisterServicesIsSuccessful(t *testing.T) {
 	err := registerServices()
 	assert.NoError(t, err)
 }
 
-func Test_startServices(t *testing.T) {
+func (suite *ServiceTestSuite) TestStartServicesWithVariousCases(t *testing.T) {
 	ctx := context.Background()
 
 	// Test service which will be enabled

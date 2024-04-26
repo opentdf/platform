@@ -210,69 +210,6 @@
         
           
           <li>
-            <a href="#kasregistry%2fkey_access_server_registry.proto">kasregistry/key_access_server_registry.proto</a>
-            <ul>
-              
-                <li>
-                  <a href="#kasregistry.CreateKeyAccessServerRequest"><span class="badge">M</span>CreateKeyAccessServerRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.CreateKeyAccessServerResponse"><span class="badge">M</span>CreateKeyAccessServerResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.DeleteKeyAccessServerRequest"><span class="badge">M</span>DeleteKeyAccessServerRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.DeleteKeyAccessServerResponse"><span class="badge">M</span>DeleteKeyAccessServerResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.GetKeyAccessServerRequest"><span class="badge">M</span>GetKeyAccessServerRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.GetKeyAccessServerResponse"><span class="badge">M</span>GetKeyAccessServerResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.KeyAccessServer"><span class="badge">M</span>KeyAccessServer</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.ListKeyAccessServersRequest"><span class="badge">M</span>ListKeyAccessServersRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.ListKeyAccessServersResponse"><span class="badge">M</span>ListKeyAccessServersResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.PublicKey"><span class="badge">M</span>PublicKey</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.UpdateKeyAccessServerRequest"><span class="badge">M</span>UpdateKeyAccessServerRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#kasregistry.UpdateKeyAccessServerResponse"><span class="badge">M</span>UpdateKeyAccessServerResponse</a>
-                </li>
-              
-              
-              
-              
-                <li>
-                  <a href="#kasregistry.KeyAccessServerRegistryService"><span class="badge">S</span>KeyAccessServerRegistryService</a>
-                </li>
-              
-            </ul>
-          </li>
-        
-          
-          <li>
             <a href="#policy%2fobjects.proto">policy/objects.proto</a>
             <ul>
               
@@ -293,7 +230,15 @@
                 </li>
               
                 <li>
+                  <a href="#policy.KeyAccessServer"><span class="badge">M</span>KeyAccessServer</a>
+                </li>
+              
+                <li>
                   <a href="#policy.Namespace"><span class="badge">M</span>Namespace</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.PublicKey"><span class="badge">M</span>PublicKey</a>
                 </li>
               
                 <li>
@@ -676,6 +621,61 @@
               
                 <li>
                   <a href="#policy.attributes.AttributesService"><span class="badge">S</span>AttributesService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#policy%2fkasregistry%2fkey_access_server_registry.proto">policy/kasregistry/key_access_server_registry.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#policy.kasregistry.CreateKeyAccessServerRequest"><span class="badge">M</span>CreateKeyAccessServerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.CreateKeyAccessServerResponse"><span class="badge">M</span>CreateKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.DeleteKeyAccessServerRequest"><span class="badge">M</span>DeleteKeyAccessServerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.DeleteKeyAccessServerResponse"><span class="badge">M</span>DeleteKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.GetKeyAccessServerRequest"><span class="badge">M</span>GetKeyAccessServerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.GetKeyAccessServerResponse"><span class="badge">M</span>GetKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeyAccessServersRequest"><span class="badge">M</span>ListKeyAccessServersRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeyAccessServersResponse"><span class="badge">M</span>ListKeyAccessServersResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.UpdateKeyAccessServerRequest"><span class="badge">M</span>UpdateKeyAccessServerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.UpdateKeyAccessServerResponse"><span class="badge">M</span>UpdateKeyAccessServerResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#policy.kasregistry.KeyAccessServerRegistryService"><span class="badge">S</span>KeyAccessServerRegistryService</a>
                 </li>
               
             </ul>
@@ -1138,476 +1138,6 @@
     
       
       <div class="file-heading">
-        <h2 id="kasregistry/key_access_server_registry.proto">kasregistry/key_access_server_registry.proto</h2><a href="#title">Top</a>
-      </div>
-      <p></p>
-
-      
-        <h3 id="kasregistry.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required </p></td>
-                </tr>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#kasregistry.PublicKey">PublicKey</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p>Common metadata </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.CreateKeyAccessServerResponse">CreateKeyAccessServerResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key_access_server</td>
-                  <td><a href="#kasregistry.KeyAccessServer">KeyAccessServer</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.DeleteKeyAccessServerRequest">DeleteKeyAccessServerRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.DeleteKeyAccessServerResponse">DeleteKeyAccessServerResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key_access_server</td>
-                  <td><a href="#kasregistry.KeyAccessServer">KeyAccessServer</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.GetKeyAccessServerRequest">GetKeyAccessServerRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.GetKeyAccessServerResponse">GetKeyAccessServerResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key_access_server</td>
-                  <td><a href="#kasregistry.KeyAccessServer">KeyAccessServer</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.KeyAccessServer">KeyAccessServer</h3>
-        <p>Descriptor for a KAS</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Address of a KAS instance </p></td>
-                </tr>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#kasregistry.PublicKey">PublicKey</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p>Common metadata </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.ListKeyAccessServersRequest">ListKeyAccessServersRequest</h3>
-        <p></p>
-
-        
-
-        
-      
-        <h3 id="kasregistry.ListKeyAccessServersResponse">ListKeyAccessServersResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key_access_servers</td>
-                  <td><a href="#kasregistry.KeyAccessServer">KeyAccessServer</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.PublicKey">PublicKey</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>remote</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>kas public key url - optional since can also be retrieved via public key </p></td>
-                </tr>
-              
-                <tr>
-                  <td>local</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>public key - optional since can also be retrieved via url </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required </p></td>
-                </tr>
-              
-                <tr>
-                  <td>uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#kasregistry.PublicKey">PublicKey</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p>Common metadata </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata_update_behavior</td>
-                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kasregistry.UpdateKeyAccessServerResponse">UpdateKeyAccessServerResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key_access_server</td>
-                  <td><a href="#kasregistry.KeyAccessServer">KeyAccessServer</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-
-      
-
-      
-
-      
-        <h3 id="kasregistry.KeyAccessServerRegistryService">KeyAccessServerRegistryService</h3>
-        <p></p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>ListKeyAccessServers</td>
-                <td><a href="#kasregistry.ListKeyAccessServersRequest">ListKeyAccessServersRequest</a></td>
-                <td><a href="#kasregistry.ListKeyAccessServersResponse">ListKeyAccessServersResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>GetKeyAccessServer</td>
-                <td><a href="#kasregistry.GetKeyAccessServerRequest">GetKeyAccessServerRequest</a></td>
-                <td><a href="#kasregistry.GetKeyAccessServerResponse">GetKeyAccessServerResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CreateKeyAccessServer</td>
-                <td><a href="#kasregistry.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</a></td>
-                <td><a href="#kasregistry.CreateKeyAccessServerResponse">CreateKeyAccessServerResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>UpdateKeyAccessServer</td>
-                <td><a href="#kasregistry.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</a></td>
-                <td><a href="#kasregistry.UpdateKeyAccessServerResponse">UpdateKeyAccessServerResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>DeleteKeyAccessServer</td>
-                <td><a href="#kasregistry.DeleteKeyAccessServerRequest">DeleteKeyAccessServerRequest</a></td>
-                <td><a href="#kasregistry.DeleteKeyAccessServerResponse">DeleteKeyAccessServerResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>ListKeyAccessServers</td>
-                <td>GET</td>
-                <td>/key-access-servers</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetKeyAccessServer</td>
-                <td>GET</td>
-                <td>/key-access-servers/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateKeyAccessServer</td>
-                <td>POST</td>
-                <td>/key-access-servers</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateKeyAccessServer</td>
-                <td>PATCH</td>
-                <td>/key-access-servers/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeleteKeyAccessServer</td>
-                <td>DELETE</td>
-                <td>/key-access-servers/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
-    
-      
-      <div class="file-heading">
         <h2 id="policy/objects.proto">policy/objects.proto</h2><a href="#title">Top</a>
       </div>
       <p></p>
@@ -1691,7 +1221,7 @@
               
                 <tr>
                   <td>grants</td>
-                  <td><a href="#kasregistry.KeyAccessServer">kasregistry.KeyAccessServer</a></td>
+                  <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -1793,6 +1323,51 @@
 
         
       
+        <h3 id="policy.KeyAccessServer">KeyAccessServer</h3>
+        <p>Key Access Server Registry</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Address of a KAS instance </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#policy.PublicKey">PublicKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.Namespace">Namespace</h3>
         <p></p>
 
@@ -1836,6 +1411,37 @@
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.PublicKey">PublicKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>remote</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>kas public key url - optional since can also be retrieved via public key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>local</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>public key - optional since can also be retrieved via url </p></td>
                 </tr>
               
             </tbody>
@@ -1981,7 +1587,7 @@
         
       
         <h3 id="policy.SubjectProperty">SubjectProperty</h3>
-        <p>A property of a Subject/Entity as its selector expression -> value result pair. This would mirror external user attributes retrieved</p><p>from an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.</p><p>For now, a valid property must contain both a selector expression & a resulting value. </p><p>The external_selector_value is a jq syntax expression to select a value from an externally known field (such as from idP/LDAP),</p><p>and the external_value is the value selected by the external_selector_value on that Subject's Context. These mirror the Condition.</p>
+        <p>A property of a Subject/Entity as its selector expression -> value result pair. This would mirror external user attributes retrieved</p><p>from an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.</p><p>For now, a valid property must contain both a selector expression & a resulting value.</p><p>The external_selector_value is a jq syntax expression to select a value from an externally known field (such as from idP/LDAP),</p><p>and the external_value is the value selected by the external_selector_value on that Subject's Context. These mirror the Condition.</p>
 
         
           <table class="field-table">
@@ -2075,7 +1681,7 @@
               
                 <tr>
                   <td>grants</td>
-                  <td><a href="#kasregistry.KeyAccessServer">kasregistry.KeyAccessServer</a></td>
+                  <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
                   <td><p>list of key access servers </p></td>
                 </tr>
@@ -4738,6 +4344,400 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td>POST</td>
                 <td>/attributes/values/keyaccessserver/remove</td>
                 <td>value_key_access_server</td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="policy/kasregistry/key_access_server_registry.proto">policy/kasregistry/key_access_server_registry.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="policy.kasregistry.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.CreateKeyAccessServerResponse">CreateKeyAccessServerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.DeleteKeyAccessServerRequest">DeleteKeyAccessServerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.DeleteKeyAccessServerResponse">DeleteKeyAccessServerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.GetKeyAccessServerRequest">GetKeyAccessServerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.GetKeyAccessServerResponse">GetKeyAccessServerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeyAccessServersRequest">ListKeyAccessServersRequest</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeyAccessServersResponse">ListKeyAccessServersResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_servers</td>
+                  <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.UpdateKeyAccessServerResponse">UpdateKeyAccessServerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="policy.kasregistry.KeyAccessServerRegistryService">KeyAccessServerRegistryService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ListKeyAccessServers</td>
+                <td><a href="#policy.kasregistry.ListKeyAccessServersRequest">ListKeyAccessServersRequest</a></td>
+                <td><a href="#policy.kasregistry.ListKeyAccessServersResponse">ListKeyAccessServersResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetKeyAccessServer</td>
+                <td><a href="#policy.kasregistry.GetKeyAccessServerRequest">GetKeyAccessServerRequest</a></td>
+                <td><a href="#policy.kasregistry.GetKeyAccessServerResponse">GetKeyAccessServerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateKeyAccessServer</td>
+                <td><a href="#policy.kasregistry.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</a></td>
+                <td><a href="#policy.kasregistry.CreateKeyAccessServerResponse">CreateKeyAccessServerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateKeyAccessServer</td>
+                <td><a href="#policy.kasregistry.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</a></td>
+                <td><a href="#policy.kasregistry.UpdateKeyAccessServerResponse">UpdateKeyAccessServerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteKeyAccessServer</td>
+                <td><a href="#policy.kasregistry.DeleteKeyAccessServerRequest">DeleteKeyAccessServerRequest</a></td>
+                <td><a href="#policy.kasregistry.DeleteKeyAccessServerResponse">DeleteKeyAccessServerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>ListKeyAccessServers</td>
+                <td>GET</td>
+                <td>/key-access-servers</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetKeyAccessServer</td>
+                <td>GET</td>
+                <td>/key-access-servers/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateKeyAccessServer</td>
+                <td>POST</td>
+                <td>/key-access-servers</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateKeyAccessServer</td>
+                <td>PATCH</td>
+                <td>/key-access-servers/{id}</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteKeyAccessServer</td>
+                <td>DELETE</td>
+                <td>/key-access-servers/{id}</td>
+                <td></td>
               </tr>
               
             

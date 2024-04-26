@@ -29,7 +29,8 @@ type OIDCConfiguration struct {
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided
 func DiscoverOIDCConfiguration(ctx context.Context, issuer string) (*OIDCConfiguration, error) {
 	slog.DebugContext(ctx, "discovering openid configuration", slog.String("issuer", issuer))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s", issuer, DiscoveryPath), nil)
+	url := fmt.Sprintf("%s%s", issuer, DiscoveryPath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func DiscoverOIDCConfiguration(ctx context.Context, issuer string) (*OIDCConfigu
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to discover idp at %s: %s", req.RequestURI, resp.Status)
+		return nil, fmt.Errorf("failed to discover idp at %s: %s", url, resp.Status)
 	}
 	defer resp.Body.Close()
 

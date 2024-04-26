@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"

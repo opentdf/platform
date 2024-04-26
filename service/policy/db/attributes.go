@@ -12,11 +12,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/protocol/go/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/db"
-	kasrDB "github.com/opentdf/platform/service/kasregistry/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -114,7 +112,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'public_key', kas.public_key"+
 			")"+
 			") "+
-			"FROM "+kasrDB.Tables.KeyAccessServerRegistry.Name()+" kas "+
+			"FROM "+Tables.KeyAccessServerRegistry.Name()+" kas "+
 			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
 			"WHERE avkag.attribute_value_id = "+avt.Field("id")+
 			")"+
@@ -138,7 +136,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(kasrDB.Tables.KeyAccessServerRegistry.Name() + " ON " + kasrDB.Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
+			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
 	}
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
@@ -228,7 +226,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 			return nil, err
 		}
 	}
-	var k []*kasregistry.KeyAccessServer
+	var k []*policy.KeyAccessServer
 	if grants != nil {
 		k, err = db.KeyAccessServerProtoJSON(grants)
 		if err != nil {

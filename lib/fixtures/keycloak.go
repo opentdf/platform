@@ -18,6 +18,30 @@ const (
 	kcErrUnknown = -1
 )
 
+type KeycloakData struct {
+	Realms []RealmToCreate `yaml:"realms" json:"realms"`
+}
+type RealmToCreate struct {
+	RealmRepresentation gocloak.RealmRepresentation `yaml:"realm_repepresentation" json:"realm_repepresentation"`
+	Clients             []Client                    `yaml:"clients,omitempty" json:"clients,omitempty"`
+	Users               []gocloak.User              `yaml:"users,omitempty" json:"users,omitempty"`
+	CustomRealmRoles    []gocloak.Role              `yaml:"custom_realm_roles,omitempty" json:"custom_realm_roles,omitempty"`
+	CustomClientRoles   map[string][]gocloak.Role   `yaml:"custom_client_roles,omitempty" json:"custom_client_roles,omitempty"`
+	CustomGroups        []gocloak.Group             `yaml:"custom_groups,omitempty" json:"custom_groups,omitempty"`
+	TokenExchanges      []TokenExchange             `yaml:"token_exchanges,omitempty" json:"token_exchanges,omitempty"`
+}
+
+type Client struct {
+	Client        gocloak.Client      `yaml:"client" json:"client"`
+	SaRealmRoles  []string            `yaml:"sa_realm_roles,omitempty" json:"sa_realm_roles,omitempty"`
+	SaClientRoles map[string][]string `yaml:"sa_client_roles,omitempty" json:"sa_client_roles,omitempty"`
+}
+
+type TokenExchange struct {
+	StartClientID  string `yaml:"start_client" json:"start_client"`
+	TargetClientID string `yaml:"target_client" json:"target_client"`
+}
+
 // Extracts the HTTP status code from err if it is available
 // as an http status code. Returns 0 for no error and -1 for
 // invalid error; use const values kcErrNone and kcErrUnknown.
@@ -174,7 +198,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create OpenTDF Client
-	_, err = createClient(ctx, &kcConnectParams, gocloak.Client{
+	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfClientID),
 		Enabled:                 gocloak.BoolP(true),
 		Name:                    gocloak.StringP(opentdfClientID),
@@ -182,7 +206,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
-	}, []gocloak.Role{*opentdfOrgAdminRole}, nil, "")
+	}, []gocloak.Role{*opentdfOrgAdminRole}, nil)
 	if err != nil {
 		return err
 	}
@@ -216,7 +240,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create TDF SDK Client
-	sdkNumericID, err := createClient(ctx, &kcConnectParams, gocloak.Client{
+	sdkNumericID, err := createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
 		ClientID: gocloak.StringP(opentdfSdkClientID),
 		Enabled:  gocloak.BoolP(true),
 		// OptionalClientScopes:    &[]string{"testscope"},
@@ -225,7 +249,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
-	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil, "")
+	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil)
 	if err != nil {
 		return err
 	}
@@ -252,7 +276,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		slog.Error(fmt.Sprintf("Error getting client roles : %s", err))
 		return err
 	}
-	_, err = createClient(ctx, &kcConnectParams, gocloak.Client{
+	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfERSClientID),
 		Enabled:                 gocloak.BoolP(true),
 		Name:                    gocloak.StringP(opentdfERSClientID),
@@ -260,10 +284,16 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
-	}, nil, clientRolesToAdd, *realmManagementClientID)
+	}, nil, map[string][]gocloak.Role{*realmManagementClientID: clientRolesToAdd})
 	if err != nil {
 		return err
 	}
+
+	// opentdfSdkClientNumericId, err := getIDOfClient(ctx, client, token, &kcConnectParams, &opentdfClientId)
+	// if err != nil {
+	// 	slog.Error(fmt.Sprintf("Error getting the SDK id: %s", err))
+	// 	return err
+	// }
 
 	user := gocloak.User{
 		FirstName:  gocloak.StringP("sample"),
@@ -273,7 +303,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		Username:   gocloak.StringP("sampleuser"),
 		Attributes: &map[string][]string{"superhero_name": {"thor"}, "superhero_group": {"avengers"}},
 	}
-	_, err = createUser(ctx, &kcConnectParams, user)
+	_, err = createUser(ctx, client, token, &kcConnectParams, user)
 	if err != nil {
 		panic("Oh no!, failed to create user :(")
 	}
@@ -283,6 +313,114 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		return err
 	}
 
+	return nil
+}
+
+func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, keycloakData KeycloakData) error {
+	// for each realm to create
+	for _, realmToCreate := range keycloakData.Realms {
+		// login and try to create the realm
+		if realmToCreate.RealmRepresentation.Realm == nil {
+			return errors.New("realm does not have name")
+		}
+
+		kcConnectParams := KeycloakConnectParams{
+			BasePath:         kcParams.BasePath,
+			Username:         kcParams.Username,
+			Password:         kcParams.Password,
+			Realm:            *realmToCreate.RealmRepresentation.Realm,
+			AllowInsecureTLS: true,
+		}
+
+		err := createRealm(ctx, kcConnectParams, realmToCreate.RealmRepresentation)
+		if err != nil {
+			return err
+		}
+
+		// login to new realm
+		client, token, err := keycloakLogin(ctx, &kcConnectParams)
+		if err != nil {
+			return err
+		}
+
+		// create the custom realm roles
+		if realmToCreate.CustomRealmRoles != nil {
+			for _, customRole := range realmToCreate.CustomRealmRoles {
+				err = createRealmRole(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, customRole)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// create the custom groups
+		if realmToCreate.CustomGroups != nil {
+			for _, customGroup := range realmToCreate.CustomGroups {
+				err = createGroup(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, customGroup)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// create the clients
+		if realmToCreate.Clients != nil {
+			for _, customClient := range realmToCreate.Clients {
+				realmRoles, err := getRealmRolesByList(ctx, kcConnectParams.Realm, client, token, customClient.SaRealmRoles)
+				if err != nil {
+					return err
+				}
+				clientRoleMap := make(map[string][]gocloak.Role)
+				for clientID, roleString := range customClient.SaClientRoles {
+					longClientID, err := getIDOfClient(ctx, client, token, &kcConnectParams, &clientID)
+					if err != nil {
+						return err
+					}
+					roleList, err := getClientRolesByList(ctx, &kcConnectParams, client, token, *longClientID, roleString)
+					if err != nil {
+						return err
+					}
+					clientRoleMap[*longClientID] = roleList
+				}
+				_, err = createClient(ctx, client, token, &kcConnectParams, customClient.Client, realmRoles, clientRoleMap)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// create the custom client roles
+		if realmToCreate.CustomClientRoles != nil {
+			for clientID, customRoles := range realmToCreate.CustomClientRoles {
+				for _, customRole := range customRoles {
+					err = createClientRole(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, clientID, customRole)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		// create the users
+		if realmToCreate.Users != nil {
+			for _, customUser := range realmToCreate.Users {
+				_, err = createUser(ctx, client, token, &kcConnectParams, customUser)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// create token exchanges
+		if realmToCreate.TokenExchanges != nil {
+			for _, tokenExchange := range realmToCreate.TokenExchanges {
+				err := createTokenExchange(ctx, &kcConnectParams, tokenExchange.StartClientID, tokenExchange.TargetClientID)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -300,14 +438,121 @@ func keycloakLogin(ctx context.Context, connectParams *KeycloakConnectParams) (*
 	return client, token, err
 }
 
-func createClient(ctx context.Context, connectParams *KeycloakConnectParams, newClient gocloak.Client, realmRoles []gocloak.Role, clientRoles []gocloak.Role, clientIDRole string) (string, error) {
-	var longClientID string
-	client, token, err := keycloakLogin(ctx, connectParams)
+func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, realm gocloak.RealmRepresentation) error {
+	// Create realm, if it does not exist.
+	client, token, err := keycloakLogin(ctx, &kcConnectParams)
 	if err != nil {
-		return "", err
+		return err
 	}
+
+	// Create realm
+	r, err := client.GetRealm(ctx, token.AccessToken, *realm.Realm)
+	if err != nil {
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
+		if kcErr.Code == http.StatusConflict {
+			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
+		} else if kcErr.Code != http.StatusNotFound {
+			return err
+		}
+	}
+
+	if r == nil { //nolint:nestif // realm doesnt already exist
+		if _, err := client.CreateRealm(ctx, token.AccessToken, realm); err != nil {
+			return err
+		}
+		slog.Info("✅ Realm created", slog.String("realm", *realm.Realm))
+
+		// update realm users profile via upconfig
+		realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, *realm.Realm)
+		realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileURL)
+		if err != nil {
+			slog.Error("Error retrieving realm users profile ", slog.String("realm", *realm.Realm))
+			return err
+		}
+		var upConfig map[string]interface{}
+		err = json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig)
+		if err != nil {
+			return err
+		}
+		upConfig["unmanagedAttributePolicy"] = "ENABLED"
+		_, err = client.GetRequestWithBearerAuth(ctx, token.AccessToken).SetBody(upConfig).Put(realmProfileURL)
+		if err != nil {
+			return err
+		}
+		slog.Info("✅ Realm Users Profile Updated", slog.String("realm", *realm.Realm))
+	} else {
+		slog.Info("⏭️  Realm already exists", slog.String("realm", *realm.Realm))
+	}
+	return nil
+}
+
+func createGroup(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, group gocloak.Group) error {
+	if group.Name == nil {
+		return errors.New("group does not have name")
+	}
+	_, err := client.CreateGroup(ctx, token.AccessToken, realmName, group)
+	if err != nil {
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
+		if kcErr.Code == http.StatusConflict {
+			slog.Warn(fmt.Sprintf("⏭️  group %s already exists", *group.Name))
+		} else {
+			return err
+		}
+	} else {
+		slog.Info(fmt.Sprintf("✅ Group created: group = %s", *group.Name))
+	}
+	return nil
+}
+
+func createRealmRole(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, role gocloak.Role) error {
+	if role.Name == nil {
+		return errors.New("realm role does not have name")
+	}
+	_, err := client.CreateRealmRole(ctx, token.AccessToken, realmName, role)
+	if err != nil {
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
+		if kcErr.Code == http.StatusConflict {
+			slog.Warn(fmt.Sprintf("⏭️  role %s already exists", *role.Name))
+		} else {
+			return err
+		}
+	} else {
+		slog.Info(fmt.Sprintf("✅ Role created: role = %s", *role.Name))
+	}
+	return nil
+}
+
+func createClientRole(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, clientID string, role gocloak.Role) error {
+	if role.Name == nil {
+		return errors.New("client role does not have name")
+	}
+	results, err := client.GetClients(ctx, token.AccessToken, realmName, gocloak.GetClientsParams{ClientID: &clientID})
+	if err != nil || len(results) == 0 {
+		slog.Error(fmt.Sprintf("Error getting %s's client: %s", clientID, err))
+		return err
+	}
+	idOfClient := results[0].ID
+
+	_, err = client.CreateClientRole(ctx, token.AccessToken, realmName, *idOfClient, role)
+	if err != nil {
+		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
+		if kcErr.Code == http.StatusConflict {
+			slog.Warn(fmt.Sprintf("⏭️  role %s already exists for client %s", *role.Name, clientID))
+		} else {
+			return err
+		}
+	} else {
+		slog.Info(fmt.Sprintf("✅ Client role created for client %s: role = %s", clientID, *role.Name))
+	}
+	return nil
+}
+
+func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, newClient gocloak.Client, realmRoles []gocloak.Role, clientRoles map[string][]gocloak.Role) (string, error) {
+	var longClientID string
+
 	clientID := *newClient.ClientID
-	if longClientID, err = client.CreateClient(ctx, token.AccessToken, connectParams.Realm, newClient); err != nil {
+	longClientID, err := client.CreateClient(ctx, token.AccessToken, connectParams.Realm, newClient)
+	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
 			slog.Warn(fmt.Sprintf("⏭️  client %s already exists", clientID))
@@ -345,33 +590,30 @@ func createClient(ctx context.Context, connectParams *KeycloakConnectParams, new
 			}
 			return "", err
 		}
-
 		for _, role := range realmRoles {
 			slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
 		}
 	}
-
 	if clientRoles != nil {
 		slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
-		if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, clientRoles); err != nil {
-			for _, role := range clientRoles {
-				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+		for clientIDRole, roles := range clientRoles {
+			if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
+				for _, role := range roles {
+					slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+				}
+				return "", err
 			}
-			return "", err
+			for _, role := range roles {
+				slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
+			}
 		}
-		for _, role := range clientRoles {
-			slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
-		}
+
 	}
 
 	return longClientID, nil
 }
 
-func createUser(ctx context.Context, connectParams *KeycloakConnectParams, newUser gocloak.User) (*string, error) {
-	client, token, err := keycloakLogin(ctx, connectParams)
-	if err != nil {
-		return nil, err
-	}
+func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, newUser gocloak.User) (*string, error) { //nolint:unparam // return var to be used in future
 	username := *newUser.Username
 	longUserID, err := client.CreateUser(ctx, token.AccessToken, connectParams.Realm, newUser)
 	if err != nil {
@@ -395,14 +637,70 @@ func createUser(ctx context.Context, connectParams *KeycloakConnectParams, newUs
 	} else {
 		slog.Info(fmt.Sprintf("✅ User created: username = %s, user identifier=%s", username, longUserID))
 	}
+	// assign realm roles to user
+	// retrieve the roles by name
+	if newUser.RealmRoles != nil {
+		roles, err := getRealmRolesByList(ctx, connectParams.Realm, client, token, *newUser.RealmRoles)
+		if err != nil {
+			return nil, err
+		}
+		err = client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, longUserID, roles)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error adding realm roles to user %s : %s", *newUser.RealmRoles, connectParams.Realm))
+			return nil, err
+		}
+	}
+	// assign client roles to user
+	if newUser.ClientRoles != nil {
+		for clientID, roles := range *newUser.ClientRoles {
+			results, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: &clientID})
+			if err != nil || len(results) == 0 {
+				slog.Error(fmt.Sprintf("Error getting %s's client: %s", clientID, err))
+				return nil, err
+			}
+			idOfClient := results[0].ID
+
+			clientRoles, err := getClientRolesByList(ctx, connectParams, client, token, *idOfClient, roles)
+			if err != nil {
+				slog.Error(fmt.Sprintf("Error getting client roles: %s", err))
+				return nil, err
+			}
+
+			if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, *idOfClient, longUserID, clientRoles); err != nil {
+				for _, role := range clientRoles {
+					slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+				}
+				return nil, err
+			}
+			for _, role := range clientRoles {
+				slog.Info(fmt.Sprintf("✅ Client Role %s added to user %s", *role.Name, longUserID))
+			}
+		}
+	}
+
 	return &longUserID, nil
 }
 
+func getRealmRolesByList(ctx context.Context, realmName string, client *gocloak.GoCloak, token *gocloak.JWT, rolesToAdd []string) ([]gocloak.Role, error) {
+	var roles []gocloak.Role
+	for _, roleName := range rolesToAdd {
+		role, err := client.GetRealmRole(
+			ctx,
+			token.AccessToken,
+			realmName,
+			roleName)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error getting realm role for realm %s : %s", roleName, realmName))
+			return nil, err
+		}
+		roles = append(roles, *role)
+	}
+	return roles, nil
+}
+
 func getClientRolesByList(ctx context.Context, connectParams *KeycloakConnectParams, client *gocloak.GoCloak, token *gocloak.JWT, idClient string, roles []string) ([]gocloak.Role, error) {
-	var (
-		notFoundRoles []string
-		clientRoles   []gocloak.Role
-	)
+	var notFoundRoles []string
+	var clientRoles []gocloak.Role
 
 	roleObjects, err := client.GetClientRoles(ctx, token.AccessToken, connectParams.Realm, idClient, gocloak.GetRoleParams{})
 	if err != nil {

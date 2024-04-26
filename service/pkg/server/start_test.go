@@ -90,7 +90,8 @@ func Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
 			return mux.HandlePath(http.MethodGet, "/healthz", t.TestHandler)
 		},
 	})
-	registerTestService()
+	err = registerTestService()
+	require.NoError(t, err)
 
 	// Start services with test service
 	_, _, err = startServices(context.Background(), config.Config{

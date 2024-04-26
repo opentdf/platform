@@ -30,10 +30,18 @@ type TokenAddingInterceptor struct {
 	tokenSource AccessTokenSource
 }
 
-func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
-	method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func (i TokenAddingInterceptor) AddCredentials(
+	ctx context.Context,
+	method string,
+	req, reply any,
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
 	newMetadata := make([]string, 0)
-	accessToken, err := i.tokenSource.AccessToken()
+	// FIXME get TLS config, perhaps from i.
+	client := &http.Client{}
+	accessToken, err := i.tokenSource.AccessToken(client)
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {

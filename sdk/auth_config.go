@@ -20,6 +20,7 @@ type AuthConfig struct {
 	dpopPublicKeyPEM  string
 	dpopPrivateKeyPEM string
 	accessToken       string
+	client            *http.Client
 }
 
 type RequestBody struct {
@@ -80,7 +81,7 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 	certB64 := ocrypto.Base64Encode([]byte(a.dpopPublicKeyPEM))
 	req.Header.Set("X-VirtruPubKey", string(certB64))
 
-	client := &http.Client{}
+	client := a.client
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("error making request to IdP for token exchange: %w", err)
@@ -151,7 +152,7 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 		kAcceptKey:        {kContentTypeJSONValue},
 	}
 
-	client := &http.Client{}
+	client := a.client
 
 	response, err := client.Do(request)
 	if err != nil {
@@ -231,7 +232,7 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 	return key, nil
 }
 
-func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
+func (*AuthConfig) getPublicKey(client *http.Client, kasInfo KASInfo) (string, error) {
 	kasPubKeyURL, err := url.JoinPath(kasInfo.URL, kasPublicKeyPath)
 	if err != nil {
 		return "", fmt.Errorf("url.Parse failed: %w", err)
@@ -246,8 +247,6 @@ func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
 	request.Header = http.Header{
 		kAcceptKey: {kContentTypeJSONValue},
 	}
-
-	client := &http.Client{}
 
 	response, err := client.Do(request)
 	defer func() {

@@ -3,8 +3,6 @@ package sdk
 import (
 	"crypto/tls"
 	"errors"
-	"log/slog"
-
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -14,6 +12,7 @@ import (
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"log/slog"
 )
 
 const (

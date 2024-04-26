@@ -8,10 +8,12 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"golang.org/x/oauth2"
 	"net"
 	"net/http"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -171,6 +173,14 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 		return nil, errors.New("no such key")
 	}
 	return f(fts.key)
+}
+func (fts *FakeTokenSource) Token() (*oauth2.Token, error) {
+	return &oauth2.Token{
+		AccessToken:  fts.accessToken,
+		TokenType:    "",
+		RefreshToken: "",
+		Expiry:       time.Time{},
+	}, nil
 }
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {

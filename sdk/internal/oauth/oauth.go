@@ -131,16 +131,15 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 	return jwt.Sign(tok, jwt.WithKey(alg, key, jws.WithProtectedHeaders(headers)))
 }
 
-// this misses the flow where the Authorization server can tell us the next nonce to use.
+// GetAccessToken this misses the flow where the Authorization server can tell us the next nonce to use.
 // missing this flow costs us a bit in efficiency (a round trip per access token) but this is
 // still correct because
-func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
+func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
 	req, err := getAccessTokenRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
 	if err != nil {
 		return nil, err
 	}
 
-	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
@@ -239,12 +238,11 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 	return string(proof), nil
 }
 
-func DoTokenExchange(ctx context.Context, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, key jwk.Key) (*Token, error) {
+func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, key jwk.Key) (*Token, error) {
 	req, err := getTokenExchangeRequest(ctx, tokenEndpoint, "", scopes, clientCredentials, tokenExchange, &key)
 	if err != nil {
 		return nil, err
 	}
-	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to IdP for token exchange: %w", err)

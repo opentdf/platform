@@ -15,7 +15,7 @@ services:
     enabled: true
   authorization:
     enabled: true
-    url: https://localhost:8443
+    url: https://localhost:8443/auth
     client: "tdf-entity-resolution"
     secret: "secret"
     realm: "opentdf"

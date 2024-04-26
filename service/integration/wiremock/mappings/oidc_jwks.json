@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/auth/keys"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "messages/oidc_jwks.json",
+    "transformers": [
+      "response-template"
+    ]
+  }
+}

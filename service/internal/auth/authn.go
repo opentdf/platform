@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -16,7 +18,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/internal/db"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -30,16 +31,14 @@ const (
 type authContextKey string
 
 var (
-	// Set of allowed gRPC endpoints that do not require authentication
-	allowedGRPCEndpoints = [...]string{
+	// Set of allowed public endpoints that do not require authentication
+	allowedPublicEndpoints = [...]string{
 		"/grpc.health.v1.Health/Check",
 		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
 		"/kas.AccessService/PublicKey",
-	}
-	// Set of allowed HTTP endpoints that do not require authentication
-	allowedHTTPEndpoints = [...]string{
 		"/healthz",
 		"/.well-known/opentdf-configuration",
+		"/kas/kas_public_key",
 		"/kas/v2/kas_public_key",
 	}
 	// only asymmetric algorithms and no 'none'
@@ -56,27 +55,32 @@ var (
 	}
 )
 
+const refreshInterval = 15 * time.Minute
+
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
+	enforceDPoP bool
 	// cache holds the jwks cache
 	cache *jwk.Cache
 	// openidConfigurations holds the openid configuration for each issuer
 	oidcConfigurations map[string]AuthNConfig
 	// Casbin enforcer
 	enforcer *Enforcer
+	// Public Routes HTTP & gRPC
+	publicRoutes []string
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
-	a := &Authentication{}
+func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) {
+	a := &Authentication{
+		enforceDPoP: cfg.EnforceDPoP,
+	}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	// validate the configuration
 	if err := cfg.validateAuthNConfig(); err != nil {
 		return nil, err
 	}
-
-	ctx := context.Background()
 
 	a.cache = jwk.NewCache(ctx)
 
@@ -89,16 +93,19 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 
 	cfg.OIDCConfiguration = *oidcConfig
 
+	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
+	if err != nil {
+		slog.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
+		cacheInterval = refreshInterval
+	}
+
 	// Register the jwks_uri with the cache
-	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
 		return nil, err
 	}
 
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
-	}
-	if d != nil && d.SqlDB != nil {
-		casbinConfig.DB = d.SqlDB
 	}
 	slog.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig); err != nil {
@@ -111,21 +118,36 @@ func NewAuthenticator(cfg AuthNConfig, d *db.Client) (*Authentication, error) {
 		return nil, err
 	}
 
-	a.oidcConfigurations[cfg.Issuer] = cfg
+	// Combine public routes
+	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
+	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
+
+	a.oidcConfigurations[cfg.Issuer] = cfg.AuthNConfig
 
 	return a, nil
 }
 
-type dpopInfo struct {
-	headers []string
-	path    string
-	method  string
+type receiverInfo struct {
+	// The URI of the request
+	u string
+	// The HTTP method of the request
+	m string
+}
+
+func normalizeURL(o string, u *url.URL) string {
+	// Currently this does not do a full normatlization
+	ou, err := url.Parse(o)
+	if err != nil {
+		return u.String()
+	}
+	ou.Path = u.Path
+	return ou.String()
 }
 
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.Contains(allowedHTTPEndpoints[:], r.URL.Path) {
+		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -136,11 +158,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
-		tok, dpopKey, err := a.checkToken(r.Context(), header, dpopInfo{
-			headers: r.Header["Dpop"],
-			path:    r.URL.Path,
-			method:  r.Method,
-		})
+		origin := r.Header.Get("Origin")
+		tok, newCtx, err := a.checkToken(r.Context(), header, receiverInfo{
+			u: normalizeURL(origin, r.URL),
+			m: r.Method,
+		}, r.Header["Dpop"])
 
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
@@ -174,14 +196,14 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		handler.ServeHTTP(w, r.WithContext(ContextWithJWK(r.Context(), dpopKey)))
+		handler.ServeHTTP(w, r.WithContext(newCtx))
 	})
 }
 
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks to pass through
-	if slices.Contains(allowedGRPCEndpoints[:], info.FullMethod) {
+	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) {
 		return handler(ctx, req)
 	}
 
@@ -215,14 +237,14 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		action = "other"
 	}
 
-	token, dpopJWK, err := a.checkToken(
+	token, newCtx, err := a.checkToken(
 		ctx,
 		header,
-		dpopInfo{
-			headers: md["dpop"],
-			path:    info.FullMethod,
-			method:  http.MethodPost,
+		receiverInfo{
+			u: info.FullMethod,
+			m: http.MethodPost,
 		},
+		md["dpop"],
 	)
 	if err != nil {
 		slog.Warn("failed to validate token", slog.String("error", err.Error()))
@@ -241,23 +263,20 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 
-	return handler(ContextWithJWK(ctx, dpopJWK), req)
+	return handler(newCtx, req)
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo dpopInfo) (jwt.Token, jwk.Key, error) {
+func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
 	var (
-		tokenRaw  string
-		tokenType string
+		tokenRaw string
 	)
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {
 	case strings.HasPrefix(authHeader[0], "DPoP "):
-		tokenType = "DPoP"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
 	case strings.HasPrefix(authHeader[0], "Bearer "):
-		tokenType = "Bearer"
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
 		return nil, nil, fmt.Errorf("not of type bearer or dpop")
@@ -295,23 +314,23 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		jwt.WithValidate(true),
 		jwt.WithIssuer(issuer),
 		jwt.WithAudience(oidc.Audience),
-		jwt.WithValidator(jwt.ValidatorFunc(a.claimsValidator)),
 	)
 
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if tokenType == "Bearer" {
-		slog.Warn("Presented bearer token. validating as DPoP")
+	_, tokenHasCNF := accessToken.Get("cnf")
+	if !tokenHasCNF && !a.enforceDPoP {
+		// this condition is not quite tight because it's possible that the `cnf` claim may
+		// come from token introspection
+		return accessToken, ctx, nil
 	}
-
-	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo)
+	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return accessToken, *key, nil
+	return accessToken, ContextWithJWK(ctx, key), nil
 }
 
 func ContextWithJWK(ctx context.Context, key jwk.Key) context.Context {
@@ -327,14 +346,14 @@ func GetJWKFromContext(ctx context.Context) jwk.Key {
 		return jwk
 	}
 
-	return nil
+	panic("got something that is not a jwk.Key from the JWK context")
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo) (*jwk.Key, error) {
-	if len(dpopInfo.headers) != 1 {
-		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(dpopInfo.headers))
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {
+	if len(headers) != 1 {
+		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(headers))
 	}
-	dpopHeader := dpopInfo.headers[0]
+	dpopHeader := headers[0]
 
 	cnf, ok := accessToken.Get("cnf")
 	if !ok {
@@ -395,8 +414,9 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
 	}
 
-	if base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint) != jkt {
-		return nil, fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token")
+	thumbprintStr := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)
+	if thumbprintStr != jkt {
+		return nil, fmt.Errorf("the `jkt` from the DPoP JWT didn't match the thumbprint from the access token; cnf.jkt=[%v], computed=[%v]", jkt, thumbprintStr)
 	}
 
 	// at this point we have the right key because its thumbprint matches the `jkt` claim
@@ -422,8 +442,8 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("`htm` claim missing in DPoP JWT")
 	}
 
-	if htm != dpopInfo.method {
-		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT")
+	if htm != dpopInfo.m {
+		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; should match [%v]", dpopInfo.m)
 	}
 
 	htu, ok := dpopToken.Get("htu")
@@ -431,8 +451,8 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
 
-	if htu != dpopInfo.path {
-		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT")
+	if htu != dpopInfo.u {
+		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; should match %v", dpopInfo.u)
 	}
 
 	ath, ok := dpopToken.Get("ath")
@@ -445,47 +465,17 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo dpopInfo
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
 	}
-	return &dpopKey, nil
+	return dpopKey, nil
 }
 
-// claimsValidator is a custom validator to check extra claims in the token.
-// right now it only checks for client_id
-func (a Authentication) claimsValidator(_ context.Context, token jwt.Token) jwt.ValidationError {
-	var (
-		clientID string
-	)
-
-	// Need to check for cid and client_id as this claim seems to be different between idp's
-	cidClaim, cidExists := token.Get("cid")
-	clientIDClaim, clientIDExists := token.Get("client_id")
-
-	// Check to see if we have a client id claim
-	switch {
-	case cidExists:
-		if cid, ok := cidClaim.(string); ok {
-			clientID = cid
-			break
+func (a Authentication) isPublicRoute(path string) func(string) bool {
+	return func(route string) bool {
+		matched, err := filepath.Match(route, path)
+		if err != nil {
+			slog.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
+			return false
 		}
-	case clientIDExists:
-		if cid, ok := clientIDClaim.(string); ok {
-			clientID = cid
-			break
-		}
-	default:
-		return jwt.NewValidationError(fmt.Errorf("client id required"))
+		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
+		return matched
 	}
-
-	// Check if the client id is allowed in list of clients
-	foundClientID := false
-	for _, c := range a.oidcConfigurations[token.Issuer()].Clients {
-		if c == clientID {
-			foundClientID = true
-			break
-		}
-	}
-	if !foundClientID {
-		return jwt.NewValidationError(fmt.Errorf("invalid client id"))
-	}
-
-	return nil
 }

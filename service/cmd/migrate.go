@@ -35,7 +35,7 @@ var (
 			if err != nil {
 				panic(fmt.Errorf("migration down failed: %w", err))
 			}
-			fmt.Print("migration down applied successfully")
+			cmd.Println("migration down applied successfully")
 		},
 	}
 	migrateUpCmd = &cobra.Command{
@@ -57,7 +57,7 @@ var (
 			if err != nil {
 				panic(fmt.Errorf("migration up failed: %w", err))
 			}
-			fmt.Print("migration up applied: ", slog.Any("versions up", count))
+			cmd.Printf("migration up applied: %d versions up\n", count)
 		},
 	}
 

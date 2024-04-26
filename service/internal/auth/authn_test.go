@@ -14,6 +14,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"slices"
 	"testing"
 	"time"
 
@@ -23,6 +25,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -31,6 +34,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"gotest.tools/v3/assert"
 )
 
 type AuthSuite struct {
@@ -139,11 +143,16 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	auth, err := NewAuthenticator(AuthNConfig{
-		Issuer:   s.server.URL,
-		Audience: "test",
-		Clients:  []string{"client1", "client2", "client3"},
-	}, nil)
+	auth, err := NewAuthenticator(
+		context.Background(),
+		Config{
+			AuthNConfig: AuthNConfig{
+				EnforceDPoP: true,
+				Issuer:      s.server.URL,
+				Audience:    "test",
+			},
+			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
+		})
 
 	s.Require().NoError(err)
 
@@ -158,6 +167,23 @@ func TestAuthSuite(t *testing.T) {
 	suite.Run(t, new(AuthSuite))
 }
 
+func TestNormalizeUrl(t *testing.T) {
+	for _, tt := range []struct {
+		origin, path, out string
+	}{
+		{"http://localhost", "/", "http://localhost/"},
+		{"https://localhost", "/somewhere", "https://localhost/somewhere"},
+		{"http://localhost", "", "http://localhost"},
+	} {
+		t.Run(tt.origin+tt.path, func(t *testing.T) {
+			u, err := url.Parse(tt.path)
+			require.NoError(t, err)
+			s := normalizeURL(tt.origin, u)
+			assert.Equal(t, s, tt.out)
+		})
+	}
+}
+
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
@@ -167,7 +193,7 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -191,7 +217,7 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, dpopInfo{})
+	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -205,7 +231,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("missing issuer", err.Error())
 }
@@ -220,7 +246,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("invalid issuer", err.Error())
 }
@@ -234,7 +260,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -249,72 +275,9 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_ClientID_Missing_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("client id required", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_ClientID_Invalid_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("client_id", "invalid"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("invalid client id", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", "invalid"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("invalid client id", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_CID_Invalid_INT_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", 1))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
-	s.Require().Error(err)
-	s.Equal("invalid client id", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
@@ -328,7 +291,7 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, dpopInfo{})
+	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -405,15 +368,15 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		_, _, err = s.auth.checkToken(
 			context.Background(),
 			[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
-			dpopInfo{
-				headers: []string{dpopToken},
-				path:    "/a/path",
-				method:  http.MethodPost,
+			receiverInfo{
+				u: "/a/path",
+				m: http.MethodPost,
 			},
+			[]string{dpopToken},
 		)
 
 		s.Require().Error(err)
-		s.Equal(testCase.errorMessage, err.Error())
+		s.Contains(err.Error(), testCase.errorMessage)
 	}
 }
 
@@ -600,4 +563,47 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 		return ""
 	}
 	return string(signedToken)
+}
+
+func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
+	authnConfig := AuthNConfig{
+		EnforceDPoP: false,
+		Issuer:      s.server.URL,
+		Audience:    "test",
+	}
+	config := Config{}
+	config.AuthNConfig = authnConfig
+	auth, err := NewAuthenticator(context.Background(), config)
+
+	s.Require().NoError(err)
+
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("client_id", "client1"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+
+	s.NotNil(signedTok)
+	s.Require().NoError(err)
+
+	_, ctx, err := auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
+	s.Require().NoError(err)
+	s.Require().Nil(GetJWKFromContext(ctx))
+}
+
+func (s *AuthSuite) Test_PublicPath_Matches() {
+	// Passing routes
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/static")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test/next")))
+
+	// Failing routes
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/private")))
+	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test/fail")))
 }

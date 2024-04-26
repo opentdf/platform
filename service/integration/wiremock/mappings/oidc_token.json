@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/auth/token"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "messages/oidc_token.json",
+    "transformers": [
+      "response-template"
+    ]
+  }
+}

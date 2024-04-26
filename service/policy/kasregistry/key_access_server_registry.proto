@@ -1,37 +1,11 @@
 syntax = "proto3";
 
-package kasregistry;
+package policy.kasregistry;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
-
-/*
-   Descriptor for a KAS
-*/
-message KeyAccessServer {
-  string id = 1;
-  // Address of a KAS instance
-  string uri = 2;
-  PublicKey public_key = 3;
-
-  // Common metadata
-  common.Metadata metadata = 100;
-}
-
-message PublicKey {
-  oneof public_key {
-    // kas public key url - optional since can also be retrieved via public key
-    string remote = 1 [(buf.validate.field).cel = {
-      id: "uri_format",
-      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
-    }];
-
-    // public key - optional since can also be retrieved via url
-    string local = 2;
-  }
-}
+import "policy/objects.proto";
 
 message GetKeyAccessServerRequest {
   string id = 1 [(buf.validate.field).required = true];

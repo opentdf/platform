@@ -1,10 +1,10 @@
 module github.com/opentdf/platform/examples
 
-go 1.21.8
+go 1.22
 
 require (
-	github.com/opentdf/platform/protocol/go v0.0.0-20240409133529-9d7b951a26c6
-	github.com/opentdf/platform/sdk v0.0.0-20240409133529-9d7b951a26c6
+	github.com/opentdf/platform/protocol/go v0.1.0
+	github.com/opentdf/platform/sdk v0.1.0
 	github.com/spf13/cobra v1.8.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
@@ -26,13 +26,13 @@ require (
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.0.21 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
-	github.com/opentdf/platform/lib/ocrypto v0.0.0-20240409133529-9d7b951a26c6 // indirect
+	github.com/opentdf/platform/lib/ocrypto v0.1.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240311173647-c811ad7063a7 // indirect

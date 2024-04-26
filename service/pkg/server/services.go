@@ -139,7 +139,7 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 	otdf.GRPCInProcess.GetGrpcServer().RegisterService(s.ServiceDesc, impl)
 
 	// Register the service with the gRPC gateway
-	if err := handler(context.Background(), otdf.Mux, impl); err != nil {
+	if err := handler(ctx, otdf.Mux, impl); err != nil {
 		slog.Error("failed to start service", slog.String("namespace", s.Namespace), slog.String("error", err.Error()))
 		return s, err
 	}

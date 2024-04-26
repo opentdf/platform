@@ -111,15 +111,15 @@ jobs:
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
       - run: |
           .github/scripts/init-temp-keys.sh --hsm
+          chmod -R 777 ./certs 
           cp opentdf-with-hsm.yaml opentdf.yaml
         if: matrix.crypto == 'hsm'
       - run: |
           .github/scripts/init-temp-keys.sh
-          ls -la certs
-          echo $(pwd)
+          chmod -R 777 ./certs 
           cp opentdf-example.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
-      - run: docker compose up 
+      - run: docker compose up
       - run: go run ./service provision keycloak
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background

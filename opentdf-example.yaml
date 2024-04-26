@@ -27,21 +27,23 @@ server:
     issuer: https://localhost:8443/auth/realms/opentdf
     policy:
       ## Default policy for all requests
-      default: "role:readonly"
+      default: #"role:readonly"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       claim: # realm_access.roles
       ## Maps the external role to the opentdf role
       ## Note: left side is used in the policy, right side is the external role
       map:
-#        readonly: opentdf-readonly
-#        admin: opentdf-admin
-#        org-admin: opentdf-org-admin
+      #  readonly: opentdf-readonly
+      #  admin: opentdf-admin
+      #  org-admin: opentdf-org-admin
 
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
-      csv: |
-        p,	role:org-admin,		*,																*,			allow
-
-      # Custom model (see https://casbin.org/docs/syntax-for-models/)
+      csv: #|
+      #  p, role:org-admin, policy:attributes, *, *, allow
+      #  p, role:org-admin, policy:subject-mappings, *, *, allow
+      #  p, role:org-admin, policy:resource-mappings, *, *, allow
+      #  p, role:org-admin, policy:kas-registry, *, *, allow
+      ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]
       #  r = sub, res, act, obj

@@ -116,9 +116,14 @@ jobs:
         if: matrix.crypto == 'hsm'
       - run: |
           .github/scripts/init-temp-keys.sh
-          sudo chmod -R 777 ./certs 
           cp opentdf-example.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
+      - name: Added Trusted Certs
+        run: |
+          sudo chmod -R 777 ./certs 
+          sudo apt-get install -y ca-certificates
+          sudo cp ./certs/localhost.crt /usr/local/share/ca-certificates
+          sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240
       - run: go run ./service provision keycloak
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635

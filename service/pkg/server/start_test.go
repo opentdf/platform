@@ -88,7 +88,8 @@ func (suite *StartTestSuite) BeforeTest(_, _ string) {
 	serviceregistry.RegisteredServices = make(serviceregistry.NamespaceMap)
 }
 
-func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Response(t *testing.T) {
+func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Response() {
+	t := suite.T()
 	s, err := mockOpenTDFServer()
 	require.NoError(t, err)
 

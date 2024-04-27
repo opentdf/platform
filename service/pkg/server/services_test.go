@@ -86,12 +86,14 @@ func (suite *ServiceTestSuite) BeforeTest(_, _ string) {
 	serviceregistry.RegisteredServices = make(serviceregistry.NamespaceMap)
 }
 
-func (suite *ServiceTestSuite) TestRegisterServicesIsSuccessful(t *testing.T) {
+func (suite *ServiceTestSuite) TestRegisterServicesIsSuccessful() {
+	t := suite.T()
 	err := registerServices()
 	assert.NoError(t, err)
 }
 
-func (suite *ServiceTestSuite) TestStartServicesWithVariousCases(t *testing.T) {
+func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
+	t := suite.T()
 	ctx := context.Background()
 
 	// Test service which will be enabled

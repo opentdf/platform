@@ -3,11 +3,14 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -59,6 +62,7 @@ type GRPCConfig struct {
 type TLSConfig struct {
 	Enabled bool   `yaml:"enabled" default:"false"`
 	Cert    string `yaml:"cert"`
+	CACert  string `yaml:"ca_cert" default:"../ca.crt"`
 	Key     string `yaml:"key"`
 }
 
@@ -198,6 +202,7 @@ func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server) http.Handler {
 		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
 			g.ServeHTTP(w, r)
 		} else {
+
 			h.ServeHTTP(w, r)
 		}
 	})
@@ -317,9 +322,19 @@ func loadTLSConfig(config TLSConfig) (*tls.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tls cert: %w", err)
 	}
-
+	// Load CA certificate
+	caCert, err := os.ReadFile(config.CACert)
+	if err != nil {
+		log.Fatalf("failed to load CA cert: %v", err)
+	}
+	caPool := x509.NewCertPool()
+	if ok := caPool.AppendCertsFromPEM(caCert); !ok {
+		log.Fatalf("failed to append CA cert to pool")
+	}
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},
+		ClientCAs:    caPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
 		MinVersion:   tls.VersionTLS12,
 		NextProtos:   []string{"h2", "http/1.1"},
 	}, nil

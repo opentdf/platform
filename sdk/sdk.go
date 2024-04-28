@@ -2,8 +2,11 @@ package sdk
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
+	"log"
 	"log/slog"
+	"os"
 
 	"github.com/arkavo-org/opentdf-platform/protocol/go/authorization"
 	"github.com/arkavo-org/opentdf-platform/protocol/go/kasregistry"
@@ -11,7 +14,6 @@ import (
 	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/namespaces"
 	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/resourcemapping"
 	"github.com/arkavo-org/opentdf-platform/protocol/go/policy/subjectmapping"
-	"github.com/arkavo-org/opentdf-platform/sdk/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -39,8 +41,26 @@ type SDK struct {
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
+	// Load the client's certificate and private key
+	certificate, err := tls.LoadX509KeyPair("../pep.crt", "../pep.key")
+	if err != nil {
+		log.Fatalf("could not load client key pair: %s", err)
+	}
+	// Create a certificate pool from the certificate authority
+	certPool := x509.NewCertPool()
+	ca, err := os.ReadFile("../ca.crt")
+	if err != nil {
+		log.Fatalf("could not read ca certificate: %s", err)
+	}
+
+	// Append the client certificates from the CA
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		log.Fatalf("failed to append client certs")
+	}
 	tlsConfig := tls.Config{
-		MinVersion: tls.VersionTLS12,
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      certPool,
 	}
 
 	// Set default options
@@ -54,25 +74,26 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// once we change KAS to use standard DPoP we can put this all in the `build()` method
+	// no need for this with PKI
 	dialOptions := append([]grpc.DialOption{}, cfg.build()...)
-	accessTokenSource, err := buildIDPTokenSource(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
-	}
+	//accessTokenSource, err := buildIDPTokenSource(cfg)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//if accessTokenSource != nil {
+	//	interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
+	//	dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
+	//}
 
 	var unwrapper Unwrapper
-	if cfg.authConfig == nil {
-		unwrapper, err = newKASClient(dialOptions, accessTokenSource)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		unwrapper = cfg.authConfig
-	}
+	//if cfg.authConfig == nil {
+	//	unwrapper, err = newKASClient(dialOptions, accessTokenSource)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//} else {
+	unwrapper = cfg.authConfig
+	//}
 
 	var (
 		defaultConn       *grpc.ClientConn

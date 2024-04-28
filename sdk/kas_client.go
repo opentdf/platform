@@ -157,13 +157,13 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
 
-	accessToken, err := k.accessTokenSource.AccessToken()
-	if err != nil {
-		return nil, fmt.Errorf("error getting access token: %w", err)
-	}
+	//accessToken, err := k.accessTokenSource.AccessToken()
+	//if err != nil {
+	//	fmt.Printf("warn getting access token: %v", err)
+	//}
 
 	rewrapRequest := kas.RewrapRequest{
-		Bearer:             string(accessToken),
+		//Bearer:             string(accessToken),
 		SignedRequestToken: string(signedToken),
 	}
 	return &rewrapRequest, nil

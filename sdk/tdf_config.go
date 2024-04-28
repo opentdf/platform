@@ -9,7 +9,7 @@ import (
 const (
 	tdf3KeySize        = 2048
 	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
-	kasPublicKeyPath   = "/kas_public_key"
+	kasPublicKeyPath   = "kas/kas_public_key"
 )
 
 type TDFFormat = int

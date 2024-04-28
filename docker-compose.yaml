@@ -58,3 +58,21 @@ services:
       retries: 10
     ports:
       - "5432:5432"
+
+  openldap:
+    image: osixia/openldap:1.5.0
+    environment:
+      LDAP_ORGANISATION: "Development"
+      LDAP_DOMAIN: "localhost"
+      LDAP_ADMIN_PASSWORD: "mypassword"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "mypassword"
+    ports:
+      - "389:389"
+      - "636:636"
+  vault:
+    image: hashicorp/vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "myroot"
+    ports:
+      - "8200:8200"

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
@@ -30,11 +31,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	// Create new offline client
 
-	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
-		sdk.WithInsecureConn(),
-		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
-	)
+	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint)
 	if err != nil {
 		return err
 	}
@@ -49,7 +46,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		//sdk.WithDataAttributes("https://example.com/attr/attr1/value/value1"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				URL:       "http://localhost:8080",
+				URL:       fmt.Sprintf("https://%s", cmd.Flag("platformEndpoint").Value.String()),
 				PublicKey: "",
 			}))
 	if err != nil {

@@ -28,11 +28,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	tdfFile := args[0]
 
 	// Create new client
-	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
-		sdk.WithInsecureConn(),
-		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
-	)
+	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint)
 	if err != nil {
 		return err
 	}

@@ -3,12 +3,19 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -116,8 +123,12 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 		string(requestBodyData),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-
-	signingRSAPrivateKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(a.dpopPrivateKeyPEM))
+	// load private key
+	privateKeyBytes, err := os.ReadFile("../pep.key")
+	if err != nil {
+		return nil, fmt.Errorf("private key not found: %w", err)
+	}
+	signingRSAPrivateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("jwt.ParseRSAPrivateKeyFromPEM failed: %w", err)
 	}
@@ -146,12 +157,46 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 
 	// add required headers
 	request.Header = http.Header{
-		kContentTypeKey:   {kContentTypeJSONValue},
-		kAuthorizationKey: {fmt.Sprintf("Bearer %s", a.accessToken)},
-		kAcceptKey:        {kContentTypeJSONValue},
+		kContentTypeKey: {kContentTypeJSONValue},
+		//kAuthorizationKey: {fmt.Sprintf("Bearer %s", a.accessToken)},
+		kAcceptKey: {kContentTypeJSONValue},
 	}
+	// Load the client's certificate and private key
+	certificate, err := tls.LoadX509KeyPair("../pep.crt", "../pep.key")
+	if err != nil {
+		log.Fatalf("could not load client key pair: %s", err)
+	}
+	caCert, err := os.ReadFile("../ca.crt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
 
-	client := &http.Client{}
+	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      caCertPool,
+	}
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+	client := &http.Client{Transport: transport}
+
+	// ++++++++++
+	//kasPubKeyURL, err := url.JoinPath(fmt.Sprintf("%v/v2", kasURL), kasPath)
+	//if err != nil {
+	//	return nil, fmt.Errorf("url.Parse failed: %w", err)
+	//}
+	//request, err = http.NewRequestWithContext(context.Background(), http.MethodGet, kasPubKeyURL, nil)
+	//if err != nil {
+	//	return nil, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
+	//}
+	//// add required headers
+	//request.Header = http.Header{
+	//	kAcceptKey: {kContentTypeJSONValue},
+	//}
+	// ++++++++++
 
 	response, err := client.Do(request)
 	if err != nil {
@@ -163,10 +208,44 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 }
 
 func (a *AuthConfig) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
+	// load certificate
+	certificateBytes, err := os.ReadFile("../pep.crt")
+	if err != nil {
+		return nil, fmt.Errorf("private key not found: %w", err)
+	}
+
+	block, _ := pem.Decode(certificateBytes)
+	if block == nil {
+		log.Fatalf("Failed to parse the PEM certificate")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		log.Fatalf("Failed to parse the DER encoded certificate: %v", err)
+	}
+
+	pubKey := cert.PublicKey
+
+	// Use the public key...
+	pubKey, ok := pubKey.(*rsa.PublicKey)
+	if !ok {
+		log.Fatalf("It's not an RSA key")
+	}
+	// Marshal the public key to ASN.1 DER encoding.
+	pubASN1, err := x509.MarshalPKIXPublicKey(pubKey)
+	if err != nil {
+		log.Fatalf("Cannot Marshal rsa key to DER format: %s", err)
+	}
+	// Create a pem.Block with the public key.
+	pubBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pubASN1,
+	})
 	requestBody := RequestBody{
-		KeyAccess:       keyAccess,
-		Policy:          policy,
-		ClientPublicKey: a.dpopPublicKeyPEM,
+		KeyAccess: keyAccess,
+		Policy:    policy,
+		// replace with public key from certificate
+		ClientPublicKey: string(pubBytes),
 	}
 
 	response, err := a.makeKASRequest(kRewrapV2, &requestBody)
@@ -193,7 +272,11 @@ func (a *AuthConfig) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) 
 		return nil, fmt.Errorf("io.ReadAll failed: %w", err)
 	}
 
-	key, err := getWrappedKey(rewrapResponseBody, a.dpopPrivateKeyPEM)
+	privateKeyPEM, err := ioutil.ReadFile("../pep.key")
+	if err != nil {
+		log.Fatalf("Failed to read the PEM certificate: %v", err)
+	}
+	key, err := getWrappedKey(rewrapResponseBody, string(privateKeyPEM))
 	if err != nil {
 		return nil, fmt.Errorf("failed to unwrap the wrapped key:%w", err)
 	}
@@ -247,7 +330,27 @@ func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
 		kAcceptKey: {kContentTypeJSONValue},
 	}
 
-	client := &http.Client{}
+	// Load the client's certificate and private key
+	certificate, err := tls.LoadX509KeyPair("../pep.crt", "../pep.key")
+	if err != nil {
+		log.Fatalf("could not load client key pair: %s", err)
+	}
+	caCert, err := os.ReadFile("../ca.crt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      caCertPool,
+	}
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+	client := &http.Client{Transport: transport}
 
 	response, err := client.Do(request)
 	defer func() {
@@ -259,6 +362,9 @@ func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
 			slog.Error("Fail to close HTTP response")
 		}
 	}()
+	if err != nil {
+		return "", fmt.Errorf("client.Do error: %w", err)
+	}
 	if response.StatusCode != kHTTPOk {
 		return "", fmt.Errorf("client.Do failed: %w", err)
 	}

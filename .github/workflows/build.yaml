@@ -1,0 +1,31 @@
+# This is a GitHub action that will have two jobs: build and publish
+# The build job will create a Golang Docker image with a production target for multiple architectures
+# The publishing job will push the image to GitHub packages with the commit sha and build number as labels
+# The image will also have some metadata labels about the build
+# act --secret-file act.env --container-architecture linux/amd64 --workflows .github/workflows/build.yaml
+name: build
+on:
+  push:
+jobs:
+  # This job will build the image using ubuntu
+  binary:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22
+      # Build a linux application
+      - name: Build Service
+        # Build optimized
+        run: |
+          go work init protocol/go lib/ocrypto sdk service
+          CGO_ENABLED=1 GOARCH=amd64 GOOS=linux go build -o tdfsvc -a -installsuffix=cgo -ldflags="-s -w -extldflags -static" service/main.go
+      - name: Upload Go binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: tdfsvc-${{ github.sha }}
+          path: ./tdfsvc

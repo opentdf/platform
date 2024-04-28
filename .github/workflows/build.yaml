@@ -25,7 +25,7 @@ jobs:
           go work init protocol/go lib/ocrypto sdk service
           CGO_ENABLED=1 GOARCH=amd64 GOOS=linux go build -o tdfsvc -a -installsuffix=cgo -ldflags="-s -w -extldflags -static" service/main.go
       - name: Upload Go binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tdfsvc-${{ github.sha }}
           path: ./tdfsvc

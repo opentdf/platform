@@ -124,19 +124,19 @@ type verifiedRequest struct {
 }
 
 func (p *Provider) verifyBearerAndParseRequestBody(ctx context.Context, in *kaspb.RewrapRequest) (*verifiedRequest, error) {
-	idToken, err := p.OIDCVerifier.Verify(ctx, in.GetBearer())
-	if err != nil {
-		slog.WarnContext(ctx, "unable verify bearer token", "err", err, "bearer", in.GetBearer(), "oidc", p.OIDCVerifier)
-		return nil, err403("403")
-	}
+	//idToken, err := p.OIDCVerifier.Verify(ctx, in.GetBearer())
+	//if err != nil {
+	//	slog.WarnContext(ctx, "unable verify bearer token", "err", err, "bearer", in.GetBearer(), "oidc", p.OIDCVerifier)
+	//	return nil, err403("403")
+	//}
 
 	var cl customClaimsHeader
-	err = idToken.Claims(&cl)
-	if err != nil {
-		slog.WarnContext(ctx, "unable parse claims", "err", err)
-		return nil, err403("403")
-	}
-	slog.DebugContext(ctx, "verified", "claims", cl)
+	//err = idToken.Claims(&cl)
+	//if err != nil {
+	//	slog.WarnContext(ctx, "unable parse claims", "err", err)
+	//	return nil, err403("403")
+	//}
+	//slog.DebugContext(ctx, "verified", "claims", cl)
 
 	requestToken, err := jwt.ParseSigned(in.GetSignedRequestToken())
 	if err != nil {
@@ -234,13 +234,13 @@ func (p *Provider) verifyAndParsePolicy(ctx context.Context, requestBody *Reques
 
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	slog.DebugContext(ctx, "REWRAP")
-	bearer, err := legacyBearerToken(ctx, in.GetBearer())
-	if err != nil {
-		return nil, err
-	}
-	in.Bearer = bearer
+	//bearer, err := legacyBearerToken(ctx, in.GetBearer())
+	//if err != nil {
+	//	return nil, err
+	//}
+	//in.Bearer = bearer
 
-	slog.DebugContext(ctx, "not a 401, probably", "oidcRequestToken", bearer)
+	//slog.DebugContext(ctx, "not a 401, probably", "oidcRequestToken", bearer)
 	body, err := p.verifyBearerAndParseRequestBody(ctx, in)
 	if err != nil {
 		return nil, err

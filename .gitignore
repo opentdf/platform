@@ -40,3 +40,4 @@ tmp-gen/
 
 *.zip
 sensitive.txt.tdf
+/act.env

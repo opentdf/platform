@@ -28,8 +28,8 @@ func (c *config) build() []grpc.DialOption {
 	return []grpc.DialOption{c.tls}
 }
 
-// WithInsecureSkipVerifyGrpcConn returns an Option that sets up HTTPS connection without verification.
-func WithInsecureSkipVerifyGrpcConn() Option {
+// WithInsecureSkipVerifyConn returns an Option that sets up HTTPS connection without verification.
+func WithInsecureSkipVerifyConn() Option {
 	return func(c *config) {
 		c.tls = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
 			InsecureSkipVerify: true, // #nosec G402
@@ -37,8 +37,8 @@ func WithInsecureSkipVerifyGrpcConn() Option {
 	}
 }
 
-// WithInsecurePlaintextGrpcConn returns an Option that sets up HTTP connection sent in the clear.
-func WithInsecurePlaintextGrpcConn() Option {
+// WithInsecurePlaintextConn returns an Option that sets up HTTP connection sent in the clear.
+func WithInsecurePlaintextConn() Option {
 	return func(c *config) {
 		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}

@@ -32,7 +32,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	// Create new offline client
 
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
-		sdk.WithInsecureSkipVerifyGrpcConn(),
+		sdk.WithInsecureSkipVerifyConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("https://console-openshift-console.apps.dsp.shp.virtru.us/k8s/ns/platform-helm-install/core~v1~Pod"),
 	)

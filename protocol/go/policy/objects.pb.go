@@ -716,9 +716,9 @@ func (x *SubjectMapping) GetMetadata() *common.Metadata {
 }
 
 // *
-// A Condition defines a rule of <the value by a jq 'selector value' expression> <operator> <subject external values>
+// A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values>
 //
-// Example:  Subjects with a field selected by the jq syntax "'.division'" and a value of "Accounting" or "Marketing":
+// Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":
 // {
 // "subject_external_selector_value": "'.division'",
 // "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
@@ -736,11 +736,11 @@ type Condition struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// a jq syntax expression to select a value from an externally known field (such as from idP/LDAP)
+	// a selector for a field value on a flattened Entity Representation (such as from idP/LDAP)
 	SubjectExternalSelectorValue string `protobuf:"bytes,1,opt,name=subject_external_selector_value,json=subjectExternalSelectorValue,proto3" json:"subject_external_selector_value,omitempty"`
 	// the evaluation operator of relation
 	Operator SubjectMappingOperatorEnum `protobuf:"varint,2,opt,name=operator,proto3,enum=policy.SubjectMappingOperatorEnum" json:"operator,omitempty"`
-	// list of comparison values for the result of applying the subject_external_selector_value with jq on a Subject, evaluated by the operator
+	// list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator
 	SubjectExternalValues []string `protobuf:"bytes,3,rep,name=subject_external_values,json=subjectExternalValues,proto3" json:"subject_external_values,omitempty"`
 }
 
@@ -973,8 +973,8 @@ func (x *SubjectConditionSet) GetMetadata() *common.Metadata {
 // from an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.
 // For now, a valid property must contain both a selector expression & a resulting value.
 //
-// The external_selector_value is a jq syntax expression to select a value from an externally known field (such as from idP/LDAP),
-// and the external_value is the value selected by the external_selector_value on that Subject's Context. These mirror the Condition.
+// The external_selector_value is a specifier to select a value from a flattened external representation of an Entity (such as from idP/LDAP),
+// and the external_value is the value selected by the external_selector_value on that Entity Representation (Subject Context). These mirror the Condition.
 type SubjectProperty struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

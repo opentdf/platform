@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -111,7 +112,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(attr)
 	s.Equal(valueFixture.AttributeDefinitionId, attr.GetId())
 
@@ -122,6 +123,32 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 	for _, v := range attr.GetValues() {
 		if v.GetId() == valueFixture.Id {
 			s.Equal(fullFqn, v.GetFqn())
+			s.Equal(valueFixture.Id, v.GetId())
+			s.Equal(valueFixture.Value, v.GetValue())
+			// the value should contain subject mappings
+			s.GreaterOrEqual(len(v.GetSubjectMappings()), 3)
+		}
+	}
+}
+
+// Test Get one attribute by the FQN of one of its values
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithCasingNormalized() {
+	fqnFixtureKey := "example.com/attr/attr1/value/value1"
+	fullFqn := strings.ToUpper(fmt.Sprintf("https://%s", fqnFixtureKey))
+	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
+
+	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+	s.NotNil(attr)
+	s.Equal(valueFixture.AttributeDefinitionId, attr.GetId())
+
+	// there should be more than one value on the attribute
+	s.Greater(len(attr.GetValues()), 1)
+
+	// the value should match the fixture (verify by looping through and matching the fqn)
+	for _, v := range attr.GetValues() {
+		if v.GetId() == valueFixture.Id {
+			s.Equal(strings.ToLower(fullFqn), v.GetFqn())
 			s.Equal(valueFixture.Id, v.GetId())
 			s.Equal(valueFixture.Value, v.GetValue())
 			// the value should contain subject mappings

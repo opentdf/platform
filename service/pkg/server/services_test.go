@@ -89,7 +89,7 @@ func (suite *ServiceTestSuite) BeforeTest(_, _ string) {
 func (suite *ServiceTestSuite) TestRegisterServicesIsSuccessful() {
 	t := suite.T()
 	err := registerServices()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {

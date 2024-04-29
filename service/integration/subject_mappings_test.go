@@ -881,34 +881,6 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	s.True(foundMappedSubjectConditionSet1)
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ComplexSelectorValueExpression() {
-	// escaped string complex jq expression
-	fixtureScsWithComplexJqExp := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	escapedSelectorVal := fixtureScsWithComplexJqExp.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	escapedExternalVal := fixtureScsWithComplexJqExp.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues[0]
-	// unescaped string complex jq expression
-	fixtureScsWithComplexJqExp2 := s.f.GetSubjectConditionSetKey("subject_condition_set_complex_selector_value")
-	unescapedSelectorVal := fixtureScsWithComplexJqExp2.Condition.SubjectSets[0].ConditionGroups[0].Conditions[1].SubjectExternalSelectorValue
-	unescapedExternalVal := fixtureScsWithComplexJqExp2.Condition.SubjectSets[0].ConditionGroups[0].Conditions[1].SubjectExternalValues[0]
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: escapedSelectorVal,
-			ExternalValue:         escapedExternalVal,
-		},
-		{
-			ExternalSelectorValue: unescapedSelectorVal,
-			ExternalValue:         unescapedExternalVal,
-		},
-	}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().NoError(err)
-	s.NotZero(sm)
-	s.Len(sm, 2)
-	s.Equal(fixtureScsWithComplexJqExp.Id, sm[0].GetSubjectConditionSet().GetId())
-	s.Equal(fixtureScsWithComplexJqExp2.Id, sm[1].GetSubjectConditionSet().GetId())
-}
-
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
 	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue

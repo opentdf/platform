@@ -5,15 +5,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
-        "io"
-        "strings"
+	"io"
+	"strings"
 
-        "golang.org/x/crypto/hkdf"
+	"golang.org/x/crypto/hkdf"
 )
 
 type ECCMode uint8

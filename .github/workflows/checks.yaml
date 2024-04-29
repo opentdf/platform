@@ -109,7 +109,6 @@ jobs:
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
-      - run: docker compose up -d --wait --wait-timeout 240
       - run: |
           .github/scripts/init-temp-keys.sh --hsm
           cp opentdf-with-hsm.yaml opentdf.yaml
@@ -118,6 +117,13 @@ jobs:
           .github/scripts/init-temp-keys.sh
           cp opentdf-dev.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
+      - name: Added Trusted Certs
+        run: |
+          sudo chmod -R 777 ./keys 
+          sudo apt-get install -y ca-certificates
+          sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
+          sudo update-ca-certificates
+      - run: docker compose up -d --wait --wait-timeout 240
       - run: go run ./service provision keycloak
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background

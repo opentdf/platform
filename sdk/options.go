@@ -22,6 +22,7 @@ type config struct {
 	policyConn        *grpc.ClientConn
 	authorizationConn *grpc.ClientConn
 	extraDialOptions  []grpc.DialOption
+	certExchange      *oauth.CertExchangeInfo
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -49,6 +50,12 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 	return func(c *config) {
 		c.clientCredentials = &oauth.ClientCredentials{ClientID: clientID, ClientAuth: clientSecret}
 		c.scopes = scopes
+	}
+}
+
+func WithTLSCredentials(tls *tls.Config, audience []string) Option {
+	return func(c *config) {
+		c.certExchange = &oauth.CertExchangeInfo{TLSConfig: tls, Audience: audience}
 	}
 }
 

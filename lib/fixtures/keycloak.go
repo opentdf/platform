@@ -244,11 +244,12 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientID: gocloak.StringP(opentdfSdkClientID),
 		Enabled:  gocloak.BoolP(true),
 		// OptionalClientScopes:    &[]string{"testscope"},
-		Name:                    gocloak.StringP(opentdfSdkClientID),
-		ServiceAccountsEnabled:  gocloak.BoolP(true),
-		ClientAuthenticatorType: gocloak.StringP("client-secret"),
-		Secret:                  gocloak.StringP("secret"),
-		ProtocolMappers:         &protocolMappers,
+		Name:                      gocloak.StringP(opentdfSdkClientID),
+		ServiceAccountsEnabled:    gocloak.BoolP(true),
+		ClientAuthenticatorType:   gocloak.StringP("client-secret"),
+		Secret:                    gocloak.StringP("secret"),
+		DirectAccessGrantsEnabled: gocloak.BoolP(true),
+		ProtocolMappers:           &protocolMappers,
 	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil)
 	if err != nil {
 		return err
@@ -310,6 +311,9 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 
 	// Create token exchange opentdf->opentdf sdk
 	if err := createTokenExchange(ctx, &kcConnectParams, opentdfClientID, opentdfSdkClientID); err != nil {
+		return err
+	}
+	if err := createCertExchange(ctx, &kcConnectParams, "x509-auth-flow", opentdfSdkClientID); err != nil {
 		return err
 	}
 
@@ -830,5 +834,144 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 		slog.Error("Error creating permission scope : %s", err)
 		return err
 	}
+	return nil
+}
+
+func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParams, topLevelFlowName, clientID string) error {
+	client, token, err := keycloakLogin(ctx, connectParams)
+	if err != nil {
+		return err
+	}
+
+	providerID := "basic-flow"
+	builtIn := false
+	topLevel := true
+	desc := "X509 Direct Grant Flow"
+
+	if err := client.CreateAuthenticationFlow(ctx, token.AccessToken, connectParams.Realm,
+		gocloak.AuthenticationFlowRepresentation{
+			Alias:       &topLevelFlowName,
+			ProviderID:  &providerID,
+			BuiltIn:     &builtIn,
+			Description: &desc,
+			TopLevel:    &topLevel,
+		}); err != nil {
+		switch kcErrCode(err) {
+		case http.StatusConflict:
+			slog.Warn(fmt.Sprintf("⏭️  authentication flow %s already exists; skipping remainder of cert exchange creation", topLevelFlowName))
+			return nil
+		default:
+			slog.Error(fmt.Sprintf("Error create realm certificate authentication flow: %s", err))
+			return err
+		}
+	}
+
+	provider := "direct-grant-auth-x509-username"
+	if err := client.CreateAuthenticationExecution(ctx, token.AccessToken, connectParams.Realm,
+		topLevelFlowName, gocloak.CreateAuthenticationExecutionRepresentation{
+			Provider: &provider,
+		}); err != nil {
+		slog.Error(fmt.Sprintf("Error create realm management policy: %s", err))
+		return err
+	}
+
+	authExecutions, err := client.GetAuthenticationExecutions(ctx, token.AccessToken, connectParams.Realm, topLevelFlowName)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error gettings executions %s", err))
+		return err
+	}
+	if len(authExecutions) != 1 {
+		err = fmt.Errorf("expected a single flow execution for %s", topLevelFlowName)
+		slog.Error("Error setting up authentication flow", err)
+		return err
+	}
+
+	requiredRequirement := "REQUIRED"
+	execution := authExecutions[0]
+	executionConfig := make(map[string]any)
+	executionConfig["alias"] = fmt.Sprintf("%s X509 Validate Username", topLevelFlowName)
+	config := make(map[string]any)
+	config["x509-cert-auth.mapping-source-selection"] = "Subject's Common Name"
+	config["x509-cert-auth.canonical-dn-enabled"] = false
+	config["x509-cert-auth.serialnumber-hex-enabled"] = false
+	config["x509-cert-auth.regular-expression"] = "CN=(.*?)(?:,|$)"
+	config["x509-cert-auth.mapper-selection"] = "Username or Email"
+	config["x509-cert-auth.timestamp-validation-enabled"] = true
+	config["x509-cert-auth.crl-checking-enabled"] = false
+	config["x509-cert-auth.crldp-checking-enabled"] = false
+	config["x509-cert-auth.ocsp-checking-enabled"] = false
+	config["x509-cert-auth.ocsp-fail-open"] = false
+	config["x509-cert-auth.ocsp-responder-uri"] = ""
+	config["x509-cert-auth.ocsp-responder-certificate"] = ""
+	config["x509-cert-auth.keyusage"] = ""
+	config["x509-cert-auth.extendedkeyusage"] = ""
+	config["x509-cert-auth.confirmation-page-disallowed"] = false
+	config["x509-cert-auth.revalidate-certificate-enabled"] = false
+	config["x509-cert-auth.certificate-policy"] = ""
+	config["x509-cert-auth.certificate-policy-mode"] = "All"
+	executionConfig["config"] = config
+	if err := updateExecutionConfig(ctx, client, execution, connectParams, token.AccessToken, executionConfig); err != nil {
+		slog.Error(fmt.Sprintf("Error updating x509 auth flow configs %s : %s", clientID, err))
+		return err
+	}
+
+	execution.Requirement = &requiredRequirement
+	if err := client.UpdateAuthenticationExecution(ctx, token.AccessToken, connectParams.Realm, topLevelFlowName, *execution); err != nil {
+		slog.Error(fmt.Sprintf("Error updating x509 auth flow requjirement %s : %s", clientID, err))
+		return err
+	}
+
+	authFlows, err := client.GetAuthenticationFlows(ctx, token.AccessToken, connectParams.Realm)
+	if err != nil {
+		return err
+	}
+	var flowID *string
+	for _, flow := range authFlows {
+		if flow.Alias != nil && *flow.Alias == topLevelFlowName {
+			flowID = flow.ID
+			break
+		}
+	}
+	if flowID == nil {
+		return fmt.Errorf("could not find flow %s despite making it", topLevelFlowName)
+	}
+
+	clients, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: gocloak.StringP(clientID)})
+	if err != nil {
+		return err
+	}
+	if len(clients) != 1 {
+		return fmt.Errorf("could not find client")
+	}
+	updatedClient := clients[0]
+
+	flowBindings := make(map[string]string)
+	flowBindings["direct_grant"] = *flowID
+	updatedClient.AuthenticationFlowBindingOverrides = &flowBindings
+	if err := client.UpdateClient(ctx, token.AccessToken, connectParams.Realm, *updatedClient); err != nil {
+		slog.Error(fmt.Sprintf("Error updating client auth flow binding overrides %s : %s", clientID, err))
+		return err
+	}
+
+	slog.Info(fmt.Sprintf("✅ Created Cert Exchange Authentication %s", *flowID))
+
+	return nil
+}
+
+// updateExecutionConfig Posts an authentication execution config (body) to keycloak for a given execution
+func updateExecutionConfig(ctx context.Context, client *gocloak.GoCloak, execution *gocloak.ModifyAuthenticationExecutionRepresentation,
+	connectParams *KeycloakConnectParams, accessToken string, body interface{}) error {
+	updateURL := fmt.Sprintf("%s/admin/realms/%s/authentication/executions/%s/config", connectParams.BasePath,
+		connectParams.Realm, *execution.ID)
+	resp, respErr := client.GetRequestWithBearerAuth(ctx, accessToken).SetBody(body).
+		Post(updateURL)
+	if respErr != nil {
+		return respErr
+	}
+	statusCode := resp.RawResponse.StatusCode
+	if statusCode != http.StatusCreated {
+		return fmt.Errorf("received %d response to configuration request", statusCode)
+	}
+
 	return nil
 }

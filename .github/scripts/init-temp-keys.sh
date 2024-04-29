@@ -75,3 +75,21 @@ if [ "$opt_hsm" = true ]; then
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}" --write-object kas-ec-private.pem --type privkey --label "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_EC_LABEL}" --usage-derive
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}" --write-object kas-ec-cert.pem --type cert --label "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_EC_LABEL}"
 fi
+
+mkdir -p keys
+openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=ca" -keyout keys/keycloak-ca-private.pem -out keys/keycloak-ca.pem -days 365
+printf "subjectAltName=DNS:localhost,IP:127.0.0.1" > keys/sanX509.conf
+printf "[req]\ndistinguished_name=req_distinguished_name\n[req_distinguished_name]\n[alt_names]\nDNS.1=localhost\nIP.1=127.0.0.1" > keys/req.conf
+openssl req -new -nodes -newkey rsa:2048 -keyout keys/localhost.key -out keys/localhost.req -batch -subj "/CN=localhost" -config keys/req.conf
+openssl x509 -req -in keys/localhost.req -CA keys/keycloak-ca.pem  -CAkey keys/keycloak-ca-private.pem -CAcreateserial -out keys/localhost.crt -days 3650 -sha256 -extfile keys/sanX509.conf
+openssl req -new -nodes -newkey rsa:2048 -keyout keys/sampleuser.key -out keys/sampleuser.req -batch -subj "/CN=sampleuser"
+openssl x509 -req -in keys/sampleuser.req -CA keys/keycloak-ca.pem  -CAkey keys/keycloak-ca-private.pem -CAcreateserial -out keys/sampleuser.crt -days 3650
+
+openssl pkcs12 -export -in keys/keycloak-ca.pem -inkey keys/keycloak-ca-private.pem -out keys/ca.p12 -nodes -passout pass:password
+docker run -v $(pwd)/keys:/keys openjdk:latest keytool -importkeystore -srckeystore /keys/ca.p12 \
+                                      -srcstoretype PKCS12 \
+                                      -destkeystore /keys/ca.jks \
+                                      -deststoretype JKS \
+                                      -srcstorepass "password" \
+                                      -deststorepass "password" \
+                                      -noprompt

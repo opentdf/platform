@@ -3,6 +3,7 @@ package sdk
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -121,17 +122,25 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
+	if c.certExchange != nil && c.tokenExchange != nil {
+		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
+	}
+
 	var ts auth.AccessTokenSource
 	var err error
-	if c.tokenExchange == nil {
-		ts, err = NewIDPAccessTokenSource(
+
+	switch {
+	case c.certExchange != nil:
+		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint)
+	case c.tokenExchange != nil:
+		ts, err = NewIDPTokenExchangeTokenSource(
+			*c.tokenExchange,
 			*c.clientCredentials,
 			c.tokenEndpoint,
 			c.scopes,
 		)
-	} else {
-		ts, err = NewIDPTokenExchangeTokenSource(
-			*c.tokenExchange,
+	default:
+		ts, err = NewIDPAccessTokenSource(
 			*c.clientCredentials,
 			c.tokenEndpoint,
 			c.scopes,

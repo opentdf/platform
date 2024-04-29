@@ -1,0 +1,16 @@
+name: Sync Issues to Central Project
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  add-to-project:
+    name: Add issue to project
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/add-to-project@9bfe908f2eaa7ba10340b31e314148fcfe6a2458
+        with:
+          project-url: https://github.com/orgs/virtru-corp/projects/12
+          github-token: ${{ secrets.PROJECT_SYNC_PAT }}

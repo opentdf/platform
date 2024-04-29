@@ -10,11 +10,9 @@ import (
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
@@ -55,19 +53,13 @@ func Start(f ...StartOptions) error {
 	}
 	defer eng.Stop(ctx)
 
-	slog.Info("creating database client")
-	dbClient, err := db.NewClient(conf.DB)
-	if err != nil {
-		return fmt.Errorf("issue creating database client: %w", err)
-	}
-	defer dbClient.Close()
-
 	// Required services
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
+	slog.Info("init opentdf server")
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	otdf, err := server.NewOpenTDFServer(conf.Server, dbClient)
+	otdf, err := server.NewOpenTDFServer(conf.Server)
 	if err != nil {
 		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
@@ -98,19 +90,30 @@ func Start(f ...StartOptions) error {
 		slog.Error("issue creating sdk client", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating sdk client: %w", err)
 	}
-
 	defer client.Close()
 
 	slog.Info("starting services")
-	if err := startServices(*conf, otdf, dbClient, eng, client); err != nil {
+	closeServices, services, err := startServices(ctx, *conf, otdf, eng, client)
+	if err != nil {
 		slog.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
+	defer closeServices()
 
 	// Start the server
 	slog.Info("starting opentdf")
-
 	otdf.Start()
+
+	// Print out the registered services
+	slog.Info("services running")
+	for _, service := range services {
+		slog.Info(
+			"service running",
+			slog.String("namespace", service.Registration.Namespace),
+			slog.String("service", service.ServiceDesc.ServiceName),
+			slog.Bool("database", service.Registration.DB.Required),
+		)
+	}
 
 	if startConfig.WaitForShutdownSignal {
 		waitForShutdownSignal()
@@ -124,43 +127,4 @@ func waitForShutdownSignal() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
-}
-
-func startServices(cfg config.Config, otdf *server.OpenTDFServer, dbClient *db.Client, eng *opa.Engine, client *sdk.SDK) error {
-	// Iterate through the registered namespaces
-	for ns, registers := range serviceregistry.RegisteredServices {
-		// Check if the service is enabled
-		if !cfg.Services[ns].Enabled {
-			slog.Debug("start service skipped", slog.String("namespace", ns))
-			continue
-		}
-
-		for _, r := range registers {
-			// Create the service
-			impl, handler := r.RegisterFunc(serviceregistry.RegistrationParams{
-				Config:          cfg.Services[ns],
-				OTDF:            otdf,
-				DBClient:        dbClient,
-				Engine:          eng,
-				SDK:             client,
-				WellKnownConfig: wellknown.RegisterConfiguration,
-			})
-
-			// Register the service with the gRPC server
-			otdf.GRPCServer.RegisterService(r.ServiceDesc, impl)
-
-			// Register the service with in process gRPC server
-			otdf.GRPCInProcess.GetGrpcServer().RegisterService(r.ServiceDesc, impl)
-
-			// Register the service with the gRPC gateway
-			if err := handler(context.Background(), otdf.Mux, impl); err != nil {
-				slog.Error("failed to start service", slog.String("namespace", r.Namespace), slog.String("error", err.Error()))
-				return err
-			}
-
-			slog.Info("started service", slog.String("namespace", ns), slog.String("service", r.ServiceDesc.ServiceName))
-		}
-	}
-
-	return nil
 }

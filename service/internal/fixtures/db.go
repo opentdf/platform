@@ -14,14 +14,14 @@ import (
 
 type DBInterface struct {
 	Client       *db.Client
-	PolicyClient *policydb.PolicyDBClient
+	PolicyClient policydb.PolicyDBClient
 	Schema       string
 }
 
 func NewDBInterface(cfg config.Config) DBInterface {
 	config := cfg.DB
 	config.Schema = cfg.DB.Schema
-	c, err := db.NewClient(config)
+	c, err := db.New(context.Background(), config)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		panic(err)
@@ -29,7 +29,7 @@ func NewDBInterface(cfg config.Config) DBInterface {
 	return DBInterface{
 		Client:       c,
 		Schema:       config.Schema,
-		PolicyClient: policydb.NewClient(*c),
+		PolicyClient: policydb.NewClient(c),
 	}
 }
 

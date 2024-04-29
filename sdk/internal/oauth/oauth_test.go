@@ -5,6 +5,9 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -29,9 +32,10 @@ import (
 
 type OAuthSuite struct {
 	suite.Suite
-	dpopJWK           jwk.Key
-	keycloakContainer tc.Container
-	keycloakEndpoint  string
+	dpopJWK               jwk.Key
+	keycloakContainer     tc.Container
+	keycloakEndpoint      string
+	keycloakHTTPSEndpoint string
 }
 
 func TestOAuthTestSuite(t *testing.T) {
@@ -53,13 +57,62 @@ func (s *OAuthSuite) SetupSuite() {
 	s.dpopJWK = dpopJWK
 	ctx := context.Background()
 
-	keycloak, idpEndpoint := setupKeycloak(ctx, s.T())
+	keycloak, idpEndpoint, idpHTTPSEndpoint := setupKeycloak(ctx, s.T())
 	s.keycloakContainer = keycloak
 	s.keycloakEndpoint = idpEndpoint
+	s.keycloakHTTPSEndpoint = idpHTTPSEndpoint
 }
 
 func (s *OAuthSuite) TearDownSuite() {
 	_ = s.keycloakContainer.Terminate(context.Background())
+}
+
+//go:embed testdata/keycloak-ca.pem
+var ca []byte
+
+func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
+	clientCredentials := ClientCredentials{
+		ClientID:   "opentdf-sdk",
+		ClientAuth: "secret",
+	}
+	cert, err := tls.LoadX509KeyPair("testdata/sampleuser.crt", "testdata/sampleuser.key")
+	rootCAs, _ := x509.SystemCertPool()
+	rootCAs.AppendCertsFromPEM(ca)
+	s.Require().NoError(err)
+	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: rootCAs}
+	exhcangeInfo := CertExchangeInfo{TLSConfig: &tlsConfig, Audience: []string{"opentdf-sdk"}}
+
+	tok, err := DoCertExchange(
+		context.Background(),
+		s.keycloakHTTPSEndpoint,
+		exhcangeInfo,
+		clientCredentials,
+		s.dpopJWK)
+	s.Require().NoError(err)
+
+	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
+	s.Require().NoError(err)
+
+	cnfClaim, ok := tokenDetails.Get("cnf")
+	s.Require().True(ok)
+	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
+	s.Require().True(ok)
+	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
+	s.Require().True(ok)
+	s.Require().NotEmpty(idpKeyFingerprint)
+	pk, err := s.dpopJWK.PublicKey()
+	s.Require().NoError(err)
+	hash, err := pk.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+
+	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
+	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
+	s.Greaterf(tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
+	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
+
+	name, ok := tokenDetails.Get("name")
+	s.Require().True(ok)
+	s.Equal("sample user", name, "got unexpected name")
 }
 
 func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
@@ -73,6 +126,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 		[]string{"testscope"},
 		clientCredentials,
 		s.dpopJWK)
+
 	s.Require().NoError(err)
 
 	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
@@ -477,16 +531,31 @@ func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 	return clientTok
 }
 
-func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
+func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, string) {
 	containerReq := tc.ContainerRequest{
 		Image:        "ghcr.io/opentdf/keycloak:sha-8a6d35a",
-		ExposedPorts: []string{"8082/tcp"},
-		Cmd:          []string{"start-dev", "--http-port=8082", "--features=preview"},
-		Files:        []tc.ContainerFile{},
-		Env: map[string]string{
-			"KEYCLOAK_ADMIN":          "admin",
-			"KEYCLOAK_ADMIN_PASSWORD": "admin",
+		ExposedPorts: []string{"8082/tcp", "8083/tcp"},
+		Cmd: []string{"start-dev", "--http-port=8082", "--https-port=8083", "--features=preview", "--verbose",
+			"-Djavax.net.ssl.trustStorePassword=password", "-Djavax.net.ssl.HostnameVerifier=AllowAll",
+			"-Djavax.net.debug=ssl",
+			"-Djavax.net.ssl.trustStore=/truststore/truststore.jks",
+			"--spi-truststore-file-hostname-verification-policy=ANY",
 		},
+		Files: []tc.ContainerFile{
+			{HostFilePath: "testdata/ca.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o777)},
+			{HostFilePath: "testdata/localhost.crt", ContainerFilePath: "/etc/x509/tls/localhost.crt", FileMode: int64(0o777)},
+			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o777)},
+		},
+		Env: map[string]string{
+			"KEYCLOAK_ADMIN":                "admin",
+			"KEYCLOAK_ADMIN_PASSWORD":       "admin",
+			"KC_HTTPS_KEY_STORE_PASSWORD":   "password",
+			"KC_HTTPS_KEY_STORE_FILE":       "/truststore/truststore.jks",
+			"KC_HTTPS_CERTIFICATE_FILE":     "/etc/x509/tls/localhost.crt",
+			"KC_HTTPS_CERTIFICATE_KEY_FILE": "/etc/x509/tls/localhost.key",
+			"KC_HTTPS_CLIENT_AUTH":          "request",
+		},
+
 		WaitingFor: wait.ForLog("Running the server"),
 	}
 
@@ -509,6 +578,9 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 	port, _ := keycloak.MappedPort(ctx, "8082")
 	keycloakBase := fmt.Sprintf("http://localhost:%s", port.Port())
 
+	httpPort, _ := keycloak.MappedPort(ctx, "8083")
+	keycloakHTTPSBase := fmt.Sprintf("https://localhost:%s", httpPort.Port())
+
 	realm := "test"
 
 	connectParams := fixtures.KeycloakConnectParams{
@@ -523,5 +595,5 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 	err = fixtures.SetupKeycloak(ctx, connectParams)
 	require.NoError(t, err)
 
-	return keycloak, keycloakBase + "/realms/" + realm + "/protocol/openid-connect/token"
+	return keycloak, keycloakBase + "/realms/" + realm + "/protocol/openid-connect/token", keycloakHTTPSBase + "/realms/" + realm + "/protocol/openid-connect/token"
 }

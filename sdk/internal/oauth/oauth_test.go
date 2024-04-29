@@ -320,7 +320,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 
 		w.Header().Add("content-type", "application/json")
 		l, err := w.Write(responseBytes)
-		s.Equal(len(responseBytes), l)
+		s.Len(responseBytes, l)
 		s.Require().NoError(err)
 	}))
 	defer server.Close()
@@ -437,7 +437,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 
 		w.Header().Add("content-type", "application/json")
 		l, err := w.Write(responseBytes)
-		s.Equal(len(responseBytes), l)
+		s.Len(responseBytes, l)
 		s.Require().NoError(err)
 	}))
 	defer server.Close()

@@ -6,8 +6,6 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
 
-import "kasregistry/key_access_server_registry.proto";
-
 message Namespace {
   // generated uuid in database
   string id = 1;
@@ -39,7 +37,7 @@ message Attribute {
 
   repeated Value values = 5;
 
-  repeated kasregistry.KeyAccessServer grants = 6;
+  repeated KeyAccessServer grants = 6;
 
   string fqn = 7;
 
@@ -70,7 +68,7 @@ message Value {
   repeated Value members = 4;
 
   // list of key access servers
-  repeated kasregistry.KeyAccessServer grants = 5;
+  repeated KeyAccessServer grants = 5;
 
   string fqn = 6;
 
@@ -99,7 +97,7 @@ message Action {
 }
 
 /*
-    Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
+   Subject Mapping (aka Access Control Subject Encoding aka ACSE):  Structures supporting the mapping of Subjects and Attributes (e.g. Entitlement)
 */
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
@@ -139,10 +137,9 @@ message SubjectMapping {
 
   // The actions permitted by subjects in this mapping
   repeated Action actions = 4;
-  
+
   common.Metadata metadata = 100;
 }
-
 
 /**
     A Condition defines a rule of <the value by a jq 'selector value' expression> <operator> <subject external values>
@@ -193,9 +190,9 @@ message SubjectSet {
 }
 
 /*
-  A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet
-  are evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple
-  Subject Mappings / Attribute Values and is an independent unit.
+   A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet
+   are evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple
+   Subject Mappings / Attribute Values and is an independent unit.
 */
 message SubjectConditionSet {
   string id = 1;
@@ -207,12 +204,12 @@ message SubjectConditionSet {
 
 /*
 
-  A property of a Subject/Entity as its selector expression -> value result pair. This would mirror external user attributes retrieved
-  from an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.
-  For now, a valid property must contain both a selector expression & a resulting value. 
+   A property of a Subject/Entity as its selector expression -> value result pair. This would mirror external user attributes retrieved
+   from an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.
+   For now, a valid property must contain both a selector expression & a resulting value.
 
-  The external_selector_value is a jq syntax expression to select a value from an externally known field (such as from idP/LDAP),
-  and the external_value is the value selected by the external_selector_value on that Subject's Context. These mirror the Condition.
+   The external_selector_value is a jq syntax expression to select a value from an externally known field (such as from idP/LDAP),
+   and the external_value is the value selected by the external_selector_value on that Subject's Context. These mirror the Condition.
 */
 message SubjectProperty {
   string external_selector_value = 1 [(buf.validate.field).required = true];
@@ -230,4 +227,31 @@ message ResourceMapping {
   policy.Value attribute_value = 3 [(buf.validate.field).required = true];
 
   repeated string terms = 4;
+}
+
+/*
+   Key Access Server Registry
+*/
+message KeyAccessServer {
+  string id = 1;
+  // Address of a KAS instance
+  string uri = 2;
+  PublicKey public_key = 3;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message PublicKey {
+  oneof public_key {
+    // kas public key url - optional since can also be retrieved via public key
+    string remote = 1 [(buf.validate.field).cel = {
+      id: "uri_format",
+      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
+    }];
+
+    // public key - optional since can also be retrieved via url
+    string local = 2;
+  }
 }

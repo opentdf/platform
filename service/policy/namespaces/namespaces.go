@@ -13,15 +13,14 @@ import (
 
 type NamespacesService struct {
 	namespaces.UnimplementedNamespaceServiceServer
-	dbClient *policydb.PolicyDBClient
+	dbClient policydb.PolicyDBClient
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
-		Namespace:   "policy",
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &NamespacesService{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &NamespacesService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return namespaces.RegisterNamespaceServiceHandlerServer(ctx, mux, server.(namespaces.NamespaceServiceServer))
 			}
 		},

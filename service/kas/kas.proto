@@ -42,8 +42,9 @@ message PublicKeyResponse {
 }
 
 message RewrapRequest {
+  reserved 2;
+  reserved "bearer";
   string signed_request_token = 1;
-  string bearer = 2;
 }
 
 message RewrapResponse {

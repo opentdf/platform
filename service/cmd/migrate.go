@@ -1,63 +1,48 @@
 package cmd
 
 import (
+	"context"
+	"embed"
 	"fmt"
 	"log/slog"
 
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/policy"
 	"github.com/spf13/cobra"
 )
 
 var (
+	serviceMigrations = map[string]*embed.FS{
+		"policy": policy.Migrations,
+	}
+
 	migrateCmd = &cobra.Command{
 		Use:   "migrate",
 		Short: "Run database migrations",
 	}
 
-	migrateDownCmd = &cobra.Command{
-		Use:   "down",
-		Short: "Run database migration down one version",
+	migrateUpCmd = &cobra.Command{
+		Use:   "up [service, ...]",
+		Short: "Run database migrations up to the latest version",
 		Run: func(cmd *cobra.Command, args []string) {
-			configFile, _ := cmd.Flags().GetString(configFileFlag)
-			configKey, _ := cmd.Flags().GetString(configKeyFlag)
-			cfg, err := config.LoadConfig(configKey, configFile)
-			if err != nil {
-				panic(fmt.Errorf("could not load config: %w", err))
-			}
-
-			dbClient, err := migrateDBClient(cfg)
-			if err != nil {
-				panic(fmt.Errorf("could not load config: %w", err))
-			}
-
-			err = dbClient.MigrationDown(cmd.Context())
-			if err != nil {
-				panic(fmt.Errorf("migration down failed: %w", err))
-			}
-			cmd.Println("migration down applied successfully")
+			migrateService(cmd, args, func(dbClient *db.Client, fs *embed.FS) {
+				if _, err := dbClient.RunMigrations(cmd.Context(), fs); err != nil {
+					panic(fmt.Errorf("migration up failed: %w", err))
+				}
+			})
 		},
 	}
-	migrateUpCmd = &cobra.Command{
-		Use:   "up",
-		Short: "Run database migrations up to the latest version",
-		Run: func(cmd *cobra.Command, _ []string) {
-			configFile, _ := cmd.Flags().GetString(configFileFlag)
-			configKey, _ := cmd.Flags().GetString(configKeyFlag)
-			cfg, err := config.LoadConfig(configKey, configFile)
-			if err != nil {
-				panic(fmt.Errorf("could not load config: %w", err))
-			}
-			dbClient, err := migrateDBClient(cfg)
-			if err != nil {
-				panic(fmt.Errorf("could not load config: %w", err))
-			}
 
-			count, err := dbClient.RunMigrations(cmd.Context())
-			if err != nil {
-				panic(fmt.Errorf("migration up failed: %w", err))
-			}
-			cmd.Printf("migration up applied: %d versions up\n", count)
+	migrateDownCmd = &cobra.Command{
+		Use:   "down [service, ...]",
+		Short: "Run database migration down one version",
+		Run: func(cmd *cobra.Command, args []string) {
+			migrateService(cmd, args, func(dbClient *db.Client, fs *embed.FS) {
+				if err := dbClient.MigrationDown(cmd.Context(), fs); err != nil {
+					panic(fmt.Errorf("migration down failed: %w", err))
+				}
+			})
 		},
 	}
 
@@ -65,39 +50,87 @@ var (
 		Use:   "status",
 		Short: "Show the status of the database migrations",
 		Run: func(cmd *cobra.Command, args []string) {
-			configFile, _ := cmd.Flags().GetString(configFileFlag)
-			configKey, _ := cmd.Flags().GetString(configKeyFlag)
-			cfg, err := config.LoadConfig(configKey, configFile)
-			if err != nil {
-				panic(fmt.Errorf("could not load config: %w", err))
-			}
-			dbClient, err := migrateDBClient(cfg)
+			c, err := migrateDBClient(cmd)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			status, err := dbClient.MigrationStatus(cmd.Context())
+			status, err := c.MigrationStatus(cmd.Context())
 			if err != nil {
 				panic(fmt.Errorf("migration status failed: %w", err))
 			}
 			for _, s := range status {
-				slog.Info("migration", slog.String("state", string(s.State)), slog.String("source", s.Source.Path), slog.String("applied_on", s.AppliedAt.String()))
+				slog.Info("migration",
+					slog.String("state", string(s.State)),
+					slog.String("source", s.Source.Path),
+					slog.String("applied_on",
+						s.AppliedAt.String()),
+				)
 			}
 		},
 	}
 )
 
-func migrateDBClient(conf *config.Config) (*db.Client, error) {
-	slog.Info("creating database client")
-	dbClient, err := db.NewClient(conf.DB)
-	if err != nil {
-		//nolint:wrapcheck // we want to return the error as is. the start command will wrap it
-		return nil, err
+func migrateService(cmd *cobra.Command, args []string, migrationFunc func(*db.Client, *embed.FS)) {
+	// get all the services
+	allSvcs := make([]string, 0, len(serviceMigrations))
+	for k := range serviceMigrations {
+		allSvcs = append(allSvcs, k)
 	}
-	return dbClient, nil
+	svcs := allSvcs
+
+	// if --all flag is set then return all the services
+	all, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		panic(fmt.Errorf("could not get flag: %w", err))
+	}
+
+	// if args are passed then check if they are valid
+	if !all {
+		// if no args are passed then return error
+		if len(args) == 0 {
+			slog.Info("valid services", slog.Any("services", allSvcs))
+			panic(fmt.Errorf("service %s not found", args))
+		}
+
+		// check for invalid services
+		for _, a := range args {
+			if _, ok := serviceMigrations[a]; !ok {
+				slog.Info("valid services", slog.Any("services", allSvcs))
+				panic(fmt.Errorf("service %s not found", args))
+			}
+		}
+
+		svcs = args
+	}
+
+	// run the migration
+	for _, s := range svcs {
+		slog.Info("running migration", slog.String("service", s))
+		dbClient, err := migrateDBClient(cmd,
+			db.WithMigrations(serviceMigrations[s]),
+			db.WithService(s),
+		)
+		if err != nil {
+			panic(fmt.Errorf("could not load config: %w", err))
+		}
+		migrationFunc(dbClient, serviceMigrations[s])
+	}
+}
+
+func migrateDBClient(cmd *cobra.Command, opts ...db.OptsFunc) (*db.Client, error) {
+	configFile, _ := cmd.Flags().GetString(configFileFlag)
+	configKey, _ := cmd.Flags().GetString(configKeyFlag)
+	conf, err := config.LoadConfig(configKey, configFile)
+	if err != nil {
+		panic(fmt.Errorf("could not load config: %w", err))
+	}
+	return db.New(context.Background(), conf.DB, opts...)
 }
 
 func init() {
+	migrateDownCmd.Flags().Bool("all", false, "Run all service migrations")
+	migrateUpCmd.Flags().Bool("all", false, "Run all service migrations")
 	migrateCmd.AddCommand(migrateDownCmd)
 	migrateCmd.AddCommand(migrateUpCmd)
 	migrateCmd.AddCommand(migrateStatusCmd)

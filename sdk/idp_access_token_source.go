@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -119,12 +120,12 @@ func NewIDPAccessTokenSource(
 }
 
 // AccessToken use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) AccessToken(client *http.Client) (auth.AccessToken, error) {
+func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
 	t.tokenMutex.Lock()
 	defer t.tokenMutex.Unlock()
 
 	if t.token == nil || t.token.Expired() {
-		slog.Debug("getting new access token")
+		slog.DebugContext(ctx, "getting new access token")
 		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
 			return "", fmt.Errorf("error getting access token: %w", err)

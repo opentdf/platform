@@ -13,7 +13,8 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	tls               grpc.DialOption
+	dialOption        grpc.DialOption
+	tlsConfig         *tls.Config
 	clientCredentials *oauth.ClientCredentials
 	tokenExchange     *oauth.TokenExchangeInfo
 	tokenEndpoint     string
@@ -26,22 +27,28 @@ type config struct {
 }
 
 func (c *config) build() []grpc.DialOption {
-	return []grpc.DialOption{c.tls}
+	return []grpc.DialOption{c.dialOption}
 }
 
 // WithInsecureSkipVerifyConn returns an Option that sets up HTTPS connection without verification.
 func WithInsecureSkipVerifyConn() Option {
 	return func(c *config) {
-		c.tls = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+		tlsConfig := &tls.Config{
 			InsecureSkipVerify: true, // #nosec G402
-		}))
+		}
+		c.dialOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
+		// used by http client
+		c.tlsConfig = tlsConfig
 	}
 }
 
 // WithInsecurePlaintextConn returns an Option that sets up HTTP connection sent in the clear.
 func WithInsecurePlaintextConn() Option {
 	return func(c *config) {
-		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
+		c.dialOption = grpc.WithTransportCredentials(insecure.NewCredentials())
+		// used by http client
+		// FIXME anything to do here
+		c.tlsConfig = &tls.Config{}
 	}
 }
 

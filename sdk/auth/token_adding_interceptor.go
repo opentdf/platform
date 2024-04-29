@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -22,12 +23,16 @@ const (
 	JWTExpirationMinutes = 10
 )
 
-func NewTokenAddingInterceptor(t AccessTokenSource) TokenAddingInterceptor {
-	return TokenAddingInterceptor{tokenSource: t}
+func NewTokenAddingInterceptor(t AccessTokenSource, c *tls.Config) TokenAddingInterceptor {
+	return TokenAddingInterceptor{
+		tokenSource: t,
+		tlsConfig:   c,
+	}
 }
 
 type TokenAddingInterceptor struct {
 	tokenSource AccessTokenSource
+	tlsConfig   *tls.Config
 }
 
 func (i TokenAddingInterceptor) AddCredentials(
@@ -40,8 +45,12 @@ func (i TokenAddingInterceptor) AddCredentials(
 ) error {
 	newMetadata := make([]string, 0)
 	// FIXME get TLS config, perhaps from i.
-	client := &http.Client{}
-	accessToken, err := i.tokenSource.AccessToken(client)
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: i.tlsConfig,
+		},
+	}
+	accessToken, err := i.tokenSource.AccessToken(ctx, client)
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {

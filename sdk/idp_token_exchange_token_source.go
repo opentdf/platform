@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"context"
-	"golang.org/x/oauth2"
 	"net/http"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -29,16 +28,12 @@ func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, creden
 	return &exchangeSource, nil
 }
 
-func (i *IDPTokenExchangeTokenSource) Token() (*oauth2.Token, error) {
-	return nil, nil
-}
-
-func (i *IDPTokenExchangeTokenSource) AccessToken(client *http.Client) (auth.AccessToken, error) {
+func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
 	i.IDPAccessTokenSource.tokenMutex.Lock()
 	defer i.IDPAccessTokenSource.tokenMutex.Unlock()
 
 	if i.IDPAccessTokenSource.token == nil || i.IDPAccessTokenSource.token.Expired() {
-		tok, err := oauth.DoTokenExchange(context.Background(), client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
+		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 
 		if err != nil {
 			return "", err

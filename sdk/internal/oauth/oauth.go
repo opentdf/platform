@@ -308,12 +308,12 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	return req, nil
 }
 
-func DoCertExchange(ctx context.Context, tokenEndpoint string, exchangeInfo CertExchangeInfo, clientCredentials ClientCredentials, key jwk.Key) (*Token, error) {
+func DoCertExchange(ctx context.Context, client *http.Client, tokenEndpoint string, exchangeInfo CertExchangeInfo, clientCredentials ClientCredentials, key jwk.Key) (*Token, error) {
 	req, err := getCertExchangeRequest(ctx, tokenEndpoint, clientCredentials, exchangeInfo, key)
 	if err != nil {
 		return nil, err
 	}
-	client := http.Client{Transport: &http.Transport{TLSClientConfig: exchangeInfo.TLSConfig}}
+	client.Transport.(*http.Transport).TLSClientConfig = exchangeInfo.TLSConfig
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to IdP for certificate exchange: %w", err)

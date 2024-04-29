@@ -19,7 +19,7 @@
 
    ```sh
       docker run --network opentdf_platform \
-         -v ./opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml \
+         -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
          -it registry.opentdf.io/platform:nightly provision keycloak -e http://keycloak:8888/auth
    ```
 

@@ -36,7 +36,8 @@ const note = `
    Docker: docker-machine restart
    Podman: podman machine stop;podman machine start
 
-====================================================================================`
+====================================================================================
+`
 
 func init() {
 	os.Stderr.Write([]byte(note))
@@ -110,50 +111,8 @@ func TestMain(m *testing.M) {
 
 	conf.DB.Port = port.Int()
 
-	db := fixtures.NewDBInterface(*Config)
-
-	slog.Info("🚚 applying migrations")
-	applied, err := db.Client.RunMigrations(ctx)
-	if err != nil {
-		slog.Error("issue running migrations", slog.String("error", err.Error()))
-		panic(err)
-	}
-	slog.Info("🚚 applied migrations", slog.Int("count", applied))
-
 	slog.Info("🏠 loading fixtures")
 	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
-
-	slog.Info("📚 indexing FQNs for test fixtures")
-	db.PolicyClient.AttrFqnReindex()
-	slog.Info("📚 successfully indexed FQNs")
-
-	// otdf, err := server.NewOpenTDFServer(conf.Server)
-	// if err != nil {
-	// 	slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
-	// 	panic(err)
-	// }
-	// defer otdf.Stop()
-
-	// slog.Info("starting opa engine")
-	// // Start the opa engine
-	// conf.OPA.Embedded = true
-	// eng, err := opa.NewEngine(conf.OPA)
-	// if err != nil {
-	// 	slog.Error("could not start opa engine", slog.String("error", err.Error()))
-	// 	panic(err)
-	// }
-	// defer eng.Stop(context.Background())
-
-	// // Register the services
-	// err = cmd.RegisterServices(*conf, otdf, dbClient, eng)
-	// if err != nil {
-	// 	slog.Error("issue registering services", slog.String("error", err.Error()))
-	// 	panic(err)
-	// }
-
-	// // Start the server
-	// slog.Info("starting opentdf server", slog.Int("grpcPort", conf.Server.Grpc.Port), slog.Int("httpPort", conf.Server.HTTP.Port))
-	// otdf.Run()
 
 	m.Run()
 }

@@ -3,10 +3,20 @@ networks:
     name: opentdf_platform
 services:
   keycloak:
+    volumes:
+    - ./keys/localhost.crt:/etc/x509/tls/localhost.crt
+    - ./keys/localhost.key:/etc/x509/tls/localhost.key
+    - ./keys/ca.jks:/truststore/truststore.jks
     # This is kc 24.0.1 with opentdf protocol mapper on board
     image: ghcr.io/opentdf/keycloak:sha-8a6d35a
     restart: always
-    command: ["start-dev"]
+    command:
+    - "start-dev"
+    - "--verbose"
+    - "-Djavax.net.ssl.trustStorePassword=password"
+    - "-Djavax.net.ssl.HostnameVerifier=AllowAll"
+    - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
+    - "--spi-truststore-file-hostname-verification-policy=ANY"
     environment:
       KC_HTTP_RELATIVE_PATH: /auth
       KC_DB_VENDOR: postgres
@@ -15,18 +25,25 @@ services:
       KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: changeme
-      KC_HOSTNAME_PORT: "8888"
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_HTTP_ENABLED: "true"
       KC_HTTP_PORT: "8888"
+      KC_HTTPS_PORT: "8443"
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: changeme
+      KC_HOSTNAME_URL: http://localhost:8888/auth
       KC_FEATURES: "preview,token-exchange"
       KC_HEALTH_ENABLED: "true"
+      KC_HTTPS_KEY_STORE_PASSWORD: "password"
+      KC_HTTPS_KEY_STORE_FILE: "/truststore/truststore.jks"
+      KC_HTTPS_CERTIFICATE_FILE: "/etc/x509/tls/localhost.crt"
+      KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
+      KC_HTTPS_CLIENT_AUTH: "request"
     ports:
       - "8888:8888"
+      - "8443:8443"
     healthcheck:
       test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8888/auth/health/live']
       interval: 5s

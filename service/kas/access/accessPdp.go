@@ -47,7 +47,7 @@ func checkDissems(dissems []string, ent *authorization.Entity) (bool, error) {
 
 func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorization.Entity, sdk *otdf.SDK) (bool, error) {
 	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
-	ec.Entities = append(ec.Entities, ent)
+	ec.Entities = append(ec.GetEntities(), ent)
 	ras := []*authorization.ResourceAttribute{{
 		AttributeValueFqns: make([]string, 0),
 	}}

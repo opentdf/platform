@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/opentdf/platform/compare/service/v0.2.0...service/v0.3.0) (2024-04-29)
+
+
+### Features
+
+* **core:** add service scoped database clients ([#647](https://github.com/opentdf/platform/issues/647)) ([019a3bf](https://github.com/opentdf/platform/commit/019a3bf37d534359950110f1b077ef4f860f1c60))
+
+
+### Bug Fixes
+
+* **config:** update docs for enforce dpop config and clean up markdown tables ([#697](https://github.com/opentdf/platform/issues/697)) ([983ce71](https://github.com/opentdf/platform/commit/983ce716055d3217a6e14046b66a94b9254f24fe))
+* **policy:** normalize FQN lookup to lower case ([#668](https://github.com/opentdf/platform/issues/668)) ([cd8a875](https://github.com/opentdf/platform/commit/cd8a8750e2a87cb65bc6c8815d8db131dca4f02d)), closes [#669](https://github.com/opentdf/platform/issues/669)
+
 ## [0.2.0](https://github.com/opentdf/platform/compare/service/v0.1.0...service/v0.2.0) (2024-04-26)
 
 

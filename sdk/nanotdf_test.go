@@ -9,8 +9,8 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
-// nanotdfEqual compares two nanoTdf structures for equality.
-func nanoTDFEqual(a, b *nanoTdf) bool {
+// nanotdfEqual compares two NanoTDFHeader structures for equality.
+func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 	// Compare magicNumber field
 	if a.magicNumber != b.magicNumber {
 		return false
@@ -94,8 +94,8 @@ func init() {
 }
 
 func TestReadNanoTDFHeader(t *testing.T) {
-	// Prepare a sample nanoTdf structure
-	nanoTDF := nanoTdf{
+	// Prepare a sample NanoTDFHeader structure
+	nanoTDF := NanoTDFHeader{
 		magicNumber: [3]byte{'L', '1', 'L'},
 		kasUrl: &resourceLocator{
 			protocol:   urlProtocolHttps,
@@ -132,20 +132,38 @@ func TestReadNanoTDFHeader(t *testing.T) {
 		},
 	}
 
-	// Serialize the sample nanoTdf structure into a byte slice using gob
+	// Serialize the sample NanoTDFHeader structure into a byte slice using gob
 	file, err := os.Open("nanotdfspec.ntdf")
 	if err != nil {
-		t.Fatalf("Cannot open nanoTdf file: %v", err)
+		t.Fatalf("Cannot open NanoTDFHeader file: %v", err)
 	}
 	defer file.Close()
 
 	result, err := ReadNanoTDFHeader(file)
 	if err != nil {
-		t.Fatalf("Error while reading nanoTdf header: %v", err)
+		t.Fatalf("Error while reading NanoTDFHeader header: %v", err)
 	}
 
-	// Compare the result with the original nanoTdf structure
+	// Compare the result with the original NanoTDFHeader structure
 	if !nanoTDFEqual(result, &nanoTDF) {
-		t.Error("Result does not match the expected nanoTdf structure.")
+		t.Error("Result does not match the expected NanoTDFHeader structure.")
 	}
+}
+
+func TestNanoTDFEncryptFile(t *testing.T) {
+
+	var config NanoTDFConfig
+	var header NanoTDFHeader
+
+	file, err := os.Open("nanotest1.txt")
+	if err != nil {
+		t.Fatalf("Cannot open test data file: %v", err)
+	}
+	defer file.Close()
+
+	config.m_datasetMode = false
+	config.m_ellipticCurveType = ocrypto.ECCModeSecp256r1
+
+	err = NanoTDFEncrypt(header, config, file)
+
 }

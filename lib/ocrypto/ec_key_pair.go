@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -8,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 )
 
 type ECCMode uint8
@@ -23,9 +25,9 @@ type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
-// NewECKeyPair Generates an EC key pair of the given bit size.
-func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
+func getCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	var c elliptic.Curve
+
 	switch mode {
 	case ECCModeSecp256r1:
 		c = elliptic.P256()
@@ -35,9 +37,21 @@ func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 		c = elliptic.P521()
 	case ECCModeSecp256k1:
 		// TODO FIXME - unsupported?
-		return ECKeyPair{}, errors.New("unsupported ec key pair mode")
+		return nil, errors.New("unsupported ec key pair mode")
 	default:
-		return ECKeyPair{}, fmt.Errorf("invalid ec key pair mode %d", mode)
+		return nil, fmt.Errorf("invalid ec key pair mode %d", mode)
+	}
+
+	return c, nil
+}
+
+// NewECKeyPair Generates an EC key pair of the given bit size.
+func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
+	var c elliptic.Curve
+
+	c, err = getCurveFromECCMode(mode)
+	if err != nil {
+		return err, nil)
 	}
 
 	privateKey, err := ecdsa.GenerateKey(c, rand.Reader)
@@ -96,4 +110,17 @@ func (keyPair ECKeyPair) KeySize() (int, error) {
 		return -1, errors.New("failed to return key size")
 	}
 	return keyPair.PrivateKey.Params().N.BitLen(), nil
+}
+
+// CompressedECPublicKey - return a compressed key from the supplied curve and public key
+func CompressedECPublicKey(mode ECCMode, pubKey ecdsa.PublicKey) ([]byte, error) {
+
+	curve, err := getCurveFromECCMode(mode)
+	if err != nil {
+		return nil, fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
+	}
+
+	compressedKey := elliptic.MarshalCompressed(curve, pubKey.X, pubKey.Y)
+
+	return compressedKey, nil
 }

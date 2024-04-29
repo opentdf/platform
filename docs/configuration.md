@@ -5,7 +5,8 @@ This guide provides details about the configuration setup for our application, i
 - [Logger Configuration](#logger-configuration)
 - [Server Configuration](#server-configuration)
 - [Database Configuration](#database-configuration)
-- [OPA Configuration](#opa-configuration) -[Services Configuration](#services-configuration)
+- [OPA Configuration](#opa-configuration)
+- [Services Configuration](#services-configuration)
 
 ## Logger Configuration
 

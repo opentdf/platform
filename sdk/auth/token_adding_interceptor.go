@@ -44,7 +44,6 @@ func (i TokenAddingInterceptor) AddCredentials(
 	opts ...grpc.CallOption,
 ) error {
 	newMetadata := make([]string, 0)
-	// FIXME get TLS config, perhaps from i.
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: i.tlsConfig,
@@ -54,7 +53,7 @@ func (i TokenAddingInterceptor) AddCredentials(
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {
-		slog.Error("error getting access token: %w. request will be unauthenticated", err)
+		slog.ErrorContext(ctx, "error getting access token. request will be unauthenticated", "error", err)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 
@@ -62,7 +61,7 @@ func (i TokenAddingInterceptor) AddCredentials(
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
-		slog.Error("error adding dpop token to outgoing request. Request will not have DPoP token", err)
+		slog.ErrorContext(ctx, "error adding dpop token to outgoing request. Request will not have DPoP token", err)
 	}
 
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)

@@ -128,7 +128,7 @@ func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Cli
 		slog.DebugContext(ctx, "getting new access token")
 		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
-			return "", fmt.Errorf("error getting access token: %w", err)
+			return "", fmt.Errorf("error getting access token: %s", err)
 		}
 		t.token = tok
 	}

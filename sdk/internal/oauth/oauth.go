@@ -93,7 +93,7 @@ func setClientAuth(cc ClientCredentials, formData *url.Values, req *http.Request
 	case jwk.Key:
 		signedToken, err := getSignedToken(cc.ClientID, tokenEndpoint, ca)
 		if err != nil {
-			return fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
+			return fmt.Errorf("error building signed auth token to authenticate with IDP: %s", err)
 		}
 		formData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 		formData.Set("client_assertion", string(signedToken))
@@ -124,7 +124,7 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 	if key.KeyID() != "" {
 		err = headers.Set("kid", key.KeyID())
 		if err != nil {
-			return nil, fmt.Errorf("jws field invalid [kid]: %w", err)
+			return nil, fmt.Errorf("jws field invalid [kid]: %s", err)
 		}
 	}
 
@@ -148,7 +148,7 @@ func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, 
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
+		return nil, fmt.Errorf("error making request to IdP with dpop nonce: %s", err)
 	}
 
 	defer resp.Body.Close()
@@ -160,7 +160,7 @@ func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, 
 		}
 		nonceResp, err := client.Do(nonceReq)
 		if err != nil {
-			return nil, fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
+			return nil, fmt.Errorf("error making request to IdP with dpop nonce: %s", err)
 		}
 
 		defer nonceResp.Body.Close()
@@ -174,17 +174,17 @@ func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, 
 func processResponse(resp *http.Response) (*Token, error) {
 	respBytes, err := io.ReadAll(resp.Body)
 
+	if err != nil {
+		return nil, fmt.Errorf("error reading bytes from response: %s", err)
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("got status %d when making request to IdP: %s", resp.StatusCode, string(respBytes))
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("error reading bytes from response: %w", err)
-	}
-
 	var token *Token
 	if err := json.Unmarshal(respBytes, &token); err != nil {
-		return nil, fmt.Errorf("error unmarshaling token from response: %w", err)
+		return nil, fmt.Errorf("error unmarshaling token from response: %s", err)
 	}
 
 	token.received = time.Now()
@@ -221,12 +221,12 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 	headers := jws.NewHeaders()
 	err = headers.Set("jwk", publicKey)
 	if err != nil {
-		return "", fmt.Errorf("jws field invalid [jwk]: %w", err)
+		return "", fmt.Errorf("jws field invalid [jwk]: %s", err)
 	}
 
 	err = headers.Set("typ", "dpop+jwt")
 	if err != nil {
-		return "", fmt.Errorf("jws field invalid [typ]: %w", err)
+		return "", fmt.Errorf("jws field invalid [typ]: %s", err)
 	}
 
 	var alg jwa.SignatureAlgorithm
@@ -238,7 +238,7 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 
 	proof, err := jwt.Sign(token, opts)
 	if err != nil {
-		return "", fmt.Errorf("error signing DPoP JWT: %w", err)
+		return "", fmt.Errorf("error signing DPoP JWT: %s", err)
 	}
 
 	return string(proof), nil
@@ -251,7 +251,7 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error making request to IdP for token exchange: %w", err)
+		return nil, fmt.Errorf("error making request to IdP for token exchange: %s", err)
 	}
 	defer resp.Body.Close()
 
@@ -262,7 +262,7 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 		}
 		nonceResp, err := client.Do(nonceReq)
 		if err != nil {
-			return nil, fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
+			return nil, fmt.Errorf("error making request to IdP with dpop nonce: %s", err)
 		}
 
 		defer nonceResp.Body.Close()
@@ -291,7 +291,7 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	body := strings.NewReader(data.Encode())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
 	if err != nil {
-		return nil, fmt.Errorf("error getting HTTP request: %w", err)
+		return nil, fmt.Errorf("error getting HTTP request: %s", err)
 	}
 	dpop, err := getDPoPAssertion(*privateJWK, http.MethodPost, tokenEndpoint, dpopNonce)
 	if err != nil {
@@ -316,7 +316,7 @@ func DoCertExchange(ctx context.Context, client *http.Client, tokenEndpoint stri
 	client.Transport.(*http.Transport).TLSClientConfig = exchangeInfo.TLSConfig
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error making request to IdP for certificate exchange: %w", err)
+		return nil, fmt.Errorf("error making request to IdP for certificate exchange: %s", err)
 	}
 	defer resp.Body.Close()
 

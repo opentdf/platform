@@ -30,11 +30,11 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	strReader := strings.NewReader(plainText)
 
 	// Create new offline client
-
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
 		sdk.WithInsecureSkipVerifyConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("https://console-openshift-console.apps.dsp.shp.virtru.us/k8s/ns/platform-helm-install/core~v1~Pod"),
+		// FIXME revert http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
+		sdk.WithTokenEndpoint("https://keycloak.apps.dsp.shp.virtru.us/realms/opentdf/protocol/openid-connect/token"),
 	)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		sdk.WithKasInformation(
 			sdk.KASInfo{
 				// examples assume unsecure http
-				URL:       fmt.Sprintf("http://%s", cmd.Flag("platformEndpoint").Value.String()),
+				URL:       fmt.Sprintf("https://opentdf.apps.dsp.shp.virtru.us"),
 				PublicKey: "",
 			}))
 	if err != nil {

@@ -203,7 +203,22 @@ func ECPrivateKeyFromPem(privateECKeyInPem string) (*ecdh.PrivateKey, error) {
 	return nil, fmt.Errorf("not an ec PEM formatted private key")
 }
 
-func ComputeECDHKey(_ /*pem*/ string, _ /*pem2*/ string) ([]byte, error) {
-	// TODO - FIXME
-	return nil, nil
+// ComputeECDHKey calculate shared secret from public key from one party and the private key from another party.
+func ComputeECDHKey(privateKeyInPem string, publicKeyInPem string) ([]byte, error) {
+	ecdhPrivateKey, err := ECPrivateKeyFromPem(privateKeyInPem)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ECPrivateKeyFromPem failed: %w", err)
+	}
+
+	ecdhPublicKey, err := ECPubKeyFromPem(publicKeyInPem)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
+	}
+
+	sharedKey, err := ecdhPrivateKey.ECDH(ecdhPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	return sharedKey, nil
 }

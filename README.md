@@ -28,8 +28,8 @@
 
    ```sh
    docker run --network opentdf_platform \
-      -v ./kas-keys/:/keys/ \
-      -v ./opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml \
+      -v "$(pwd)/kas-keys/:/keys/" \
+      -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
       -it registry.opentdf.io/platform:nightly start
    ```
 

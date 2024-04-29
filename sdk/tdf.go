@@ -125,8 +125,12 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		totalSegments = 1
 	}
 
+	payloadSize := inputSize
+	if tdfConfig.enableEncryption {
+		payloadSize = inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
+	}
+
 	encryptedSegmentSize := segmentSize + gcmIvSize + aesBlockSize
-	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
 	tdfWriter := archive.NewTDFWriter(writer)
 
 	err = tdfWriter.SetPayloadSize(payloadSize)

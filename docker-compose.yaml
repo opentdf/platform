@@ -38,7 +38,7 @@ services:
     restart: always
     user: postgres
     environment:
-      POSTGRES_PASSWORD: party-pooper
+      POSTGRES_PASSWORD: changeme
       POSTGRES_USER: postgres
       POSTGRES_DB: keycloak
     healthcheck:

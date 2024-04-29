@@ -13,9 +13,9 @@ const (
 	ErrNanoTdfRead = Error("nanotdf read error")
 )
 
-type nanoTdf struct {
+type NanoTdf struct {
 	magicNumber        [3]byte
-	kasUrl             *resourceLocator
+	kasURL             *resourceLocator
 	binding            *bindingCfg
 	sigCfg             *signatureConfig
 	policy             *policyInfo
@@ -76,8 +76,8 @@ type eccKey struct {
 type urlProtocol uint8
 
 const (
-	urlProtocolHttp   urlProtocol = 0
-	urlProtocolHttps  urlProtocol = 1
+	urlProtocolHTTP   urlProtocol = 0
+	urlProtocolHTTPS  urlProtocol = 1
 	urlProtocolShared urlProtocol = 255
 )
 
@@ -166,25 +166,25 @@ func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (*eccKey, e
 	return &eccKey{Key: buffer}, nil
 }
 
-func ReadNanoTDFHeader(reader io.Reader) (*nanoTdf, error) {
-	var nanoTDF nanoTdf
+func ReadNanoTDFHeader(reader io.Reader) (*NanoTdf, error) {
+	var nanoTDF NanoTdf
 
 	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.magicNumber); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
 
-	nanoTDF.kasUrl = &resourceLocator{}
-	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.kasUrl.protocol); err != nil {
+	nanoTDF.kasURL = &resourceLocator{}
+	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.kasURL.protocol); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
-	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.kasUrl.lengthBody); err != nil {
+	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.kasURL.lengthBody); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
-	body := make([]byte, nanoTDF.kasUrl.lengthBody)
+	body := make([]byte, nanoTDF.kasURL.lengthBody)
 	if err := binary.Read(reader, binary.BigEndian, &body); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
-	nanoTDF.kasUrl.body = string(body)
+	nanoTDF.kasURL.body = string(body)
 
 	var bindingByte uint8
 	if err := binary.Read(reader, binary.BigEndian, &bindingByte); err != nil {

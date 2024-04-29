@@ -81,8 +81,7 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 	certB64 := ocrypto.Base64Encode([]byte(a.dpopPublicKeyPEM))
 	req.Header.Set("X-VirtruPubKey", string(certB64))
 
-	client := a.client
-	resp, err := client.Do(req)
+	resp, err := a.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("error making request to IdP for token exchange: %w", err)
 	}

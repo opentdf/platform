@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"golang.org/x/oauth2"
@@ -49,7 +50,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		accessToken: "thisisafakeaccesstoken",
 	}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts, &tls.Config{})
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -119,7 +120,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 func Test_InvalidCredentials_StillSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts, &tls.Config{})
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -165,7 +166,7 @@ type FakeTokenSource struct {
 	accessToken string
 }
 
-func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
+func (fts *FakeTokenSource) AccessToken(ctx context.Context, client *http.Client) (AccessToken, error) {
 	return AccessToken(fts.accessToken), nil
 }
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {

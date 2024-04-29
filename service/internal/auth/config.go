@@ -1,6 +1,9 @@
 package auth
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+)
 
 // AuthConfig pulls AuthN and AuthZ together
 type Config struct {
@@ -34,6 +37,10 @@ func (c AuthNConfig) validateAuthNConfig() error {
 
 	if c.Audience == "" {
 		return fmt.Errorf("config Auth.Audience is required")
+	}
+
+	if !c.EnforceDPoP {
+		slog.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
 	}
 
 	return nil

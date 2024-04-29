@@ -24,7 +24,7 @@ toolcheck:
 	@golangci-lint --version | grep "version v\?1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
 
 fix:
-	for m in $(HAND_MODS); do (cd $$m && go mod tidy && go fmt ./...) || exit 1; done
+	for m in $(HAND_MODS); do (cd $$m && go mod tidy && find ./ -name \*.go | xargs goimports -w) || exit 1; done
 
 lint: proto-lint go-lint
 

@@ -611,7 +611,6 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 				slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
 			}
 		}
-
 	}
 
 	return longClientID, nil

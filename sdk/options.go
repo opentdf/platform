@@ -1,6 +1,8 @@
 package sdk
 
 import (
+	"crypto/tls"
+
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -11,12 +13,15 @@ type Option func(*config)
 // Internal config struct for building SDK options.
 type config struct {
 	tls               grpc.DialOption
-	clientCredentials oauth.ClientCredentials
+	clientCredentials *oauth.ClientCredentials
+	tokenExchange     *oauth.TokenExchangeInfo
 	tokenEndpoint     string
 	scopes            []string
 	authConfig        *AuthConfig
 	policyConn        *grpc.ClientConn
 	authorizationConn *grpc.ClientConn
+	extraDialOptions  []grpc.DialOption
+	certExchange      *oauth.CertExchangeInfo
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -33,8 +38,14 @@ func WithInsecureConn() Option {
 // WithClientCredentials returns an Option that sets up authentication with client credentials.
 func WithClientCredentials(clientID, clientSecret string, scopes []string) Option {
 	return func(c *config) {
-		c.clientCredentials = oauth.ClientCredentials{ClientID: clientID, ClientAuth: clientSecret}
+		c.clientCredentials = &oauth.ClientCredentials{ClientID: clientID, ClientAuth: clientSecret}
 		c.scopes = scopes
+	}
+}
+
+func WithTLSCredentials(tls *tls.Config, audience []string) Option {
+	return func(c *config) {
+		c.certExchange = &oauth.CertExchangeInfo{TLSConfig: tls, Audience: audience}
 	}
 }
 
@@ -63,5 +74,22 @@ func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
+	}
+}
+
+// WithTokenExchange specifies that the SDK should obtain its
+// access token by exchanging the given token for a new one
+func WithTokenExchange(subjectToken string, audience []string) Option {
+	return func(c *config) {
+		c.tokenExchange = &oauth.TokenExchangeInfo{
+			SubjectToken: subjectToken,
+			Audience:     audience,
+		}
+	}
+}
+
+func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
+	return func(c *config) {
+		c.extraDialOptions = dialOptions
 	}
 }

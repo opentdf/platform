@@ -41,6 +41,7 @@ The server configuration is used to define how the application runs its server.
 | `tls.key` | The path to the tls key. | |
 | `auth.audience` | The audience for the IDP. | |
 | `auth.issuer` | The issuer for the IDP. | |
+| `auth.enforceDPoP` | If false, we allow access tokens that do not have DPoP bindings. | `true` |
 
 Example:
 

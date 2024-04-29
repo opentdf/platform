@@ -174,9 +174,6 @@
       "properties": {
         "signedRequestToken": {
           "type": "string"
-        },
-        "bearer": {
-          "type": "string"
         }
       }
     },

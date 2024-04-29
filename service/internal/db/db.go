@@ -3,9 +3,11 @@ package db
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -20,7 +22,7 @@ type Table struct {
 	withSchema bool
 }
 
-func NewTableWithSchema(schema string) func(name string) Table {
+func NewTable(schema string) func(name string) Table {
 	s := schema
 	return func(name string) Table {
 		return Table{
@@ -31,10 +33,8 @@ func NewTableWithSchema(schema string) func(name string) Table {
 	}
 }
 
-var NewTable func(name string) Table
-
 func (t Table) WithoutSchema() Table {
-	nT := NewTableWithSchema(t.schema)(t.name)
+	nT := NewTable(t.schema)(t.name)
 	nT.withSchema = false
 	return nT
 }
@@ -70,6 +70,9 @@ type Config struct {
 	RunMigrations bool   `yaml:"runMigrations" default:"true"`
 	SSLMode       string `yaml:"sslmode" default:"prefer"`
 	Schema        string `yaml:"schema" default:"opentdf"`
+
+	VerifyConnection bool `yaml:"verifyConnection" default:"true"`
+	MigrationsFS     *embed.FS
 }
 
 type Client struct {
@@ -80,17 +83,26 @@ type Client struct {
 	SqlDB *sql.DB
 }
 
-func NewClient(config Config) (*Client, error) {
+/*
+Connections and pools seems to be pulled in from env vars
+We should be able to tell the platform how to run
+*/
+
+func New(ctx context.Context, config Config, o ...OptsFunc) (*Client, error) {
+	for _, f := range o {
+		config = f(config)
+	}
+
 	c := Client{
 		config: config,
 	}
 
-	dbConfig, err := pgxpool.ParseConfig(config.buildURL())
+	dbConfig, err := config.buildConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
 
-	pool, err := pgxpool.NewWithConfig(context.Background(), dbConfig)
+	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
@@ -99,21 +111,17 @@ func NewClient(config Config) (*Client, error) {
 	c.SqlDB = stdlib.OpenDBFromPool(pool)
 
 	// Connect to the database to verify the connection
-	if err := c.Pgx.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	if c.config.VerifyConnection {
+		if err := c.Pgx.Ping(ctx); err != nil {
+			return nil, fmt.Errorf("failed to connect to database: %w", err)
+		}
 	}
-
-	// Run migrations
-	slog.Info("running database migrations")
-	appliedMigrations, err := c.RunMigrations(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("issue running database migrations: %w", err)
-	}
-	slog.Info("database migrations complete", slog.Int("applied", appliedMigrations))
-
-	NewTable = NewTableWithSchema(config.Schema)
 
 	return &c, nil
+}
+
+func (c *Client) Schema() string {
+	return c.config.Schema
 }
 
 func (c *Client) Close() {
@@ -121,14 +129,15 @@ func (c *Client) Close() {
 	c.SqlDB.Close()
 }
 
-func (c Config) buildURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
+func (c Config) buildConfig() (*pgxpool.Config, error) {
+	u := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		c.User,
-		c.Password,
+		url.QueryEscape(c.Password),
 		net.JoinHostPort(c.Host, fmt.Sprint(c.Port)),
 		c.Database,
 		c.SSLMode,
 	)
+	return pgxpool.ParseConfig(u)
 }
 
 // Common function for all queryRow calls

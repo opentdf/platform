@@ -112,7 +112,7 @@
         "parameters": [
           {
             "name": "fqns",
-            "description": "Required",
+            "description": "Required\nFully Qualified Names of attribute values (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute_name\u003e/value/\u003cvalue_name\u003e), normalized to lower case.",
             "in": "query",
             "required": false,
             "type": "array",
@@ -729,7 +729,7 @@
           "additionalProperties": {
             "$ref": "#/definitions/GetAttributeValuesByFqnsResponseAttributeAndValue"
           },
-          "title": "map of fqns to complete attributes and the one selected value"
+          "title": "map of FQNs to complete attributes and the one selected value"
         }
       }
     },

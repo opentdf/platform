@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -200,4 +201,9 @@ func ECPrivateKeyFromPem(privateECKeyInPem string) (*ecdh.PrivateKey, error) {
 	}
 
 	return nil, fmt.Errorf("not an ec PEM formatted private key")
+}
+
+func ComputeECDHKey(_ /*pem*/ string, _ /*pem2*/ string) ([]byte, error) {
+	// TODO - FIXME
+	return nil, nil
 }

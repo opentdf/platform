@@ -2,8 +2,9 @@ package auth
 
 import (
 	"context"
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"net/http"
+
+	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
 type AccessToken string

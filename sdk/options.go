@@ -34,6 +34,7 @@ func (c *config) build() []grpc.DialOption {
 func WithInsecureSkipVerifyConn() Option {
 	return func(c *config) {
 		tlsConfig := &tls.Config{
+			MinVersion:         tls.VersionTLS12,
 			InsecureSkipVerify: true, // #nosec G402
 		}
 		c.dialOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))

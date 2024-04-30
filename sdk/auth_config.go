@@ -35,7 +35,7 @@ type rewrapJWTClaims struct {
 }
 
 // NewAuthConfig Create a new instance of authConfig
-func NewAuthConfig() (*AuthConfig, error) {
+func NewAuthConfig(client *http.Client) (*AuthConfig, error) {
 	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
@@ -51,11 +51,15 @@ func NewAuthConfig() (*AuthConfig, error) {
 		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
-	return &AuthConfig{dpopPublicKeyPEM: publicKey, dpopPrivateKeyPEM: privateKey}, nil
+	return &AuthConfig{
+		dpopPublicKeyPEM:  publicKey,
+		dpopPrivateKeyPEM: privateKey,
+		client:            client,
+	}, nil
 }
 
-func NewOIDCAuthConfig(ctx context.Context, host, realm, clientID, clientSecret, subjectToken string) (*AuthConfig, error) {
-	authConfig, err := NewAuthConfig()
+func NewOIDCAuthConfig(ctx context.Context, client *http.Client, host, realm, clientID, clientSecret, subjectToken string) (*AuthConfig, error) {
+	authConfig, err := NewAuthConfig(client)
 	if err != nil {
 		return nil, err
 	}
@@ -151,9 +155,7 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 		kAcceptKey:        {kContentTypeJSONValue},
 	}
 
-	client := a.client
-
-	response, err := client.Do(request)
+	response, err := a.client.Do(request)
 	if err != nil {
 		slog.Error("failed http request")
 		return nil, fmt.Errorf("http request failed: %w", err)

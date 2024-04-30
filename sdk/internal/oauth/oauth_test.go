@@ -79,7 +79,11 @@ func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
 	rootCAs, _ := x509.SystemCertPool()
 	rootCAs.AppendCertsFromPEM(ca)
 	s.Require().NoError(err)
-	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: rootCAs}
+	tlsConfig := tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      rootCAs,
+	}
 	exhcangeInfo := CertExchangeInfo{TLSConfig: &tlsConfig, Audience: []string{"opentdf-sdk"}}
 
 	tok, err := DoCertExchange(

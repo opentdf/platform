@@ -7,17 +7,18 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"golang.org/x/oauth2"
-	"log/slog"
-	"net/http"
-	"net/url"
-	"strings"
-	"sync"
 )
 
 const (
@@ -90,7 +91,7 @@ type IDPAccessTokenSource struct {
 }
 
 func (t *IDPAccessTokenSource) Token() (*oauth2.Token, error) {
-	return nil, nil
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func NewIDPAccessTokenSource(
@@ -128,7 +129,7 @@ func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Cli
 		slog.DebugContext(ctx, "getting new access token")
 		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
-			return "", fmt.Errorf("error getting access token: %s", err)
+			return "", fmt.Errorf("error getting access token: %w", err)
 		}
 		t.token = tok
 	}

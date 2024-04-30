@@ -8,7 +8,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/config"
 
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 

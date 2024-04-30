@@ -9,9 +9,9 @@ import (
 	"github.com/opentdf/platform/sdk"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
+	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/grpc"
 )
 

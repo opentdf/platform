@@ -2,7 +2,7 @@ package db
 
 import (
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/pkg/db"
 )
 
 const (

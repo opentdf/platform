@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/idpplugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -302,7 +301,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 
 	assert.NotNil(t, reserr)
 	assert.Equal(t, &authorization.IdpPluginResponse{}, resp)
-	var entityNotFound = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
+	var entityNotFound = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: idpplugin.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
 	var expectedError = errors.New(entityNotFound.String())
 	assert.Equal(t, expectedError, reserr)
 }

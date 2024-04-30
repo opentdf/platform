@@ -170,7 +170,7 @@ type FakeTokenSource struct {
 	accessToken string
 }
 
-func (fts *FakeTokenSource) AccessToken(ctx context.Context, client *http.Client) (AccessToken, error) {
+func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (AccessToken, error) {
 	return AccessToken(fts.accessToken), nil
 }
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {

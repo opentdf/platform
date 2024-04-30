@@ -20,7 +20,7 @@ type FakeAccessTokenSource struct {
 	accessToken    string
 }
 
-func (fake FakeAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+func (fake FakeAccessTokenSource) AccessToken(context.Context, *http.Client) (auth.AccessToken, error) {
 	return auth.AccessToken(fake.accessToken), nil
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {

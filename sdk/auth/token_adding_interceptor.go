@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	JTILength            = 14
-	JWTExpirationMinutes = 10
+	JTILength = 14
 )
 
 func NewTokenAddingInterceptor(t AccessTokenSource, c *tls.Config) TokenAddingInterceptor {

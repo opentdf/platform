@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/opentdf/platform/compare/service/v0.3.0...service/v0.4.0) (2024-04-30)
+
+
+### Features
+
+* **chore:** move db to pkg so types are exported ([#707](https://github.com/opentdf/platform/issues/707)) ([94d3d9d](https://github.com/opentdf/platform/commit/94d3d9d90aa62197bc075e2ebfc919dbd719e063)), closes [#706](https://github.com/opentdf/platform/issues/706)
+
 ## [0.3.0](https://github.com/opentdf/platform/compare/service/v0.2.0...service/v0.3.0) (2024-04-29)
 
 

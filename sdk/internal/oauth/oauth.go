@@ -313,11 +313,6 @@ func DoCertExchange(ctx context.Context, client *http.Client, tokenEndpoint stri
 	if err != nil {
 		return nil, err
 	}
-	transport, ok := client.Transport.(*http.Transport)
-	if !ok {
-		return nil, fmt.Errorf("client.Transport is not a *http.Transport")
-	}
-	transport.TLSClientConfig = exchangeInfo.TLSConfig
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to IdP for certificate exchange: %w", err)

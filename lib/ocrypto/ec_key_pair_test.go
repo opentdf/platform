@@ -87,7 +87,7 @@ func TestNanoTDFRewrapKeyGenerate(t *testing.T) {
 	sdkPrivateKeyAsPem, err := sdkECKeyPair.PrivateKeyInPemFormat()
 	require.NoError(t, err, "fail to generate ec private key in pem format")
 
-	kasECDHKey, err := ComputeECDHKey(kasPrivateKeyAsPem, sdkPubKeyAsPem)
+	kasECDHKey, err := ComputeECDHKey([]byte(kasPrivateKeyAsPem), []byte(sdkPubKeyAsPem))
 	require.NoError(t, err, "fail to calculate ecdh key")
 
 	// slat
@@ -97,7 +97,7 @@ func TestNanoTDFRewrapKeyGenerate(t *testing.T) {
 	kasSymmetricKey, err := CalculateHKDF(digest.Sum(nil), kasECDHKey, 32)
 	require.NoError(t, err, "fail to calculate HKDF key")
 
-	sdkECDHKey, err := ComputeECDHKey(sdkPrivateKeyAsPem, kasPubKeyAsPem)
+	sdkECDHKey, err := ComputeECDHKey([]byte(sdkPrivateKeyAsPem), []byte(kasPubKeyAsPem))
 	require.NoError(t, err, "fail to calculate ecdh key")
 
 	sdkSymmetricKey, err := CalculateHKDF(digest.Sum(nil), sdkECDHKey, 32)

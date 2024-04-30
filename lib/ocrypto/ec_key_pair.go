@@ -146,14 +146,14 @@ func CalculateHKDF(salt []byte, secret []byte, keyLen int) ([]byte, error) {
 }
 
 // ECPubKeyFromPem generate ec public from pem format
-func ECPubKeyFromPem(pemECPubKey string) (*ecdh.PublicKey, error) {
-	block, _ := pem.Decode([]byte(pemECPubKey))
+func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
+	block, _ := pem.Decode(pemECPubKey)
 	if block == nil {
 		return nil, fmt.Errorf("failed to parse PEM formatted public key")
 	}
 
 	var pub any
-	if strings.Contains(pemECPubKey, "BEGIN CERTIFICATE") {
+	if strings.Contains(string(pemECPubKey), "BEGIN CERTIFICATE") {
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("x509.ParseCertificate failed: %w", err)
@@ -182,8 +182,8 @@ func ECPubKeyFromPem(pemECPubKey string) (*ecdh.PublicKey, error) {
 }
 
 // ECPrivateKeyFromPem generate ec private from pem format
-func ECPrivateKeyFromPem(privateECKeyInPem string) (*ecdh.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(privateECKeyInPem))
+func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
+	block, _ := pem.Decode(privateECKeyInPem)
 	if block == nil {
 		return nil, fmt.Errorf("failed to parse PEM formatted private key")
 	}
@@ -204,7 +204,7 @@ func ECPrivateKeyFromPem(privateECKeyInPem string) (*ecdh.PrivateKey, error) {
 }
 
 // ComputeECDHKey calculate shared secret from public key from one party and the private key from another party.
-func ComputeECDHKey(privateKeyInPem string, publicKeyInPem string) ([]byte, error) {
+func ComputeECDHKey(privateKeyInPem []byte, publicKeyInPem []byte) ([]byte, error) {
 	ecdhPrivateKey, err := ECPrivateKeyFromPem(privateKeyInPem)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ECPrivateKeyFromPem failed: %w", err)

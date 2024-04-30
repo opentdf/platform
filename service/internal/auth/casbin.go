@@ -96,10 +96,12 @@ p,	role:readonly,		/kas.AccessService/LegacyPublicKey,			read,			allow
 ## gRPC routes
 p,	role:unknown,			kas.AccessService/LegacyPublicKey,			other,	allow
 p,	role:unknown,			kas.AccessService/PublicKey,						other,	allow
+p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,										write,		allow
 ## HTTP routes
 p,	role:unknown,			/health,																read,		allow
 p,	role:unknown,			/kas/v2/kas_public_key,									read,		allow
 p,	role:unknown,			/kas/kas_public_key,										read,		allow
+p,	role:unknown,			/entityresolution/resolve,										write,		allow
 `
 
 var defaultModel = `

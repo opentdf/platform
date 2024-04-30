@@ -2,32 +2,65 @@ package opentdf.entitlements
 
 import rego.v1
 
-attributes := [attribute |
-	# JWT
-	# This statement invokes the built-in function `io.jwt.decode` passing the
-	# parsed bearer_token as a parameter. The `io.jwt.decode` function returns an
-	# array: [header, payload, signature]
-	[_, payload, _] := io.jwt.decode(input.entity.jwt)
+# proto oneof only allows for one of the fields in the entity struct
+ers_request := {"entities": [{
+	"id": input.entity.id,
+	"clientId": input.entity.client_id,
+}]} if { input.entity.client_id }
+else := {"entities": [{
+	"id": input.entity.id,
+	"emailAddress": input.entity.email_address,
+}]} if { input.entity.email_address }
+else := {"entities": [{
+	"id": input.entity.id,
+	"userName": input.entity.username,
+}]} if { input.entity.username }
+
+
+attributes := {attribute |
+	# external entity
+    response := http.send({
+        "method" : "POST",
+        "url": input.ers_url,
+        "body": ers_request,
+		"headers": {
+			"Authorization":  concat(" ", ["Bearer", input.auth_token])
+		}
+    })
+	response.body != null
+	response.status_code == 200
+
+    entity_representations := response.body.entityRepresentations
+    some entity_representation in entity_representations
 
 	# mappings
 	some subject_mapping in input.attribute_mappings[attribute].value.subject_mappings
 	some subject_set in subject_mapping.subject_condition_set.subject_sets
 	some condition_group in subject_set.condition_groups
-	condition_group_evaluate(payload, condition_group.boolean_operator, condition_group.conditions)
-]
+	condition_group_evaluate(entity_representation.additionalProps, condition_group.boolean_operator, condition_group.conditions)
+}
 
 # condition_group
 condition_group_evaluate(payload, boolean_operator, conditions) if {
 	# AND
 	boolean_operator == 1
 	some condition in conditions
-	condition_evaluate(jq.evaluate(payload, condition.subject_external_selector_value), condition.operator, condition.subject_external_values)
+	# TODO: additional_props is a list of entity representations
+	# (for when an email provided is for a group)
+	# how do we handle the situation when multiple entities returned
+	# add to the list for each entity?
+	# or do they all have to have the attribtue for it to be returned?
+	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_selector_value),
+         condition.operator, condition.subject_external_values
+    )
 } else if {
 	# OR
 	boolean_operator == 2
 	payload[key]
 	some condition in conditions
-	condition_evaluate(jq.evaluate(payload, condition.subject_external_selector_value), condition.operator, condition.subject_external_values)
+	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_selector_value),
+         condition.operator, condition.subject_external_values
+    )
 }
 
 # condition

@@ -22,13 +22,16 @@ import (
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 )
 
 type AuthorizationService struct {
 	authorization.UnimplementedAuthorizationServiceServer
-	eng    *opa.Engine
-	sdk    *otdf.SDK
-	ersURL string
+	eng         *opa.Engine
+	sdk         *otdf.SDK
+	ersURL      string
+	tokenSource *oauth2.TokenSource
 }
 
 func NewRegistration() serviceregistry.Registration {
@@ -38,6 +41,9 @@ func NewRegistration() serviceregistry.Registration {
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// default ERS endpoint
 			var ersURL = "http://localhost:8080/entityresolution/resolve"
+			var clientID = "tdf-authorization-svc"
+			var clientSecert = "secret"
+			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"
 			// if its passed in the config use that
 			val, ok := srp.Config.ExtraProps["ersUrl"]
 			if ok {
@@ -46,7 +52,30 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting ersURL to string")
 				}
 			}
-			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, ersURL: ersURL}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			val, ok = srp.Config.ExtraProps["clientId"]
+			if ok {
+				clientID, ok = val.(string)
+				if !ok {
+					panic("Error casting clientID to string")
+				}
+			}
+			val, ok = srp.Config.ExtraProps["clientSecert"]
+			if ok {
+				clientSecert, ok = val.(string)
+				if !ok {
+					panic("Error casting clientSecert to string")
+				}
+			}
+			val, ok = srp.Config.ExtraProps["tokenEndpoint"]
+			if ok {
+				tokenEndpoint, ok = val.(string)
+				if !ok {
+					panic("Error casting tokenEndpoint to string")
+				}
+			}
+			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecert, TokenURL: tokenEndpoint}
+			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), 100)
+			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, ersURL: ersURL, tokenSource: &newTokenSource}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
 			}
 		},
@@ -68,11 +97,11 @@ var retrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.R
 }
 
 // abstracted into variable for mocking in tests
-var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntitlementsRequest, as AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
+var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntitlementsRequest, as *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
 	return as.GetEntitlements(ctx, req)
 }
 
-func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
+func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
 	slog.DebugContext(ctx, "getting decisions")
 
 	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos
@@ -171,7 +200,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 	return rsp, nil
 }
 
-func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	slog.DebugContext(ctx, "getting entitlements")
 	// Scope is required for because of performance.  Remove and handle 360 no scope
 	// https://github.com/opentdf/platform/issues/365
@@ -200,8 +229,13 @@ func (as AuthorizationService) GetEntitlements(ctx context.Context, req *authori
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
 	for i, entity := range req.GetEntities() {
+		// get the client auth token
+		authToken, err := (*as.tokenSource).Token()
+		if err != nil {
+			return nil, err
+		}
 		// OPA
-		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersURL)
+		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersURL, authToken.AccessToken)
 		if err != nil {
 			return nil, err
 		}

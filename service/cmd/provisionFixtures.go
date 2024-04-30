@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/spf13/cobra"
 )
 

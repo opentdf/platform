@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +43,7 @@ You can clear/recycle your database with 'docker-compose down' and 'docker-compo
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			dbClient, err := db.NewClient(cfg.DB)
+			dbClient, err := db.New(context.Background(), cfg.DB)
 			if err != nil {
 				panic(fmt.Errorf("issue creating database client: %w", err))
 			}

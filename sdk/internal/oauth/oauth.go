@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +22,11 @@ import (
 const (
 	tokenExpirationBuffer = 10 * time.Second
 )
+
+type CertExchangeInfo struct {
+	TLSConfig *tls.Config
+	Audience  []string
+}
 
 type ClientCredentials struct {
 	ClientAuth interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
@@ -298,6 +304,48 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	err = setClientAuth(clientCredentials, &data, req, tokenEndpoint)
 	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func DoCertExchange(ctx context.Context, tokenEndpoint string, exchangeInfo CertExchangeInfo, clientCredentials ClientCredentials, key jwk.Key) (*Token, error) {
+	req, err := getCertExchangeRequest(ctx, tokenEndpoint, clientCredentials, exchangeInfo, key)
+	if err != nil {
+		return nil, err
+	}
+	client := http.Client{Transport: &http.Transport{TLSClientConfig: exchangeInfo.TLSConfig}}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to IdP for certificate exchange: %w", err)
+	}
+	defer resp.Body.Close()
+
+	return processResponse(resp)
+}
+
+func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCredentials ClientCredentials, exchangeInfo CertExchangeInfo, key jwk.Key) (*http.Request, error) {
+	data := url.Values{"grant_type": {"password"}, "client_id": {clientCredentials.ClientID}, "username": {""}, "password": {""}}
+
+	for _, a := range exchangeInfo.Audience {
+		data.Add("audience", a)
+	}
+
+	body := strings.NewReader(data.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	if err != nil {
+		return nil, err
+	}
+
+	dpop, err := getDPoPAssertion(key, http.MethodPost, tokenEndpoint, "")
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("dpop", dpop)
+	if err = setClientAuth(clientCredentials, &data, req, tokenEndpoint); err != nil {
 		return nil, err
 	}
 

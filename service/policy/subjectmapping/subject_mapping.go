@@ -6,22 +6,21 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type SubjectMappingService struct {
 	sm.UnimplementedSubjectMappingServiceServer
-	dbClient *policydb.PolicyDBClient
+	dbClient policydb.PolicyDBClient
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
-		Namespace:   "policy",
 		ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &SubjectMappingService{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+			return &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
 				return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, s.(sm.SubjectMappingServiceServer))
 			}
 		},

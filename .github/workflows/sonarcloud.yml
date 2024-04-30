@@ -1,0 +1,70 @@
+name: SonarCloud
+on:
+  schedule:
+    - cron: "0 5 * * 2,4,6"
+#  pull_request:
+#    types:
+#      - opened
+#      - synchronize
+#      - reopened
+
+jobs:
+  gotest:
+    name: 'Generate Golang Test Reports'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+
+      - name: 'Checkout repo'
+        uses: actions/checkout@v4
+
+      - name: 'Setup Go'
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.22.2'
+          check-latest: false
+          cache-dependency-path: |
+            service/go.sum
+            sdk/go.sum
+            examples/go.sum
+            protocol/go/go.sum
+
+      - name: 'Generate Golang Test Reports'
+        run: go test -v -coverprofile coverage.out -json ./sdk/... ./service/... ./lib/ocrypto | tee coverage.json
+
+      - name: 'Cover report'
+        run: go tool cover -func=coverage.out
+
+      - name: 'Archive Golang Test Results'
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage-report
+          path: coverage.*
+          retention-days: 3
+
+  sonarcloud:
+    name: 'SonarCloud'
+    runs-on: ubuntu-latest
+    needs: [gotest]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+
+    steps:
+      - name: 'Checkout repo'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 'Download Code Coverage Report'
+        uses: actions/download-artifact@v3
+        with:
+          name: code-coverage-report
+
+      - name: 'SonarCloud Scan'
+        uses: SonarSource/sonarcloud-github-action@49e6cd3b187936a73b8280d59ffd9da69df63ec9 #v2.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

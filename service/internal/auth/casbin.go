@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -133,7 +132,6 @@ type casbinSubject struct {
 
 type CasbinConfig struct {
 	PolicyConfig
-	DB *sql.DB
 }
 
 // newCasbinEnforcer creates a new casbin enforcer

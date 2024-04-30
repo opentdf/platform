@@ -9,11 +9,14 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/service/internal/db"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+const ErrTextCreationFailed = "resource creation failed"
+const ErrTextGetRetrievalFailed = "resource retrieval failed"
+const ErrTextNotFound = "resource not found"
 
 type KeyCloakConfig struct {
 	Url            string `json:"url"`
@@ -42,12 +45,12 @@ func EntityResolution(ctx context.Context,
 	err = json.Unmarshal(jsonString, &kcConfig)
 	if err != nil {
 		return &authorization.IdpPluginResponse{},
-			status.Error(codes.Internal, db.ErrTextCreationFailed)
+			status.Error(codes.Internal, ErrTextCreationFailed)
 	}
 	connector, err := getKCClient(kcConfig, ctx)
 	if err != nil {
 		return &authorization.IdpPluginResponse{},
-			status.Error(codes.Internal, db.ErrTextCreationFailed)
+			status.Error(codes.Internal, ErrTextCreationFailed)
 	}
 	payload := req.GetEntities()
 
@@ -69,7 +72,7 @@ func EntityResolution(ctx context.Context,
 			if err != nil {
 				slog.Error(err.Error())
 				return &authorization.IdpPluginResponse{},
-					status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
+					status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 			}
 			var jsonEntities []*structpb.Struct
 			for _, client := range clients {
@@ -77,13 +80,13 @@ func EntityResolution(ctx context.Context,
 				if err != nil {
 					slog.Error("Error serializing entity representation!", "error", err)
 					return &authorization.IdpPluginResponse{},
-						status.Error(codes.Internal, db.ErrTextCreationFailed)
+						status.Error(codes.Internal, ErrTextCreationFailed)
 				}
 				var mystruct, struct_err = structpb.NewStruct(json)
 				if struct_err != nil {
 					slog.Error("Error making struct!", "error", err)
 					return &authorization.IdpPluginResponse{},
-						status.Error(codes.Internal, db.ErrTextCreationFailed)
+						status.Error(codes.Internal, ErrTextCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, mystruct)
 			}
@@ -107,7 +110,7 @@ func EntityResolution(ctx context.Context,
 		if err != nil {
 			slog.Error(err.Error())
 			return &authorization.IdpPluginResponse{},
-				status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
+				status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 		} else if len(users) == 1 {
 			user := users[0]
 			slog.Debug("User found", "user", *user.ID, "entity", ident.String())
@@ -127,14 +130,14 @@ func EntityResolution(ctx context.Context,
 				if groupErr != nil {
 					slog.Error("Error getting group", "group", groupErr)
 					return &authorization.IdpPluginResponse{},
-						status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
+						status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 				} else if len(groups) == 1 {
 					slog.Info("Group found for", "entity", ident.String())
 					group := groups[0]
 					expandedRepresentations, exErr := expandGroup(*group.ID, connector, &kcConfig, ctx)
 					if exErr != nil {
 						return &authorization.IdpPluginResponse{},
-							status.Error(codes.Internal, db.ErrTextNotFound)
+							status.Error(codes.Internal, ErrTextNotFound)
 					} else {
 						keycloakEntities = expandedRepresentations
 					}
@@ -143,15 +146,15 @@ func EntityResolution(ctx context.Context,
 					var entityNotFoundErr authorization.EntityNotFoundError
 					switch ident.GetEntityType().(type) {
 					case *authorization.Entity_EmailAddress:
-						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.GetEmailAddress()}
+						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.GetEmailAddress()}
 					case *authorization.Entity_UserName:
-						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.GetUserName()}
+						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.GetUserName()}
 					// case "":
 					// 	return &authorization.IdpPluginResponse{},
-					// 		status.Error(codes.InvalidArgument, db.ErrTextNotFound)
+					// 		status.Error(codes.InvalidArgument, ErrTextNotFound)
 					default:
 						slog.Error("Unsupported/unknown type for", "entity", ident.String())
-						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: ident.String()}
+						entityNotFoundErr = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.String()}
 					}
 					slog.Error(entityNotFoundErr.String())
 					return &authorization.IdpPluginResponse{}, errors.New(entityNotFoundErr.String())
@@ -165,13 +168,13 @@ func EntityResolution(ctx context.Context,
 			if err != nil {
 				slog.Error("Error serializing entity representation!", "error", err)
 				return &authorization.IdpPluginResponse{},
-					status.Error(codes.Internal, db.ErrTextCreationFailed)
+					status.Error(codes.Internal, ErrTextCreationFailed)
 			}
 			var mystruct, struct_err = structpb.NewStruct(json)
 			if struct_err != nil {
 				slog.Error("Error making struct!", "error", err)
 				return &authorization.IdpPluginResponse{},
-					status.Error(codes.Internal, db.ErrTextCreationFailed)
+					status.Error(codes.Internal, ErrTextCreationFailed)
 			}
 			jsonEntities = append(jsonEntities, mystruct)
 		}

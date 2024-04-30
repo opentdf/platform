@@ -23,8 +23,9 @@ services:
 server:
   auth:
     enabled: true
+    enforceDPoP: false
     audience: "http://localhost:8080"
-    issuer: http://localhost:8888/auth/realms/opentdf
+    issuer:  http://localhost:8888/auth/realms/opentdf
     clients:
       - "opentdf"
       - "opentdf-sdk"

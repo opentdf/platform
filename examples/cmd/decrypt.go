@@ -27,11 +27,9 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	// Create new client
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
-		sdk.WithInsecurePlaintextConn(),
 		sdk.WithInsecureSkipVerifyConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		// FIXME revert http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
-		sdk.WithTokenEndpoint("https://keycloak.apps.dsp.shp.virtru.us/realms/opentdf/protocol/openid-connect/token"),
+		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)
 	if err != nil {
 		return err

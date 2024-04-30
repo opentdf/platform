@@ -1,6 +1,9 @@
 package auth
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+)
 
 // AuthConfig pulls AuthN and AuthZ together
 type Config struct {
@@ -11,7 +14,7 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct {
-	EnforceDPoP       bool   `yaml:"enforceDPoP" json:"enforceDPoP" default:"true"`
+	EnforceDPoP       bool   `yaml:"enforceDPoP" json:"enforceDPoP" mapstructure:"enforceDPoP" default:"false"`
 	Issuer            string `yaml:"issuer" json:"issuer"`
 	Audience          string `yaml:"audience" json:"audience"`
 	OIDCConfiguration `yaml:"-" json:"-"`
@@ -34,6 +37,10 @@ func (c AuthNConfig) validateAuthNConfig() error {
 
 	if c.Audience == "" {
 		return fmt.Errorf("config Auth.Audience is required")
+	}
+
+	if !c.EnforceDPoP {
+		slog.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
 	}
 
 	return nil

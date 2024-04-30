@@ -20,7 +20,6 @@ import (
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -81,7 +80,7 @@ type inProcessServer struct {
 	srv *grpc.Server
 }
 
-func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error

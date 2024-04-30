@@ -13,39 +13,31 @@ services:
     enabled: true
   policy:
     enabled: true
-  entityresolution:
-    enabled: true
-    url: http://localhost:8888/auth
-    clientid: "tdf-entity-resolution"
-    clientsecret: "secret"
-    realm: "opentdf"
-    legacykeycloak: true
   authorization:
     enabled: true
-    ersUrl: http://localhost:8080/entityresolution/resolve
+    url: http://localhost:8888
+    client: "tdf-entity-resolution"
+    secret: "secret"
+    realm: "opentdf"
+    legacy: true
 server:
   auth:
     enabled: true
     enforceDPoP: false
     audience: "http://localhost:8080"
-    issuer:  http://localhost:8888/auth/realms/opentdf
-    clients:
-      - "opentdf"
-      - "opentdf-sdk"
+    issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
       default: #"role:readonly"
-      ## Role map is used to map external roles to opentdf roles (opentdf_role:idp_role) the benefit of this is that you
-      ## can use the builtin policy if desired
-      roles:
-        ## Dot notation is used to access nested claims (i.e. realm_access.roles)
-        claim: # realm_access.roles
-        ## Maps the external role to the opentdf role
-        ## Note: left side is used in the policy, right side is the external role
-        map:
-        #  readonly: opentdf-readonly
-        #  admin: opentdf-admin
-        #  org-admin: opentdf-org-admin
+      ## Dot notation is used to access nested claims (i.e. realm_access.roles)
+      claim: # realm_access.roles
+      ## Maps the external role to the opentdf role
+      ## Note: left side is used in the policy, right side is the external role
+      map:
+      #  readonly: opentdf-readonly
+      #  admin: opentdf-admin
+      #  org-admin: opentdf-org-admin
+
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
       #  p, role:org-admin, policy:attributes, *, *, allow
@@ -73,15 +65,8 @@ server:
     reflectionEnabled: true # Default is false
   cryptoProvider:
     hsm:
-      enabled: true
-      # As configured by init-temp-keys.sh --hsm
-      pin: "12345"
-      slotlabel: "dev-token"
-      keys:
-        rsa:
-          label: development-rsa-kas
-        ec:
-          label: development-ec-kas
+      enabled: false
+      pin:
     standard:
       rsa:
         123:

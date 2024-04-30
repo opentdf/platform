@@ -30,7 +30,7 @@ opentdf.yaml
 # Generated files
 tmp-gen/
 /examples/examples
-/kas-*.pem
+/**/kas-*.pem
 /opentdf
 /sdkjava/target
 /serviceapp

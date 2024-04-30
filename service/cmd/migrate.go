@@ -7,7 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy"
 	"github.com/spf13/cobra"
 )

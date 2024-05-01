@@ -208,7 +208,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 
 	return &policy.Namespace{
 		Id:       id,
@@ -260,7 +260,7 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 
 	return &policy.Namespace{
 		Id: id,

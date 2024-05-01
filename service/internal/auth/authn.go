@@ -42,7 +42,7 @@ var (
 		"/kas/v2/kas_public_key",
 	}
 	// only asymmetric algorithms and no 'none'
-	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{
+	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms
 		jwa.RS256: true,
 		jwa.RS384: true,
 		jwa.RS512: true,
@@ -225,15 +225,16 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	p := strings.Split(info.FullMethod, "/")
 	resource := p[1] + "/" + p[2]
 	var action string
-	if strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get") {
+	switch {
+	case strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get"):
 		action = "read"
-	} else if strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update") {
+	case strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update"):
 		action = "write"
-	} else if strings.HasPrefix(p[2], "Delete") {
+	case strings.HasPrefix(p[2], "Delete"):
 		action = "delete"
-	} else if strings.HasPrefix(p[2], "Unsafe") {
+	case strings.HasPrefix(p[2], "Unsafe"):
 		action = "unsafe"
-	} else {
+	default:
 		action = "other"
 	}
 

@@ -198,7 +198,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
 
 	rV := &policy.Value{
 		Id:        id,
@@ -505,7 +505,7 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueId: r.GetId()})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: r.GetId()})
 
 	return &policy.Value{
 		Id: r.GetId(),

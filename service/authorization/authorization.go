@@ -24,7 +24,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
-type AuthorizationService struct {
+type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	authorization.UnimplementedAuthorizationServiceServer
 	eng    *opa.Engine
 	sdk    *otdf.SDK

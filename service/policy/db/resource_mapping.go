@@ -207,13 +207,13 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context) ([]*policy.Res
 	return list, nil
 }
 
-func updateResourceMappingSQL(id string, attribute_value_id string, metadata []byte, terms []string) (string, []interface{}, error) {
+func updateResourceMappingSQL(id string, attributeValueID string, metadata []byte, terms []string) (string, []interface{}, error) {
 	t := Tables.ResourceMappings
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
 
-	if attribute_value_id != "" {
-		sb = sb.Set("attribute_value_id", attribute_value_id)
+	if attributeValueID != "" {
+		sb = sb.Set("attribute_value_id", attributeValueID)
 	}
 
 	if metadata != nil {

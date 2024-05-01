@@ -52,7 +52,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 }
 
 func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
-	req *sm.ListSubjectMappingsRequest,
+	_ *sm.ListSubjectMappingsRequest,
 ) (*sm.ListSubjectMappingsResponse, error) {
 	rsp := &sm.ListSubjectMappingsResponse{}
 	slog.Debug("listing subject mappings")
@@ -146,7 +146,7 @@ func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
 }
 
 func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
-	req *sm.ListSubjectConditionSetsRequest,
+	_ *sm.ListSubjectConditionSetsRequest,
 ) (*sm.ListSubjectConditionSetsResponse, error) {
 	rsp := &sm.ListSubjectConditionSetsResponse{}
 	slog.Debug("listing subject condition sets")
@@ -166,7 +166,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	rsp := &sm.CreateSubjectConditionSetResponse{}
 	slog.Debug("creating subject condition set", slog.String("subjectConditionSet", req.String()))
 
-	conditionSet, err := s.dbClient.CreateSubjectConditionSet(context.Background(), req.GetSubjectConditionSet())
+	conditionSet, err := s.dbClient.CreateSubjectConditionSet(ctx, req.GetSubjectConditionSet())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectConditionSet", req.String()))
 	}

@@ -131,9 +131,11 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithCustomModel() {
 	s.NotNil(enforcer)
 
 	tok := jwt.New()
-	tok.Set("realm_access", map[string]interface{}{
+	err = tok.Set("realm_access", map[string]interface{}{
 		"roles": []interface{}{"role:unknown"},
 	})
+	s.Require().NoError(err)
+
 	allowed, err := enforcer.Enforce(tok, "", "")
 	s.Require().NoError(err)
 	s.True(allowed)
@@ -382,5 +384,4 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		}
 		s.Equal(test.allowed, allowed)
 	}
-
 }

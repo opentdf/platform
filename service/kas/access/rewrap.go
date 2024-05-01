@@ -65,14 +65,6 @@ func err403(s string) error {
 	return errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
 }
 
-func err404(s string) error {
-	return errors.Join(ErrUser, status.Error(codes.NotFound, s))
-}
-
-func err503(s string) error {
-	return errors.Join(ErrInternal, status.Error(codes.Unavailable, s))
-}
-
 func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	_, err := mac.Write(msg)

@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type HealthService struct {
+type HealthService struct { //nolint:revive // HealthService is a valid name for this struct
 	healthpb.UnimplementedHealthServer
 	db *db.Client
 }
@@ -31,7 +31,7 @@ func NewRegistration() serviceregistry.Registration {
 			if err != nil {
 				panic(err)
 			}
-			return &HealthService{db: srp.DBClient}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &HealthService{db: srp.DBClient}, func(_ context.Context, _ *runtime.ServeMux, _ any) error {
 				return nil
 			}
 		},
@@ -61,6 +61,6 @@ func (s HealthService) Check(ctx context.Context, req *healthpb.HealthCheckReque
 	}, nil
 }
 
-func (s HealthService) Watch(req *healthpb.HealthCheckRequest, srv healthpb.Health_WatchServer) error {
+func (s HealthService) Watch(_ *healthpb.HealthCheckRequest, _ healthpb.Health_WatchServer) error {
 	return status.Error(codes.Unimplemented, "unimplemented")
 }

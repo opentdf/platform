@@ -25,8 +25,10 @@ Bootstrap Keycloak
    ```
 4. Start the platform
 
+   Exposes the server at localhost:8080
    ```sh
    docker run --network opentdf_platform \
+      -p "127.0.0.1:8080:8080" \
       -v "$(pwd)/kas-keys/:/keys/" \
       -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
       -it registry.opentdf.io/platform:nightly start

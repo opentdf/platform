@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      # Remove?
       - fix/701-go-linting
 
 jobs:

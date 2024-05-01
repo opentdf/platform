@@ -37,7 +37,11 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, config: &srp.Config.ExtraProps}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
+				authServer, ok := server.(authorization.AuthorizationServiceServer)
+				if !ok {
+					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
+				}
+				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
 			}
 		},
 	}

@@ -94,7 +94,7 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 
 	for _, test := range testData {
-		gotNamespace, err := s.db.PolicyClient.GetNamespace(s.ctx, test.Id)
+		gotNamespace, err := s.db.PolicyClient.GetNamespace(s.ctx, test.ID)
 		s.Require().NoError(err)
 		s.NotNil(gotNamespace)
 		// name retrieved by ID equal to name used to create
@@ -117,7 +117,7 @@ func (s *NamespacesSuite) Test_GetNamespace_InactiveState_Succeeds() {
 	// Ensure our fixtures matches expected string enum
 	s.False(inactive.Active)
 
-	got, err := s.db.PolicyClient.GetNamespace(s.ctx, inactive.Id)
+	got, err := s.db.PolicyClient.GetNamespace(s.ctx, inactive.ID)
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(inactive.Name, got.GetName())
@@ -215,7 +215,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 
 	// Deletion should fail when the namespace is referenced as FK in attribute(s)
 	for _, ns := range testData {
-		deleted, err := s.db.PolicyClient.DeleteNamespace(s.ctx, ns.Id)
+		deleted, err := s.db.PolicyClient.DeleteNamespace(s.ctx, ns.ID)
 		s.Require().Error(err)
 		s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 		s.Nil(deleted)

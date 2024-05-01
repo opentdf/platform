@@ -77,7 +77,7 @@ func (s *AttributeFqnSuite) TestCreateAttribute() {
 	n := s.f.GetNamespaceKey("example.com")
 	name := "test_namespace"
 	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		NamespaceId: n.Id,
+		NamespaceId: n.ID,
 		Name:        name,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	})
@@ -94,7 +94,7 @@ func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 	a := s.f.GetAttributeKey("example.com/attr/attr1")
 	n := s.f.GetNamespaceKey("example.com")
 	name := "test_new_value"
-	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.CreateAttributeValueRequest{
+	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.ID, &attributes.CreateAttributeValueRequest{
 		Value: name,
 	})
 	s.Require().NoError(err)
@@ -114,16 +114,16 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
 	s.NotNil(attr)
-	s.Equal(valueFixture.AttributeDefinitionId, attr.GetId())
+	s.Equal(valueFixture.AttributeDefinitionID, attr.GetId())
 
 	// there should be more than one value on the attribute
 	s.Greater(len(attr.GetValues()), 1)
 
 	// the value should match the fixture (verify by looping through and matching the fqn)
 	for _, v := range attr.GetValues() {
-		if v.GetId() == valueFixture.Id {
+		if v.GetId() == valueFixture.ID {
 			s.Equal(fullFqn, v.GetFqn())
-			s.Equal(valueFixture.Id, v.GetId())
+			s.Equal(valueFixture.ID, v.GetId())
 			s.Equal(valueFixture.Value, v.GetValue())
 			// the value should contain subject mappings
 			s.GreaterOrEqual(len(v.GetSubjectMappings()), 3)
@@ -140,16 +140,16 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithCasingNormalized() {
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
 	s.NotNil(attr)
-	s.Equal(valueFixture.AttributeDefinitionId, attr.GetId())
+	s.Equal(valueFixture.AttributeDefinitionID, attr.GetId())
 
 	// there should be more than one value on the attribute
 	s.Greater(len(attr.GetValues()), 1)
 
 	// the value should match the fixture (verify by looping through and matching the fqn)
 	for _, v := range attr.GetValues() {
-		if v.GetId() == valueFixture.Id {
+		if v.GetId() == valueFixture.ID {
 			s.Equal(strings.ToLower(fullFqn), v.GetFqn())
-			s.Equal(valueFixture.Id, v.GetId())
+			s.Equal(valueFixture.ID, v.GetId())
 			s.Equal(valueFixture.Value, v.GetValue())
 			// the value should contain subject mappings
 			s.GreaterOrEqual(len(v.GetSubjectMappings()), 3)
@@ -170,7 +170,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	s.Len(attr.GetValues(), 2)
 
 	// the attribute should match the fixture
-	s.Equal(attr.GetId(), attrFixture.Id)
+	s.Equal(attr.GetId(), attrFixture.ID)
 	s.Equal(attr.GetName(), attrFixture.Name)
 	s.Equal(attr.GetRule().String(), fmt.Sprintf("ATTRIBUTE_RULE_TYPE_ENUM_%s", attrFixture.Rule))
 	s.Equal(attr.GetActive().GetValue(), attrFixture.Active)

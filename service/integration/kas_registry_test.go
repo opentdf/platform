@@ -52,14 +52,14 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
 	s.NotNil(list)
 	for _, fixture := range fixtures {
 		for _, item := range list {
-			if item.GetId() == fixture.Id {
-				s.Equal(fixture.Id, item.GetId())
+			if item.GetId() == fixture.ID {
+				s.Equal(fixture.ID, item.GetId())
 				if item.GetPublicKey().GetRemote() != "" {
 					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
 				} else {
 					s.Equal(fixture.PubKey.Local, item.GetPublicKey().GetLocal())
 				}
-				s.Equal(fixture.Uri, item.GetUri())
+				s.Equal(fixture.URI, item.GetUri())
 			}
 		}
 	}
@@ -69,18 +69,18 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
 	localFixture := s.f.GetKasRegistryKey("key_access_server_2")
 
-	remote, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.Id)
+	remote, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.ID)
 	s.Require().NoError(err)
 	s.NotNil(remote)
-	s.Equal(remoteFixture.Id, remote.GetId())
-	s.Equal(remoteFixture.Uri, remote.GetUri())
+	s.Equal(remoteFixture.ID, remote.GetId())
+	s.Equal(remoteFixture.URI, remote.GetUri())
 	s.Equal(remoteFixture.PubKey.Remote, remote.GetPublicKey().GetRemote())
 
-	local, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, localFixture.Id)
+	local, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, localFixture.ID)
 	s.Require().NoError(err)
 	s.NotNil(local)
-	s.Equal(localFixture.Id, local.GetId())
-	s.Equal(localFixture.Uri, local.GetUri())
+	s.Equal(localFixture.ID, local.GetId())
+	s.Equal(localFixture.URI, local.GetUri())
 	s.Equal(localFixture.PubKey.Local, local.GetPublicKey().GetLocal())
 }
 

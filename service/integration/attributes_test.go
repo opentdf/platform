@@ -35,8 +35,8 @@ var (
 func (s *AttributesSuite) SetupSuite() {
 	slog.Info("setting up db.Attributes test suite")
 	s.ctx = context.Background()
-	fixtureNamespaceID = s.f.GetNamespaceKey("example.com").Id
-	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").Id
+	fixtureNamespaceID = s.f.GetNamespaceKey("example.com").ID
+	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
 	c := *Config
 	c.DB.Schema = "test_opentdf_attribute_definitions"
 	s.db = fixtures.NewDBInterface(c)
@@ -163,7 +163,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithNonUniqueNameConflictFails() 
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
-	otherNamespaceID := s.f.GetNamespaceKey("example.net").Id
+	otherNamespaceID := s.f.GetNamespaceKey("example.net").ID
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_any_of_rule_value",
 		NamespaceId: otherNamespaceID,
@@ -294,13 +294,13 @@ func (s *AttributesSuite) Test_GetAttribute() {
 	fixtures := s.getAttributeFixtures()
 
 	for _, f := range fixtures {
-		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, f.Id)
+		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, f.ID)
 		s.Require().NoError(err)
 		s.NotNil(gotAttr)
-		s.Equal(f.Id, gotAttr.GetId())
+		s.Equal(f.ID, gotAttr.GetId())
 		s.Equal(f.Name, gotAttr.GetName())
 		s.Equal(fmt.Sprintf("%s%s", policydb.AttributeRuleTypeEnumPrefix, f.Rule), gotAttr.GetRule().Enum().String())
-		s.Equal(f.NamespaceId, gotAttr.GetNamespace().GetId())
+		s.Equal(f.NamespaceID, gotAttr.GetNamespace().GetId())
 		metadata := gotAttr.GetMetadata()
 		createdAt := metadata.GetCreatedAt()
 		updatedAt := metadata.GetUpdatedAt()
@@ -319,10 +319,10 @@ func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 
 func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 	deactivated := s.f.GetAttributeKey("deactivated.io/attr/attr1")
-	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivated.Id)
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivated.ID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Equal(deactivated.Id, gotAttr.GetId())
+	s.Equal(deactivated.ID, gotAttr.GetId())
 	s.Equal(deactivated.Name, gotAttr.GetName())
 	s.False(gotAttr.GetActive().GetValue())
 }
@@ -338,7 +338,7 @@ func (s *AttributesSuite) Test_ListAttribute() {
 	for _, f := range fixtures {
 		var found bool
 		for _, l := range list {
-			if f.Id == l.GetId() {
+			if f.ID == l.GetId() {
 				found = true
 				break
 			}
@@ -351,7 +351,7 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 	// get all unique namespace_ids
 	namespaces := map[string]string{}
 	for _, f := range s.getAttributeFixtures() {
-		namespaces[f.NamespaceId] = ""
+		namespaces[f.NamespaceID] = ""
 	}
 	// list attributes by namespace id
 	for nsID := range namespaces {
@@ -461,7 +461,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 	s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
 	original := &attributes.CreateAttributeRequest{
 		Name:        "test__update_attribute_namespace_immutable",
-		NamespaceId: s.f.GetNamespaceKey("example.com").Id,
+		NamespaceId: s.f.GetNamespaceKey("example.com").ID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
@@ -487,7 +487,7 @@ func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFa
 	fixtureData := s.f.GetAttributeKey("example.org/attr/attr3")
 	original := &attributes.CreateAttributeRequest{
 		Name:        "test__update_attribute_with_same_name_and_namespace",
-		NamespaceId: fixtureData.NamespaceId,
+		NamespaceId: fixtureData.NamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
@@ -495,7 +495,7 @@ func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFa
 	s.NotNil(createdAttr)
 
 	conflict := &attributes.UpdateAttributeRequest{}
-	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, fixtureData.Id, conflict)
+	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, fixtureData.ID, conflict)
 	s.Require().Error(err)
 	s.Nil(resp)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
@@ -713,7 +713,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_Wh
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").Id,
+		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").ID,
 		KeyAccessServerId: nonExistentAttrID,
 	}
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
@@ -725,7 +725,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_Wh
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr2").Id,
+		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr2").ID,
 		KeyAccessServerId: fixtureKeyAccessServerID,
 	}
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
@@ -749,7 +749,7 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").Id,
+		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").ID,
 		KeyAccessServerId: nonExistentAttrID,
 	}
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
@@ -761,8 +761,8 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").Id,
-		KeyAccessServerId: s.f.GetKasRegistryKey("key_access_server_1").Id,
+		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").ID,
+		KeyAccessServerId: s.f.GetKasRegistryKey("key_access_server_1").ID,
 	}
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
 

@@ -56,7 +56,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.Id,
+		AttributeValueId: attrValue.ID,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
 	}
@@ -84,7 +84,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.Id,
+		AttributeValueId: attrValue.ID,
 		Metadata:         metadata,
 		Terms:            []string{},
 	}
@@ -104,12 +104,12 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 	for _, testMapping := range testData {
 		found := false
 		for _, mapping := range mappings {
-			if testMapping.Id == mapping.GetId() {
+			if testMapping.ID == mapping.GetId() {
 				found = true
 				break
 			}
 		}
-		s.True(found, fmt.Sprintf("expected to find mapping %s", testMapping.Id))
+		s.True(found, fmt.Sprintf("expected to find mapping %s", testMapping.ID))
 	}
 }
 
@@ -118,13 +118,13 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 	testData := s.getResourceMappingFixtures()
 	testedMembers := false
 	for idx, testMapping := range testData {
-		mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, testMapping.Id)
+		mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, testMapping.ID)
 		s.Require().NoError(err)
 		s.NotNil(mapping)
-		s.Equal(testMapping.Id, mapping.GetId())
-		s.Equal(testMapping.AttributeValueId, mapping.GetAttributeValue().GetId())
+		s.Equal(testMapping.ID, mapping.GetId())
+		s.Equal(testMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
 		s.Equal(testMapping.Terms, mapping.GetTerms())
-		av, err := s.db.PolicyClient.GetAttributeValue(s.ctx, testMapping.AttributeValueId)
+		av, err := s.db.PolicyClient.GetAttributeValue(s.ctx, testMapping.AttributeValueID)
 		s.Require().NoError(err)
 		if len(av.GetMembers()) > 0 {
 			testedMembers = true
@@ -153,7 +153,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.Id,
+		AttributeValueId: attrValue.ID,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
 	}
@@ -195,7 +195,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	start := time.Now().Add(-time.Second)
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.Id,
+		AttributeValueId: attrValue.ID,
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
@@ -251,7 +251,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.Id,
+		AttributeValueId: attrValue.ID,
 		Terms:            []string{"asdf qwerty"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
@@ -272,7 +272,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeValueIdFails() {
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.Id,
+		AttributeValueId: attrValue.ID,
 		Terms:            []string{"testing"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
@@ -298,7 +298,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 	attrValue := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1")
 	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.Id,
+		AttributeValueId: attrValue.ID,
 		Terms:            []string{"term1", "term2"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)

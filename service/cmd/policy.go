@@ -30,7 +30,7 @@ var (
 		Short: "Reindex FQNs across the platform",
 		Long:  policyFqnReindexCmdLong,
 
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
 			cfg, err := config.LoadConfig(configKey, configFile)

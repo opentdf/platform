@@ -648,7 +648,7 @@ func runKas() (string, func(), *SDK) {
 	sdk, err := New(host,
 		WithClientCredentials("test", "test", nil),
 		WithTokenEndpoint(fmt.Sprintf("http://%s/auth/token", host)),
-		WithInsecureConn(),
+		WithInsecurePlaintextConn(),
 		WithExtraDialOptions(grpc.WithContextDialer(dialer)))
 	if err != nil {
 		panic(fmt.Sprintf("error creating SDK with authconfig: %v", err))

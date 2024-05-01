@@ -41,13 +41,11 @@ type SDK struct {
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
-	tlsConfig := tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}
-
 	// Set default options
 	cfg := &config{
-		tls: grpc.WithTransportCredentials(credentials.NewTLS(&tlsConfig)),
+		dialOption: grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS12,
+		})),
 	}
 
 	// Apply options
@@ -67,7 +65,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		return nil, err
 	}
 	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
+		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
 	}
 

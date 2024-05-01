@@ -392,7 +392,7 @@ func (r *Reader) Read(p []byte) (int, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return 0, fmt.Errorf("reader.Read failed: %w", err)
 		}
 	}
 
@@ -407,7 +407,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return 0, fmt.Errorf("reader.WriteTo failed: %w", err)
 		}
 	}
 
@@ -468,7 +468,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return 0, fmt.Errorf("reader.ReadAt failed: %w", err)
 		}
 	}
 
@@ -563,7 +563,7 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return nil, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return nil, fmt.Errorf("reader.UnencryptedMetadata failed: %w", err)
 		}
 	}
 
@@ -621,7 +621,7 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readab
 
 		wrappedKey, err := client.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
 		if err != nil {
-			return fmt.Errorf(" splitKey.rewrap failed:%w", err)
+			return fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
 		}
 
 		for keyByteIndex, keyByte := range wrappedKey {

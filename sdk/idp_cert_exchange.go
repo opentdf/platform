@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"net/http"
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -10,6 +11,7 @@ import (
 )
 
 type CertExchangeTokenSource struct {
+	auth.AccessTokenSource
 	IdpEndpoint string
 	credentials oauth.ClientCredentials
 	tokenMutex  *sync.Mutex
@@ -35,12 +37,12 @@ func NewCertExchangeTokenSource(info oauth.CertExchangeInfo, credentials oauth.C
 	return &exchangeSource, nil
 }
 
-func (c *CertExchangeTokenSource) AccessToken() (auth.AccessToken, error) {
+func (c *CertExchangeTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
 	c.tokenMutex.Lock()
 	defer c.tokenMutex.Unlock()
 
 	if c.token == nil || c.token.Expired() {
-		tok, err := oauth.DoCertExchange(context.TODO(), c.IdpEndpoint, c.info, c.credentials, c.key)
+		tok, err := oauth.DoCertExchange(ctx, client, c.IdpEndpoint, c.info, c.credentials, c.key)
 		if err != nil {
 			return "", err
 		}

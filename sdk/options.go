@@ -5,6 +5,7 @@ import (
 
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -12,7 +13,8 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	tls               grpc.DialOption
+	dialOption        grpc.DialOption
+	tlsConfig         *tls.Config
 	clientCredentials *oauth.ClientCredentials
 	tokenExchange     *oauth.TokenExchangeInfo
 	tokenEndpoint     string
@@ -25,13 +27,29 @@ type config struct {
 }
 
 func (c *config) build() []grpc.DialOption {
-	return []grpc.DialOption{c.tls}
+	return []grpc.DialOption{c.dialOption}
 }
 
-// WithInsecureConn returns an Option that sets up an http connection.
-func WithInsecureConn() Option {
+// WithInsecureSkipVerifyConn returns an Option that sets up HTTPS connection without verification.
+func WithInsecureSkipVerifyConn() Option {
 	return func(c *config) {
-		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
+		tlsConfig := &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true, // #nosec G402
+		}
+		c.dialOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
+		// used by http client
+		c.tlsConfig = tlsConfig
+	}
+}
+
+// WithInsecurePlaintextConn returns an Option that sets up HTTP connection sent in the clear.
+func WithInsecurePlaintextConn() Option {
+	return func(c *config) {
+		c.dialOption = grpc.WithTransportCredentials(insecure.NewCredentials())
+		// used by http client
+		// FIXME anything to do here
+		c.tlsConfig = &tls.Config{}
 	}
 }
 
@@ -49,14 +67,14 @@ func WithTLSCredentials(tls *tls.Config, audience []string) Option {
 	}
 }
 
-// When we implement service discovery using a .well-known endpoint this option may become deprecated
+// WithTokenEndpoint When we implement service discovery using a .well-known endpoint this option may become deprecated
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint
 	}
 }
 
-// temporary option to allow the for token exchange and the
+// WithAuthConfig temporary option to allow the for token exchange and the
 // use of REST-ful KASs. this will likely change as we
 // make these options more robust
 func WithAuthConfig(authConfig AuthConfig) Option {

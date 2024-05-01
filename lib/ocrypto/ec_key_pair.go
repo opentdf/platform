@@ -1,7 +1,6 @@
 package ocrypto
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -9,7 +8,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"math/big"
 )
 
 type ECCMode uint8
@@ -49,9 +47,11 @@ func getCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 	var c elliptic.Curve
 
+	var err error = nil
+
 	c, err = getCurveFromECCMode(mode)
 	if err != nil {
-		return err, nil)
+		return ECKeyPair{}, err
 	}
 
 	privateKey, err := ecdsa.GenerateKey(c, rand.Reader)

@@ -19,13 +19,13 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var nonExistentAttributeValueUuid = "78909865-8888-9999-9999-000000000000"
+var absentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {
 	suite.Suite
 	f   fixtures.Fixtures
 	db  fixtures.DBInterface
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // context is used in the test suite
 }
 
 func (s *AttributeValuesSuite) SetupSuite() {
@@ -46,9 +46,9 @@ func (s *AttributeValuesSuite) TearDownSuite() {
 }
 
 func (s *AttributeValuesSuite) Test_ListAttributeValues() {
-	attrId := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionId
+	attrID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionId
 
-	list, err := s.db.PolicyClient.ListAttributeValues(s.ctx, attrId, policydb.StateActive)
+	list, err := s.db.PolicyClient.ListAttributeValues(s.ctx, attrID, policydb.StateActive)
 	s.Require().NoError(err)
 	s.NotNil(list)
 
@@ -90,10 +90,10 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
-	attr, err := s.db.PolicyClient.GetAttributeValue(s.ctx, nonExistentAttributeValueUuid)
-	s.NotNil(err)
+	attr, err := s.db.PolicyClient.GetAttributeValue(s.ctx, absentAttributeValueUUID)
+	s.Require().Error(err)
 	s.Nil(attr)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDefault() {
@@ -105,7 +105,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDe
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, req)
 	s.Require().NoError(err)
 	s.NotNil(createdValue)
-	s.Equal(true, createdValue.GetActive().GetValue())
+	s.True(createdValue.GetActive().GetValue())
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_NormalizesValueToLowerCase() {
@@ -135,7 +135,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
 	s.Equal(inactive.Id, got.GetId())
 	s.Equal(inactive.Value, got.GetValue())
 	s.Equal(len(inactive.Members), len(got.GetMembers()))
-	s.Equal(false, got.GetActive().GetValue())
+	s.False(got.GetActive().GetValue())
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
@@ -210,20 +210,20 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
 	s.Equal(len(createdValue.GetMembers()), len(got.GetMembers()))
 
-	s.True(len(got.GetMembers()) > 0)
+	s.NotEmpty(got.GetMembers())
 	equalMembers(s.T(), createdValue, got, true)
 
 	// members must exist
 	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, &attributes.CreateAttributeValueRequest{
 		Value: "value4",
 		Members: []string{
-			nonExistentAttributeValueUuid,
+			absentAttributeValueUUID,
 		},
 	},
 	)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(createdValue)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {
@@ -231,9 +231,9 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 		Value: "some value",
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, nonExistentAttrId, value)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(createdValue)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails() {
@@ -247,21 +247,21 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails
 	value := &attributes.CreateAttributeValueRequest{
 		Value: "value3",
 		Members: []string{
-			nonExistentAttributeValueUuid,
+			absentAttributeValueUUID,
 		},
 		Metadata: metadata,
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
 	s.Nil(createdValue)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 
 	attrDef = s.f.GetAttributeKey("example.net/attr/attr3")
 	value.Members[0] = "not a uuid"
 	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
 	s.Nil(createdValue)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrUUIDInvalid)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
@@ -340,11 +340,11 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
 			},
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
-		Id:                     nonExistentAttributeValueUuid,
+		Id:                     absentAttributeValueUUID,
 	})
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(updated)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_DeleteAttribute() {
@@ -363,22 +363,22 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute() {
 
 	// get it again to verify it no longer exists
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(got)
 }
 
 func (s *AttributeValuesSuite) Test_DeleteAttribute_NotFound() {
-	resp, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, nonExistentAttributeValueUuid)
-	s.NotNil(err)
+	resp, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, absentAttributeValueUUID)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_WithInvalidIdFails() {
-	deactivated, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, nonExistentAttributeValueUuid)
-	s.NotNil(err)
+	deactivated, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, absentAttributeValueUUID)
+	s.Require().Error(err)
 	s.Nil(deactivated)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 // reusable setup for creating a namespace -> attr -> value and then deactivating the attribute (cascades to value)
@@ -531,32 +531,32 @@ func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
 	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, stillActiveNsId)
 	s.Require().NoError(err)
 	s.NotNil(gotNs)
-	s.Equal(true, gotNs.GetActive().GetValue())
+	s.True(gotNs.GetActive().GetValue())
 
 	// attribute is still active (not bubbled up)
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, stillActiveAttributeId)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Equal(true, gotAttr.GetActive().GetValue())
+	s.True(gotAttr.GetActive().GetValue())
 
 	// value was deactivated
 	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueId)
 	s.Require().NoError(err)
 	s.NotNil(gotVal)
-	s.Equal(false, gotVal.GetActive().GetValue())
+	s.False(gotVal.GetActive().GetValue())
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_Value_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
-		ValueId:           nonExistentAttributeValueUuid,
+		ValueId:           absentAttributeValueUUID,
 		KeyAccessServerId: fixtureKeyAccessServerId,
 	}
 
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
 
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_KeyAccessServer_Not_Found() {
@@ -567,9 +567,9 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_W
 
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
 
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
@@ -587,15 +587,15 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success
 
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_Value_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
-		ValueId:           nonExistentAttributeValueUuid,
+		ValueId:           absentAttributeValueUUID,
 		KeyAccessServerId: fixtureKeyAccessServerId,
 	}
 
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)
 
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_KeyAccessServer_Not_Found() {
@@ -606,9 +606,9 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error
 
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)
 
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {

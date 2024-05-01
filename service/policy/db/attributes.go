@@ -103,7 +103,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"JSON_BUILD_OBJECT("+
 			"'id', "+avt.Field("id")+", "+
 			"'value', "+avt.Field("value")+","+
-			"'members', "+avt.Field("members")+","+ //nolint:goconst // this is a SQL query
+			"'members', "+avt.Field("members")+","+
 			"'grants', ("+
 			"SELECT JSON_AGG("+
 			"JSON_BUILD_OBJECT("+

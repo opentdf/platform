@@ -36,8 +36,8 @@ func (s *SubjectMappingsSuite) TearDownSuite() {
 
 // a set of easily accessible actions for use in tests
 var (
-	Decrypt         = "DECRYPT"
-	Transmit        = "TRANSMIT"
+	Decrypt        = "DECRYPT"
+	Transmit       = "TRANSMIT"
 	CustomDownload = "CUSTOM_DOWNLOAD"
 	CustomUpload   = "CUSTOM_UPLOAD"
 

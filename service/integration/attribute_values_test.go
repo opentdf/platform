@@ -31,13 +31,13 @@ type AttributeValuesSuite struct {
 func (s *AttributeValuesSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeValues test suite")
 	s.ctx = context.Background()
-	fixtureKeyAccessServerId = s.f.GetKasRegistryKey("key_access_server_1").Id
+	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").Id
 	c := *Config
 	c.DB.Schema = "test_opentdf_attribute_values"
 	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
-	stillActiveNsId, stillActiveAttributeId, deactivatedAttrValueId = setupDeactivateAttributeValue(s)
+	stillActiveNsID, stillActiveAttributeID, deactivatedAttrValueID = setupDeactivateAttributeValue(s)
 }
 
 func (s *AttributeValuesSuite) TearDownSuite() {
@@ -230,7 +230,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 	value := &attributes.CreateAttributeValueRequest{
 		Value: "some value",
 	}
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, nonExistentAttrId, value)
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, nonExistentAttrID, value)
 	s.Require().Error(err)
 	s.Nil(createdValue)
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
@@ -430,7 +430,7 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 		s.Require().NoError(err)
 		s.NotNil(listedNamespaces)
 		for _, ns := range listedNamespaces {
-			if stillActiveNsId == ns.GetId() {
+			if stillActiveNsID == ns.GetId() {
 				return true
 			}
 		}
@@ -442,7 +442,7 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {
-			if stillActiveAttributeId == a.GetId() {
+			if stillActiveAttributeID == a.GetId() {
 				return true
 			}
 		}
@@ -450,11 +450,11 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	listValues := func(state string) bool {
-		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, stillActiveAttributeId, state)
+		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, stillActiveAttributeID, state)
 		s.Require().NoError(err)
 		s.NotNil(listedVals)
 		for _, v := range listedVals {
-			if deactivatedAttrValueId == v.GetId() {
+			if deactivatedAttrValueID == v.GetId() {
 				return true
 			}
 		}
@@ -528,19 +528,19 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 
 func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
 	// namespace is still active (not bubbled up)
-	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, stillActiveNsId)
+	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, stillActiveNsID)
 	s.Require().NoError(err)
 	s.NotNil(gotNs)
 	s.True(gotNs.GetActive().GetValue())
 
 	// attribute is still active (not bubbled up)
-	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, stillActiveAttributeId)
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, stillActiveAttributeID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
 	s.True(gotAttr.GetActive().GetValue())
 
 	// value was deactivated
-	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueId)
+	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueID)
 	s.Require().NoError(err)
 	s.NotNil(gotVal)
 	s.False(gotVal.GetActive().GetValue())
@@ -549,7 +549,7 @@ func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_Value_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
 		ValueId:           absentAttributeValueUUID,
-		KeyAccessServerId: fixtureKeyAccessServerId,
+		KeyAccessServerId: fixtureKeyAccessServerID,
 	}
 
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
@@ -562,7 +562,7 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_W
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_KeyAccessServer_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
 		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-		KeyAccessServerId: nonExistentKasRegistryId,
+		KeyAccessServerId: nonExistentKasRegistryID,
 	}
 
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
@@ -575,7 +575,7 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_W
 func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
 	v := &attributes.ValueKeyAccessServer{
 		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-		KeyAccessServerId: fixtureKeyAccessServerId,
+		KeyAccessServerId: fixtureKeyAccessServerID,
 	}
 
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
@@ -588,7 +588,7 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_Value_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
 		ValueId:           absentAttributeValueUUID,
-		KeyAccessServerId: fixtureKeyAccessServerId,
+		KeyAccessServerId: fixtureKeyAccessServerID,
 	}
 
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)
@@ -601,7 +601,7 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error
 func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_KeyAccessServer_Not_Found() {
 	v := &attributes.ValueKeyAccessServer{
 		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id,
-		KeyAccessServerId: nonExistentAttrId,
+		KeyAccessServerId: nonExistentAttrID,
 	}
 
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)

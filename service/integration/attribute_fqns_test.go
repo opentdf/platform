@@ -19,18 +19,19 @@ type AttributeFqnSuite struct {
 	suite.Suite
 	f   fixtures.Fixtures
 	db  fixtures.DBInterface
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // context is used in the test suite
 }
 
 func fqnBuilder(n string, a string, v string) string {
 	fqn := "https://"
-	if n != "" && a != "" && v != "" {
+	switch {
+	case n != "" && a != "" && v != "":
 		return fqn + n + "/attr/" + a + "/value/" + v
-	} else if n != "" && a != "" && v == "" {
+	case n != "" && a != "" && v == "":
 		return fqn + n + "/attr/" + a
-	} else if n != "" && a == "" {
+	case n != "" && a == "":
 		return fqn + n
-	} else {
+	default:
 		panic("Invalid FQN")
 	}
 }
@@ -166,7 +167,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	s.Require().NoError(err)
 
 	// the number of values should match the fixture
-	s.Equal(2, len(attr.GetValues()))
+	s.Len(attr.GetValues(), 2)
 
 	// the attribute should match the fixture
 	s.Equal(attr.GetId(), attrFixture.Id)
@@ -248,13 +249,14 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	s.Equal(a.GetId(), val.GetAttribute().GetId())
 
 	for _, v := range val.GetAttribute().GetValues() {
-		if v.GetId() == v1.GetId() {
+		switch {
+		case v.GetId() == v1.GetId():
 			s.Equal(v1.GetId(), v.GetId())
 			s.Equal(v1.GetValue(), v.GetValue())
-		} else if v.GetId() == v2.GetId() {
+		case v.GetId() == v2.GetId():
 			s.Equal(v2.GetId(), v.GetId())
 			s.Equal(v2.GetValue(), v.GetValue())
-		} else {
+		default:
 			s.Fail("unexpected value", v)
 		}
 	}
@@ -269,9 +271,9 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 			WithSubjectMaps: true,
 		},
 	})
-	s.Error(err)
+	s.Require().Error(err)
 	s.Nil(v)
-	s.ErrorIs(err, db.ErrFqnMissingValue)
+	s.Require().ErrorIs(err, db.ErrFqnMissingValue)
 
 	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{attrFqn},
@@ -279,7 +281,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 			WithSubjectMaps: true,
 		},
 	})
-	s.Error(err)
+	s.Require().Error(err)
 	s.Nil(v)
-	s.ErrorIs(err, db.ErrFqnMissingValue)
+	s.Require().ErrorIs(err, db.ErrFqnMissingValue)
 }

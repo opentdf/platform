@@ -171,7 +171,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 
 		// Check if the token is allowed to access the resource
-		action := ""
+		var action string
 		switch r.Method {
 		case http.MethodGet:
 			action = "read"
@@ -224,7 +224,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	// parse the rpc method
 	p := strings.Split(info.FullMethod, "/")
 	resource := p[1] + "/" + p[2]
-	action := ""
+	var action string
 	if strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get") {
 		action = "read"
 	} else if strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update") {

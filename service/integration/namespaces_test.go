@@ -22,17 +22,17 @@ type NamespacesSuite struct {
 	suite.Suite
 	f   fixtures.Fixtures
 	db  fixtures.DBInterface
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // context is used in the test suite
 }
 
-const nonExistentNamespaceId = "88888888-2222-3333-4444-999999999999"
+const nonExistentNamespaceID = "88888888-2222-3333-4444-999999999999"
 
 var (
-	deactivatedNsId        string
-	deactivatedAttrId      string
-	deactivatedAttrValueId string
-	stillActiveNsId        string
-	stillActiveAttributeId string
+	deactivatedNsID        string
+	deactivatedAttrID      string
+	deactivatedAttrValueID string
+	stillActiveNsID        string
+	stillActiveAttributeID string
 )
 
 func (s *NamespacesSuite) SetupSuite() {
@@ -43,7 +43,7 @@ func (s *NamespacesSuite) SetupSuite() {
 	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
-	deactivatedNsId, deactivatedAttrId, deactivatedAttrValueId = setupCascadeDeactivateNamespace(s)
+	deactivatedNsID, deactivatedAttrID, deactivatedAttrValueID = setupCascadeDeactivateNamespace(s)
 }
 
 func (s *NamespacesSuite) TearDownSuite() {
@@ -72,8 +72,8 @@ func (s *NamespacesSuite) Test_CreateNamespace() {
 	// Creating a namespace with a name conflict should fail
 	for _, ns := range testData {
 		_, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: ns.Name})
-		s.NotNil(err)
-		s.ErrorIs(err, db.ErrUniqueConstraintViolation)
+		s.Require().Error(err)
+		s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	}
 }
 
@@ -107,15 +107,15 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 	}
 
 	// Getting a namespace with an nonExistent id should fail
-	_, err := s.db.PolicyClient.GetNamespace(s.ctx, nonExistentNamespaceId)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	_, err := s.db.PolicyClient.GetNamespace(s.ctx, nonExistentNamespaceID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *NamespacesSuite) Test_GetNamespace_InactiveState_Succeeds() {
 	inactive := s.f.GetNamespaceKey("deactivated_ns")
 	// Ensure our fixtures matches expected string enum
-	s.Equal(inactive.Active, false)
+	s.False(inactive.Active)
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, inactive.Id)
 	s.Require().NoError(err)
@@ -124,9 +124,9 @@ func (s *NamespacesSuite) Test_GetNamespace_InactiveState_Succeeds() {
 }
 
 func (s *NamespacesSuite) Test_GetNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, nonExistentNamespaceId)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, nonExistentNamespaceID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(ns)
 }
 
@@ -199,14 +199,14 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.PolicyClient.UpdateNamespace(s.ctx, nonExistentNamespaceId, &namespaces.UpdateNamespaceRequest{
+	ns, err := s.db.PolicyClient.UpdateNamespace(s.ctx, nonExistentNamespaceID, &namespaces.UpdateNamespaceRequest{
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"updated": "true"},
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	})
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(ns)
 }
 
@@ -216,8 +216,8 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 	// Deletion should fail when the namespace is referenced as FK in attribute(s)
 	for _, ns := range testData {
 		deleted, err := s.db.PolicyClient.DeleteNamespace(s.ctx, ns.Id)
-		s.NotNil(err)
-		s.ErrorIs(err, db.ErrForeignKeyViolation)
+		s.Require().Error(err)
+		s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 		s.Nil(deleted)
 	}
 
@@ -240,7 +240,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 
 	// Deleted namespace should not be found on Get
 	_, err = s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	s.NotNil(err)
+	s.Require().Error(err)
 }
 
 func (s *NamespacesSuite) Test_DeactivateNamespace() {
@@ -265,7 +265,7 @@ func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(gotNamespace)
 	s.Equal(n.GetId(), gotNamespace.GetId())
-	s.Equal(false, gotNamespace.GetActive().GetValue())
+	s.False(gotNamespace.GetActive().GetValue())
 }
 
 // reusable setup for creating a namespace -> attr -> value and then deactivating the namespace (cascades down)
@@ -314,7 +314,7 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 		s.Require().NoError(err)
 		s.NotNil(listedNamespaces)
 		for _, ns := range listedNamespaces {
-			if deactivatedNsId == ns.GetId() {
+			if deactivatedNsID == ns.GetId() {
 				return true
 			}
 		}
@@ -326,7 +326,7 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {
-			if deactivatedAttrId == a.GetId() {
+			if deactivatedAttrID == a.GetId() {
 				return true
 			}
 		}
@@ -334,11 +334,11 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 	}
 
 	listValues := func(state string) bool {
-		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, deactivatedAttrId, state)
+		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, deactivatedAttrID, state)
 		s.Require().NoError(err)
 		s.NotNil(listedVals)
 		for _, v := range listedVals {
-			if deactivatedAttrValueId == v.GetId() {
+			if deactivatedAttrValueID == v.GetId() {
 				return true
 			}
 		}
@@ -412,45 +412,45 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 
 func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_ToAttributesAndValues_Get() {
 	// ensure the namespace has state inactive
-	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, deactivatedNsId)
+	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, deactivatedNsID)
 	s.Require().NoError(err)
 	s.NotNil(gotNs)
-	s.Equal(false, gotNs.GetActive().GetValue())
+	s.False(gotNs.GetActive().GetValue())
 
 	// ensure the attribute has state inactive
-	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivatedAttrId)
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivatedAttrID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Equal(false, gotAttr.GetActive().GetValue())
+	s.False(gotAttr.GetActive().GetValue())
 
 	// ensure the value has state inactive
-	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueId)
+	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueID)
 	s.Require().NoError(err)
 	s.NotNil(gotVal)
-	s.Equal(false, gotVal.GetActive().GetValue())
+	s.False(gotVal.GetActive().GetValue())
 }
 
 func (s *NamespacesSuite) Test_DeleteNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.PolicyClient.DeleteNamespace(s.ctx, nonExistentNamespaceId)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	ns, err := s.db.PolicyClient.DeleteNamespace(s.ctx, nonExistentNamespaceID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(ns)
 
-	ns, err = s.db.PolicyClient.DeleteNamespace(s.ctx, nonExistentNamespaceId)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	ns, err = s.db.PolicyClient.DeleteNamespace(s.ctx, nonExistentNamespaceID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(ns)
 }
 
 func (s *NamespacesSuite) Test_DeactivateNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, nonExistentNamespaceId)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	ns, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, nonExistentNamespaceID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(ns)
 
-	ns, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, nonExistentNamespaceId)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	ns, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, nonExistentNamespaceID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(ns)
 }
 

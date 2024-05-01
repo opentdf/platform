@@ -50,7 +50,6 @@ func (s *AuthnCasbinSuite) buildTokenRoles(orgAdmin bool, admin bool, readonly b
 	}
 	if readonly {
 		roles[i] = readonlyRole
-		i++
 	}
 
 	return roles
@@ -147,7 +146,7 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithBadCustomModel() {
 			Csv:   "xxxx",
 		},
 	})
-	s.ErrorContains(err, "failed to create casbin model")
+	s.Require().ErrorContains(err, "failed to create casbin model")
 	s.Nil(enforcer)
 }
 

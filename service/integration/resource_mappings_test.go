@@ -20,7 +20,7 @@ type ResourceMappingsSuite struct {
 	suite.Suite
 	f   fixtures.Fixtures
 	db  fixtures.DBInterface
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // context is used in the test suite
 }
 
 func (s *ResourceMappingsSuite) SetupSuite() {
@@ -69,14 +69,14 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeVa
 	metadata := &common.MetadataMutable{}
 
 	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: nonExistentAttributeValueUuid,
+		AttributeValueId: absentAttributeValueUUID,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(createdMapping)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds() {
@@ -92,7 +92,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 	s.NotNil(createdMapping.GetTerms())
-	s.Equal(len(createdMapping.GetTerms()), 0)
+	s.Empty(createdMapping.GetTerms())
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
@@ -143,9 +143,9 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
 	mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, nonExistentResourceMappingUUID)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(mapping)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
@@ -264,9 +264,9 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 		Terms:            []string{"asdf updated term1"},
 	}
 	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUUID, updatedMapping)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(updated)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeValueIdFails() {
@@ -286,13 +286,13 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 
 	// update the created with new metadata and terms
 	updatedMapping := &resourcemapping.UpdateResourceMappingRequest{
-		AttributeValueId: nonExistentAttributeValueUuid,
+		AttributeValueId: absentAttributeValueUUID,
 		Terms:            []string{"testing-2"},
 	}
 	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.GetId(), updatedMapping)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(updated)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
@@ -310,15 +310,15 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 	s.NotNil(deleted)
 
 	deletedMapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.GetId())
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(deletedMapping)
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMappingWithUnknownIdFails() {
 	deleted, err := s.db.PolicyClient.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUUID)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(deleted)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func TestResourceMappingsSuite(t *testing.T) {

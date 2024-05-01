@@ -23,26 +23,26 @@ type AttributesSuite struct {
 	suite.Suite
 	f   fixtures.Fixtures
 	db  fixtures.DBInterface
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // context is used in the test suite
 }
 
 var (
-	fixtureNamespaceId       string
-	nonExistentAttrId        = "00000000-6789-4321-9876-123456765436"
-	fixtureKeyAccessServerId string
+	fixtureNamespaceID       string
+	nonExistentAttrID        = "00000000-6789-4321-9876-123456765436"
+	fixtureKeyAccessServerID string
 )
 
 func (s *AttributesSuite) SetupSuite() {
 	slog.Info("setting up db.Attributes test suite")
 	s.ctx = context.Background()
-	fixtureNamespaceId = s.f.GetNamespaceKey("example.com").Id
-	fixtureKeyAccessServerId = s.f.GetKasRegistryKey("key_access_server_1").Id
+	fixtureNamespaceID = s.f.GetNamespaceKey("example.com").Id
+	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").Id
 	c := *Config
 	c.DB.Schema = "test_opentdf_attribute_definitions"
 	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
-	stillActiveNsId, deactivatedAttrId, deactivatedAttrValueId = setupCascadeDeactivateAttribute(s)
+	stillActiveNsID, deactivatedAttrID, deactivatedAttrValueID = setupCascadeDeactivateAttribute(s)
 }
 
 func (s *AttributesSuite) TearDownSuite() {
@@ -66,7 +66,7 @@ func (s *AttributesSuite) getAttributeFixtures() []fixtures.FixtureDataAttribute
 func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_no_metadata",
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
@@ -78,7 +78,7 @@ func (s *AttributesSuite) Test_CreateAttribute_NormalizeName() {
 	name := "NaMe_12_ShOuLdBe-NoRmAlIzEd"
 	attr := &attributes.CreateAttributeRequest{
 		Name:        name,
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
@@ -96,7 +96,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithValueSucceeds() {
 	values := []string{"value1", "value2", "value3"}
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_values",
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		Values:      values,
 	}
@@ -113,7 +113,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithValueSucceeds() {
 func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_metadata",
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{
@@ -129,44 +129,44 @@ func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
 func (s *AttributesSuite) Test_CreateAttribute_SetsActiveStateTrueByDefault() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_active_state_default",
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
-	s.Equal(true, createdAttr.GetActive().GetValue())
+	s.True(createdAttr.GetActive().GetValue())
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithInvalidNamespaceFails() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_invalid_namespace",
-		NamespaceId: nonExistentNamespaceId,
+		NamespaceId: nonExistentNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 	s.Nil(createdAttr)
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithNonUniqueNameConflictFails() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        s.f.GetAttributeKey("example.com/attr/attr1").Name,
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrUniqueConstraintViolation)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(createdAttr)
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
-	otherNamespaceId := s.f.GetNamespaceKey("example.net").Id
+	otherNamespaceID := s.f.GetNamespaceKey("example.net").Id
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_any_of_rule_value",
-		NamespaceId: otherNamespaceId,
+		NamespaceId: otherNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
@@ -175,7 +175,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 
 	attr = &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_all_of_rule_value",
-		NamespaceId: otherNamespaceId,
+		NamespaceId: otherNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
@@ -184,7 +184,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 
 	attr = &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_unspecified_rule_value",
-		NamespaceId: otherNamespaceId,
+		NamespaceId: otherNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
@@ -193,7 +193,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 
 	attr = &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_hierarchy_rule_value",
-		NamespaceId: otherNamespaceId,
+		NamespaceId: otherNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
@@ -204,13 +204,13 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 func (s *AttributesSuite) Test_CreateAttribute_WithInvalidRuleFails() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__create_attribute_with_invalid_rule",
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		// fake an enum value index far beyond reason
 		Rule: policy.AttributeRuleTypeEnum(100),
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NotNil(err)
-	s.ErrorIs(err, db.ErrEnumValueInvalid)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrEnumValueInvalid)
 	s.Nil(createdAttr)
 }
 
@@ -223,15 +223,15 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	values := []string{"first", "second", "third", "fourth"}
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__get_attribute_order_of_values",
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 		Values:      []string{strings.ToUpper(values[0]), strings.ToUpper(values[1]), strings.ToUpper(values[2])},
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdAttr)
-	assert.Equal(s.T(), 3, len(createdAttr.GetValues()))
-	assert.Equal(s.T(), policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, createdAttr.GetRule())
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+	s.Len(createdAttr.GetValues(), 3)
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, createdAttr.GetRule())
 
 	// add a fourth value
 	val := &attributes.CreateAttributeValueRequest{
@@ -240,13 +240,13 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	}
 
 	createdVal, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.GetId(), val)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), createdVal)
+	s.Require().NoError(err)
+	s.NotNil(createdVal)
 
 	// get attribute and ensure the order of the values is preserved (normalized to lower case)
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), gotAttr)
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
 	s.Len(gotAttr.GetValues(), 4)
 	s.Equal(values[0], gotAttr.GetValues()[0].GetValue())
 	s.Equal(values[1], gotAttr.GetValues()[1].GetValue())
@@ -256,13 +256,13 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 
 	// deactivate one of the values
 	deactivatedVal, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, gotAttr.GetValues()[1].GetId())
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), deactivatedVal)
+	s.Require().NoError(err)
+	s.NotNil(deactivatedVal)
 
 	// get attribute and ensure order stays consistent
 	gotAttr, err = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), gotAttr)
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
 	s.Len(gotAttr.GetValues(), 4)
 	s.Equal(values[0], gotAttr.GetValues()[0].GetValue())
 	s.Equal(values[1], gotAttr.GetValues()[1].GetValue())
@@ -279,8 +279,8 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 		},
 	}
 	resp, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), resp)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.Len(resp, 1)
 	gotVals := resp[fqns[0]].GetAttribute().GetValues()
 	s.Len(gotVals, 4)
@@ -311,10 +311,10 @@ func (s *AttributesSuite) Test_GetAttribute() {
 
 func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 	// this uuid does not exist
-	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, nonExistentAttrId)
-	s.NotNil(err)
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, nonExistentAttrID)
+	s.Require().Error(err)
 	s.Nil(gotAttr)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
@@ -324,7 +324,7 @@ func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 	s.NotNil(gotAttr)
 	s.Equal(deactivated.Id, gotAttr.GetId())
 	s.Equal(deactivated.Name, gotAttr.GetName())
-	s.Equal(false, gotAttr.GetActive().GetValue())
+	s.False(gotAttr.GetActive().GetValue())
 }
 
 func (s *AttributesSuite) Test_ListAttribute() {
@@ -354,15 +354,15 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 		namespaces[f.NamespaceId] = ""
 	}
 	// list attributes by namespace id
-	for nsId := range namespaces {
-		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsId)
+	for nsID := range namespaces {
+		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsID)
 		s.Require().NoError(err)
 		s.NotNil(list)
 		s.NotEmpty(list)
 		for _, l := range list {
-			s.Equal(nsId, l.GetNamespace().GetId())
+			s.Equal(nsID, l.GetNamespace().GetId())
 		}
-		namespaces[nsId] = list[0].GetNamespace().GetName()
+		namespaces[nsID] = list[0].GetNamespace().GetName()
 	}
 
 	// list attributes by namespace name
@@ -399,7 +399,7 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__update_attribute",
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
@@ -451,10 +451,10 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	}
-	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, nonExistentAttrId, update)
-	s.NotNil(err)
+	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, nonExistentAttrID, update)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
@@ -471,9 +471,9 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 	// should error on attempt to change namespace
 	update := &attributes.UpdateAttributeRequest{}
 	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, createdAttr.GetId(), update)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrRestrictViolation)
+	s.Require().ErrorIs(err, db.ErrRestrictViolation)
 
 	// validate namespace should not have been changed
 	updated, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
@@ -496,15 +496,15 @@ func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFa
 
 	conflict := &attributes.UpdateAttributeRequest{}
 	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, fixtureData.Id, conflict)
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrUniqueConstraintViolation)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 }
 
 func (s *AttributesSuite) Test_DeleteAttribute() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__delete_attribute",
-		NamespaceId: fixtureNamespaceId,
+		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
@@ -517,22 +517,22 @@ func (s *AttributesSuite) Test_DeleteAttribute() {
 
 	// should not exist anymore
 	resp, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
 }
 
 func (s *AttributesSuite) Test_DeleteAttribute_WithInvalidIdFails() {
-	deleted, err := s.db.PolicyClient.DeleteAttribute(s.ctx, nonExistentAttrId)
-	s.NotNil(err)
+	deleted, err := s.db.PolicyClient.DeleteAttribute(s.ctx, nonExistentAttrID)
+	s.Require().Error(err)
 	s.Nil(deleted)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_DeactivateAttribute_WithInvalidIdFails() {
-	deactivated, err := s.db.PolicyClient.DeactivateAttribute(s.ctx, nonExistentAttrId)
-	s.NotNil(err)
+	deactivated, err := s.db.PolicyClient.DeactivateAttribute(s.ctx, nonExistentAttrID)
+	s.Require().Error(err)
 	s.Nil(deactivated)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 // reusable setup for creating a namespace -> attr -> value and then deactivating the attribute (cascades to value)
@@ -583,7 +583,7 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 		s.Require().NoError(err)
 		s.NotNil(listedNamespaces)
 		for _, ns := range listedNamespaces {
-			if stillActiveNsId == ns.GetId() {
+			if stillActiveNsID == ns.GetId() {
 				return true
 			}
 		}
@@ -595,7 +595,7 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {
-			if deactivatedAttrId == a.GetId() {
+			if deactivatedAttrID == a.GetId() {
 				return true
 			}
 		}
@@ -603,11 +603,11 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	listValues := func(state string) bool {
-		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, deactivatedAttrId, state)
+		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, deactivatedAttrID, state)
 		s.Require().NoError(err)
 		s.NotNil(listedVals)
 		for _, v := range listedVals {
-			if deactivatedAttrValueId == v.GetId() {
+			if deactivatedAttrValueID == v.GetId() {
 				return true
 			}
 		}
@@ -681,52 +681,52 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 
 func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_ToValues_Get() {
 	// ensure the namespace has state active still (not bubbled up)
-	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, stillActiveNsId)
+	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, stillActiveNsID)
 	s.Require().NoError(err)
 	s.NotNil(gotNs)
-	s.Equal(true, gotNs.GetActive().GetValue())
+	s.True(gotNs.GetActive().GetValue())
 
 	// ensure the attribute has state inactive
-	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivatedAttrId)
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivatedAttrID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Equal(false, gotAttr.GetActive().GetValue())
+	s.False(gotAttr.GetActive().GetValue())
 
 	// ensure the value has state inactive
-	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueId)
+	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueID)
 	s.Require().NoError(err)
 	s.NotNil(gotVal)
-	s.Equal(false, gotVal.GetActive().GetValue())
+	s.False(gotVal.GetActive().GetValue())
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_Attribute_Not_Found() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       nonExistentAttrId,
-		KeyAccessServerId: fixtureKeyAccessServerId,
+		AttributeId:       nonExistentAttrID,
+		KeyAccessServerId: fixtureKeyAccessServerID,
 	}
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
 
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
 	aKas := &attributes.AttributeKeyAccessServer{
 		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").Id,
-		KeyAccessServerId: nonExistentAttrId,
+		KeyAccessServerId: nonExistentAttrID,
 	}
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
 
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
 	aKas := &attributes.AttributeKeyAccessServer{
 		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr2").Id,
-		KeyAccessServerId: fixtureKeyAccessServerId,
+		KeyAccessServerId: fixtureKeyAccessServerID,
 	}
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
 
@@ -737,26 +737,26 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_Attribute_Not_Found() {
 	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       nonExistentAttrId,
-		KeyAccessServerId: fixtureKeyAccessServerId,
+		AttributeId:       nonExistentAttrID,
+		KeyAccessServerId: fixtureKeyAccessServerID,
 	}
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
 
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
 	aKas := &attributes.AttributeKeyAccessServer{
 		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").Id,
-		KeyAccessServerId: nonExistentAttrId,
+		KeyAccessServerId: nonExistentAttrID,
 	}
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
 
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {

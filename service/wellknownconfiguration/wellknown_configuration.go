@@ -28,9 +28,6 @@ func RegisterConfiguration(namespace string, config any) error {
 	if _, ok := wellKnownConfiguration[namespace]; ok {
 		return fmt.Errorf("namespace %s configuration already registered", namespace)
 	}
-	if _, ok := config.(error); !ok {
-		return fmt.Errorf("config is not an error type")
-	}
 	wellKnownConfiguration[namespace] = config
 	rwMutex.Unlock()
 	return nil

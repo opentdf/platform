@@ -23,7 +23,7 @@ import (
 type TestServiceService interface{}
 type TestService struct{}
 
-func (t TestService) TestHandler(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
 	_, err := w.Write([]byte("hello from test service!"))
 	if err != nil {
 		panic(err)
@@ -62,7 +62,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 
 	// Create new opentdf server
 	return server.NewOpenTDFServer(server.Config{
-		WellKnownConfigRegister: func(namespace string, config any) error {
+		WellKnownConfigRegister: func(_ string, _ any) error {
 			return nil
 		},
 		Auth: auth.Config{

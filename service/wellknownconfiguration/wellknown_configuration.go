@@ -19,7 +19,7 @@ type WellKnownService struct {
 }
 
 var (
-	wellKnownConfiguration map[string]any = make(map[string]any)
+	wellKnownConfiguration = make(map[string]any)
 	rwMutex                sync.RWMutex
 )
 
@@ -28,7 +28,10 @@ func RegisterConfiguration(namespace string, config any) error {
 	if _, ok := wellKnownConfiguration[namespace]; ok {
 		return fmt.Errorf("namespace %s configuration already registered", namespace)
 	}
-	wellKnownConfiguration[namespace] = config.(interface{})
+	if _, ok := config.(error); !ok {
+		return fmt.Errorf("config is not of type error")
+	}
+	wellKnownConfiguration[namespace] = config
 	rwMutex.Unlock()
 	return nil
 }
@@ -39,7 +42,10 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
 		RegisterFunc: func(_ serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &WellKnownService{}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, server.(wellknown.WellKnownServiceServer))
+				if srv, ok := server.(wellknown.WellKnownServiceServer); ok {
+					return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, srv)
+				}
+				return fmt.Errorf("failed to assert server as WellKnownServiceServer")
 			}
 		},
 	}

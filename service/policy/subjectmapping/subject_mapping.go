@@ -24,7 +24,7 @@ func NewRegistration() serviceregistry.Registration {
 			return &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
 				server, ok := s.(sm.SubjectMappingServiceServer)
 				if !ok {
-					return fmt.Errorf("config is not of type error")
+					return fmt.Errorf("failed to assert server as sm.SubjectMappingServiceServer")
 				}
 				return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, server)
 			}

@@ -15,7 +15,7 @@ services:
     enabled: true
   entityresolution:
     enabled: true
-    url: http://keycloak:8888
+    url: http://keycloak:8888/auth
     clientid: "tdf-entity-resolution"
     clientsecret: "secret"
     realm: "opentdf"
@@ -25,7 +25,7 @@ services:
     ersUrl: http://localhost:8080/entityresolution/resolve
     clientid: tdf-authorization-svc
     clientsecret: secret
-    tokenEndpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
+    tokenEndpoint: http://keycloak:8888/auth/realms/opentdf/protocol/openid-connect/token
 server:
   auth:
     enabled: true

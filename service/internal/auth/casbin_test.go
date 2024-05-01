@@ -295,7 +295,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 
 	for _, test := range tests {
 		should := "should"
-		actor := ""
+		var actor string
 		switch {
 		case test.roles[0]:
 			actor = "org-admin"

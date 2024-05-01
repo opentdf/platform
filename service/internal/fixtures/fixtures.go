@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/opentdf/platform/service/policy"
 	"gopkg.in/yaml.v2"
 )
 
@@ -232,7 +233,7 @@ func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 
 func (f *Fixtures) Provision() {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
-	_, err := f.db.Client.RunMigrations(context.Background())
+	_, err := f.db.Client.RunMigrations(context.Background(), policy.Migrations)
 	if err != nil {
 		panic(err)
 	}

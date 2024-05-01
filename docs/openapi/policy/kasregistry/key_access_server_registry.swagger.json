@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "kasregistry/key_access_server_registry.proto",
+    "title": "policy/kasregistry/key_access_server_registry.proto",
     "version": "version not set"
   },
   "tags": [
@@ -160,7 +160,7 @@
                   "type": "string"
                 },
                 "publicKey": {
-                  "$ref": "#/definitions/kasregistryPublicKey"
+                  "$ref": "#/definitions/policyPublicKey"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
@@ -233,7 +233,7 @@
           "title": "Required"
         },
         "publicKey": {
-          "$ref": "#/definitions/kasregistryPublicKey"
+          "$ref": "#/definitions/policyPublicKey"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -245,7 +245,7 @@
       "type": "object",
       "properties": {
         "keyAccessServer": {
-          "$ref": "#/definitions/kasregistryKeyAccessServer"
+          "$ref": "#/definitions/policyKeyAccessServer"
         }
       }
     },
@@ -253,7 +253,7 @@
       "type": "object",
       "properties": {
         "keyAccessServer": {
-          "$ref": "#/definitions/kasregistryKeyAccessServer"
+          "$ref": "#/definitions/policyKeyAccessServer"
         }
       }
     },
@@ -261,11 +261,31 @@
       "type": "object",
       "properties": {
         "keyAccessServer": {
-          "$ref": "#/definitions/kasregistryKeyAccessServer"
+          "$ref": "#/definitions/policyKeyAccessServer"
         }
       }
     },
-    "kasregistryKeyAccessServer": {
+    "kasregistryListKeyAccessServersResponse": {
+      "type": "object",
+      "properties": {
+        "keyAccessServers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          }
+        }
+      }
+    },
+    "kasregistryUpdateKeyAccessServerResponse": {
+      "type": "object",
+      "properties": {
+        "keyAccessServer": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
+    },
+    "policyKeyAccessServer": {
       "type": "object",
       "properties": {
         "id": {
@@ -276,28 +296,16 @@
           "title": "Address of a KAS instance"
         },
         "publicKey": {
-          "$ref": "#/definitions/kasregistryPublicKey"
+          "$ref": "#/definitions/policyPublicKey"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
         }
       },
-      "title": "Descriptor for a KAS"
+      "title": "Key Access Server Registry"
     },
-    "kasregistryListKeyAccessServersResponse": {
-      "type": "object",
-      "properties": {
-        "keyAccessServers": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/kasregistryKeyAccessServer"
-          }
-        }
-      }
-    },
-    "kasregistryPublicKey": {
+    "policyPublicKey": {
       "type": "object",
       "properties": {
         "remote": {
@@ -307,14 +315,6 @@
         "local": {
           "type": "string",
           "title": "public key - optional since can also be retrieved via url"
-        }
-      }
-    },
-    "kasregistryUpdateKeyAccessServerResponse": {
-      "type": "object",
-      "properties": {
-        "keyAccessServer": {
-          "$ref": "#/definitions/kasregistryKeyAccessServer"
         }
       }
     },

@@ -9,11 +9,15 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+const ErrTextCreationFailed = "resource creation failed"
+const ErrTextGetRetrievalFailed = "resource retrieval failed"
+const ErrTextNotFound = "resource not found"
 
 type KeyCloakConfig struct {
 	Url            string `json:"url"`
@@ -42,12 +46,12 @@ func EntityResolution(ctx context.Context,
 	err = json.Unmarshal(jsonString, &kcConfig)
 	if err != nil {
 		return &authorization.IdpPluginResponse{},
-			status.Error(codes.Internal, db.ErrTextCreationFailed)
+			status.Error(codes.Internal, ErrTextCreationFailed)
 	}
 	connector, err := getKCClient(kcConfig, ctx)
 	if err != nil {
 		return &authorization.IdpPluginResponse{},
-			status.Error(codes.Internal, db.ErrTextCreationFailed)
+			status.Error(codes.Internal, ErrTextCreationFailed)
 	}
 	payload := req.GetEntities()
 
@@ -102,7 +106,7 @@ func EntityResolution(ctx context.Context,
 			if err != nil {
 				slog.Error(err.Error())
 				return &authorization.IdpPluginResponse{},
-					status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
+					status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 			}
 			var jsonEntities []*structpb.Struct
 			for _, client := range clients {
@@ -110,13 +114,13 @@ func EntityResolution(ctx context.Context,
 				if err != nil {
 					slog.Error("Error serializing entity representation!", "error", err)
 					return &authorization.IdpPluginResponse{},
-						status.Error(codes.Internal, db.ErrTextCreationFailed)
+						status.Error(codes.Internal, ErrTextCreationFailed)
 				}
 				var mystruct, structErr = structpb.NewStruct(json)
 				if structErr != nil {
 					slog.Error("Error making struct!", "error", err)
 					return &authorization.IdpPluginResponse{},
-						status.Error(codes.Internal, db.ErrTextCreationFailed)
+						status.Error(codes.Internal, ErrTextCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, mystruct)
 			}
@@ -133,9 +137,12 @@ func EntityResolution(ctx context.Context,
 			if err != nil {
 				slog.Error(err.Error())
 				return &authorization.IdpPluginResponse{},
-					status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
+					status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 			}
-			if len(users) == 1 {
+			if len(users) >= 1 {
+				if len(users) > 1 {
+					slog.Error("Unexpected user count", "user count", len(users), "user params", getUserParams)
+				}
 				user := users[0]
 				slog.Debug("User found", "user", *user.ID, "entity", ident.String())
 				slog.Debug("User", "details", fmt.Sprintf("%+v", user))
@@ -154,15 +161,18 @@ func EntityResolution(ctx context.Context,
 					if groupErr != nil {
 						slog.Error("Error getting group", "group", groupErr)
 						return &authorization.IdpPluginResponse{},
-							status.Error(codes.Internal, db.ErrTextGetRetrievalFailed)
+							status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 					}
-					if len(groups) == 1 {
+					if len(groups) >= 1 {
+						if len(groups) > 1 {
+							slog.Error("Unexpected group count", "group count", len(groups), "group email", ident.GetEmailAddress())
+						}
 						slog.Info("Group found for", "entity", ident.String())
 						group := groups[0]
 						expandedRepresentations, exErr := expandGroup(*group.ID, connector, &kcConfig, ctx)
 						if exErr != nil {
 							return &authorization.IdpPluginResponse{},
-								status.Error(codes.Internal, db.ErrTextNotFound)
+								status.Error(codes.Internal, ErrTextNotFound)
 						}
 						keycloakEntities = expandedRepresentations
 					} else {
@@ -192,13 +202,13 @@ func EntityResolution(ctx context.Context,
 				if err != nil {
 					slog.Error("Error serializing entity representation!", "error", err)
 					return &authorization.IdpPluginResponse{},
-						status.Error(codes.Internal, db.ErrTextCreationFailed)
+						status.Error(codes.Internal, ErrTextCreationFailed)
 				}
 				var mystruct, structErr = structpb.NewStruct(json)
 				if structErr != nil {
 					slog.Error("Error making struct!", "error", err)
 					return &authorization.IdpPluginResponse{},
-						status.Error(codes.Internal, db.ErrTextCreationFailed)
+						status.Error(codes.Internal, ErrTextCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, mystruct)
 			}

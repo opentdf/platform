@@ -1,0 +1,95 @@
+baseUrl: &baseUrl http://localhost:8888
+customAudMapper: &customAudMapper
+  name: audience-mapper
+  protocol: openid-connect
+  protocolMapper: oidc-audience-mapper
+  config:
+    included.client.audience: *baseUrl
+    included.custom.audience: custom_audience
+    access.token.claim: "true"
+    id.token.claim: "true"
+realms:
+  - realm_repepresentation:
+      realm: opentdf
+      enabled: true
+    custom_realm_roles:
+      - name: opentdf-org-admin
+      - name: opentdf-admin
+      - name: opentdf-readonly
+    custom_client_roles:
+      tdf-entity-resolution:
+        - name: entity-resolution-test-role
+    custom_groups:
+      - name: mygroup
+        attributes:
+          mygroupattribute: 
+            - mygroupvalue
+    clients:
+      - client:
+          clientID: opentdf
+          enabled: true
+          name: opentdf
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          protocolMappers:
+            - *customAudMapper
+        sa_realm_roles: 
+          - opentdf-org-admin
+      - client:
+          clientID: opentdf-sdk
+          enabled: true
+          name: opentdf-sdk
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          protocolMappers:
+            - *customAudMapper
+        sa_realm_roles: 
+          - opentdf-readonly
+      - client:
+          clientID: tdf-entity-resolution
+          enabled: true
+          name: tdf-entity-resolution
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          protocolMappers:
+            - *customAudMapper
+        sa_client_roles:
+          realm-management:
+            - view-clients
+            - query-clients
+            - view-users
+            - query-users
+    users:
+      - username: sample-user
+        enabled: true
+        firstName: sample
+        lastName: user
+        email: sampleuser@sample.com
+        credentials:
+          - value: testuser123
+            type: password
+        attributes:
+          superhero_name: 
+            - thor
+          superhero_group: 
+            - avengers
+        groups:
+          - mygroup
+        realmRoles:
+          - opentdf-org-admin
+        clientRoles:
+          realm-management:
+            - view-clients
+            - query-clients
+            - view-users
+            - query-users
+          tdf-entity-resolution:
+            - entity-resolution-test-role
+    token_exchanges:
+      - start_client: opentdf
+        target_client: opentdf-sdk
+
+ 

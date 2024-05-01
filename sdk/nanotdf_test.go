@@ -95,9 +95,9 @@ func init() {
 
 func TestReadNanoTDFHeader(t *testing.T) {
 	// Prepare a sample nanoTdf structure
-	nanoTDF := NanoTdf{
+	nanoTDF := NanoTDFHeader{
 		magicNumber: [3]byte{'L', '1', 'L'},
-		kasURL: &resourceLocator{
+		kasUrl: &resourceLocator{
 			protocol:   urlProtocolHTTPS,
 			lengthBody: 14,
 			body:       "kas.virtru.com",

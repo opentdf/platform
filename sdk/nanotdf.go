@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -31,12 +32,21 @@ type NanoTDFHeader struct {
 	policy             *policyInfo
 	EphemeralPublicKey *eccKey
 
-	m_keyIterationCount int
-	m_datasetMode       bool
-	m_eccMode           ocrypto.ECCMode
-	policyObj           PolicyObject
-	m_initialized       bool
-	m_compressedPubKey  []byte
+	m_keyIterationCount   int
+	m_datasetMode         bool
+	m_eccMode             ocrypto.ECCMode
+	policyObj             PolicyObject
+	m_initialized         bool
+	m_compressedPubKey    []byte
+	m_maxKeyIterations    int
+	m_iv                  int
+	m_authTag             []byte
+	m_workingBuffer       []byte
+	m_encryptSymmetricKey []byte
+	m_hasSignature        bool
+	m_ellipticCurveType   ocrypto.ECCMode
+	m_signerPrivateKey    []byte
+	m_signature           []byte
 }
 
 func (h NanoTDFHeader) SetDatasetMode(mode bool) {
@@ -57,6 +67,8 @@ type NanoTDFConfig struct {
 	m_publicKey         string
 	attributes          []string
 	m_bufferSize        uint64
+	m_hasSignature      bool
+	m_signerPrivateKey  []byte
 }
 
 func (h NanoTDFConfig) SetECCMode(r1 ocrypto.ECCMode) {
@@ -330,7 +342,7 @@ func writeHeader(n *NanoTDFHeader, buffer *bytes.Buffer) {
 
 }
 
-func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer, writer io.Writer) error {
+func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte, error) {
 	var err error = nil
 	var header NanoTDFHeader
 
@@ -352,100 +364,109 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer, writer i
 	kIvPadding := 128
 	// TODO FIXME
 	authTagSize := 1024
+	// TODO FIXME
+	bytesAdded := 0
 
 	encryptedDataSize := kNanoTDFIvSize + plaintextBuffer.Len() + authTagSize
-	/*
-	   	copy(encryptBuffer.data(), &cipherTextSize, sizeof(cipherTextSize))
+
+	// TODO FIXME
+	cipherTextSize := encryptedDataSize + kNanoTDFIvSize + kIvPadding
+
+	copy(encryptBuffer.Bytes(), ([]byte)(&cipherTextSize))
 
 	   	// Encrypt the payload into the working buffer
-	   	{
-	   	ivSizeWithPadding := kIvPadding + kNanoTDFIvSize;
-	   	std::array<gsl::byte, ivSizeWithPadding> iv{};
+	{
+		ivSizeWithPadding := kIvPadding + kNanoTDFIvSize;
+		iv := bytes.NewBuffer(make([]byte, 0, ivSizeWithPadding))
 
-	   	// Reset the IV after max iterations
-	   	if (m_maxKeyIterations == m_keyIterationCount) {
-	   	m_iv = 1;
-	   	if (m_datasetMode) {
-	   	m_keyIterationCount = 0;
-	   	}
-	   	}
+		// Reset the IV after max iterations
+		if header.m_maxKeyIterations == header.m_keyIterationCount {
+			header.m_iv = 1;
+			if header.m_datasetMode {
+				header.m_keyIterationCount = 0;
+			}
+		}
 
-	   	auto ivBufferSpan = toWriteableBytes(iv).last(kNanoTDFIvSize);
-	   	boost::endian::big_uint24_t ivAsNetworkOrder = m_iv;
-	   	std::memcpy(ivBufferSpan.data(), &ivAsNetworkOrder, kNanoTDFIvSize);
-	   	m_iv += 1;
+		ivBufferSpan := iv.Bytes()
+		ivAsNetworkOrder := header.m_iv
+		copy(ivBufferSpan, ([]byte)(&ivAsNetworkOrder))
+		header.m_iv += 1;
 
-	   	// Resize the auth tag.
-	   	m_authTag.resize(authTagSize);
+		// Resize the auth tag.
+		header.m_authTag.resize(authTagSize);
 
-	   	// Adjust the span to add the IV vector at the start of the buffer after the encryption.
-	   	auto payloadBufferSpan = payloadBuffer.subspan(ivSizeWithPadding);
+		// Adjust the span to add the IV vector at the start of the buffer after the encryption.
+		payloadBufferSpan := payloadBuffer;
+		.subspan(ivSizeWithPadding)
 
-	   	auto encoder = GCMEncryption::create(toBytes(m_encryptSymmetricKey), iv);
-	   	encoder->encrypt(toBytes(plainData), payloadBufferSpan);
+		encoder = GCMEncryption::create(toBytes(header.m_encryptSymmetricKey), iv)
+		encoder. encrypt(toBytes(plainData), payloadBufferSpan)
 
-	   	auto authTag = WriteableBytes{m_authTag};
-	   	encoder->finish(authTag);
+		authTag := ([]byte)(m_authTag)
 
-	   	// Copy IV at start
-	   	copy(iv.begin(), iv.end(), payloadBuffer.begin());
+		// Copy IV at start
+		copy(iv, payloadBuffer);
 
-	   	// Copy tag at end
-	   	copy(m_authTag.begin(), m_authTag.end(), payloadBuffer.begin() + ivSizeWithPadding + plainData.size());
-	   	}
+		// Copy tag at end
+		copy(header.m_authTag, payloadBuffer.bytes()+ivSizeWithPadding+plaintextBuffer.Len());
+	}
 
 	   	// Copy the payload buffer contents into encrypt buffer without the IV padding.
-	   std::copy(m_workingBuffer.begin() + kIvPadding, m_workingBuffer.end(),
-	   		encryptBuffer.begin());
+	   copy(header.m_workingBuffer.Bytes()+ kIvPadding, encryptBuffer.Bytes());
 
 	   	// Adjust the buffer
-	   	bytesAdded += encryptedDataSize;
-	   	encryptBuffer = encryptBuffer.subspan(encryptedDataSize);
+
+		bytesAdded += encryptedDataSize;
+	   	encryptBuffer += encryptedDataSize
 
 	   	// Digest(header + payload) for signature
-	   	digest = calculateSHA256({m_encryptBuffer.data(), static_cast<gsl::span<const std::byte,-1>::index_type>(bytesAdded)});
+	   	digest :=  sha256.Sum256(encryptBuffer.Bytes())
 
+		   /*
 	   	#if DEBUG_LOG
 	   		auto digestData = base64Encode(toBytes(digest));
 	   std::cout << "Encrypt digest: " << digestData << std::endl;
 	   	#endif
+		    */
 
-	   	if (m_tdfBuilder.m_impl->m_hasSignature) {
-	   		const auto& signerPrivateKey = m_tdfBuilder.m_impl->m_signerPrivateKey;
-	   		auto curveName = ECCMode::GetEllipticCurveName(m_tdfBuilder.m_impl->m_signatureECCMode);
-	   		auto signerPublicKey = ECKeyPair::GetPEMPublicKeyFromPrivateKey(signerPrivateKey, curveName);
-	   		auto compressedPubKey = ECKeyPair::CompressedECPublicKey(signerPublicKey);
+	   	if (header.m_hasSignature) {
+	   		signerPrivateKey := header.m_signerPrivateKey
+			   signerPublicKey := ocrypto.GetPEMPublicKeyFromPrivateKey(signerPrivateKey, header.m_ellipticCurveType)
+	   		compressedPubKey, err := ocrypto.CompressedECPublicKey(header.m_ellipticCurveType, signerPublicKey);
+			   if err != nil {return nil, err}
 
 	   		// Add the signer public key
-	   	std::memcpy(encryptBuffer.data(), compressedPubKey.data(), compressedPubKey.size());
+	   	copy(encryptBuffer.Bytes(), compressedPubKey);
 
-	   		#if DEBUG_LOG
+	   	/*	#if DEBUG_LOG
 	   			auto signerData = base64Encode(toBytes(compressedPubKey));
 	   	std::cout << "Encrypt signer public key: " << signerData << std::endl;
 	   		#endif
+
+	   	 */
 	   		// Adjust the buffer
-	   		bytesAdded += compressedPubKey.size();
-	   		encryptBuffer = encryptBuffer.subspan(compressedPubKey.size());
+	   		bytesAdded += len(compressedPubKey)
+	   		encryptBuffer += len(compressedPubKey)
 
 	   		// Calculate the signature.
-	   		m_signature = ECKeyPair::ComputeECDSASig(toBytes(digest), signerPrivateKey);
-	   		#if DEBUG_LOG
+	   		header.m_signature = ocrypto.ComputeECDSASig(digest, signerPrivateKey)
+	   		/* #if DEBUG_LOG
 	   			auto sigData = base64Encode(toBytes(m_signature));
 	   	std::cout << "Encrypt signature: " << sigData << std::endl;
 	   		#endif
 
+	   		 */
+
 	   		// Add the signature and update the count of bytes added.
-	   	std::memcpy(encryptBuffer.data(), m_signature.data(), m_signature.size());
+	   	copy(encryptBuffer, header.m_signature)
 
 	   		// Adjust the buffer
-	   		bytesAdded += m_signature.size();
+	   		bytesAdded += len(header.m_signature)
 	   	}
 
-	   	if (m_datasetMode) {
-	   		m_keyIterationCount += 1;
+	   	if (header.m_datasetMode) {
+	   		header.m_keyIterationCount += 1;
 	   	}
 
-	   	return { reinterpret_cast<const char*>(m_encryptBuffer.data()), bytesAdded};
-	*/
-	return err
+	return encryptBuffer.Bytes(), err
 }

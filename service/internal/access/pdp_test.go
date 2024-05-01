@@ -816,7 +816,7 @@ func Test_GroupValuesByDefinition_NoProvidedDefinitionFqn_Succeeds(t *testing.T)
 
 	for _, attrDef := range mockAttrDefinitions {
 		fqn := fqnBuilder(attrDef.GetNamespace().GetName(), attrDef.GetName(), "")
-		assert.Len(t, len(groupedValues[fqn]), 2)
+		assert.Len(t, groupedValues[fqn], 2)
 		assert.Equal(t, attrDef.GetValues()[0], groupedValues[fqn][0])
 		assert.Equal(t, attrDef.GetValues()[1], groupedValues[fqn][1])
 	}

@@ -28,11 +28,6 @@ type RequestBody struct {
 	Policy          string `json:"policy"`
 }
 
-type rewrapJWTClaims struct {
-	jwt.RegisteredClaims
-	Body string `json:"requestBody"`
-}
-
 // NewAuthConfig Create a new instance of authConfig
 func NewAuthConfig() (*AuthConfig, error) {
 	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
@@ -108,6 +103,11 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 		return nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
 
+	type rewrapJWTClaims struct {
+		jwt.RegisteredClaims
+		Body string `json:"requestBody"`
+	}
+
 	claims := rewrapJWTClaims{
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
@@ -162,7 +162,7 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 	return response, nil
 }
 
-func (a *AuthConfig) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
+func (a *AuthConfig) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 	requestBody := RequestBody{
 		KeyAccess:       keyAccess,
 		Policy:          policy,
@@ -231,7 +231,7 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 	return key, nil
 }
 
-func (*AuthConfig) getPublicKey(kasInfo KASInfo) (string, error) {
+func (*AuthConfig) GetPublicKey(kasInfo KASInfo) (string, error) {
 	kasPubKeyURL, err := url.JoinPath(kasInfo.URL, kasPublicKeyPath)
 	if err != nil {
 		return "", fmt.Errorf("url.Parse failed: %w", err)

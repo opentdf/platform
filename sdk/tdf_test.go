@@ -506,7 +506,6 @@ func testEncrypt(t *testing.T, sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 	require.NoError(t, err)
 
 	assert.LessOrEqual(t, math.Abs(float64(tdfObj.size-test.tdfFileSize)), 1.01*float64(test.tdfFileSize))
-
 }
 
 func testDecryptWithReader(t *testing.T, sdk *SDK, tdfFile, decryptedTdfFileName string, test tdfTest) {

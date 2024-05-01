@@ -70,7 +70,7 @@ func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 }
 
@@ -106,7 +106,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithValueSucceeds() {
 		createdVals = append(createdVals, v.GetValue())
 	}
 	s.Equal(values, createdVals)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 }
 
@@ -122,7 +122,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
 		},
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 }
 
@@ -133,7 +133,7 @@ func (s *AttributesSuite) Test_CreateAttribute_SetsActiveStateTrueByDefault() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 	s.Equal(true, createdAttr.GetActive().GetValue())
 }
@@ -170,7 +170,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
 	attr = &attributes.CreateAttributeRequest{
@@ -179,7 +179,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
 	attr = &attributes.CreateAttributeRequest{
@@ -188,7 +188,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
 	attr = &attributes.CreateAttributeRequest{
@@ -197,7 +197,7 @@ func (s *AttributesSuite) Test_CreateAttribute_WithEveryRuleSucceeds() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 	}
 	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 }
 
@@ -295,7 +295,7 @@ func (s *AttributesSuite) Test_GetAttribute() {
 
 	for _, f := range fixtures {
 		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, f.Id)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(gotAttr)
 		s.Equal(f.Id, gotAttr.GetId())
 		s.Equal(f.Name, gotAttr.GetName())
@@ -320,7 +320,7 @@ func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 	deactivated := s.f.GetAttributeKey("deactivated.io/attr/attr1")
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivated.Id)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(gotAttr)
 	s.Equal(deactivated.Id, gotAttr.GetId())
 	s.Equal(deactivated.Name, gotAttr.GetName())
@@ -331,7 +331,7 @@ func (s *AttributesSuite) Test_ListAttribute() {
 	fixtures := s.getAttributeFixtures()
 
 	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive, "")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(list)
 
 	// all fixtures are listed
@@ -356,7 +356,7 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 	// list attributes by namespace id
 	for nsId := range namespaces {
 		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsId)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(list)
 		s.NotEmpty(list)
 		for _, l := range list {
@@ -368,7 +368,7 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 	// list attributes by namespace name
 	for _, nsName := range namespaces {
 		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsName)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(list)
 		s.NotEmpty(list)
 		for _, l := range list {
@@ -413,12 +413,12 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	createdAt := metadata.GetCreatedAt()
 	s.True(createdAt.AsTime().After(start))
 	s.True(createdAt.AsTime().Before(end))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update with no changes
 	updatedWithoutChange, err := s.db.PolicyClient.UpdateAttribute(s.ctx, created.GetId(), &attributes.UpdateAttributeRequest{})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updatedWithoutChange)
 	s.Equal(created.GetId(), updatedWithoutChange.GetId())
 
@@ -429,12 +429,12 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updatedWithChange)
 	s.Equal(created.GetId(), updatedWithChange.GetId())
 
 	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
@@ -465,7 +465,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
 	// should error on attempt to change namespace
@@ -477,7 +477,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
 
 	// validate namespace should not have been changed
 	updated, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(original.GetNamespaceId(), updated.GetNamespace().GetId())
 }
@@ -491,7 +491,7 @@ func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFa
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
 	conflict := &attributes.UpdateAttributeRequest{}
@@ -508,11 +508,11 @@ func (s *AttributesSuite) Test_DeleteAttribute() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
 	deleted, err := s.db.PolicyClient.DeleteAttribute(s.ctx, createdAttr.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(deleted)
 
 	// should not exist anymore
@@ -541,7 +541,7 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "test__cascading-deactivate-ns",
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotZero(n.GetId())
 
 	// add an attribute under that namespaces
@@ -551,7 +551,7 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
 	// add a value under that attribute
@@ -559,12 +559,12 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 		Value: "test__cascading-deactivate-attr-value",
 	}
 	createdVal, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.GetId(), val)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdVal)
 
 	// deactivate the attribute
 	deactivatedAttr, err := s.db.PolicyClient.DeactivateAttribute(s.ctx, createdAttr.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(deactivatedAttr)
 
 	return n.GetId(), createdAttr.GetId(), createdVal.GetId()
@@ -580,7 +580,7 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 
 	listNamespaces := func(state string) bool {
 		listedNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, state)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(listedNamespaces)
 		for _, ns := range listedNamespaces {
 			if stillActiveNsId == ns.GetId() {
@@ -592,7 +592,7 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 
 	listAttributes := func(state string) bool {
 		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state, "")
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {
 			if deactivatedAttrId == a.GetId() {
@@ -604,7 +604,7 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 
 	listValues := func(state string) bool {
 		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, deactivatedAttrId, state)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(listedVals)
 		for _, v := range listedVals {
 			if deactivatedAttrValueId == v.GetId() {
@@ -682,19 +682,19 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_ToValues_Get() {
 	// ensure the namespace has state active still (not bubbled up)
 	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, stillActiveNsId)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(gotNs)
 	s.Equal(true, gotNs.GetActive().GetValue())
 
 	// ensure the attribute has state inactive
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivatedAttrId)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(gotAttr)
 	s.Equal(false, gotAttr.GetActive().GetValue())
 
 	// ensure the value has state inactive
 	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueId)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(gotVal)
 	s.Equal(false, gotVal.GetActive().GetValue())
 }
@@ -730,7 +730,7 @@ func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_
 	}
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.Equal(aKas, resp)
 }
@@ -766,7 +766,7 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Succes
 	}
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.Equal(aKas, resp)
 }

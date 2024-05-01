@@ -61,7 +61,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 		Terms:            []string{"term1", "term2"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 }
 
@@ -89,7 +89,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 		Terms:            []string{},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 	s.NotNil(createdMapping.GetTerms())
 	s.Equal(len(createdMapping.GetTerms()), 0)
@@ -99,7 +99,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 	// make sure we can get all fixtures
 	testData := s.getResourceMappingFixtures()
 	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(mappings)
 	for _, testMapping := range testData {
 		found := false
@@ -119,13 +119,13 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 	testedMembers := false
 	for idx, testMapping := range testData {
 		mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, testMapping.Id)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(mapping)
 		s.Equal(testMapping.Id, mapping.GetId())
 		s.Equal(testMapping.AttributeValueId, mapping.GetAttributeValue().GetId())
 		s.Equal(testMapping.Terms, mapping.GetTerms())
 		av, err := s.db.PolicyClient.GetAttributeValue(s.ctx, testMapping.AttributeValueId)
-		s.NoError(err)
+		s.Require().NoError(err)
 		if len(av.GetMembers()) > 0 {
 			testedMembers = true
 		}
@@ -158,11 +158,11 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 		Terms:            []string{"term1", "term2"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 
 	got, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(mapping)
 	s.Equal(createdMapping.GetId(), got.GetId())
 	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
@@ -207,11 +207,11 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	createdAt := metadata.GetCreatedAt()
 	s.True(createdAt.AsTime().After(start))
 	s.True(createdAt.AsTime().Before(end))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 
 	if v, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.GetId()); err != nil {
-		s.NoError(err)
+		s.Require().NoError(err)
 	} else {
 		s.NotNil(v)
 		s.Equal(createdMapping.GetId(), v.GetId())
@@ -220,7 +220,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	}
 
 	updateWithoutChange, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.GetId(), &resourcemapping.UpdateResourceMappingRequest{})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updateWithoutChange)
 	s.Equal(createdMapping.GetId(), updateWithoutChange.GetId())
 
@@ -233,13 +233,13 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updateWithChange)
 	s.Equal(createdMapping.GetId(), updateWithChange.GetId())
 
 	// get after update to verify db reflects changes made
 	got, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(createdMapping.GetId(), got.GetId())
 	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
@@ -255,7 +255,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 		Terms:            []string{"asdf qwerty"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 
 	// update the created with new metadata and terms
@@ -276,11 +276,11 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 		Terms:            []string{"testing"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 
 	m, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(m)
 	s.Equal(createdMapping.GetId(), m.GetId())
 
@@ -302,11 +302,11 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 		Terms:            []string{"term1", "term2"},
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 
 	deleted, err := s.db.PolicyClient.DeleteResourceMapping(s.ctx, createdMapping.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(deleted)
 
 	deletedMapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.GetId())

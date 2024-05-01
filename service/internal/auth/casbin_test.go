@@ -104,7 +104,7 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithDefaults() {
 	}
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{})
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(enforcer)
 	s.Equal(eModel.ToText(), enforcer.GetModel().ToText())
 	s.NotNil(enforcer.GetPolicy())

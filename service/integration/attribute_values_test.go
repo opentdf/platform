@@ -49,7 +49,7 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 	attrId := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionId
 
 	list, err := s.db.PolicyClient.ListAttributeValues(s.ctx, attrId, policydb.StateActive)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(list)
 
 	// ensure list contains the two test fixtures and that response matches expected data
@@ -74,7 +74,7 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, f.Id)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(v)
 
 	s.Equal(f.Id, v.GetId())
@@ -103,7 +103,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDe
 		Value: "testing create gives active true by default",
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, req)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdValue)
 	s.Equal(true, createdValue.GetActive().GetValue())
 }
@@ -130,7 +130,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
 	inactive := s.f.GetAttributeValueKey("deactivated.io/attr/attr1/value/deactivated_value")
 
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, inactive.Id)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(inactive.Id, got.GetId())
 	s.Equal(inactive.Value, got.GetValue())
@@ -151,11 +151,11 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 		Metadata: metadata,
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdValue)
 
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(createdValue.GetId(), got.GetId())
 	s.Equal(createdValue.GetValue(), got.GetValue())
@@ -199,11 +199,11 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 		Metadata: metadata,
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.Id, value)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdValue)
 
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(createdValue.GetId(), got.GetId())
 	s.Equal(createdValue.GetValue(), got.GetValue())
@@ -299,14 +299,14 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	createdAt := metadata.GetCreatedAt()
 	s.True(createdAt.AsTime().After(start))
 	s.True(createdAt.AsTime().Before(end))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update with no changes
 	updatedWithoutChange, err := s.db.PolicyClient.UpdateAttributeValue(s.ctx, &attributes.UpdateAttributeValueRequest{
 		Id: created.GetId(),
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updatedWithoutChange)
 	s.Equal(created.GetId(), updatedWithoutChange.GetId())
 
@@ -318,13 +318,13 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 		Id:                     created.GetId(),
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updatedWithChange)
 	s.Equal(created.GetId(), updatedWithChange.GetId())
 
 	// get it again to verify it was updated
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
@@ -353,12 +353,12 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute() {
 		Value: "created value testing delete",
 	}
 	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, s.f.GetAttributeKey("example.net/attr/attr1").Id, value)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// delete it
 	resp, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
 
 	// get it again to verify it no longer exists
@@ -387,7 +387,7 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "cascading-deactivate-attribute-value.com",
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotZero(n.GetId())
 
 	// add an attribute under that namespaces
@@ -397,7 +397,7 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
 	// add a value under that attribute
@@ -405,12 +405,12 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 		Value: "test__cascading-deactivate-attr-value-value",
 	}
 	createdVal, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.GetId(), val)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdVal)
 
 	// deactivate the attribute value
 	deactivatedAttr, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, createdVal.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(deactivatedAttr)
 
 	return n.GetId(), createdAttr.GetId(), createdVal.GetId()
@@ -427,7 +427,7 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 
 	listNamespaces := func(state string) bool {
 		listedNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, state)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(listedNamespaces)
 		for _, ns := range listedNamespaces {
 			if stillActiveNsId == ns.GetId() {
@@ -439,7 +439,7 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 
 	listAttributes := func(state string) bool {
 		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state, "")
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {
 			if stillActiveAttributeId == a.GetId() {
@@ -451,7 +451,7 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 
 	listValues := func(state string) bool {
 		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, stillActiveAttributeId, state)
-		s.NoError(err)
+		s.Require().NoError(err)
 		s.NotNil(listedVals)
 		for _, v := range listedVals {
 			if deactivatedAttrValueId == v.GetId() {
@@ -529,19 +529,19 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
 	// namespace is still active (not bubbled up)
 	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, stillActiveNsId)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(gotNs)
 	s.Equal(true, gotNs.GetActive().GetValue())
 
 	// attribute is still active (not bubbled up)
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, stillActiveAttributeId)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(gotAttr)
 	s.Equal(true, gotAttr.GetActive().GetValue())
 
 	// value was deactivated
 	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueId)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(gotVal)
 	s.Equal(false, gotVal.GetActive().GetValue())
 }
@@ -580,7 +580,7 @@ func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success
 
 	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.Equal(v, resp)
 }
@@ -619,7 +619,7 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Succe
 
 	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.Equal(v, resp)
 }

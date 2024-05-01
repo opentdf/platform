@@ -12,7 +12,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
-
 	"github.com/stretchr/testify/suite"
 )
 
@@ -64,10 +63,10 @@ func (s *AttributeFqnSuite) TestCreateNamespace() {
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: name,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	// Verify FQN
 	fqn, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotEmpty(fqn.GetFqn())
 	s.Equal(fqnBuilder(name, "", ""), fqn.GetFqn())
 }
@@ -81,10 +80,10 @@ func (s *AttributeFqnSuite) TestCreateAttribute() {
 		Name:        name,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	// Verify FQN
 	fqn, err := s.db.PolicyClient.GetAttribute(s.ctx, a.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotEmpty(fqn.GetFqn())
 	s.Equal(fqnBuilder(n.Name, a.GetName(), ""), fqn.GetFqn())
 }
@@ -97,10 +96,10 @@ func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 	v, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.Id, &attributes.CreateAttributeValueRequest{
 		Value: name,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	// Verify FQN
 	fqn, err := s.db.PolicyClient.GetAttributeValue(s.ctx, v.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotEmpty(fqn.GetFqn())
 	s.Equal(fqnBuilder(n.Name, a.Name, v.GetValue()), fqn.GetFqn())
 }
@@ -164,7 +163,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	attrFixture := s.f.GetAttributeKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// the number of values should match the fixture
 	s.Equal(2, len(attr.GetValues()))
@@ -189,7 +188,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: namespace,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// Create attribute
 	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
@@ -197,13 +196,13 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 		Name:        attr,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// Create attribute value1
 	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
 		Value: value1,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// Get attributes by fqns with a solo value
 	fqns := []string{fqn1}
@@ -213,7 +212,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 			WithSubjectMaps: true,
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// Verify attribute1 is sole attribute
 	s.Len(attributeAndValue, 1)
@@ -231,7 +230,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
 		Value: value2,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// Get attributes by fqns with two values
 	fqns = []string{fqn1, fqn2}
@@ -241,7 +240,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 			WithSubjectMaps: true,
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Len(attributeAndValue, 2)
 
 	val, ok = attributeAndValue[fqn2]

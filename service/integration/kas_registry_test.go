@@ -48,7 +48,7 @@ func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasReg
 func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
 	fixtures := s.getKasRegistryFixtures()
 	list, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(list)
 	for _, fixture := range fixtures {
 		for _, item := range list {
@@ -70,14 +70,14 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	localFixture := s.f.GetKasRegistryKey("key_access_server_2")
 
 	remote, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.Id)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(remote)
 	s.Equal(remoteFixture.Id, remote.GetId())
 	s.Equal(remoteFixture.Uri, remote.GetUri())
 	s.Equal(remoteFixture.PubKey.Remote, remote.GetPublicKey().GetRemote())
 
 	local, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, localFixture.Id)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(local)
 	s.Equal(localFixture.Id, local.GetId())
 	s.Equal(localFixture.Uri, local.GetUri())
@@ -110,7 +110,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		Metadata:  metadata,
 	}
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(r)
 	s.NotEqual("", r.GetId())
 }
@@ -134,7 +134,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 		Metadata:  metadata,
 	}
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(r)
 	s.NotZero(r.GetId())
 }
@@ -165,7 +165,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update it with new values and metadata
@@ -184,12 +184,12 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 
 	// get after update to validate changes were successful
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(updatedUri, got.GetUri())
@@ -213,7 +213,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update it with new metadata
@@ -225,12 +225,12 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 
 	// get after update to validate changes were to metadata alone
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
@@ -253,19 +253,19 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update it with new uri
 	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
 		Uri: updatedUri,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 
 	// get after update to validate changes were successful
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(updatedUri, got.GetUri())
@@ -294,7 +294,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update it with new key
@@ -305,12 +305,12 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 
 	// get after update to validate changes were successful
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
@@ -347,12 +347,12 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 		PublicKey: pubKey,
 	}
 	createdKas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, testKas)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdKas)
 
 	// delete it
 	deleted, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, createdKas.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(deleted)
 
 	// get after delete to validate it's gone

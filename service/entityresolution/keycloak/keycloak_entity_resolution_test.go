@@ -14,7 +14,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )
@@ -120,7 +119,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	assert.Nil(t, reserr)
-	_ = json.NewEncoder(os.Stdout).Encode(resp)
+	_ = json.NewEncoder(os.Stdout).Encode(&resp)
 	var entity_representations = resp.GetEntityRepresentations()
 	assert.NotNil(t, entity_representations)
 	assert.Equal(t, 1, len(entity_representations))
@@ -266,7 +265,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 
 	assert.NotNil(t, reserr)
 	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
-	var entityNotFound = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: db.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
+	var entityNotFound = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: keycloak.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
 	var expectedError = errors.New(entityNotFound.String())
 	assert.Equal(t, expectedError, reserr)
 }

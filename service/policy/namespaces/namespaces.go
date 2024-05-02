@@ -2,6 +2,7 @@ package namespaces
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -11,7 +12,7 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
-type NamespacesService struct {
+type NamespacesService struct { //nolint:revive // NamespacesService is a valid name
 	namespaces.UnimplementedNamespaceServiceServer
 	dbClient policydb.PolicyDBClient
 }
@@ -21,7 +22,11 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &NamespacesService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				return namespaces.RegisterNamespaceServiceHandlerServer(ctx, mux, server.(namespaces.NamespaceServiceServer))
+				nsServer, ok := server.(namespaces.NamespaceServiceServer)
+				if !ok {
+					return fmt.Errorf("failed to assert server as namespaces.NamespaceServiceServer")
+				}
+				return namespaces.RegisterNamespaceServiceHandlerServer(ctx, mux, nsServer)
 			}
 		},
 	}

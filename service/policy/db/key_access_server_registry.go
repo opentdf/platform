@@ -22,20 +22,23 @@ func keyAccessServerSelect() sq.SelectBuilder {
 		)
 }
 
-func listAllKeyAccessServersSql() (string, []interface{}, error) {
+func listAllKeyAccessServersSQL() (string, []interface{}, error) {
 	return keyAccessServerSelect().
 		From(Tables.KeyAccessServerRegistry.Name()).
 		ToSql()
 }
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.KeyAccessServer, error) {
-	sql, args, err := listAllKeyAccessServersSql()
+	sql, args, err := listAllKeyAccessServersSQL()
 	if err != nil {
 		return nil, err
 	}
 
 	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	defer rows.Close()
@@ -81,7 +84,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.Key
 	return keyAccessServers, nil
 }
 
-func getKeyAccessServerSql(id string) (string, []interface{}, error) {
+func getKeyAccessServerSQL(id string) (string, []interface{}, error) {
 	return keyAccessServerSelect().
 		Where(sq.Eq{"id": id}).
 		From(Tables.KeyAccessServerRegistry.Name()).
@@ -89,7 +92,7 @@ func getKeyAccessServerSql(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	sql, args, err := getKeyAccessServerSql(id)
+	sql, args, err := getKeyAccessServerSQL(id)
 	if err != nil {
 		return nil, err
 	}

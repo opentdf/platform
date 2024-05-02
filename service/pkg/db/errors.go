@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type DBError string
+type DBError string //nolint:revive // DBError is a valid name for this type
 
 func (e DBError) Error() string {
 	return string(e)
@@ -70,7 +70,7 @@ func isPgError(err error) *pgconn.PgError {
 	}
 	errMsg := err.Error()
 	// The error is not of type PgError if a SELECT query resulted in no rows
-	if strings.Contains(errMsg, "no rows in result set") || err == pgx.ErrNoRows {
+	if strings.Contains(errMsg, "no rows in result set") || errors.Is(err, pgx.ErrNoRows) {
 		return &pgconn.PgError{
 			Code:    pgerrcode.CaseNotFound,
 			Message: "err: no rows in result set",

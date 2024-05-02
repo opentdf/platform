@@ -30,7 +30,7 @@ var (
 		Short: "Reindex FQNs across the platform",
 		Long:  policyFqnReindexCmdLong,
 
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
 			cfg, err := config.LoadConfig(configKey, configFile)
@@ -45,17 +45,17 @@ var (
 			res := dbClient.AttrFqnReindex()
 			cmd.Print("Namespace FQNs reindexed:\n")
 			for _, r := range res.Namespaces {
-				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
 			}
 
 			cmd.Print("Attribute FQNs reindexed:\n")
 			for _, r := range res.Attributes {
-				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
 			}
 
 			cmd.Print("Attribute Value FQNs reindexed:\n")
 			for _, r := range res.Values {
-				cmd.Printf("\t%s: %s\n", r.Id, r.Fqn)
+				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
 			}
 		},
 	}

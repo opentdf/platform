@@ -44,7 +44,7 @@ func EntityResolution(ctx context.Context,
 	}
 	payload := req.GetEntities()
 
-	var resolvedEntities []*entityresolution.ERSEntityRepresentation
+	var resolvedEntities []*entityresolution.EntityRepresentation
 	slog.DebugContext(ctx, "EntityResolution invoked", "payload", payload)
 
 	for _, ident := range payload {
@@ -82,7 +82,7 @@ func EntityResolution(ctx context.Context,
 			}
 			resolvedEntities = append(
 				resolvedEntities,
-				&entityresolution.ERSEntityRepresentation{
+				&entityresolution.EntityRepresentation{
 					OriginalId:      ident.GetId(),
 					AdditionalProps: jsonEntities,
 				},
@@ -171,7 +171,7 @@ func EntityResolution(ctx context.Context,
 
 		resolvedEntities = append(
 			resolvedEntities,
-			&entityresolution.ERSEntityRepresentation{
+			&entityresolution.EntityRepresentation{
 				OriginalId:      ident.GetId(),
 				AdditionalProps: jsonEntities},
 		)

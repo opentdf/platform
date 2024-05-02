@@ -90,7 +90,7 @@
       },
       "title": "Entity type for custom entities beyond the standard types"
     },
-    "entityresolutionERSEntityRepresentation": {
+    "entityresolutionEntityRepresentation": {
       "type": "object",
       "properties": {
         "additionalProps": {
@@ -125,7 +125,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/entityresolutionERSEntityRepresentation"
+            "$ref": "#/definitions/entityresolutionEntityRepresentation"
           }
         }
       },

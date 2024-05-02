@@ -28,7 +28,7 @@ message ResolveEntitiesRequest {
 }
 
 
-message ERSEntityRepresentation {
+message EntityRepresentation {
   repeated google.protobuf.Struct additional_props = 1;
   string original_id = 2; // ephemeral entity id from the request
 }
@@ -51,7 +51,7 @@ message ERSEntityRepresentation {
 
 */
 message ResolveEntitiesResponse {
-  repeated ERSEntityRepresentation entity_representations = 1;
+  repeated EntityRepresentation entity_representations = 1;
 }
 
 message EntityNotFoundError {

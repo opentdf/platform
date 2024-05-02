@@ -356,11 +356,11 @@
             <ul>
               
                 <li>
-                  <a href="#entityresolution.ERSEntityRepresentation"><span class="badge">M</span>ERSEntityRepresentation</a>
+                  <a href="#entityresolution.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
                 </li>
               
                 <li>
-                  <a href="#entityresolution.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
+                  <a href="#entityresolution.EntityRepresentation"><span class="badge">M</span>EntityRepresentation</a>
                 </li>
               
                 <li>
@@ -2340,37 +2340,6 @@
       <p></p>
 
       
-        <h3 id="entityresolution.ERSEntityRepresentation">ERSEntityRepresentation</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>additional_props</td>
-                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>original_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral entity id from the request </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="entityresolution.EntityNotFoundError">EntityNotFoundError</h3>
         <p></p>
 
@@ -2416,6 +2385,37 @@
 
         
       
+        <h3 id="entityresolution.EntityRepresentation">EntityRepresentation</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>additional_props</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>original_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral entity id from the request </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="entityresolution.ResolveEntitiesRequest">ResolveEntitiesRequest</h3>
         <p>Example: Get idp attributes for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
 
@@ -2452,7 +2452,7 @@
               
                 <tr>
                   <td>entity_representations</td>
-                  <td><a href="#entityresolution.ERSEntityRepresentation">ERSEntityRepresentation</a></td>
+                  <td><a href="#entityresolution.EntityRepresentation">EntityRepresentation</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>

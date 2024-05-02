@@ -295,7 +295,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 					SignedRequestToken: string(tt.body),
 				},
 			)
-			slog.Info("verifiy repspponse", "v", verified, "e", err)
+			slog.Info("verify repspponse", "v", verified, "e", err)
 			if tt.bearish {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, tt.bearer)
 				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")

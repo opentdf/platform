@@ -95,7 +95,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				return nil, err
 			}
 
-			// get the relevent resource attribute fqns
+			// get the relevant resource attribute fqns
 			allPertinentFqnsRA := authorization.ResourceAttribute{
 				AttributeValueFqns: ra.GetAttributeValueFqns(),
 			}
@@ -122,7 +122,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("getEntitlements request failed ", req.String()))
 				}
 
-				// currently just adding each entity retuned to same list
+				// currently just adding each entity returned to same list
 				entityAttrValues := make(map[string][]string)
 				for _, e := range ecEntitlements.GetEntitlements() {
 					entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()

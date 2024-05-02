@@ -225,7 +225,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 		}
 
 		// AnyOf - IF there were fewer value failures for this entity, for this Attribute Value FQN,
-		// then there are distict data values, for this Attribute Value FQN, THEN this entity must
+		// then there are distinct data values, for this Attribute Value FQN, THEN this entity must
 		// possess AT LEAST ONE of the values in its entity Attribute Value group,
 		// and we have satisfied AnyOf
 		if len(valueFailures) < len(dataAttrValuesOfOneDefinition) {
@@ -345,7 +345,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(ctx context.Context, 
 		if foundRank == -1 {
 			msg := fmt.Sprintf("Data value %s is not in %s and is not a valid value for this attribute - ignoring this invalid value and continuing to look for a valid one...", dataAttr.GetValue(), order)
 			slog.WarnContext(ctx, msg)
-			// If this isnt a valid data value, skip this iteration and look at the next one - maybe it is?
+			// If this isn't a valid data value, skip this iteration and look at the next one - maybe it is?
 			// If none of them are valid, we should return a nil instance
 			continue
 		}

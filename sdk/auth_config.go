@@ -20,6 +20,7 @@ type AuthConfig struct {
 	dpopPublicKeyPEM  string
 	dpopPrivateKeyPEM string
 	accessToken       string
+	client            *http.Client
 }
 
 type RequestBody struct {
@@ -29,7 +30,7 @@ type RequestBody struct {
 }
 
 // NewAuthConfig Create a new instance of authConfig
-func NewAuthConfig() (*AuthConfig, error) {
+func NewAuthConfig(client *http.Client) (*AuthConfig, error) {
 	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
@@ -45,11 +46,15 @@ func NewAuthConfig() (*AuthConfig, error) {
 		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
-	return &AuthConfig{dpopPublicKeyPEM: publicKey, dpopPrivateKeyPEM: privateKey}, nil
+	return &AuthConfig{
+		dpopPublicKeyPEM:  publicKey,
+		dpopPrivateKeyPEM: privateKey,
+		client:            client,
+	}, nil
 }
 
-func NewOIDCAuthConfig(ctx context.Context, host, realm, clientID, clientSecret, subjectToken string) (*AuthConfig, error) {
-	authConfig, err := NewAuthConfig()
+func NewOIDCAuthConfig(ctx context.Context, client *http.Client, host, realm, clientID, clientSecret, subjectToken string) (*AuthConfig, error) {
+	authConfig, err := NewAuthConfig(client)
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +80,7 @@ func (a *AuthConfig) fetchOIDCAccessToken(ctx context.Context, host, realm, clie
 	certB64 := ocrypto.Base64Encode([]byte(a.dpopPublicKeyPEM))
 	req.Header.Set("X-VirtruPubKey", string(certB64))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := a.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("error making request to IdP for token exchange: %w", err)
 	}
@@ -151,9 +155,7 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 		kAcceptKey:        {kContentTypeJSONValue},
 	}
 
-	client := &http.Client{}
-
-	response, err := client.Do(request)
+	response, err := a.client.Do(request)
 	if err != nil {
 		slog.Error("failed http request")
 		return nil, fmt.Errorf("http request failed: %w", err)

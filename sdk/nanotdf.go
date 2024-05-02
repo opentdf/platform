@@ -145,7 +145,7 @@ func readPolicyBody(reader io.Reader, mode uint8) (PolicyBody, error) {
 			return nil, errors.Join(ErrNanoTdfRead, err)
 		}
 		embedPolicy.body = string(body)
-		return embeddedPolicy(embedPolicy), nil
+		return embedPolicy, nil
 	}
 }
 
@@ -153,6 +153,8 @@ func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (*eccKey, e
 	var numberOfBytes uint8
 	switch curve {
 	case ocrypto.ECCModeSecp256r1:
+		numberOfBytes = 33
+	case ocrypto.ECCModeSecp256k1:
 		numberOfBytes = 33
 	case ocrypto.ECCModeSecp384r1:
 		numberOfBytes = 49

@@ -108,7 +108,7 @@ Dzq7D9lqeqSK/ds7r7hpbs4iIr6KrSuXwlXmYtnhRvKT
 -----END RSA PRIVATE KEY-----
 `
 	plainKey      = "This-is-128-bits"
-	mockIdPOrigin = "https://keycloak-http/"
+	mockIDPOrigin = "https://keycloak-http/"
 )
 
 func fauxPolicy() *Policy {
@@ -153,17 +153,6 @@ func privateKey(t *testing.T) *rsa.PrivateKey {
 	return k
 }
 
-func publicKey(t *testing.T) *rsa.PublicKey {
-	b, rest := pem.Decode([]byte(rsaPublic))
-	require.NotNil(t, b)
-	assert.Empty(t, rest)
-
-	pub, err := x509.ParsePKIXPublicKey(b.Bytes)
-	require.NotNil(t, pub)
-	require.NoError(t, err)
-	return pub.(*rsa.PublicKey)
-}
-
 func entityPrivateKey(t *testing.T) *rsa.PrivateKey {
 	b, rest := pem.Decode([]byte(rsaPrivateAlt))
 	require.NotNil(t, b)
@@ -183,7 +172,10 @@ func entityPublicKey(t *testing.T) *rsa.PublicKey {
 	pub, err := x509.ParsePKIXPublicKey(b.Bytes)
 	require.NotNil(t, pub)
 	require.NoError(t, err)
-	return pub.(*rsa.PublicKey)
+
+	pubKey, ok := pub.(*rsa.PublicKey)
+	require.True(t, ok)
+	return pubKey
 }
 
 func keyAccessWrappedRaw(t *testing.T) tdf3.KeyAccess {
@@ -211,7 +203,7 @@ func keyAccessWrappedRaw(t *testing.T) tdf3.KeyAccess {
 
 type RSAPublicKey rsa.PublicKey
 
-func (publicKey *RSAPublicKey) VerifySignature(ctx context.Context, raw string) (payload []byte, err error) {
+func (publicKey *RSAPublicKey) VerifySignature(_ context.Context, raw string) ([]byte, error) {
 	slog.Debug("Verifying key")
 	tok, err := jws.Verify([]byte(raw), jws.WithKey(jwa.RS256, rsa.PublicKey(*publicKey)))
 	if err != nil {
@@ -219,40 +211,6 @@ func (publicKey *RSAPublicKey) VerifySignature(ctx context.Context, raw string) 
 		return nil, err
 	}
 	return tok, nil
-}
-
-func standardClaims() ClaimsObject {
-	return ClaimsObject{
-		ClientPublicSigningKey: rsaPublicAlt,
-		Entitlements: []Entitlement{
-			{
-				EntityID: "clientsubjectId1-14443434-1111343434-asdfdffff",
-				EntityAttributes: []Attribute{
-					{
-						URI:  "https://example.com/attr/COI/value/PRX",
-						Name: "category of intent",
-					},
-					{
-						URI:  "https://example.com/attr/Classification/value/S",
-						Name: "classification",
-					},
-				},
-			},
-			{
-				EntityID: "testuser1",
-				EntityAttributes: []Attribute{
-					{
-						URI:  "https://example.com/attr/COI/value/PRX",
-						Name: "category of intent",
-					},
-					{
-						URI:  "https://example.com/attr/Classification/value/S",
-						Name: "classification",
-					},
-				},
-			},
-		},
-	}
 }
 
 func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
@@ -265,7 +223,7 @@ func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
 		}
 		err = tok.Set(k, v)
 	}
-	set(jwt.IssuerKey, mockIdPOrigin)
+	set(jwt.IssuerKey, mockIDPOrigin)
 	set(jwt.AudienceKey, `testonly`)
 	set(jwt.SubjectKey, `testuser1`)
 	require.NoError(t, err)
@@ -277,27 +235,6 @@ func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
 
 func jwtStandard(t *testing.T) []byte {
 	return signedMockJWT(t, privateKey(t))
-}
-
-func jwtWrongIssuer(t *testing.T) []byte {
-	tok := jwt.New()
-
-	var err error
-	set := func(k string, v interface{}) {
-		if err != nil {
-			return
-		}
-		err = tok.Set(k, v)
-	}
-	set(jwt.IssuerKey, "https://someone.else/")
-	set(jwt.AudienceKey, `testonly`)
-	set(jwt.SubjectKey, `testuser1`)
-	set("tdf_claims", standardClaims())
-	require.NoError(t, err)
-
-	raw, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, privateKey(t)))
-	require.NoError(t, err)
-	return raw
 }
 
 func jwtWrongKey(t *testing.T) []byte {

@@ -29,11 +29,6 @@ type RequestBody struct {
 	Policy          string `json:"policy"`
 }
 
-type rewrapJWTClaims struct {
-	jwt.RegisteredClaims
-	Body string `json:"requestBody"`
-}
-
 // NewAuthConfig Create a new instance of authConfig
 func NewAuthConfig(client *http.Client) (*AuthConfig, error) {
 	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
@@ -112,6 +107,11 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 		return nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
 
+	type rewrapJWTClaims struct {
+		jwt.RegisteredClaims
+		Body string `json:"requestBody"`
+	}
+
 	claims := rewrapJWTClaims{
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
@@ -164,7 +164,7 @@ func (a *AuthConfig) makeKASRequest(kasPath string, body *RequestBody) (*http.Re
 	return response, nil
 }
 
-func (a *AuthConfig) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
+func (a *AuthConfig) Unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 	requestBody := RequestBody{
 		KeyAccess:       keyAccess,
 		Policy:          policy,
@@ -231,4 +231,49 @@ func getWrappedKey(rewrapResponseBody []byte, clientPrivateKey string) ([]byte, 
 	}
 
 	return key, nil
+}
+
+func (*AuthConfig) GetPublicKey(kasInfo KASInfo) (string, error) {
+	kasPubKeyURL, err := url.JoinPath(kasInfo.URL, kasPublicKeyPath)
+	if err != nil {
+		return "", fmt.Errorf("url.Parse failed: %w", err)
+	}
+
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, kasPubKeyURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("http.NewRequestWithContext failed: %w", err)
+	}
+
+	// add required headers
+	request.Header = http.Header{
+		kAcceptKey: {kContentTypeJSONValue},
+	}
+
+	client := &http.Client{}
+
+	response, err := client.Do(request)
+	defer func() {
+		if response == nil {
+			return
+		}
+		err := response.Body.Close()
+		if err != nil {
+			slog.Error("Fail to close HTTP response")
+		}
+	}()
+	if err != nil {
+		slog.Error("failed http request")
+		return "", fmt.Errorf("client.Do error: %w", err)
+	}
+	if response.StatusCode != kHTTPOk {
+		return "", fmt.Errorf("client.Do failed: %w", err)
+	}
+
+	var jsonResponse interface{}
+	err = json.NewDecoder(response.Body).Decode(&jsonResponse)
+	if err != nil {
+		return "", fmt.Errorf("json.NewDecoder.Decode failed: %w", err)
+	}
+
+	return fmt.Sprintf("%s", jsonResponse), nil
 }

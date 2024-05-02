@@ -177,11 +177,7 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 	permDeniedError := fmt.Errorf("permission denied")
 
 	// extract the role claim from the token
-	s, err := e.buildSubjectFromToken(token)
-	if err != nil {
-		slog.Error("failed to build subject from token", slog.String("error", err.Error()))
-		return false, permDeniedError
-	}
+	s := e.buildSubjectFromToken(token)
 
 	if len(s.Roles) == 0 {
 		sub := rolePrefix + defaultRole
@@ -209,20 +205,17 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 	return true, nil
 }
 
-func (e Enforcer) buildSubjectFromToken(t jwt.Token) (casbinSubject, error) {
+func (e Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	slog.Debug("building subject from token", slog.Any("token", t))
-	roles, err := e.extractRolesFromToken(t)
-	if err != nil {
-		return casbinSubject{}, err
-	}
+	roles := e.extractRolesFromToken(t)
 
 	return casbinSubject{
 		Subject: t.Subject(),
 		Roles:   roles,
-	}, nil
+	}
 }
 
-func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
+func (e Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	slog.Debug("extracting roles from token", slog.Any("token", t))
 	roles := []string{}
 
@@ -240,7 +233,7 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 	claim, exists := t.Get(selectors[0])
 	if !exists {
 		slog.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
-		return nil, nil
+		return nil
 	}
 	slog.Debug("root claim found", slog.String("claim", roleClaim), slog.Any("claims", claim))
 	// use dotnotation if the claim is nested
@@ -248,12 +241,12 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 		claimMap, ok := claim.(map[string]interface{})
 		if !ok {
 			slog.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
-			return nil, nil
+			return nil
 		}
 		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
 			slog.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
-			return nil, nil
+			return nil
 		}
 	}
 
@@ -269,7 +262,7 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 		}
 	default:
 		slog.Warn("could not get claim type", slog.String("selector", roleClaim), slog.Any("claims", claim))
-		return nil, nil
+		return nil
 	}
 
 	// filter roles based on the role map
@@ -288,5 +281,5 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 		filtered = append(filtered, defaultRole)
 	}
 
-	return filtered, nil
+	return filtered
 }

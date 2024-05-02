@@ -214,7 +214,7 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 		FullMethod: "/test",
 	}, nil)
 	s.Require().Error(err)
-	s.ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
+	s.Require().ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {

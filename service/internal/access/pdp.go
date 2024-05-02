@@ -85,14 +85,14 @@ func (pdp *Pdp) DetermineAccess(
 		}
 
 		// Roll up the per-data-rule decisions for each entity considered for this rule into the overall decision
-		for entityId, ruleResult := range entityRuleDecision {
-			entityDecision := decisions[entityId]
+		for entityID, ruleResult := range entityRuleDecision {
+			entityDecision := decisions[entityID]
 
 			ruleResult.RuleDefinition = attrDefinition
 			// If we do not yet have an overall decision for this entity, initialize the map
 			// with entityId as key and a Decision object as value
 			if entityDecision == nil {
-				decisions[entityId] = &Decision{
+				decisions[entityID] = &Decision{
 					Access:  ruleResult.Passed,
 					Results: []DataRuleResult{ruleResult},
 				}
@@ -130,7 +130,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 	slog.DebugContext(ctx, "Evaluating allOf decision", "attribute definition FQN", def)
 
 	// Go through every entity's attributeValues set...
-	for entityId, entityAttrVals := range entityAttributeValueFqns {
+	for entityID, entityAttrVals := range entityAttributeValueFqns {
 		var valueFailures []ValueFailure
 		// Default to DENY
 		entityPassed := false
@@ -156,7 +156,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 			// If we did not find the data Attribute Value FQN + value in the entity Attribute Value set,
 			// then prepare a ValueFailure for that data Attribute Value for this entity
 			if !found {
-				denialMsg := fmt.Sprintf("AllOf not satisfied for data attr %s with value %s and entity %s", attrDefFqn, dataAttrVal.GetValue(), entityId)
+				denialMsg := fmt.Sprintf("AllOf not satisfied for data attr %s with value %s and entity %s", attrDefFqn, dataAttrVal.GetValue(), entityID)
 				slog.WarnContext(ctx, denialMsg)
 				// Append the ValueFailure to the set of entity value failures
 				valueFailures = append(valueFailures, ValueFailure{
@@ -170,7 +170,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 		if len(valueFailures) == 0 {
 			entityPassed = true
 		}
-		ruleResultsByEntity[entityId] = DataRuleResult{
+		ruleResultsByEntity[entityID] = DataRuleResult{
 			Passed:        entityPassed,
 			ValueFailures: valueFailures,
 		}
@@ -195,7 +195,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 	slog.DebugContext(ctx, "Evaluating anyOf decision", "attribute definition FQN", attrDefFqn)
 
 	// Go through every entity's Attribute Value set...
-	for entityId, entityAttrValFqns := range entityAttributeValueFqns {
+	for entityID, entityAttrValFqns := range entityAttributeValueFqns {
 		var valueFailures []ValueFailure
 		// Default to DENY
 		entityPassed := false
@@ -215,7 +215,7 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 			// If we did not find the data Attribute Value FQN + value in the entity Attribute Value set,
 			// then prepare a ValueFailure for that data Attribute Value and value, for this entity
 			if !found {
-				denialMsg := fmt.Sprintf("anyOf not satisfied for data attr %s with value %s and entity %s - anyOf is permissive, so this doesn't mean overall failure", attrDefFqn, dataAttrVal.GetValue(), entityId)
+				denialMsg := fmt.Sprintf("anyOf not satisfied for data attr %s with value %s and entity %s - anyOf is permissive, so this doesn't mean overall failure", attrDefFqn, dataAttrVal.GetValue(), entityID)
 				slog.WarnContext(ctx, denialMsg)
 				valueFailures = append(valueFailures, ValueFailure{
 					DataAttribute: dataAttrValuesOfOneDefinition[dvIndex],
@@ -229,10 +229,10 @@ func (pdp *Pdp) anyOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 		// possess AT LEAST ONE of the values in its entity Attribute Value group,
 		// and we have satisfied AnyOf
 		if len(valueFailures) < len(dataAttrValuesOfOneDefinition) {
-			slog.DebugContext(ctx, "anyOf satisfied", "attribute definition FQN", attrDefFqn, "entityId", entityId)
+			slog.DebugContext(ctx, "anyOf satisfied", "attribute definition FQN", attrDefFqn, "entityId", entityID)
 			entityPassed = true
 		}
-		ruleResultsByEntity[entityId] = DataRuleResult{
+		ruleResultsByEntity[entityID] = DataRuleResult{
 			Passed:        entityPassed,
 			ValueFailures: valueFailures,
 		}
@@ -264,7 +264,7 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrValuesOfOneDefinition
 	// All the data Attribute Values in the arg have the same FQN.
 
 	// Go through every entity's Attribute Value set...
-	for entityId, entityAttrs := range entityAttributeValueFqns {
+	for entityID, entityAttrs := range entityAttributeValueFqns {
 		// Default to DENY
 		entityPassed := false
 		valueFailures := []ValueFailure{}
@@ -292,7 +292,7 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrValuesOfOneDefinition
 
 			// If the rank of the data Attribute Value is higher than the highest entity Attribute Value, then FAIL.
 			if !entityPassed {
-				denialMsg := fmt.Sprintf("Hierarchy - Entity: %s hierarchy values rank below data hierarchy value of %s", entityId, highestDataAttrVal.GetValue())
+				denialMsg := fmt.Sprintf("Hierarchy - Entity: %s hierarchy values rank below data hierarchy value of %s", entityID, highestDataAttrVal.GetValue())
 				slog.WarnContext(ctx, denialMsg)
 
 				// Since there is only one data value we (ultimately) consider in a HierarchyRule, we will only ever
@@ -307,14 +307,14 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrValuesOfOneDefinition
 		} else {
 			// If every data attribute value we're comparing against is invalid (that is, none of them exist in the attribute definition)
 			// then we must fail and return a nil instance.
-			denialMsg := fmt.Sprintf("Hierarchy - No data values found exist in attribute definition, no hierarchy comparison possible, entity %s is denied", entityId)
+			denialMsg := fmt.Sprintf("Hierarchy - No data values found exist in attribute definition, no hierarchy comparison possible, entity %s is denied", entityID)
 			slog.WarnContext(ctx, denialMsg)
 			valueFailures = append(valueFailures, ValueFailure{
 				DataAttribute: nil,
 				Message:       denialMsg,
 			})
 		}
-		ruleResultsByEntity[entityId] = DataRuleResult{
+		ruleResultsByEntity[entityID] = DataRuleResult{
 			Passed:        entityPassed,
 			ValueFailures: valueFailures,
 		}

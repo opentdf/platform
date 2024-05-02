@@ -2,6 +2,7 @@ package subjectmapping
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -11,7 +12,7 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
-type SubjectMappingService struct {
+type SubjectMappingService struct { //nolint:revive // SubjectMappingService is a valid name for this struct
 	sm.UnimplementedSubjectMappingServiceServer
 	dbClient policydb.PolicyDBClient
 }
@@ -21,7 +22,11 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, s.(sm.SubjectMappingServiceServer))
+				server, ok := s.(sm.SubjectMappingServiceServer)
+				if !ok {
+					return fmt.Errorf("failed to assert server as sm.SubjectMappingServiceServer")
+				}
+				return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, server)
 			}
 		},
 	}
@@ -37,7 +42,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	rsp := &sm.CreateSubjectMappingResponse{}
 	slog.Debug("creating subject mapping")
 
-	sm, err := s.dbClient.CreateSubjectMapping(context.Background(), req)
+	sm, err := s.dbClient.CreateSubjectMapping(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectMapping", req.String()))
 	}
@@ -47,7 +52,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 }
 
 func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
-	req *sm.ListSubjectMappingsRequest,
+	_ *sm.ListSubjectMappingsRequest,
 ) (*sm.ListSubjectMappingsResponse, error) {
 	rsp := &sm.ListSubjectMappingsResponse{}
 	slog.Debug("listing subject mappings")
@@ -141,7 +146,7 @@ func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
 }
 
 func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
-	req *sm.ListSubjectConditionSetsRequest,
+	_ *sm.ListSubjectConditionSetsRequest,
 ) (*sm.ListSubjectConditionSetsResponse, error) {
 	rsp := &sm.ListSubjectConditionSetsResponse{}
 	slog.Debug("listing subject condition sets")
@@ -161,7 +166,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	rsp := &sm.CreateSubjectConditionSetResponse{}
 	slog.Debug("creating subject condition set", slog.String("subjectConditionSet", req.String()))
 
-	conditionSet, err := s.dbClient.CreateSubjectConditionSet(context.Background(), req.GetSubjectConditionSet())
+	conditionSet, err := s.dbClient.CreateSubjectConditionSet(ctx, req.GetSubjectConditionSet())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectConditionSet", req.String()))
 	}

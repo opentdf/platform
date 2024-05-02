@@ -14,13 +14,13 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var nonExistentKasRegistryId = "78909865-8888-9999-9999-000000654321"
+var nonExistentKasRegistryID = "78909865-8888-9999-9999-000000654321"
 
 type KasRegistrySuite struct {
 	suite.Suite
 	f   fixtures.Fixtures
 	db  fixtures.DBInterface
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // context is used in the test suite
 }
 
 func (s *KasRegistrySuite) SetupSuite() {
@@ -48,18 +48,18 @@ func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasReg
 func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
 	fixtures := s.getKasRegistryFixtures()
 	list, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(list)
 	for _, fixture := range fixtures {
 		for _, item := range list {
-			if item.GetId() == fixture.Id {
-				s.Equal(fixture.Id, item.GetId())
+			if item.GetId() == fixture.ID {
+				s.Equal(fixture.ID, item.GetId())
 				if item.GetPublicKey().GetRemote() != "" {
 					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
 				} else {
 					s.Equal(fixture.PubKey.Local, item.GetPublicKey().GetLocal())
 				}
-				s.Equal(fixture.Uri, item.GetUri())
+				s.Equal(fixture.URI, item.GetUri())
 			}
 		}
 	}
@@ -69,26 +69,26 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
 	localFixture := s.f.GetKasRegistryKey("key_access_server_2")
 
-	remote, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.Id)
-	s.NoError(err)
+	remote, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.ID)
+	s.Require().NoError(err)
 	s.NotNil(remote)
-	s.Equal(remoteFixture.Id, remote.GetId())
-	s.Equal(remoteFixture.Uri, remote.GetUri())
+	s.Equal(remoteFixture.ID, remote.GetId())
+	s.Equal(remoteFixture.URI, remote.GetUri())
 	s.Equal(remoteFixture.PubKey.Remote, remote.GetPublicKey().GetRemote())
 
-	local, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, localFixture.Id)
-	s.NoError(err)
+	local, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, localFixture.ID)
+	s.Require().NoError(err)
 	s.NotNil(local)
-	s.Equal(localFixture.Id, local.GetId())
-	s.Equal(localFixture.Uri, local.GetUri())
+	s.Equal(localFixture.ID, local.GetId())
+	s.Equal(localFixture.URI, local.GetUri())
 	s.Equal(localFixture.PubKey.Local, local.GetPublicKey().GetLocal())
 }
 
 func (s *KasRegistrySuite) Test_GetKeyAccessServerWithNonExistentIdFails() {
-	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, nonExistentKasRegistryId)
-	s.NotNil(err)
+	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, nonExistentKasRegistryID)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
@@ -110,7 +110,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		Metadata:  metadata,
 	}
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(r)
 	s.NotEqual("", r.GetId())
 }
@@ -134,7 +134,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 		Metadata:  metadata,
 	}
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(r)
 	s.NotZero(r.GetId())
 }
@@ -147,7 +147,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 
 	uri := "testingUpdateWithRemoteKey.com"
 	pubKeyRemote := "https://remote.com/key"
-	updatedUri := "updatedUri.com"
+	updatedURI := "updatedUri.com"
 	updatedPubKeyRemote := "https://remote2.com/key"
 
 	// create a test KAS
@@ -165,12 +165,12 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update it with new values and metadata
 	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
-		Uri: updatedUri,
+		Uri: updatedURI,
 		PublicKey: &policy.PublicKey{
 			PublicKey: &policy.PublicKey_Remote{
 				Remote: updatedPubKeyRemote,
@@ -184,15 +184,15 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 
 	// get after update to validate changes were successful
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.Equal(updatedUri, got.GetUri())
+	s.Equal(updatedURI, got.GetUri())
 	s.Equal(updatedPubKeyRemote, got.GetPublicKey().GetRemote())
 	s.Zero(got.GetPublicKey().GetLocal())
 	s.Equal(fixedLabel, got.GetMetadata().GetLabels()["fixed"])
@@ -213,7 +213,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update it with new metadata
@@ -225,12 +225,12 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 
 	// get after update to validate changes were to metadata alone
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
@@ -242,7 +242,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValues() {
 	uri := "testingUpdateUri.com"
 	pubKeyRemote := "https://remote.com/key"
-	updatedUri := "updatingUri.com"
+	updatedURI := "updatingUri.com"
 
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
@@ -253,22 +253,22 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update it with new uri
 	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
-		Uri: updatedUri,
+		Uri: updatedURI,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 
 	// get after update to validate changes were successful
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.Equal(updatedUri, got.GetUri())
+	s.Equal(updatedURI, got.GetUri())
 	s.Equal(pubKeyRemote, got.GetPublicKey().GetRemote())
 	s.Zero(got.GetPublicKey().GetLocal())
 	s.Nil(got.GetMetadata().GetLabels())
@@ -294,7 +294,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// update it with new key
@@ -305,12 +305,12 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 			},
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(updated)
 
 	// get after update to validate changes were successful
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
@@ -329,10 +329,10 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
 		Uri:       "someKasUri.com",
 		PublicKey: pubKey,
 	}
-	resp, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, nonExistentKasRegistryId, updatedKas)
-	s.NotNil(err)
+	resp, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, nonExistentKasRegistryID, updatedKas)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
@@ -347,25 +347,25 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 		PublicKey: pubKey,
 	}
 	createdKas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, testKas)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(createdKas)
 
 	// delete it
 	deleted, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, createdKas.GetId())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(deleted)
 
 	// get after delete to validate it's gone
 	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, createdKas.GetId())
-	s.NotNil(err)
+	s.Require().Error(err)
 	s.Nil(resp)
 }
 
 func (s *KasRegistrySuite) Test_DeleteKeyAccessServerWithNonExistentIdFails() {
-	resp, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, nonExistentKasRegistryId)
-	s.NotNil(err)
+	resp, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, nonExistentKasRegistryID)
+	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func TestKasRegistrySuite(t *testing.T) {

@@ -41,9 +41,9 @@ func (t Table) WithoutSchema() Table {
 
 func (t Table) Name() string {
 	if t.withSchema {
-		return t.schema + "." + string(t.name)
+		return t.schema + "." + t.name
 	}
-	return string(t.name)
+	return t.name
 }
 
 func (t Table) Field(field string) string {
@@ -80,7 +80,7 @@ type Client struct {
 	config Config
 
 	// This is the stdlib connection that is used for transactions
-	SqlDB *sql.DB
+	SQLDB *sql.DB
 }
 
 /*
@@ -108,7 +108,7 @@ func New(ctx context.Context, config Config, o ...OptsFunc) (*Client, error) {
 	}
 	c.Pgx = pool
 	// We need to create a stdlib connection for transactions
-	c.SqlDB = stdlib.OpenDBFromPool(pool)
+	c.SQLDB = stdlib.OpenDBFromPool(pool)
 
 	// Connect to the database to verify the connection
 	if c.config.VerifyConnection {
@@ -126,7 +126,7 @@ func (c *Client) Schema() string {
 
 func (c *Client) Close() {
 	c.Pgx.Close()
-	c.SqlDB.Close()
+	c.SQLDB.Close()
 }
 
 func (c Config) buildConfig() (*pgxpool.Config, error) {
@@ -152,6 +152,9 @@ func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.
 	r, e := c.Pgx.Query(ctx, sql, args...)
 	if e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)
+	}
+	if r.Err() != nil {
+		return nil, WrapIfKnownInvalidQueryErr(r.Err())
 	}
 	return r, nil
 }

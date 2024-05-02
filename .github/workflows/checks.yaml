@@ -56,10 +56,9 @@ jobs:
         #uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804
         uses: strantalis/golangci-lint-action@f4e979f5b36068d69d340547f66c991dca8b70ef
         with:
-          version: v1.56
+          version: v1.57
           working-directory: ${{ matrix.directory }}
           skip-cache: true
-          only-new-issues: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
           args: --out-format=colored-line-number
       - name: Install softHSM
         if: matrix.directory == 'service'

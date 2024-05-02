@@ -10,7 +10,7 @@ import (
 )
 
 // nanotdfEqual compares two nanoTdf structures for equality.
-func nanoTDFEqual(a, b *NanoTdf) bool {
+func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 	// Compare magicNumber field
 	if a.magicNumber != b.magicNumber {
 		return false
@@ -97,7 +97,7 @@ func TestReadNanoTDFHeader(t *testing.T) {
 	// Prepare a sample nanoTdf structure
 	nanoTDF := NanoTDFHeader{
 		magicNumber: [3]byte{'L', '1', 'L'},
-		kasUrl: &resourceLocator{
+		kasURL: &resourceLocator{
 			protocol:   urlProtocolHTTPS,
 			lengthBody: 14,
 			body:       "kas.virtru.com",
@@ -147,5 +147,32 @@ func TestReadNanoTDFHeader(t *testing.T) {
 	// Compare the result with the original nanoTdf structure
 	if !nanoTDFEqual(result, &nanoTDF) {
 		t.Error("Result does not match the expected nanoTdf structure.")
+	}
+}
+
+func TestNanoTDFEncryptFile(t *testing.T) {
+	infile, err := os.Open("nanotest1.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = infile.Close()
+
+	// try to delete the output file in case it exists already
+	err = os.Remove("nanotest1.ntdf")
+	if err != nil {
+	}
+
+	outfile, err := os.Create("nanotest1.ntdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = outfile.Close()
+
+	// TODO - populate config properly
+	var config NanoTDFConfig
+
+	err = NanoTDFEncryptFile(infile, outfile, config)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

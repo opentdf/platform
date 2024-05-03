@@ -131,7 +131,7 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 		Engine:          eng,
 		SDK:             client,
 		WellKnownConfig: wellknown.RegisterConfiguration,
-		Logger:          logger,
+		Logger:          logger.With("namespace", s.Namespace),
 	})
 
 	// Register the service with the gRPC server

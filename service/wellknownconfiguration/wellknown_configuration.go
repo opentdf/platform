@@ -25,10 +25,6 @@ var (
 	rwMutex                sync.RWMutex
 )
 
-func createServiceLogger(parentLogger *logger.Logger) *logger.Logger {
-	return parentLogger.With("namespace", "wellknownconfiguration")
-}
-
 func RegisterConfiguration(namespace string, config any) error {
 	rwMutex.Lock()
 	if _, ok := wellKnownConfiguration[namespace]; ok {
@@ -45,7 +41,7 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
 		RegisterFunc: func(registrationParams serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &WellKnownService{
-					logger: createServiceLogger(registrationParams.Logger),
+					logger: registrationParams.Logger,
 				}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 					if srv, ok := server.(wellknown.WellKnownServiceServer); ok {
 						return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, srv)

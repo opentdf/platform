@@ -93,7 +93,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	slog.Info("starting services")
-	closeServices, services, err := startServices(ctx, *conf, otdf, eng, client)
+	closeServices, services, err := startServices(ctx, *conf, otdf, eng, client, logger)
 	if err != nil {
 		slog.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

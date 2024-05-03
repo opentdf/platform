@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"bytes"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -248,4 +249,16 @@ func ComputeECDHKey(privateKeyInPem []byte, publicKeyInPem []byte) ([]byte, erro
 	}
 
 	return sharedKey, nil
+}
+
+// TODO FIXME
+func GetPEMPublicKeyFromPrivateKey(key []byte, mode ECCMode) ecdsa.PublicKey {
+	b := ecdsa.PublicKey{}
+	return b
+}
+
+// TODO FIXME
+func ComputeECDSASig(digest [32]byte, key []byte) []byte {
+	b := bytes.NewBuffer(make([]byte, 0, 128))
+	return b.Bytes()
 }

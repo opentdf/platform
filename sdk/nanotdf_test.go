@@ -155,7 +155,7 @@ func TestNanoTDFEncryptFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = infile.Close()
+	//_ = infile.Close()
 
 	// try to delete the output file in case it exists already
 	err = os.Remove("nanotest1.ntdf")
@@ -166,10 +166,11 @@ func TestNanoTDFEncryptFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = outfile.Close()
+	//_ = outfile.Close()
 
 	// TODO - populate config properly
 	var config NanoTDFConfig
+	config.m_bufferSize = 8192 * 1024
 
 	err = NanoTDFEncryptFile(infile, outfile, config)
 	if err != nil {

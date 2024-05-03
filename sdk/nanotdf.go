@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
@@ -45,6 +46,7 @@ type NanoTDFConfig struct {
 	m_bufferSize       uint64
 	m_hasSignature     bool
 	m_signerPrivateKey []byte
+	m_cipher           cipherMode
 }
 
 type NanoTDF struct {
@@ -54,12 +56,12 @@ type NanoTDF struct {
 	m_keyIterationCount   int
 	policyObj             PolicyObject
 	m_compressedPubKey    []byte
-	m_iv                  int
+	m_iv                  uint64
 	m_authTag             []byte
 	m_workingBuffer       []byte
 	m_encryptSymmetricKey []byte
 	m_signature           []byte
-	policyObjectAsStr     string
+	policyObjectAsStr     []byte
 }
 
 // / Constants
@@ -188,6 +190,27 @@ func deserializeSignatureCfg(b byte) *signatureConfig {
 	return &cfg
 }
 
+// serializeSignatureCfg - take signature info from nanoTDF and encode as single byte
+// ---------------------------------
+// | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
+// ---------------------------------
+// | S | M | M | M | C | C | C | C |
+// ---------------------------------
+// bit 8 - has signature
+// bit 7-5 - eccMode
+// bit 1-4 - cipher
+func serializeSignatureCfg(sigCfg signatureConfig) byte {
+	var sigSerial byte = 0x00
+
+	if sigCfg.hasSignature {
+		sigSerial |= 0x80
+	}
+	sigSerial |= byte((sigCfg.signatureMode)&0x07) << 4
+	sigSerial |= byte((sigCfg.cipher) & 0x0F)
+
+	return sigSerial
+}
+
 func readPolicyBody(reader io.Reader, mode uint8) (PolicyBody, error) {
 	switch mode {
 	case 0:
@@ -216,6 +239,25 @@ func readPolicyBody(reader io.Reader, mode uint8) (PolicyBody, error) {
 		embedPolicy.body = string(body)
 		return embedPolicy, nil
 	}
+}
+
+func writePolicyBody(writer io.Writer, h *NanoTDFHeader) error {
+	var err error = nil
+
+	switch h.policy.mode {
+	case 0: // remote policy - resource locator
+		// TODO FIXME - need to write length
+		if err = binary.Write(writer, binary.BigEndian, h.policy.body); err != nil {
+			return err
+		}
+		return nil
+	default: // embedded policy - inline
+		// TODO FIXME - need to write length
+		if err := binary.Write(writer, binary.BigEndian, h.policy.body); err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (*eccKey, error) {
@@ -339,8 +381,39 @@ func createHeader(nanoTDF *NanoTDF) error {
 	return err
 }
 
-func writeHeader(n *NanoTDFHeader, buffer *bytes.Buffer) {
+func writeHeader(n *NanoTDFHeader, writer io.Writer) error {
 
+	var err error = nil
+
+	if err = binary.Write(writer, binary.BigEndian, n.magicNumber); err != nil {
+		return err
+	}
+	if err = binary.Write(writer, binary.BigEndian, &n.kasURL.protocol); err != nil {
+		return err
+	}
+	if err = binary.Write(writer, binary.BigEndian, &n.kasURL.lengthBody); err != nil {
+		return err
+	}
+	if err = binary.Write(writer, binary.BigEndian, &n.kasURL); err != nil {
+		return err
+	}
+	if err = binary.Write(writer, binary.BigEndian, &n.binding); err != nil {
+		return err
+	}
+
+	signatureByte := serializeSignatureCfg(*n.sigCfg)
+	if err := binary.Write(writer, binary.BigEndian, &signatureByte); err != nil {
+		return err
+	}
+
+	if err = writePolicyBody(writer, n); err != nil {
+		return err
+	}
+	if err = binary.Write(writer, binary.BigEndian, &n.EphemeralPublicKey.Key); err != nil {
+		return err
+	}
+
+	return err
 }
 
 // NanoTDFEncryptFile - read from supplied input file, write encrypted data to supplied output file
@@ -360,7 +433,7 @@ func NanoTDFEncryptFile(plaintextFile *os.File, encryptedFile *os.File, config N
 		return err
 	}
 
-	encryptedBuffer, err := NanoTDFEncrypt(config, *plaintextBuffer)
+	nanoBuffer, err := NanoTDFEncrypt(config, *plaintextBuffer)
 	if err != nil {
 		return err
 	}
@@ -370,32 +443,32 @@ func NanoTDFEncryptFile(plaintextFile *os.File, encryptedFile *os.File, config N
 		return err
 	}
 
-	_, err = encryptedFile.Write(encryptedBuffer)
+	_, err = encryptedFile.Write(nanoBuffer)
 	return err
 }
 
-func NanoTDFCreate(config NanoTDFConfig) (NanoTDF, error) {
+func NanoTDFToBuffer(nanoTDF NanoTDF) ([]byte, error) {
+	return nanoTDF.m_workingBuffer, nil
+}
+
+func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte, error) {
+	var err error = nil
 
 	// config is fixed at this point, make a copy
 	nanoTDF := NanoTDF{}
 	nanoTDF.config = config
 
-	err := createHeader(&nanoTDF)
+	err = createHeader(&nanoTDF)
 	if err != nil {
-		return nanoTDF, err
+		return nil, err
 	}
 
-	return nanoTDF, nil
-
-}
-
-func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte, error) {
-	var err error = nil
-	var header NanoTDFHeader
-
 	encryptBuffer := bytes.NewBuffer(make([]byte, 0, config.m_bufferSize))
-
-	writeHeader(&header, encryptBuffer)
+	ebWriter := bufio.NewWriter(encryptBuffer)
+	err = writeHeader(&nanoTDF.header, ebWriter)
+	if err != nil {
+		return nil, err
+	}
 
 	///
 	/// Add the length of cipher text to output - (IV + Cipher Text + Auth tag)
@@ -411,7 +484,9 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 	// TODO FIXME
 	cipherTextSize := encryptedDataSize + kNanoTDFIvSize + kIvPadding
 
-	copy(encryptBuffer.Bytes(), ([]byte)(&cipherTextSize))
+	if err := binary.Write(ebWriter, binary.BigEndian, &cipherTextSize); err != nil {
+		return nil, err
+	}
 
 	// Encrypt the payload into the working buffer
 	{
@@ -419,44 +494,62 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 		iv := bytes.NewBuffer(make([]byte, 0, ivSizeWithPadding))
 
 		// Reset the IV after max iterations
-		if header.m_maxKeyIterations == header.m_keyIterationCount {
-			header.m_iv = 1
-			if header.m_datasetMode {
-				header.m_keyIterationCount = 0
+		if nanoTDF.config.m_maxKeyIterations == nanoTDF.m_keyIterationCount {
+			nanoTDF.m_iv = 1
+			if nanoTDF.config.m_datasetMode {
+				nanoTDF.m_keyIterationCount = 0
 			}
 		}
 
-		ivBufferSpan := iv.Bytes()
-		ivAsNetworkOrder := header.m_iv
-		copy(ivBufferSpan, ([]byte)(&ivAsNetworkOrder))
-		header.m_iv += 1
+		if err := binary.Write(ebWriter, binary.BigEndian, &nanoTDF.m_iv); err != nil {
+			return nil, err
+		}
+		nanoTDF.m_iv += 1
 
 		// Resize the auth tag.
 		newAuthTag := make([]byte, authTagSize)
-		copy(newAuthTag, header.m_authTag)
-		header.m_authTag = newAuthTag
+		copy(newAuthTag, nanoTDF.m_authTag)
 
-		// Adjust the span to add the IV vector at the start of the buffer after the encryption.
-		payloadBufferSpan := &payloadBuffer[ivSizeWithPadding]
+		aesGcm, err := ocrypto.NewAESGcm(nanoTDF.m_encryptSymmetricKey)
+		if err != nil {
+			return nil, err
+		}
 
-		GCMEncrypt(header.m_encryptSymmetricKey, iv, plaintextBuffer, payloadBufferSpan)
+		// Convert the uint64 IV value to bytes
+		byteIv := make([]byte, 8)
+		binary.BigEndian.PutUint64(byteIv, nanoTDF.m_iv)
 
-		authTag := ([]byte)(m_authTag)
+		// Encrypt the plaintext
+		encryptedText, err := aesGcm.EncryptWithIV(byteIv, plaintextBuffer.Bytes())
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO FIXME - need real length here
+		payloadBuffer := bytes.NewBuffer(make([]byte, 0, len(encryptedText)))
+		pbWriter := bufio.NewWriter(payloadBuffer)
 
 		// Copy IV at start
-		copy(iv, payloadBuffer)
+		err = binary.Write(pbWriter, binary.BigEndian, iv)
+		if err != nil {
+			return nil, err
+		}
 
 		// Copy tag at end
-		copy(header.m_authTag, payloadBuffer.bytes()+ivSizeWithPadding+plaintextBuffer.Len())
+		err = binary.Write(pbWriter, binary.BigEndian, nanoTDF.m_authTag)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Copy the payload buffer contents into encrypt buffer without the IV padding.
-	copy(header.m_workingBuffer.Bytes()+kIvPadding, encryptBuffer.Bytes())
+	pbContentsWithoutIv := &nanoTDF.m_workingBuffer[kIvPadding]
+
+	binary.Write(ebWriter, binary.BigEndian, pbContentsWithoutIv)
 
 	// Adjust the buffer
 
 	bytesAdded += encryptedDataSize
-	encryptBuffer += encryptedDataSize
 
 	// Digest(header + payload) for signature
 	digest := sha256.Sum256(encryptBuffer.Bytes())
@@ -468,10 +561,10 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 	   	#endif
 	*/
 
-	if header.m_hasSignature {
-		signerPrivateKey := header.m_signerPrivateKey
-		signerPublicKey := ocrypto.GetPEMPublicKeyFromPrivateKey(signerPrivateKey, header.m_ellipticCurveType)
-		compressedPubKey, err := ocrypto.CompressedECPublicKey(header.m_ellipticCurveType, signerPublicKey)
+	if nanoTDF.config.m_hasSignature {
+		signerPrivateKey := nanoTDF.config.m_signerPrivateKey
+		signerPublicKey := ocrypto.GetPEMPublicKeyFromPrivateKey(signerPrivateKey, nanoTDF.config.m_eccMode)
+		compressedPubKey, err := ocrypto.CompressedECPublicKey(nanoTDF.config.m_eccMode, signerPublicKey)
 		if err != nil {
 			return nil, err
 		}
@@ -487,10 +580,9 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 		*/
 		// Adjust the buffer
 		bytesAdded += len(compressedPubKey)
-		encryptBuffer += len(compressedPubKey)
 
 		// Calculate the signature.
-		header.m_signature = ocrypto.ComputeECDSASig(digest, signerPrivateKey)
+		signature := ocrypto.ComputeECDSASig(digest, signerPrivateKey)
 		/* #if DEBUG_LOG
 				auto sigData = base64Encode(toBytes(m_signature));
 		std::cout << "Encrypt signature: " << sigData << std::endl;
@@ -499,14 +591,14 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 		*/
 
 		// Add the signature and update the count of bytes added.
-		copy(encryptBuffer, header.m_signature)
+		binary.Write(ebWriter, binary.BigEndian, &signature)
 
 		// Adjust the buffer
-		bytesAdded += len(header.m_signature)
+		bytesAdded += len(signature)
 	}
 
-	if header.m_datasetMode {
-		header.m_keyIterationCount += 1
+	if nanoTDF.config.m_datasetMode {
+		nanoTDF.m_keyIterationCount += 1
 	}
 
 	return encryptBuffer.Bytes(), err

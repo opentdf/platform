@@ -16,6 +16,7 @@ import (
 
 type WellKnownService struct {
 	wellknown.UnimplementedWellKnownServiceServer
+	logger slog.Logger
 }
 
 var (
@@ -38,7 +39,7 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "wellknown",
 		ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
 		RegisterFunc: func(_ serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &WellKnownService{}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &WellKnownService{logger: *slog.Default().With("namespace", "wellknown")}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				if srv, ok := server.(wellknown.WellKnownServiceServer); ok {
 					return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, srv)
 				}
@@ -53,9 +54,10 @@ func (s WellKnownService) GetWellKnownConfiguration(context.Context, *wellknown.
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {
-		slog.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
+		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
 	}
+	s.logger.Debug("returning wellknown configuration")
 	return &wellknown.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
 	}, nil

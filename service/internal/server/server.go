@@ -46,6 +46,7 @@ type Config struct {
 	GRPC                    GRPCConfig      `yaml:"grpc"`
 	CryptoProvider          security.Config `yaml:"cryptoProvider"`
 	TLS                     TLSConfig       `yaml:"tls"`
+	CORS                    CORSConfig      `yaml:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error
 	Port                    int    `yaml:"port" default:"8080"`
 	Host                    string `yaml:"host,omitempty"`
@@ -59,6 +60,16 @@ type TLSConfig struct {
 	Enabled bool   `yaml:"enabled" default:"false"`
 	Cert    string `yaml:"cert"`
 	Key     string `yaml:"key"`
+}
+
+type CORSConfig struct {
+	Enabled          bool   `yaml:"enabled"`
+	AllowedOrigins   string `yaml:"allowed-origins"`
+	AllowedMethods   string `yaml:"allowed-methods"`
+	AllowedHeaders   string `yaml:"allowed-headers"`
+	ExposedHeaders   string `yaml:"exposed-headers"`
+	AllowCredentials bool   `yaml:"allow-credentials"`
+	MaxAge           int    `yaml:"max-age"`
 }
 
 type OpenTDFServer struct {
@@ -166,14 +177,15 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
+	// CORS
+	slog.Debug("CORS", "AllowedMethods", c.CORS.AllowedMethods)
 	h = cors.New(cors.Options{
 		AllowOriginFunc:  func(_ *http.Request, _ string) bool { return true },
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete, http.MethodOptions},
 		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           maxAge,
+		AllowCredentials: c.CORS.AllowCredentials,
+		MaxAge:           c.CORS.MaxAge,
 	}).Handler(h)
 
 	// Add grpc handler

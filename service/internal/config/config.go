@@ -3,10 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/creasty/defaults"
 	"os"
 	"strings"
 
-	"github.com/creasty/defaults"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
@@ -30,10 +30,12 @@ func (e Error) Error() string {
 }
 
 const (
-	ErrLoadingConfig Error = "error loading config"
+	ErrLoadingConfig       Error = "error loading config"
+	ErrUnmarshallingConfig Error = "error unmarshalling config"
+	ErrSettingConfig       Error = "error setting config"
 )
 
-// Load config with viper.
+// LoadConfig Load config with viper.
 func LoadConfig(key string, file string) (*Config, error) {
 	config := &Config{}
 	homedir, err := os.UserHomeDir()
@@ -63,13 +65,13 @@ func LoadConfig(key string, file string) (*Config, error) {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 
-	if err := defaults.Set(config); err != nil {
-		return nil, errors.Join(err, ErrLoadingConfig)
-	}
-
 	err = viper.Unmarshal(config)
 	if err != nil {
-		return nil, errors.Join(err, ErrLoadingConfig)
+		return nil, errors.Join(err, ErrUnmarshallingConfig)
+	}
+
+	if err := defaults.Set(config); err != nil {
+		return nil, errors.Join(err, ErrSettingConfig)
 	}
 
 	return config, nil

@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -71,16 +72,8 @@ func err403(s string) error {
 	return errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
 }
 
-func err404(s string) error {
-	return errors.Join(ErrUser, status.Error(codes.NotFound, s))
-}
-
 func err500(s string) error {
 	return errors.Join(ErrInternal, status.Error(codes.Unknown, s))
-}
-
-func err503(s string) error {
-	return errors.Join(ErrInternal, status.Error(codes.Unavailable, s))
 }
 
 func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
@@ -113,7 +106,7 @@ func noverify(ctx context.Context, srt string) (string, error) {
 	return rbString, nil
 }
 
-func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody, error) {
+func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody, error) {
 	// First load legacy method for verifying SRT
 	md, exists := metadata.FromIncomingContext(ctx)
 	if !exists {
@@ -137,44 +130,17 @@ func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*Re
 		// 2. auth is enabled _but_ we aren't requiring DPoP
 		// in either case letting the request through makes sense
 		rbString, err = noverify(ctx, srt)
-	} else {
-		// verify and validate the request token
-		v, err := jws.NewVerifier(jwa.RS256)
 		if err != nil {
 			slog.ErrorContext(ctx, "unable to load RSA verifier", "err", err)
-			return nil, err500("unable to verify token")
+			return nil, err
 		}
-		a := strings.IndexByte(srt, '.')
-		b := strings.LastIndexByte(srt, '.')
-		if a < 0 || b <= a {
-			slog.ErrorContext(ctx, "failed to decode srt", "err", err)
-			return nil, err400("encoding error")
-		}
-		unsigned := srt[:b]
-		decoder := base64.URLEncoding.WithPadding(base64.NoPadding)
-		sig, err := decoder.DecodeString(srt[b+1:])
+	} else {
+		// verify and validate the request token
+		var err error
+		rbString, err = verifySRT(ctx, srt, dpopJWK, rbString)
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to decode signature", "err", err)
-			return nil, err400("signed content failure")
+			return nil, err
 		}
-
-		err = v.Verify([]byte(unsigned), sig, dpopJWK)
-		if err != nil {
-			slog.WarnContext(ctx, "unable to verify request token", "err", err, "srt", srt, "jwk", dpopJWK)
-			return nil, err401("unable to verify request token")
-		}
-		payload, err := decoder.DecodeString(srt[a+1 : b])
-		if err != nil {
-			slog.ErrorContext(ctx, "failed to decode payload", "srt", srt, "err", err)
-			return nil, err400("signed content failure")
-		}
-		var srtDecoded SignedRequestBody
-		err = json.Unmarshal(payload, &srtDecoded)
-		if err != nil {
-			slog.WarnContext(ctx, "unable to unmarshall srt", "err", err, "srt", srt, "jwk", dpopJWK)
-			return nil, err400("signed content failure")
-		}
-		rbString = srtDecoded.RequestBody
 	}
 
 	var requestBody RequestBody
@@ -209,6 +175,46 @@ func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*Re
 		slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
 		return nil, err400("clientPublicKey unsupported type")
 	}
+}
+
+func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key, rbString string) (string, error) {
+	v, err := jws.NewVerifier(jwa.RS256)
+	if err != nil {
+		slog.ErrorContext(ctx, "unable to load RSA verifier", "err", err)
+		return "", err500("unable to verify token")
+	}
+	a := strings.IndexByte(srt, '.')
+	b := strings.LastIndexByte(srt, '.')
+	if a < 0 || b <= a {
+		slog.ErrorContext(ctx, "failed to decode srt", "err", err)
+		return "", err400("encoding error")
+	}
+	unsigned := srt[:b]
+	decoder := base64.URLEncoding.WithPadding(base64.NoPadding)
+	sig, err := decoder.DecodeString(srt[b+1:])
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode signature", "err", err)
+		return "", err400("signed content failure")
+	}
+
+	err = v.Verify([]byte(unsigned), sig, dpopJWK)
+	if err != nil {
+		slog.WarnContext(ctx, "unable to verify request token", "err", err, "srt", srt, "jwk", dpopJWK)
+		return "", err401("unable to verify request token")
+	}
+	payload, err := decoder.DecodeString(srt[a+1 : b])
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode payload", "srt", srt, "err", err)
+		return "", err400("signed content failure")
+	}
+	var srtDecoded SignedRequestBody
+	err = json.Unmarshal(payload, &srtDecoded)
+	if err != nil {
+		slog.WarnContext(ctx, "unable to unmarshall srt", "err", err, "srt", srt, "jwk", dpopJWK)
+		return "", err400("signed content failure")
+	}
+	rbString = srtDecoded.RequestBody
+	return rbString, nil
 }
 
 func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte) (*Policy, error) {
@@ -250,6 +256,9 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 	var info = new(entityInfo)
 
 	token := auth.GetAccessTokenFromContext(ctx)
+	if token == nil {
+		return nil, err401("missing access token")
+	}
 
 	sub, found := token.Get("sub")
 	if found {
@@ -281,7 +290,7 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	slog.DebugContext(ctx, "REWRAP")
 
-	body, err := verifySignedRequestToken(ctx, in)
+	body, err := extractSRTBody(ctx, in)
 	if err != nil {
 		slog.DebugContext(ctx, "unverifiable srt", "err", err)
 		return nil, err

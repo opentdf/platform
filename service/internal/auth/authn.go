@@ -352,7 +352,8 @@ func GetJWKFromContext(ctx context.Context) jwk.Key {
 		return jwk
 	}
 
-	panic("got something that is not a jwk.Key from the JWK context")
+	slog.ErrorContext(ctx, "got something that is not a jwk.Key from the JWK context")
+	return nil
 }
 
 func GetAccessTokenFromContext(ctx context.Context) jwt.Token {
@@ -364,7 +365,8 @@ func GetAccessTokenFromContext(ctx context.Context) jwt.Token {
 		return jwt
 	}
 
-	panic("got something that is not a jwt.Token from the access token context")
+	slog.ErrorContext(ctx, "got something that is not a jwt.Token from the access token context")
+	return nil
 }
 
 func GetRawAccessTokenFromContext(ctx context.Context) string {
@@ -376,7 +378,8 @@ func GetRawAccessTokenFromContext(ctx context.Context) string {
 		return jwt
 	}
 
-	panic("got something that is not a string from the access token context")
+	slog.ErrorContext(ctx, "got something that is not a string from the access token context")
+	return ""
 }
 
 func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {

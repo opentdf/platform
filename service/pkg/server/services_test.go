@@ -124,7 +124,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	otdf, err := mockOpenTDFServer()
 	require.NoError(t, err)
 
-	logger, err := logger.NewLogger(logger.Config{})
+	logger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	require.NoError(t, err)
 
 	cF, services, err := startServices(ctx, config.Config{

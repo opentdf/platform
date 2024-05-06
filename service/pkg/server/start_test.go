@@ -94,7 +94,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	s, err := mockOpenTDFServer()
 	require.NoError(t, err)
 
-	logger, err := logger.NewLogger(logger.Config{})
+	logger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	require.NoError(t, err)
 
 	// Register Test Service

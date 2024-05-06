@@ -37,6 +37,7 @@ tmp-gen/
 /service/opentdf
 coverage.out
 coverage.lcov
+sdk/nanotest1.ntdf
 
 *.zip
 sensitive.txt.tdf

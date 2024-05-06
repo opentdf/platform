@@ -172,6 +172,9 @@ func TestNanoTDFEncryptFile(t *testing.T) {
 	var config NanoTDFConfig
 	config.m_bufferSize = 8192 * 1024
 
+	config.m_kasURL = "kas.virtru.com/kas"
+	config.m_kasProtocol = "https"
+
 	err = NanoTDFEncryptFile(infile, outfile, config)
 	if err != nil {
 		t.Fatal(err)

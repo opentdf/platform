@@ -54,7 +54,7 @@ func getCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 	var c elliptic.Curve
 
-	var err error = nil
+	var err error
 
 	c, err = getCurveFromECCMode(mode)
 	if err != nil {
@@ -121,7 +121,6 @@ func (keyPair ECKeyPair) KeySize() (int, error) {
 
 // CompressedECPublicKey - return a compressed key from the supplied curve and public key
 func CompressedECPublicKey(mode ECCMode, pubKey ecdsa.PublicKey) ([]byte, error) {
-
 	curve, err := getCurveFromECCMode(mode)
 	if err != nil {
 		return nil, fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)

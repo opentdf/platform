@@ -16,6 +16,7 @@ type config struct {
 	dialOption        grpc.DialOption
 	tlsConfig         *tls.Config
 	clientCredentials *oauth.ClientCredentials
+	knownKasMap       map[string]KASInfo
 	tokenExchange     *oauth.TokenExchangeInfo
 	tokenEndpoint     string
 	scopes            []string
@@ -109,5 +110,17 @@ func WithTokenExchange(subjectToken string, audience []string) Option {
 func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	return func(c *config) {
 		c.extraDialOptions = dialOptions
+	}
+}
+
+func WithKnownKas(kasInfos []KASInfo) Option {
+	return func(c *config) {
+		// Create a map of KAS URL => KASInfo
+		kasInfoMap := make(map[string]KASInfo)
+		for _, kasInfo := range kasInfos {
+			kasInfoMap[kasInfo.URL] = kasInfo
+		}
+
+		c.knownKasMap = kasInfoMap
 	}
 }

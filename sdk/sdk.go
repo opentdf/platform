@@ -31,6 +31,7 @@ func (c Error) Error() string {
 type SDK struct {
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
+	knownKasMap             map[string]KASInfo
 	tokenSource             auth.AccessTokenSource
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
@@ -66,7 +67,29 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 	if accessTokenSource != nil {
 		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
+		addCredentialInterceptor := grpc.WithUnaryInterceptor(interceptor.AddCredentials)
+		dialOptions = append(dialOptions, addCredentialInterceptor)
+		// Add interceptor to any preconfigured KAS options
+		if cfg.knownKasMap != nil {
+			for kasInfoKey, kasInfo := range cfg.knownKasMap {
+				if kasInfo.DialOptions != nil {
+					kasInfoCopy := KASInfo(kasInfo)
+					kasInfoCopy.DialOptions = append([]grpc.DialOption{addCredentialInterceptor}, kasInfo.DialOptions...)
+					cfg.knownKasMap[kasInfoKey] = kasInfoCopy
+				}
+			}
+		}
+	}
+
+	if cfg.knownKasMap != nil {
+		for kasInfoKey, kasInfo := range cfg.knownKasMap {
+			if kasInfo.DialOptions == nil {
+				slog.Warn("DialOptions not set on known KAS, using SDK's", "KasURL", kasInfo.URL)
+				kasInfoCopy := KASInfo(kasInfo)
+				kasInfoCopy.DialOptions = dialOptions
+				cfg.knownKasMap[kasInfoKey] = kasInfoCopy
+			}
+		}
 	}
 
 	var (
@@ -98,6 +121,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	return &SDK{
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
+		knownKasMap:             cfg.knownKasMap,
 		tokenSource:             accessTokenSource,
 		Attributes:              attributes.NewAttributesServiceClient(policyConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),

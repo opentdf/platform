@@ -62,6 +62,7 @@ const (
 type Reader struct {
 	tokenSource         auth.AccessTokenSource
 	dialOptions         []grpc.DialOption
+	knownKasMap         map[string]KASInfo
 	manifest            Manifest
 	unencryptedMetadata []byte
 	tdfReader           archive.TDFReader
@@ -99,8 +100,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
-	// How do we want to handle different dial options for different KAS servers?
-	err = fillInPublicKeys(tdfConfig.kasInfoList, s.dialOptions...)
+	err = fillInPublicKeys(tdfConfig.kasInfoList)
 	if err != nil {
 		return nil, err
 	}
@@ -380,6 +380,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	return &Reader{
 		tokenSource: s.tokenSource,
 		dialOptions: s.dialOptions,
+		knownKasMap: s.knownKasMap,
 		tdfReader:   tdfReader,
 		manifest:    *manifestObj,
 	}, nil
@@ -614,7 +615,12 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readab
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
-		client, err := newKASClient(r.dialOptions, r.tokenSource)
+		dialOptions := r.dialOptions
+		knownKasInfo, knownKasInfoExists := r.knownKasMap[keyAccessObj.KasURL]
+		if knownKasInfoExists {
+			dialOptions = knownKasInfo.DialOptions
+		}
+		client, err := newKASClient(dialOptions, r.tokenSource)
 		if err != nil {
 			return fmt.Errorf("newKASClient failed:%w", err)
 		}
@@ -735,13 +741,13 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	return false, nil
 }
 
-func fillInPublicKeys(kasInfos []KASInfo, opts ...grpc.DialOption) error {
+func fillInPublicKeys(kasInfos []KASInfo) error {
 	for idx, kasInfo := range kasInfos {
 		if kasInfo.PublicKey != "" {
 			continue
 		}
 
-		publicKey, err := getPublicKey(kasInfo, opts...)
+		publicKey, err := getPublicKey(kasInfo, kasInfo.DialOptions...)
 		if err != nil {
 			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.URL, err)
 		}

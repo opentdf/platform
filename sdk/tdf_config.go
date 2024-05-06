@@ -2,8 +2,10 @@ package sdk
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -30,6 +32,8 @@ const kHTTPOk = 200
 
 // KASInfo contains Key Access Server information.
 type KASInfo struct {
+	// Can be empty. If empty, it will inherit the global SDK DialOptions.
+	DialOptions []grpc.DialOption
 	// URL of the KAS server``
 	URL string
 	// Public key can be empty. If it is empty, the public key will be fetched from the KAS server.
@@ -105,6 +109,28 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 		newKasInfos := make([]KASInfo, 0)
 		newKasInfos = append(newKasInfos, kasInfoList...)
 		c.kasInfoList = newKasInfos
+
+		return nil
+	}
+}
+
+func (s SDK) WithKnownKas(configuredKasInfoKeys ...string) TDFOption {
+	return func(c *TDFConfig) error {
+		if c.kasInfoList == nil {
+			c.kasInfoList = make([]KASInfo, 0, len(configuredKasInfoKeys))
+		}
+		for _, kasInfoKey := range configuredKasInfoKeys {
+			kasInfo, kasInfoExists := s.knownKasMap[kasInfoKey]
+			if !kasInfoExists {
+				panic(fmt.Sprintf("Trying to use unknown KAS WithKnownKas: %s", kasInfoKey))
+			}
+
+			if kasInfo.DialOptions == nil {
+				slog.Warn("DialOptions not set on known KAS, using SDK's", "KasURL", kasInfo.URL)
+				kasInfo.DialOptions = s.dialOptions
+			}
+			c.kasInfoList = append(c.kasInfoList, kasInfo)
+		}
 
 		return nil
 	}

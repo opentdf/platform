@@ -214,7 +214,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	var i []grpc.UnaryServerInterceptor
 	var o []grpc.ServerOption
 
-	// Enbale proto validation
+	// Enable proto validation
 	validator, err := protovalidate.New()
 	if err != nil {
 		slog.Warn("failed to create proto validator", slog.String("error", err.Error()))

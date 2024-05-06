@@ -73,7 +73,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		if cfg.knownKasMap != nil {
 			for kasInfoKey, kasInfo := range cfg.knownKasMap {
 				if kasInfo.DialOptions != nil {
-					kasInfoCopy := KASInfo(kasInfo)
+					kasInfoCopy := kasInfo
 					kasInfoCopy.DialOptions = append([]grpc.DialOption{addCredentialInterceptor}, kasInfo.DialOptions...)
 					cfg.knownKasMap[kasInfoKey] = kasInfoCopy
 				}
@@ -85,7 +85,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		for kasInfoKey, kasInfo := range cfg.knownKasMap {
 			if kasInfo.DialOptions == nil {
 				slog.Warn("DialOptions not set on known KAS, using SDK's", "KasURL", kasInfo.URL)
-				kasInfoCopy := KASInfo(kasInfo)
+				kasInfoCopy := kasInfo
 				kasInfoCopy.DialOptions = dialOptions
 				cfg.knownKasMap[kasInfoKey] = kasInfoCopy
 			}

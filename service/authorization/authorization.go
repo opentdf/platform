@@ -69,7 +69,6 @@ var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntit
 }
 
 func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
-	as.logger.Debug("testing 123")
 	slog.DebugContext(ctx, "getting decisions")
 
 	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos

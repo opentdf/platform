@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,20 +36,17 @@ func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitleme
 	return &entitlementsResponse, nil
 }
 
-func showLogsInTest() {
-	logLevel := &slog.LevelVar{} // INFO
-	logLevel.Set(slog.LevelDebug)
-
-	opts := &slog.HandlerOptions{
-		Level: logLevel,
+func createTestLogger() (*logger.Logger, error) {
+	logger, err := logger.NewLogger(logger.Config{Level: "debug", Output: "stdout", Type: "json"})
+	if err != nil {
+		return nil, err
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts))
-
-	slog.SetDefault(logger)
+	return logger, nil
 }
 
 func Test_GetDecisionsAllOf_Pass(t *testing.T) {
-	showLogsInTest()
+	logger, err := createTestLogger()
+	require.NoError(t, err)
 
 	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	retrieveEntitlements = mockRetrieveEntitlements
@@ -104,7 +101,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{}
+	as := AuthorizationService{logger: logger}
 	retrieveEntitlements = mockRetrieveEntitlements
 	ctxb := context.Background()
 
@@ -169,7 +166,8 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 }
 
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
-	showLogsInTest()
+	logger, err := createTestLogger()
+	require.NoError(t, err)
 
 	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	retrieveEntitlements = mockRetrieveEntitlements
@@ -233,7 +231,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{}
+	as := AuthorizationService{logger: logger}
 	ctxb := context.Background()
 
 	resp, err := as.GetDecisions(ctxb, &req)

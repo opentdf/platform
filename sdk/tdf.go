@@ -146,7 +146,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		}
 
 		if int64(n) != readSize {
-			return nil, fmt.Errorf("io.ReadSeeker.Read size missmatch")
+			return nil, fmt.Errorf("io.ReadSeeker.Read size mismatch")
 		}
 
 		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])

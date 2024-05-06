@@ -2,7 +2,7 @@ logger:
   level: debug
   type: text
   output: stdout
-# DB and Server confgurations are defaulted for local development
+# DB and Server configurations are defaulted for local development
 # db:
 #   host: localhost
 #   port: 5432

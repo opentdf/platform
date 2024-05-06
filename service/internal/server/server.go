@@ -120,7 +120,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	mux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
 	)
-	httpServer, err := newHttpServer(config, mux, authN, grpcServer)
+	httpServer, err := newHTTPServer(config, mux, authN, grpcServer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
@@ -153,8 +153,8 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	return &o, nil
 }
 
-// newHttpServer creates a new http server with the given handler and grpc server
-func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
+// newHTTPServer creates a new http server with the given handler and grpc server
+func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
 	var err error
 	var tc *tls.Config
 
@@ -168,7 +168,7 @@ func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 
 	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
 	h = cors.New(cors.Options{
-		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowOriginFunc:  func(_ *http.Request, _ string) bool { return true },
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete, http.MethodOptions},
 		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -280,7 +280,7 @@ func (s inProcessServer) GetGrpcServer() *grpc.Server {
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
 	defaultOptions := []grpc.DialOption{
-		grpc.WithContextDialer(func(_ context.Context, addr string) (net.Conn, error) {
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)

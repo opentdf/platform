@@ -26,7 +26,7 @@ import (
 	"golang.org/x/oauth2/clientcredentials"
 )
 
-type AuthorizationService struct {
+type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	authorization.UnimplementedAuthorizationServiceServer
 	eng         *opa.Engine
 	sdk         *otdf.SDK
@@ -78,7 +78,11 @@ func NewRegistration() serviceregistry.Registration {
 			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecert, TokenURL: tokenEndpoint}
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
 			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, ersURL: ersURL, tokenSource: &newTokenSource}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
+				authServer, ok := server.(authorization.AuthorizationServiceServer)
+				if !ok {
+					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
+				}
+				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
 			}
 		},
 	}

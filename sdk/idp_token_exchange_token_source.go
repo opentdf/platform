@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/sdk/auth"
@@ -27,12 +28,12 @@ func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, creden
 	return &exchangeSource, nil
 }
 
-func (i IDPTokenExchangeTokenSource) AccessToken() (auth.AccessToken, error) {
+func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
 	i.IDPAccessTokenSource.tokenMutex.Lock()
 	defer i.IDPAccessTokenSource.tokenMutex.Unlock()
 
 	if i.IDPAccessTokenSource.token == nil || i.IDPAccessTokenSource.token.Expired() {
-		tok, err := oauth.DoTokenExchange(context.TODO(), i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
+		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 
 		if err != nil {
 			return "", err
@@ -44,6 +45,6 @@ func (i IDPTokenExchangeTokenSource) AccessToken() (auth.AccessToken, error) {
 	return auth.AccessToken(i.IDPAccessTokenSource.token.AccessToken), nil
 }
 
-func (i IDPTokenExchangeTokenSource) MakeToken(keyMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
+func (i *IDPTokenExchangeTokenSource) MakeToken(keyMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return i.IDPAccessTokenSource.MakeToken(keyMaker)
 }

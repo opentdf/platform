@@ -20,9 +20,9 @@ const ErrTextGetRetrievalFailed = "resource retrieval failed"
 const ErrTextNotFound = "resource not found"
 
 type KeycloakConfig struct {
-	Url            string `json:"url"`
+	URL            string `json:"url"`
 	Realm          string `json:"realm"`
-	ClientId       string `json:"clientid"`
+	ClientID       string `json:"clientid"`
 	ClientSecret   string `json:"clientsecret"`
 	LegacyKeycloak bool   `json:"legacykeycloak" default:"false"`
 	SubGroups      bool   `json:"subgroups" default:"false"`
@@ -72,8 +72,8 @@ func EntityResolution(ctx context.Context,
 					return entityresolution.ResolveEntitiesResponse{},
 						status.Error(codes.Internal, ErrTextCreationFailed)
 				}
-				var mystruct, struct_err = structpb.NewStruct(json)
-				if struct_err != nil {
+				var mystruct, structErr = structpb.NewStruct(json)
+				if structErr != nil {
 					slog.Error("Error making struct!", "error", err)
 					return entityresolution.ResolveEntitiesResponse{},
 						status.Error(codes.Internal, ErrTextCreationFailed)
@@ -97,17 +97,18 @@ func EntityResolution(ctx context.Context,
 		}
 
 		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
-		if err != nil {
+		switch {
+		case err != nil:
 			slog.Error(err.Error())
 			return entityresolution.ResolveEntitiesResponse{},
 				status.Error(codes.Internal, ErrTextGetRetrievalFailed)
-		} else if len(users) == 1 {
+		case len(users) == 1:
 			user := users[0]
 			slog.Debug("User found", "user", *user.ID, "entity", ident.String())
 			slog.Debug("User", "details", fmt.Sprintf("%+v", user))
 			slog.Debug("User", "attributes", fmt.Sprintf("%+v", user.Attributes))
 			keycloakEntities = append(keycloakEntities, user)
-		} else {
+		default:
 			slog.Error("No user found for", "entity", ident.String())
 			if ident.GetEmailAddress() != "" {
 				// try by group
@@ -117,11 +118,12 @@ func EntityResolution(ctx context.Context,
 					kcConfig.Realm,
 					gocloak.GetGroupsParams{Search: func() *string { t := ident.GetEmailAddress(); return &t }()},
 				)
-				if groupErr != nil {
+				switch {
+				case groupErr != nil:
 					slog.Error("Error getting group", "group", groupErr)
 					return entityresolution.ResolveEntitiesResponse{},
 						status.Error(codes.Internal, ErrTextGetRetrievalFailed)
-				} else if len(groups) == 1 {
+				case len(groups) == 1:
 					slog.Info("Group found for", "entity", ident.String())
 					group := groups[0]
 					expandedRepresentations, exErr := expandGroup(ctx, *group.ID, connector, &kcConfig)
@@ -131,7 +133,7 @@ func EntityResolution(ctx context.Context,
 					} else {
 						keycloakEntities = expandedRepresentations
 					}
-				} else {
+				default:
 					slog.Error("No group found for", "entity", ident.String())
 					var entityNotFoundErr entityresolution.EntityNotFoundError
 					switch ident.GetEntityType().(type) {
@@ -160,8 +162,8 @@ func EntityResolution(ctx context.Context,
 				return entityresolution.ResolveEntitiesResponse{},
 					status.Error(codes.Internal, ErrTextCreationFailed)
 			}
-			var mystruct, struct_err = structpb.NewStruct(json)
-			if struct_err != nil {
+			var mystruct, structErr = structpb.NewStruct(json)
+			if structErr != nil {
 				slog.Error("Error making struct!", "error", err)
 				return entityresolution.ResolveEntitiesResponse{},
 					status.Error(codes.Internal, ErrTextCreationFailed)
@@ -205,20 +207,20 @@ func getKCClient(ctx context.Context, kcConfig KeycloakConfig) (*KeyCloakConnect
 	var client *gocloak.GoCloak
 	if kcConfig.LegacyKeycloak {
 		slog.Warn("Using legacy connection mode for Keycloak < 17.x.x")
-		client = gocloak.NewClient(kcConfig.Url)
+		client = gocloak.NewClient(kcConfig.URL)
 	} else {
-		client = gocloak.NewClient(kcConfig.Url, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
+		client = gocloak.NewClient(kcConfig.URL, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
 	}
 	// If needed, ability to disable tls checks for testing
 	// restyClient := client.RestyClient()
 	// restyClient.SetDebug(true)
 	// restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	// client.SetRestyClient(restyClient)
-	slog.Debug(kcConfig.ClientId)
+	slog.Debug(kcConfig.ClientID)
 	slog.Debug(kcConfig.ClientSecret)
-	slog.Debug(kcConfig.Url)
+	slog.Debug(kcConfig.URL)
 	slog.Debug(kcConfig.Realm)
-	token, err := client.LoginClient(ctx, kcConfig.ClientId, kcConfig.ClientSecret, kcConfig.Realm)
+	token, err := client.LoginClient(ctx, kcConfig.ClientID, kcConfig.ClientSecret, kcConfig.Realm)
 	if err != nil {
 		slog.Error("Error connecting to keycloak!", err)
 		return nil, err
@@ -229,7 +231,7 @@ func getKCClient(ctx context.Context, kcConfig KeycloakConfig) (*KeyCloakConnect
 }
 
 func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConnector, kcConfig *KeycloakConfig) ([]*gocloak.User, error) {
-	slog.Info("expandGroup invoked: ", groupID, kcConnector, kcConfig.Url, ctx)
+	slog.Info("expandGroup invoked: ", groupID, kcConnector, kcConfig.URL, ctx)
 	var entityRepresentations []*gocloak.User
 
 	grp, err := kcConnector.client.GetGroup(ctx, kcConnector.token.AccessToken, kcConfig.Realm, groupID)

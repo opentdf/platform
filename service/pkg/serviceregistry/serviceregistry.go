@@ -60,7 +60,7 @@ type Service struct {
 type ServiceMap map[string]Service
 type NamespaceMap map[string]ServiceMap
 
-// Map of namespaces to services
+// RegisteredServices is a map of namespaces to services
 var RegisteredServices NamespaceMap
 
 func RegisterService(r Registration) error {

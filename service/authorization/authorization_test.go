@@ -115,8 +115,8 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 
 	// one entitlement, one attribute value throughout
 	slog.Debug(resp.String())
-	assert.Equal(t, 1, len(resp.GetDecisionResponses()))
-	assert.Equal(t, resp.GetDecisionResponses()[0].GetDecision(), authorization.DecisionResponse_DECISION_PERMIT)
+	assert.Len(t, resp.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
 
 	// run again with two attribute values throughout
 	// set the request
@@ -162,10 +162,10 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	entitlementsResponse.Entitlements[0].AttributeValueFqns = []string{mockFqn1, mockFqn2}
 
 	resp, err = as.GetDecisions(ctxb, &req)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(resp.GetDecisionResponses()))
-	assert.Equal(t, resp.GetDecisionResponses()[0].GetDecision(), authorization.DecisionResponse_DECISION_DENY)
-	assert.Equal(t, resp.GetDecisionResponses()[1].GetDecision(), authorization.DecisionResponse_DECISION_DENY)
+	require.NoError(t, err)
+	assert.Len(t, resp.GetDecisionResponses(), 2)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[1].GetDecision())
 }
 
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
@@ -245,6 +245,6 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	// only responds with one permit/deny at the moment
 	// entitlements only contain the first FQN, so we have a deny decision
 	slog.Debug(resp.String())
-	assert.Equal(t, len(resp.GetDecisionResponses()), 1)
-	assert.Equal(t, resp.GetDecisionResponses()[0].GetDecision(), authorization.DecisionResponse_DECISION_DENY)
+	assert.Len(t, resp.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
 }

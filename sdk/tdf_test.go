@@ -506,7 +506,6 @@ func testEncrypt(t *testing.T, sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 	require.NoError(t, err)
 
 	assert.LessOrEqual(t, math.Abs(float64(tdfObj.size-test.tdfFileSize)), 1.01*float64(test.tdfFileSize))
-
 }
 
 func testDecryptWithReader(t *testing.T, sdk *SDK, tdfFile, decryptedTdfFileName string, test tdfTest) {
@@ -648,7 +647,7 @@ func runKas() (string, func(), *SDK) {
 	sdk, err := New(host,
 		WithClientCredentials("test", "test", nil),
 		WithTokenEndpoint(fmt.Sprintf("http://%s/auth/token", host)),
-		WithInsecureConn(),
+		WithInsecurePlaintextConn(),
 		WithExtraDialOptions(grpc.WithContextDialer(dialer)))
 	if err != nil {
 		panic(fmt.Sprintf("error creating SDK with authconfig: %v", err))

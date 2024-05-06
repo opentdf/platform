@@ -34,7 +34,8 @@ func TestNewOIDCAuthConfig(t *testing.T) {
 	u, _ := url.Parse(s.URL)
 	host, port, _ := net.SplitHostPort(u.Host)
 
-	authConfig, err := NewOIDCAuthConfig(context.TODO(), "http://"+host+":"+port, realm, clientID, clientSecret, subjectToken)
+	client := http.Client{}
+	authConfig, err := NewOIDCAuthConfig(context.TODO(), &client, "http://"+host+":"+port, realm, clientID, clientSecret, subjectToken)
 	if err != nil {
 		t.Fatalf("authconfig failed: %v", err)
 	}

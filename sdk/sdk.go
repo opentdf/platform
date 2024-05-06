@@ -41,13 +41,11 @@ type SDK struct {
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
-	tlsConfig := tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}
-
 	// Set default options
 	cfg := &config{
-		tls: grpc.WithTransportCredentials(credentials.NewTLS(&tlsConfig)),
+		dialOption: grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS12,
+		})),
 	}
 
 	// Apply options
@@ -67,7 +65,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		return nil, err
 	}
 	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
+		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
 	}
 
@@ -119,7 +117,7 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	// any just return a KAS client that can only get public keys
 	if c.clientCredentials == nil {
 		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
-		return nil, nil //nolint:nilnil // not having credentials is not an error
+		return nil, nil // not having credentials is not an error
 	}
 
 	if c.certExchange != nil && c.tokenExchange != nil {

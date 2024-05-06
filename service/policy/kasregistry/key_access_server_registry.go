@@ -2,6 +2,7 @@ package kasregistry
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -21,7 +22,11 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, s.(kasr.KeyAccessServerRegistryServiceServer))
+				srv, ok := s.(kasr.KeyAccessServerRegistryServiceServer)
+				if !ok {
+					return fmt.Errorf("argument is not of type kasr.KeyAccessServerRegistryServiceServer")
+				}
+				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, srv)
 			}
 		},
 	}
@@ -43,7 +48,7 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
-	req *kasr.ListKeyAccessServersRequest,
+	_ *kasr.ListKeyAccessServersRequest,
 ) (*kasr.ListKeyAccessServersResponse, error) {
 	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
 	if err != nil {

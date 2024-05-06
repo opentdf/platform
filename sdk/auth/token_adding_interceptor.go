@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -18,26 +19,40 @@ import (
 )
 
 const (
-	JTILength            = 14
-	JWTExpirationMinutes = 10
+	JTILength = 14
 )
 
-func NewTokenAddingInterceptor(t AccessTokenSource) TokenAddingInterceptor {
-	return TokenAddingInterceptor{tokenSource: t}
+func NewTokenAddingInterceptor(t AccessTokenSource, c *tls.Config) TokenAddingInterceptor {
+	return TokenAddingInterceptor{
+		tokenSource: t,
+		tlsConfig:   c,
+	}
 }
 
 type TokenAddingInterceptor struct {
 	tokenSource AccessTokenSource
+	tlsConfig   *tls.Config
 }
 
-func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
-	method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func (i TokenAddingInterceptor) AddCredentials(
+	ctx context.Context,
+	method string,
+	req, reply any,
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
 	newMetadata := make([]string, 0)
-	accessToken, err := i.tokenSource.AccessToken()
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: i.tlsConfig,
+		},
+	}
+	accessToken, err := i.tokenSource.AccessToken(ctx, client)
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {
-		slog.Error("error getting access token: %w. request will be unauthenticated", err)
+		slog.ErrorContext(ctx, "error getting access token. request will be unauthenticated", "error", err)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 
@@ -45,7 +60,7 @@ func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
-		slog.Error("error adding dpop token to outgoing request. Request will not have DPoP token", err)
+		slog.ErrorContext(ctx, "error adding dpop token to outgoing request. Request will not have DPoP token", err)
 	}
 
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)

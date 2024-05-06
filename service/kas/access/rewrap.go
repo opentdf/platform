@@ -117,12 +117,11 @@ func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*Re
 	// First load legacy method for verifying SRT
 	md, exists := metadata.FromIncomingContext(ctx)
 	if !exists {
-		slog.WarnContext(ctx, "missing metadata")
+		slog.WarnContext(ctx, "missing metadata for srt validation")
 		return nil, errors.New("missing metadata")
 	}
 	if vpk, ok := md["X-Virtrupubkey"]; ok && len(vpk) == 1 {
 		slog.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
-		
 	}
 
 	// get dpop public key from context
@@ -250,37 +249,7 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 	var info = new(entityInfo)
 
-	// check if metadata exists. if it doesn't not sure how we got to this point
-	md, exists := metadata.FromIncomingContext(ctx)
-	if !exists {
-		slog.WarnContext(ctx, "missing metadata")
-		return nil, errors.New("missing metadata")
-	}
-
-	// if access token is missing something went wrong in the authn interceptor
-	var tokenRaw string
-
-	header, exists := md["authorization"]
-	if !exists {
-		slog.WarnContext(ctx, "missing authorization header")
-		return nil, errors.New("missing authorization header")
-	}
-	if len(header) < 1 {
-		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
-	}
-
-	switch {
-	case strings.HasPrefix(header[0], "DPoP "):
-		tokenRaw = strings.TrimPrefix(header[0], "DPoP ")
-	default:
-		return nil, status.Error(codes.Unauthenticated, "not of type dpop")
-	}
-
-	token, err := jwt.ParseInsecure([]byte(tokenRaw))
-	if err != nil {
-		slog.WarnContext(ctx, "unable to get token")
-		return nil, errors.New("unable to get token")
-	}
+	token := auth.GetAccessTokenFromContext(ctx)
 
 	sub, found := token.Get("sub")
 	if found {
@@ -304,7 +273,7 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 		}
 	}
 
-	info.Token = tokenRaw
+	info.Token = auth.GetRawAccessTokenFromContext(ctx)
 
 	return info, nil
 }
@@ -314,11 +283,13 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 
 	body, err := verifySignedRequestToken(ctx, in)
 	if err != nil {
+		slog.DebugContext(ctx, "unverifiable srt", "err", err)
 		return nil, err
 	}
 
 	entityInfo, err := getEntityInfo(ctx)
 	if err != nil {
+		slog.DebugContext(ctx, "no entity info", "err", err)
 		return nil, err
 	}
 
@@ -327,6 +298,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.Algorithm == "" {
+		slog.DebugContext(ctx, "default rewrap algorithm")
 		body.Algorithm = "rsa:2048"
 	}
 

@@ -127,13 +127,14 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 
 	// Create the service
 	impl, handler := s.RegisterFunc(serviceregistry.RegistrationParams{
-		Config:          cfg.Services[s.Namespace],
-		OTDF:            otdf,
-		DBClient:        d,
-		Engine:          eng,
-		SDK:             client,
-		WellKnownConfig: wellknown.RegisterConfiguration,
-		Logger:          logger.With("namespace", s.Namespace),
+		Config:                 cfg.Services[s.Namespace],
+		OTDF:                   otdf,
+		DBClient:               d,
+		Engine:                 eng,
+		SDK:                    client,
+		WellKnownConfig:        wellknown.RegisterConfiguration,
+		RegisterReadinessCheck: health.RegisterReadinessCheck,
+		Logger:                 logger.With("namespace", s.Namespace),
 	})
 
 	// Register the service with the gRPC server

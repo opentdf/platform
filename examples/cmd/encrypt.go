@@ -49,7 +49,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		//sdk.WithDataAttributes("https://example.com/attr/attr1/value/value1"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				// examples assume unsecure http
+				// examples assume insecure http
 				URL:       fmt.Sprintf("http://%s", cmd.Flag("platformEndpoint").Value.String()),
 				PublicKey: "",
 			}))

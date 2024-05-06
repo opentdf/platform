@@ -287,9 +287,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NoError(t, err, "couldn't get JWK from key")
 				err = key.Set(jwk.AlgorithmKey, jwa.RS256) // Check the error return value
 				require.NoError(t, err, "failed to set algorithm key")
-				ctx = auth.ContextWithJWK(ctx, key)
-				ctx = context.WithValue(ctx, "access-token", mockJWT(t))
-				ctx = context.WithValue(ctx, "raw-access-token", bearer)
+				ctx = auth.ContextWithJWK(ctx, key, mockJWT(t), bearer)
 			}
 
 			md := metadata.New(map[string]string{"token": bearer})
@@ -328,7 +326,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 
 	err = key.Set(jwk.AlgorithmKey, jwa.NoSignature)
 	require.NoError(t, err, "failed to set algorithm key")
-	ctx = auth.ContextWithJWK(ctx, key)
+	ctx = auth.ContextWithJWK(ctx, key, mockJWT(t), string(jwtStandard(t)))
 
 	md := metadata.New(map[string]string{"token": string(jwtWrongKey(t))})
 	ctx = metadata.NewIncomingContext(ctx, md)

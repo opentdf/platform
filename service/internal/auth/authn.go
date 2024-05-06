@@ -25,12 +25,16 @@ import (
 )
 
 const (
-	dpopJWKContextKey        = authContextKey("dpop-jwk")
-	accessTokenContextKey    = authContextKey("access-token")
-	rawAccessTokenContextKey = authContextKey("raw-access-token")
+	authnContextKey = authContextKey("dpop-jwk")
 )
 
 type authContextKey string
+
+type authContext struct {
+	key         jwk.Key
+	accessToken jwt.Token
+	rawToken    string
+}
 
 var (
 	// Set of allowed public endpoints that do not require authentication
@@ -333,52 +337,49 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	if err != nil {
 		return nil, nil, err
 	}
-	ctx = ContextWithJWK(ctx, key)
-	ctx = context.WithValue(ctx, accessTokenContextKey, accessToken)
-	ctx = context.WithValue(ctx, rawAccessTokenContextKey, tokenRaw)
+	ctx = ContextWithJWK(ctx, key, accessToken, tokenRaw)
 	return accessToken, ctx, nil
 }
 
-func ContextWithJWK(ctx context.Context, key jwk.Key) context.Context {
-	return context.WithValue(ctx, dpopJWKContextKey, key)
+func ContextWithJWK(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
+	return context.WithValue(ctx, authnContextKey, &authContext{
+		key,
+		accessToken,
+		raw,
+	})
 }
 
-func GetJWKFromContext(ctx context.Context) jwk.Key {
-	key := ctx.Value(dpopJWKContextKey)
+func getContextDetails(ctx context.Context) *authContext {
+	key := ctx.Value(authnContextKey)
 	if key == nil {
 		return nil
 	}
-	if jwk, ok := key.(jwk.Key); ok {
-		return jwk
+	if c, ok := key.(*authContext); ok {
+		return c
 	}
 
-	slog.ErrorContext(ctx, "got something that is not a jwk.Key from the JWK context")
+	slog.ErrorContext(ctx, "invalid authContext")
+	return nil
+}
+
+func GetJWKFromContext(ctx context.Context) jwk.Key {
+	if c := getContextDetails(ctx); c != nil {
+		return c.key
+	}
 	return nil
 }
 
 func GetAccessTokenFromContext(ctx context.Context) jwt.Token {
-	v := ctx.Value(accessTokenContextKey)
-	if v == nil {
-		return nil
+	if c := getContextDetails(ctx); c != nil {
+		return c.accessToken
 	}
-	if jwt, ok := v.(jwt.Token); ok {
-		return jwt
-	}
-
-	slog.ErrorContext(ctx, "got something that is not a jwt.Token from the access token context")
 	return nil
 }
 
 func GetRawAccessTokenFromContext(ctx context.Context) string {
-	v := ctx.Value(rawAccessTokenContextKey)
-	if v == nil {
-		return ""
+	if c := getContextDetails(ctx); c != nil {
+		return c.rawToken
 	}
-	if jwt, ok := v.(string); ok {
-		return jwt
-	}
-
-	slog.ErrorContext(ctx, "got something that is not a string from the access token context")
 	return ""
 }
 

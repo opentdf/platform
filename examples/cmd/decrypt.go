@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func init() {
@@ -24,12 +27,24 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	tdfFile := args[0]
+	platformEndpoint := cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint
+	kasUrl := fmt.Sprintf("http://%s", platformEndpoint)
 
 	// Create new client
-	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
+	client, err := sdk.New(
+		platformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
+		sdk.WithKnownKas([]sdk.KASInfo{
+			sdk.KASInfo{
+				// examples assume insecure http
+				DialOptions: []grpc.DialOption{
+					grpc.WithTransportCredentials(insecure.NewCredentials()),
+				},
+				URL: kasUrl,
+			},
+		}),
 	)
 	if err != nil {
 		return err

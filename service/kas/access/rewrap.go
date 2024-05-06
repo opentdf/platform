@@ -137,7 +137,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody,
 	} else {
 		// verify and validate the request token
 		var err error
-		rbString, err = verifySRT(ctx, srt, dpopJWK, rbString)
+		rbString, err = verifySRT(ctx, srt, dpopJWK)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +177,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody,
 	}
 }
 
-func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key, rbString string) (string, error) {
+func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key) (string, error) {
 	v, err := jws.NewVerifier(jwa.RS256)
 	if err != nil {
 		slog.ErrorContext(ctx, "unable to load RSA verifier", "err", err)
@@ -213,8 +213,7 @@ func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key, rbString string
 		slog.WarnContext(ctx, "unable to unmarshall srt", "err", err, "srt", srt, "jwk", dpopJWK)
 		return "", err400("signed content failure")
 	}
-	rbString = srtDecoded.RequestBody
-	return rbString, nil
+	return srtDecoded.RequestBody, nil
 }
 
 func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte) (*Policy, error) {

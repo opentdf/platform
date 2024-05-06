@@ -11,16 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentdf/platform/service/internal/security"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/valyala/fasthttp/fasthttputil"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -63,13 +62,13 @@ type TLSConfig struct {
 }
 
 type CORSConfig struct {
-	Enabled          bool   `yaml:"enabled"`
-	AllowedOrigins   string `yaml:"allowed-origins"`
-	AllowedMethods   string `yaml:"allowed-methods"`
-	AllowedHeaders   string `yaml:"allowed-headers"`
-	ExposedHeaders   string `yaml:"exposed-headers"`
-	AllowCredentials bool   `yaml:"allow-credentials"`
-	MaxAge           int    `yaml:"max-age"`
+	Enabled          bool     `yaml:"enabled" default:"true"`
+	AllowedOrigins   []string `yaml:"allowedorigins"`
+	AllowedMethods   []string `yaml:"allowedmethods"`
+	AllowedHeaders   []string `yaml:"allowedheaders"`
+	ExposedHeaders   []string `yaml:"exposedheaders"`
+	AllowCredentials bool     `yaml:"allowcredentials" default:"true"`
+	MaxAge           int      `yaml:"maxage" default:"3600"`
 }
 
 type OpenTDFServer struct {
@@ -178,12 +177,21 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	}
 
 	// CORS
-	slog.Debug("CORS", "AllowedMethods", c.CORS.AllowedMethods)
 	h = cors.New(cors.Options{
-		AllowOriginFunc:  func(_ *http.Request, _ string) bool { return true },
-		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete, http.MethodOptions},
-		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		AllowOriginFunc: func(r *http.Request, origin string) bool {
+			for _, allowedOrigin := range c.CORS.AllowedOrigins {
+				if allowedOrigin == "*" {
+					return true
+				}
+				if strings.EqualFold(origin, allowedOrigin) {
+					return true
+				}
+			}
+			return false
+		},
+		AllowedMethods:   c.CORS.AllowedMethods,
+		AllowedHeaders:   c.CORS.AllowedHeaders,
+		ExposedHeaders:   c.CORS.ExposedHeaders,
 		AllowCredentials: c.CORS.AllowCredentials,
 		MaxAge:           c.CORS.MaxAge,
 	}).Handler(h)

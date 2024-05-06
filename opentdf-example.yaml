@@ -61,19 +61,30 @@ server:
       #  [matchers]
       #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
   cors:
-    enabled: true
+    enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowed-origins: '*'
+    allowedorigins: '*'
     # List of methods. Examples: 'GET,POST,PUT'
-    allowed-methods: 'GET,POST,PUT,DELETE'
+    allowedmethods:
+      - GET
+      - POST
+      - PATCH
+      - PUT
+      - DELETE
+      - OPTIONS
     # List of headers that are allowed in a request
-    allowed-headers: '*'
+    allowedheaders:
+      - ACCEPT
+      - Authorization
+      - Content-Type
+      - X-CSRF-Token
     # List of response headers that browsers are allowed to access
-    exposed-headers: 'Content-Length'
+    exposedheaders:
+      - Link
     # Sets whether credentials are included in the CORS request
-    allow-credentials: true
+    allowcredentials: true
     # Sets the maximum age (in seconds) of a specific CORS preflight request
-    max-age: 3600
+    maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
   cryptoProvider:

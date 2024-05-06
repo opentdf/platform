@@ -3,10 +3,11 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/creasty/defaults"
+	"log/slog"
 	"os"
 	"strings"
 
+	"github.com/creasty/defaults"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
@@ -42,30 +43,37 @@ func LoadConfig(key string, file string) (*Config, error) {
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
-	viper.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
-	viper.AddConfigPath("." + key)
-	viper.AddConfigPath(".")
-	viper.SetConfigName(key)
-	viper.SetConfigType("yaml")
+	// uncommment to debug config loading,
+	// issue is the loglevel directive is in the config yaml
+	//t := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	//	Level: slog.LevelDebug,
+	//})
+	//v := viper.NewWithOptions(viper.WithLogger(slog.New(t)))
+	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
+	v.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
+	v.AddConfigPath("." + key)
+	v.AddConfigPath(".")
+	v.SetConfigName(key)
+	v.SetConfigType("yaml")
 
 	// Default config values (non-zero)
-	viper.SetDefault("server.auth.cache_refresh_interval", "15m")
+	v.SetDefault("server.auth.cache_refresh_interval", "15m")
 
-	viper.SetEnvPrefix(key)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
+	v.SetEnvPrefix(key)
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
 
 	// Allow for a custom config file to be passed in
 	// This takes precedence over the AddConfigPath/SetConfigName
 	if file != "" {
-		viper.SetConfigFile(file)
+		v.SetConfigFile(file)
 	}
 
-	if err := viper.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 
-	err = viper.Unmarshal(config)
+	err = v.Unmarshal(config)
 	if err != nil {
 		return nil, errors.Join(err, ErrUnmarshallingConfig)
 	}

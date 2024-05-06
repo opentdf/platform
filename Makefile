@@ -10,9 +10,9 @@ EXCLUDE_OPENAPI=./service/authorization/idp_plugin.proto
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-LINT_OPTIONS?=--new
+# LINT_OPTIONS?=--new
 # LINT_OPTIONS?=-new-from-rev=main
-# LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci-ratchet.yaml
+LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci.yaml
 
 all: toolcheck clean build lint test
 

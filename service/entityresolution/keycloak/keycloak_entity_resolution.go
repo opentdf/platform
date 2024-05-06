@@ -217,10 +217,12 @@ func getKCClient(ctx context.Context, kcConfig KeycloakConfig) (*KeyCloakConnect
 	// restyClient.SetDebug(true)
 	// restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	// client.SetRestyClient(restyClient)
-	slog.Debug(kcConfig.ClientID)
-	slog.Debug(kcConfig.ClientSecret)
-	slog.Debug(kcConfig.URL)
-	slog.Debug(kcConfig.Realm)
+
+	// For debugging
+	// slog.Debug(kcConfig.ClientID)
+	// slog.Debug(kcConfig.ClientSecret)
+	// slog.Debug(kcConfig.URL)
+	// slog.Debug(kcConfig.Realm)
 	token, err := client.LoginClient(ctx, kcConfig.ClientID, kcConfig.ClientSecret, kcConfig.Realm)
 	if err != nil {
 		slog.Error("Error connecting to keycloak!", err)

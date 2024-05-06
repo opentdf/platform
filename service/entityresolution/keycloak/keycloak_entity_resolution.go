@@ -36,7 +36,8 @@ type KeyCloakConnector struct {
 func EntityResolution(ctx context.Context,
 	req *entityresolution.ResolveEntitiesRequest, kcConfig KeycloakConfig) (entityresolution.ResolveEntitiesResponse, error) {
 	// note this only logs when run in test not when running in the OPE engine.
-	slog.DebugContext(ctx, "EntityResolution", "req", fmt.Sprintf("%+v", req), "config", fmt.Sprintf("%+v", kcConfig))
+	slog.Debug("EntityResolution", "req", fmt.Sprintf("%+v", req))
+	// slog.Debug("EntityResolutionConfig", "config", fmt.Sprintf("%+v", kcConfig))
 	connector, err := getKCClient(ctx, kcConfig)
 	if err != nil {
 		return entityresolution.ResolveEntitiesResponse{},
@@ -45,16 +46,16 @@ func EntityResolution(ctx context.Context,
 	payload := req.GetEntities()
 
 	var resolvedEntities []*entityresolution.EntityRepresentation
-	slog.DebugContext(ctx, "EntityResolution invoked", "payload", payload)
+	slog.Debug("EntityResolution invoked", "payload", payload)
 
 	for _, ident := range payload {
-		slog.DebugContext(ctx, "Lookup", "entity", ident.GetEntityType())
+		slog.Debug("Lookup", "entity", ident.GetEntityType())
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
 		exactMatch := true
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_ClientId:
-			slog.DebugContext(ctx, "GetClient", "client_id", ident.GetClientId())
+			slog.Debug("GetClient", "client_id", ident.GetClientId())
 			clientID := ident.GetClientId()
 			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
 				ClientID: &clientID,
@@ -177,7 +178,7 @@ func EntityResolution(ctx context.Context,
 				OriginalId:      ident.GetId(),
 				AdditionalProps: jsonEntities},
 		)
-		slog.DebugContext(ctx, "Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))
+		slog.Debug("Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))
 	}
 
 	return entityresolution.ResolveEntitiesResponse{

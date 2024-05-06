@@ -78,8 +78,8 @@ func NewRegistration() serviceregistry.Registration {
 			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecert, TokenURL: tokenEndpoint}
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
 			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, ersURL: ersURL, tokenSource: &newTokenSource}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				authServer, ok := server.(authorization.AuthorizationServiceServer)
-				if !ok {
+				authServer, okAuth := server.(authorization.AuthorizationServiceServer)
+				if !okAuth {
 					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
 				}
 				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)

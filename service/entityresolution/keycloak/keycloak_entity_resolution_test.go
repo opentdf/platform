@@ -120,11 +120,11 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 
 	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
-	assert.Nil(t, reserr)
+	require.NoError(t, reserr)
 	_ = json.NewEncoder(os.Stdout).Encode(&resp)
-	var entity_representations = resp.GetEntityRepresentations()
-	assert.NotNil(t, entity_representations)
-	assert.Equal(t, 1, len(entity_representations))
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 1)
 }
 
 func Test_KCEntityResolutionByEmail(t *testing.T) {

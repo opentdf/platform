@@ -33,6 +33,8 @@ jobs:
             fix
             feat
             chore
+            refactor
+            revert
           # Scopes include:
           #   - main: used for automated releases
           #   - core: related to any core need such as the core service or monorepo

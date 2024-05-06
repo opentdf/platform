@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +35,7 @@ to run this command in a clean database. This command is intended for local deve
 
 ** Teardown or Issues **
 You can clear/recycle your database with 'docker-compose down' and 'docker-compose up' to start fresh.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
 			cfg, err := config.LoadConfig(configKey, configFile)

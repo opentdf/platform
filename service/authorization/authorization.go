@@ -18,13 +18,13 @@ import (
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access"
-	"github.com/opentdf/platform/service/internal/db"
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/opa"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
-type AuthorizationService struct {
+type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	authorization.UnimplementedAuthorizationServiceServer
 	eng    *opa.Engine
 	sdk    *otdf.SDK
@@ -37,7 +37,11 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, config: &srp.Config.ExtraProps}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, server.(authorization.AuthorizationServiceServer))
+				authServer, ok := server.(authorization.AuthorizationServiceServer)
+				if !ok {
+					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
+				}
+				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
 			}
 		},
 	}
@@ -91,7 +95,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 				return nil, err
 			}
 
-			// get the relevent resource attribute fqns
+			// get the relevant resource attribute fqns
 			allPertinentFqnsRA := authorization.ResourceAttribute{
 				AttributeValueFqns: ra.GetAttributeValueFqns(),
 			}
@@ -118,7 +122,7 @@ func (as AuthorizationService) GetDecisions(ctx context.Context, req *authorizat
 					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("getEntitlements request failed ", req.String()))
 				}
 
-				// currently just adding each entity retuned to same list
+				// currently just adding each entity returned to same list
 				entityAttrValues := make(map[string][]string)
 				for _, e := range ecEntitlements.GetEntitlements() {
 					entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()

@@ -3,7 +3,6 @@ package access
 import (
 	"net/url"
 
-	"github.com/coreos/go-oidc/v3/oidc"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
@@ -20,5 +19,4 @@ type Provider struct {
 	SDK            *otdf.SDK
 	AttributeSvc   *url.URL
 	CryptoProvider security.CryptoProvider
-	OIDCVerifier   *oidc.IDTokenVerifier
 }

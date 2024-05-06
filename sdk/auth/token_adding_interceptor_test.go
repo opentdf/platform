@@ -6,18 +6,21 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"net"
 	"net/http"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -47,7 +50,9 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		accessToken: "thisisafakeaccesstoken",
 	}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts, &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	})
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -117,7 +122,9 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 func Test_InvalidCredentials_StillSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts, &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	})
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -163,7 +170,7 @@ type FakeTokenSource struct {
 	accessToken string
 }
 
-func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
+func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (AccessToken, error) {
 	return AccessToken(fts.accessToken), nil
 }
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
@@ -171,6 +178,14 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 		return nil, errors.New("no such key")
 	}
 	return f(fts.key)
+}
+func (fts *FakeTokenSource) Token() (*oauth2.Token, error) {
+	return &oauth2.Token{
+		AccessToken:  fts.accessToken,
+		TokenType:    "",
+		RefreshToken: "",
+		Expiry:       time.Time{},
+	}, nil
 }
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {

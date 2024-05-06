@@ -19,6 +19,20 @@ server:
     enforceDPoP: false
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/tdf
+  cors:
+    enabled: true
+    # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
+    allowed-origins: '*'
+    # List of methods. Examples: 'GET,POST,PUT'
+    allowed-methods: 'GET,POST,PUT,DELETE'
+    # List of headers that are allowed in a request
+    allowed-headers: '*'
+    # List of response headers that browsers are allowed to access
+    exposed-headers: 'Content-Length'
+    # Sets whether credentials are included in the CORS request
+    allow-credentials: true
+    # Sets the maximum age (in seconds) of a specific CORS preflight request
+    max-age: 3600
   grpc:
     reflectionEnabled: true # Default is false
   hsm:

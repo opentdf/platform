@@ -169,11 +169,12 @@ func TestNanoTDFEncryptFile(t *testing.T) {
 	//_ = outfile.Close()
 
 	// TODO - populate config properly
+	var kasURL string = "https://kas.virtru.com/kas"
 	var config NanoTDFConfig
 	config.m_bufferSize = 8192 * 1024
-
-	config.m_kasURL = "kas.virtru.com/kas"
-	config.m_kasProtocol = "https"
+	config.m_kasURL.body = kasURL // TODO - check for excessive length here
+	config.m_kasURL.lengthBody = uint8(len(kasURL))
+	config.m_kasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
 
 	err = NanoTDFEncryptFile(infile, outfile, config)
 	if err != nil {

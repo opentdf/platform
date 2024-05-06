@@ -47,6 +47,7 @@ type NanoTDFConfig struct {
 	m_hasSignature     bool
 	m_signerPrivateKey []byte
 	m_cipher           cipherMode
+	m_kasURL           resourceLocator
 }
 
 type NanoTDF struct {
@@ -95,7 +96,8 @@ type resourceLocator struct {
 	body       string
 }
 
-func (resourceLocator) isPolicyBody() {}
+func (resourceLocator) isPolicyBody()      {}
+func (rl resourceLocator) getBody() string { return rl.body }
 
 type bindingCfg struct {
 	useEcdsaBinding bool
@@ -111,6 +113,7 @@ type signatureConfig struct {
 
 type PolicyBody interface {
 	isPolicyBody() // marker method to ensure interface implementation
+	getBody() string
 }
 
 type policyInfo struct {
@@ -123,14 +126,16 @@ type remotePolicy struct {
 	url *resourceLocator
 }
 
-func (remotePolicy) isPolicyBody() {}
+func (remotePolicy) isPolicyBody()      {}
+func (rp remotePolicy) getBody() string { return rp.url.body }
 
 type embeddedPolicy struct {
 	lengthBody uint16
 	body       string
 }
 
-func (embeddedPolicy) isPolicyBody() {}
+func (embeddedPolicy) isPolicyBody()      {}
+func (ep embeddedPolicy) getBody() string { return ep.body }
 
 type eccSignature struct {
 	value []byte
@@ -172,6 +177,17 @@ const (
 	ErrNanoTDFHeaderRead = Error("nanoTDF read error")
 )
 
+// Binding config byte format
+// ---------------------------------
+// | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
+// ---------------------------------
+// | E | M | M | M | x | x | x | x |
+// ---------------------------------
+// bit 8 - use ECDSA
+// bit 5-7 - eccMode
+// bit 1-4 - padding
+
+// deserializeBindingCfg - read byte of binding config into bindingCfg struct
 func deserializeBindingCfg(b byte) *bindingCfg {
 	cfg := bindingCfg{}
 	cfg.useEcdsaBinding = (b >> 7 & 0x01) == 1
@@ -181,6 +197,29 @@ func deserializeBindingCfg(b byte) *bindingCfg {
 	return &cfg
 }
 
+// serializeBindingCfg - take info from bindingConfig struct and encode as single byte
+func serializeBindingCfg(bindCfg *bindingCfg) byte {
+	var bindSerial byte = 0x00
+
+	if bindCfg.useEcdsaBinding {
+		bindSerial |= 0x80
+	}
+	bindSerial |= byte((bindCfg.bindingBody)&0x07) << 4
+
+	return bindSerial
+}
+
+// Signature config byte format
+// ---------------------------------
+// | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
+// ---------------------------------
+// | S | M | M | M | C | C | C | C |
+// ---------------------------------
+// bit 8 - has signature
+// bit 5-7 - eccMode
+// bit 1-4 - cipher
+
+// deserializeSignatureCfg - read byte of signature config into signatureCfg struct
 func deserializeSignatureCfg(b byte) *signatureConfig {
 	cfg := signatureConfig{}
 	cfg.hasSignature = (b >> 7 & 0x01) == 1
@@ -190,15 +229,7 @@ func deserializeSignatureCfg(b byte) *signatureConfig {
 	return &cfg
 }
 
-// serializeSignatureCfg - take signature info from nanoTDF and encode as single byte
-// ---------------------------------
-// | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
-// ---------------------------------
-// | S | M | M | M | C | C | C | C |
-// ---------------------------------
-// bit 8 - has signature
-// bit 7-5 - eccMode
-// bit 1-4 - cipher
+// serializeSignatureCfg - take info from signatureConfig struct and encode as single byte
 func serializeSignatureCfg(sigCfg signatureConfig) byte {
 	var sigSerial byte = 0x00
 
@@ -246,14 +277,24 @@ func writePolicyBody(writer io.Writer, h *NanoTDFHeader) error {
 
 	switch h.policy.mode {
 	case 0: // remote policy - resource locator
-		// TODO FIXME - need to write length
-		if err = binary.Write(writer, binary.BigEndian, h.policy.body); err != nil {
+		// TODO FIXME - get real value from resourceLocator
+		if err = binary.Write(writer, binary.BigEndian, uint8(urlProtocolHTTPS)); err != nil {
+			return err
+		}
+		var reBody = h.policy.body.getBody()
+		if err = binary.Write(writer, binary.BigEndian, uint8(len(reBody))); err != nil {
+			return err
+		}
+		if err = binary.Write(writer, binary.BigEndian, []byte(reBody)); err != nil {
 			return err
 		}
 		return nil
 	default: // embedded policy - inline
-		// TODO FIXME - need to write length
-		if err := binary.Write(writer, binary.BigEndian, h.policy.body); err != nil {
+		var emBody = h.policy.body.getBody()
+		if err := binary.Write(writer, binary.BigEndian, uint8(len(emBody))); err != nil {
+			return err
+		}
+		if err := binary.Write(writer, binary.BigEndian, []byte(emBody)); err != nil {
 			return err
 		}
 	}
@@ -348,6 +389,38 @@ func createHeader(nanoTDF *NanoTDF) error {
 		return err
 	}
 
+	// TODO FIXME - should be constants
+	nanoTDF.header.magicNumber[0] = 'L'
+	nanoTDF.header.magicNumber[1] = '1'
+	nanoTDF.header.magicNumber[2] = 'L'
+
+	// TODO FIXME - gotta be a better way to do this copy
+	nanoTDF.header.kasURL = &resourceLocator{nanoTDF.config.m_kasURL.protocol, nanoTDF.config.m_kasURL.lengthBody, nanoTDF.config.m_kasURL.body}
+
+	// TODO FIXME - put real values in here
+	nanoTDF.header.binding = new(bindingCfg)
+	nanoTDF.header.binding.useEcdsaBinding = true
+	nanoTDF.header.binding.bindingBody = nanoTDF.config.m_eccMode
+
+	// TODO FIXME - put real values here
+	nanoTDF.header.sigCfg = new(signatureConfig)
+	nanoTDF.header.sigCfg.hasSignature = true
+	nanoTDF.header.sigCfg.signatureMode = nanoTDF.config.m_eccMode
+	nanoTDF.header.sigCfg.cipher = nanoTDF.config.m_cipher
+
+	// TODO FIXME - put real values here
+	var rlBody resourceLocator
+	rlBody.protocol = urlProtocolHTTPS
+	rlBody.body = "https://resource.virtru.com"
+
+	rlBody.lengthBody = uint8(len(rlBody.body))
+	nanoTDF.header.policy = new(policyInfo)
+	nanoTDF.header.policy.mode = uint8(0)
+	nanoTDF.header.policy.body = rlBody
+
+	// TODO FIXME - put real values here
+	nanoTDF.header.EphemeralPublicKey = new(eccKey)
+
 	if nanoTDF.config.m_datasetMode && (nanoTDF.config.m_maxKeyIterations == nanoTDF.m_keyIterationCount) {
 		var sdkECKeyPair, err = ocrypto.NewECKeyPair(nanoTDF.config.m_eccMode)
 		if err != nil {
@@ -388,28 +461,30 @@ func writeHeader(n *NanoTDFHeader, writer io.Writer) error {
 	if err = binary.Write(writer, binary.BigEndian, n.magicNumber); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, &n.kasURL.protocol); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, n.kasURL.protocol); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, &n.kasURL.lengthBody); err != nil {
+	// Note that written length is based on actual string, not the bodylength element in kasURL
+	if err = binary.Write(writer, binary.BigEndian, uint8(len(n.kasURL.body))); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, &n.kasURL); err != nil {
+
+	if err = binary.Write(writer, binary.BigEndian, []byte(n.kasURL.body)); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, &n.binding); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, serializeBindingCfg(n.binding)); err != nil {
 		return err
 	}
 
 	signatureByte := serializeSignatureCfg(*n.sigCfg)
-	if err := binary.Write(writer, binary.BigEndian, &signatureByte); err != nil {
+	if err := binary.Write(writer, binary.BigEndian, signatureByte); err != nil {
 		return err
 	}
 
 	if err = writePolicyBody(writer, n); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, &n.EphemeralPublicKey.Key); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, n.EphemeralPublicKey.Key); err != nil {
 		return err
 	}
 
@@ -482,7 +557,7 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 	encryptedDataSize := kNanoTDFIvSize + plaintextBuffer.Len() + authTagSize
 
 	// TODO FIXME
-	cipherTextSize := encryptedDataSize + kNanoTDFIvSize + kIvPadding
+	cipherTextSize := uint64(encryptedDataSize + kNanoTDFIvSize + kIvPadding)
 
 	if err := binary.Write(ebWriter, binary.BigEndian, &cipherTextSize); err != nil {
 		return nil, err

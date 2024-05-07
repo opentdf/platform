@@ -125,6 +125,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	opentdfReadonlyRoleName := "opentdf-readonly"
 	testingOnlyRoleName := "opentdf-testing-role"
 	opentdfERSClientID := "tdf-entity-resolution"
+	opentdfAuthorizationClientID := "tdf-authorization-svc"
 	realmMangementClientName := "realm-management"
 
 	protocolMappers := []gocloak.ProtocolMapperRepresentation{
@@ -286,6 +287,20 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
 	}, nil, map[string][]gocloak.Role{*realmManagementClientID: clientRolesToAdd})
+	if err != nil {
+		return err
+	}
+
+	// Create TDF Authorization Svc Client
+	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+		ClientID:                gocloak.StringP(opentdfAuthorizationClientID),
+		Enabled:                 gocloak.BoolP(true),
+		Name:                    gocloak.StringP(opentdfAuthorizationClientID),
+		ServiceAccountsEnabled:  gocloak.BoolP(true),
+		ClientAuthenticatorType: gocloak.StringP("client-secret"),
+		Secret:                  gocloak.StringP("secret"),
+		ProtocolMappers:         &protocolMappers,
+	}, nil, nil)
 	if err != nil {
 		return err
 	}

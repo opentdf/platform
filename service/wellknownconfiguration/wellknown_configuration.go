@@ -8,6 +8,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,6 +17,7 @@ import (
 
 type WellKnownService struct {
 	wellknown.UnimplementedWellKnownServiceServer
+	logger *logger.Logger
 }
 
 var (
@@ -37,8 +39,8 @@ func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		Namespace:   "wellknown",
 		ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
-		RegisterFunc: func(_ serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &WellKnownService{}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			return &WellKnownService{logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				if srv, ok := server.(wellknown.WellKnownServiceServer); ok {
 					return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, srv)
 				}
@@ -53,7 +55,7 @@ func (s WellKnownService) GetWellKnownConfiguration(context.Context, *wellknown.
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {
-		slog.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
+		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
 	}
 	return &wellknown.GetWellKnownConfigurationResponse{

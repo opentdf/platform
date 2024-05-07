@@ -7,6 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -15,13 +16,14 @@ import (
 type AttributesService struct { //nolint:revive // AttributesService is a valid name for this struct
 	attributes.UnimplementedAttributesServiceServer
 	dbClient policydb.PolicyDBClient
+	logger   *logger.Logger
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &attributes.AttributesService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &AttributesService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &AttributesService{dbClient: policydb.NewClient(srp.DBClient), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				if srv, ok := server.(attributes.AttributesServiceServer); ok {
 					return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, srv)
 				}
@@ -34,7 +36,7 @@ func NewRegistration() serviceregistry.Registration {
 func (s AttributesService) CreateAttribute(ctx context.Context,
 	req *attributes.CreateAttributeRequest,
 ) (*attributes.CreateAttributeResponse, error) {
-	slog.Debug("creating new attribute definition", slog.String("name", req.GetName()))
+	s.logger.Debug("creating new attribute definition", slog.String("name", req.GetName()))
 	rsp := &attributes.CreateAttributeResponse{}
 
 	item, err := s.dbClient.CreateAttribute(ctx, req)
@@ -43,7 +45,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 	}
 	rsp.Attribute = item
 
-	slog.Debug("created new attribute definition", slog.String("name", req.GetName()))
+	s.logger.Debug("created new attribute definition", slog.String("name", req.GetName()))
 	return rsp, nil
 }
 
@@ -52,7 +54,7 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 ) (*attributes.ListAttributesResponse, error) {
 	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
 	namespace := req.GetNamespace()
-	slog.Debug("listing attribute definitions", slog.String("state", state))
+	s.logger.Debug("listing attribute definitions", slog.String("state", state))
 	rsp := &attributes.ListAttributesResponse{}
 
 	list, err := s.dbClient.ListAllAttributes(ctx, state, namespace)
@@ -136,7 +138,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
 	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	slog.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", state))
+	s.logger.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", state))
 	list, err := s.dbClient.ListAttributeValues(ctx, req.GetAttributeId(), state)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("attributeId", req.GetAttributeId()))

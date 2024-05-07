@@ -27,8 +27,6 @@ const (
 	GMAC
 )
 
-const kHTTPOk = 200
-
 // KASInfo contains Key Access Server information.
 type KASInfo struct {
 	// Can be empty. If empty, it will inherit the global SDK DialOptions.

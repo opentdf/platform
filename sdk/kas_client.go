@@ -20,6 +20,12 @@ const (
 	secondsPerMinute = 60
 )
 
+type RequestBody struct {
+	KeyAccess       `json:"keyAccess"`
+	ClientPublicKey string `json:"clientPublicKey"`
+	Policy          string `json:"policy"`
+}
+
 type KASClient struct {
 	accessTokenSource  auth.AccessTokenSource
 	dialOptions        []grpc.DialOption

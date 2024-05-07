@@ -42,8 +42,8 @@ jobs:
           #   - docs: anything related solely to documentation
           #   - sdk: related to sdk changes in the /sdk directory
           #   - policy: related to policy service changes (i.e. /service/policy)
-          #   - key-access: related to key access service changes (i.e. /service/kas)
-          #   - authorization: related to the authorization service changes (i.e. /service/authorization)
+          #   - kas: related to key access service changes (i.e. /service/kas)
+          #   - authz: related to the authorization service changes (i.e. /service/authorization)
           scopes: |
             main
             core

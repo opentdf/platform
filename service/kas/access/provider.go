@@ -23,7 +23,7 @@ type Provider struct {
 	CryptoProvider security.CryptoProvider
 }
 
-// Not sure what we want to check here?
+// TODO: Not sure what we want to check here?
 func (p Provider) IsReady(ctx context.Context) error {
 	slog.DebugContext(ctx, "checking readiness of kas service")
 	return nil

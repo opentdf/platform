@@ -106,7 +106,7 @@ func NewRegistration() serviceregistry.Registration {
 	}
 }
 
-// Not sure what we want to check here?
+// TODO: Not sure what we want to check here?
 func (as AuthorizationService) IsReady(ctx context.Context) error {
 	slog.DebugContext(ctx, "checking readiness of authorization service")
 	return nil

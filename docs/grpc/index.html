@@ -352,31 +352,31 @@
         
           
           <li>
-            <a href="#authorization%2fidp_plugin.proto">authorization/idp_plugin.proto</a>
+            <a href="#entityresolution%2fentity_resolution.proto">entityresolution/entity_resolution.proto</a>
             <ul>
               
                 <li>
-                  <a href="#authorization.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
+                  <a href="#entityresolution.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
                 </li>
               
                 <li>
-                  <a href="#authorization.IdpConfig"><span class="badge">M</span>IdpConfig</a>
+                  <a href="#entityresolution.EntityRepresentation"><span class="badge">M</span>EntityRepresentation</a>
                 </li>
               
                 <li>
-                  <a href="#authorization.IdpEntityRepresentation"><span class="badge">M</span>IdpEntityRepresentation</a>
+                  <a href="#entityresolution.ResolveEntitiesRequest"><span class="badge">M</span>ResolveEntitiesRequest</a>
                 </li>
               
                 <li>
-                  <a href="#authorization.IdpPluginRequest"><span class="badge">M</span>IdpPluginRequest</a>
+                  <a href="#entityresolution.ResolveEntitiesResponse"><span class="badge">M</span>ResolveEntitiesResponse</a>
                 </li>
+              
+              
+              
               
                 <li>
-                  <a href="#authorization.IdpPluginResponse"><span class="badge">M</span>IdpPluginResponse</a>
+                  <a href="#entityresolution.EntityResolutionService"><span class="badge">S</span>EntityResolutionService</a>
                 </li>
-              
-              
-              
               
             </ul>
           </li>
@@ -2335,12 +2335,12 @@
     
       
       <div class="file-heading">
-        <h2 id="authorization/idp_plugin.proto">authorization/idp_plugin.proto</h2><a href="#title">Top</a>
+        <h2 id="entityresolution/entity_resolution.proto">entityresolution/entity_resolution.proto</h2><a href="#title">Top</a>
       </div>
       <p></p>
 
       
-        <h3 id="authorization.EntityNotFoundError">EntityNotFoundError</h3>
+        <h3 id="entityresolution.EntityNotFoundError">EntityNotFoundError</h3>
         <p></p>
 
         
@@ -2385,31 +2385,7 @@
 
         
       
-        <h3 id="authorization.IdpConfig">IdpConfig</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>config</td>
-                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="authorization.IdpEntityRepresentation">IdpEntityRepresentation</h3>
+        <h3 id="entityresolution.EntityRepresentation">EntityRepresentation</h3>
         <p></p>
 
         
@@ -2440,7 +2416,7 @@
 
         
       
-        <h3 id="authorization.IdpPluginRequest">IdpPluginRequest</h3>
+        <h3 id="entityresolution.ResolveEntitiesRequest">ResolveEntitiesRequest</h3>
         <p>Example: Get idp attributes for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
 
         
@@ -2452,7 +2428,7 @@
               
                 <tr>
                   <td>entities</td>
-                  <td><a href="#authorization.Entity">Entity</a></td>
+                  <td><a href="#authorization.Entity">authorization.Entity</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -2464,7 +2440,7 @@
 
         
       
-        <h3 id="authorization.IdpPluginResponse">IdpPluginResponse</h3>
+        <h3 id="entityresolution.ResolveEntitiesResponse">ResolveEntitiesResponse</h3>
         <p>Example: Get idp attributes for bob and alice</p><p>{</p><p>"entity_representations": [</p><p>{</p><p>"idp_entity_id": "e1",</p><p>"additional_props": {"someAttr1":"someValue1"}</p><p>},</p><p>{</p><p>"idp_entity_id": "e2",</p><p>"additional_props": {"someAttr2":"someValue2"}</p><p>}</p><p>]</p><p>}</p>
 
         
@@ -2476,7 +2452,7 @@
               
                 <tr>
                   <td>entity_representations</td>
-                  <td><a href="#authorization.IdpEntityRepresentation">IdpEntityRepresentation</a></td>
+                  <td><a href="#entityresolution.EntityRepresentation">EntityRepresentation</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -2494,6 +2470,53 @@
       
 
       
+        <h3 id="entityresolution.EntityResolutionService">EntityResolutionService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ResolveEntities</td>
+                <td><a href="#entityresolution.ResolveEntitiesRequest">ResolveEntitiesRequest</a></td>
+                <td><a href="#entityresolution.ResolveEntitiesResponse">ResolveEntitiesResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>ResolveEntities</td>
+                <td>POST</td>
+                <td>/entityresolution/resolve</td>
+                <td>*</td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
     
       
       <div class="file-heading">

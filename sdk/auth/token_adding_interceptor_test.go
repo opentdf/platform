@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"net"
@@ -47,7 +48,9 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		accessToken: "thisisafakeaccesstoken",
 	}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts, &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	})
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -117,7 +120,9 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 func Test_InvalidCredentials_StillSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts, &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	})
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -163,7 +168,7 @@ type FakeTokenSource struct {
 	accessToken string
 }
 
-func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
+func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (AccessToken, error) {
 	return AccessToken(fts.accessToken), nil
 }
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
@@ -172,6 +177,7 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 	}
 	return f(fts.key)
 }
+
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024

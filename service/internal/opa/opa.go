@@ -10,7 +10,6 @@ import (
 	"github.com/open-policy-agent/opa/hooks"
 	opalog "github.com/open-policy-agent/opa/logging"
 	"github.com/open-policy-agent/opa/sdk"
-	"github.com/opentdf/platform/service/internal/idpplugin"
 	"github.com/opentdf/platform/service/internal/jqbuiltin"
 )
 
@@ -55,7 +54,6 @@ func NewEngine(config Config) (*Engine, error) {
 		logger: asl,
 	}
 	slog.Debug("plugging in plugins")
-	idpplugin.KeycloakBuiltins()
 	jqbuiltin.JQBuiltin()
 	opa, err := sdk.New(context.Background(), sdk.Options{
 		Config:        bytes.NewReader(bConfig),

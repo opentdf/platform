@@ -12,6 +12,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ import (
 type TestServiceService interface{}
 type TestService struct{}
 
-func (t TestService) TestHandler(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
 	_, err := w.Write([]byte("hello from test service!"))
 	if err != nil {
 		panic(err)
@@ -62,7 +63,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 
 	// Create new opentdf server
 	return server.NewOpenTDFServer(server.Config{
-		WellKnownConfigRegister: func(namespace string, config any) error {
+		WellKnownConfigRegister: func(_ string, _ any) error {
 			return nil
 		},
 		Auth: auth.Config{
@@ -93,6 +94,9 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	s, err := mockOpenTDFServer()
 	require.NoError(t, err)
 
+	logger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+	require.NoError(t, err)
+
 	// Register Test Service
 	registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
 		serviceObject: &TestService{},
@@ -114,7 +118,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 				Enabled: true,
 			},
 		},
-	}, s, nil, nil)
+	}, s, nil, nil, logger)
 	require.NoError(t, err)
 
 	s.Start()

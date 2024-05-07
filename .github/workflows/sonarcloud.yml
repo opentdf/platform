@@ -38,7 +38,7 @@ jobs:
         run: go tool cover -func=coverage.out
 
       - name: 'Archive Golang Test Results'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: code-coverage-report
           path: coverage.*
@@ -59,7 +59,7 @@ jobs:
           fetch-depth: 0
 
       - name: 'Download Code Coverage Report'
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: code-coverage-report
 

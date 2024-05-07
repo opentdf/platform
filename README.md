@@ -44,7 +44,7 @@ To contribute to the OpenTDF platform, you'll need bit more set setup and should
 
 ### Provisioning Custom Keycloak and Policy Data
 
-To providion a custom keycloak setup, create a yaml following the format of [the sample keycloak config]((service/cmd/keycloak_data.yaml)). You can create different realms with seperate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak-from-config -f <path-to-your-yaml-file>`.
+To provision a custom Keycloak setup, create a yaml following the format of [the sample Keycloak config](service/cmd/keycloak_data.yaml). You can create different realms with separate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak-from-config -f <path-to-your-yaml-file>`.
 
 ### Generation
 

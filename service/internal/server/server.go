@@ -11,16 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentdf/platform/service/internal/security"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/valyala/fasthttp/fasthttputil"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -46,6 +45,7 @@ type Config struct {
 	GRPC                    GRPCConfig      `yaml:"grpc"`
 	CryptoProvider          security.Config `yaml:"cryptoProvider"`
 	TLS                     TLSConfig       `yaml:"tls"`
+	CORS                    CORSConfig      `yaml:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error
 	Port                    int    `yaml:"port" default:"8080"`
 	Host                    string `yaml:"host,omitempty"`
@@ -59,6 +59,16 @@ type TLSConfig struct {
 	Enabled bool   `yaml:"enabled" default:"false"`
 	Cert    string `yaml:"cert"`
 	Key     string `yaml:"key"`
+}
+
+type CORSConfig struct {
+	Enabled          bool     `yaml:"enabled" default:"true"`
+	AllowedOrigins   []string `yaml:"allowedorigins"`
+	AllowedMethods   []string `yaml:"allowedmethods"`
+	AllowedHeaders   []string `yaml:"allowedheaders"`
+	ExposedHeaders   []string `yaml:"exposedheaders"`
+	AllowCredentials bool     `yaml:"allowcredentials" default:"true"`
+	MaxAge           int      `yaml:"maxage" default:"3600"`
 }
 
 type OpenTDFServer struct {
@@ -120,7 +130,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	mux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
 	)
-	httpServer, err := newHttpServer(config, mux, authN, grpcServer)
+	httpServer, err := newHTTPServer(config, mux, authN, grpcServer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
@@ -153,8 +163,8 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	return &o, nil
 }
 
-// newHttpServer creates a new http server with the given handler and grpc server
-func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
+// newHTTPServer creates a new http server with the given handler and grpc server
+func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
 	var err error
 	var tc *tls.Config
 
@@ -166,15 +176,27 @@ func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
-	h = cors.New(cors.Options{
-		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete, http.MethodOptions},
-		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           maxAge,
-	}).Handler(h)
+	// CORS
+	if c.CORS.Enabled {
+		h = cors.New(cors.Options{
+			AllowOriginFunc: func(_ *http.Request, origin string) bool {
+				for _, allowedOrigin := range c.CORS.AllowedOrigins {
+					if allowedOrigin == "*" {
+						return true
+					}
+					if strings.EqualFold(origin, allowedOrigin) {
+						return true
+					}
+				}
+				return false
+			},
+			AllowedMethods:   c.CORS.AllowedMethods,
+			AllowedHeaders:   c.CORS.AllowedHeaders,
+			ExposedHeaders:   c.CORS.ExposedHeaders,
+			AllowCredentials: c.CORS.AllowCredentials,
+			MaxAge:           c.CORS.MaxAge,
+		}).Handler(h)
+	}
 
 	// Add grpc handler
 	h2 := httpGrpcHandlerFunc(h, g)
@@ -214,7 +236,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	var i []grpc.UnaryServerInterceptor
 	var o []grpc.ServerOption
 
-	// Enbale proto validation
+	// Enable proto validation
 	validator, err := protovalidate.New()
 	if err != nil {
 		slog.Warn("failed to create proto validator", slog.String("error", err.Error()))
@@ -280,7 +302,7 @@ func (s inProcessServer) GetGrpcServer() *grpc.Server {
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
 	defaultOptions := []grpc.DialOption{
-		grpc.WithContextDialer(func(_ context.Context, addr string) (net.Conn, error) {
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)

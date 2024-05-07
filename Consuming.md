@@ -26,3 +26,4 @@ Bootstrap Keycloak
       -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
       -it registry.opentdf.io/platform:nightly start
    ```
+

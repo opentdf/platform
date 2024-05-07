@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.1](https://github.com/opentdf/platform/compare/service/v0.4.0...service/v0.4.1) (2024-05-07)
+
+
+### Features
+
+* **core:** cors config ([#746](https://github.com/opentdf/platform/issues/746)) ([3433b5b](https://github.com/opentdf/platform/commit/3433b5b464ac309c9b8f225d2362d2eb24a56886))
+* **core:** Service Level Child Loggers ([#740](https://github.com/opentdf/platform/issues/740)) ([aa0f210](https://github.com/opentdf/platform/commit/aa0f21098a45265b3443e0cbfb7722d9ab107fde))
+* **ers:** Create entity resolution service, replace idp plugin ([#660](https://github.com/opentdf/platform/issues/660)) ([ff44112](https://github.com/opentdf/platform/commit/ff441128a4b2ef97c3f739ee3f6f42be273b31dc))
+* **sdk:** insecure plaintext and skip verify conn ([#670](https://github.com/opentdf/platform/issues/670)) ([5c94d02](https://github.com/opentdf/platform/commit/5c94d027478314d703bf70885d6a80cdde585542))
+
+
+### Bug Fixes
+
+* **core:** Fix Lint ([#714](https://github.com/opentdf/platform/issues/714)) ([2b0cb09](https://github.com/opentdf/platform/commit/2b0cb099784110d2f812b050222d07fa5a22eafe)), closes [#701](https://github.com/opentdf/platform/issues/701)
+* **core:** Fix several misspellings  ([#738](https://github.com/opentdf/platform/issues/738)) ([8d61db3](https://github.com/opentdf/platform/commit/8d61db343fd68291f80686496fec47b08aaf4746))
+
 ## [0.4.0](https://github.com/opentdf/platform/compare/service/v0.3.0...service/v0.4.0) (2024-04-30)
 
 

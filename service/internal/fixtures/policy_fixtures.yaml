@@ -279,12 +279,12 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: '.superhero.name'
+                  - subject_external_selector_value: '.attributes.superhero_name[]'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - thor
                       - captain_america
-                  - subject_external_selector_value: '.superhero.group'
+                  - subject_external_selector_value: '.attributes.superhero_group[]'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - avengers

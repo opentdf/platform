@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -78,7 +79,7 @@ type FakeTokenSource struct {
 	accessToken string
 }
 
-func (fts *FakeTokenSource) AccessToken() (sdkauth.AccessToken, error) {
+func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (sdkauth.AccessToken, error) {
 	return sdkauth.AccessToken(fts.accessToken), nil
 }
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
@@ -213,7 +214,7 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 		FullMethod: "/test",
 	}, nil)
 	s.Require().Error(err)
-	s.ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
+	s.Require().ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
@@ -418,6 +419,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
+	}, &tls.Config{
+		MinVersion: tls.VersionTLS12,
 	})
 
 	conn, _ := grpc.DialContext(context.Background(), "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
@@ -477,6 +480,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
+	}, &tls.Config{
+		MinVersion: tls.VersionTLS12,
 	})
 	s.Require().NoError(err)
 	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))

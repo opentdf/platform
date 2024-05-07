@@ -30,9 +30,8 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	strReader := strings.NewReader(plainText)
 
 	// Create new offline client
-
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
-		sdk.WithInsecureConn(),
+		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)
@@ -50,7 +49,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		//sdk.WithDataAttributes("https://example.com/attr/attr1/value/value1"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				// examples assume unsecure http
+				// examples assume insecure http
 				URL:       fmt.Sprintf("http://%s", cmd.Flag("platformEndpoint").Value.String()),
 				PublicKey: "",
 			}))

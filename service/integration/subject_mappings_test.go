@@ -36,10 +36,10 @@ func (s *SubjectMappingsSuite) TearDownSuite() {
 
 // a set of easily accessible actions for use in tests
 var (
-	DECRYPT         = "DECRYPT"
-	TRANSMIT        = "TRANSMIT"
-	CUSTOM_DOWNLOAD = "CUSTOM_DOWNLOAD"
-	CUSTOM_UPLOAD   = "CUSTOM_UPLOAD"
+	Decrypt        = "DECRYPT"
+	Transmit       = "TRANSMIT"
+	CustomDownload = "CUSTOM_DOWNLOAD"
+	CustomUpload   = "CUSTOM_UPLOAD"
 
 	fixtureActions = map[string]*policy.Action{
 		"DECRYPT": {
@@ -73,11 +73,11 @@ var (
  *-------------------------------------------------------*/
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectConditionSetId() {
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").Id
-	fixtureSCSId := s.f.GetSubjectConditionSetKey("subject_condition_set1").Id
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
+	fixtureSCSId := s.f.GetSubjectConditionSetKey("subject_condition_set1").ID
 
-	aDecrypt := fixtureActions[DECRYPT]
-	aTransmit := fixtureActions[TRANSMIT]
+	aDecrypt := fixtureActions[Decrypt]
+	aTransmit := fixtureActions[Transmit]
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
 		ExistingSubjectConditionSetId: fixtureSCSId,
@@ -98,8 +98,8 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 }
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet() {
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").Id
-	aTransmit := fixtureActions[TRANSMIT]
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
+	aTransmit := fixtureActions[Transmit]
 
 	scs := &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{
@@ -152,36 +152,36 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NoActions_Fails() {
 	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              fixtureAttrVal.Id,
-		ExistingSubjectConditionSetId: fixtureScs.Id,
+		AttributeValueId:              fixtureAttrVal.ID,
+		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
 	s.Require().Error(err)
 	s.Nil(created)
-	s.ErrorIs(err, db.ErrMissingValue)
+	s.Require().ErrorIs(err, db.ErrMissingValue)
 }
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValueId_Fails() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	aTransmit := fixtureActions[TRANSMIT]
+	aTransmit := fixtureActions[Transmit]
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		Actions:                       []*policy.Action{aTransmit},
-		ExistingSubjectConditionSetId: fixtureScs.Id,
+		ExistingSubjectConditionSetId: fixtureScs.ID,
 		AttributeValueId:              nonExistentAttributeValueUUID,
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
 	s.Require().Error(err)
 	s.Nil(created)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectConditionSetId_Fails() {
 	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
-	aTransmit := fixtureActions[TRANSMIT]
+	aTransmit := fixtureActions[Transmit]
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              fixtureAttrVal.Id,
+		AttributeValueId:              fixtureAttrVal.ID,
 		Actions:                       []*policy.Action{aTransmit},
 		ExistingSubjectConditionSetId: nonExistentSubjectSetID,
 	}
@@ -189,20 +189,20 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
 	s.Require().Error(err)
 	s.Nil(created)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	// create a new one, update it, and verify the update
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").Id
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	aTransmit := fixtureActions[TRANSMIT]
-	aCustomUpload := fixtureActions[CUSTOM_UPLOAD]
+	aTransmit := fixtureActions[Transmit]
+	aCustomUpload := fixtureActions[CustomUpload]
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
 		Actions:                       []*policy.Action{aTransmit, aCustomUpload},
-		ExistingSubjectConditionSetId: fixtureScs.Id,
+		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
 	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
@@ -240,14 +240,14 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() {
 	// create a new one, update it, and verify the update
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	aTransmit := fixtureActions[TRANSMIT]
+	aTransmit := fixtureActions[Transmit]
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
 		Actions:                       []*policy.Action{aTransmit},
-		ExistingSubjectConditionSetId: fixtureScs.Id,
+		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
@@ -258,7 +258,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
 	update := &subjectmapping.UpdateSubjectMappingRequest{
 		Id:                    created.GetId(),
-		SubjectConditionSetId: newScs.Id,
+		SubjectConditionSetId: newScs.ID,
 	}
 
 	updated, err := s.db.PolicyClient.UpdateSubjectMapping(context.Background(), update)
@@ -271,21 +271,21 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
-	s.Equal(newScs.Id, got.GetSubjectConditionSet().GetId())
+	s.Equal(newScs.ID, got.GetSubjectConditionSet().GetId())
 	s.Equal(len(newSubjectMapping.GetActions()), len(got.GetActions()))
 	s.Equal(newSubjectMapping.GetActions(), got.GetActions())
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields() {
 	// create a new one, update it, and verify the update
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").Id
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	aTransmit := fixtureActions[TRANSMIT]
+	aTransmit := fixtureActions[Transmit]
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
 		Actions:                       []*policy.Action{aTransmit},
-		ExistingSubjectConditionSetId: fixtureScs.Id,
+		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
@@ -294,13 +294,13 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 
 	// update the subject mapping
 	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	newActions := []*policy.Action{fixtureActions[CUSTOM_DOWNLOAD]}
+	newActions := []*policy.Action{fixtureActions[CustomDownload]}
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{"key": "value"},
 	}
 	update := &subjectmapping.UpdateSubjectMappingRequest{
 		Id:                     created.GetId(),
-		SubjectConditionSetId:  newScs.Id,
+		SubjectConditionSetId:  newScs.ID,
 		Actions:                newActions,
 		Metadata:               metadata,
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
@@ -317,7 +317,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
-	s.Equal(newScs.Id, got.GetSubjectConditionSet().GetId())
+	s.Equal(newScs.ID, got.GetSubjectConditionSet().GetId())
 	s.Equal(len(newActions), len(got.GetActions()))
 	s.Equal(newActions, got.GetActions())
 	s.Equal(metadata.GetLabels()["key"], got.GetMetadata().GetLabels()["key"])
@@ -335,31 +335,31 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentId_Fails() {
 	sm, err := s.db.PolicyClient.UpdateSubjectMapping(context.Background(), update)
 	s.Require().Error(err)
 	s.Nil(sm)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentSubjectConditionSetId_Fails() {
 	update := &subjectmapping.UpdateSubjectMappingRequest{
-		Id:                    s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3").Id,
+		Id:                    s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3").ID,
 		SubjectConditionSetId: nonExistentSubjectSetID,
 	}
 
 	sm, err := s.db.PolicyClient.UpdateSubjectMapping(context.Background(), update)
 	s.Require().Error(err)
 	s.Nil(sm)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 	fixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
 
-	sm, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), fixture.Id)
+	sm, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), fixture.ID)
 	s.Require().NoError(err)
 	s.NotNil(sm)
-	s.Equal(fixture.Id, sm.GetId())
-	s.Equal(fixture.AttributeValueId, sm.GetAttributeValue().GetId())
+	s.Equal(fixture.ID, sm.GetId())
+	s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
 	s.True(sm.GetAttributeValue().GetActive().GetValue())
-	s.Equal(fixture.SubjectConditionSetId, sm.GetSubjectConditionSet().GetId())
+	s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
 
 	// verify the actions
 	for i, a := range sm.GetActions() {
@@ -372,10 +372,10 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 			s.Equal("custom:\""+fixture.Actions[i].Custom+"\"", a.String())
 		}
 	}
-	got, err := s.db.PolicyClient.GetAttributeValue(context.Background(), fixture.AttributeValueId)
+	got, err := s.db.PolicyClient.GetAttributeValue(context.Background(), fixture.AttributeValueID)
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Equal(fixture.AttributeValueId, got.GetId())
+	s.Equal(fixture.AttributeValueID, got.GetId())
 	s.NotEmpty(got.GetMembers())
 	equalMembers(s.T(), got, sm.GetAttributeValue(), false)
 	metadata := sm.GetMetadata()
@@ -389,7 +389,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping_NonExistentId_Fails() {
 	sm, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), nonExistentSubjectMappingID)
 	s.Require().Error(err)
 	s.Nil(sm)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestListSubjectMappings() {
@@ -406,21 +406,21 @@ func (s *SubjectMappingsSuite) TestListSubjectMappings() {
 	s.GreaterOrEqual(len(list), 3)
 
 	assertEqual := func(sm *policy.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
-		s.Equal(fixture.AttributeValueId, sm.GetAttributeValue().GetId())
+		s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
 		s.True(sm.GetAttributeValue().GetActive().GetValue())
-		s.Equal(fixture.SubjectConditionSetId, sm.GetSubjectConditionSet().GetId())
+		s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
 		s.Equal(len(fixture.Actions), len(sm.GetActions()))
 	}
 	for _, sm := range list {
-		if sm.GetId() == fixture1.Id {
+		if sm.GetId() == fixture1.ID {
 			assertEqual(sm, fixture1)
 			found1 = true
 		}
-		if sm.GetId() == fixture2.Id {
+		if sm.GetId() == fixture2.ID {
 			assertEqual(sm, fixture2)
 			found2 = true
 		}
-		if sm.GetId() == fixture3.Id {
+		if sm.GetId() == fixture3.ID {
 			assertEqual(sm, fixture3)
 			found3 = true
 		}
@@ -432,14 +432,14 @@ func (s *SubjectMappingsSuite) TestListSubjectMappings() {
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
 	// create a new subject mapping, delete it, and verify get fails with not found
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1").Id
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	aTransmit := fixtureActions[TRANSMIT]
+	aTransmit := fixtureActions[Transmit]
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
 		Actions:                       []*policy.Action{aTransmit},
-		ExistingSubjectConditionSetId: fixtureScs.Id,
+		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
@@ -453,19 +453,19 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
 	got, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), created.GetId())
 	s.Require().Error(err)
 	s.Nil(got)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_WithNonExistentId_Fails() {
 	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(context.Background(), nonExistentSubjectMappingID)
 	s.Require().Error(err)
 	s.Nil(deleted)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectConditionSet() {
 	// create a new subject mapping, delete it, and verify the subject condition set still exists
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").Id
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID
 	newScs := &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{
 			{
@@ -484,7 +484,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 			},
 		},
 	}
-	aTransmit := fixtureActions[TRANSMIT]
+	aTransmit := fixtureActions[Transmit]
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:       fixtureAttrValID,
@@ -542,10 +542,10 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet() {
 func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_ById() {
 	fixture := s.f.GetSubjectConditionSetKey("subject_condition_set1")
 
-	scs, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), fixture.Id)
+	scs, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), fixture.ID)
 	s.Require().NoError(err)
 	s.NotNil(scs)
-	s.Equal(fixture.Id, scs.GetId())
+	s.Equal(fixture.ID, scs.GetId())
 	metadata := scs.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
@@ -557,14 +557,14 @@ func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_WithNoId_Fails() {
 	scs, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), "")
 	s.Require().Error(err)
 	s.Nil(scs)
-	s.ErrorIs(err, db.ErrUUIDInvalid)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_NonExistentId_Fails() {
 	scs, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), nonExistentSubjectSetID)
 	s.Require().Error(err)
 	s.Nil(scs)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestListSubjectConditionSet() {
@@ -584,13 +584,13 @@ func (s *SubjectMappingsSuite) TestListSubjectConditionSet() {
 	s.GreaterOrEqual(len(list), 3)
 	for _, scs := range list {
 		switch scs.GetId() {
-		case fixture1.Id:
+		case fixture1.ID:
 			found1 = true
-		case fixture2.Id:
+		case fixture2.ID:
 			found2 = true
-		case fixture3.Id:
+		case fixture3.ID:
 			found3 = true
-		case fixture4.Id:
+		case fixture4.ID:
 			found4 = true
 		}
 	}
@@ -618,14 +618,14 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 	got, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), created.GetId())
 	s.Require().Error(err)
 	s.Nil(got)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet_WithNonExistentId_Fails() {
 	deleted, err := s.db.PolicyClient.DeleteSubjectConditionSet(context.Background(), nonExistentSubjectSetID)
 	s.Require().Error(err)
 	s.Nil(deleted)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
@@ -748,7 +748,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails
 	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), update)
 	s.Require().Error(err)
 	s.Nil(updated)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
@@ -766,7 +766,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
 	s.Require().NoError(err)
 	s.NotZero(sm)
-	s.Equal(fixtureScs.Id, sm[0].GetSubjectConditionSet().GetId())
+	s.Equal(fixtureScs.ID, sm[0].GetSubjectConditionSet().GetId())
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInWhenMatches() {
@@ -804,8 +804,8 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
 	s.Require().NoError(err)
 	s.NotZero(smList)
 	s.Require().Len(smList, 1)
-	s.Equal(fixtureScs.Id, smList[0].GetSubjectConditionSet().GetId())
-	s.Equal(expectedMappedFixture.Id, smList[0].GetId())
+	s.Equal(fixtureScs.ID, smList[0].GetSubjectConditionSet().GetId())
+	s.Equal(expectedMappedFixture.ID, smList[0].GetId())
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInProperty_Fails() {
@@ -871,9 +871,9 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	foundMappedSubjectConditionSet1 := false
 
 	for _, sm := range gotEntitlements {
-		if sm.GetSubjectConditionSet().GetId() == mappedSimple.SubjectConditionSetId {
+		if sm.GetSubjectConditionSet().GetId() == mappedSimple.SubjectConditionSetID {
 			foundMappedSimple = true
-		} else if sm.GetSubjectConditionSet().GetId() == mappedSubjectConditionSet1.SubjectConditionSetId {
+		} else if sm.GetSubjectConditionSet().GetId() == mappedSubjectConditionSet1.SubjectConditionSetID {
 			foundMappedSubjectConditionSet1 = true
 		}
 	}
@@ -906,10 +906,10 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	s.NotZero(smList)
 	s.Len(smList, 2)
 	for _, sm := range smList {
-		if sm.GetSubjectConditionSet().GetId() == fixtureScs.Id {
-			s.Equal(expectedMappedFixture.Id, sm.GetId())
-		} else if sm.GetSubjectConditionSet().GetId() == otherFixtureScs.Id {
-			s.Equal(otherExpectedMatchedFixture.Id, sm.GetId())
+		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
+			s.Equal(expectedMappedFixture.ID, sm.GetId())
+		} else if sm.GetSubjectConditionSet().GetId() == otherFixtureScs.ID {
+			s.Equal(otherExpectedMatchedFixture.ID, sm.GetId())
 		}
 	}
 }
@@ -939,10 +939,10 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOneAndNotInASecon
 	s.Require().NoError(err)
 	s.NotZero(smList)
 	for _, sm := range smList {
-		if sm.GetSubjectConditionSet().GetId() == fixtureScs.Id {
-			s.Equal(expectedMappedFixture.Id, sm.GetId())
-		} else if sm.GetSubjectConditionSet().GetId() == otherFixtureScs.Id {
-			s.Equal(expectedMappedOtherFixture.Id, sm.GetId())
+		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
+			s.Equal(expectedMappedFixture.ID, sm.GetId())
+		} else if sm.GetSubjectConditionSet().GetId() == otherFixtureScs.ID {
+			s.Equal(expectedMappedOtherFixture.ID, sm.GetId())
 		}
 	}
 }

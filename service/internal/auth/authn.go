@@ -25,10 +25,16 @@ import (
 )
 
 const (
-	dpopJWKContextKey = authContextKey("dpop-jwk")
+	authnContextKey = authContextKey("dpop-jwk")
 )
 
 type authContextKey string
+
+type authContext struct {
+	key         jwk.Key
+	accessToken jwt.Token
+	rawToken    string
+}
 
 var (
 	// Set of allowed public endpoints that do not require authentication
@@ -42,7 +48,7 @@ var (
 		"/kas/v2/kas_public_key",
 	}
 	// only asymmetric algorithms and no 'none'
-	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{
+	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms
 		jwa.RS256: true,
 		jwa.RS384: true,
 		jwa.RS512: true,
@@ -159,7 +165,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 		origin := r.Header.Get("Origin")
-		tok, newCtx, err := a.checkToken(r.Context(), header, receiverInfo{
+		accessTok, ctxWithJWK, err := a.checkToken(r.Context(), header, receiverInfo{
 			u: normalizeURL(origin, r.URL),
 			m: r.Method,
 		}, r.Header["Dpop"])
@@ -171,7 +177,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 
 		// Check if the token is allowed to access the resource
-		action := ""
+		var action string
 		switch r.Method {
 		case http.MethodGet:
 			action = "read"
@@ -182,21 +188,21 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = "unsafe"
 		}
-		if allow, err := a.enforcer.Enforce(tok, r.URL.Path, action); err != nil {
+		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
-				slog.WarnContext(r.Context(), "permission denied", slog.String("azp", tok.Subject()), slog.String("error", err.Error()))
+				slog.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()), slog.String("error", err.Error()))
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		} else if !allow {
-			slog.WarnContext(r.Context(), "permission denied", slog.String("azp", tok.Subject()))
+			slog.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()))
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
-		handler.ServeHTTP(w, r.WithContext(newCtx))
+		handler.ServeHTTP(w, r.WithContext(ctxWithJWK))
 	})
 }
 
@@ -224,16 +230,17 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	// parse the rpc method
 	p := strings.Split(info.FullMethod, "/")
 	resource := p[1] + "/" + p[2]
-	action := ""
-	if strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get") {
+	var action string
+	switch {
+	case strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get"):
 		action = "read"
-	} else if strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update") {
+	case strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update"):
 		action = "write"
-	} else if strings.HasPrefix(p[2], "Delete") {
+	case strings.HasPrefix(p[2], "Delete"):
 		action = "delete"
-	} else if strings.HasPrefix(p[2], "Unsafe") {
+	case strings.HasPrefix(p[2], "Unsafe"):
 		action = "unsafe"
-	} else {
+	default:
 		action = "other"
 	}
 
@@ -330,23 +337,50 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	if err != nil {
 		return nil, nil, err
 	}
-	return accessToken, ContextWithJWK(ctx, key), nil
+	ctx = ContextWithJWK(ctx, key, accessToken, tokenRaw)
+	return accessToken, ctx, nil
 }
 
-func ContextWithJWK(ctx context.Context, key jwk.Key) context.Context {
-	return context.WithValue(ctx, dpopJWKContextKey, key)
+func ContextWithJWK(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
+	return context.WithValue(ctx, authnContextKey, &authContext{
+		key,
+		accessToken,
+		raw,
+	})
 }
 
-func GetJWKFromContext(ctx context.Context) jwk.Key {
-	key := ctx.Value(dpopJWKContextKey)
+func getContextDetails(ctx context.Context) *authContext {
+	key := ctx.Value(authnContextKey)
 	if key == nil {
 		return nil
 	}
-	if jwk, ok := key.(jwk.Key); ok {
-		return jwk
+	if c, ok := key.(*authContext); ok {
+		return c
 	}
 
-	panic("got something that is not a jwk.Key from the JWK context")
+	slog.ErrorContext(ctx, "invalid authContext")
+	return nil
+}
+
+func GetJWKFromContext(ctx context.Context) jwk.Key {
+	if c := getContextDetails(ctx); c != nil {
+		return c.key
+	}
+	return nil
+}
+
+func GetAccessTokenFromContext(ctx context.Context) jwt.Token {
+	if c := getContextDetails(ctx); c != nil {
+		return c.accessToken
+	}
+	return nil
+}
+
+func GetRawAccessTokenFromContext(ctx context.Context) string {
+	if c := getContextDetails(ctx); c != nil {
+		return c.rawToken
+	}
+	return ""
 }
 
 func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {

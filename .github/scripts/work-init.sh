@@ -31,27 +31,26 @@ if ! cd "$ROOT_DIR"; then
   echo "[ERROR] unable to find project directory; expected it to be in [${ROOT_DIR}]"
 fi
 
-
-
 echo "[INFO] Rebuilding partial go.work for [${component}]"
 case $component in
-lib/ocrypto | lib/fixtures | protocol/go)
-  echo "[INFO] skipping for leaf package"
-  ;;
-sdk)
-  rm go.work go.work.sum
-  go work init
-  go work add ./service
-  go work add ./examples
-  ;;
-service)
-  rm go.work go.work.sum
-  go work init
-  go work add ./examples
-  ;;
-examples)
-  rm go.work go.work.sum
-  ;;
-*)
-  echo "[ERROR] unknown component [${component}]"
+  lib/ocrypto | lib/fixtures | protocol/go)
+    echo "[INFO] skipping for leaf package"
+    ;;
+  sdk)
+    rm go.work go.work.sum
+    go work init
+    go work add ./service
+    go work add ./examples
+    ;;
+  service)
+    rm go.work go.work.sum
+    go work init
+    go work add ./examples
+    ;;
+  examples)
+    rm go.work go.work.sum
+    ;;
+  *)
+    echo "[ERROR] unknown component [${component}]"
+    ;;
 esac

@@ -48,6 +48,12 @@ func NewRegistration() serviceregistry.Registration {
 			var clientID = "tdf-authorization-svc"
 			var clientSecert = "secret"
 			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
+
+			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK}
+			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
+				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
+			}
+
 			// if its passed in the config use that
 			val, ok := srp.Config.ExtraProps["ersUrl"]
 			if ok {
@@ -88,6 +94,12 @@ func NewRegistration() serviceregistry.Registration {
 			}
 		},
 	}
+}
+
+// Not sure what we want to check here?
+func (as AuthorizationService) IsReady(ctx context.Context) error {
+	slog.DebugContext(ctx, "checking readiness of authorization service")
+	return nil
 }
 
 // abstracted into variable for mocking in tests

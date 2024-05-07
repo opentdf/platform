@@ -23,7 +23,9 @@ func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &NamespacesService{dbClient: policydb.NewClient(srp.DBClient), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient), logger: srp.Logger}
+			srp.RegisterReadinessCheck("namespaces", ns.IsReady)
+			return ns, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				nsServer, ok := server.(namespaces.NamespaceServiceServer)
 				if !ok {
 					return fmt.Errorf("failed to assert server as namespaces.NamespaceServiceServer")
@@ -32,6 +34,16 @@ func NewRegistration() serviceregistry.Registration {
 			}
 		},
 	}
+}
+
+func (ns NamespacesService) IsReady(ctx context.Context) error {
+	slog.DebugContext(ctx, "checking readiness of namespaces service")
+	// We really only need to check the database connection
+	if err := ns.dbClient.SQLDB.PingContext(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {

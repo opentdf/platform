@@ -3,7 +3,6 @@ package health
 import (
 	"context"
 	"log/slog"
-	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/logger"
@@ -15,7 +14,6 @@ import (
 
 var (
 	serviceHealthChecks = make(map[string]func(context.Context) error)
-	rwMutex             sync.RWMutex
 )
 
 type HealthService struct { //nolint:revive // HealthService is a valid name for this struct
@@ -50,22 +48,18 @@ func (s HealthService) Check(ctx context.Context, req *healthpb.HealthCheckReque
 
 	switch req.GetService() {
 	case "all":
-		rwMutex.RLock()
-		defer rwMutex.RUnlock()
 		for service, check := range serviceHealthChecks {
 			if err := check(ctx); err != nil {
-				s.logger.Error("service is not ready", slog.String("service", service), slog.String("error", err.Error()))
+				s.logger.ErrorContext(ctx, "service is not ready", slog.String("service", service), slog.String("error", err.Error()))
 				return &healthpb.HealthCheckResponse{
 					Status: healthpb.HealthCheckResponse_NOT_SERVING,
 				}, nil
 			}
 		}
 	default:
-		rwMutex.RLock()
-		defer rwMutex.RUnlock()
 		if check, ok := serviceHealthChecks[req.GetService()]; ok {
 			if err := check(ctx); err != nil {
-				s.logger.Error("service is not ready", slog.String("service", req.GetService()), slog.String("error", err.Error()))
+				s.logger.ErrorContext(ctx, "service is not ready", slog.String("service", req.GetService()), slog.String("error", err.Error()))
 				return &healthpb.HealthCheckResponse{
 					Status: healthpb.HealthCheckResponse_NOT_SERVING,
 				}, nil
@@ -87,9 +81,6 @@ func (s HealthService) Watch(_ *healthpb.HealthCheckRequest, _ healthpb.Health_W
 }
 
 func RegisterReadinessCheck(namespace string, service func(context.Context) error) error {
-	rwMutex.Lock()
-	defer rwMutex.Unlock()
-
 	if _, ok := serviceHealthChecks[namespace]; ok {
 		return status.Error(codes.AlreadyExists, "readiness check already registered")
 	}

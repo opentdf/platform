@@ -34,6 +34,8 @@ func NewRegistration() serviceregistry.Registration {
 				CryptoProvider: srp.OTDF.CryptoProvider,
 				SDK:            srp.SDK,
 			}
+
+			srp.RegisterReadinessCheck("kas", p.IsReady)
 			return &p, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				kas, ok := server.(*access.Provider)
 				if !ok {

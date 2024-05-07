@@ -7,6 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -15,13 +16,14 @@ import (
 type ResourceMappingService struct { //nolint:revive // ResourceMappingService is a valid name for this struct
 	resourcemapping.UnimplementedResourceMappingServiceServer
 	dbClient policydb.PolicyDBClient
+	logger   *logger.Logger
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+			return &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
 				server, ok := s.(resourcemapping.ResourceMappingServiceServer)
 				if !ok {
 					return fmt.Errorf("failed to assert server as resourcemapping.ResourceMappingServiceServer")
@@ -39,7 +41,7 @@ func NewRegistration() serviceregistry.Registration {
 func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 	req *resourcemapping.CreateResourceMappingRequest,
 ) (*resourcemapping.CreateResourceMappingResponse, error) {
-	slog.Debug("creating resource mapping")
+	s.logger.Debug("creating resource mapping")
 
 	rm, err := s.dbClient.CreateResourceMapping(ctx, req)
 	if err != nil {

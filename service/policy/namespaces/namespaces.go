@@ -24,7 +24,11 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient), logger: srp.Logger}
-			srp.RegisterReadinessCheck("namespaces", ns.IsReady)
+
+			if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
+				slog.Error("failed to register policy readiness check", slog.String("error", err.Error()))
+			}
+
 			return ns, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				nsServer, ok := server.(namespaces.NamespaceServiceServer)
 				if !ok {

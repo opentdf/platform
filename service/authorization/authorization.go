@@ -43,6 +43,7 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "authorization",
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+<<<<<<< HEAD
 			// default ERS endpoint
 			var ersURL = "http://localhost:8080/entityresolution/resolve"
 			var clientID = "tdf-authorization-svc"
@@ -50,14 +51,23 @@ func NewRegistration() serviceregistry.Registration {
 			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK}
+=======
+			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, config: &srp.Config.ExtraProps}
+
+>>>>>>> 81879066 (fix lint issues)
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
 
+<<<<<<< HEAD
 			// if its passed in the config use that
 			val, ok := srp.Config.ExtraProps["ersUrl"]
 			if ok {
 				ersURL, ok = val.(string)
+=======
+			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+				authServer, ok := server.(authorization.AuthorizationServiceServer)
+>>>>>>> 81879066 (fix lint issues)
 				if !ok {
 					panic("Error casting ersURL to string")
 				}

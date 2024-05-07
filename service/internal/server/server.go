@@ -177,7 +177,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	}
 
 	// CORS
-	if c.CORS.Enabled == true {
+	if c.CORS.Enabled {
 		h = cors.New(cors.Options{
 			AllowOriginFunc: func(_ *http.Request, origin string) bool {
 				for _, allowedOrigin := range c.CORS.AllowedOrigins {

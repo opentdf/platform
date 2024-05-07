@@ -72,10 +72,6 @@ func err403(s string) error {
 	return errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
 }
 
-func err500(s string) error {
-	return errors.Join(ErrInternal, status.Error(codes.Unknown, s))
-}
-
 func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	_, err := mac.Write(msg)
@@ -98,7 +94,7 @@ func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key) (string, error)
 }
 
 func noverify(ctx context.Context, srt string) (string, error) {
-	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithAcceptableSkew(30*time.Second))
+	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithAcceptableSkew(acceptableSkew))
 	if err != nil {
 		slog.WarnContext(ctx, "unable to validate or parse token", "err", err)
 		return "", err401("could not parse token")

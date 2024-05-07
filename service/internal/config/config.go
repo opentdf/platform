@@ -73,13 +73,13 @@ func LoadConfig(key string, file string) (*Config, error) {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 
+	if err := defaults.Set(config); err != nil {
+		return nil, errors.Join(err, ErrSettingConfig)
+	}
+
 	err = v.Unmarshal(config)
 	if err != nil {
 		return nil, errors.Join(err, ErrUnmarshallingConfig)
-	}
-
-	if err := defaults.Set(config); err != nil {
-		return nil, errors.Join(err, ErrSettingConfig)
 	}
 
 	return config, nil

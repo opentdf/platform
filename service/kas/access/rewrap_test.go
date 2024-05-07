@@ -153,6 +153,20 @@ func privateKey(t *testing.T) *rsa.PrivateKey {
 	return k
 }
 
+func publicKey(t *testing.T) *rsa.PublicKey {
+	b, rest := pem.Decode([]byte(rsaPublic))
+	require.NotNil(t, b)
+	assert.Empty(t, rest)
+
+	pub, err := x509.ParsePKIXPublicKey(b.Bytes)
+	require.NotNil(t, pub)
+	require.NoError(t, err)
+
+	pubKey, ok := pub.(*rsa.PublicKey)
+	require.True(t, ok)
+	return pubKey
+}
+
 func entityPrivateKey(t *testing.T) *rsa.PrivateKey {
 	b, rest := pem.Decode([]byte(rsaPrivateAlt))
 	require.NotNil(t, b)
@@ -267,15 +281,16 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes())
 
 	var tests = []struct {
-		name    string
-		body    []byte
-		bearish bool
-		polite  bool
-		addDPoP bool
+		name     string
+		body     []byte
+		goodDPoP bool
+		polite   bool
+		addDPoP  bool
 	}{
 		{"good", srt, true, true, true},
 		{"different policy", badPolicySrt, true, false, true},
-		{"no dpop token included", srt, false, true, false},
+		{"no dpop token included", srt, true, true, false},
+		{"wrong dpop token included", srt, false, true, true},
 	}
 	// The execution loop
 	for _, tt := range tests {
@@ -283,7 +298,13 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			ctx := context.Background()
 			bearer := string(jwtStandard(t))
 			if tt.addDPoP {
-				key, err := jwk.FromRaw(entityPublicKey(t))
+				var key jwk.Key
+				var err error
+				if tt.goodDPoP {
+					key, err = jwk.FromRaw(entityPublicKey(t))
+				} else {
+					key, err = jwk.FromRaw(publicKey(t))
+				}
 				require.NoError(t, err, "couldn't get JWK from key")
 				err = key.Set(jwk.AlgorithmKey, jwa.RS256) // Check the error return value
 				require.NoError(t, err, "failed to set algorithm key")
@@ -300,7 +321,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				},
 			)
 			slog.Info("verify repspponse", "v", verified, "e", err)
-			if tt.bearish {
+			if tt.goodDPoP {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
 				require.NotNil(t, verified, "unable to load request body")
 				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")

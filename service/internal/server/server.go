@@ -177,24 +177,26 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	}
 
 	// CORS
-	h = cors.New(cors.Options{
-		AllowOriginFunc: func(_ *http.Request, origin string) bool {
-			for _, allowedOrigin := range c.CORS.AllowedOrigins {
-				if allowedOrigin == "*" {
-					return true
+	if c.CORS.Enabled == true {
+		h = cors.New(cors.Options{
+			AllowOriginFunc: func(_ *http.Request, origin string) bool {
+				for _, allowedOrigin := range c.CORS.AllowedOrigins {
+					if allowedOrigin == "*" {
+						return true
+					}
+					if strings.EqualFold(origin, allowedOrigin) {
+						return true
+					}
 				}
-				if strings.EqualFold(origin, allowedOrigin) {
-					return true
-				}
-			}
-			return false
-		},
-		AllowedMethods:   c.CORS.AllowedMethods,
-		AllowedHeaders:   c.CORS.AllowedHeaders,
-		ExposedHeaders:   c.CORS.ExposedHeaders,
-		AllowCredentials: c.CORS.AllowCredentials,
-		MaxAge:           c.CORS.MaxAge,
-	}).Handler(h)
+				return false
+			},
+			AllowedMethods:   c.CORS.AllowedMethods,
+			AllowedHeaders:   c.CORS.AllowedHeaders,
+			ExposedHeaders:   c.CORS.ExposedHeaders,
+			AllowCredentials: c.CORS.AllowCredentials,
+			MaxAge:           c.CORS.MaxAge,
+		}).Handler(h)
+	}
 
 	// Add grpc handler
 	h2 := httpGrpcHandlerFunc(h, g)

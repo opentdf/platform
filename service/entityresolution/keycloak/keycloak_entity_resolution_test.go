@@ -1,4 +1,4 @@
-package idpplugin_test
+package entityresolution_test
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/service/internal/idpplugin"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
+	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const tokenResp string = `
@@ -52,8 +52,8 @@ const groupResp = `{
 	"name": "group1"
 }`
 
-func testKeycloakConfig(server *httptest.Server) idpplugin.KeyCloakConfig {
-	return idpplugin.KeyCloakConfig{
+func testKeycloakConfig(server *httptest.Server) keycloak.KeycloakConfig {
+	return keycloak.KeycloakConfig{
 		URL:            server.URL,
 		ClientID:       "c1",
 		ClientSecret:   "cs",
@@ -109,7 +109,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 
 	var ctxb = context.Background()
 
-	var req = authorization.IdpPluginRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 	csqr := map[string]string{
 		"clientId=opentdf": byEmailBobResp,
@@ -117,20 +117,11 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
 	var kcconfig = testKeycloakConfig(server)
-	var kcConfigInterface map[string]interface{}
-	inrec, err := json.Marshal(kcconfig)
-	require.NoError(t, err)
 
-	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	require.NoError(t, err)
-
-	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{
-		Config: kcConfigStruct,
-	})
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	require.NoError(t, reserr)
-	_ = json.NewEncoder(os.Stdout).Encode(resp)
+	_ = json.NewEncoder(os.Stdout).Encode(&resp)
 	var entityRepresentations = resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
@@ -148,20 +139,13 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "1235", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "alice@sample.org"}})
 
 	var kcconfig = testKeycloakConfig(server)
-	var kcConfigInterface map[string]interface{}
-	inrec, err := json.Marshal(kcconfig)
-	require.NoError(t, err)
-
-	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	require.NoError(t, err)
 
 	var ctxb = context.Background()
 
-	var req = authorization.IdpPluginRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -193,20 +177,13 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "1235", EntityType: &authorization.Entity_UserName{UserName: "alice.smith"}})
 
 	var kcconfig = testKeycloakConfig(server)
-	var kcConfigInterface map[string]interface{}
-	inrec, err := json.Marshal(kcconfig)
-	require.NoError(t, err)
-
-	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	require.NoError(t, err)
 
 	var ctxb = context.Background()
 
-	var req = authorization.IdpPluginRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -242,20 +219,13 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "123456", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "group1@sample.org"}})
 
 	var kcconfig = testKeycloakConfig(server)
-	var kcConfigInterface map[string]interface{}
-	inrec, err := json.Marshal(kcconfig)
-	require.NoError(t, err)
-
-	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	require.NoError(t, err)
 
 	var ctxb = context.Background()
 
-	var req = authorization.IdpPluginRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -287,24 +257,17 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random@sample.org"}})
 
 	var kcconfig = testKeycloakConfig(server)
-	var kcConfigInterface map[string]interface{}
-	inrec, err := json.Marshal(kcconfig)
-	require.NoError(t, err)
-
-	require.NoError(t, json.Unmarshal(inrec, &kcConfigInterface))
-	kcConfigStruct, err := structpb.NewStruct(kcConfigInterface)
-	require.NoError(t, err)
 
 	var ctxb = context.Background()
 
-	var req = authorization.IdpPluginRequest{}
+	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = idpplugin.EntityResolution(ctxb, &req, &authorization.IdpConfig{Config: kcConfigStruct})
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
 
 	require.Error(t, reserr)
-	assert.Equal(t, &authorization.IdpPluginResponse{}, resp)
-	var entityNotFound = authorization.EntityNotFoundError{Code: int32(codes.NotFound), Message: idpplugin.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
+	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
+	var entityNotFound = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: keycloak.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
 	var expectedError = errors.New(entityNotFound.String())
 	assert.Equal(t, expectedError, reserr)
 }

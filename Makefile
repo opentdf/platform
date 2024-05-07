@@ -6,8 +6,6 @@
 MODS=protocol/go lib/ocrypto lib/fixtures sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures sdk service examples
 
-EXCLUDE_OPENAPI=./service/authorization/idp_plugin.proto
-
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 # LINT_OPTIONS?=--new
@@ -44,7 +42,7 @@ proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
-	buf generate service --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
+	buf generate service --template buf.gen.openapi.docs.yaml
 	
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml

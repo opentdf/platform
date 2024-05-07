@@ -1,14 +1,11 @@
 syntax = "proto3";
 
-package authorization;
+package entityresolution;
 
 import "authorization/authorization.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/any.proto";
-
-message IdpConfig {
-  google.protobuf.Struct config = 1; 
-}
+import "google/api/annotations.proto";
 
 /*
    Example: Get idp attributes for bob and alice (both represented using an email address
@@ -26,12 +23,12 @@ message IdpConfig {
    }
 
 */
-message IdpPluginRequest {
+message ResolveEntitiesRequest {
     repeated authorization.Entity entities = 1;
 }
 
 
-message IdpEntityRepresentation {
+message EntityRepresentation {
   repeated google.protobuf.Struct additional_props = 1;
   string original_id = 2; // ephemeral entity id from the request
 }
@@ -53,8 +50,8 @@ message IdpEntityRepresentation {
    }
 
 */
-message IdpPluginResponse {
-  repeated IdpEntityRepresentation entity_representations = 1;
+message ResolveEntitiesResponse {
+  repeated EntityRepresentation entity_representations = 1;
 }
 
 message EntityNotFoundError {
@@ -62,4 +59,14 @@ message EntityNotFoundError {
   string message = 2;
   repeated google.protobuf.Any details = 3;
   string entity = 4;
+}
+
+
+service EntityResolutionService {
+  rpc ResolveEntities(ResolveEntitiesRequest) returns (ResolveEntitiesResponse) {
+    option (google.api.http) = {
+        post: "/entityresolution/resolve"
+        body: "*";
+    };
+  }
 }

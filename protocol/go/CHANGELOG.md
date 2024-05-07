@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/opentdf/platform/compare/protocol/go/v0.2.0...protocol/go/v0.2.1) (2024-05-07)
+
+
+### Features
+
+* **ers:** Create entity resolution service, replace idp plugin ([#660](https://github.com/opentdf/platform/issues/660)) ([ff44112](https://github.com/opentdf/platform/commit/ff441128a4b2ef97c3f739ee3f6f42be273b31dc))
+
+
+### Bug Fixes
+
+* **policy:** normalize FQN lookup to lower case ([#668](https://github.com/opentdf/platform/issues/668)) ([cd8a875](https://github.com/opentdf/platform/commit/cd8a8750e2a87cb65bc6c8815d8db131dca4f02d)), closes [#669](https://github.com/opentdf/platform/issues/669)
+
 ## [0.2.0](https://github.com/opentdf/platform/compare/protocol/go/v0.1.0...protocol/go/v0.2.0) (2024-04-25)
 
 

@@ -92,11 +92,15 @@ func NewRegistration() serviceregistry.Registration {
 
 // abstracted into variable for mocking in tests
 var retrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	attrFqns := ra.GetAttributeValueFqns()
+	if len(attrFqns) == 0 {
+		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
+	}
 	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: false,
 		},
-		Fqns: ra.GetAttributeValueFqns(),
+		Fqns: attrFqns,
 	})
 	if err != nil {
 		return nil, err
@@ -159,16 +163,20 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					Entities: entities,
 					Scope:    &allPertinentFqnsRA,
 				}
-				ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
-				if err != nil {
-					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("getEntitlements request failed ", req.String()))
-				}
-
-				// currently just adding each entity returned to same list
 				entityAttrValues := make(map[string][]string)
-				for _, e := range ecEntitlements.GetEntitlements() {
-					entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()
+				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
+					slog.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
+				} else {
+					ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
+					if err != nil {
+						// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
+						return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
+					}
+
+					// currently just adding each entity returned to same list
+					for _, e := range ecEntitlements.GetEntitlements() {
+						entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()
+					}
 				}
 
 				// call access-pdp
@@ -181,7 +189,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("DetermineAccess request to Access PDP failed", ""))
+					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "DetermineAccess request to Access PDP failed"))
 				}
 				// check the decisions
 				decision := authorization.DecisionResponse_DECISION_PERMIT
@@ -199,7 +207,9 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 							Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 						},
 					},
-					ResourceAttributesId: ra.GetAttributeValueFqns()[0],
+				}
+				if len(ra.GetAttributeValueFqns()) > 0 {
+					decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 				}
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}

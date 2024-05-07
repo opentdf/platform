@@ -24,6 +24,35 @@ jobs:
       - uses: amannn/action-semantic-pull-request@cfb60706e18bc85e8aec535e3c577abe8f70378e
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Types include:
+          #   - fix: fixes
+          #   - feat: features and enhancements
+          #   - chore: non-feature or enhancement (i.e. docs, ci, linting, automated, etc)
+          types: |
+            fix
+            feat
+            chore
+            refactor
+            revert
+          # Scopes include:
+          #   - main: used for automated releases
+          #   - core: related to any core need such as the core service or monorepo
+          #   - ci: anything related to ci
+          #   - docs: anything related solely to documentation
+          #   - sdk: related to sdk changes in the /sdk directory
+          #   - policy: related to policy service changes (i.e. /service/policy)
+          #   - kas: related to key access service changes (i.e. /service/kas)
+          #   - authz: related to the authorization service changes (i.e. /service/authorization)
+          scopes: |
+            main
+            core
+            ci
+            docs
+            sdk
+            policy
+            kas
+            authz
 
   go:
     runs-on: ubuntu-22.04

@@ -19,6 +19,24 @@ services:
     clientid: tdf-authorization-svc
     clientsecret: secret
     tokenEndpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
+    jwtdecomposition:
+      # always add entities from these selectors
+      alwaysSelectors:
+        - selector: azp
+          entityType: clientId
+        # example for other idps
+        # - selector: sub
+        #   entityType: uuid
+      # evaluate the described conditions for these selectors
+      conditionalSelectors:
+        - if: client_id
+          present: false
+          selector: preferred_username
+          entityType: username
+        # - if: some_claim
+        #   equals: something
+        #   selector: other_selector
+        #   entityType: email
   entityresolution:
     enabled: true
     url: http://localhost:8888/auth

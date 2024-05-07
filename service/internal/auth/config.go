@@ -13,7 +13,7 @@ type Config struct {
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens
-type AuthNConfig struct {
+type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	EnforceDPoP       bool   `yaml:"enforceDPoP" json:"enforceDPoP" mapstructure:"enforceDPoP" default:"false"`
 	Issuer            string `yaml:"issuer" json:"issuer"`
 	Audience          string `yaml:"audience" json:"audience"`

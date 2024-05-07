@@ -12,7 +12,7 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
-type AttributesService struct {
+type AttributesService struct { //nolint:revive // AttributesService is a valid name for this struct
 	attributes.UnimplementedAttributesServiceServer
 	dbClient policydb.PolicyDBClient
 }
@@ -22,7 +22,10 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &attributes.AttributesService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			return &AttributesService{dbClient: policydb.NewClient(srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, server.(attributes.AttributesServiceServer))
+				if srv, ok := server.(attributes.AttributesServiceServer); ok {
+					return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, srv)
+				}
+				return fmt.Errorf("failed to assert server as attributes.AttributesServiceServer")
 			}
 		},
 	}

@@ -1,12 +1,14 @@
 package sdk
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -16,6 +18,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -74,10 +77,8 @@ func getNewDPoPKey() (string, jwk.Key, *ocrypto.AsymDecryption, error) { //nolin
 	return dpopPublicKeyPEM.String(), dpopKey, &asymDecryption, nil
 }
 
-/*
-Credentials that allow us to connect to an IDP and obtain an access token that is bound
-to a DPoP key
-*/
+// IDPAccessTokenSource credentials that allow us to connect to an IDP and obtain an access token that is bound
+// to a DPoP key
 type IDPAccessTokenSource struct {
 	credentials      oauth.ClientCredentials
 	idpTokenEndpoint url.URL
@@ -87,6 +88,10 @@ type IDPAccessTokenSource struct {
 	asymDecryption   ocrypto.AsymDecryption
 	dpopPEM          string
 	tokenMutex       *sync.Mutex
+}
+
+func (t *IDPAccessTokenSource) Token() (*oauth2.Token, error) {
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func NewIDPAccessTokenSource(
@@ -115,14 +120,14 @@ func NewIDPAccessTokenSource(
 	return &tokenSource, nil
 }
 
-// use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) AccessToken() (auth.AccessToken, error) {
+// AccessToken use a pointer receiver so that the token state is shared
+func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
 	t.tokenMutex.Lock()
 	defer t.tokenMutex.Unlock()
 
 	if t.token == nil || t.token.Expired() {
-		slog.Debug("getting new access token")
-		tok, err := oauth.GetAccessToken(t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
+		slog.DebugContext(ctx, "getting new access token")
+		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
 			return "", fmt.Errorf("error getting access token: %w", err)
 		}

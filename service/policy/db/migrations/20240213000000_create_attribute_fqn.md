@@ -14,7 +14,7 @@ notes: |
   used with systems like KAS to look up the data and make a decision.
 
   It is alright if this data is eventually consistent as the data can be reindexed as needed. There
-  might be a future when we support multiple datastores and utilize an auxillary database to support
+  might be a future when we support multiple datastores and utilize an auxiliary database to support
   faster lookups.
 ---
 

@@ -19,6 +19,7 @@ import (
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -31,6 +32,7 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 	eng         *opa.Engine
 	sdk         *otdf.SDK
 	ersURL      string
+	logger      *logger.Logger
 	tokenSource *oauth2.TokenSource
 }
 
@@ -108,7 +110,7 @@ var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntit
 }
 
 func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
-	slog.DebugContext(ctx, "getting decisions")
+	as.logger.DebugContext(ctx, "getting decisions")
 
 	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos
 	rsp := &authorization.GetDecisionsResponse{
@@ -116,7 +118,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 	}
 	for _, dr := range req.GetDecisionRequests() {
 		for _, ra := range dr.GetResourceAttributes() {
-			slog.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
+			as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
 			// get attribute definition/value combinations
 			dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
@@ -207,11 +209,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 }
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-	slog.DebugContext(ctx, "getting entitlements")
+	as.logger.DebugContext(ctx, "getting entitlements")
 	// Scope is required for because of performance.  Remove and handle 360 no scope
 	// https://github.com/opentdf/platform/issues/365
 	if req.GetScope() == nil {
-		slog.ErrorContext(ctx, "requires scope")
+		as.logger.ErrorContext(ctx, "requires scope")
 		return nil, errors.New(db.ErrTextFqnMissingValue)
 	}
 	// get subject mappings
@@ -226,9 +228,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		return nil, err
 	}
 	subjectMappings := avf.GetFqnAttributeValues()
-	slog.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
+	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	if req.Entities == nil {
-		slog.ErrorContext(ctx, "requires entities")
+		as.logger.ErrorContext(ctx, "requires entities")
 		return nil, errors.New("entity chain is required")
 	}
 	rsp := &authorization.GetEntitlementsResponse{
@@ -245,7 +247,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		if err != nil {
 			return nil, err
 		}
-		slog.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
+		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 		// uncomment for debugging
 		// if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		//	_ = json.NewEncoder(os.Stdout).Encode(in)
@@ -272,15 +274,15 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// }
 		results, ok := decision.Result.([]interface{})
 		if !ok {
-			slog.DebugContext(ctx, "not ok", "entity_id", entity.GetId(), "decision.Result", fmt.Sprintf("%+v", decision.Result))
+			as.logger.DebugContext(ctx, "not ok", "entity_id", entity.GetId(), "decision.Result", fmt.Sprintf("%+v", decision.Result))
 			return nil, err
 		}
-		slog.DebugContext(ctx, "opa results", "entity_id", entity.GetId(), "results", fmt.Sprintf("%+v", results))
+		as.logger.DebugContext(ctx, "opa results", "entity_id", entity.GetId(), "results", fmt.Sprintf("%+v", results))
 		saa := make([]string, len(results))
 		for k, v := range results {
 			str, okk := v.(string)
 			if !okk {
-				slog.DebugContext(ctx, "not ok", slog.String("entity_id", entity.GetId()), slog.String(strconv.Itoa(k), fmt.Sprintf("%+v", v)))
+				as.logger.DebugContext(ctx, "not ok", slog.String("entity_id", entity.GetId()), slog.String(strconv.Itoa(k), fmt.Sprintf("%+v", v)))
 			}
 			saa[k] = str
 		}
@@ -289,7 +291,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			AttributeValueFqns: saa,
 		}
 	}
-	slog.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
+	as.logger.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
 	return rsp, nil
 }
 

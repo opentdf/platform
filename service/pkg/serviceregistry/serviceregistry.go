@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -32,6 +33,7 @@ type RegistrationParams struct {
 	Engine          *opa.Engine
 	SDK             *sdk.SDK
 	WellKnownConfig func(namespace string, config any) error
+	Logger          *logger.Logger
 }
 type HandlerServer func(ctx context.Context, mux *runtime.ServeMux, server any) error
 type RegisterFunc func(RegistrationParams) (Impl any, HandlerServer HandlerServer)

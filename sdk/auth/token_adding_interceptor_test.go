@@ -13,14 +13,12 @@ import (
 	"net/http"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
-	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -179,14 +177,7 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 	}
 	return f(fts.key)
 }
-func (fts *FakeTokenSource) Token() (*oauth2.Token, error) {
-	return &oauth2.Token{
-		AccessToken:  fts.accessToken,
-		TokenType:    "",
-		RefreshToken: "",
-		Expiry:       time.Time{},
-	}, nil
-}
+
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024

@@ -18,7 +18,6 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -88,10 +87,6 @@ type IDPAccessTokenSource struct {
 	asymDecryption   ocrypto.AsymDecryption
 	dpopPEM          string
 	tokenMutex       *sync.Mutex
-}
-
-func (t *IDPAccessTokenSource) Token() (*oauth2.Token, error) {
-	return nil, fmt.Errorf("unimplemented")
 }
 
 func NewIDPAccessTokenSource(

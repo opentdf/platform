@@ -51,8 +51,8 @@ jobs:
             docs
             sdk
             policy
-            key-access
-            authorization
+            kas
+            authz
 
   go:
     runs-on: ubuntu-22.04

@@ -45,10 +45,10 @@ func LoadConfig(key string, file string) (*Config, error) {
 	}
 	// uncommment to debug config loading,
 	// issue is the loglevel directive is in the config yaml
-	//t := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-	//	Level: slog.LevelDebug,
-	//})
-	//v := viper.NewWithOptions(viper.WithLogger(slog.New(t)))
+	// t := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	// 	Level: slog.LevelDebug,
+	// })
+	// v := viper.NewWithOptions(viper.WithLogger(slog.New(t)))
 	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
 	v.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
 	v.AddConfigPath("." + key)

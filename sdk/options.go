@@ -19,7 +19,6 @@ type config struct {
 	tokenExchange     *oauth.TokenExchangeInfo
 	tokenEndpoint     string
 	scopes            []string
-	authConfig        *AuthConfig
 	policyConn        *grpc.ClientConn
 	authorizationConn *grpc.ClientConn
 	extraDialOptions  []grpc.DialOption
@@ -71,15 +70,6 @@ func WithTLSCredentials(tls *tls.Config, audience []string) Option {
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint
-	}
-}
-
-// WithAuthConfig temporary option to allow the for token exchange and the
-// use of REST-ful KASs. this will likely change as we
-// make these options more robust
-func WithAuthConfig(authConfig AuthConfig) Option {
-	return func(c *config) {
-		c.authConfig = &authConfig
 	}
 }
 

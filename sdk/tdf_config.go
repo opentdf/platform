@@ -26,8 +26,6 @@ const (
 	GMAC
 )
 
-const kHTTPOk = 200
-
 // KASInfo contains Key Access Server information.
 type KASInfo struct {
 	// URL of the KAS server``

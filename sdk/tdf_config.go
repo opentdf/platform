@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"google.golang.org/grpc"
@@ -125,10 +124,6 @@ func (s SDK) WithKnownKas(configuredKasInfoKeys ...string) TDFOption {
 				panic(fmt.Sprintf("Trying to use unknown KAS WithKnownKas: %s", kasInfoKey))
 			}
 
-			if kasInfo.DialOptions == nil {
-				slog.Warn("DialOptions not set on known KAS, using SDK's", "KasURL", kasInfo.URL)
-				kasInfo.DialOptions = s.dialOptions
-			}
 			c.kasInfoList = append(c.kasInfoList, kasInfo)
 		}
 

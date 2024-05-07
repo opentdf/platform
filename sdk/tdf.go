@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"strings"
 
@@ -100,7 +101,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
-	err = fillInPublicKeys(tdfConfig.kasInfoList)
+	err = fillInPublicKeys(tdfConfig.kasInfoList, s.dialOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -741,13 +742,18 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	return false, nil
 }
 
-func fillInPublicKeys(kasInfos []KASInfo) error {
+func fillInPublicKeys(kasInfos []KASInfo, sdkDialOptions []grpc.DialOption) error {
 	for idx, kasInfo := range kasInfos {
 		if kasInfo.PublicKey != "" {
 			continue
 		}
 
-		publicKey, err := getPublicKey(kasInfo, kasInfo.DialOptions...)
+		dialOptions := kasInfo.DialOptions
+		if dialOptions == nil {
+			slog.Warn("DialOptions not set for KAS, using SDK's. Try using WithKnownKas instead of WithKasInformation.", "KasURL", kasInfo.URL)
+			dialOptions = sdkDialOptions
+		}
+		publicKey, err := getPublicKey(kasInfo, dialOptions...)
 		if err != nil {
 			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.URL, err)
 		}

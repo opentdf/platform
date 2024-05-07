@@ -31,7 +31,7 @@ func mockRetrieveAttributeDefinitions(ctx context.Context, _ *authorization.Reso
 	return getAttributesByValueFqnsResponse.GetFqnAttributeValues(), nil
 }
 
-func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitlementsRequest, _ AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
+func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitlementsRequest, _ *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
 	slog.DebugContext(ctx, "Using mocked GetEntitlements: "+entitlementsResponse.String())
 	return &entitlementsResponse, nil
 }

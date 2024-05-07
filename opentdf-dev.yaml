@@ -15,11 +15,17 @@ services:
     enabled: true
   authorization:
     enabled: true
-    url: http://localhost:8888
-    client: "tdf-entity-resolution"
-    secret: "secret"
+    ersUrl: http://localhost:8080/entityresolution/resolve
+    clientid: tdf-authorization-svc
+    clientsecret: secret
+    tokenEndpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
+  entityresolution:
+    enabled: true
+    url: http://localhost:8888/auth
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
     realm: "opentdf"
-    legacy: true
+    legacykeycloak: true
 server:
   auth:
     enabled: true

@@ -7,6 +7,7 @@ import (
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
+	"github.com/opentdf/platform/service/entityresolution"
 	"github.com/opentdf/platform/service/health"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/logger"
@@ -25,6 +26,7 @@ func registerServices() error {
 		authorization.NewRegistration(),
 		kas.NewRegistration(),
 		wellknown.NewRegistration(),
+		entityresolution.NewRegistration(),
 	}
 	services = append(services, policy.NewRegistrations()...)
 

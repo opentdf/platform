@@ -153,6 +153,20 @@ func privateKey(t *testing.T) *rsa.PrivateKey {
 	return k
 }
 
+func publicKey(t *testing.T) *rsa.PublicKey {
+	b, rest := pem.Decode([]byte(rsaPublic))
+	require.NotNil(t, b)
+	assert.Empty(t, rest)
+
+	pub, err := x509.ParsePKIXPublicKey(b.Bytes)
+	require.NotNil(t, pub)
+	require.NoError(t, err)
+
+	pubKey, ok := pub.(*rsa.PublicKey)
+	require.True(t, ok)
+	return pubKey
+}
+
 func entityPrivateKey(t *testing.T) *rsa.PrivateKey {
 	b, rest := pem.Decode([]byte(rsaPrivateAlt))
 	require.NotNil(t, b)
@@ -214,6 +228,13 @@ func (publicKey *RSAPublicKey) VerifySignature(_ context.Context, raw string) ([
 }
 
 func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
+	tok := mockJWT(t)
+	raw, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, signer))
+	require.NoError(t, err)
+	return raw
+}
+
+func mockJWT(t *testing.T) jwt.Token {
 	tok := jwt.New()
 
 	var err error
@@ -227,10 +248,7 @@ func signedMockJWT(t *testing.T, signer *rsa.PrivateKey) []byte {
 	set(jwt.AudienceKey, `testonly`)
 	set(jwt.SubjectKey, `testuser1`)
 	require.NoError(t, err)
-
-	raw, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, signer))
-	require.NoError(t, err)
-	return raw
+	return tok
 }
 
 func jwtStandard(t *testing.T) []byte {
@@ -263,43 +281,50 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes())
 
 	var tests = []struct {
-		name    string
-		bearer  []byte
-		body    []byte
-		bearish bool
-		polite  bool
-		addDPoP bool
+		name     string
+		body     []byte
+		goodDPoP bool
+		polite   bool
+		addDPoP  bool
 	}{
-		{"good", jwtStandard(t), srt, true, true, true},
-		{"different policy", jwtStandard(t), badPolicySrt, true, false, true},
-		{"no dpop token included", jwtStandard(t), srt, false, true, false},
+		{"good", srt, true, true, true},
+		{"different policy", badPolicySrt, true, false, true},
+		{"no dpop token included", srt, true, true, false},
+		{"wrong dpop token included", srt, false, true, true},
 	}
 	// The execution loop
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
+			bearer := string(jwtStandard(t))
 			if tt.addDPoP {
-				key, err := jwk.FromRaw(entityPublicKey(t))
+				var key jwk.Key
+				var err error
+				if tt.goodDPoP {
+					key, err = jwk.FromRaw(entityPublicKey(t))
+				} else {
+					key, err = jwk.FromRaw(publicKey(t))
+				}
 				require.NoError(t, err, "couldn't get JWK from key")
 				err = key.Set(jwk.AlgorithmKey, jwa.RS256) // Check the error return value
 				require.NoError(t, err, "failed to set algorithm key")
-				ctx = auth.ContextWithJWK(ctx, key)
+				ctx = auth.ContextWithJWK(ctx, key, mockJWT(t), bearer)
 			}
 
-			md := metadata.New(map[string]string{"token": string(tt.bearer)})
+			md := metadata.New(map[string]string{"token": bearer})
 			ctx = metadata.NewIncomingContext(ctx, md)
 
-			verified, err := verifySignedRequestToken(
+			verified, err := extractSRTBody(
 				ctx,
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),
 				},
 			)
 			slog.Info("verify repspponse", "v", verified, "e", err)
-			if tt.bearish {
-				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, tt.bearer)
-				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
+			if tt.goodDPoP {
+				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
 				require.NotNil(t, verified, "unable to load request body")
+				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
 
 				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey))
 				if tt.polite {
@@ -309,7 +334,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 					require.Error(t, err, "failed to fail policy body=[%v]", tt.body)
 				}
 			} else {
-				require.Error(t, err, "failed to fail srt=[%s], tok=[%s]", tt.body, tt.bearer)
+				require.Error(t, err, "failed to fail srt=[%s], tok=[%s]", tt.body, bearer)
 			}
 		})
 	}
@@ -322,12 +347,12 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 
 	err = key.Set(jwk.AlgorithmKey, jwa.NoSignature)
 	require.NoError(t, err, "failed to set algorithm key")
-	ctx = auth.ContextWithJWK(ctx, key)
+	ctx = auth.ContextWithJWK(ctx, key, mockJWT(t), string(jwtStandard(t)))
 
 	md := metadata.New(map[string]string{"token": string(jwtWrongKey(t))})
 	ctx = metadata.NewIncomingContext(ctx, md)
 
-	verified, err := verifySignedRequestToken(
+	verified, err := extractSRTBody(
 		ctx,
 		&kaspb.RewrapRequest{
 			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t))),
@@ -341,7 +366,7 @@ func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
 	ctx := context.Background()
 	_, err := getEntityInfo(ctx)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "missing metadata")
+	require.Contains(t, err.Error(), "missing")
 }
 
 func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T) {
@@ -350,7 +375,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T)
 
 	_, err := getEntityInfo(ctx)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "missing authorization header")
+	require.Contains(t, err.Error(), "missing")
 }
 
 func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T) {
@@ -359,16 +384,5 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 
 	_, err := getEntityInfo(ctx)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "not of type dpop")
-}
-
-func Test_GetEntityInfo_When_Authorization_MD_Valid_Expect_Success(t *testing.T) {
-	ctx := context.Background()
-	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"authorization": "DPoP eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiY2xpZW50X2lkIjoib3BlbnRkZiIsIm5hbWUiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.qB9V3yqkvkrJgGPWouXGwhHYtd7ZqYydktH8AZ7ETKQ"}))
-
-	entity, err := getEntityInfo(ctx)
-	require.NoError(t, err)
-
-	assert.Equal(t, "1234567890", entity.EntityID)
-	assert.Equal(t, "opentdf", entity.ClientID)
+	require.Contains(t, err.Error(), "missing")
 }

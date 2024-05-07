@@ -18,7 +18,10 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -31,6 +34,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+type SignedRequestBody struct {
+	RequestBody string `json:"requestBody"`
+}
 
 type RequestBody struct {
 	AuthToken       string         `json:"authToken"`
@@ -75,49 +82,79 @@ func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 	return mac.Sum(nil), nil
 }
 
-func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody, error) {
+var acceptableSkew = 30 * time.Second
+
+func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key) (string, error) {
+	token, err := jwt.Parse([]byte(srt), jwt.WithKey(jwa.RS256, dpopJWK), jwt.WithAcceptableSkew(acceptableSkew))
+	if err != nil {
+		slog.WarnContext(ctx, "unable to verify request token", "err", err, "srt", srt, "jwk", dpopJWK)
+		return "", err401("unable to verify request token")
+	}
+	return justRequestBody(ctx, token)
+}
+
+func noverify(ctx context.Context, srt string) (string, error) {
+	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithAcceptableSkew(acceptableSkew))
+	if err != nil {
+		slog.WarnContext(ctx, "unable to validate or parse token", "err", err)
+		return "", err401("could not parse token")
+	}
+	return justRequestBody(ctx, token)
+}
+
+func justRequestBody(ctx context.Context, token jwt.Token) (string, error) {
+	rb, exists := token.Get("requestBody")
+	if !exists {
+		slog.WarnContext(ctx, "missing request body")
+		return "", err400("missing request body")
+	}
+
+	rbString, ok := rb.(string)
+	if !ok {
+		slog.WarnContext(ctx, "invalid request body")
+		return "", err400("invalid request body")
+	}
+	return rbString, nil
+}
+
+func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody, error) {
+	// First load legacy method for verifying SRT
+	md, exists := metadata.FromIncomingContext(ctx)
+	if !exists {
+		slog.WarnContext(ctx, "missing metadata for srt validation")
+		return nil, errors.New("missing metadata")
+	}
+	if vpk, ok := md["X-Virtrupubkey"]; ok && len(vpk) == 1 {
+		slog.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
+	}
+
 	// get dpop public key from context
 	dpopJWK := auth.GetJWKFromContext(ctx)
 
-	var token jwt.Token
 	var err error
+	var rbString string
+	srt := in.GetSignedRequestToken()
 	if dpopJWK == nil {
 		slog.InfoContext(ctx, "no DPoP key provided")
 		// if we have no DPoP key it's for one of two reasons:
 		// 1. auth is disabled so we can't get a DPoP JWK
 		// 2. auth is enabled _but_ we aren't requiring DPoP
 		// in either case letting the request through makes sense
-		token, err = jwt.Parse([]byte(in.GetSignedRequestToken()), jwt.WithValidate(false))
+		rbString, err = noverify(ctx, srt)
 		if err != nil {
-			slog.WarnContext(ctx, "unable to verify parse token", "err", err)
-			return nil, err401("could not parse token")
+			slog.ErrorContext(ctx, "unable to load RSA verifier", "err", err)
+			return nil, err
 		}
 	} else {
 		// verify and validate the request token
-		token, err = jwt.Parse([]byte(in.GetSignedRequestToken()),
-			jwt.WithKey(dpopJWK.Algorithm(), dpopJWK),
-			jwt.WithValidate(true),
-		)
-		// we have failed to verify the signed request token
+		var err error
+		rbString, err = verifySRT(ctx, srt, dpopJWK)
 		if err != nil {
-			slog.WarnContext(ctx, "unable to verify request token", "err", err)
-			return nil, err401("unable to verify request token")
+			return nil, err
 		}
 	}
-	rb, exists := token.Get("requestBody")
-	if !exists {
-		slog.WarnContext(ctx, "missing request body")
-		return nil, err400("missing request body")
-	}
 
-	var requestBody = new(RequestBody)
-
-	rbString, ok := rb.(string)
-	if !ok {
-		slog.WarnContext(ctx, "invalid request body")
-		return nil, err400("invalid request body")
-	}
-
+	var requestBody RequestBody
 	err = json.Unmarshal([]byte(rbString), &requestBody)
 	if err != nil {
 		slog.WarnContext(ctx, "invalid request body")
@@ -141,10 +178,10 @@ func verifySignedRequestToken(ctx context.Context, in *kaspb.RewrapRequest) (*Re
 	switch publicKey := clientPublicKey.(type) {
 	case *rsa.PublicKey:
 		requestBody.PublicKey = publicKey
-		return requestBody, nil
+		return &requestBody, nil
 	case *ecdsa.PublicKey:
 		requestBody.PublicKey = publicKey
-		return requestBody, nil
+		return &requestBody, nil
 	default:
 		slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
 		return nil, err400("clientPublicKey unsupported type")
@@ -189,36 +226,9 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 	var info = new(entityInfo)
 
-	// check if metadata exists. if it doesn't not sure how we got to this point
-	md, exists := metadata.FromIncomingContext(ctx)
-	if !exists {
-		slog.WarnContext(ctx, "missing metadata")
-		return nil, errors.New("missing metadata")
-	}
-
-	// if access token is missing something went wrong in the authn interceptor
-	var tokenRaw string
-
-	header, exists := md["authorization"]
-	if !exists {
-		slog.WarnContext(ctx, "missing authorization header")
-		return nil, errors.New("missing authorization header")
-	}
-	if len(header) < 1 {
-		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
-	}
-
-	switch {
-	case strings.HasPrefix(header[0], "DPoP "):
-		tokenRaw = strings.TrimPrefix(header[0], "DPoP ")
-	default:
-		return nil, status.Error(codes.Unauthenticated, "not of type dpop")
-	}
-
-	token, err := jwt.ParseInsecure([]byte(tokenRaw))
-	if err != nil {
-		slog.WarnContext(ctx, "unable to get token")
-		return nil, errors.New("unable to get token")
+	token := auth.GetAccessTokenFromContext(ctx)
+	if token == nil {
+		return nil, err401("missing access token")
 	}
 
 	sub, found := token.Get("sub")
@@ -243,22 +253,23 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 		}
 	}
 
-	info.Token = tokenRaw
+	info.Token = auth.GetRawAccessTokenFromContext(ctx)
 
 	return info, nil
 }
 
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	slog.DebugContext(ctx, "REWRAP")
-	slog.Info("kas context", slog.Any("ctx", ctx))
 
-	body, err := verifySignedRequestToken(ctx, in)
+	body, err := extractSRTBody(ctx, in)
 	if err != nil {
+		slog.DebugContext(ctx, "unverifiable srt", "err", err)
 		return nil, err
 	}
 
 	entityInfo, err := getEntityInfo(ctx)
 	if err != nil {
+		slog.DebugContext(ctx, "no entity info", "err", err)
 		return nil, err
 	}
 
@@ -267,6 +278,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.Algorithm == "" {
+		slog.DebugContext(ctx, "default rewrap algorithm")
 		body.Algorithm = "rsa:2048"
 	}
 

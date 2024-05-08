@@ -74,7 +74,7 @@ jobs:
           fetch-depth: 0      
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.22.2"
+          go-version: "1.22.3"
           check-latest: false
           cache-dependency-path: |
             examples/go.sum
@@ -119,7 +119,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.22.2"
+          go-version: "1.22.3"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -201,7 +201,7 @@ jobs:
           against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.22.2"
+          go-version: "1.22.3"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -237,7 +237,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.22.2"
+          go-version: "1.22.3"
           check-latest: false
           cache: false
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36

@@ -229,7 +229,7 @@ jobs:
         run: |-
           cd protocol/go
           go mod tidy
-          git restore go.sum
+          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that make proto-generate has run before PR submission; see above for error details

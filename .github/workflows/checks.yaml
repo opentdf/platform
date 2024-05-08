@@ -213,6 +213,10 @@ jobs:
       - run: make proto-generate
       - name: Restore go.mod after installing protoc-gen-doc
         run: git restore {service,protocol/go}/go.{mod,sum}
+      - name: check go fmt and go mod tidy
+        run: |-
+          make fix
+          git restore {examples,lib/{fixtures,ocrypto},protocol/go,sdk,service}/go.sum
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that files have been formatted before PR submission

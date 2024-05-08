@@ -223,75 +223,12 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 	return &policy, nil
 }
 
-func getEntityInfoDeprecated(ctx context.Context) (*entityInfo, error) {
-	var info = new(entityInfo)
-
-	// check if metadata exists. if it doesn't not sure how we got to this point
-	md, exists := metadata.FromIncomingContext(ctx)
-	if !exists {
-		slog.WarnContext(ctx, "missing metadata")
-		return nil, errors.New("missing metadata")
-	}
-
-	// if access token is missing something went wrong in the authn interceptor
-	var tokenRaw string
-
-	header, exists := md["authorization"]
-	if !exists {
-		slog.WarnContext(ctx, "missing authorization header")
-		return nil, errors.New("missing authorization header")
-	}
-	if len(header) < 1 {
-		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
-	}
-
-	switch {
-	case strings.HasPrefix(header[0], "DPoP "):
-		tokenRaw = strings.TrimPrefix(header[0], "DPoP ")
-	default:
-		return nil, status.Error(codes.Unauthenticated, "not of type dpop")
-	}
-
-	token, err := jwt.ParseInsecure([]byte(tokenRaw))
-	if err != nil {
-		slog.WarnContext(ctx, "unable to get token")
-		return nil, errors.New("unable to get token")
-	}
-
-	sub, found := token.Get("sub")
-	if found {
-		var subAssert bool
-		info.EntityID, subAssert = sub.(string)
-		if !subAssert {
-			slog.WarnContext(ctx, "sub not a string")
-		}
-	} else {
-		slog.WarnContext(ctx, "missing sub")
-	}
-
-	// We have to check for the different ways the clientID can be stored in the token
-	clientIDKeys := []string{"clientId", "cid", "client_id"}
-	for _, key := range clientIDKeys {
-		if value, keyExists := token.Get(key); keyExists {
-			if clientID, ok := value.(string); ok {
-				info.ClientID = clientID
-				break // Stop looping once a valid key is found and successfully asserted
-			}
-		}
-	}
-
-	info.Token = tokenRaw
-
-	return info, nil
-}
-
 func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 	var info = new(entityInfo)
 
 	token := auth.GetAccessTokenFromContext(ctx)
-	tokenRaw := auth.GetRawAccessTokenFromContext(ctx)
-	if token == nil && tokenRaw == "" {
-		return getEntityInfoDeprecated(ctx)
+	if token == nil {
+		return nil, err401("missing access token")
 	}
 
 	sub, found := token.Get("sub")
@@ -316,7 +253,7 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 		}
 	}
 
-	info.Token = tokenRaw
+	info.Token = auth.GetRawAccessTokenFromContext(ctx)
 
 	return info, nil
 }

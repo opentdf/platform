@@ -6,16 +6,18 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 )
 
+var (
+	serviceHealthChecks = make(map[string]func(context.Context) error)
+)
+
 type HealthService struct { //nolint:revive // HealthService is a valid name for this struct
 	healthpb.UnimplementedHealthServer
-	db     *db.Client
 	logger *logger.Logger
 }
 
@@ -25,15 +27,12 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &healthpb.Health_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			err := srp.WellKnownConfig("health", map[string]any{
-				"endpoints": map[string]any{
-					"liveness":  "/healthz?service=liveness",
-					"readiness": "/healthz?service=readiness",
-				},
+				"endpoint": "/healthz",
 			})
 			if err != nil {
-				panic(err)
+				srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
 			}
-			return &HealthService{db: srp.DBClient, logger: srp.Logger}, func(_ context.Context, _ *runtime.ServeMux, _ any) error {
+			return &HealthService{logger: srp.Logger}, func(_ context.Context, _ *runtime.ServeMux, _ any) error {
 				return nil
 			}
 		},
@@ -47,13 +46,27 @@ func (s HealthService) Check(ctx context.Context, req *healthpb.HealthCheckReque
 		}, nil
 	}
 
-	// Check to see if we are doing a readiness probe
-	if req.GetService() == "readiness" {
-		// Check the database connection
-		if err := s.db.Pgx.Ping(ctx); err != nil {
-			s.logger.Error("database connection is not ready", slog.String("error", err.Error()))
+	switch req.GetService() {
+	case "all":
+		for service, check := range serviceHealthChecks {
+			if err := check(ctx); err != nil {
+				s.logger.ErrorContext(ctx, "service is not ready", slog.String("service", service), slog.String("error", err.Error()))
+				return &healthpb.HealthCheckResponse{
+					Status: healthpb.HealthCheckResponse_NOT_SERVING,
+				}, nil
+			}
+		}
+	default:
+		if check, ok := serviceHealthChecks[req.GetService()]; ok {
+			if err := check(ctx); err != nil {
+				s.logger.ErrorContext(ctx, "service is not ready", slog.String("service", req.GetService()), slog.String("error", err.Error()))
+				return &healthpb.HealthCheckResponse{
+					Status: healthpb.HealthCheckResponse_NOT_SERVING,
+				}, nil
+			}
+		} else {
 			return &healthpb.HealthCheckResponse{
-				Status: healthpb.HealthCheckResponse_NOT_SERVING,
+				Status: healthpb.HealthCheckResponse_SERVICE_UNKNOWN,
 			}, nil
 		}
 	}
@@ -65,4 +78,13 @@ func (s HealthService) Check(ctx context.Context, req *healthpb.HealthCheckReque
 
 func (s HealthService) Watch(_ *healthpb.HealthCheckRequest, _ healthpb.Health_WatchServer) error {
 	return status.Error(codes.Unimplemented, "unimplemented")
+}
+
+func RegisterReadinessCheck(namespace string, service func(context.Context) error) error {
+	if _, ok := serviceHealthChecks[namespace]; ok {
+		return status.Error(codes.AlreadyExists, "readiness check already registered")
+	}
+	serviceHealthChecks[namespace] = service
+
+	return nil
 }

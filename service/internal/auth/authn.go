@@ -331,17 +331,18 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	if !tokenHasCNF && !a.enforceDPoP {
 		// this condition is not quite tight because it's possible that the `cnf` claim may
 		// come from token introspection
+		ctx = ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
 		return accessToken, ctx, nil
 	}
 	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
 		return nil, nil, err
 	}
-	ctx = ContextWithJWK(ctx, key, accessToken, tokenRaw)
+	ctx = ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
 	return accessToken, ctx, nil
 }
 
-func ContextWithJWK(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
+func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
 	return context.WithValue(ctx, authnContextKey, &authContext{
 		key,
 		accessToken,

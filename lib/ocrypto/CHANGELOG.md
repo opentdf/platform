@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.0...lib/ocrypto/v0.1.1) (2024-05-07)
+
+
+### Features
+
+* **crypto:** nanotdf crypto helper methods ([#592](https://github.com/opentdf/platform/issues/592)) ([9374f04](https://github.com/opentdf/platform/commit/9374f044621936cbf40ff7b9913a68e289059219))
+
 ## [0.1.0](https://github.com/opentdf/platform/compare/lib/ocrypto-v0.1.0...lib/ocrypto/v0.1.0) (2024-04-22)
 
 

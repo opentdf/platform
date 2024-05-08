@@ -112,7 +112,7 @@ jobs:
         run: |-
           go mod tidy
           go fmt ./...
-          git restore go.sum
+          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
         working-directory: ${{ matrix.directory }}
       - run: git diff
       - run: git diff-files --ignore-submodules

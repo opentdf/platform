@@ -2,8 +2,8 @@ go 1.22.3
 
 use (
 	./examples
+	./lib/fixtures
 	./lib/ocrypto
-        ./lib/fixtures
 	./protocol/go
 	./sdk
 	./service

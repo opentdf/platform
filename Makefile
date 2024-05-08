@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
+.PHONY: all build clean docker-build fix fmt go-lint lint proto-generate proto-lint sdk/sdk test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures sdk service examples
@@ -20,9 +20,15 @@ toolcheck:
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
 	@golangci-lint --version | grep "version v\?1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
+	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 
-fix:
-	for m in $(HAND_MODS); do (cd $$m && go mod tidy && find ./ -name \*.go | xargs goimports -w) || exit 1; done
+fix: tidy fmt
+
+fmt:
+	for m in $(HAND_MODS); do (cd $$m && && find ./ -name \*.go | xargs goimports -w) || exit 1; done
+
+tidy:
+	for m in $(HAND_MODS); do (cd $$m && go mod tidy) || exit 1; done
 
 lint: proto-lint go-lint
 

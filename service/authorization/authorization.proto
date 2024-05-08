@@ -9,8 +9,8 @@ import "policy/objects.proto";
 
 
 message Token {
-  string id = 1 // ephemeral id for tracking between request and response
-  string jwt = 2 // the token
+  string id = 1; // ephemeral id for tracking between request and response
+  string jwt = 2; // the token
 }
 
 // PE (Person Entity) or NPE (Non-Person Entity)

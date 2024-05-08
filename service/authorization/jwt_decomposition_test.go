@@ -1,0 +1,238 @@
+package authorization
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// / Keycloak use cases
+const client_credentials_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTE2MDQsImlhdCI6MTcxNTA5MTMwNCwianRpIjoiMTE3MTYzMjYtNWQyNS00MjlmLWFjMDItNmU0MjE2OWFjMGJhIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo4ODg4IiwicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTljOWVlZDItOTM1Ni00ZjE2LWIwODQtZTgyZDczZjViN2QyIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGRmLWVudGl0eS1yZXNvbHV0aW9uIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJkZWZhdWx0LXJvbGVzLW9wZW50ZGYiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LXVzZXJzIiwidmlldy1jbGllbnRzIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LWdyb3VwcyIsInF1ZXJ5LXVzZXJzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6InByb2ZpbGUgZW1haWwiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImNsaWVudEhvc3QiOiIxOTIuMTY4LjI0MC4xIiwicHJlZmVycmVkX3VzZXJuYW1lIjoic2VydmljZS1hY2NvdW50LXRkZi1lbnRpdHktcmVzb2x1dGlvbiIsImNsaWVudEFkZHJlc3MiOiIxOTIuMTY4LjI0MC4xIiwiY2xpZW50X2lkIjoidGRmLWVudGl0eS1yZXNvbHV0aW9uIn0.h29QLo-QvIc67KKqU_e1-x6G_o5YQccOyW9AthMdB7xhn9C1dBrcScytaWq1RfETPmnM8MXGezqN4OpXrYr-zbkHhq9ha0Ib-M1VJXNgA5sbgKW9JxGQyudmYPgn4fimDCJtAsXo7C-e3mYNm6DJS0zhGQ3msmjLTcHmIPzWlj7VjtPgKhYV75b7yr_yZNBdHjf3EZqfynU2sL8bKa1w7DYDNQve7ThtD4MeKLiuOQHa3_23dECs_ptvPVks7pLGgRKfgGHBC-KQuopjtxIhwkz2vOWRzugDl0aBJMHfwBajYhgZ2YRlV9dqSxmy8BOj4OEXuHbiyfIpY0rCRpSrGg"
+const password_pub_client_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTE0ODAsImlhdCI6MTcxNTA5MTE4MCwianRpIjoiZmI5MmM2MTAtYmI0OC00ZDgyLTljZGQtOWFhZjllNzEyNzc3IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo4ODg4IiwidGRmLWVudGl0eS1yZXNvbHV0aW9uIiwicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiMmU2YzE1ODAtY2ZkMy00M2FiLWIxNzMtZjZjM2JmOGZmNGUyIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGRmLWVudGl0eS1yZXNvbHV0aW9uLXB1YmxpYyIsInNlc3Npb25fc3RhdGUiOiIzN2E3YjdiOS0xZmNlLTQxMmYtOTI1OS1lYzUxMTY3MGVhMGYiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbIi8qIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLW9yZy1hZG1pbiIsImRlZmF1bHQtcm9sZXMtb3BlbnRkZiIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJ0ZGYtZW50aXR5LXJlc29sdXRpb24iOnsicm9sZXMiOlsiZW50aXR5LXJlc29sdXRpb24tdGVzdC1yb2xlIl19LCJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJxdWVyeS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIiwicXVlcnktdXNlcnMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6IjM3YTdiN2I5LTFmY2UtNDEyZi05MjU5LWVjNTExNjcwZWEwZiIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwibmFtZSI6InNhbXBsZSB1c2VyIiwicHJlZmVycmVkX3VzZXJuYW1lIjoic2FtcGxlLXVzZXIiLCJnaXZlbl9uYW1lIjoic2FtcGxlIiwiZmFtaWx5X25hbWUiOiJ1c2VyIiwiZW1haWwiOiJzYW1wbGV1c2VyQHNhbXBsZS5jb20ifQ.Gd_OvPNY7UfY7sBKh55TcvWQHmAkYZ2Jb2VyK1lYgse9EBEa_y3uoepZYrGMGkmYdwApg4eauQjxzT_BZYVBc7u9ch3HY_IUuSh3A6FkDDXZIziByP63FYiI4vKTp0w7e2-oYAdaUTDJ1Y50-l_VvRWjdc4fqi-OKH4t8D1rlq0GJ-P7uOl44Ta43YdBMuXI146-eLqx_zLIC49Pg5Y7MD_Lv23QfGTHTP47ckUQueXoGegNLQNE9nPTuD6lNzHD5_MOqse4IKzoWVs_hs4S8SqVxVlN_ZWXkcGhPllfQtf1qxLyFm51eYH3LGxqyNbGr4nQc8djPV0yWqOTrg8IYQ"
+const password_priv_client_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTE0MjMsImlhdCI6MTcxNTA5MTEyMywianRpIjoiMTNhNDljZmQtOGRiZC00NTA2LTk1NGMtZWFmZGRkNGE4ZTdjIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo4ODg4IiwicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiMmU2YzE1ODAtY2ZkMy00M2FiLWIxNzMtZjZjM2JmOGZmNGUyIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGRmLWVudGl0eS1yZXNvbHV0aW9uIiwic2Vzc2lvbl9zdGF0ZSI6ImNmZjYwZDZmLWI2M2MtNDBhYy1hYjI3LWFjZmU4MjY5OWQyYSIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib3BlbnRkZi1vcmctYWRtaW4iLCJkZWZhdWx0LXJvbGVzLW9wZW50ZGYiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsidGRmLWVudGl0eS1yZXNvbHV0aW9uIjp7InJvbGVzIjpbImVudGl0eS1yZXNvbHV0aW9uLXRlc3Qtcm9sZSJdfSwicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LXVzZXJzIiwidmlldy1jbGllbnRzIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LWdyb3VwcyIsInF1ZXJ5LXVzZXJzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6InByb2ZpbGUgZW1haWwiLCJzaWQiOiJjZmY2MGQ2Zi1iNjNjLTQwYWMtYWIyNy1hY2ZlODI2OTlkMmEiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJzYW1wbGUgdXNlciIsInByZWZlcnJlZF91c2VybmFtZSI6InNhbXBsZS11c2VyIiwiZ2l2ZW5fbmFtZSI6InNhbXBsZSIsImZhbWlseV9uYW1lIjoidXNlciIsImVtYWlsIjoic2FtcGxldXNlckBzYW1wbGUuY29tIn0.JFWKf7GZq1f8raP3Jm6rszpwPCh0JnaeZcHyC_AwcsNS6sJ9_qSY9wrbyHmvV9KIGMIPv23fymADZXb0ng7maeAv9NR34KiJqnKbmPeeWwL0cPoGOGOUICL6H5x1iTw7XaMDN2WQRrBRFuUkudybEF8n6fEGsAvcsXViaHjYwJyIEYCnHKPzuTvM1RjyGFsERpFXKls4UB_KhMBEonr4JOskupmX1pADBuicTNx_4whnd6ZDfiF5SSBohFV1ikwFOXK-qZ7znQfE-RJ-jV1CXBgEK8O66TMbMw9MbasS25xKoO0mH1_Ohf9niSXsY02o2qjGFZA9sWRk7K7pNgsxUw"
+const auth_pub_client_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTI2NDcsImlhdCI6MTcxNTA5MjM0NywiYXV0aF90aW1lIjoxNzE1MDkyMzQ3LCJqdGkiOiI3NzkwZmVhNC1hNzcyLTRhZTMtOTcyMi0yMTU2MmQyZGM5YmYiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvYXV0aC9yZWFsbXMvb3BlbnRkZiIsImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0Ojg4ODgiLCJ0ZGYtZW50aXR5LXJlc29sdXRpb24iLCJyZWFsbS1tYW5hZ2VtZW50IiwiYWNjb3VudCJdLCJzdWIiOiIyZTZjMTU4MC1jZmQzLTQzYWItYjE3My1mNmMzYmY4ZmY0ZTIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ0ZGYtZW50aXR5LXJlc29sdXRpb24tcHVibGljIiwic2Vzc2lvbl9zdGF0ZSI6ImFmNmViOTRiLWU4ZDQtNDNlYi1hYzYwLTI3YmZiYjNiOTQxZSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOltdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib3BlbnRkZi1vcmctYWRtaW4iLCJkZWZhdWx0LXJvbGVzLW9wZW50ZGYiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsidGRmLWVudGl0eS1yZXNvbHV0aW9uIjp7InJvbGVzIjpbImVudGl0eS1yZXNvbHV0aW9uLXRlc3Qtcm9sZSJdfSwicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LXVzZXJzIiwidmlldy1jbGllbnRzIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LWdyb3VwcyIsInF1ZXJ5LXVzZXJzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIiwic2lkIjoiYWY2ZWI5NGItZThkNC00M2ViLWFjNjAtMjdiZmJiM2I5NDFlIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoic2FtcGxlIHVzZXIiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYW1wbGUtdXNlciIsImdpdmVuX25hbWUiOiJzYW1wbGUiLCJmYW1pbHlfbmFtZSI6InVzZXIiLCJlbWFpbCI6InNhbXBsZXVzZXJAc2FtcGxlLmNvbSJ9.BfCX_fq2Q6cv5qb6TWzyCNiJf1vFw_iA4UTKr21ahUiNItNSW5ozET2jSLwKNAuMdBNrooU--OV1NniDcviIAMReaAEgjmAyBz6OSwAh3SmxzIU9Zy7f4V032FLDcVVoJ7CefItfBNu7WnWFGS7CYahNX_M2a6LXKhk7WRO4gQ2Ig11gtODlAP8jwLLAMU4_H9mVHD3LXd-IeOsnA8ZuBCq1DeFcn5T9tNZEGe0_21lp8spxoub0MRl-vYbgxEIoaeqxoSipb2hOjF7h0h1uaNhZT4m5ynHdd5yfspD8XjjjwlbXQn9Z8vrZUQQS6HLAi2pJIFNEoYxQk9lHal6VUA"
+const auth_priv_client_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTI3NDAsImlhdCI6MTcxNTA5MjQ0MCwiYXV0aF90aW1lIjoxNzE1MDkyNDQwLCJqdGkiOiIzZjk2ZDhjNC0yMjRkLTQyNjAtYmVkMy1lOGY2N2IwYTJjM2EiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvYXV0aC9yZWFsbXMvb3BlbnRkZiIsImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0Ojg4ODgiLCJyZWFsbS1tYW5hZ2VtZW50IiwiYWNjb3VudCJdLCJzdWIiOiIyZTZjMTU4MC1jZmQzLTQzYWItYjE3My1mNmMzYmY4ZmY0ZTIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ0ZGYtZW50aXR5LXJlc29sdXRpb24iLCJzZXNzaW9uX3N0YXRlIjoiZDI1ZjhhZTMtYzE0Yy00ZWFmLTkzOWMtZjhlNGIyYmE1NDY3IiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6W10sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLW9yZy1hZG1pbiIsImRlZmF1bHQtcm9sZXMtb3BlbnRkZiIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJ0ZGYtZW50aXR5LXJlc29sdXRpb24iOnsicm9sZXMiOlsiZW50aXR5LXJlc29sdXRpb24tdGVzdC1yb2xlIl19LCJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJxdWVyeS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIiwicXVlcnktdXNlcnMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJkMjVmOGFlMy1jMTRjLTRlYWYtOTM5Yy1mOGU0YjJiYTU0NjciLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJzYW1wbGUgdXNlciIsInByZWZlcnJlZF91c2VybmFtZSI6InNhbXBsZS11c2VyIiwiZ2l2ZW5fbmFtZSI6InNhbXBsZSIsImZhbWlseV9uYW1lIjoidXNlciIsImVtYWlsIjoic2FtcGxldXNlckBzYW1wbGUuY29tIn0.JphgIUbUeEEd25-Ji0o6_pcWvLzcQasCfr1z8WRt3xb1QrkN_d0_rmIpOJ9drhp8LjJPQRhFVxEU2TnAlYJ225IjPYolCrnEtKWsBbPJH9dP0cIJlilYplN4RZbmI9VbF578zAgVAs40n8aalNyxqYbPq_JViHDl_ufl4VEQ4Entzlp980I8whx3kfTygu0Yfl4eHLghPGt4LNPUmfeOIy8NKHbhmjHwKufrTmd0NV07cAOMUWl1NAF_4QWqmSqAY0SIcamwE7YlpuImzhj5PQH9tlyJMLr5m-k8CgKRfhpQ0H9cfVGUzWGG2A-lcNvxNmsk1kobmfHczjw13ajLKg"
+const implicit_priv_client_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTM4MzgsImlhdCI6MTcxNTA5MjkzOCwiYXV0aF90aW1lIjoxNzE1MDkyOTM4LCJqdGkiOiI0ZWIzY2I1OS05ZDRhLTQwNjctYmI0YS1iMjNjNDVhMDIyYTIiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvYXV0aC9yZWFsbXMvb3BlbnRkZiIsImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0Ojg4ODgiLCJyZWFsbS1tYW5hZ2VtZW50IiwiYWNjb3VudCJdLCJzdWIiOiIyZTZjMTU4MC1jZmQzLTQzYWItYjE3My1mNmMzYmY4ZmY0ZTIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ0ZGYtZW50aXR5LXJlc29sdXRpb24iLCJzZXNzaW9uX3N0YXRlIjoiYmE1OWFmOTgtNmE3YS00YjRhLTliOTItODU1M2ZkM2EwMTNjIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6W10sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLW9yZy1hZG1pbiIsImRlZmF1bHQtcm9sZXMtb3BlbnRkZiIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJ0ZGYtZW50aXR5LXJlc29sdXRpb24iOnsicm9sZXMiOlsiZW50aXR5LXJlc29sdXRpb24tdGVzdC1yb2xlIl19LCJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJxdWVyeS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIiwicXVlcnktdXNlcnMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJiYTU5YWY5OC02YTdhLTRiNGEtOWI5Mi04NTUzZmQzYTAxM2MiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJzYW1wbGUgdXNlciIsInByZWZlcnJlZF91c2VybmFtZSI6InNhbXBsZS11c2VyIiwiZ2l2ZW5fbmFtZSI6InNhbXBsZSIsImZhbWlseV9uYW1lIjoidXNlciIsImVtYWlsIjoic2FtcGxldXNlckBzYW1wbGUuY29tIn0.KQasyQ-f9KBRWRDXg4NikiHlragVil1nlYTQ8czPKku_uncpHZb7PMJhyPrwy72mwC10EJMpBIWGDVRfRjBRHxdzIbjozcGg3vusX748NMiDSlF4KoB5Fz-qExszcszEP5Qm_fvMRFcW7m9RPW9St1aaHcjAOW5Vee9ACJI56YffgqrTn1xp7ha2Z2X8d_NJfJOFdP3cqgxjR7DV5RezkDLRPfxHwJLk3anavSuDScXIO1w1C6AlTUQFVQUEX0DKZIt-RbzKcd6HWBfyDvHUSlfodEI_diWQIL1hEfrBXV6ThuhTqhrghHyIbb2e-zoC20arjMAK0Tr7hMAY4acxgQ"
+const implicit_pub_client_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUxNTE0MTMsImlhdCI6MTcxNTE1MDUxMywiYXV0aF90aW1lIjoxNzE1MTUwNTEzLCJqdGkiOiJlYTRmOGZiYS01ZjljLTRiMzQtYmU1ZC1jNTk2ZGI4YzNlYzkiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvYXV0aC9yZWFsbXMvb3BlbnRkZiIsImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0Ojg4ODgiLCJ0ZGYtZW50aXR5LXJlc29sdXRpb24iLCJyZWFsbS1tYW5hZ2VtZW50IiwiYWNjb3VudCJdLCJzdWIiOiIyZTZjMTU4MC1jZmQzLTQzYWItYjE3My1mNmMzYmY4ZmY0ZTIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ0ZGYtZW50aXR5LXJlc29sdXRpb24tcHVibGljIiwic2Vzc2lvbl9zdGF0ZSI6ImRlM2U2ZDc1LTI3ODItNDg4NS1iYzU4LTU0MmJmYzEzNWNkNSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOltdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib3BlbnRkZi1vcmctYWRtaW4iLCJkZWZhdWx0LXJvbGVzLW9wZW50ZGYiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsidGRmLWVudGl0eS1yZXNvbHV0aW9uIjp7InJvbGVzIjpbImVudGl0eS1yZXNvbHV0aW9uLXRlc3Qtcm9sZSJdfSwicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LXVzZXJzIiwidmlldy1jbGllbnRzIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LWdyb3VwcyIsInF1ZXJ5LXVzZXJzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIiwic2lkIjoiZGUzZTZkNzUtMjc4Mi00ODg1LWJjNTgtNTQyYmZjMTM1Y2Q1IiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoic2FtcGxlIHVzZXIiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYW1wbGUtdXNlciIsImdpdmVuX25hbWUiOiJzYW1wbGUiLCJmYW1pbHlfbmFtZSI6InVzZXIiLCJlbWFpbCI6InNhbXBsZXVzZXJAc2FtcGxlLmNvbSJ9.jH60V3ZkuiN6cuEmbRTspnxyOvQs_wNkgoBw9IEZ8E8yGzXDayouduxEd_O-DG6vjT4KPDxGC2lA0V4i-ke7KChkZhRYLkaSuqt2hTlKoLXotepJPq8GBlXhWjCmFMqaXEB8lMAlAEoCT7CWmg03eTBGzwynj0S4rjMuOj6TLf3HIIN0DP7bgtG9uIc0Ah_mTVJ4L6Y5yjv6LC9bMZ7YNpUIkFn-CZTudquxHkLYgxHgaRAfELBvmS5xn0pTrpIfZSdYQK7hGhjhm9fUg4J06Pg6QW-xZe1U7awyNl7pOeeGQ2lVTo1CWrAlOz9lAmzKzAwQakEOMXFxAjJeHsXTWg"
+
+func Test_JwtClient(t *testing.T) {
+	entities, err := getEntitiesFromToken(client_credentials_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 1)
+	assert.Equal(t, "tdf-entity-resolution", entities[0].GetClientId())
+}
+
+func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
+	entities, err := getEntitiesFromToken(client_credentials_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "client_id",
+			present:    false,
+			selector:   "preferred_username",
+			entityType: "userName",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 1)
+	assert.Equal(t, "tdf-entity-resolution", entities[0].GetClientId())
+}
+
+func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
+	entities, err := getEntitiesFromToken(password_pub_client_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "client_id",
+			present:    false,
+			selector:   "preferred_username",
+			entityType: "userName",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 2)
+	assert.Equal(t, "tdf-entity-resolution-public", entities[0].GetClientId())
+	assert.Equal(t, "sample-user", entities[1].GetUserName())
+}
+
+func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
+	entities, err := getEntitiesFromToken(password_priv_client_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "client_id",
+			present:    false,
+			selector:   "preferred_username",
+			entityType: "userName",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 2)
+	assert.Equal(t, "tdf-entity-resolution", entities[0].GetClientId())
+	assert.Equal(t, "sample-user", entities[1].GetUserName())
+}
+
+func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
+	entities, err := getEntitiesFromToken(auth_pub_client_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "client_id",
+			present:    false,
+			selector:   "preferred_username",
+			entityType: "userName",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 2)
+	assert.Equal(t, "tdf-entity-resolution-public", entities[0].GetClientId())
+	assert.Equal(t, "sample-user", entities[1].GetUserName())
+}
+
+func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
+	entities, err := getEntitiesFromToken(auth_priv_client_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "client_id",
+			present:    false,
+			selector:   "preferred_username",
+			entityType: "userName",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 2)
+	assert.Equal(t, "tdf-entity-resolution", entities[0].GetClientId())
+	assert.Equal(t, "sample-user", entities[1].GetUserName())
+}
+
+func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
+	entities, err := getEntitiesFromToken(implicit_pub_client_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "client_id",
+			present:    false,
+			selector:   "preferred_username",
+			entityType: "userName",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 2)
+	assert.Equal(t, "tdf-entity-resolution-public", entities[0].GetClientId())
+	assert.Equal(t, "sample-user", entities[1].GetUserName())
+}
+
+func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
+	entities, err := getEntitiesFromToken(implicit_priv_client_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "client_id",
+			present:    false,
+			selector:   "preferred_username",
+			entityType: "userName",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 2)
+	assert.Equal(t, "tdf-entity-resolution", entities[0].GetClientId())
+	assert.Equal(t, "sample-user", entities[1].GetUserName())
+}
+
+// Other tests
+
+const client_test_field_and_value_jwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE3MTUxNTE1NTUsImV4cCI6MTc0NjY4NzU1NSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsImF6cCI6InRlc3QtY2xpZW50IiwidGVzdF9maWVsZCI6InRlc3RfdmFsdWUiLCJyZXN1bHRfZmllbGQiOiJyZXN1bHRfdmFsdWUifQ.5jRpItc3lLt35wBuXqK5Wqk5fbxaqxhheCg5dYMzpHw"
+
+func Test_JwtClient_Field_Equals(t *testing.T) {
+	entities, err := getEntitiesFromToken(client_test_field_and_value_jwt, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "test_field",
+			present:    true,
+			equalTo:    "test_value",
+			selector:   "result_field",
+			entityType: "emailAddress",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 2)
+	assert.Equal(t, "test-client", entities[0].GetClientId())
+	assert.Equal(t, "result_value", entities[1].GetEmailAddress())
+}
+
+const client_test_field_and_value_second_client = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE3MTUxNTE1NTUsImV4cCI6MTc0NjY4NzU1NSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsImF6cCI6InRlc3QtY2xpZW50IiwidGVzdF9maWVsZCI6InRlc3RfdmFsdWUiLCJyZXN1bHRfZmllbGQiOiJyZXN1bHRfdmFsdWUiLCJhenAyIjoib3RoZXItdGVzdC1jbGllbnQifQ.X9LIoFpKyxyRFpTKKcxI8zayVGale_9cWlc5QbrVK1I"
+
+func Test_JwtClient_Field_Equals_And_Not_Present(t *testing.T) {
+	entities, err := getEntitiesFromToken(client_test_field_and_value_second_client, jwtDecompositionRules{
+		alwaysSelectors: []jwtSelector{{
+			selector:   "azp",
+			entityType: "clientId",
+		},
+			{
+				selector:   "azp2",
+				entityType: "userName",
+			},
+		},
+		conditionalSelectors: []conditionalJwtSelector{{
+			ifSelector: "test_field",
+			present:    true,
+			equalTo:    "test_value",
+			selector:   "result_field",
+			entityType: "emailAddress",
+		}, {
+			ifSelector: "test_field2",
+			present:    false,
+			selector:   "result_field",
+			entityType: "uuid",
+		}},
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, entities, 4)
+	assert.Equal(t, "test-client", entities[0].GetClientId())
+	assert.Equal(t, "other-test-client", entities[1].GetUserName())
+	assert.Equal(t, "result_value", entities[2].GetEmailAddress())
+	assert.Equal(t, "result_value", entities[3].GetUuid())
+}

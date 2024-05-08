@@ -34,7 +34,8 @@ services:
           selector: preferred_username
           entityType: username
         # - if: some_claim
-        #   equals: something
+        #   present: true
+        #   equalTo: something
         #   selector: other_selector
         #   entityType: email
   entityresolution:

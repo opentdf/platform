@@ -14,6 +14,24 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
+// / Constants
+const (
+	kMaxTDFSize        = ((16 * 1024 * 1024) - 3 - 32) // 16 mb - 3(iv) - 32(max auth tag)
+	kDatasetMaxMBBytes = 2097152                       // 2mb
+
+	// Max size of the encrypted tdfs
+	//  16mb payload
+	// ~67kb of policy
+	// 133 of signature
+	kMaxEncryptedNTDFSize = (16 * 1024 * 1024) + (68 * 1024) + 133
+
+	kIvPadding                    = 9
+	kNanoTDFIvSize                = 3
+	kNanoTDFGMACLength            = 8
+	kNanoTDFHeader                = "header"
+	kNanoTDFMagicStringAndVersion = "L1L"
+)
+
 /******************************** Header**************************
   | Section            | Minimum Length (B)  | Maximum Length (B)  |
   |--------------------|---------------------|---------------------|
@@ -27,7 +45,7 @@ import (
   ********************************* Header*************************/
 
 type NanoTDFHeader struct {
-	magicNumber        [3]byte
+	magicNumber        [len(kNanoTDFMagicStringAndVersion)]byte
 	kasURL             *resourceLocator
 	binding            *bindingCfg
 	sigCfg             *signatureConfig
@@ -48,6 +66,8 @@ type NanoTDFConfig struct {
 	m_signerPrivateKey []byte
 	m_cipher           cipherMode
 	m_kasURL           resourceLocator
+	m_kasPublicKey     string
+	m_defaultSalt      []byte
 }
 
 type NanoTDF struct {
@@ -64,23 +84,6 @@ type NanoTDF struct {
 	m_signature           []byte
 	policyObjectAsStr     []byte
 }
-
-// / Constants
-const (
-	kMaxTDFSize        = ((16 * 1024 * 1024) - 3 - 32) // 16 mb - 3(iv) - 32(max auth tag)
-	kDatasetMaxMBBytes = 2097152                       // 2mb
-
-	// Max size of the encrypted tdfs
-	//  16mb payload
-	// ~67kb of policy
-	// 133 of signature
-	kMaxEncryptedNTDFSize = (16 * 1024 * 1024) + (68 * 1024) + 133
-
-	kIvPadding         = 9
-	kNanoTDFIvSize     = 3
-	kNanoTDFGMACLength = 8
-	kNanoTDFHeader     = "header"
-)
 
 func (c NanoTDFConfig) SetECCMode(r1 ocrypto.ECCMode) {
 	c.m_eccMode = r1
@@ -389,10 +392,13 @@ func createHeader(nanoTDF *NanoTDF) error {
 		return err
 	}
 
-	// TODO FIXME - should be constants
-	nanoTDF.header.magicNumber[0] = 'L'
-	nanoTDF.header.magicNumber[1] = '1'
-	nanoTDF.header.magicNumber[2] = 'L'
+	// Set magic number in header, and generate default salt
+	var i int = 0
+	for _, magicByte := range []byte(kNanoTDFMagicStringAndVersion) {
+		nanoTDF.header.magicNumber[i] = magicByte
+		i++
+	}
+	nanoTDF.config.m_defaultSalt = ocrypto.CalculateSHA256([]byte(kNanoTDFMagicStringAndVersion))
 
 	// TODO FIXME - gotta be a better way to do this copy
 	nanoTDF.header.kasURL = &resourceLocator{nanoTDF.config.m_kasURL.protocol, nanoTDF.config.m_kasURL.lengthBody, nanoTDF.config.m_kasURL.body}
@@ -451,6 +457,19 @@ func createHeader(nanoTDF *NanoTDF) error {
 
 		//LogDebug("Max iteration reached - create new header for dataset");
 	}
+
+	// Generate symmetric key.
+	secret, err := ocrypto.ComputeECDHKey([]byte(nanoTDF.config.m_privateKey), []byte(nanoTDF.config.m_kasPublicKey))
+	if err != nil {
+		return err
+	}
+	nanoTDF.m_encryptSymmetricKey, err = ocrypto.CalculateHKDF(nanoTDF.config.m_defaultSalt, secret, 1024)
+	if err != nil {
+		return err
+	}
+
+	// TODO FIXME - more to do here
+
 	return err
 }
 

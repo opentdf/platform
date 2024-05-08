@@ -150,6 +150,30 @@ func TestReadNanoTDFHeader(t *testing.T) {
 	}
 }
 
+const (
+	sdkPrivateKey = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1HjFYV8D16BQszNW
+6Hx/JxTE53oqk5/bWaIj4qV5tOyhRANCAAQW1Hsq0tzxN6ObuXqV+JoJN0f78Em/
+PpJXUV02Y6Ex3WlxK/Oaebj8ATsbfaPaxrhyCWB3nc3w/W6+lySlLPn5
+-----END PRIVATE KEY-----`
+
+	sdkPublicKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFtR7KtLc8Tejm7l6lfiaCTdH+/BJ
+vz6SV1FdNmOhMd1pcSvzmnm4/AE7G32j2sa4cglgd53N8P1uvpckpSz5+Q==
+-----END PUBLIC KEY-----`
+
+	kasPrivateKey = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgu2Hmm80uUzQB1OfB
+PyMhWIyJhPA61v+j0arvcLjTwtqhRANCAASHCLUHY4szFiVV++C9+AFMkEL2gG+O
+byN4Hi7Ywl8GMPOAPcQdIeUkoTd9vub9PcuSj23I8/pLVzs23qhefoUf
+-----END PRIVATE KEY-----`
+
+	kasPublicKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhwi1B2OLMxYlVfvgvfgBTJBC9oBv
+jm8jeB4u2MJfBjDzgD3EHSHlJKE3fb7m/T3Lko9tyPP6S1c7Nt6oXn6FHw==
+-----END PUBLIC KEY-----`
+)
+
 func TestNanoTDFEncryptFile(t *testing.T) {
 	infile, err := os.Open("nanotest1.txt")
 	if err != nil {
@@ -175,6 +199,9 @@ func TestNanoTDFEncryptFile(t *testing.T) {
 	config.m_kasURL.body = kasURL // TODO - check for excessive length here
 	config.m_kasURL.lengthBody = uint8(len(kasURL))
 	config.m_kasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
+	config.m_privateKey = sdkPrivateKey
+	config.m_kasPublicKey = kasPublicKey
+	config.m_eccMode = ocrypto.ECCModeSecp256r1
 
 	err = NanoTDFEncryptFile(infile, outfile, config)
 	if err != nil {

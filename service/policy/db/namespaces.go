@@ -70,7 +70,7 @@ func hydrateNamespaceItems(rows pgx.Rows, opts namespaceSelectOptions) ([]*polic
 	return list, nil
 }
 
-func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interface{}, error) {
+func getNamespaceSQL(id string, opts namespaceSelectOptions) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	fqnT := Tables.AttrFqn
 	fields := []string{
@@ -100,7 +100,7 @@ func getNamespaceSql(id string, opts namespaceSelectOptions) (string, []interfac
 
 func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
 	opts := namespaceSelectOptions{withFqn: true}
-	sql, args, err := getNamespaceSql(id, opts)
+	sql, args, err := getNamespaceSQL(id, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 	return n, nil
 }
 
-func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, error) {
+func listNamespacesSQL(opts namespaceSelectOptions) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	fqnT := Tables.AttrFqn
 
@@ -152,7 +152,7 @@ func listNamespacesSql(opts namespaceSelectOptions) (string, []interface{}, erro
 func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*policy.Namespace, error) {
 	opts := namespaceSelectOptions{withFqn: true, state: state}
 
-	sql, args, err := listNamespacesSql(opts)
+	sql, args, err := listNamespacesSQL(opts)
 	if err != nil {
 		slog.Error("error listing namespaces", slog.String("error", err.Error()))
 		return nil, err
@@ -174,7 +174,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 	return list, nil
 }
 
-func createNamespaceSql(name string, metadata []byte) (string, []interface{}, error) {
+func createNamespaceSQL(name string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
@@ -191,7 +191,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	name := strings.ToLower(r.GetName())
-	sql, args, err := createNamespaceSql(name, metadataJSON)
+	sql, args, err := createNamespaceSQL(name, metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 
 	return &policy.Namespace{
 		Id:       id,
@@ -218,7 +218,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}, nil
 }
 
-func updateNamespaceSql(id string, metadata []byte) (string, []interface{}, error) {
+func updateNamespaceSQL(id string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	sb := db.NewStatementBuilder().Update(t.Name())
 
@@ -237,7 +237,7 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 			return nil, err
 		}
 		if n.GetMetadata() == nil {
-			return nil, nil
+			return nil, nil //nolint:nilnil // no metadata does not mean no error
 		}
 		return n.GetMetadata(), nil
 	})
@@ -245,7 +245,7 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	sql, args, err := updateNamespaceSql(id, metadataJSON)
+	sql, args, err := updateNamespaceSQL(id, metadataJSON)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.Namespace{
 			Id: id,
@@ -260,14 +260,14 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 
 	return &policy.Namespace{
 		Id: id,
 	}, nil
 }
 
-func deactivateNamespaceSql(id string) (string, []interface{}, error) {
+func deactivateNamespaceSQL(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return db.NewStatementBuilder().
 		Update(t.Name()).
@@ -295,7 +295,7 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		slog.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
-	sql, args, err := deactivateNamespaceSql(id)
+	sql, args, err := deactivateNamespaceSQL(id)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +306,7 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 	return c.GetNamespace(ctx, id)
 }
 
-func deleteNamespaceSql(id string) (string, []interface{}, error) {
+func deleteNamespaceSQL(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	// TODO: handle delete cascade, dangerous deletion via special rpc [https://github.com/opentdf/platform/issues/115]
 	return db.NewStatementBuilder().
@@ -322,7 +322,7 @@ func (c PolicyDBClient) DeleteNamespace(ctx context.Context, id string) (*policy
 	if err != nil {
 		return nil, err
 	}
-	sql, args, err := deleteNamespaceSql(id)
+	sql, args, err := deleteNamespaceSQL(id)
 	if err != nil {
 		return nil, err
 	}

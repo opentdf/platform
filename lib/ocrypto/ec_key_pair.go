@@ -160,10 +160,10 @@ func ConvertToECDHPrivateKey(key interface{}) (*ecdh.PrivateKey, error) {
 }
 
 // CalculateHKDF generate a key using key derivation function.
-func CalculateHKDF(salt []byte, secret []byte, keyLen int) ([]byte, error) {
+func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
 	hkdfObj := hkdf.New(sha256.New, secret, salt, nil)
 
-	derivedKey := make([]byte, keyLen)
+	derivedKey := make([]byte, len(secret))
 	_, err := io.ReadFull(hkdfObj, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive hkdf key: %w", err)

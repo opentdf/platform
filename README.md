@@ -25,8 +25,10 @@ Bootstrap Keycloak
    ```
 4. Start the platform
 
+   Exposes the server at localhost:8080
    ```sh
    docker run --network opentdf_platform \
+      -p "127.0.0.1:8080:8080" \
       -v "$(pwd)/kas-keys/:/keys/" \
       -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
       -it registry.opentdf.io/platform:nightly start
@@ -79,7 +81,7 @@ Run `go run github.com/opentdf/platform/service provision fixtures -h` for more 
 
 ### Provisioning Custom Keycloak and Policy Data
 
-To providion a custom keycloak setup, create a yaml following the format of [the sample keycloak config]((service/cmd/keycloak_data.yaml)). You can create different realms with seperate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak-from-config -f <path-to-your-yaml-file>`.
+To provision a custom Keycloak setup, create a yaml following the format of [the sample Keycloak config](service/cmd/keycloak_data.yaml). You can create different realms with separate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak-from-config -f <path-to-your-yaml-file>`.
 
 ### Generation
 

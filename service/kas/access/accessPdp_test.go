@@ -16,7 +16,7 @@ var osdk, _ = sdk.New("", sdk.WithClientCredentials("myid", "mysecret", nil))
 // ######## Dissem tests ################
 
 func TestDissemSuccess(t *testing.T) {
-	var entityID string = "email2@example.com"
+	var entityID = "email2@example.com"
 
 	testPolicy := Policy{
 		UUID: uuid.New(),
@@ -41,7 +41,7 @@ func TestDissemSuccess(t *testing.T) {
 }
 
 func TestDissemFailure(t *testing.T) {
-	var entityID string = "email2@example.com"
+	var entityID = "email2@example.com"
 
 	testPolicy := Policy{
 		UUID: uuid.New(),

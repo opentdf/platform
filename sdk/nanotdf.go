@@ -309,6 +309,8 @@ func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (*eccKey, e
 	switch curve {
 	case ocrypto.ECCModeSecp256r1:
 		numberOfBytes = 33
+	case ocrypto.ECCModeSecp256k1:
+		numberOfBytes = 33
 	case ocrypto.ECCModeSecp384r1:
 		numberOfBytes = 49
 	case ocrypto.ECCModeSecp521r1:
@@ -463,7 +465,7 @@ func createHeader(nanoTDF *NanoTDF) error {
 	if err != nil {
 		return err
 	}
-	nanoTDF.m_encryptSymmetricKey, err = ocrypto.CalculateHKDF(nanoTDF.config.m_defaultSalt, secret, 1024)
+	nanoTDF.m_encryptSymmetricKey, err = ocrypto.CalculateHKDF(nanoTDF.config.m_defaultSalt, secret)
 	if err != nil {
 		return err
 	}
@@ -510,24 +512,53 @@ func writeHeader(n *NanoTDFHeader, writer io.Writer) error {
 	return err
 }
 
+// / SizeOfAuthTagForCipher - Return the size of auth tag to be used for aes gcm encryption.
+func SizeOfAuthTagForCipher(cipherType cipherMode) (int, error) {
+	switch cipherType {
+	case cipherModeAes256gcm64Bit:
+		return 8, nil
+	case cipherModeAes256gcm96Bit:
+		return 12, nil
+	case cipherModeAes256gcm104Bit:
+		return 13, nil
+	case cipherModeAes256gcm112Bit:
+		return 14, nil
+	case cipherModeAes256gcm120Bit:
+		return 15, nil
+	case cipherModeAes256gcm128Bit:
+		return 16, nil
+	default:
+		return 0, fmt.Errorf("unknown cipher mode:%d", cipherType)
+	}
+}
+
 // NanoTDFEncryptFile - read from supplied input file, write encrypted data to supplied output file
 func NanoTDFEncryptFile(plaintextFile *os.File, encryptedFile *os.File, config NanoTDFConfig) error {
 
 	var err error = nil
 
+	// Seek to end to get size of file
 	plaintextSize, err := plaintextFile.Seek(0, 2)
 	if err != nil {
 		return err
 	}
 
-	plaintextBuffer := bytes.NewBuffer(make([]byte, 0, plaintextSize))
+	// Allocate buffer of the file size
+	plaintextBuffer := make([]byte, plaintextSize)
 
-	_, err = plaintextFile.Read(plaintextBuffer.Bytes())
+	// Seek back to beginning to prepare for reading content
+	_, err = plaintextFile.Seek(0, 0)
 	if err != nil {
 		return err
 	}
 
-	nanoBuffer, err := NanoTDFEncrypt(config, *plaintextBuffer)
+	// Read the file into the buffer
+	_, err = plaintextFile.Read(plaintextBuffer)
+	if err != nil {
+		return err
+	}
+
+	nanoBuffer, err := NanoTDFEncrypt(config, plaintextBuffer)
 	if err != nil {
 		return err
 	}
@@ -545,7 +576,7 @@ func NanoTDFToBuffer(nanoTDF NanoTDF) ([]byte, error) {
 	return nanoTDF.m_workingBuffer, nil
 }
 
-func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte, error) {
+func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer []byte) ([]byte, error) {
 	var err error = nil
 
 	// config is fixed at this point, make a copy
@@ -564,16 +595,24 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 		return nil, err
 	}
 
+	/// Resize the working buffer only if needed.
+	authTagSize, err := SizeOfAuthTagForCipher(nanoTDF.config.m_cipher)
+	if err != nil {
+		return nil, err
+	}
+	sizeOfWorkingBuffer := kIvPadding + kNanoTDFIvSize + len(plaintextBuffer) + authTagSize
+	if nanoTDF.m_workingBuffer == nil || len(nanoTDF.m_workingBuffer) < sizeOfWorkingBuffer {
+		nanoTDF.m_workingBuffer = make([]byte, sizeOfWorkingBuffer)
+	}
+
 	///
 	/// Add the length of cipher text to output - (IV + Cipher Text + Auth tag)
 	///
 
 	// TODO FIXME
-	authTagSize := 1024
-	// TODO FIXME
 	bytesAdded := 0
 
-	encryptedDataSize := kNanoTDFIvSize + plaintextBuffer.Len() + authTagSize
+	encryptedDataSize := kNanoTDFIvSize + len(plaintextBuffer) + authTagSize
 
 	// TODO FIXME
 	cipherTextSize := uint64(encryptedDataSize + kNanoTDFIvSize + kIvPadding)
@@ -585,7 +624,7 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 	// Encrypt the payload into the working buffer
 	{
 		ivSizeWithPadding := kIvPadding + kNanoTDFIvSize
-		iv := bytes.NewBuffer(make([]byte, 0, ivSizeWithPadding))
+		ivWithPadding := bytes.NewBuffer(make([]byte, 0, ivSizeWithPadding))
 
 		// Reset the IV after max iterations
 		if nanoTDF.config.m_maxKeyIterations == nanoTDF.m_keyIterationCount {
@@ -614,7 +653,7 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 		binary.BigEndian.PutUint64(byteIv, nanoTDF.m_iv)
 
 		// Encrypt the plaintext
-		encryptedText, err := aesGcm.EncryptWithIV(byteIv, plaintextBuffer.Bytes())
+		encryptedText, err := aesGcm.EncryptWithIV(byteIv, plaintextBuffer)
 		if err != nil {
 			return nil, err
 		}
@@ -624,7 +663,7 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 		pbWriter := bufio.NewWriter(payloadBuffer)
 
 		// Copy IV at start
-		err = binary.Write(pbWriter, binary.BigEndian, iv)
+		err = binary.Write(pbWriter, binary.BigEndian, ivWithPadding.Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -637,9 +676,16 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer bytes.Buffer) ([]byte,
 	}
 
 	// Copy the payload buffer contents into encrypt buffer without the IV padding.
-	pbContentsWithoutIv := &nanoTDF.m_workingBuffer[kIvPadding]
-
-	binary.Write(ebWriter, binary.BigEndian, pbContentsWithoutIv)
+	pbContentsWithoutIv := bytes.NewBuffer(make([]byte, 0, len(nanoTDF.m_workingBuffer)-kIvPadding))
+	pbwiWriter := bufio.NewWriter(pbContentsWithoutIv)
+	err = binary.Write(pbwiWriter, binary.BigEndian, nanoTDF.m_workingBuffer)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Write(ebWriter, binary.BigEndian, pbContentsWithoutIv.Bytes())
+	if err != nil {
+		return nil, err
+	}
 
 	// Adjust the buffer
 

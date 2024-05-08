@@ -17,6 +17,12 @@ type Config struct {
 	Type   string `yaml:"type" default:"json"`
 }
 
+func (l *Logger) With(key string, value string) *Logger {
+	return &Logger{
+		Logger: l.Logger.With(key, value),
+	}
+}
+
 func NewLogger(config Config) (*Logger, error) {
 	var logger *slog.Logger
 

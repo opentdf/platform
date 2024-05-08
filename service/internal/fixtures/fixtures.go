@@ -21,14 +21,14 @@ type FixtureMetadata struct {
 }
 
 type FixtureDataNamespace struct {
-	Id     string `yaml:"id"`
+	ID     string `yaml:"id"`
 	Name   string `yaml:"name"`
 	Active bool   `yaml:"active"`
 }
 
 type FixtureDataAttribute struct {
-	Id          string `yaml:"id"`
-	NamespaceId string `yaml:"namespace_id"`
+	ID          string `yaml:"id"`
+	NamespaceID string `yaml:"namespace_id"`
 	Name        string `yaml:"name"`
 	Rule        string `yaml:"rule"`
 	Active      bool   `yaml:"active"`
@@ -40,15 +40,15 @@ type FixtureDataAttributeKeyAccessServer struct {
 }
 
 type FixtureDataAttributeValue struct {
-	Id                    string   `yaml:"id"`
-	AttributeDefinitionId string   `yaml:"attribute_definition_id"`
+	ID                    string   `yaml:"id"`
+	AttributeDefinitionID string   `yaml:"attribute_definition_id"`
 	Value                 string   `yaml:"value"`
 	Members               []string `yaml:"members"`
 	Active                bool     `yaml:"active"`
 }
 
 type FixtureDataValueMember struct {
-	Id       string `yaml:"id"`
+	ID       string `yaml:"id"`
 	ValueID  string `yaml:"value_id"`
 	MemberID string `yaml:"member_id"`
 }
@@ -59,17 +59,17 @@ type FixtureDataAttributeValueKeyAccessServer struct {
 }
 
 type FixtureDataSubjectMapping struct {
-	Id               string `yaml:"id"`
-	AttributeValueId string `yaml:"attribute_value_id"`
+	ID               string `yaml:"id"`
+	AttributeValueID string `yaml:"attribute_value_id"`
 	Actions          []struct {
 		Standard string `yaml:"standard" json:"standard,omitempty"`
 		Custom   string `yaml:"custom" json:"custom,omitempty"`
 	} `yaml:"actions"`
-	SubjectConditionSetId string `yaml:"subject_condition_set_id"`
+	SubjectConditionSetID string `yaml:"subject_condition_set_id"`
 }
 
 type SubjectConditionSet struct {
-	Id        string `yaml:"id"`
+	ID        string `yaml:"id"`
 	Condition struct {
 		SubjectSets []struct {
 			ConditionGroups []struct {
@@ -85,14 +85,14 @@ type SubjectConditionSet struct {
 }
 
 type FixtureDataResourceMapping struct {
-	Id               string   `yaml:"id"`
-	AttributeValueId string   `yaml:"attribute_value_id"`
+	ID               string   `yaml:"id"`
+	AttributeValueID string   `yaml:"attribute_value_id"`
 	Terms            []string `yaml:"terms"`
 }
 
 type FixtureDataKasRegistry struct {
-	Id     string `yaml:"id"`
-	Uri    string `yaml:"uri"`
+	ID     string `yaml:"id"`
+	URI    string `yaml:"uri"`
 	PubKey struct {
 		Remote string `yaml:"remote" json:"remote,omitempty"`
 		Local  string `yaml:"local" json:"local,omitempty"`
@@ -162,7 +162,7 @@ func NewFixture(db DBInterface) Fixtures {
 
 func (f *Fixtures) GetNamespaceKey(key string) FixtureDataNamespace {
 	ns, ok := fixtureData.Namespaces.Data[key]
-	if !ok || ns.Id == "" {
+	if !ok || ns.ID == "" {
 		slog.Error("could not find namespace", slog.String("id", key))
 		panic("could not find namespace fixture: " + key)
 	}
@@ -171,7 +171,7 @@ func (f *Fixtures) GetNamespaceKey(key string) FixtureDataNamespace {
 
 func (f *Fixtures) GetAttributeKey(key string) FixtureDataAttribute {
 	a, ok := fixtureData.Attributes.Data[key]
-	if !ok || a.Id == "" {
+	if !ok || a.ID == "" {
 		slog.Error("could not find attributes", slog.String("id", key))
 		panic("could not find attribute fixture: " + key)
 	}
@@ -180,7 +180,7 @@ func (f *Fixtures) GetAttributeKey(key string) FixtureDataAttribute {
 
 func (f *Fixtures) GetAttributeValueKey(key string) FixtureDataAttributeValue {
 	av, ok := fixtureData.AttributeValues.Data[key]
-	if !ok || av.Id == "" {
+	if !ok || av.ID == "" {
 		slog.Error("could not find attribute-values", slog.String("id", key))
 		panic("could not find attribute-value fixture: " + key)
 	}
@@ -188,7 +188,7 @@ func (f *Fixtures) GetAttributeValueKey(key string) FixtureDataAttributeValue {
 }
 
 func (f *Fixtures) GetValueMemberKey(key string) FixtureDataValueMember {
-	if fixtureData.ValueMembers.Data[key].Id == "" {
+	if fixtureData.ValueMembers.Data[key].ID == "" {
 		slog.Error("could not find value-members", slog.String("id", key))
 		panic("could not find value-members")
 	}
@@ -197,7 +197,7 @@ func (f *Fixtures) GetValueMemberKey(key string) FixtureDataValueMember {
 
 func (f *Fixtures) GetSubjectMappingKey(key string) FixtureDataSubjectMapping {
 	sm, ok := fixtureData.SubjectMappings.Data[key]
-	if !ok || sm.Id == "" {
+	if !ok || sm.ID == "" {
 		slog.Error("could not find subject-mappings", slog.String("id", key))
 		panic("could not find subject-mapping fixture: " + key)
 	}
@@ -206,7 +206,7 @@ func (f *Fixtures) GetSubjectMappingKey(key string) FixtureDataSubjectMapping {
 
 func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
 	scs, ok := fixtureData.SubjectConditionSet.Data[key]
-	if !ok || scs.Id == "" {
+	if !ok || scs.ID == "" {
 		slog.Error("could not find subject-condition-set", slog.String("id", key))
 		panic("could not find subject-condition-set fixture: " + key)
 	}
@@ -215,7 +215,7 @@ func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
 
 func (f *Fixtures) GetResourceMappingKey(key string) FixtureDataResourceMapping {
 	rm, ok := fixtureData.ResourceMappings.Data[key]
-	if !ok || rm.Id == "" {
+	if !ok || rm.ID == "" {
 		slog.Error("could not find resource-mappings", slog.String("id", key))
 		panic("could not find resource-mapping fixture: " + key)
 	}
@@ -224,7 +224,7 @@ func (f *Fixtures) GetResourceMappingKey(key string) FixtureDataResourceMapping 
 
 func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 	kasr, ok := fixtureData.KasRegistries.Data[key]
-	if !ok || kasr.Id == "" {
+	if !ok || kasr.ID == "" {
 		slog.Error("could not find kas-registry", slog.String("id", key))
 		panic("could not find kas-registry fixture: " + key)
 	}
@@ -289,7 +289,7 @@ func (f *Fixtures) provisionNamespace() int64 {
 	for _, d := range fixtureData.Namespaces.Data {
 		values = append(values,
 			[]string{
-				f.db.StringWrap(d.Id),
+				f.db.StringWrap(d.ID),
 				f.db.StringWrap(d.Name),
 				f.db.BoolWrap(d.Active),
 			},
@@ -302,8 +302,8 @@ func (f *Fixtures) provisionAttribute() int64 {
 	values := make([][]string, 0, len(fixtureData.Attributes.Data))
 	for _, d := range fixtureData.Attributes.Data {
 		values = append(values, []string{
-			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.NamespaceId),
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.NamespaceID),
 			f.db.StringWrap(d.Name),
 			f.db.StringWrap(d.Rule),
 			f.db.BoolWrap(d.Active),
@@ -316,8 +316,8 @@ func (f *Fixtures) provisionAttributeValues() int64 {
 	values := make([][]string, 0, len(fixtureData.AttributeValues.Data))
 	for _, d := range fixtureData.AttributeValues.Data {
 		values = append(values, []string{
-			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.AttributeDefinitionId),
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.AttributeDefinitionID),
 			f.db.StringWrap(d.Value),
 			f.db.UUIDArrayWrap(d.Members),
 			f.db.BoolWrap(d.Active),
@@ -330,7 +330,7 @@ func (f *Fixtures) provisionValueMembers() int64 {
 	values := make([][]string, 0, len(fixtureData.ValueMembers.Data))
 	for _, d := range fixtureData.ValueMembers.Data {
 		values = append(values, []string{
-			f.db.StringWrap(d.Id),
+			f.db.StringWrap(d.ID),
 			f.db.StringWrap(d.ValueID),
 			f.db.StringWrap(d.MemberID),
 		})
@@ -349,7 +349,7 @@ func (f *Fixtures) provisionSubjectConditionSet() int64 {
 		}
 
 		values = append(values, []string{
-			f.db.StringWrap(d.Id),
+			f.db.StringWrap(d.ID),
 			f.db.StringWrap(string(conditionJSON)),
 		})
 	}
@@ -367,9 +367,9 @@ func (f *Fixtures) provisionSubjectMappings() int64 {
 		}
 
 		values = append(values, []string{
-			f.db.StringWrap(d.Id),
-			f.db.UUIDWrap(d.AttributeValueId),
-			f.db.UUIDWrap(d.SubjectConditionSetId),
+			f.db.StringWrap(d.ID),
+			f.db.UUIDWrap(d.AttributeValueID),
+			f.db.UUIDWrap(d.SubjectConditionSetID),
 			f.db.StringWrap(string(actionsJSON)),
 		})
 	}
@@ -380,8 +380,8 @@ func (f *Fixtures) provisionResourceMappings() int64 {
 	values := make([][]string, 0, len(fixtureData.ResourceMappings.Data))
 	for _, d := range fixtureData.ResourceMappings.Data {
 		values = append(values, []string{
-			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.AttributeValueId),
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.AttributeValueID),
 			f.db.StringArrayWrap(d.Terms),
 		})
 	}
@@ -392,16 +392,16 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 	values := make([][]string, 0, len(fixtureData.KasRegistries.Data))
 	for _, d := range fixtureData.KasRegistries.Data {
 		v := []string{
-			f.db.StringWrap(d.Id),
-			f.db.StringWrap(d.Uri),
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.URI),
 		}
 
-		if pubKeyJSON, err := json.Marshal(d.PubKey); err != nil {
+		pubKeyJSON, err := json.Marshal(d.PubKey)
+		if err != nil {
 			slog.Error("⛔️ 📦 issue with KAS registry public key JSON - check policy_fixtures.yaml for issues")
 			panic("issue with KAS registry public key JSON")
-		} else {
-			v = append(v, f.db.StringWrap(string(pubKeyJSON)))
 		}
+		v = append(v, f.db.StringWrap(string(pubKeyJSON)))
 		values = append(values, v)
 	}
 	return f.provision(fixtureData.KasRegistries.Metadata.TableName, fixtureData.KasRegistries.Metadata.Columns, values)

@@ -3,7 +3,7 @@ package tdf3
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // FIXME: do we need to change this?
 	"errors"
 	"log/slog"
 )
@@ -14,7 +14,7 @@ const (
 
 // EncryptWithPublicKey encrypts data with public key
 func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
-	bytes, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pub, msg, nil)
+	bytes, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pub, msg, nil) //nolint:gosec // See above
 	if err != nil {
 		slog.Error("failed ot encrypt with sha1", "err", err)
 		return nil, errors.Join(ErrHsmEncrypt, err)

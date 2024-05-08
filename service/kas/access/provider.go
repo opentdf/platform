@@ -1,6 +1,8 @@
 package access
 
 import (
+	"context"
+	"log/slog"
 	"net/url"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -19,4 +21,10 @@ type Provider struct {
 	SDK            *otdf.SDK
 	AttributeSvc   *url.URL
 	CryptoProvider security.CryptoProvider
+}
+
+// TODO: Not sure what we want to check here?
+func (p Provider) IsReady(ctx context.Context) error {
+	slog.DebugContext(ctx, "checking readiness of kas service")
+	return nil
 }

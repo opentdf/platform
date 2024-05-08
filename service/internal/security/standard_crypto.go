@@ -88,7 +88,7 @@ func (s StandardCrypto) RSAPublicKey(keyID string) (string, error) {
 
 	pem, err := s.rsaKeys[0].asymEncryption.PublicKeyInPemFormat()
 	if err != nil {
-		return "", fmt.Errorf("failed to retrive rsa public key file: %w", err)
+		return "", fmt.Errorf("failed to retrieve rsa public key file: %w", err)
 	}
 
 	return pem, nil

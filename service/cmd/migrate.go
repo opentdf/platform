@@ -49,7 +49,7 @@ var (
 	migrateStatusCmd = &cobra.Command{
 		Use:   "status",
 		Short: "Show the status of the database migrations",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			c, err := migrateDBClient(cmd)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))

@@ -50,7 +50,6 @@ func (s *AuthnCasbinSuite) buildTokenRoles(orgAdmin bool, admin bool, readonly b
 	}
 	if readonly {
 		roles[i] = readonlyRole
-		i++
 	}
 
 	return roles
@@ -104,7 +103,7 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithDefaults() {
 	}
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{})
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(enforcer)
 	s.Equal(eModel.ToText(), enforcer.GetModel().ToText())
 	s.NotNil(enforcer.GetPolicy())
@@ -132,9 +131,11 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithCustomModel() {
 	s.NotNil(enforcer)
 
 	tok := jwt.New()
-	tok.Set("realm_access", map[string]interface{}{
+	err = tok.Set("realm_access", map[string]interface{}{
 		"roles": []interface{}{"role:unknown"},
 	})
+	s.Require().NoError(err)
+
 	allowed, err := enforcer.Enforce(tok, "", "")
 	s.Require().NoError(err)
 	s.True(allowed)
@@ -147,7 +148,7 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithBadCustomModel() {
 			Csv:   "xxxx",
 		},
 	})
-	s.ErrorContains(err, "failed to create casbin model")
+	s.Require().ErrorContains(err, "failed to create casbin model")
 	s.Nil(enforcer)
 }
 
@@ -295,7 +296,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 
 	for _, test := range tests {
 		should := "should"
-		actor := ""
+		var actor string
 		switch {
 		case test.roles[0]:
 			actor = "org-admin"
@@ -383,5 +384,4 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		}
 		s.Equal(test.allowed, allowed)
 	}
-
 }

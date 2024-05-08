@@ -503,7 +503,7 @@ func (h *HSMSession) LoadECKey(info KeyInfo) (*ECKeyPair, error) {
 func oaepForHash(hashFunction crypto.Hash, keyLabel string) (*pkcs11.OAEPParams, error) {
 	var hashAlg, mgfAlg uint
 
-	switch hashFunction {
+	switch hashFunction { //nolint:exhaustive // We only handle SHA family in this switch
 	case crypto.SHA1:
 		hashAlg = pkcs11.CKM_SHA_1
 		mgfAlg = pkcs11.CKG_MGF1_SHA1

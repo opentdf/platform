@@ -6,20 +6,18 @@
 MODS=protocol/go lib/ocrypto lib/fixtures sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures sdk service examples
 
-EXCLUDE_OPENAPI=./service/authorization/idp_plugin.proto
-
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-LINT_OPTIONS?=--new
+# LINT_OPTIONS?=--new
 # LINT_OPTIONS?=-new-from-rev=main
-# LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci-ratchet.yaml
+LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci.yaml
 
 all: toolcheck clean build lint test
 
 toolcheck:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
-	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.56.2'" && exit 1)
+	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
 	@golangci-lint --version | grep "version v\?1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
 
@@ -44,7 +42,7 @@ proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
-	buf generate service --exclude-path $(EXCLUDE_OPENAPI) --template buf.gen.openapi.docs.yaml
+	buf generate service --template buf.gen.openapi.docs.yaml
 	
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml

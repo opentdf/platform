@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -26,12 +27,14 @@ type RemoteServiceConfig struct {
 }
 
 type RegistrationParams struct {
-	Config          ServiceConfig
-	OTDF            *server.OpenTDFServer
-	DBClient        *db.Client
-	Engine          *opa.Engine
-	SDK             *sdk.SDK
-	WellKnownConfig func(namespace string, config any) error
+	Config                 ServiceConfig
+	OTDF                   *server.OpenTDFServer
+	DBClient               *db.Client
+	Engine                 *opa.Engine
+	SDK                    *sdk.SDK
+	WellKnownConfig        func(namespace string, config any) error
+	RegisterReadinessCheck func(namespace string, check func(context.Context) error) error
+	Logger                 *logger.Logger
 }
 type HandlerServer func(ctx context.Context, mux *runtime.ServeMux, server any) error
 type RegisterFunc func(RegistrationParams) (Impl any, HandlerServer HandlerServer)
@@ -60,7 +63,7 @@ type Service struct {
 type ServiceMap map[string]Service
 type NamespaceMap map[string]ServiceMap
 
-// Map of namespaces to services
+// RegisteredServices is a map of namespaces to services
 var RegisteredServices NamespaceMap
 
 func RegisterService(r Registration) error {

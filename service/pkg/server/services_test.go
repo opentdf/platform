@@ -6,6 +6,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/config"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
@@ -123,6 +124,9 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	otdf, err := mockOpenTDFServer()
 	require.NoError(t, err)
 
+	logger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+	require.NoError(t, err)
+
 	cF, services, err := startServices(ctx, config.Config{
 		DB: db.Config{
 			Host:          "localhost",
@@ -143,7 +147,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 				Enabled: false,
 			},
 		},
-	}, otdf, nil, nil)
+	}, otdf, nil, nil, logger)
 	require.NoError(t, err)
 	require.NotNil(t, cF)
 	assert.Lenf(t, services, 2, "expected 2 services enabled, got %d", len(services))

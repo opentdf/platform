@@ -94,13 +94,13 @@ func TestNanoTDFRewrapKeyGenerate(t *testing.T) {
 	digest := sha256.New()
 	digest.Write([]byte("L1L"))
 
-	kasSymmetricKey, err := CalculateHKDF(digest.Sum(nil), kasECDHKey, 32)
+	kasSymmetricKey, err := CalculateHKDF(digest.Sum(nil), kasECDHKey)
 	require.NoError(t, err, "fail to calculate HKDF key")
 
 	sdkECDHKey, err := ComputeECDHKey([]byte(sdkPrivateKeyAsPem), []byte(kasPubKeyAsPem))
 	require.NoError(t, err, "fail to calculate ecdh key")
 
-	sdkSymmetricKey, err := CalculateHKDF(digest.Sum(nil), sdkECDHKey, 32)
+	sdkSymmetricKey, err := CalculateHKDF(digest.Sum(nil), sdkECDHKey)
 	require.NoError(t, err, "fail to calculate HKDF key")
 
 	if string(kasSymmetricKey) != string(sdkSymmetricKey) {

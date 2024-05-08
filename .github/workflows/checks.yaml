@@ -215,8 +215,14 @@ jobs:
         run: git restore {service,protocol/go}/go.{mod,sum}
       - name: check go fmt and go mod tidy
         run: |-
-          make fix
-          git restore {examples,lib/{fixtures,ocrypto},protocol/go,sdk,service}/go.sum
+          for x in {examples,lib/{fixtures,ocrypto},protocol/go,sdk,service}; do
+            (
+              cd "${x}"
+              go fmt ./...
+              go mod tidy
+              git restore go.sum
+            )
+          done
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that files have been formatted before PR submission

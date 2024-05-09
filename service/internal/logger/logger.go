@@ -18,7 +18,11 @@ type Config struct {
 	Type   string `yaml:"type" default:"json"`
 }
 
+// From the Slog docs (https://betterstack.com/community/guides/logging/logging-in-go/#customizing-slog-levels):
+// The log/slog package provides four log levels by default, with each one
+// associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
 const (
+	// Currently setting AUDIT level to 6, between WARN and ERROR
 	LevelAudit = slog.Level(6)
 )
 

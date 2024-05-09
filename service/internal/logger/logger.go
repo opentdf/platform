@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,10 +18,30 @@ type Config struct {
 	Type   string `yaml:"type" default:"json"`
 }
 
-func (l *Logger) With(key string, value string) *Logger {
-	return &Logger{
-		Logger: l.Logger.With(key, value),
+const (
+	LevelAudit = slog.Level(6)
+)
+
+var CustomLevelNames = map[slog.Leveler]string{
+	LevelAudit: "AUDIT",
+}
+
+// Used to support custom log levels showing up with custom labels as well
+// see https://betterstack.com/community/guides/logging/logging-in-go/#creating-custom-log-levels
+func customReplaceAttributes(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.LevelKey {
+		level, ok := a.Value.Any().(slog.Level)
+		if !ok {
+			return a
+		}
+		levelLabel, exists := CustomLevelNames[level]
+		if !exists {
+			levelLabel = level.String()
+		}
+		a.Value = slog.StringValue(levelLabel)
 	}
+
+	return a
 }
 
 func NewLogger(config Config) (*Logger, error) {
@@ -39,12 +60,14 @@ func NewLogger(config Config) (*Logger, error) {
 	switch config.Type {
 	case "json":
 		j := slog.NewJSONHandler(w, &slog.HandlerOptions{
-			Level: level,
+			Level:       level,
+			ReplaceAttr: customReplaceAttributes,
 		})
 		logger = slog.New(j)
 	case "text":
 		t := slog.NewTextHandler(w, &slog.HandlerOptions{
-			Level: level,
+			Level:       level,
+			ReplaceAttr: customReplaceAttributes,
 		})
 		logger = slog.New(t)
 	default:
@@ -53,6 +76,16 @@ func NewLogger(config Config) (*Logger, error) {
 	return &Logger{
 		Logger: logger,
 	}, nil
+}
+
+func (l *Logger) With(key string, value string) *Logger {
+	return &Logger{
+		Logger: l.Logger.With(key, value),
+	}
+}
+
+func (l *Logger) Audit(ctx context.Context, msg string) {
+	l.Logger.Log(ctx, LevelAudit, msg)
 }
 
 func getWriter(config Config) (io.Writer, error) {

@@ -251,13 +251,17 @@ func ComputeECDHKey(privateKeyInPem []byte, publicKeyInPem []byte) ([]byte, erro
 }
 
 // TODO FIXME
-func GetPEMPublicKeyFromPrivateKey(key []byte, mode ECCMode) ecdsa.PublicKey {
+func GetPEMPublicKeyFromPrivateKey(_ /*key*/ []byte, _ /*mode*/ ECCMode) ecdsa.PublicKey {
 	b := ecdsa.PublicKey{}
 	return b
 }
 
 // TODO FIXME
-func ComputeECDSASig(digest [32]byte, key []byte) []byte {
-	b := bytes.NewBuffer(make([]byte, 0, 128))
+const (
+	kDummyLength = 128
+)
+
+func ComputeECDSASig(_ /*digest*/ [32]byte, _ /*key*/ []byte) []byte {
+	b := bytes.NewBuffer(make([]byte, 0, kDummyLength))
 	return b.Bytes()
 }

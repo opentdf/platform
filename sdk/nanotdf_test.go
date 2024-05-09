@@ -157,16 +157,16 @@ MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1HjFYV8D16BQszNW
 PpJXUV02Y6Ex3WlxK/Oaebj8ATsbfaPaxrhyCWB3nc3w/W6+lySlLPn5
 -----END PRIVATE KEY-----`
 
-	sdkPublicKey = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFtR7KtLc8Tejm7l6lfiaCTdH+/BJ
-vz6SV1FdNmOhMd1pcSvzmnm4/AE7G32j2sa4cglgd53N8P1uvpckpSz5+Q==
------END PUBLIC KEY-----`
+	//	sdkPublicKey = `-----BEGIN PUBLIC KEY-----
+	// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFtR7KtLc8Tejm7l6lfiaCTdH+/BJ
+	// vz6SV1FdNmOhMd1pcSvzmnm4/AE7G32j2sa4cglgd53N8P1uvpckpSz5+Q==
+	// -----END PUBLIC KEY-----`
 
-	kasPrivateKey = `-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgu2Hmm80uUzQB1OfB
-PyMhWIyJhPA61v+j0arvcLjTwtqhRANCAASHCLUHY4szFiVV++C9+AFMkEL2gG+O
-byN4Hi7Ywl8GMPOAPcQdIeUkoTd9vub9PcuSj23I8/pLVzs23qhefoUf
------END PRIVATE KEY-----`
+	//	kasPrivateKey = `-----BEGIN PRIVATE KEY-----
+	// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgu2Hmm80uUzQB1OfB
+	// PyMhWIyJhPA61v+j0arvcLjTwtqhRANCAASHCLUHY4szFiVV++C9+AFMkEL2gG+O
+	// byN4Hi7Ywl8GMPOAPcQdIeUkoTd9vub9PcuSj23I8/pLVzs23qhefoUf
+	// -----END PRIVATE KEY-----`
 
 	kasPublicKey = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhwi1B2OLMxYlVfvgvfgBTJBC9oBv
@@ -179,29 +179,25 @@ func TestNanoTDFEncryptFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//_ = infile.Close()
 
-	// try to delete the output file in case it exists already
-	err = os.Remove("nanotest1.ntdf")
-	if err != nil {
-	}
+	// try to delete the output file in case it exists already - ignore error if it doesn't exist
+	_ = os.Remove("nanotest1.ntdf")
 
 	outfile, err := os.Create("nanotest1.ntdf")
 	if err != nil {
 		t.Fatal(err)
 	}
-	//_ = outfile.Close()
 
 	// TODO - populate config properly
-	var kasURL string = "https://kas.virtru.com/kas"
+	var kasURL = "https://kas.virtru.com/kas"
 	var config NanoTDFConfig
-	config.m_bufferSize = 8192 * 1024
-	config.m_kasURL.body = kasURL // TODO - check for excessive length here
-	config.m_kasURL.lengthBody = uint8(len(kasURL))
-	config.m_kasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
-	config.m_privateKey = sdkPrivateKey
-	config.m_kasPublicKey = kasPublicKey
-	config.m_eccMode = ocrypto.ECCModeSecp256r1
+	config.mBufferSize = 8192 * 1024
+	config.mKasURL.body = kasURL // TODO - check for excessive length here
+	config.mKasURL.lengthBody = uint8(len(kasURL))
+	config.mKasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
+	config.mPrivateKey = sdkPrivateKey
+	config.mKasPublicKey = kasPublicKey
+	config.mEccMode = ocrypto.ECCModeSecp256r1
 
 	err = NanoTDFEncryptFile(infile, outfile, config)
 	if err != nil {

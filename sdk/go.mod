@@ -1,6 +1,8 @@
 module github.com/opentdf/platform/sdk
 
-go 1.22.3
+go 1.22
+
+toolchain go1.22.3
 
 require (
 	github.com/docker/go-connections v0.5.0

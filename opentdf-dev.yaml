@@ -21,24 +21,24 @@ services:
     tokenEndpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
     jwtdecomposition:
       # always add entities from these selectors
-      alwaysSelectors:
-      # maybe these selectors should be jq as well?
+      alwaysselectors:
+      # TODO: maybe these selectors should use jq?
         - selector: azp
-          entityType: clientId
+          entitytype: clientId
         # example for other idps
         # - selector: sub
-        #   entityType: uuid
+        #   entitytype: uuid
       # evaluate the described conditions for these selectors
-      conditionalSelectors:
-        - if: client_id
+      conditionalselectors:
+        - ifselector: client_id
           present: false
           selector: preferred_username
-          entityType: userName
-        # - if: some_claim
+          entitytype: userName
+        # - ifselector: some_claim
         #   present: true
-        #   equalTo: something
+        #   equalto: something
         #   selector: other_selector
-        #   entityType: email
+        #   entitytype: email
   entityresolution:
     enabled: true
     url: http://localhost:8888/auth

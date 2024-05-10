@@ -27,3 +27,14 @@ To contribute/develop, see [here](./Contributing.md).
       -it registry.opentdf.io/platform:nightly start
    ```
 
+## 🎉 Your platform is ready to use!
+
+You can now access platform services at http://localhost:8080/ , and Keycloak at http://localhost:8888/auth/ .
+
+##  Next steps
+* Try out our CLI (`otdfctl`): https://github.com/opentdf/otdfctl
+   ```sh
+   otdfctl auth client-credentials --host http://localhost:8080 --client-id opentdf --client-secret secret
+   ```
+* Join our slack channel ([click here](https://join.slack.com/t/opentdf/shared_invite/zt-1e3jhnedw-wjviK~qRH_T1zG4dfaa~3A))
+* Connect with the team

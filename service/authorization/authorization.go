@@ -449,8 +449,8 @@ func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*
 			slog.Info("Conditional value " + ifValue + " is not equal to expected value " + conditionalRule.EqualTo)
 			continue
 		}
-		extractedValue, ok := claims[conditionalRule.Selector].(string)
-		if !ok {
+		extractedValue, okCastExp := claims[conditionalRule.Selector].(string)
+		if !okCastExp {
 			return nil, errors.New("Error extracting selector " + conditionalRule.Selector + " from jwt")
 		}
 		switch conditionalRule.EntityType {

@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch-depth: 0      
+          fetch-depth: 0
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.22.3"
@@ -81,6 +81,8 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum
+      - if: startsWith(github.head_ref, 'release-please-')
+        run: ./.github/scripts/work-init.sh
       - run: go mod download
         working-directory: ${{ matrix.directory }}
       - run: go mod verify
@@ -138,6 +140,8 @@ jobs:
             examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
+      - if: startsWith(github.head_ref, 'release-please-')
+        run: ./.github/scripts/work-init.sh
       - run: go mod download
       - run: go mod verify
       - name: Install softHSM

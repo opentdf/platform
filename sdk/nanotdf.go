@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -47,36 +48,42 @@ const (
   ********************************* Header*************************/
 
 type NanoTDFHeader struct {
-	magicNumber        [len(kNanoTDFMagicStringAndVersion)]byte
-	kasURL             *resourceLocator
-	binding            *bindingCfg
-	sigCfg             *signatureConfig
-	policy             *policyInfo
-	EphemeralPublicKey *eccKey
+	magicNumber          [len(kNanoTDFMagicStringAndVersion)]byte
+	kasURL               *resourceLocator
+	binding              *bindingCfg
+	sigCfg               *signatureConfig
+	policy               *policyInfo
+	EphemeralPublicKey   *eccKey
+	policyObjectAsStr    []byte
+	isInitialized        bool
+	mEncryptSymmetricKey []byte
 }
 
 type NanoTDFConfig struct {
-	mDatasetMode      bool
-	mMaxKeyIterations int
-	mEccMode          ocrypto.ECCMode
-	mKeyPair          ocrypto.ECKeyPair
-	mPrivateKey       string
-	mPublicKey        string
-	attributes        []string
-	mBufferSize       uint64
-	mHasSignature     bool
-	mSignerPrivateKey []byte
-	mCipher           cipherMode
-	mKasURL           resourceLocator
-	mKasPublicKey     string
-	mDefaultSalt      []byte
+	mDatasetMode       bool
+	mMaxKeyIterations  uint64
+	mKeyIterationCount uint64
+	mEccMode           ocrypto.ECCMode
+	mKeyPair           ocrypto.ECKeyPair
+	mPrivateKey        string
+	mPublicKey         string
+	attributes         []string
+	mBufferSize        uint64
+	mHasSignature      bool
+	mSignerPrivateKey  []byte
+	mCipher            cipherMode
+	mKasURL            resourceLocator
+	mKasPublicKey      string
+	mDefaultSalt       []byte
+	EphemeralPublicKey *eccKey
+	sigCfg             signatureConfig
+	policy             policyInfo
+	mCompressedPubKey  []byte
 }
 
 type NanoTDF struct {
 	header               NanoTDFHeader
 	config               NanoTDFConfig
-	mInitialized         bool
-	mKeyIterationCount   int
 	policyObj            PolicyObject
 	mCompressedPubKey    []byte
 	mIv                  uint64
@@ -165,7 +172,7 @@ type policyType uint8
 
 const (
 	policyTypeRemotePolicy                           policyType = 0
-	policyTypEmbeddedPolicyPainText                  policyType = 1
+	policyTypEmbeddedPolicyPlainText                 policyType = 1
 	policyTypeEmbeddedPolicyEncrypted                policyType = 2
 	policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess policyType = 3
 )
@@ -250,6 +257,7 @@ func serializeSignatureCfg(sigCfg signatureConfig) byte {
 	return sigSerial
 }
 
+// readPolicyBody - helper function to decode input data into a PolicyBody object
 func readPolicyBody(reader io.Reader, mode uint8) (PolicyBody, error) {
 	switch mode {
 	case 0:
@@ -280,16 +288,30 @@ func readPolicyBody(reader io.Reader, mode uint8) (PolicyBody, error) {
 	}
 }
 
+// getProtocolFromUrl - examine the beginning of an url to determine if the protocol is https or http
+func getProtocolFromUrl(url string) (urlProtocol, error) {
+	if strings.HasPrefix(strings.ToLower(url), "https") {
+		return urlProtocolHTTPS, nil
+	} else if strings.HasPrefix(strings.ToLower(url), "http") {
+		return urlProtocolHTTP, nil
+	}
+	return urlProtocolHTTPS, fmt.Errorf("unsupported protocol prefix: %s", url)
+}
+
+// writePolicyBody - helper function to encode and write a PolicyBody object
 func writePolicyBody(writer io.Writer, h *NanoTDFHeader) error {
 	var err error
 
 	switch h.policy.mode {
 	case 0: // remote policy - resource locator
-		// TODO FIXME - get real value from resourceLocator
-		if err = binary.Write(writer, binary.BigEndian, uint8(urlProtocolHTTPS)); err != nil {
+		var reBody = h.policy.body.getBody()
+		var protocol, err = getProtocolFromUrl(reBody)
+		if err != nil {
 			return err
 		}
-		var reBody = h.policy.body.getBody()
+		if err = binary.Write(writer, binary.BigEndian, uint8(protocol)); err != nil {
+			return err
+		}
 		if err = binary.Write(writer, binary.BigEndian, uint8(len(reBody))); err != nil {
 			return err
 		}
@@ -309,6 +331,7 @@ func writePolicyBody(writer io.Writer, h *NanoTDFHeader) error {
 	return err
 }
 
+// readEphemeralPublicKey - helper function to decode input into an eccKey object
 func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (*eccKey, error) {
 	var numberOfBytes uint8
 	switch curve {
@@ -328,6 +351,7 @@ func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (*eccKey, e
 	return &eccKey{Key: buffer}, nil
 }
 
+// ReadNanoTDFHeader - decode input into a NanoTDFHeader object
 func ReadNanoTDFHeader(reader io.Reader) (*NanoTDFHeader, error) {
 	var nanoTDF NanoTDFHeader
 
@@ -386,79 +410,82 @@ func ReadNanoTDFHeader(reader io.Reader) (*NanoTDFHeader, error) {
 	return &nanoTDF, err
 }
 
-func createHeader(nanoTDF *NanoTDF) error {
+func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 	var err error
 
-	if nanoTDF.config.mDatasetMode && // In data set mode
-		nanoTDF.mKeyIterationCount > 0 && // Not the first iteration
-		nanoTDF.mKeyIterationCount != nanoTDF.config.mMaxKeyIterations { // Didn't reach the max iteration
+	if config.mDatasetMode && // In data set mode
+		config.mKeyIterationCount > 0 && // Not the first iteration
+		config.mKeyIterationCount != config.mMaxKeyIterations { // Didn't reach the max iteration
 		// LogDebug("Reusing the header for dataset");
 		// Use the old header.
 		return err
 	}
 
-	// Set magic number in header, and generate default salt
-	var i int
-	for _, magicByte := range []byte(kNanoTDFMagicStringAndVersion) {
-		nanoTDF.header.magicNumber[i] = magicByte
-		i++
+	if header.isInitialized == false {
+		// Set magic number in header, and generate default salt
+		var i int
+		for _, magicByte := range []byte(kNanoTDFMagicStringAndVersion) {
+			header.magicNumber[i] = magicByte
+			i++
+		}
+		config.mDefaultSalt = ocrypto.CalculateSHA256([]byte(kNanoTDFMagicStringAndVersion))
+
+		// TODO FIXME - gotta be a better way to do this copy
+		header.kasURL = &resourceLocator{config.mKasURL.protocol, config.mKasURL.lengthBody, config.mKasURL.body}
+
+		// TODO FIXME - put real values in here
+		header.binding = new(bindingCfg)
+		header.binding.useEcdsaBinding = true
+		header.binding.bindingBody = config.mEccMode
+
+		// TODO FIXME - put real values here
+		header.sigCfg = new(signatureConfig)
+		header.sigCfg.hasSignature = true
+		header.sigCfg.signatureMode = config.mEccMode
+		header.sigCfg.cipher = config.mCipher
+
+		// TODO FIXME - put real values here
+		var rlBody resourceLocator
+		rlBody.protocol = urlProtocolHTTPS
+		rlBody.body = "https://resource.virtru.com"
+
+		rlBody.lengthBody = uint8(len(rlBody.body))
+		header.policy = new(policyInfo)
+		header.policy.mode = uint8(0)
+		header.policy.body = rlBody
+
+		// copy key from config
+		header.EphemeralPublicKey = config.EphemeralPublicKey
 	}
-	nanoTDF.config.mDefaultSalt = ocrypto.CalculateSHA256([]byte(kNanoTDFMagicStringAndVersion))
 
-	// TODO FIXME - gotta be a better way to do this copy
-	nanoTDF.header.kasURL = &resourceLocator{nanoTDF.config.mKasURL.protocol, nanoTDF.config.mKasURL.lengthBody, nanoTDF.config.mKasURL.body}
-
-	// TODO FIXME - put real values in here
-	nanoTDF.header.binding = new(bindingCfg)
-	nanoTDF.header.binding.useEcdsaBinding = true
-	nanoTDF.header.binding.bindingBody = nanoTDF.config.mEccMode
-
-	// TODO FIXME - put real values here
-	nanoTDF.header.sigCfg = new(signatureConfig)
-	nanoTDF.header.sigCfg.hasSignature = true
-	nanoTDF.header.sigCfg.signatureMode = nanoTDF.config.mEccMode
-	nanoTDF.header.sigCfg.cipher = nanoTDF.config.mCipher
-
-	// TODO FIXME - put real values here
-	var rlBody resourceLocator
-	rlBody.protocol = urlProtocolHTTPS
-	rlBody.body = "https://resource.virtru.com"
-
-	rlBody.lengthBody = uint8(len(rlBody.body))
-	nanoTDF.header.policy = new(policyInfo)
-	nanoTDF.header.policy.mode = uint8(0)
-	nanoTDF.header.policy.body = rlBody
-
-	// TODO FIXME - put real values here
-	nanoTDF.header.EphemeralPublicKey = new(eccKey)
-
-	if nanoTDF.config.mDatasetMode && (nanoTDF.config.mMaxKeyIterations == nanoTDF.mKeyIterationCount) { //nolint:nestif // error checking each operation
-		var sdkECKeyPair, err = ocrypto.NewECKeyPair(nanoTDF.config.mEccMode)
+	if config.mDatasetMode && (config.mMaxKeyIterations == config.mKeyIterationCount) { //nolint:nestif // error checking each operation
+		var sdkECKeyPair, err = ocrypto.NewECKeyPair(config.mEccMode)
 		if err != nil {
 			return err
 		}
-		nanoTDF.config.mPrivateKey, err = sdkECKeyPair.PrivateKeyInPemFormat()
+		config.mPrivateKey, err = sdkECKeyPair.PrivateKeyInPemFormat()
 		if err != nil {
 			return err
 		}
-		nanoTDF.config.mPublicKey, err = sdkECKeyPair.PublicKeyInPemFormat()
+		config.mPublicKey, err = sdkECKeyPair.PublicKeyInPemFormat()
 		if err != nil {
 			return err
 		}
-		nanoTDF.config.mKeyPair = sdkECKeyPair
+		config.mKeyPair = sdkECKeyPair
 
-		nanoTDF.mCompressedPubKey, err = ocrypto.CompressedECPublicKey(nanoTDF.config.mEccMode, nanoTDF.config.mKeyPair.PrivateKey.PublicKey)
+		config.mCompressedPubKey, err = ocrypto.CompressedECPublicKey(config.mEccMode, config.mKeyPair.PrivateKey.PublicKey)
 		if err != nil {
 			return err
 		}
 
 		// Create a new policy.
-		nanoTDF.policyObj, err = createPolicyObject(nanoTDF.config.attributes)
+		policyObj, err := createPolicyObject(config.attributes)
+		header.policy = &config.policy
 		if err != nil {
 			return fmt.Errorf("fail to create policy object:%w", err)
 		}
 
-		nanoTDF.policyObjectAsStr, err = json.Marshal(nanoTDF.policyObj)
+		header.policyObjectAsStr, err = json.Marshal(policyObj)
 		if err != nil {
 			return fmt.Errorf("json.Marshal failed:%w", err)
 		}
@@ -467,11 +494,11 @@ func createHeader(nanoTDF *NanoTDF) error {
 	}
 
 	// Generate symmetric key.
-	secret, err := ocrypto.ComputeECDHKey([]byte(nanoTDF.config.mPrivateKey), []byte(nanoTDF.config.mKasPublicKey))
+	secret, err := ocrypto.ComputeECDHKey([]byte(config.mPrivateKey), []byte(config.mKasPublicKey))
 	if err != nil {
 		return err
 	}
-	nanoTDF.mEncryptSymmetricKey, err = ocrypto.CalculateHKDF(nanoTDF.config.mDefaultSalt, secret)
+	header.mEncryptSymmetricKey, err = ocrypto.CalculateHKDF(config.mDefaultSalt, secret)
 	if err != nil {
 		return err
 	}
@@ -527,7 +554,7 @@ const (
 	kCipher128AuthTagSize = 16
 )
 
-// / SizeOfAuthTagForCipher - Return the size of auth tag to be used for aes gcm encryption.
+// SizeOfAuthTagForCipher - Return the size of auth tag to be used for aes gcm encryption.
 func SizeOfAuthTagForCipher(cipherType cipherMode) (int, error) {
 	switch cipherType {
 	case cipherModeAes256gcm64Bit:
@@ -590,7 +617,9 @@ func NanoTDFEncryptFile(plaintextFile *os.File, encryptedFile *os.File, config N
 		return err
 	}
 
-	nanoBuffer, err := NanoTDFEncrypt(config, plaintextBuffer)
+	nanoTDF := new(NanoTDF)
+	nanoTDF.config = config
+	nanoBuffer, err := NanoTDFEncrypt(nanoTDF, plaintextBuffer)
 	if err != nil {
 		return err
 	}
@@ -608,21 +637,18 @@ func NanoTDFToBuffer(nanoTDF NanoTDF) ([]byte, error) {
 	return nanoTDF.mWorkingBuffer, nil
 }
 
-func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer []byte) ([]byte, error) {
+func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 	var err error
 
 	// config is fixed at this point, make a copy
-	nanoTDF := NanoTDF{}
-	nanoTDF.config = config
+	nanoTDFHeader := new(NanoTDFHeader)
 
-	err = createHeader(&nanoTDF)
+	err = createHeader(nanoTDFHeader, &nanoTDF.config)
 	if err != nil {
 		return nil, err
 	}
 
-	nanoTDF.mInitialized = true
-
-	encryptBuffer := bytes.NewBuffer(make([]byte, 0, config.mBufferSize))
+	encryptBuffer := bytes.NewBuffer(make([]byte, 0, nanoTDF.config.mBufferSize))
 	ebWriter := bufio.NewWriter(encryptBuffer)
 	err = writeHeader(&nanoTDF.header, ebWriter)
 	if err != nil {
@@ -661,10 +687,10 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer []byte) ([]byte, error
 		ivWithPadding := bytes.NewBuffer(make([]byte, 0, ivSizeWithPadding))
 
 		// Reset the IV after max iterations
-		if nanoTDF.config.mMaxKeyIterations == nanoTDF.mKeyIterationCount {
+		if nanoTDF.config.mMaxKeyIterations == nanoTDF.config.mKeyIterationCount {
 			nanoTDF.mIv = 1
 			if nanoTDF.config.mDatasetMode {
-				nanoTDF.mKeyIterationCount = 0
+				nanoTDF.config.mKeyIterationCount = 0
 			}
 		}
 
@@ -777,7 +803,7 @@ func NanoTDFEncrypt(config NanoTDFConfig, plaintextBuffer []byte) ([]byte, error
 	}
 
 	if nanoTDF.config.mDatasetMode {
-		nanoTDF.mKeyIterationCount++
+		nanoTDF.config.mKeyIterationCount++
 	}
 
 	return encryptBuffer.Bytes(), err

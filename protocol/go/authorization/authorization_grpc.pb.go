@@ -29,7 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthorizationServiceClient interface {
 	GetDecisions(ctx context.Context, in *GetDecisionsRequest, opts ...grpc.CallOption) (*GetDecisionsResponse, error)
-	GetDecisionsByToken(ctx context.Context, in *GetDecisionsByTokenRequest, opts ...grpc.CallOption) (*GetDecisionsResponse, error)
+	GetDecisionsByToken(ctx context.Context, in *GetDecisionsByTokenRequest, opts ...grpc.CallOption) (*GetDecisionsByTokenResponse, error)
 	GetEntitlements(ctx context.Context, in *GetEntitlementsRequest, opts ...grpc.CallOption) (*GetEntitlementsResponse, error)
 }
 
@@ -50,8 +50,8 @@ func (c *authorizationServiceClient) GetDecisions(ctx context.Context, in *GetDe
 	return out, nil
 }
 
-func (c *authorizationServiceClient) GetDecisionsByToken(ctx context.Context, in *GetDecisionsByTokenRequest, opts ...grpc.CallOption) (*GetDecisionsResponse, error) {
-	out := new(GetDecisionsResponse)
+func (c *authorizationServiceClient) GetDecisionsByToken(ctx context.Context, in *GetDecisionsByTokenRequest, opts ...grpc.CallOption) (*GetDecisionsByTokenResponse, error) {
+	out := new(GetDecisionsByTokenResponse)
 	err := c.cc.Invoke(ctx, AuthorizationService_GetDecisionsByToken_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, in *Ge
 // for forward compatibility
 type AuthorizationServiceServer interface {
 	GetDecisions(context.Context, *GetDecisionsRequest) (*GetDecisionsResponse, error)
-	GetDecisionsByToken(context.Context, *GetDecisionsByTokenRequest) (*GetDecisionsResponse, error)
+	GetDecisionsByToken(context.Context, *GetDecisionsByTokenRequest) (*GetDecisionsByTokenResponse, error)
 	GetEntitlements(context.Context, *GetEntitlementsRequest) (*GetEntitlementsResponse, error)
 	mustEmbedUnimplementedAuthorizationServiceServer()
 }
@@ -85,7 +85,7 @@ type UnimplementedAuthorizationServiceServer struct {
 func (UnimplementedAuthorizationServiceServer) GetDecisions(context.Context, *GetDecisionsRequest) (*GetDecisionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDecisions not implemented")
 }
-func (UnimplementedAuthorizationServiceServer) GetDecisionsByToken(context.Context, *GetDecisionsByTokenRequest) (*GetDecisionsResponse, error) {
+func (UnimplementedAuthorizationServiceServer) GetDecisionsByToken(context.Context, *GetDecisionsByTokenRequest) (*GetDecisionsByTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDecisionsByToken not implemented")
 }
 func (UnimplementedAuthorizationServiceServer) GetEntitlements(context.Context, *GetEntitlementsRequest) (*GetEntitlementsResponse, error) {

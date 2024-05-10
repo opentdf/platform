@@ -85,7 +85,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/authorizationGetDecisionsResponse"
+              "$ref": "#/definitions/authorizationGetDecisionsByTokenResponse"
             }
           },
           "default": {
@@ -246,6 +246,18 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "authorizationGetDecisionsByTokenResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationDecisionResponse"
           }
         }
       }

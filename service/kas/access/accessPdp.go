@@ -67,7 +67,7 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorizat
 	}
 	dr, err := sdk.Authorization.GetDecisionsByToken(ctx, &in)
 	if err != nil {
-		slog.ErrorContext(ctx, "Error received from GetDecisions", "err", err)
+		slog.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)
 	}
 	if len(dr.GetDecisionResponses()) != 1 {

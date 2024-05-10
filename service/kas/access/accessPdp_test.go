@@ -13,7 +13,7 @@ func TestDissemSuccess(t *testing.T) {
 	var entityID = "email2@example.com"
 
 	testPolicy := Policy{
-		UUID: uuid.New(),
+		UUID: uuid.New(), //nolint:govet // policy has uuid
 		Body: PolicyBody{
 			DataAttributes: []Attribute{},
 			Dissem: []string{"email1@example.com",
@@ -38,7 +38,7 @@ func TestDissemFailure(t *testing.T) {
 	var entityID = "email2@example.com"
 
 	testPolicy := Policy{
-		UUID: uuid.New(),
+		UUID: uuid.New(), //nolint:govet // policy has uuid
 		Body: PolicyBody{
 			DataAttributes: []Attribute{},
 			Dissem: []string{"email1@example.com",

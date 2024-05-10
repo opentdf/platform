@@ -165,7 +165,7 @@ var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntit
 	return as.GetEntitlements(ctx, req)
 }
 
-func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest) (*authorization.GetDecisionsResponse, error) {
+func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest) (*authorization.GetDecisionsByTokenResponse, error) {
 	var decisionsRequests = []*authorization.DecisionRequest{}
 	// for each token decision request
 	for _, tdr := range req.GetDecisionRequests() {
@@ -193,7 +193,10 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *au
 		DecisionRequests: decisionsRequests,
 	})
 
-	return resp, err
+	if err != nil {
+		return nil, err
+	}
+	return &authorization.GetDecisionsByTokenResponse{DecisionResponses: resp.GetDecisionResponses()}, err
 }
 
 func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error) {
@@ -405,8 +408,8 @@ func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*
 	var entityID = 0
 	// go through the always rules, throw error if not found
 	for _, alwaysRule := range jwtRules.AlwaysSelectors {
-		extractedValue, ok := claims[alwaysRule.Selector].(string)
-		if !ok {
+		extractedValue, okCast := claims[alwaysRule.Selector].(string)
+		if !okCast {
 			// alwaysSelectors should always be present
 			return nil, errors.New("Error extracting selector " + alwaysRule.Selector + " from jwt")
 		}
@@ -433,8 +436,8 @@ func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*
 
 	// go through the conditional rules
 	for _, conditionalRule := range jwtRules.ConditionalSelectors {
-		ifValue, ok := claims[conditionalRule.IfSelector].(string)
-		if conditionalRule.Present && !ok {
+		ifValue, okCast := claims[conditionalRule.IfSelector].(string)
+		if conditionalRule.Present && !okCast {
 			slog.Info("Did not find conditional value " + conditionalRule.IfSelector + " in jwt when conditional selector rule is Present")
 			continue
 		}

@@ -271,11 +271,15 @@ message GetDecisionsByTokenRequest {
   repeated TokenDecisionRequest decision_requests = 1;
 }
 
+message GetDecisionsByTokenResponse {
+  repeated DecisionResponse decision_responses = 1;
+}
+
 service AuthorizationService {
   rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
     option (google.api.http) = {post: "/v1/authorization"};
   }
-  rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsResponse) {
+  rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
     option (google.api.http) = {post: "/v1/token/authorization"};
   }
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {

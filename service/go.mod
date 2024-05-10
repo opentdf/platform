@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/service
 
-go 1.22
+go 1.22.3
 
 require (
 	github.com/Masterminds/squirrel v1.5.4

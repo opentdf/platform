@@ -21,7 +21,7 @@ type Config struct {
 	OPA      opa.Config                               `yaml:"opa"`
 	Server   server.Config                            `yaml:"server"`
 	Logger   logger.Config                            `yaml:"logger"`
-	Services map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}}"`
+	Services map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}, \"kas\": {\"enabled\": true}, \"entityresolution\": {\"enabled\": true}}"`
 }
 
 type Error string

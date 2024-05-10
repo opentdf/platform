@@ -82,7 +82,9 @@ jobs:
             sdk/go.sum
             service/go.sum
       - run: go mod download
+        working-directory: ${{ matrix.directory }}
       - run: go mod verify
+        working-directory: ${{ matrix.directory }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc
         with:
@@ -106,6 +108,16 @@ jobs:
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
         run: go test ./service/integration -race -failfast
+      - name: check go fmt and go mod tidy
+        run: |-
+          go mod tidy
+          go fmt ./...
+          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
+        working-directory: ${{ matrix.directory }}
+      - run: git diff
+      - run: git diff-files --ignore-submodules
+      - name: Check that files have been formatted before PR submission; see above for error details
+        run: git diff-files --quiet --ignore-submodules
 
   integration:
     name: integration tests
@@ -213,9 +225,14 @@ jobs:
       - run: make proto-generate
       - name: Restore go.mod after installing protoc-gen-doc
         run: git restore {service,protocol/go}/go.{mod,sum}
+      - name: validate go mod tidy
+        run: |-
+          cd protocol/go
+          go mod tidy
+          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
       - run: git diff
       - run: git diff-files --ignore-submodules
-      - name: Check that files have been formatted before PR submission
+      - name: Check that make proto-generate has run before PR submission; see above for error details
         run: git diff-files --quiet --ignore-submodules
   ci:
     needs:

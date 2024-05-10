@@ -27,13 +27,14 @@ type RemoteServiceConfig struct {
 }
 
 type RegistrationParams struct {
-	Config          ServiceConfig
-	OTDF            *server.OpenTDFServer
-	DBClient        *db.Client
-	Engine          *opa.Engine
-	SDK             *sdk.SDK
-	WellKnownConfig func(namespace string, config any) error
-	Logger          *logger.Logger
+	Config                 ServiceConfig
+	OTDF                   *server.OpenTDFServer
+	DBClient               *db.Client
+	Engine                 *opa.Engine
+	SDK                    *sdk.SDK
+	WellKnownConfig        func(namespace string, config any) error
+	RegisterReadinessCheck func(namespace string, check func(context.Context) error) error
+	Logger                 *logger.Logger
 }
 type HandlerServer func(ctx context.Context, mux *runtime.ServeMux, server any) error
 type RegisterFunc func(RegistrationParams) (Impl any, HandlerServer HandlerServer)

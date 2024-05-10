@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.0...lib/fixtures/v0.2.1) (2024-05-07)
+
+
+### Features
+
+* **ers:** Create entity resolution service, replace idp plugin ([#660](https://github.com/opentdf/platform/issues/660)) ([ff44112](https://github.com/opentdf/platform/commit/ff441128a4b2ef97c3f739ee3f6f42be273b31dc))
+* **sdk:** Adds TLS Certificate Exchange Flow  ([#667](https://github.com/opentdf/platform/issues/667)) ([0e59213](https://github.com/opentdf/platform/commit/0e59213e127e8b6a0b071a04f3ce380907fe494e))
+
 ## [0.2.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.1.0...lib/fixtures/v0.2.0) (2024-04-26)
 
 

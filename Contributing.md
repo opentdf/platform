@@ -1,4 +1,4 @@
-# Development
+# Contributing
 
 The information below is meant for developers of the OpenTDF platform.
 

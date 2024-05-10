@@ -441,7 +441,7 @@ func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*
 			slog.Info("Did not find conditional value " + conditionalRule.IfSelector + " in jwt when conditional selector rule is Present")
 			continue
 		}
-		if !conditionalRule.Present && ok {
+		if !conditionalRule.Present && okCast {
 			slog.Info("Found conditional value " + conditionalRule.IfSelector + " in jwt when conditional selector rule is notPresent, continuing")
 			continue
 		}

@@ -57,6 +57,12 @@
         },
         "parameters": [
           {
+            "name": "scope.resourceAttributesId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "scope.attributeValueFqns",
             "in": "query",
             "required": false,
@@ -140,7 +146,7 @@
           }
         }
       },
-      "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"entityChains\": [\n{\n\"id\": \"ec1\",\n\"entities\": [\n{\n\"emailAddress\": \"bob@example.org\"\n}\n]\n},\n{\n\"id\": \"ec2\",\n\"entities\": [\n{\n\"userName\": \"alice@example.org\"\n}\n]\n}\n],\n\"resourceAttributes\": [\n{\n\"attributeFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
+      "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"entityChains\": [\n{\n\"id\": \"ec1\",\n\"entities\": [\n{\n\"emailAddress\": \"bob@example.org\"\n}\n]\n},\n{\n\"id\": \"ec2\",\n\"entities\": [\n{\n\"userName\": \"alice@example.org\"\n}\n]\n}\n],\n\"resourceAttributes\": [\n{\n\"resourceAttributeId\":  \"attr-set-1\",\n\"attributeFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"resourceAttributeId\":  \"attr-set-2\",\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
       "title": "Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
     },
     "authorizationDecisionResponse": {
@@ -273,6 +279,9 @@
     "authorizationResourceAttribute": {
       "type": "object",
       "properties": {
+        "resourceAttributesId": {
+          "type": "string"
+        },
         "attributeValueFqns": {
           "type": "array",
           "items": {

@@ -306,16 +306,16 @@ func Test_GetDecisionsByTokenAllOf_Pass(t *testing.T) {
 	}}
 
 	as := AuthorizationService{logger: logger, jwtRules: jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "client_id",
-			present:    false,
-			selector:   "preferred_username",
-			entityType: "userName",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "client_id",
+			Present:    false,
+			Selector:   "preferred_username",
+			EntityType: "userName",
 		}}},
 	}
 	retrieveEntitlements = mockRetrieveEntitlements

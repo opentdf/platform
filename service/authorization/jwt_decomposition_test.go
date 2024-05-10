@@ -18,9 +18,9 @@ const implicit_pub_client_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA
 
 func Test_JwtClient(t *testing.T) {
 	entities, err := getEntitiesFromToken(client_credentials_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
 	})
@@ -32,16 +32,16 @@ func Test_JwtClient(t *testing.T) {
 
 func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 	entities, err := getEntitiesFromToken(client_credentials_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "client_id",
-			present:    false,
-			selector:   "preferred_username",
-			entityType: "userName",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "client_id",
+			Present:    false,
+			Selector:   "preferred_username",
+			EntityType: "userName",
 		}},
 	})
 	require.NoError(t, err)
@@ -52,16 +52,16 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 
 func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 	entities, err := getEntitiesFromToken(password_pub_client_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "client_id",
-			present:    false,
-			selector:   "preferred_username",
-			entityType: "userName",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "client_id",
+			Present:    false,
+			Selector:   "preferred_username",
+			EntityType: "userName",
 		}},
 	})
 	require.NoError(t, err)
@@ -73,16 +73,16 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 
 func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 	entities, err := getEntitiesFromToken(password_priv_client_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "client_id",
-			present:    false,
-			selector:   "preferred_username",
-			entityType: "userName",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "client_id",
+			Present:    false,
+			Selector:   "preferred_username",
+			EntityType: "userName",
 		}},
 	})
 	require.NoError(t, err)
@@ -94,16 +94,16 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 
 func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 	entities, err := getEntitiesFromToken(auth_pub_client_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "client_id",
-			present:    false,
-			selector:   "preferred_username",
-			entityType: "userName",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "client_id",
+			Present:    false,
+			Selector:   "preferred_username",
+			EntityType: "userName",
 		}},
 	})
 	require.NoError(t, err)
@@ -115,16 +115,16 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 
 func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 	entities, err := getEntitiesFromToken(auth_priv_client_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "client_id",
-			present:    false,
-			selector:   "preferred_username",
-			entityType: "userName",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "client_id",
+			Present:    false,
+			Selector:   "preferred_username",
+			EntityType: "userName",
 		}},
 	})
 	require.NoError(t, err)
@@ -136,16 +136,16 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 
 func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 	entities, err := getEntitiesFromToken(implicit_pub_client_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "client_id",
-			present:    false,
-			selector:   "preferred_username",
-			entityType: "userName",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "client_id",
+			Present:    false,
+			Selector:   "preferred_username",
+			EntityType: "userName",
 		}},
 	})
 	require.NoError(t, err)
@@ -157,16 +157,16 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 
 func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 	entities, err := getEntitiesFromToken(implicit_priv_client_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "client_id",
-			present:    false,
-			selector:   "preferred_username",
-			entityType: "userName",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "client_id",
+			Present:    false,
+			Selector:   "preferred_username",
+			EntityType: "userName",
 		}},
 	})
 	require.NoError(t, err)
@@ -182,17 +182,17 @@ const client_test_field_and_value_jwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.ey
 
 func Test_JwtClient_Field_Equals(t *testing.T) {
 	entities, err := getEntitiesFromToken(client_test_field_and_value_jwt, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "test_field",
-			present:    true,
-			equalTo:    "test_value",
-			selector:   "result_field",
-			entityType: "emailAddress",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "test_field",
+			Present:    true,
+			EqualTo:    "test_value",
+			Selector:   "result_field",
+			EntityType: "emailAddress",
 		}},
 	})
 	require.NoError(t, err)
@@ -206,26 +206,26 @@ const client_test_field_and_value_second_client = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIU
 
 func Test_JwtClient_Field_Equals_And_Not_Present(t *testing.T) {
 	entities, err := getEntitiesFromToken(client_test_field_and_value_second_client, jwtDecompositionRules{
-		alwaysSelectors: []jwtSelector{{
-			selector:   "azp",
-			entityType: "clientId",
+		AlwaysSelectors: []jwtSelector{{
+			Selector:   "azp",
+			EntityType: "clientId",
 		},
 			{
-				selector:   "azp2",
-				entityType: "userName",
+				Selector:   "azp2",
+				EntityType: "userName",
 			},
 		},
-		conditionalSelectors: []conditionalJwtSelector{{
-			ifSelector: "test_field",
-			present:    true,
-			equalTo:    "test_value",
-			selector:   "result_field",
-			entityType: "emailAddress",
+		ConditionalSelectors: []conditionalJwtSelector{{
+			IfSelector: "test_field",
+			Present:    true,
+			EqualTo:    "test_value",
+			Selector:   "result_field",
+			EntityType: "emailAddress",
 		}, {
-			ifSelector: "test_field2",
-			present:    false,
-			selector:   "result_field",
-			entityType: "uuid",
+			IfSelector: "test_field2",
+			Present:    false,
+			Selector:   "result_field",
+			EntityType: "uuid",
 		}},
 	})
 	require.NoError(t, err)

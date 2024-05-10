@@ -22,6 +22,7 @@ services:
     jwtdecomposition:
       # always add entities from these selectors
       alwaysSelectors:
+      # maybe these selectors should be jq as well?
         - selector: azp
           entityType: clientId
         # example for other idps
@@ -32,7 +33,7 @@ services:
         - if: client_id
           present: false
           selector: preferred_username
-          entityType: username
+          entityType: userName
         # - if: some_claim
         #   present: true
         #   equalTo: something

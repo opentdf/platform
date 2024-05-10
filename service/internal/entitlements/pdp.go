@@ -19,6 +19,8 @@ func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttrib
 		ea["client_id"] = entity.GetClientId()
 	case *authorization.Entity_EmailAddress:
 		ea["email_address"] = entity.GetEmailAddress()
+	case *authorization.Entity_UserName:
+		ea["user_name"] = entity.GetUserName()
 	case *authorization.Entity_Uuid:
 		ea["uuid"] = entity.GetUuid()
 	}

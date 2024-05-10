@@ -70,11 +70,13 @@ message EntityChain {
   ],
   "resourceAttributes": [
     {
+      "resourceAttributeId":  "attr-set-1",
       "attributeFqns": [
         "https://www.example.org/attr/foo/value/value1"
       ]
     },
     {
+      "resourceAttributeId":  "attr-set-2",
       "attributeFqns": [
         "https://example.net/attr/attr1/value/value1",
         "https://example.net/attr/attr1/value/value2"
@@ -164,7 +166,13 @@ message GetDecisionsResponse {
          "id": "e2",
          "emailAddress": "alice@example.org"
        }
-     ]
+     ],
+     "scope": {
+        "attributeFqns": [
+          "https://example.net/attr/attr1/value/value1",
+         "https://example.net/attr/attr1/value/value2"
+        ]
+      }
    }
 
 */
@@ -180,6 +188,7 @@ message EntityEntitlements {
 
 //A logical bucket of attributes belonging to a "Resource"
 message ResourceAttribute {
+  string resource_attributes_id = 1;
   repeated string attribute_value_fqns = 2;
 }
 

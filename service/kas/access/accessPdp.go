@@ -16,16 +16,18 @@ const (
 	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
 
-func canAccess(ctx context.Context, entity *authorization.Entity, policy Policy, sdk *otdf.SDK) (bool, error) {
+func canAccess(ctx context.Context, token *authorization.Token, policy Policy, sdk *otdf.SDK) (bool, error) {
 	if len(policy.Body.Dissem) > 0 {
-		dissemAccess, err := checkDissems(policy.Body.Dissem, entity)
-		if err != nil {
-			return false, err
-		}
-		return dissemAccess, nil
+		// dissemAccess, err := checkDissems(policy.Body.Dissem, token)
+		// if err != nil {
+		// 	return false, err
+		// }
+
+		// throw an error, dont support dissems?
+		return false, errors.New("don't support dissems with v2 platform kas")
 	}
 	if policy.Body.DataAttributes != nil {
-		attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, entity, sdk)
+		attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, token, sdk)
 		if err != nil {
 			return false, err
 		}
@@ -45,27 +47,25 @@ func checkDissems(dissems []string, ent *authorization.Entity) (bool, error) {
 	return false, nil
 }
 
-func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorization.Entity, sdk *otdf.SDK) (bool, error) {
-	ec := authorization.EntityChain{Entities: make([]*authorization.Entity, 0)}
-	ec.Entities = append(ec.GetEntities(), ent)
+func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorization.Token, sdk *otdf.SDK) (bool, error) {
 	ras := []*authorization.ResourceAttribute{{
 		AttributeValueFqns: make([]string, 0),
 	}}
 	for _, attr := range dataAttrs {
 		ras[0].AttributeValueFqns = append(ras[0].GetAttributeValueFqns(), attr.URI)
 	}
-	in := authorization.GetDecisionsRequest{
-		DecisionRequests: []*authorization.DecisionRequest{
+	in := authorization.GetDecisionsByTokenRequest{
+		DecisionRequests: []*authorization.TokenDecisionRequest{
 			{
 				Actions: []*policy.Action{
 					{Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_DECRYPT}},
 				},
-				EntityChains:       []*authorization.EntityChain{&ec},
+				Tokens:             []*authorization.Token{ent},
 				ResourceAttributes: ras,
 			},
 		},
 	}
-	dr, err := sdk.Authorization.GetDecisions(ctx, &in)
+	dr, err := sdk.Authorization.GetDecisionsByToken(ctx, &in)
 	if err != nil {
 		slog.ErrorContext(ctx, "Error received from GetDecisions", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)

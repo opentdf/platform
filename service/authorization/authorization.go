@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -39,21 +40,21 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 }
 
 type jwtSelector struct {
-	selector   string `yaml:"selector" json:"selector"`
-	entityType string `yaml:"entityType" json:"entityType"`
+	Selector   string `yaml:"selector" json:"selector"`
+	EntityType string `yaml:"entitytype" json:"entitytype"`
 }
 
 type conditionalJwtSelector struct {
-	selector   string `yaml:"selector" json:"selector"`
-	entityType string `yaml:"entityType" json:"entityType"`
-	ifSelector string `yaml:"if" json:"if"`
-	present    bool   `yaml:"present" json:"present"`
-	equalTo    string `yaml:"equalTo" json:"equalTo"`
+	Selector   string `yaml:"selector" json:"selector"`
+	EntityType string `yaml:"entitytype" json:"entitytype"`
+	IfSelector string `yaml:"ifselector" json:"ifselector"`
+	Present    bool   `yaml:"present" json:"present"`
+	EqualTo    string `yaml:"equalto" json:"equalto"`
 }
 
 type jwtDecompositionRules struct {
-	alwaysSelectors      []jwtSelector            `yaml:"alwaysSelectors" json:"alwaysSelectors"`
-	conditionalSelectors []conditionalJwtSelector `yaml:"conditionalSelectors" json:"conditionalSelectors"`
+	AlwaysSelectors      []jwtSelector            `yaml:"alwaysselectors" json:"alwaysselectors"`
+	ConditionalSelectors []conditionalJwtSelector `yaml:"conditionalselectors" json:"conditionalselectors"`
 }
 
 const tokenExpiryDelay = 100
@@ -69,14 +70,14 @@ func NewRegistration() serviceregistry.Registration {
 			var clientSecert = "secret"
 			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 			var jwtdecomposition = jwtDecompositionRules{
-				alwaysSelectors: []jwtSelector{{selector: "azp", entityType: "client_id"}},
+				AlwaysSelectors: []jwtSelector{{Selector: "azp", EntityType: "client_id"}},
 			}
-			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK}
+			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
 			// if its passed in the config use that
-			val, ok := srp.Config.ExtraProps["ersUrl"]
+			val, ok := srp.Config.ExtraProps["ersurl"]
 			if ok {
 				ersURL, ok = val.(string)
 				if !ok {
@@ -97,7 +98,7 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting clientSecert to string")
 				}
 			}
-			val, ok = srp.Config.ExtraProps["tokenEndpoint"]
+			val, ok = srp.Config.ExtraProps["tokenendpoint"]
 			if ok {
 				tokenEndpoint, ok = val.(string)
 				if !ok {
@@ -106,9 +107,14 @@ func NewRegistration() serviceregistry.Registration {
 			}
 			val, ok = srp.Config.ExtraProps["jwtdecomposition"]
 			if ok {
-				jwtdecomposition, ok = val.(jwtDecompositionRules)
-				if !ok {
-					panic("Error casting jwtdecomposition to jwtDecompositionRules")
+				jsonVal, err := json.Marshal(val)
+				if err != nil {
+					panic("Error marshalling jwtdecomposition to json")
+				}
+				jwtdecomposition = jwtDecompositionRules{}
+				err = json.Unmarshal(jsonVal, &jwtdecomposition)
+				if err != nil {
+					panic("Error unmarshalling jwtdecomposition to jwtDecompositionRules")
 				}
 			}
 			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecert, TokenURL: tokenEndpoint}
@@ -117,6 +123,7 @@ func NewRegistration() serviceregistry.Registration {
 			as.ersURL = ersURL
 			as.tokenSource = &newTokenSource
 			as.jwtRules = jwtdecomposition
+			slog.Debug("jwt rules", "", jwtdecomposition)
 
 			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				authServer, okAuth := server.(authorization.AuthorizationServiceServer)
@@ -179,9 +186,13 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *au
 		})
 	}
 
+	// slog.Debug("Calling GetDecisions from GetDecisionsByToken")
+	// slog.Debug("GetDecisions Input", "input", decisionsRequests)
+
 	resp, err := as.GetDecisions(ctx, &authorization.GetDecisionsRequest{
 		DecisionRequests: decisionsRequests,
 	})
+
 	return resp, err
 }
 
@@ -245,6 +256,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 						return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
 					}
 
+					// TODO this might cause errors if multiple entities dont have ids
 					// currently just adding each entity returned to same list
 					for _, e := range ecEntitlements.GetEntitlements() {
 						entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()
@@ -280,7 +292,9 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 						},
 					},
 				}
-				if len(ra.GetAttributeValueFqns()) > 0 {
+				if ra.GetResourceAttributesId() != "" {
+					decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
+				} else if len(ra.GetAttributeValueFqns()) > 0 {
 					decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 				}
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
@@ -319,6 +333,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
 	for i, entity := range req.GetEntities() {
+		// TODO: change this and the opa to take a bulk request and not have to call opa for each entity
 		// get the client auth token
 		authToken, err := (*as.tokenSource).Token()
 		if err != nil {
@@ -380,77 +395,80 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*authorization.Entity, error) {
 	token, _, err := new(jwt.Parser).ParseUnverified(jwtString, jwt.MapClaims{})
 	if err != nil {
-		return nil, errors.New("Error parsing jwt " + err.Error())
+		return nil, errors.New("error parsing jwt " + err.Error())
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("Error getting claims from jwt")
+		return nil, errors.New("error getting claims from jwt")
 	}
 	var entities = []*authorization.Entity{}
+	var entityID = 0
 	// go through the always rules, throw error if not found
-	for _, alwaysRule := range jwtRules.alwaysSelectors {
-		extractedValue, ok := claims[alwaysRule.selector].(string)
+	for _, alwaysRule := range jwtRules.AlwaysSelectors {
+		extractedValue, ok := claims[alwaysRule.Selector].(string)
 		if !ok {
 			// alwaysSelectors should always be present
-			return nil, errors.New("Error extracting selector " + alwaysRule.selector + " from jwt")
+			return nil, errors.New("Error extracting selector " + alwaysRule.Selector + " from jwt")
 		}
-		switch alwaysRule.entityType {
+		switch alwaysRule.EntityType {
 		case "clientId":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "userName":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "emailAddress":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_EmailAddress{EmailAddress: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_EmailAddress{EmailAddress: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "uuid":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Uuid{Uuid: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Uuid{Uuid: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		// case "claims":
 		// 	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Claims{Claims: extractedValue}})
 		// case "custom":
 		// 	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Custom{Custom: extractedValue}})
 		case "remoteClaimsUrl":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		default:
-			return nil, errors.New("Unsupported entity type " + alwaysRule.entityType)
+			return nil, errors.New("Unsupported entity type " + alwaysRule.EntityType)
 		}
+		entityID++
 	}
 
 	// go through the conditional rules
-	for _, conditionalRule := range jwtRules.conditionalSelectors {
-		ifValue, ok := claims[conditionalRule.ifSelector].(string)
-		if conditionalRule.present && !ok {
-			slog.Info("Did not find conditional value " + conditionalRule.ifSelector + " in jwt when conditional selector rule is Present")
+	for _, conditionalRule := range jwtRules.ConditionalSelectors {
+		ifValue, ok := claims[conditionalRule.IfSelector].(string)
+		if conditionalRule.Present && !ok {
+			slog.Info("Did not find conditional value " + conditionalRule.IfSelector + " in jwt when conditional selector rule is Present")
 			continue
 		}
-		if !conditionalRule.present && ok {
-			slog.Info("Found conditional value " + conditionalRule.ifSelector + " in jwt when conditional selector rule is notPresent, continuing")
+		if !conditionalRule.Present && ok {
+			slog.Info("Found conditional value " + conditionalRule.IfSelector + " in jwt when conditional selector rule is notPresent, continuing")
 			continue
 		}
-		if (conditionalRule.equalTo != "") && (ifValue != conditionalRule.equalTo) {
-			slog.Info("Conditional value " + ifValue + " is not equal to expected value " + conditionalRule.equalTo)
+		if (conditionalRule.EqualTo != "") && (ifValue != conditionalRule.EqualTo) {
+			slog.Info("Conditional value " + ifValue + " is not equal to expected value " + conditionalRule.EqualTo)
 			continue
 		}
-		extractedValue, ok := claims[conditionalRule.selector].(string)
+		extractedValue, ok := claims[conditionalRule.Selector].(string)
 		if !ok {
-			return nil, errors.New("Error extracting selector " + conditionalRule.selector + " from jwt")
+			return nil, errors.New("Error extracting selector " + conditionalRule.Selector + " from jwt")
 		}
-		switch conditionalRule.entityType {
+		switch conditionalRule.EntityType {
 		case "clientId":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "userName":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "emailAddress":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_EmailAddress{EmailAddress: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_EmailAddress{EmailAddress: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "uuid":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Uuid{Uuid: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Uuid{Uuid: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		// case "claims":
 		// 	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Claims{Claims: extractedValue}})
 		// case "custom":
 		// 	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Custom{Custom: extractedValue}})
 		case "remoteClaimsUrl":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: extractedValue}})
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		default:
-			return nil, errors.New("Unsupported entity type " + conditionalRule.entityType)
+			return nil, errors.New("Unsupported entity type " + conditionalRule.EntityType)
 		}
+		entityID++
 	}
 
 	return entities, nil

@@ -13,8 +13,8 @@ else := {"entities": [{
 }]} if { input.entity.email_address }
 else := {"entities": [{
 	"id": input.entity.id,
-	"userName": input.entity.username,
-}]} if { input.entity.username }
+	"userName": input.entity.user_name,
+}]} if { input.entity.user_name }
 
 
 attributes := {attribute |

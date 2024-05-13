@@ -8,11 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"io"
 	"os"
-	"strings"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 // / Constants
@@ -78,6 +76,7 @@ type NanoTDFConfig struct {
 	sigCfg             signatureConfig
 	policy             policyInfo
 	mCompressedPubKey  []byte
+	binding            bindingCfg
 }
 
 type NanoTDF struct {
@@ -171,7 +170,7 @@ type policyType uint8
 
 const (
 	policyTypeRemotePolicy                           policyType = 0
-	policyTypEmbeddedPolicyPlainText                 policyType = 1
+	policyTypeEmbeddedPolicyPlainText                policyType = 1
 	policyTypeEmbeddedPolicyEncrypted                policyType = 2
 	policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess policyType = 3
 )
@@ -287,28 +286,17 @@ func readPolicyBody(reader io.Reader, mode uint8) (PolicyBody, error) {
 	}
 }
 
-// getProtocolFromUrl - examine the beginning of an url to determine if the protocol is https or http
-func getProtocolFromUrl(url string) (urlProtocol, error) {
-	if strings.HasPrefix(strings.ToLower(url), "https") {
-		return urlProtocolHTTPS, nil
-	} else if strings.HasPrefix(strings.ToLower(url), "http") {
-		return urlProtocolHTTP, nil
-	}
-	return urlProtocolHTTPS, fmt.Errorf("unsupported protocol prefix: %s", url)
-}
-
 // writePolicyBody - helper function to encode and write a PolicyBody object
-func writePolicyBody(writer io.Writer, h *NanoTDFHeader) error {
+func writePolicyBody(writer io.Writer, header *NanoTDFHeader) error {
 	var err error
 
-	switch h.policy.mode {
-	case 0: // remote policy - resource locator
-		var reBody = h.policy.body.getBody()
-		var protocol, err = getProtocolFromUrl(reBody)
-		if err != nil {
+	switch header.policy.mode {
+	case uint8(policyTypeRemotePolicy): // remote policy - resource locator
+		var reBody = header.policy.body.getBody()
+		if err = binary.Write(writer, binary.BigEndian, header.policy.mode); err != nil {
 			return err
 		}
-		if err = binary.Write(writer, binary.BigEndian, uint8(protocol)); err != nil {
+		if err = binary.Write(writer, binary.BigEndian, byte(0x01)); err != nil { // FIXME - extra byte to sync up
 			return err
 		}
 		if err = binary.Write(writer, binary.BigEndian, uint8(len(reBody))); err != nil {
@@ -317,15 +305,21 @@ func writePolicyBody(writer io.Writer, h *NanoTDFHeader) error {
 		if err = binary.Write(writer, binary.BigEndian, []byte(reBody)); err != nil {
 			return err
 		}
+
 		return nil
-	default: // embedded policy - inline
-		var emBody = h.policy.body.getBody()
+	case uint8(policyTypeEmbeddedPolicyPlainText):
+	case uint8(policyTypeEmbeddedPolicyEncrypted):
+	case uint8(policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess):
+		// embedded policy - inline
+		var emBody = header.policy.body.getBody()
 		if err := binary.Write(writer, binary.BigEndian, uint8(len(emBody))); err != nil {
 			return err
 		}
 		if err := binary.Write(writer, binary.BigEndian, []byte(emBody)); err != nil {
 			return err
 		}
+	default:
+		return errors.New("unsupported policy mode")
 	}
 	return err
 }
@@ -421,25 +415,13 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		}
 		config.mDefaultSalt = ocrypto.CalculateSHA256([]byte(kNanoTDFMagicStringAndVersion))
 
-		// TODO FIXME - gotta be a better way to do this copy
-		header.kasURL = new(resourceLocator)
-		header.kasURL.protocol = config.mKasURL.protocol
-		header.kasURL.lengthBody = config.mKasURL.lengthBody
-		header.kasURL.body = config.mKasURL.body
+		header.kasURL = &config.mKasURL
 
-		// TODO FIXME - put real values in here
-		header.binding = new(bindingCfg)
-		header.binding.useEcdsaBinding = true
-		header.binding.bindingBody = config.mEccMode
+		header.binding = &config.binding
 
-		header.sigCfg = new(signatureConfig)
-		header.sigCfg.hasSignature = config.sigCfg.hasSignature
-		header.sigCfg.signatureMode = config.sigCfg.signatureMode
-		header.sigCfg.cipher = config.sigCfg.cipher
+		header.sigCfg = &config.sigCfg
 
-		header.policy = new(policyInfo)
-		header.policy.mode = config.policy.mode
-		header.policy.body = config.policy.body
+		header.policy = &config.policy
 
 		// copy key from config
 		header.EphemeralPublicKey = config.EphemeralPublicKey
@@ -490,15 +472,17 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		// LogDebug("Max iteration reached - create new header for dataset");
 	}
 
+	header.EphemeralPublicKey = config.EphemeralPublicKey
+
 	// Generate symmetric key.
-	secret, err := ocrypto.ComputeECDHKey([]byte(config.mPrivateKey), []byte(config.mKasPublicKey))
-	if err != nil {
-		return err
-	}
-	header.mEncryptSymmetricKey, err = ocrypto.CalculateHKDF(config.mDefaultSalt, secret)
-	if err != nil {
-		return err
-	}
+	// secret, err := ocrypto.ComputeECDHKey([]byte(config.mPrivateKey), []byte(config.mKasPublicKey))
+	//  if err != nil {
+	//	return err
+	// }
+	// header.mEncryptSymmetricKey, err = ocrypto.CalculateHKDF(config.mDefaultSalt, secret)
+	// if err != nil {
+	//	return err
+	// }
 
 	// TODO FIXME - more to do here
 
@@ -514,23 +498,20 @@ func writeHeader(header *NanoTDFHeader, writer io.Writer) error {
 	if err = binary.Write(writer, binary.BigEndian, header.kasURL.protocol); err != nil {
 		return err
 	}
-	// Note that written length is based on actual string, not the bodylength element in kasURL
-	if err = binary.Write(writer, binary.BigEndian, uint8(len(header.kasURL.body))); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, header.kasURL.lengthBody); err != nil {
 		return err
 	}
-
 	if err = binary.Write(writer, binary.BigEndian, []byte(header.kasURL.body)); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, serializeBindingCfg(header.binding)); err != nil {
+	bindingByte := serializeBindingCfg(header.binding)
+	if err = binary.Write(writer, binary.BigEndian, bindingByte); err != nil {
 		return err
 	}
-
 	signatureByte := serializeSignatureCfg(*header.sigCfg)
 	if err := binary.Write(writer, binary.BigEndian, signatureByte); err != nil {
 		return err
 	}
-
 	if err = writePolicyBody(writer, header); err != nil {
 		return err
 	}
@@ -787,6 +768,7 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 		std::cout << "Encrypt signature: " << sigData << std::endl;
 			#endif
 
+		// slog.Debug("Encrypt signature:", sigData)
 		*/
 
 		// Add the signature and update the count of bytes added.

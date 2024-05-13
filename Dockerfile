@@ -9,6 +9,7 @@ COPY lib/ocrypto lib/ocrypto
 COPY lib/fixtures lib/fixtures
 COPY service/ service/
 COPY examples/ examples/
+COPY e2e/ e2e/
 COPY go.work go.work.sum ./
 RUN cd service \
     && go mod download \

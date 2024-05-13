@@ -106,9 +106,9 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
-		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+		slog.Debug("authentication interceptor enabled")
 	} else {
-		slog.Info("authentication enabled")
+		slog.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails

@@ -27,6 +27,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
@@ -123,7 +124,6 @@ func NewRegistration() serviceregistry.Registration {
 			as.ersURL = ersURL
 			as.tokenSource = &newTokenSource
 			as.jwtRules = jwtdecomposition
-			slog.Debug("jwt rules", "", jwtdecomposition)
 
 			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				authServer, okAuth := server.(authorization.AuthorizationServiceServer)
@@ -408,26 +408,54 @@ func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*
 	var entityID = 0
 	// go through the always rules, throw error if not found
 	for _, alwaysRule := range jwtRules.AlwaysSelectors {
-		extractedValue, okCast := claims[alwaysRule.Selector].(string)
-		if !okCast {
+		extractedValue, okExtract := claims[alwaysRule.Selector]
+		if !okExtract {
 			// alwaysSelectors should always be present
 			return nil, errors.New("Error extracting selector " + alwaysRule.Selector + " from jwt")
 		}
 		switch alwaysRule.EntityType {
 		case "clientId":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "userName":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "emailAddress":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_EmailAddress{EmailAddress: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_EmailAddress{EmailAddress: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "uuid":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Uuid{Uuid: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
-		// case "claims":
-		// 	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Claims{Claims: extractedValue}})
-		// case "custom":
-		// 	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Custom{Custom: extractedValue}})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Uuid{Uuid: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+		case "claims":
+			extractedValueCasted, okCast := extractedValue.(*anypb.Any)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to anypb.Any")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Claims{Claims: extractedValueCasted}})
+		case "custom":
+			extractedValueCasted, okCast := extractedValue.(*authorization.EntityCustom)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to authorization.EntityCustom")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Custom{Custom: extractedValueCasted}})
 		case "remoteClaimsUrl":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		default:
 			return nil, errors.New("Unsupported entity type " + alwaysRule.EntityType)
 		}
@@ -449,25 +477,53 @@ func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*
 			slog.Info("Conditional value " + ifValue + " is not equal to expected value " + conditionalRule.EqualTo)
 			continue
 		}
-		extractedValue, okCastExp := claims[conditionalRule.Selector].(string)
-		if !okCastExp {
+		extractedValue, okExp := claims[conditionalRule.Selector]
+		if !okExp {
 			return nil, errors.New("Error extracting selector " + conditionalRule.Selector + " from jwt")
 		}
 		switch conditionalRule.EntityType {
 		case "clientId":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "userName":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "emailAddress":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_EmailAddress{EmailAddress: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_EmailAddress{EmailAddress: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		case "uuid":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Uuid{Uuid: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
-		// case "claims":
-		// 	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Claims{Claims: extractedValue}})
-		// case "custom":
-		// 	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Custom{Custom: extractedValue}})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Uuid{Uuid: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+		case "claims":
+			extractedValueCasted, okCast := extractedValue.(*anypb.Any)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to anypb.Any")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Claims{Claims: extractedValueCasted}})
+		case "custom":
+			extractedValueCasted, okCast := extractedValue.(*authorization.EntityCustom)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to authorization.EntityCustom")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_Custom{Custom: extractedValueCasted}})
 		case "remoteClaimsUrl":
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: extractedValue}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			extractedValueCasted, okCast := extractedValue.(string)
+			if !okCast {
+				return nil, errors.New("error casting extracted value to string")
+			}
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		default:
 			return nil, errors.New("Unsupported entity type " + conditionalRule.EntityType)
 		}

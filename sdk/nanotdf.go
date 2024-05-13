@@ -69,7 +69,6 @@ type NanoTDFConfig struct {
 	mPublicKey         string
 	attributes         []string
 	mBufferSize        uint64
-	mHasSignature      bool
 	mSignerPrivateKey  []byte
 	mCipher            cipherMode
 	mKasURL            resourceLocator
@@ -413,14 +412,6 @@ func ReadNanoTDFHeader(reader io.Reader) (*NanoTDFHeader, error) {
 func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 	var err error
 
-	if config.mDatasetMode && // In data set mode
-		config.mKeyIterationCount > 0 && // Not the first iteration
-		config.mKeyIterationCount != config.mMaxKeyIterations { // Didn't reach the max iteration
-		// LogDebug("Reusing the header for dataset");
-		// Use the old header.
-		return err
-	}
-
 	if header.isInitialized == false {
 		// Set magic number in header, and generate default salt
 		var i int
@@ -431,31 +422,37 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		config.mDefaultSalt = ocrypto.CalculateSHA256([]byte(kNanoTDFMagicStringAndVersion))
 
 		// TODO FIXME - gotta be a better way to do this copy
-		header.kasURL = &resourceLocator{config.mKasURL.protocol, config.mKasURL.lengthBody, config.mKasURL.body}
+		header.kasURL = new(resourceLocator)
+		header.kasURL.protocol = config.mKasURL.protocol
+		header.kasURL.lengthBody = config.mKasURL.lengthBody
+		header.kasURL.body = config.mKasURL.body
 
 		// TODO FIXME - put real values in here
 		header.binding = new(bindingCfg)
 		header.binding.useEcdsaBinding = true
 		header.binding.bindingBody = config.mEccMode
 
-		// TODO FIXME - put real values here
 		header.sigCfg = new(signatureConfig)
-		header.sigCfg.hasSignature = true
-		header.sigCfg.signatureMode = config.mEccMode
-		header.sigCfg.cipher = config.mCipher
+		header.sigCfg.hasSignature = config.sigCfg.hasSignature
+		header.sigCfg.signatureMode = config.sigCfg.signatureMode
+		header.sigCfg.cipher = config.sigCfg.cipher
 
-		// TODO FIXME - put real values here
-		var rlBody resourceLocator
-		rlBody.protocol = urlProtocolHTTPS
-		rlBody.body = "https://resource.virtru.com"
-
-		rlBody.lengthBody = uint8(len(rlBody.body))
 		header.policy = new(policyInfo)
-		header.policy.mode = uint8(0)
-		header.policy.body = rlBody
+		header.policy.mode = config.policy.mode
+		header.policy.body = config.policy.body
 
 		// copy key from config
 		header.EphemeralPublicKey = config.EphemeralPublicKey
+
+		header.isInitialized = true
+	}
+
+	if config.mDatasetMode && // In data set mode
+		config.mKeyIterationCount > 0 && // Not the first iteration
+		config.mKeyIterationCount != config.mMaxKeyIterations { // Didn't reach the max iteration
+		// LogDebug("Reusing the header for dataset");
+		// Use the old header.
+		return err
 	}
 
 	if config.mDatasetMode && (config.mMaxKeyIterations == config.mKeyIterationCount) { //nolint:nestif // error checking each operation
@@ -508,36 +505,36 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 	return err
 }
 
-func writeHeader(n *NanoTDFHeader, writer io.Writer) error {
+func writeHeader(header *NanoTDFHeader, writer io.Writer) error {
 	var err error
 
-	if err = binary.Write(writer, binary.BigEndian, n.magicNumber); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, header.magicNumber); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, n.kasURL.protocol); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, header.kasURL.protocol); err != nil {
 		return err
 	}
 	// Note that written length is based on actual string, not the bodylength element in kasURL
-	if err = binary.Write(writer, binary.BigEndian, uint8(len(n.kasURL.body))); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, uint8(len(header.kasURL.body))); err != nil {
 		return err
 	}
 
-	if err = binary.Write(writer, binary.BigEndian, []byte(n.kasURL.body)); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, []byte(header.kasURL.body)); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, serializeBindingCfg(n.binding)); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, serializeBindingCfg(header.binding)); err != nil {
 		return err
 	}
 
-	signatureByte := serializeSignatureCfg(*n.sigCfg)
+	signatureByte := serializeSignatureCfg(*header.sigCfg)
 	if err := binary.Write(writer, binary.BigEndian, signatureByte); err != nil {
 		return err
 	}
 
-	if err = writePolicyBody(writer, n); err != nil {
+	if err = writePolicyBody(writer, header); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, n.EphemeralPublicKey.Key); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, header.EphemeralPublicKey.Key); err != nil {
 		return err
 	}
 
@@ -761,7 +758,7 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 	   	#endif
 	*/
 
-	if nanoTDF.config.mHasSignature {
+	if nanoTDF.config.sigCfg.hasSignature {
 		signerPrivateKey := nanoTDF.config.mSignerPrivateKey
 		signerPublicKey := ocrypto.GetPEMPublicKeyFromPrivateKey(signerPrivateKey, nanoTDF.config.mEccMode)
 		compressedPubKey, err := ocrypto.CompressedECPublicKey(nanoTDF.config.mEccMode, signerPublicKey)

@@ -205,8 +205,11 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		config.mKasURL = resourceLocator{urlProtocolHTTPS, uint8(len(kasUrl)), kasUrl}
 		config.mEccMode = ocrypto.ECCModeSecp256r1
 
-		config.mHasSignature = false
+		config.sigCfg.hasSignature = false
 		config.sigCfg = *deserializeSignatureCfg(0x00) // no signature and AES_256_GCM_64_TAG
+
+		config.mKasPublicKey = kasPublicKey
+		config.mPrivateKey = sdkPrivateKey
 
 		policyUrl := resourceLocator{urlProtocolHTTPS, uint8(len(remotePolicyUrl)), remotePolicyUrl}
 
@@ -237,6 +240,11 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		err = writeHeader(&header, hbWriter)
 		if err != nil {
 			t.Fatalf("Cannot write nanoTdf header: %v", err)
+		}
+
+		err = hbWriter.Flush()
+		if err != nil {
+			t.Fatalf("Cannot flush nanoTdf header: %v", err)
 		}
 
 		// BOOST_TEST(headerData == expectedHeader);

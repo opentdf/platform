@@ -10,5 +10,5 @@ go build
 ```
 
 ```shell
-./e2e roundtrips
+./e2e roundtrip-tests
 ```

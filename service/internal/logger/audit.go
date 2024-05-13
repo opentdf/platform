@@ -4,12 +4,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opentdf/platform/service/kas/access"
 )
 
 type auditLogAttributes struct {
-	Attrs       map[string]interface{} `json:"attrs"`
-	Dissem      map[string]interface{} `json:"dissem"`
-	Permissions map[string]interface{} `json:"permissions"`
+	Attrs       []string `json:"attrs"`
+	Dissem      []string `json:"dissem"`
+	Permissions []string `json:"permissions"` // only for user objects
 }
 
 type auditLogObject struct {
@@ -45,17 +46,22 @@ type AuditLog struct {
 	Timestamp     string                 `json:"timestamp"`
 }
 
-func NewAuditLog() AuditLog {
+func createAuditLogBase(isSuccess bool) AuditLog {
+	actionResult := "success"
+	if !isSuccess {
+		actionResult = "failure"
+	}
+
 	return AuditLog{
 		ID: uuid.NewString(),
 		Object: auditLogObject{
 			Type: "data_object",
-			// ID: policyId?
+			// ID: added from policy object
 			Attributes: auditLogAttributes{},
 		},
 		Action: auditLogAction{
 			Type:   "read",
-			Result: "success",
+			Result: actionResult,
 		},
 		Actor: auditLogActor{
 			// ID: "??"
@@ -70,4 +76,14 @@ func NewAuditLog() AuditLog {
 		Diff:      map[string]interface{}{},
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
+}
+
+func CreateRewrapAuditLog(isSuccess bool, policy access.Policy) AuditLog {
+	auditLog := createAuditLogBase(isSuccess)
+	auditLog.Object.ID = policy.UUID.String()
+	for _, value := range policy.Body.DataAttributes {
+		auditLog.Object.Attributes.Attrs = append(auditLog.Object.Attributes.Attrs, value.URI)
+	}
+	auditLog.Object.Attributes.Dissem = policy.Body.Dissem
+	return auditLog
 }

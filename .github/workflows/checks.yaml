@@ -1,5 +1,8 @@
 name: "Checks"
 
+env:
+  IS_RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'release-please-') }}
+
 on:
   pull_request:
     branches:
@@ -81,11 +84,14 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum
-      - if: startsWith(github.head_ref, 'release-please-')
+      - if: env.IS_RELEASE_BRANCH == 'true'
         run: ./.github/scripts/work-init.sh
       - run: go mod download
         working-directory: ${{ matrix.directory }}
       - run: go mod verify
+        working-directory: ${{ matrix.directory }}
+      - run: go work use .
+        if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc
@@ -120,6 +126,7 @@ jobs:
       - run: git diff-files --ignore-submodules
       - name: Check that files have been formatted before PR submission; see above for error details
         run: git diff-files --quiet --ignore-submodules
+        if: env.IS_RELEASE_BRANCH == 'false'
 
   integration:
     name: integration tests
@@ -140,7 +147,7 @@ jobs:
             examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
-      - if: startsWith(github.head_ref, 'release-please-')
+      - if: env.IS_RELEASE_BRANCH == 'true'
         run: ./.github/scripts/work-init.sh
       - run: go mod download
       - run: go mod verify
@@ -205,7 +212,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: bufbuild/buf-setup-action@382440cdb8ec7bc25a68d7b4711163d95f7cc3aa
+      - uses: bufbuild/buf-setup-action@480a0ee8a588045b52a847b48138c6f377a89519
       - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
         with:
           input: service

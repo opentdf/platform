@@ -268,7 +268,7 @@ subject_mappings:
     subject_mapping_sdk_attribute1:
       id: bc28cacb-1687-4c87-9c63-eae55e271320
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
-      # subject_condition_working_group_blue_scenario
+      # subject_condition_sdk_client
       subject_condition_set_id: 86621a00-b63e-42e9-bea5-40ba52d98ede
       actions:
         - standard: STANDARD_ACTION_TRANSMIT

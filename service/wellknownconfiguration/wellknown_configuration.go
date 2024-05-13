@@ -59,7 +59,6 @@ func (s WellKnownService) GetWellKnownConfiguration(ctx context.Context, _ *well
 		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
 	}
 
-	s.logger.Audit(ctx, "this is an audit message!")
 	return &wellknown.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
 	}, nil

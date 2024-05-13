@@ -2,10 +2,13 @@ package logger
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
+
+	"github.com/opentdf/platform/service/kas/access"
 )
 
 type Logger struct {
@@ -88,8 +91,13 @@ func (l *Logger) With(key string, value string) *Logger {
 	}
 }
 
-func (l *Logger) Audit(ctx context.Context, msg string) {
-	l.Logger.Log(ctx, LevelAudit, msg)
+func (l *Logger) AuditRewrap(ctx context.Context, policy access.Policy, isSuccess bool) {
+	auditLog := CreateRewrapAuditLog(policy, isSuccess)
+	auditLogJSONString, err := json.Marshal(auditLog)
+	if err != nil {
+		l.Logger.ErrorContext(ctx, "failed to marshal audit log", slog.String("error", err.Error()))
+	}
+	l.Logger.Log(ctx, LevelAudit, string(auditLogJSONString))
 }
 
 func getWriter(config Config) (io.Writer, error) {

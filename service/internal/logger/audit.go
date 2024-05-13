@@ -78,7 +78,7 @@ func createAuditLogBase(isSuccess bool) AuditLog {
 	}
 }
 
-func CreateRewrapAuditLog(isSuccess bool, policy access.Policy) AuditLog {
+func CreateRewrapAuditLog(policy access.Policy, isSuccess bool) AuditLog {
 	auditLog := createAuditLogBase(isSuccess)
 	auditLog.Object.ID = policy.UUID.String()
 	for _, value := range policy.Body.DataAttributes {

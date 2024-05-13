@@ -89,7 +89,7 @@ func NewRegistration() serviceregistry.Registration {
 			as.ersURL = ersURL
 			as.tokenSource = &newTokenSource
 
-			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				authServer, okAuth := server.(authorization.AuthorizationServiceServer)
 				if !okAuth {
 					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")

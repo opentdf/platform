@@ -53,7 +53,7 @@ var E2ECmd = &cobra.Command{
 func init() {
 	E2ECmd.PersistentFlags().StringP("platformEndpoint", "e", "localhost:8080", "Platform Endpoint")
 	E2ECmd.PersistentFlags().StringP("tokenEndpoint", "t", "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", "Token Endpoint")
-	E2ECmd.PersistentFlags().StringP("clientId", "c", "opentdf-sdk", "Client to use in tests")
+	E2ECmd.PersistentFlags().StringP("clientId", "c", "opentdf", "Client to use in tests")
 	E2ECmd.PersistentFlags().StringP("clientSecret", "s", "secret", "Secret for client to use in tests")
 }
 

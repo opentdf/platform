@@ -464,17 +464,17 @@ func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*
 
 	// go through the conditional rules
 	for _, conditionalRule := range jwtRules.ConditionalSelectors {
-		ifValue, okCast := claims[conditionalRule.IfSelector].(string)
-		if conditionalRule.Present && !okCast {
+		ifValue, okExtract := claims[conditionalRule.IfSelector]
+		if conditionalRule.Present && !okExtract {
 			slog.Info("Did not find conditional value " + conditionalRule.IfSelector + " in jwt when conditional selector rule is Present")
 			continue
 		}
-		if !conditionalRule.Present && okCast {
+		if !conditionalRule.Present && okExtract {
 			slog.Info("Found conditional value " + conditionalRule.IfSelector + " in jwt when conditional selector rule is notPresent, continuing")
 			continue
 		}
-		if (conditionalRule.EqualTo != "") && (ifValue != conditionalRule.EqualTo) {
-			slog.Info("Conditional value " + ifValue + " is not equal to expected value " + conditionalRule.EqualTo)
+		if okExtract && (conditionalRule.EqualTo != "") && (ifValue != conditionalRule.EqualTo) {
+			slog.Info("Conditional value is not equal to expected value " + conditionalRule.EqualTo)
 			continue
 		}
 		extractedValue, okExp := claims[conditionalRule.Selector]

@@ -1,10 +1,11 @@
 module github.com/opentdf/platform/sdk
 
-go 1.22.3
+go 1.22
+
+toolchain go1.22.3
 
 require (
 	github.com/docker/go-connections v0.5.0
-	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/opentdf/platform/lib/fixtures v0.2.0

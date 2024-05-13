@@ -25,7 +25,7 @@ toolcheck:
 fix: tidy fmt
 
 fmt:
-	for m in $(HAND_MODS); do (cd $$m && && find ./ -name \*.go | xargs goimports -w) || exit 1; done
+	for m in $(HAND_MODS); do (cd $$m && find ./ -name \*.go | xargs goimports -w) || exit 1; done
 
 tidy:
 	for m in $(HAND_MODS); do (cd $$m && go mod tidy) || exit 1; done

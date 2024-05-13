@@ -22,8 +22,8 @@ type Config struct {
 // The log/slog package provides four log levels by default, with each one
 // associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
 const (
-	// Currently setting AUDIT level to 6, between WARN and ERROR
-	LevelAudit = slog.Level(6)
+	// Currently setting AUDIT level to 10, a level above ERROR so it is always logged
+	LevelAudit = slog.Level(10)
 )
 
 var CustomLevelNames = map[slog.Leveler]string{

@@ -4,8 +4,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opentdf/platform/service/kas/access"
 )
+
+type PolicyLog struct {
+	UUID uuid.UUID  `json:"uuid"`
+	Body PolicyBody `json:"body"`
+}
+
+type PolicyBody struct {
+	DataAttributes []SimpleAttribute `json:"dataAttributes"`
+	Dissem         []string          `json:"dissem"`
+}
+
+type SimpleAttribute struct {
+	URI string `json:"attribute"`
+}
 
 type auditLogAttributes struct {
 	Attrs       []string `json:"attrs"`
@@ -78,7 +91,7 @@ func createAuditLogBase(isSuccess bool) AuditLog {
 	}
 }
 
-func CreateRewrapAuditLog(policy access.Policy, isSuccess bool) AuditLog {
+func CreateRewrapAuditLog(policy PolicyLog, isSuccess bool) AuditLog {
 	auditLog := createAuditLogBase(isSuccess)
 	auditLog.Object.ID = policy.UUID.String()
 	for _, value := range policy.Body.DataAttributes {

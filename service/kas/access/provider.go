@@ -7,6 +7,7 @@ import (
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	otdf "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/security"
 )
 
@@ -21,6 +22,7 @@ type Provider struct {
 	SDK            *otdf.SDK
 	AttributeSvc   *url.URL
 	CryptoProvider security.CryptoProvider
+	Logger         *logger.Logger
 }
 
 // TODO: Not sure what we want to check here?

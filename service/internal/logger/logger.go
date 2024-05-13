@@ -7,8 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-
-	"github.com/opentdf/platform/service/kas/access"
 )
 
 type Logger struct {
@@ -91,7 +89,7 @@ func (l *Logger) With(key string, value string) *Logger {
 	}
 }
 
-func (l *Logger) AuditRewrap(ctx context.Context, policy access.Policy, isSuccess bool) {
+func (l *Logger) AuditRewrap(ctx context.Context, policy PolicyLog, isSuccess bool) {
 	auditLog := CreateRewrapAuditLog(policy, isSuccess)
 	auditLogJSONString, err := json.Marshal(auditLog)
 	if err != nil {

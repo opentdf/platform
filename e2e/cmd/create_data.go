@@ -29,8 +29,17 @@ func init() {
 	E2ECmd.AddCommand(DataCmd)
 }
 
+var attributesToMap = []string{
+	"https://example.com/attr/language/value/english",
+	"https://example.com/attr/color/value/red",
+	"https://example.com/attr/cards/value/queen"}
+
 func createTestData(testConfig *TestConfig) error {
-	s, err := sdk.New(testConfig.PlatformEndpoint, sdk.WithInsecurePlaintextConn())
+	s, err := sdk.New(testConfig.PlatformEndpoint,
+		sdk.WithInsecurePlaintextConn(),
+		sdk.WithClientCredentials(testConfig.ClientID,
+			testConfig.ClientSecret, nil),
+		sdk.WithTokenEndpoint(testConfig.TokenEndpoint))
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		return err
@@ -67,7 +76,7 @@ func createTestData(testConfig *TestConfig) error {
 
 	// Create the attributes
 	slog.Info("creating attribute language with allOf rule")
-	allOfResp, err := s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "language",
 		NamespaceId: exampleNamespace.Id,
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF.Enum(),
@@ -89,7 +98,7 @@ func createTestData(testConfig *TestConfig) error {
 	}
 
 	slog.Info("creating attribute color with anyOf rule")
-	anyOfResp, err := s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "color",
 		NamespaceId: exampleNamespace.Id,
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF.Enum(),
@@ -111,7 +120,7 @@ func createTestData(testConfig *TestConfig) error {
 	}
 
 	slog.Info("creating attribute cards with hierarchy rule")
-	hierarchyResp, err := s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "cards",
 		NamespaceId: exampleNamespace.Id,
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
@@ -143,9 +152,23 @@ func createTestData(testConfig *TestConfig) error {
 
 	slog.Info("##################################\n#######################################")
 
+	// get the attribute ids for the values were mapping to the client
+	var attributeValueIDs []string
+	fqnResp, err := s.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns:      attributesToMap,
+		WithValue: &policy.AttributeValueSelector{},
+	})
+	if err != nil {
+		slog.Error("get attribute values by fqn ", slog.String("error", err.Error()))
+		return err
+	}
+	for _, attribute := range attributesToMap {
+		attributeValueIDs = append(attributeValueIDs, fqnResp.GetFqnAttributeValues()[attribute].GetValue().GetId())
+	}
+
 	// create subject mappings
 	slog.Info("creating subject mappings for client " + testConfig.ClientID)
-	for _, attribute_id := range []string{allOfResp.Attribute.Id, anyOfResp.Attribute.Id, hierarchyResp.Attribute.Id} {
+	for _, attribute_id := range attributeValueIDs {
 		_, err = s.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attribute_id,
 			Actions: []*policy.Action{{Value: &policy.Action_Standard{

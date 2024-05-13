@@ -110,7 +110,7 @@ func createTestData(testConfig *TestConfig) error {
 		slog.Info("attribute created")
 	}
 
-	slog.Info("creating attribute color with anyOf rule")
+	slog.Info("creating attribute cards with hierarchy rule")
 	hierarchyResp, err := s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "cards",
 		NamespaceId: exampleNamespace.Id,

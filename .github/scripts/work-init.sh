@@ -15,8 +15,6 @@
 #  sdk -> lib/fixtures, lib/ocrypto, protocol/go
 #  services -> lib/fixtures, lib/ocrypto, protocol/go, sdk
 
-set -euo pipefail
-
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 ROOT_DIR="$(cd "${APP_DIR}/../.." >/dev/null && pwd)"
 
@@ -29,6 +27,7 @@ fi
 
 if ! cd "$ROOT_DIR"; then
   echo "[ERROR] unable to find project directory; expected it to be in [${ROOT_DIR}]"
+  exit 1
 fi
 
 echo "[INFO] Rebuilding partial go.work for [${component}]"
@@ -37,20 +36,25 @@ case $component in
     echo "[INFO] skipping for leaf package"
     ;;
   sdk)
-    rm go.work go.work.sum
-    go work init
-    go work add ./service
-    go work add ./examples
+    rm go.work go.work.sum &&
+      go work init &&
+      go work use ./sdk &&
+      go work use ./service &&
+      go work use ./examples
     ;;
   service)
-    rm go.work go.work.sum
-    go work init
-    go work add ./examples
+    rm go.work go.work.sum &&
+      go work init &&
+      go work use ./service &&
+      go work use ./examples
     ;;
   examples)
-    rm go.work go.work.sum
+    rm go.work go.work.sum &&
+      go work init &&
+      go work use ./examples
     ;;
   *)
     echo "[ERROR] unknown component [${component}]"
+    exit 1
     ;;
 esac

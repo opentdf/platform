@@ -5,11 +5,10 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewStandardCrypto(t *testing.T) {
@@ -56,9 +55,9 @@ func TestNewStandardCrypto(t *testing.T) {
 
 			_, err := NewStandardCrypto(tt.config)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -157,61 +156,19 @@ func TestGenerateEphemeralKasKeys(t *testing.T) {
 	}
 }
 
-func (s StandardCrypto) ecKeyExists() (bool, *ecdsa.PrivateKey) {
-	keyExists := false
-	var generatedKey *ecdsa.PrivateKey
-
-	if len(s.ecKeys) > 0 {
-		keyExists = true
-		generatedKey = s.ecKeys[0].ecPrivateKey
-	}
-
-	return keyExists, generatedKey
-}
-
-func validKeyPair(key *ecdsa.PrivateKey) error {
-	if key == nil {
-		return fmt.Errorf("private key is nil")
-	}
-	dBytes := make([]byte, 32)
-	if _, err := rand.Read(dBytes); err != nil {
-		return fmt.Errorf("failed to read random bytes: %w", err)
-	}
-
-	msg := append(dBytes[:0:0], dBytes...)
-
-	r, s, err := ecdsa.Sign(rand.Reader, key, msg)
-	if err != nil {
-		return fmt.Errorf("failed to sign message: %w", err)
-	}
-
-	valid := ecdsa.Verify(&key.PublicKey, msg, r, s)
-	if !valid {
-		return fmt.Errorf("failed to verify signature")
-	}
-
-	return nil
-}
-
 func TestGenerateEphemeralKasKeys_ValidKeyPair(t *testing.T) {
 	s := &StandardCrypto{}
-	assert := assert.New(t)
 	_, pubBytes, err := s.GenerateEphemeralKasKeys()
-	assert.NoError(err)
-	assert.NotEmpty(pubBytes)
+	require.NoError(t, err)
+	assert.NotEmpty(t, pubBytes)
 }
 
 func TestGenerateEphemeralKasKeys_VerifyPublicKey(t *testing.T) {
 	s := &StandardCrypto{}
-
-	assert := assert.New(t)
-
 	_, pubBytes, err := s.GenerateEphemeralKasKeys()
-	assert.NoError(err)
-
+	require.NoError(t, err)
 	pubKeyInterface, err := x509.ParsePKIXPublicKey(pubBytes)
-	assert.NoError(err)
-
+	require.NoError(t, err)
 	_, ok := pubKeyInterface.(*ecdsa.PublicKey)
-	assert.True(ok)
+	assert.True(t, ok)
 }

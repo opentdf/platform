@@ -23,8 +23,8 @@ type Provider struct {
 	CryptoProvider security.CryptoProvider
 }
 
-// TODO: Not sure what we want to check here?
-func (p Provider) IsReady(ctx context.Context) error {
+func (p *Provider) IsReady(ctx context.Context) error {
+	// TODO: Not sure what we want to check here? perhaps check if HSM is available and ready
 	slog.DebugContext(ctx, "checking readiness of kas service")
 	return nil
 }

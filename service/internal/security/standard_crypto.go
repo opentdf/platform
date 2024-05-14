@@ -224,7 +224,7 @@ func (s StandardCrypto) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error)
 	if err != nil {
 		return PrivateKeyEC(0), nil, fmt.Errorf("failed to generate elliptic curve key pair: %w", err)
 	}
-	pubBytes, err := x509.MarshalPKIXPublicKey(privKey.PublicKey)
+	pubBytes, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
 	if err != nil {
 		return PrivateKeyEC(0), nil, fmt.Errorf("failed to marshal private key: %w", err)
 	}
@@ -242,6 +242,9 @@ func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC,
 	pubKey, ok := pubKeyInterface.(*ecdsa.PublicKey)
 	if !ok {
 		return nil, errors.New("parsed key was not of type *ecdsa.PublicKey")
+	}
+	if len(s.ecKeys) <= int(privateKeyHandle) {
+		return nil, errors.New("no EC key")
 	}
 	// get ecKey using privateKeyHandle as index
 	ecKey := s.ecKeys[privateKeyHandle]

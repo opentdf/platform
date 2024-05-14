@@ -20,8 +20,7 @@ type DBInterface struct {
 
 func NewDBInterface(cfg config.Config) DBInterface {
 	config := cfg.DB
-	// The policy fixtures be added to the config schema with "_policy" appended to keep in sync with the registration schemas.
-	config.Schema = cfg.DB.Schema + "_policy"
+
 	c, err := db.New(context.Background(), config)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))

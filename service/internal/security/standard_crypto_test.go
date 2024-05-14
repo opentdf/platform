@@ -141,7 +141,7 @@ func TestGenerateEphemeralKasKeys(t *testing.T) {
 	}{
 		{
 			name: "Success",
-			expect: func(t *testing.T, priv PrivateKeyEC, pub []byte) {
+			expect: func(t *testing.T, _ PrivateKeyEC, pub []byte) {
 				assert.NotEmpty(t, pub)
 			},
 		},

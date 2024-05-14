@@ -225,7 +225,7 @@ func getKCClient(ctx context.Context, kcConfig KeycloakConfig) (*KeyCloakConnect
 	// slog.Debug(kcConfig.Realm)
 	token, err := client.LoginClient(ctx, kcConfig.ClientID, kcConfig.ClientSecret, kcConfig.Realm)
 	if err != nil {
-		slog.Error("Error connecting to keycloak!", err)
+		slog.Error("Error connecting to keycloak!", "error", err)
 		return nil, err
 	}
 	keycloakConnector := KeyCloakConnector{token: token, client: client}
@@ -248,10 +248,10 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConne
 				entityRepresentations = append(entityRepresentations, user)
 			}
 		} else {
-			slog.Error("Error getting group members", memberErr)
+			slog.Error("Error getting group members", "error", memberErr)
 		}
 	} else {
-		slog.Error("Error getting group", err)
+		slog.Error("Error getting group", "error", err)
 		return nil, err
 	}
 	return entityRepresentations, nil

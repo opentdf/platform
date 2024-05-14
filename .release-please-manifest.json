@@ -1,5 +1,5 @@
 {
-  "lib/fixtures": "0.2.2",
+  "lib/fixtures": "0.2.3",
   "lib/ocrypto": "0.1.2",
   "protocol/go": "0.2.2",
   "sdk": "0.2.1",

@@ -26,6 +26,16 @@ const note = `
    export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;
    export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock;
 
+
+ If using Colima, export these variables:
+   export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock";
+   export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/var/run/docker.sock";
+   export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;
+   export TESTCONTAINERS_RYUK_DISABLED=true;
+
+ Note: Colima does not run well on MacOS with Ryuk, so it is better to run with Ryuk disabled.
+ This means you must more carefully ensure container termination.
+
  For more information please see: https://www.testcontainers.org/
 
  ---------------------------------------------------------------------------------
@@ -35,6 +45,7 @@ const note = `
 
    Docker: docker-machine restart
    Podman: podman machine stop;podman machine start
+   Colima: colima restart
 
 ====================================================================================
 `

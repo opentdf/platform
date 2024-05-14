@@ -104,7 +104,7 @@ attributes:
       active: true
 
     # deactivated state
-    deactivated.io/attr/attr1:
+    deactivated.io/attr/deactivated_attr:
       id: 3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e
       namespace_id: 40790395-88b1-4adc-8bf5-1900491a79ba
       name: deactivated_attr
@@ -175,7 +175,7 @@ attribute_values:
       active: true
 
     # deactivated state
-    deactivated.io/attr/attr1/value/deactivated_value:
+    deactivated.io/attr/deactivated_attr/value/deactivated_value:
       id: 06fa035b-8205-4000-86ad-2439cc1325ec
       attribute_definition_id: 3e3e3e3e-3e3e-3e3e-3e3e-3e3e3e3e3e3e
       value: deactivated_value

@@ -132,7 +132,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'active', vmv.active, " +
 			"'members', vmv.members || ARRAY[]::UUID[], " +
 			"'attribute', JSON_BUILD_OBJECT(" +
-			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id"))
+			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id WHERE av.active = true GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id"))
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
@@ -162,6 +162,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
 				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
 				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
+				"AND " + avt.Field("active") + " = true " +
 				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
 				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
 				"AND " + "avt.id" + " = " + fqnt.Field("value_id"),
@@ -394,10 +395,10 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return attribute, nil
 }
 
-// / Get attribute by fqn
+// Get attribute by fqn, ensuring the attribute definition and namespace are both active
 func getAttributeByFqnSQL(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
 	return attributesSelect(opts).
-		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn}).
+		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn, Tables.Attributes.Field("active"): true, Tables.Namespaces.Field("active"): true}).
 		From(Tables.Attributes.Name()).
 		ToSql()
 }

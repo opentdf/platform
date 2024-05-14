@@ -318,7 +318,7 @@ func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 }
 
 func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
-	deactivated := s.f.GetAttributeKey("deactivated.io/attr/attr1")
+	deactivated := s.f.GetAttributeKey("deactivated.io/attr/deactivated_attr")
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivated.ID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)

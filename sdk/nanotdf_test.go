@@ -199,6 +199,8 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 
 	remotePolicyUrl := "api-develop01.develop.virtru.com/acm/api/policies/1a1d5e42-bf91-45c7-a86a-61d5331c1f55"
 
+	policyBinding := [...]byte{0x33, 0x31, 0x63, 0x31, 0x66, 0x35, 0x35, 0x00}
+
 	{ // Construct empty header - encrypt use case
 		config := NanoTDFConfig{}
 
@@ -217,6 +219,7 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		polInfo := policyInfo{mode: uint8(policyTypeRemotePolicy), body: policyUrl, binding: nil}
 		config.policy = polInfo
 
+		// Copy pre-built compressed public key
 		var epk eccKey
 		epk.Key = make([]byte, len(compressedPubKey))
 		var i int
@@ -230,6 +233,14 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		err := createHeader(&header, &config)
 		if err != nil {
 			t.Fatalf("Cannot create nanoTdf header: %v", err)
+		}
+
+		// Copy pre-built policy binding
+		header.policyBinding = make([]byte, len(policyBinding))
+		i = 0
+		for _, b := range policyBinding {
+			header.policyBinding[i] = b
+			i++
 		}
 
 		headerBuffer := bytes.NewBuffer(make([]byte, 0, 4096))

@@ -55,6 +55,11 @@ type NanoTDFHeader struct {
 	policyObjectAsStr    []byte
 	isInitialized        bool
 	mEncryptSymmetricKey []byte
+	policyBinding        []byte
+	mCompressedPubKey    []byte
+	mKeyPair             ocrypto.ECKeyPair
+	mPrivateKey          string
+	mPublicKey           string
 }
 
 type NanoTDFConfig struct {
@@ -75,8 +80,8 @@ type NanoTDFConfig struct {
 	EphemeralPublicKey *eccKey
 	sigCfg             signatureConfig
 	policy             policyInfo
-	mCompressedPubKey  []byte
-	binding            bindingCfg
+
+	binding bindingCfg
 }
 
 type NanoTDF struct {
@@ -296,7 +301,7 @@ func writePolicyBody(writer io.Writer, header *NanoTDFHeader) error {
 		if err = binary.Write(writer, binary.BigEndian, header.policy.mode); err != nil {
 			return err
 		}
-		if err = binary.Write(writer, binary.BigEndian, byte(0x01)); err != nil { // FIXME - extra byte to sync up
+		if err = binary.Write(writer, binary.BigEndian, byte(urlProtocolHTTPS)); err != nil { // FIXME - read from policy body
 			return err
 		}
 		if err = binary.Write(writer, binary.BigEndian, uint8(len(reBody))); err != nil {
@@ -415,6 +420,10 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		}
 		config.mDefaultSalt = ocrypto.CalculateSHA256([]byte(kNanoTDFMagicStringAndVersion))
 
+		header.mPrivateKey = config.mPrivateKey
+		header.mPublicKey = config.mPublicKey
+		header.mKeyPair = config.mKeyPair
+
 		header.kasURL = &config.mKasURL
 
 		header.binding = &config.binding
@@ -422,6 +431,9 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		header.sigCfg = &config.sigCfg
 
 		header.policy = &config.policy
+
+		// TODO - FIXME - calculate a real policy binding value
+		header.policyBinding = make([]byte, kEccSignatureLength)
 
 		// copy key from config
 		header.EphemeralPublicKey = config.EphemeralPublicKey
@@ -442,17 +454,17 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		if err != nil {
 			return err
 		}
-		config.mPrivateKey, err = sdkECKeyPair.PrivateKeyInPemFormat()
+		header.mPrivateKey, err = sdkECKeyPair.PrivateKeyInPemFormat()
 		if err != nil {
 			return err
 		}
-		config.mPublicKey, err = sdkECKeyPair.PublicKeyInPemFormat()
+		header.mPublicKey, err = sdkECKeyPair.PublicKeyInPemFormat()
 		if err != nil {
 			return err
 		}
-		config.mKeyPair = sdkECKeyPair
+		header.mKeyPair = sdkECKeyPair
 
-		config.mCompressedPubKey, err = ocrypto.CompressedECPublicKey(config.mEccMode, config.mKeyPair.PrivateKey.PublicKey)
+		header.mCompressedPubKey, err = ocrypto.CompressedECPublicKey(config.mEccMode, header.mKeyPair.PrivateKey.PublicKey)
 		if err != nil {
 			return err
 		}
@@ -508,6 +520,8 @@ func writeHeader(header *NanoTDFHeader, writer io.Writer) error {
 	if err = binary.Write(writer, binary.BigEndian, bindingByte); err != nil {
 		return err
 	}
+
+	// Policy
 	signatureByte := serializeSignatureCfg(*header.sigCfg)
 	if err := binary.Write(writer, binary.BigEndian, signatureByte); err != nil {
 		return err
@@ -515,6 +529,10 @@ func writeHeader(header *NanoTDFHeader, writer io.Writer) error {
 	if err = writePolicyBody(writer, header); err != nil {
 		return err
 	}
+	if err = binary.Write(writer, binary.BigEndian, header.policyBinding); err != nil {
+		return err
+	}
+
 	if err = binary.Write(writer, binary.BigEndian, header.EphemeralPublicKey.Key); err != nil {
 		return err
 	}

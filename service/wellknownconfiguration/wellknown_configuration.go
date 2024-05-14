@@ -50,7 +50,7 @@ func NewRegistration() serviceregistry.Registration {
 	}
 }
 
-func (s WellKnownService) GetWellKnownConfiguration(ctx context.Context, _ *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
+func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
 	rwMutex.RLock()
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()

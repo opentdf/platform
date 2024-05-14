@@ -49,7 +49,7 @@ func NewRegistration() serviceregistry.Registration {
 			var clientSecert = "secret"
 			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 
-			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK}
+			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
@@ -89,7 +89,7 @@ func NewRegistration() serviceregistry.Registration {
 			as.ersURL = ersURL
 			as.tokenSource = &newTokenSource
 
-			return &AuthorizationService{eng: srp.Engine, sdk: srp.SDK}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				authServer, okAuth := server.(authorization.AuthorizationServiceServer)
 				if !okAuth {
 					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")

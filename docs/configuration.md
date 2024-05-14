@@ -2,11 +2,15 @@
 
 This guide provides details about the configuration setup for our application, including logger, services (specifically entitlements), and server configurations.
 
-- [Logger Configuration](#logger-configuration)
-- [Server Configuration](#server-configuration)
-- [Database Configuration](#database-configuration)
-- [OPA Configuration](#opa-configuration)
-- [Services Configuration](#services-configuration)
+- [Configuration Guide](#configuration-guide)
+  - [Logger Configuration](#logger-configuration)
+  - [Server Configuration](#server-configuration)
+  - [Database Configuration](#database-configuration)
+  - [OPA Configuration](#opa-configuration)
+  - [Services Configuration](#services-configuration)
+    - [Key Access Server (KAS)](#key-access-server-kas)
+    - [Policy](#policy)
+    - [Authorization](#authorization)
 
 ## Logger Configuration
 
@@ -31,17 +35,23 @@ logger:
 
 The server configuration is used to define how the application runs its server.
 
-| Field              | Description                                           | Default |
-| ------------------ | ----------------------------------------------------- | ------- |
-| `port`             | The port number for the server.                       | `9000`  |
-| `host`             | The host address for the server.                      | `""`    |
-| `grpc.reflection`  | The configuration for the grpc server.                | `true`  |
-| `tls.enabled`      | Enable tls.                                           | `false` |
-| `tls.cert`         | The path to the tls certificate.                      |         |
-| `tls.key`          | The path to the tls key.                              |         |
-| `auth.audience`    | The audience for the IDP.                             |         |
-| `auth.issuer`      | The issuer for the IDP.                               |         |
-| `auth.enforceDPoP` | If true, DPoP bindings on Access Tokens are enforced. | `false` |
+| Field                           | Description                                                              | Default    |
+| ------------------------------- | ------------------------------------------------------------------------ | ---------- |
+| `port`                          | The port number for the server.                                          | `9000`     |
+| `host`                          | The host address for the server.                                         | `""`       |
+| `grpc.reflection`               | The configuration for the grpc server.                                   | `true`     |
+| `tls.enabled`                   | Enable tls.                                                              | `false`    |
+| `tls.cert`                      | The path to the tls certificate.                                         |            |
+| `tls.key`                       | The path to the tls key.                                                 |            |
+| `auth.audience`                 | The audience for the IDP.                                                |            |
+| `auth.issuer`                   | The issuer for the IDP.                                                  |            |
+| `auth.enforceDPoP`              | If true, DPoP bindings on Access Tokens are enforced.                    | `false`    |
+| `cryptoProvider.type`           | The type of crypto provider to use. Valid values are `standard` or `hsm` | `standard` |
+| `cryptoProvider.hsm.modulePath` | The configuration for the HSM crypto provider.                           |            |
+| `cryptoProvider.hsm.pin`        | The pin for the HSM crypto provider.                                     |            |
+| `cryptoProvider.hsm.slotId`     | The slot id for the HSM crypto provider.                                 |            |
+| `cryptoProvider.hsm.slotLabel`  | The slot label for the HSM crypto provider.                              |            |
+| `cryptoProvider.hsm.keys`       | List of keys by `name` and `label`                                       |            |
 
 Example:
 
@@ -58,6 +68,16 @@ server:
     enabled: true
     audience: https://example.com
     issuer: https://example.com
+  cryptoProvider:
+    type: hsm
+    hsm:
+      modulePath: /path/to/module
+      pin: 1234
+      slotId: 0
+      slotLabel: 'mySlot'
+      keys:
+        - name: 'myKey'
+          label: 'myLabel'
 ```
 
 ## Database Configuration
@@ -138,4 +158,4 @@ services:
 
 | Field     | Description              | Default |
 | --------- | ------------------------ | ------- |
-| `enabled` | Enable the Authorization |
+| `enabled` | Enable the Authorization | `true`  |

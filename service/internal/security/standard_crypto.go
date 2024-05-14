@@ -18,7 +18,6 @@ import (
 )
 
 var (
-	errNotImplemented             = errors.New("standard crypto for nano not implemented")
 	errStandardCryptoObjIsInvalid = errors.New("standard crypto object is invalid")
 )
 
@@ -90,14 +89,6 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to rsa public key file: %w", err)
 		}
-		//block, _ := pem.Decode(publicPemData)
-		//if block == nil {
-		//	return nil, errors.New("failed to decode PEM block containing public key")
-		//}
-		//ecPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-		//if err != nil {
-		//	return nil, fmt.Errorf("failed to parse EC public key: %w", err)
-		//}
 		block, _ := pem.Decode(privatePemData)
 		if block == nil {
 			return nil, errors.New("failed to decode PEM block containing private key")
@@ -106,21 +97,12 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse EC private key: %w", err)
 		}
-		//var ecdsaPublicKey *ecdsa.PublicKey
-		//switch pub := ecPublicKey.(type) {
-		//case *ecdsa.PublicKey:
-		//	fmt.Println("pub is of type ECDSA:", pub)
-		//	ecdsaPublicKey = pub
-		//default:
-		//	panic("unknown type of public key")
-		//}
 		var ecdsaPrivateKey *ecdsa.PrivateKey
 		switch priv := ecPrivateKey.(type) {
 		case *ecdsa.PrivateKey:
-			fmt.Println("pub is of type ECDSA:", priv)
 			ecdsaPrivateKey = priv
 		default:
-			panic("unknown type of public key")
+			return nil, fmt.Errorf("unknown type of public key: %w", err)
 		}
 		standardCrypto.ecKeys = append(standardCrypto.ecKeys, StandardECCrypto{
 			Identifier: id,

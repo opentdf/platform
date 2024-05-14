@@ -42,6 +42,12 @@ The server configuration is used to define how the application runs its server.
 | `auth.audience`    | The audience for the IDP.                             |         |
 | `auth.issuer`      | The issuer for the IDP.                               |         |
 | `auth.enforceDPoP` | If true, DPoP bindings on Access Tokens are enforced. | `false` |
+| `cryptoProvider.type` | The type of crypto provider to use. Valid values are `standard` or `hsm` | `standard` |
+| `cryptoProvider.hsm.modulePath` | The configuration for the HSM crypto provider. |         |
+| `cryptoProvider.hsm.pin` | The pin for the HSM crypto provider. |         |
+| `cryptoProvider.hsm.slotId` | The slot id for the HSM crypto provider. |         |
+| `cryptoProvider.hsm.slotLabel` | The slot label for the HSM crypto provider. |         |
+| `cryptoProvider.hsm.keys` | List of keys by `name` and `label` |         |
 
 Example:
 
@@ -58,6 +64,16 @@ server:
     enabled: true
     audience: https://example.com
     issuer: https://example.com
+  cryptoProvider:
+    type: hsm
+    hsm:
+      modulePath: /path/to/module
+      pin: 1234
+      slotId: 0
+      slotLabel: "mySlot"
+      keys:
+        - name: "myKey"
+          label: "myLabel"
 ```
 
 ## Database Configuration

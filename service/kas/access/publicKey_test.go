@@ -24,7 +24,6 @@ var (
 	config = security.Config{
 		Type: "hsm",
 		HSMConfig: security.HSMConfig{
-			Enabled:    true,
 			ModulePath: "",
 			PIN:        "12345",
 			SlotID:     0,

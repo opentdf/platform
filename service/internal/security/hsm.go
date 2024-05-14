@@ -55,7 +55,6 @@ type HSMSession struct {
 }
 
 type HSMConfig struct {
-	Enabled    bool               `yaml:"enabled"`
 	ModulePath string             `yaml:"modulePath,omitempty"`
 	PIN        string             `yaml:"pin,omitempty"`
 	SlotID     uint               `yaml:"slotId,omitempty"`

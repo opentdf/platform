@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.2](https://github.com/opentdf/platform/compare/service/v0.4.1...service/v0.4.2) (2024-05-15)
+
+
+### Features
+
+* **docs:** improve serviceregistry doc annotations ([#799](https://github.com/opentdf/platform/issues/799)) ([df8a504](https://github.com/opentdf/platform/commit/df8a504753690bf2b0814416999512eed0557291))
+
+
+### Bug Fixes
+
+* **authz:** Adds jwt to context when verified ([#764](https://github.com/opentdf/platform/issues/764)) ([7bf6513](https://github.com/opentdf/platform/commit/7bf65135779e95094acfdf140e7ff73f581d09cf))
+* **ci:** Use the correct schema with the provision fixture command ([#794](https://github.com/opentdf/platform/issues/794)) ([459e82a](https://github.com/opentdf/platform/commit/459e82aa3c1d278f5ac5f4835f94d9f3fe90727e))
+* **core:** Bump dep on sdk; reduce go to 1.21 ([#815](https://github.com/opentdf/platform/issues/815)) ([fe4a5ca](https://github.com/opentdf/platform/commit/fe4a5ca4321dd3c30022e9590b0c8a58719e03ea))
+* **core:** rollup readiness checks to central health service ([#755](https://github.com/opentdf/platform/issues/755)) ([8a65161](https://github.com/opentdf/platform/commit/8a65161729d634cc10a5d48d23030866b50e6b01)), closes [#726](https://github.com/opentdf/platform/issues/726)
+* **core:** Updates logs statements to log errors ([#796](https://github.com/opentdf/platform/issues/796)) ([7a3379b](https://github.com/opentdf/platform/commit/7a3379b6878562e4958e61516335e912716588b7))
+* **core:** wrong AuthorizationService provided with missing logger ([#791](https://github.com/opentdf/platform/issues/791)) ([b13be04](https://github.com/opentdf/platform/commit/b13be04889e4bb14cc8ec36484041dc2640d0257))
+* **sdk:** Reduces sdk go requirement to 1.21 ([#795](https://github.com/opentdf/platform/issues/795)) ([6baee80](https://github.com/opentdf/platform/commit/6baee801f7189aac95e6bf0235eeeca57fbc9bd2))
+* **service:** cleanup the cryptoprovider config ([#803](https://github.com/opentdf/platform/issues/803)) ([1458d17](https://github.com/opentdf/platform/commit/1458d174cbc2861c4bd0bf9dfeec10fcf3c9dc2f))
+
 ## [0.4.1](https://github.com/opentdf/platform/compare/service/v0.4.0...service/v0.4.1) (2024-05-07)
 
 

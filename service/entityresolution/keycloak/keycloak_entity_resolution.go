@@ -38,8 +38,8 @@ type KeyCloakConnector struct {
 	client *gocloak.GoCloak
 }
 
-func GetEntityChainFromJwt(ctx context.Context,
-	req *entityresolution.GetEntityChainFromJwtRequest, kcConfig KeycloakConfig) (entityresolution.GetEntityChainFromJwtResponse, error) {
+func GetEntityChainFromJwt(_ context.Context,
+	req *entityresolution.GetEntityChainFromJwtRequest) (entityresolution.GetEntityChainFromJwtResponse, error) {
 
 	var entityChains = []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
@@ -295,7 +295,7 @@ func getEntitiesFromToken(jwtString string) ([]*authorization.Entity, error) {
 	extractedValue, okExtract := claims[ClientJwtSelector]
 	if !okExtract {
 		// alwaysSelectors should always be present
-		return nil, errors.New("Error extracting selector " + ClientJwtSelector + " from jwt")
+		return nil, errors.New("error extracting selector " + ClientJwtSelector + " from jwt")
 	}
 	extractedValueCasted, okCast := extractedValue.(string)
 	if !okCast {
@@ -307,16 +307,15 @@ func getEntitiesFromToken(jwtString string) ([]*authorization.Entity, error) {
 	// extract preferred_username if client isnt present
 	_, okExtract = claims[UsernameConditionalSelector]
 	if !okExtract {
-		extractedValue, okExp := claims[UsernameJwtSelector]
+		extractedValueUsername, okExp := claims[UsernameJwtSelector]
 		if !okExp {
-			return nil, errors.New("Error extracting selector " + UsernameJwtSelector + " from jwt")
+			return nil, errors.New("error extracting selector " + UsernameJwtSelector + " from jwt")
 		}
-		extractedValueCasted, okCast := extractedValue.(string)
+		extractedValueUsernameCasted, okCast := extractedValueUsername.(string)
 		if !okCast {
 			return nil, errors.New("error casting extracted value to string")
 		}
-		entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
-		entityID++
+		entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 	} else {
 		slog.Debug("Did not find conditional value " + UsernameConditionalSelector + " in jwt")
 	}

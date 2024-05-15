@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.2...lib/fixtures/v0.2.3) (2024-05-14)
+
+
+### Bug Fixes
+
+* **core:** Updates logs statements to log errors ([#796](https://github.com/opentdf/platform/issues/796)) ([7a3379b](https://github.com/opentdf/platform/commit/7a3379b6878562e4958e61516335e912716588b7))
+
+## [0.2.2](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.1...lib/fixtures/v0.2.2) (2024-05-13)
+
+
+### Bug Fixes
+
+* **core:** Bump libs patch version ([#779](https://github.com/opentdf/platform/issues/779)) ([3b68dea](https://github.com/opentdf/platform/commit/3b68dea867609071047554a6a7697becaaee2805))
+
 ## [0.2.1](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.0...lib/fixtures/v0.2.1) (2024-05-07)
 
 

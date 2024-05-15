@@ -909,7 +909,8 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNot
 
 	// verify the list contains only active values and our deactivated value was not found as a match
 	for _, sm := range smList {
-		s.NotEqual(sm.GetId(), fixtureAttrVal.ID)
+		s.NotEqual(sm.GetAttributeValue().GetValue(), fixtureAttrVal.Value)
+		s.NotEqual(sm.GetAttributeValue().GetId(), fixtureAttrVal.ID)
 		s.True(sm.GetAttributeValue().GetActive().GetValue())
 	}
 }

@@ -42,3 +42,9 @@ func (s EntityResolutionService) ResolveEntities(ctx context.Context, req *entit
 	resp, err := keycloak.EntityResolution(ctx, req, s.idpConfig)
 	return &resp, err
 }
+
+func (s EntityResolutionService) GetEntityChainFromJwt(ctx context.Context, req *entityresolution.GetEntityChainFromJwtRequest) (*entityresolution.GetEntityChainFromJwtResponse, error) {
+	slog.Info("request", "", req)
+	resp, err := keycloak.GetEntityChainFromJwt(ctx, req, s.idpConfig)
+	return &resp, err
+}

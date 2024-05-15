@@ -380,6 +380,14 @@
                 </li>
               
                 <li>
+                  <a href="#entityresolution.GetEntityChainFromJwtRequest"><span class="badge">M</span>GetEntityChainFromJwtRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.GetEntityChainFromJwtResponse"><span class="badge">M</span>GetEntityChainFromJwtResponse</a>
+                </li>
+              
+                <li>
                   <a href="#entityresolution.ResolveEntitiesRequest"><span class="badge">M</span>ResolveEntitiesRequest</a>
                 </li>
               
@@ -2573,6 +2581,54 @@
 
         
       
+        <h3 id="entityresolution.GetEntityChainFromJwtRequest">GetEntityChainFromJwtRequest</h3>
+        <p>Example: Get Entity chains for tokens aaaaaa and bbbbbb</p><p>{</p><p>"tokens": [</p><p>"aaaaaaa",</p><p>"bbbbbbbb"</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>tokens</td>
+                  <td><a href="#authorization.Token">authorization.Token</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.GetEntityChainFromJwtResponse">GetEntityChainFromJwtResponse</h3>
+        <p>Example: Return the entity chains from the provided tokens</p><p>{</p><p>"entity_chains": [</p><p>{</p><p>"id": "tok1",</p><p>"entities": [</p><p>{</p><p>"clientId": "client1"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "tok2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice",</p><p>"clientId": "client2"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_chains</td>
+                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="entityresolution.ResolveEntitiesRequest">ResolveEntitiesRequest</h3>
         <p>Example: Get idp attributes for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
 
@@ -2642,6 +2698,13 @@
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>GetEntityChainFromJwt</td>
+                <td><a href="#entityresolution.GetEntityChainFromJwtRequest">GetEntityChainFromJwtRequest</a></td>
+                <td><a href="#entityresolution.GetEntityChainFromJwtResponse">GetEntityChainFromJwtResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -2666,6 +2729,16 @@
                 <td>ResolveEntities</td>
                 <td>POST</td>
                 <td>/entityresolution/resolve</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetEntityChainFromJwt</td>
+                <td>POST</td>
+                <td>/entityresolution/entitychain</td>
                 <td>*</td>
               </tr>
               

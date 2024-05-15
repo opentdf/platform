@@ -1,4 +1,4 @@
-package authorization
+package entityresolution
 
 import (
 	"testing"
@@ -16,34 +16,8 @@ const authPrivClientJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0O
 const implicitPrivClientJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTM4MzgsImlhdCI6MTcxNTA5MjkzOCwiYXV0aF90aW1lIjoxNzE1MDkyOTM4LCJqdGkiOiI0ZWIzY2I1OS05ZDRhLTQwNjctYmI0YS1iMjNjNDVhMDIyYTIiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvYXV0aC9yZWFsbXMvb3BlbnRkZiIsImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0Ojg4ODgiLCJyZWFsbS1tYW5hZ2VtZW50IiwiYWNjb3VudCJdLCJzdWIiOiIyZTZjMTU4MC1jZmQzLTQzYWItYjE3My1mNmMzYmY4ZmY0ZTIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ0ZGYtZW50aXR5LXJlc29sdXRpb24iLCJzZXNzaW9uX3N0YXRlIjoiYmE1OWFmOTgtNmE3YS00YjRhLTliOTItODU1M2ZkM2EwMTNjIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6W10sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLW9yZy1hZG1pbiIsImRlZmF1bHQtcm9sZXMtb3BlbnRkZiIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJ0ZGYtZW50aXR5LXJlc29sdXRpb24iOnsicm9sZXMiOlsiZW50aXR5LXJlc29sdXRpb24tdGVzdC1yb2xlIl19LCJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJxdWVyeS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIiwicXVlcnktdXNlcnMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJiYTU5YWY5OC02YTdhLTRiNGEtOWI5Mi04NTUzZmQzYTAxM2MiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJzYW1wbGUgdXNlciIsInByZWZlcnJlZF91c2VybmFtZSI6InNhbXBsZS11c2VyIiwiZ2l2ZW5fbmFtZSI6InNhbXBsZSIsImZhbWlseV9uYW1lIjoidXNlciIsImVtYWlsIjoic2FtcGxldXNlckBzYW1wbGUuY29tIn0.KQasyQ-f9KBRWRDXg4NikiHlragVil1nlYTQ8czPKku_uncpHZb7PMJhyPrwy72mwC10EJMpBIWGDVRfRjBRHxdzIbjozcGg3vusX748NMiDSlF4KoB5Fz-qExszcszEP5Qm_fvMRFcW7m9RPW9St1aaHcjAOW5Vee9ACJI56YffgqrTn1xp7ha2Z2X8d_NJfJOFdP3cqgxjR7DV5RezkDLRPfxHwJLk3anavSuDScXIO1w1C6AlTUQFVQUEX0DKZIt-RbzKcd6HWBfyDvHUSlfodEI_diWQIL1hEfrBXV6ThuhTqhrghHyIbb2e-zoC20arjMAK0Tr7hMAY4acxgQ"
 const implicitPubClientJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUxNTE0MTMsImlhdCI6MTcxNTE1MDUxMywiYXV0aF90aW1lIjoxNzE1MTUwNTEzLCJqdGkiOiJlYTRmOGZiYS01ZjljLTRiMzQtYmU1ZC1jNTk2ZGI4YzNlYzkiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvYXV0aC9yZWFsbXMvb3BlbnRkZiIsImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0Ojg4ODgiLCJ0ZGYtZW50aXR5LXJlc29sdXRpb24iLCJyZWFsbS1tYW5hZ2VtZW50IiwiYWNjb3VudCJdLCJzdWIiOiIyZTZjMTU4MC1jZmQzLTQzYWItYjE3My1mNmMzYmY4ZmY0ZTIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ0ZGYtZW50aXR5LXJlc29sdXRpb24tcHVibGljIiwic2Vzc2lvbl9zdGF0ZSI6ImRlM2U2ZDc1LTI3ODItNDg4NS1iYzU4LTU0MmJmYzEzNWNkNSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOltdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib3BlbnRkZi1vcmctYWRtaW4iLCJkZWZhdWx0LXJvbGVzLW9wZW50ZGYiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsidGRmLWVudGl0eS1yZXNvbHV0aW9uIjp7InJvbGVzIjpbImVudGl0eS1yZXNvbHV0aW9uLXRlc3Qtcm9sZSJdfSwicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LXVzZXJzIiwidmlldy1jbGllbnRzIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LWdyb3VwcyIsInF1ZXJ5LXVzZXJzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIiwic2lkIjoiZGUzZTZkNzUtMjc4Mi00ODg1LWJjNTgtNTQyYmZjMTM1Y2Q1IiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoic2FtcGxlIHVzZXIiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYW1wbGUtdXNlciIsImdpdmVuX25hbWUiOiJzYW1wbGUiLCJmYW1pbHlfbmFtZSI6InVzZXIiLCJlbWFpbCI6InNhbXBsZXVzZXJAc2FtcGxlLmNvbSJ9.jH60V3ZkuiN6cuEmbRTspnxyOvQs_wNkgoBw9IEZ8E8yGzXDayouduxEd_O-DG6vjT4KPDxGC2lA0V4i-ke7KChkZhRYLkaSuqt2hTlKoLXotepJPq8GBlXhWjCmFMqaXEB8lMAlAEoCT7CWmg03eTBGzwynj0S4rjMuOj6TLf3HIIN0DP7bgtG9uIc0Ah_mTVJ4L6Y5yjv6LC9bMZ7YNpUIkFn-CZTudquxHkLYgxHgaRAfELBvmS5xn0pTrpIfZSdYQK7hGhjhm9fUg4J06Pg6QW-xZe1U7awyNl7pOeeGQ2lVTo1CWrAlOz9lAmzKzAwQakEOMXFxAjJeHsXTWg"
 
-func Test_JwtClient(t *testing.T) {
-	entities, err := getEntitiesFromToken(clientCredentialsJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-	})
-	require.NoError(t, err)
-
-	assert.Len(t, entities, 1)
-	assert.Equal(t, "tdf-entity-resolution", entities[0].GetClientId())
-}
-
 func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
-	entities, err := getEntitiesFromToken(clientCredentialsJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "client_id",
-			Present:    false,
-			Selector:   "preferred_username",
-			EntityType: "userName",
-		}},
-	})
+	entities, err := getEntitiesFromToken(clientCredentialsJwt)
 	require.NoError(t, err)
 
 	assert.Len(t, entities, 1)
@@ -51,19 +25,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
-	entities, err := getEntitiesFromToken(passwordPubClientJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "client_id",
-			Present:    false,
-			Selector:   "preferred_username",
-			EntityType: "userName",
-		}},
-	})
+	entities, err := getEntitiesFromToken(passwordPubClientJwt)
 	require.NoError(t, err)
 
 	assert.Len(t, entities, 2)
@@ -72,19 +34,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
-	entities, err := getEntitiesFromToken(passwordPrivClientJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "client_id",
-			Present:    false,
-			Selector:   "preferred_username",
-			EntityType: "userName",
-		}},
-	})
+	entities, err := getEntitiesFromToken(passwordPrivClientJwt)
 	require.NoError(t, err)
 
 	assert.Len(t, entities, 2)
@@ -93,19 +43,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
-	entities, err := getEntitiesFromToken(authPubClientJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "client_id",
-			Present:    false,
-			Selector:   "preferred_username",
-			EntityType: "userName",
-		}},
-	})
+	entities, err := getEntitiesFromToken(authPubClientJwt)
 	require.NoError(t, err)
 
 	assert.Len(t, entities, 2)
@@ -114,19 +52,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
-	entities, err := getEntitiesFromToken(authPrivClientJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "client_id",
-			Present:    false,
-			Selector:   "preferred_username",
-			EntityType: "userName",
-		}},
-	})
+	entities, err := getEntitiesFromToken(authPrivClientJwt)
 	require.NoError(t, err)
 
 	assert.Len(t, entities, 2)
@@ -135,19 +61,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
-	entities, err := getEntitiesFromToken(implicitPubClientJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "client_id",
-			Present:    false,
-			Selector:   "preferred_username",
-			EntityType: "userName",
-		}},
-	})
+	entities, err := getEntitiesFromToken(implicitPubClientJwt)
 	require.NoError(t, err)
 
 	assert.Len(t, entities, 2)
@@ -156,83 +70,10 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
-	entities, err := getEntitiesFromToken(implicitPrivClientJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "client_id",
-			Present:    false,
-			Selector:   "preferred_username",
-			EntityType: "userName",
-		}},
-	})
+	entities, err := getEntitiesFromToken(implicitPrivClientJwt)
 	require.NoError(t, err)
 
 	assert.Len(t, entities, 2)
 	assert.Equal(t, "tdf-entity-resolution", entities[0].GetClientId())
 	assert.Equal(t, "sample-user", entities[1].GetUserName())
-}
-
-// Other tests
-
-const clientTestFieldAndValueJwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE3MTUxNTE1NTUsImV4cCI6MTc0NjY4NzU1NSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsImF6cCI6InRlc3QtY2xpZW50IiwidGVzdF9maWVsZCI6InRlc3RfdmFsdWUiLCJyZXN1bHRfZmllbGQiOiJyZXN1bHRfdmFsdWUifQ.5jRpItc3lLt35wBuXqK5Wqk5fbxaqxhheCg5dYMzpHw"
-
-func Test_JwtClient_Field_Equals(t *testing.T) {
-	entities, err := getEntitiesFromToken(clientTestFieldAndValueJwt, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "test_field",
-			Present:    true,
-			EqualTo:    "test_value",
-			Selector:   "result_field",
-			EntityType: "emailAddress",
-		}},
-	})
-	require.NoError(t, err)
-
-	assert.Len(t, entities, 2)
-	assert.Equal(t, "test-client", entities[0].GetClientId())
-	assert.Equal(t, "result_value", entities[1].GetEmailAddress())
-}
-
-const clientTestFieldAndValueSecondClient = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE3MTUxNTE1NTUsImV4cCI6MTc0NjY4NzU1NSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsImF6cCI6InRlc3QtY2xpZW50IiwidGVzdF9maWVsZCI6InRlc3RfdmFsdWUiLCJyZXN1bHRfZmllbGQiOiJyZXN1bHRfdmFsdWUiLCJhenAyIjoib3RoZXItdGVzdC1jbGllbnQifQ.X9LIoFpKyxyRFpTKKcxI8zayVGale_9cWlc5QbrVK1I"
-
-func Test_JwtClient_Field_Equals_And_Not_Present(t *testing.T) {
-	entities, err := getEntitiesFromToken(clientTestFieldAndValueSecondClient, jwtDecompositionRules{
-		AlwaysSelectors: []jwtSelector{{
-			Selector:   "azp",
-			EntityType: "clientId",
-		},
-			{
-				Selector:   "azp2",
-				EntityType: "userName",
-			},
-		},
-		ConditionalSelectors: []conditionalJwtSelector{{
-			IfSelector: "test_field",
-			Present:    true,
-			EqualTo:    "test_value",
-			Selector:   "result_field",
-			EntityType: "emailAddress",
-		}, {
-			IfSelector: "test_field2",
-			Present:    false,
-			Selector:   "result_field",
-			EntityType: "uuid",
-		}},
-	})
-	require.NoError(t, err)
-
-	assert.Len(t, entities, 4)
-	assert.Equal(t, "test-client", entities[0].GetClientId())
-	assert.Equal(t, "other-test-client", entities[1].GetUserName())
-	assert.Equal(t, "result_value", entities[2].GetEmailAddress())
-	assert.Equal(t, "result_value", entities[3].GetUuid())
 }

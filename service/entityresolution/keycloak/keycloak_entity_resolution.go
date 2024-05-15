@@ -8,6 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"google.golang.org/grpc/codes"
@@ -18,6 +19,10 @@ import (
 const ErrTextCreationFailed = "resource creation failed"
 const ErrTextGetRetrievalFailed = "resource retrieval failed"
 const ErrTextNotFound = "resource not found"
+
+const ClientJwtSelector = "azp"
+const UsernameJwtSelector = "preferred_username"
+const UsernameConditionalSelector = "client_id"
 
 type KeycloakConfig struct {
 	URL            string `json:"url"`
@@ -31,6 +36,22 @@ type KeycloakConfig struct {
 type KeyCloakConnector struct {
 	token  *gocloak.JWT
 	client *gocloak.GoCloak
+}
+
+func GetEntityChainFromJwt(ctx context.Context,
+	req *entityresolution.GetEntityChainFromJwtRequest, kcConfig KeycloakConfig) (entityresolution.GetEntityChainFromJwtResponse, error) {
+
+	var entityChains = []*authorization.EntityChain{}
+	// for each token in the tokens form an entity chain
+	for _, tok := range req.GetTokens() {
+		entities, err := getEntitiesFromToken(tok.GetJwt()) //nolint:contextcheck // Do not want to include keys from context in map
+		if err != nil {
+			return entityresolution.GetEntityChainFromJwtResponse{}, err
+		}
+		entityChains = append(entityChains, &authorization.EntityChain{Id: tok.GetId(), Entities: entities})
+	}
+
+	return entityresolution.GetEntityChainFromJwtResponse{EntityChains: entityChains}, nil
 }
 
 func EntityResolution(ctx context.Context,
@@ -255,4 +276,50 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConne
 		return nil, err
 	}
 	return entityRepresentations, nil
+}
+
+func getEntitiesFromToken(jwtString string) ([]*authorization.Entity, error) {
+	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		return nil, errors.New("error parsing jwt " + err.Error())
+	}
+	claims, err := token.AsMap(context.Background())
+	if err != nil {
+		return nil, errors.New("error getting claims from jwt")
+	}
+	var entities = []*authorization.Entity{}
+	var entityID = 0
+	// go through the always rules, throw error if not found
+
+	// extract azp
+	extractedValue, okExtract := claims[ClientJwtSelector]
+	if !okExtract {
+		// alwaysSelectors should always be present
+		return nil, errors.New("Error extracting selector " + ClientJwtSelector + " from jwt")
+	}
+	extractedValueCasted, okCast := extractedValue.(string)
+	if !okCast {
+		return nil, errors.New("error casting extracted value to string")
+	}
+	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+	entityID++
+
+	// extract preferred_username if client isnt present
+	_, okExtract = claims[UsernameConditionalSelector]
+	if !okExtract {
+		extractedValue, okExp := claims[UsernameJwtSelector]
+		if !okExp {
+			return nil, errors.New("Error extracting selector " + UsernameJwtSelector + " from jwt")
+		}
+		extractedValueCasted, okCast := extractedValue.(string)
+		if !okCast {
+			return nil, errors.New("error casting extracted value to string")
+		}
+		entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+		entityID++
+	} else {
+		slog.Debug("Did not find conditional value " + UsernameConditionalSelector + " in jwt")
+	}
+
+	return entities, nil
 }

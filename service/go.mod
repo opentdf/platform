@@ -11,7 +11,6 @@ require (
 	github.com/casbin/casbin/v2 v2.84.0
 	github.com/creasty/defaults v1.7.0
 	github.com/go-chi/cors v1.2.1
-	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1

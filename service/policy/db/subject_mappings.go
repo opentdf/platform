@@ -146,6 +146,8 @@ func subjectMappingSelect() sq.SelectBuilder {
 	t := Tables.SubjectMappings
 	avT := Tables.AttributeValues
 	scsT := Tables.SubjectConditionSet
+	adT := Tables.Attributes
+	nsT := Tables.Namespaces
 	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
 		"'id', vmv.id, " +
 		"'value', vmv.value, " +
@@ -171,6 +173,8 @@ func subjectMappingSelect() sq.SelectBuilder {
 		LeftJoin(avT.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
 		LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id").
 		LeftJoin(avT.Name() + " vmv ON vm.member_id = vmv.id").
+		LeftJoin(adT.Name() + " ad ON av.attribute_definition_id = ad.id").
+		LeftJoin(nsT.Name() + " ns ON ad.namespace_id = ns.id").
 		GroupBy("av.id").
 		GroupBy(t.Field("id")).
 		LeftJoin(scsT.Name() + " ON " + scsT.Field("id") + " = " + t.Field("subject_condition_set_id")).
@@ -741,7 +745,8 @@ func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty
 
 	return subjectMappingSelect().
 		From(smT.Name()).
-		Where("EXISTS (" + whereSubQ + ")").
+		// ensure namespace, definition, and value of mapped attribute are all active
+		Where("ns.active = true AND ad.active = true AND av.active = true AND EXISTS (" + whereSubQ + ")").
 		ToSql()
 }
 

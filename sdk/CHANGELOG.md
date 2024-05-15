@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/opentdf/platform/compare/sdk/v0.2.1...sdk/v0.2.2) (2024-05-15)
+
+
+### Bug Fixes
+
+* **core:** Updates logs statements to log errors ([#796](https://github.com/opentdf/platform/issues/796)) ([7a3379b](https://github.com/opentdf/platform/commit/7a3379b6878562e4958e61516335e912716588b7))
+* **sdk:** Reduces sdk go requirement to 1.21 ([#795](https://github.com/opentdf/platform/issues/795)) ([6baee80](https://github.com/opentdf/platform/commit/6baee801f7189aac95e6bf0235eeeca57fbc9bd2))
+
 ## [0.2.1](https://github.com/opentdf/platform/compare/sdk/v0.2.0...sdk/v0.2.1) (2024-05-10)
 
 

@@ -262,6 +262,110 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	}
 }
 
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedNamespace() {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test_fqn_namespace.co",
+	})
+	s.Require().NoError(err)
+
+	// give it an attribute with two values
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_attr",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+
+	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "value1",
+	})
+	s.Require().NoError(err)
+
+	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "value2",
+	})
+	s.Require().NoError(err)
+
+	// deactivate the namespace
+	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, ns.GetId())
+	s.Require().NoError(err)
+
+	// get the attribute by the value fqn for v1
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(v)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	// get the attribute by the value fqn for v2
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v2.GetValue())},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(v)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAttributeDefinition() {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test_fqn_namespace.hello",
+	})
+	s.Require().NoError(err)
+
+	// give it an attribute with two values
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "deactivating_attr",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+
+	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "value1",
+	})
+	s.Require().NoError(err)
+
+	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "value2",
+	})
+	s.Require().NoError(err)
+
+	// deactivate the attribute definition
+	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+
+	// get the attribute by the value fqn for v1
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(v)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	// get the attribute by the value fqn for v2
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v2.GetValue())},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(v)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns() {
 	nsFqn := fqnBuilder("example.com", "", "")
 	attrFqn := fqnBuilder("example.com", "attr1", "")

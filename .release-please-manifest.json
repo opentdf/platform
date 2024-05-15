@@ -2,6 +2,6 @@
   "lib/fixtures": "0.2.3",
   "lib/ocrypto": "0.1.2",
   "protocol/go": "0.2.2",
-  "sdk": "0.2.1",
+  "sdk": "0.2.2",
   "service": "0.4.1"
 }

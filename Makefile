@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean docker-build fix fmt go-lint lint proto-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures sdk service examples
@@ -12,7 +12,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 # LINT_OPTIONS?=-new-from-rev=main
 LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci.yaml
 
-all: toolcheck clean build lint test
+all: toolcheck clean build lint license test
 
 toolcheck:
 	@echo "Checking for required tools..."
@@ -29,6 +29,9 @@ fmt:
 
 tidy:
 	for m in $(HAND_MODS); do (cd $$m && go mod tidy) || exit 1; done
+
+license:
+	for m in $(HAND_MODS); do (cd $$m && go-licenses check --disallowed_types=forbidden --include_tests ./) || exit 1; done
 
 lint: proto-lint go-lint
 

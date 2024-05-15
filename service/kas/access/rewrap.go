@@ -242,18 +242,6 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 		slog.WarnContext(ctx, "missing sub")
 	}
 
-	// Handling individual entity cases is now done in authorization
-	// // We have to check for the different ways the clientID can be stored in the token
-	// clientIDKeys := []string{"clientId", "cid", "client_id"}
-	// for _, key := range clientIDKeys {
-	// 	if value, keyExists := token.Get(key); keyExists {
-	// 		if clientID, ok := value.(string); ok {
-	// 			info.ClientID = clientID
-	// 			break // Stop looping once a valid key is found and successfully asserted
-	// 		}
-	// 	}
-	// }
-
 	info.Token = auth.GetRawAccessTokenFromContext(ctx)
 
 	return info, nil

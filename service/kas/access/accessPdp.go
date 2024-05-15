@@ -18,13 +18,8 @@ const (
 
 func canAccess(ctx context.Context, token *authorization.Token, policy Policy, sdk *otdf.SDK) (bool, error) {
 	if len(policy.Body.Dissem) > 0 {
-		// dissemAccess, err := checkDissems(policy.Body.Dissem, token)
-		// if err != nil {
-		// 	return false, err
-		// }
-
-		// throw an error, dont support dissems?
-		return false, errors.New("don't support dissems with v2 platform kas")
+		// TODO: Move dissems check to the getdecisions endpoint
+		slog.Error("Dissems check is not enabled in v2 platform kas")
 	}
 	if policy.Body.DataAttributes != nil {
 		attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, token, sdk)

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/open-policy-agent/opa/metrics"
 	"github.com/open-policy-agent/opa/profiler"
 	opaSdk "github.com/open-policy-agent/opa/sdk"
@@ -85,18 +85,18 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting ersURL to string")
 				}
 			}
-			val, ok = srp.Config.ExtraProps["clientId"]
+			val, ok = srp.Config.ExtraProps["clientid"]
 			if ok {
 				clientID, ok = val.(string)
 				if !ok {
 					panic("Error casting clientID to string")
 				}
 			}
-			val, ok = srp.Config.ExtraProps["clientSecert"]
+			val, ok = srp.Config.ExtraProps["clientsecert"]
 			if ok {
 				clientSecert, ok = val.(string)
 				if !ok {
-					panic("Error casting clientSecert to string")
+					panic("Error casting clientSecret to string")
 				}
 			}
 			val, ok = srp.Config.ExtraProps["tokenendpoint"]
@@ -396,12 +396,12 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 }
 
 func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*authorization.Entity, error) {
-	token, _, err := new(jwt.Parser).ParseUnverified(jwtString, jwt.MapClaims{})
+	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
+	claims, err := token.AsMap(context.Background()) //nolint:all
+	if err != nil {
 		return nil, errors.New("error getting claims from jwt")
 	}
 	var entities = []*authorization.Entity{}

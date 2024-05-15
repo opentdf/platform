@@ -741,7 +741,7 @@ func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty
 
 	return subjectMappingSelect().
 		From(smT.Name()).
-		Where("EXISTS (" + whereSubQ + ")").
+		Where("av.active = true AND EXISTS (" + whereSubQ + ")").
 		ToSql()
 }
 

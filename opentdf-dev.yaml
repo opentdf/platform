@@ -22,7 +22,7 @@ services:
     jwtdecomposition:
       # always add entities from these selectors
       alwaysselectors:
-      # TODO: maybe these selectors should use jq?
+      # TODO: maybe these selectors should use jq or dot notation?
         - selector: azp
           entitytype: clientId
         # example for other idps

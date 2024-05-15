@@ -2,7 +2,6 @@ package authorization
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -36,25 +35,6 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 	ersURL      string
 	logger      *logger.Logger
 	tokenSource *oauth2.TokenSource
-	jwtRules    jwtDecompositionRules
-}
-
-type jwtSelector struct {
-	Selector   string `yaml:"selector" json:"selector"`
-	EntityType string `yaml:"entitytype" json:"entitytype"`
-}
-
-type conditionalJwtSelector struct {
-	Selector   string `yaml:"selector" json:"selector"`
-	EntityType string `yaml:"entitytype" json:"entitytype"`
-	IfSelector string `yaml:"ifselector" json:"ifselector"`
-	Present    bool   `yaml:"present" json:"present"`
-	EqualTo    string `yaml:"equalto" json:"equalto"`
-}
-
-type jwtDecompositionRules struct {
-	AlwaysSelectors      []jwtSelector            `yaml:"alwaysselectors" json:"alwaysselectors"`
-	ConditionalSelectors []conditionalJwtSelector `yaml:"conditionalselectors" json:"conditionalselectors"`
 }
 
 const tokenExpiryDelay = 100
@@ -69,9 +49,6 @@ func NewRegistration() serviceregistry.Registration {
 			var clientID = "tdf-authorization-svc"
 			var clientSecert = "secret"
 			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
-			var jwtdecomposition = jwtDecompositionRules{
-				AlwaysSelectors: []jwtSelector{{Selector: "azp", EntityType: "client_id"}},
-			}
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
@@ -105,24 +82,11 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting tokenEndpoint to string")
 				}
 			}
-			val, ok = srp.Config.ExtraProps["jwtdecomposition"]
-			if ok {
-				jsonVal, err := json.Marshal(val)
-				if err != nil {
-					panic("Error marshalling jwtdecomposition to json")
-				}
-				jwtdecomposition = jwtDecompositionRules{}
-				err = json.Unmarshal(jsonVal, &jwtdecomposition)
-				if err != nil {
-					panic("Error unmarshalling jwtdecomposition to jwtDecompositionRules")
-				}
-			}
 			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecert, TokenURL: tokenEndpoint}
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
 
 			as.ersURL = ersURL
 			as.tokenSource = &newTokenSource
-			as.jwtRules = jwtdecomposition
 
 			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				authServer, okAuth := server.(authorization.AuthorizationServiceServer)

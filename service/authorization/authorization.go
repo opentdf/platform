@@ -395,12 +395,12 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	return rsp, nil
 }
 
-func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*authorization.Entity, error) {
+func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*authorization.Entity, error) { //nolint:contextcheck // Do not want to include keys from context in map
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
 	}
-	claims, err := token.AsMap(context.Background()) //nolint:contextcheck // Do not want to include keys from context in map
+	claims, err := token.AsMap(context.Background()) //nolint:all // Do not want to include keys from context in map
 	if err != nil {
 		return nil, errors.New("error getting claims from jwt")
 	}

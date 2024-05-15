@@ -323,7 +323,7 @@ subject_condition_set:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
                   # any index
-                  - subject_external_selector_value: '.data[0].favorite_things[*]'
+                  - subject_external_selector_value: '.data[0].favorite_things[]'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - futbol

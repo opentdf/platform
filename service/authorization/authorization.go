@@ -400,7 +400,7 @@ func getEntitiesFromToken(jwtString string, jwtRules jwtDecompositionRules) ([]*
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
 	}
-	claims, err := token.AsMap(context.Background()) //nolint:all
+	claims, err := token.AsMap(context.Background()) //nolint:contextcheck // Do not want to include keys from context in map
 	if err != nil {
 		return nil, errors.New("error getting claims from jwt")
 	}

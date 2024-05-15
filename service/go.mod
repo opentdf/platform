@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/service
 
-go 1.22.3
+go 1.21
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -21,7 +21,7 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.2.3
 	github.com/opentdf/platform/lib/ocrypto v0.1.2
 	github.com/opentdf/platform/protocol/go v0.2.2
-	github.com/opentdf/platform/sdk v0.2.1
+	github.com/opentdf/platform/sdk v0.2.2
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2

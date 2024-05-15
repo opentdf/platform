@@ -132,7 +132,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'active', vmv.active, " +
 			"'members', vmv.members || ARRAY[]::UUID[], " +
 			"'attribute', JSON_BUILD_OBJECT(" +
-			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id WHERE av.active = true GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id"))
+			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id"))
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).

@@ -148,9 +148,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 			}
 			var attrDefs []*policy.Attribute
 			var attrVals []*policy.Value
-			for _, v := range dataAttrDefsAndVals {
+			for fqn, v := range dataAttrDefsAndVals {
 				attrDefs = append(attrDefs, v.GetAttribute())
-				attrVals = append(attrVals, v.GetValue())
+				attrVal := v.GetValue()
+				attrVal.Fqn = fqn
+				attrVals = append(attrVals, attrVal)
 			}
 
 			attrDefs, err = populateAttrDefValueFqns(attrDefs)

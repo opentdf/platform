@@ -132,7 +132,6 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *au
 	var decisionsRequests = []*authorization.DecisionRequest{}
 	// for each token decision request
 	for _, tdr := range req.GetDecisionRequests() {
-
 		ecResp, err := as.sdk.EntityResoution.GetEntityChainFromJwt(ctx, &entityresolution.GetEntityChainFromJwtRequest{Tokens: tdr.GetTokens()})
 		if err != nil {
 			slog.Error("Error calling ERS to get entity chains from jwts")

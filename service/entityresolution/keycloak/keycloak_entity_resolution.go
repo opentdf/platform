@@ -46,7 +46,7 @@ func GetEntityChainFromJwt(ctx context.Context,
 	var entityChains = []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt()) //nolint:contextcheck // Do not want to include keys from context in map
+		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt())
 		if err != nil {
 			return entityresolution.GetEntityChainFromJwtResponse{}, err
 		}
@@ -285,7 +285,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
 	}
-	claims, err := token.AsMap(context.Background()) // we want an empty context here
+	claims, err := token.AsMap(context.Background()) ///nolint:contextcheck // Do not want to include keys from context in map
 	if err != nil {
 		return nil, errors.New("error getting claims from jwt")
 	}
@@ -305,8 +305,8 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	entityID++
 
 	// extract preferred_username if client isnt present
-	_, okExtract = claims[UsernameConditionalSelector]
-	if !okExtract {
+	_, okExtractConditional := claims[UsernameConditionalSelector]
+	if !okExtractConditional {
 		extractedValueUsername, okExp := claims[UsernameJwtSelector]
 		if !okExp {
 			return nil, errors.New("error extracting selector " + UsernameJwtSelector + " from jwt")
@@ -331,7 +331,6 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 		} else {
 			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
 		}
-
 	} else {
 		slog.Debug("Did not find conditional value " + UsernameConditionalSelector + " in jwt, proceed")
 	}

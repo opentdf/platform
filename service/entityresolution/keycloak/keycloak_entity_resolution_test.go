@@ -51,7 +51,7 @@ const groupResp = `{
 	"id": "group1-uuid",
 	"name": "group1"
 }`
-const byClientIdOpentdfSdkResp = `[
+const byClientIDOpentdfSdkResp = `[
 {"id": "opentdfsdkclient", "clientId":"opentdf-sdk"}
 ]
 `
@@ -300,8 +300,8 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 1)
-	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].Entities[0].GetClientId())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 1)
+	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
 }
 
 func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
@@ -319,9 +319,9 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 2)
-	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].Entities[0].GetClientId())
-	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].Entities[1].GetUserName())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
+	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
 }
 
 func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
@@ -339,9 +339,9 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 2)
-	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].Entities[0].GetClientId())
-	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].Entities[1].GetUserName())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
+	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
 }
 
 func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
@@ -359,9 +359,9 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 2)
-	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].Entities[0].GetClientId())
-	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].Entities[1].GetUserName())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
+	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
 }
 
 func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
@@ -379,9 +379,9 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 2)
-	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].Entities[0].GetClientId())
-	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].Entities[1].GetUserName())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
+	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
 }
 
 func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
@@ -399,9 +399,9 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 2)
-	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].Entities[0].GetClientId())
-	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].Entities[1].GetUserName())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
+	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
 }
 
 func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
@@ -419,14 +419,14 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 2)
-	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].Entities[0].GetClientId())
-	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].Entities[1].GetUserName())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
+	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
 }
 
 func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 	csqr := map[string]string{
-		"clientId=opentdf-sdk": byClientIdOpentdfSdkResp,
+		"clientId=opentdf-sdk": byClientIDOpentdfSdkResp,
 	}
 	server := testServer(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
@@ -442,14 +442,14 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 2)
-	assert.Equal(t, "opentdf", resp.GetEntityChains()[0].Entities[0].GetClientId())
-	assert.Equal(t, "opentdf-sdk", resp.GetEntityChains()[0].Entities[1].GetClientId())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
+	assert.Equal(t, "opentdf", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, "opentdf-sdk", resp.GetEntityChains()[0].GetEntities()[1].GetClientId())
 }
 
 func Test_JwtMultiple(t *testing.T) {
 	csqr := map[string]string{
-		"clientId=opentdf-sdk": byClientIdOpentdfSdkResp,
+		"clientId=opentdf-sdk": byClientIDOpentdfSdkResp,
 	}
 	server := testServer(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
@@ -465,11 +465,11 @@ func Test_JwtMultiple(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 2)
-	assert.Len(t, resp.GetEntityChains()[0].Entities, 2)
-	assert.Equal(t, "opentdf", resp.GetEntityChains()[0].Entities[0].GetClientId())
-	assert.Equal(t, "opentdf-sdk", resp.GetEntityChains()[0].Entities[1].GetClientId())
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
+	assert.Equal(t, "opentdf", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, "opentdf-sdk", resp.GetEntityChains()[0].GetEntities()[1].GetClientId())
 
-	assert.Len(t, resp.GetEntityChains()[1].Entities, 2)
-	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[1].Entities[0].GetClientId())
-	assert.Equal(t, "sample-user", resp.GetEntityChains()[1].Entities[1].GetUserName())
+	assert.Len(t, resp.GetEntityChains()[1].GetEntities(), 2)
+	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[1].GetEntities()[0].GetClientId())
+	assert.Equal(t, "sample-user", resp.GetEntityChains()[1].GetEntities()[1].GetUserName())
 }

@@ -33,7 +33,7 @@ func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 	}
 
 	// Compare policy field
-	if a.policy.mode != b.policy.mode || !policyBodyEqual(a.policy.body, b.policy.body) || !eccSignatureEqual(a.policy.binding, b.policy.binding) {
+	if a.policy.body.mode != b.policy.body.mode || !policyBodyEqual(a.policy.body, b.policy.body) || !eccSignatureEqual(a.policy.binding, b.policy.binding) {
 		return false
 	}
 
@@ -49,23 +49,15 @@ func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 // policyBodyEqual compares two PolicyBody instances for equality.
 func policyBodyEqual(a, b PolicyBody) bool {
 	// Compare based on the concrete type of PolicyBody
-	switch a := a.(type) {
-	case remotePolicy:
-		b, ok := b.(remotePolicy)
-		if !ok {
-			return false
-		}
-		return remotePolicyEqual(a, b)
-	case embeddedPolicy:
-		b, ok := b.(embeddedPolicy)
-		if !ok {
-			return false
-		}
-		return embeddedPolicyEqual(a, b)
-	default:
-		// Handle other types as needed
-		return false
+	switch a.mode {
+	case policyTypeRemotePolicy:
+		return remotePolicyEqual(a.rp, b.rp)
+	case policyTypeEmbeddedPolicyPlainText:
+	case policyTypeEmbeddedPolicyEncrypted:
+	case policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess:
+		return embeddedPolicyEqual(a.ep, b.ep)
 	}
+	return false
 }
 
 // remotePolicyEqual compares two remotePolicy instances for equality.
@@ -96,37 +88,39 @@ func init() {
 
 func TestReadNanoTDFHeader(t *testing.T) {
 	// Prepare a sample nanoTdf structure
-	nanoTDF := NanoTDFHeader{
+	goodHeader := NanoTDFHeader{
 		magicNumber: [3]byte{'L', '1', 'L'},
-		kasURL: &resourceLocator{
+		kasURL: resourceLocator{
 			protocol:   urlProtocolHTTPS,
 			lengthBody: 14,
 			body:       "kas.virtru.com",
 		},
-		binding: &bindingCfg{
+		binding: bindingCfg{
 			useEcdsaBinding: true,
 			padding:         0,
 			bindingBody:     ocrypto.ECCModeSecp256r1,
 		},
-		sigCfg: &signatureConfig{
+		sigCfg: signatureConfig{
 			hasSignature:  true,
 			signatureMode: ocrypto.ECCModeSecp256r1,
 			cipher:        cipherModeAes256gcm64Bit,
 		},
-		policy: &policyInfo{
-			mode: uint8(policyTypeRemotePolicy),
-			body: remotePolicy{
-				url: &resourceLocator{
-					protocol:   urlProtocolHTTPS,
-					lengthBody: 21,
-					body:       "kas.virtru.com/policy",
+		policy: policyInfo{
+			body: PolicyBody{
+				mode: policyTypeRemotePolicy,
+				rp: remotePolicy{
+					url: resourceLocator{
+						protocol:   urlProtocolHTTPS,
+						lengthBody: 21,
+						body:       "kas.virtru.com/policy",
+					},
 				},
 			},
 			binding: &eccSignature{
 				value: []byte{181, 228, 19, 166, 2, 17, 229, 241},
 			},
 		},
-		EphemeralPublicKey: &eccKey{
+		EphemeralPublicKey: eccKey{
 			Key: []byte{123, 34, 52, 160, 205, 63, 54, 255, 123, 186, 109,
 				143, 232, 223, 35, 246, 44, 157, 9, 53, 111, 133,
 				130, 248, 169, 207, 21, 18, 108, 138, 157, 164, 108},
@@ -140,13 +134,14 @@ func TestReadNanoTDFHeader(t *testing.T) {
 	}
 	defer file.Close()
 
-	result, err := ReadNanoTDFHeader(file)
+	var resultHeader NanoTDFHeader
+	err = resultHeader.ReadNanoTDFHeader(file)
 	if err != nil {
 		t.Fatalf("Error while reading nanoTdf header: %v", err)
 	}
 
 	// Compare the result with the original nanoTdf structure
-	if !nanoTDFEqual(result, &nanoTDF) {
+	if !nanoTDFEqual(&resultHeader, &goodHeader) {
 		t.Error("Result does not match the expected nanoTdf structure.")
 	}
 }
@@ -197,7 +192,7 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 
 	kasUrl := "api.exampl.com/kas"
 
-	remotePolicyUrl := "api-develop01.develop.virtru.com/acm/api/policies/1a1d5e42-bf91-45c7-a86a-61d5331c1f55"
+	remotePolicyUrl := "https://api-develop01.develop.virtru.com/acm/api/policies/1a1d5e42-bf91-45c7-a86a-61d5331c1f55"
 
 	policyBinding := [...]byte{0x33, 0x31, 0x63, 0x31, 0x66, 0x35, 0x35, 0x00}
 
@@ -207,16 +202,22 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		config.mKasURL = resourceLocator{urlProtocolHTTPS, uint8(len(kasUrl)), kasUrl}
 		config.mEccMode = ocrypto.ECCModeSecp256r1
 
-		config.sigCfg = *deserializeSignatureCfg(0x00) // no signature and AES_256_GCM_64_TAG
+		config.sigCfg = deserializeSignatureCfg(0x00) // no signature and AES_256_GCM_64_TAG
 
 		config.mKasPublicKey = kasPublicKey
 		config.mPrivateKey = sdkPrivateKey
 
-		config.binding = *deserializeBindingCfg(0x00)
+		config.binding = deserializeBindingCfg(0x00)
 
-		policyUrl := resourceLocator{urlProtocolHTTPS, uint8(len(remotePolicyUrl)), remotePolicyUrl}
+		var policyUrl resourceLocator
+		err := policyUrl.setUrl(remotePolicyUrl)
+		if err != nil {
+			t.Fatalf("Cannot set policy url: %v", err)
+		}
 
-		polInfo := policyInfo{mode: uint8(policyTypeRemotePolicy), body: policyUrl, binding: nil}
+		policyBody := PolicyBody{mode: policyTypeRemotePolicy, rp: remotePolicy{url: policyUrl}}
+
+		polInfo := policyInfo{body: policyBody, binding: nil}
 		config.policy = polInfo
 
 		// Copy pre-built compressed public key
@@ -227,10 +228,10 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 			epk.Key[i] = b
 			i++
 		}
-		config.EphemeralPublicKey = &epk
+		config.EphemeralPublicKey = epk
 
 		var header NanoTDFHeader
-		err := createHeader(&header, &config)
+		err = createHeader(&header, &config)
 		if err != nil {
 			t.Fatalf("Cannot create nanoTdf header: %v", err)
 		}
@@ -280,8 +281,8 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 	// if err != nil {
 	//	t.Fatalf("Error while reading nanoTdf header: %v", err)
 	// }
-
 }
+
 func NotTestNanoTDFEncryptFile(t *testing.T) {
 	infile, err := os.Open("nanotest1.txt")
 	if err != nil {

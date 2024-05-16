@@ -24,6 +24,14 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+type Config struct {
+	Type string `yaml:"type" default:"standard"`
+	// HSMConfig is the configuration for the HSM
+	HSMConfig HSMConfig `yaml:"hsm,omitempty" mapstructure:"hsm"`
+	// StandardConfig is the configuration for the standard key provider
+	StandardConfig StandardConfig `yaml:"standard,omitempty" mapstructure:"standard"`
+}
+
 func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
 	switch cfg.Type {
 	case "hsm":
@@ -567,9 +575,14 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte)
 }
 
 func (h *HSMSession) GenerateNanoTDFSessionKey(
-	privateKeyHandle PrivateKeyEC,
+	privateKey any,
 	ephemeralPublicKey []byte,
 ) ([]byte, error) {
+	privateKeyHandle, ok := privateKey.(PrivateKeyEC)
+	if !ok {
+		return nil, ErrHSMUnexpected
+	}
+
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
@@ -614,7 +627,7 @@ func (h *HSMSession) GenerateNanoTDFSessionKey(
 	return derivedKey, nil
 }
 
-func (h *HSMSession) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
+func (h *HSMSession) GenerateEphemeralKasKeys() (any, []byte, error) {
 	pubKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),

@@ -28,7 +28,7 @@ type resourceLocator struct {
 	body       string
 }
 
-func (resourceLocator) isPolicyBody() {} //nolint:unused
+func (resourceLocator) isPolicyBody() {} //nolint:unused marker method to ensure interface implementation
 
 type bindingCfg struct {
 	useEcdsaBinding bool

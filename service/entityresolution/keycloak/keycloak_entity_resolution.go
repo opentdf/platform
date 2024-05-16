@@ -306,7 +306,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 
 	// extract preferred_username if client isnt present
 	_, okExtractConditional := claims[UsernameConditionalSelector]
-	if !okExtractConditional {
+	if !okExtractConditional { //nolint:nestif // this case has many possible outcomes to handle
 		extractedValueUsername, okExp := claims[UsernameJwtSelector]
 		if !okExp {
 			return nil, errors.New("error extracting selector " + UsernameJwtSelector + " from jwt")

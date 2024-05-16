@@ -20,7 +20,7 @@ require (
 	github.com/open-policy-agent/opa v0.63.0
 	github.com/opentdf/platform/lib/fixtures v0.2.0
 	github.com/opentdf/platform/lib/ocrypto v0.1.0
-	github.com/opentdf/platform/protocol/go v0.2.0
+	github.com/opentdf/platform/protocol/go v0.2.1
 	github.com/opentdf/platform/sdk v0.2.0
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
@@ -29,6 +29,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.28.0
 	github.com/valyala/fasthttp v1.52.0
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
+	golang.org/x/oauth2 v0.18.0
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -55,9 +56,10 @@ require (
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
-	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
 )
 
 require (

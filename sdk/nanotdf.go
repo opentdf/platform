@@ -8,9 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/lib/ocrypto"
 	"io"
 	"os"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 // / Constants
@@ -105,6 +106,19 @@ type resourceLocator struct {
 
 func (resourceLocator) isPolicyBody()      {}
 func (rl resourceLocator) getBody() string { return rl.body }
+
+// writeResourceLocator - writes the content of the resource locator to the supplied writer
+func (rl resourceLocator) writeResourceLocator(writer io.Writer) error {
+	if err := binary.Write(writer, binary.BigEndian, byte(rl.protocol)); err != nil {
+		return err
+	}
+	if err := binary.Write(writer, binary.BigEndian, uint8(len(rl.body))); err != nil {
+		return err
+	}
+	if err := binary.Write(writer, binary.BigEndian, []byte(rl.body)); err != nil {
+		return err
+	}
+}
 
 type bindingCfg struct {
 	useEcdsaBinding bool

@@ -26,10 +26,6 @@ import (
 // endpoints provided in the config below. If the platform with a custom config
 // then those will need to be updated.
 
-type configKey string
-
-const RootConfigKey configKey = "test-config"
-
 type TestConfig struct {
 	PlatformEndpoint string
 	TokenEndpoint    string
@@ -88,10 +84,10 @@ func Test_RoundTrips(t *testing.T) {
 	config := newTestConfig()
 	slog.Info("Test config", "", &config)
 
-	// err := CreateTestData(&config)
-	// require.NoError(t, err)
+	err := CreateTestData(&config)
+	require.NoError(t, err)
 
-	err := RunRoundtripTests(&config)
+	err = RunRoundtripTests(&config)
 	require.NoError(t, err)
 }
 

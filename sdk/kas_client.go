@@ -23,7 +23,7 @@ const (
 type RequestBody struct {
 	KeyAccess       `json:"keyAccess"`
 	ClientPublicKey string `json:"clientPublicKey"`
-	Policy          string `json:"policy"`
+	Policy          string `json:"Policy"`
 }
 
 type KASClient struct {
@@ -36,7 +36,7 @@ type KASClient struct {
 // once the backend moves over we should use the same type that the golang backend uses here
 type rewrapRequestBody struct {
 	KeyAccess       KeyAccess `json:"keyAccess"`
-	Policy          string    `json:"policy,omitempty"`
+	Policy          string    `json:"Policy,omitempty"`
 	Algorithm       string    `json:"algorithm,omitempty"`
 	ClientPublicKey string    `json:"clientPublicKey"`
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
@@ -141,7 +141,7 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	}
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("Error marshaling request body: %w", err)
+		return nil, fmt.Errorf("Error marshaling request Body: %w", err)
 	}
 
 	tok, err := jwt.NewBuilder().

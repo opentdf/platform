@@ -31,8 +31,8 @@ func nanoTDFEqual(a, b *NanoTdf) bool {
 		return false
 	}
 
-	// Compare policy field
-	if a.policy.mode != b.policy.mode || !policyBodyEqual(a.policy.body, b.policy.body) || !eccSignatureEqual(a.policy.binding, b.policy.binding) {
+	// Compare Policy field
+	if a.Policy.mode != b.Policy.mode || !policyBodyEqual(a.Policy.Body, b.Policy.Body) || !eccSignatureEqual(a.Policy.binding, b.Policy.binding) {
 		return false
 	}
 
@@ -78,7 +78,7 @@ func remotePolicyEqual(a, b remotePolicy) bool {
 
 // embeddedPolicyEqual compares two embeddedPolicy instances for equality.
 func embeddedPolicyEqual(a, b embeddedPolicy) bool {
-	// Compare lengthBody and body fields
+	// Compare lengthBody and Body fields
 	return a.lengthBody == b.lengthBody && a.body == b.body
 }
 
@@ -112,13 +112,13 @@ func TestReadNanoTDFHeader(t *testing.T) {
 			signatureMode: ocrypto.ECCModeSecp256r1,
 			cipher:        cipherModeAes256gcm64Bit,
 		},
-		policy: &policyInfo{
+		Policy: &policyInfo{
 			mode: uint8(policyTypeRemotePolicy),
-			body: remotePolicy{
+			Body: remotePolicy{
 				url: &resourceLocator{
 					protocol:   urlProtocolHTTPS,
 					lengthBody: 21,
-					body:       "kas.virtru.com/policy",
+					body:       "kas.virtru.com/Policy",
 				},
 			},
 			binding: &eccSignature{

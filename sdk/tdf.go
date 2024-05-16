@@ -54,7 +54,7 @@ const (
 	kAcceptKey              = "Accept"
 	kContentTypeJSONValue   = "application/json"
 	kEntityWrappedKey       = "entityWrappedKey"
-	kPolicy                 = "policy"
+	kPolicy                 = "Policy"
 	kHmacIntegrityAlgorithm = "HS256"
 	kGmacIntegrityAlgorithm = "GMAC"
 )
@@ -247,7 +247,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 
 	policyObj, err := createPolicyObject(tdfConfig.attributes)
 	if err != nil {
-		return fmt.Errorf("fail to create policy object:%w", err)
+		return fmt.Errorf("fail to create Policy object:%w", err)
 	}
 
 	policyObjectAsStr, err := json.Marshal(policyObj)
@@ -338,7 +338,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 	return nil
 }
 
-// create policy object
+// create Policy object
 func createPolicyObject(attributes []string) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
@@ -570,7 +570,7 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	return r.unencryptedMetadata, nil
 }
 
-// Policy returns a copy of the policy object in manifest, if it is valid.
+// Policy returns a copy of the Policy object in manifest, if it is valid.
 // Otherwise, returns an error.
 func (r *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}

@@ -88,7 +88,7 @@ func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	return c, nil
 }
 
-// WithDataAttributes appends the given data attributes to the bound policy
+// WithDataAttributes appends the given data attributes to the bound Policy
 func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributes = append(c.attributes, attributes...)

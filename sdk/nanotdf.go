@@ -18,7 +18,7 @@ type NanoTdf struct {
 	kasURL             *resourceLocator
 	binding            *bindingCfg
 	sigCfg             *signatureConfig
-	policy             *policyInfo
+	Policy             *policyInfo
 	EphemeralPublicKey *eccKey
 }
 
@@ -44,11 +44,12 @@ type signatureConfig struct {
 
 type PolicyBody interface {
 	isPolicyBody() // marker method to ensure interface implementation
+	GetPolicyBody() string
 }
 
 type policyInfo struct {
 	mode    uint8
-	body    PolicyBody
+	Body    PolicyBody
 	binding *eccSignature
 }
 
@@ -57,6 +58,9 @@ type remotePolicy struct {
 }
 
 func (remotePolicy) isPolicyBody() {}
+func (rp remotePolicy) GetPolicyBody() string {
+	return rp.url.body
+}
 
 type embeddedPolicy struct {
 	lengthBody uint16
@@ -64,6 +68,9 @@ type embeddedPolicy struct {
 }
 
 func (embeddedPolicy) isPolicyBody() {}
+func (ep embeddedPolicy) GetPolicyBody() string {
+	return ep.body
+}
 
 type eccSignature struct {
 	value []byte
@@ -200,20 +207,20 @@ func ReadNanoTDFHeader(reader io.Reader) (*NanoTdf, error) {
 	}
 	nanoTDF.sigCfg = deserializeSignatureCfg(signatureByte)
 
-	nanoTDF.policy = &policyInfo{}
-	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.policy.mode); err != nil {
+	nanoTDF.Policy = &policyInfo{}
+	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.Policy.mode); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
-	policyBody, err := readPolicyBody(reader, nanoTDF.policy.mode)
+	policyBody, err := readPolicyBody(reader, nanoTDF.Policy.mode)
 	if err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
 
-	nanoTDF.policy.body = policyBody
+	nanoTDF.Policy.Body = policyBody
 
-	nanoTDF.policy.binding = &eccSignature{}
-	nanoTDF.policy.binding.value = make([]byte, 8)
-	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.policy.binding.value); err != nil {
+	nanoTDF.Policy.binding = &eccSignature{}
+	nanoTDF.Policy.binding.value = make([]byte, 8)
+	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.Policy.binding.value); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
 

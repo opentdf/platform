@@ -283,7 +283,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.Algorithm == "ec:secp256r1" {
-		return p.nanoTDFRewrap(body)
+		return p.nanoTDFRewrap(ctx, body, entityInfo)
 	}
 	return p.tdf3Rewrap(ctx, body, entityInfo)
 }
@@ -346,12 +346,40 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}, nil
 }
 
-func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, error) {
+func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, err := sdk.ReadNanoTDFHeader(headerReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
+	}
+
+	// get Policy from header and pass to canAccess
+	if header.Policy != nil {
+		policyString := header.Policy.Body.GetPolicyBody()
+		if err != nil {
+			slog.WarnContext(ctx, "unable to decode policy", "err", err)
+			return nil, err400("bad request")
+		}
+
+		var policy Policy
+		err = json.Unmarshal([]byte(policyString), &policy)
+		if err != nil {
+			slog.WarnContext(ctx, "unable to decode policy", "err", err)
+			return nil, err400("bad request")
+		}
+
+		ent := &authorization.Entity{
+			EntityType: &authorization.Entity_Jwt{
+				Jwt: entity.Token,
+			},
+		}
+
+		access, err := canAccess(ctx, ent, policy, p.SDK)
+		if err != nil || !access {
+			slog.WarnContext(ctx, "Could not perform access decision or access denied", "err", err)
+			return nil, err403("forbidden")
+		}
 	}
 
 	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key)

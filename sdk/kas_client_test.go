@@ -64,7 +64,7 @@ func TestCreatingRequest(t *testing.T) {
 		EncryptedMetadata: "encrypted",
 	}
 
-	req, err := client.getRewrapRequest(keyAccess, "a policy")
+	req, err := client.getRewrapRequest(keyAccess, "a Policy")
 	if err != nil {
 		t.Fatalf("failed to create a rewrap request: %v", err)
 	}
@@ -82,14 +82,14 @@ func TestCreatingRequest(t *testing.T) {
 
 	rb, ok := tok.Get("requestBody")
 	if !ok {
-		t.Fatalf("didn't contain a request body")
+		t.Fatalf("didn't contain a request Body")
 	}
 	requestBodyJSON, _ := rb.(string)
 	var requestBody map[string]interface{}
 
 	err = json.Unmarshal([]byte(requestBodyJSON), &requestBody)
 	if err != nil {
-		t.Fatalf("error unmarshaling request body: %v", err)
+		t.Fatalf("error unmarshaling request Body: %v", err)
 	}
 
 	_, err = ocrypto.NewAsymEncryption(requestBody["clientPublicKey"].(string))
@@ -97,8 +97,8 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("NewAsymEncryption failed, incorrect public key include: %v", err)
 	}
 
-	if requestBody["policy"] != "a policy" {
-		t.Fatalf("incorrect policy")
+	if requestBody["Policy"] != "a Policy" {
+		t.Fatalf("incorrect Policy")
 	}
 
 	requestKeyAccess, _ := requestBody["keyAccess"].(map[string]interface{})
@@ -116,7 +116,7 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("incorrect wrapped key")
 	}
 	if requestKeyAccess["policyBinding"] != "bound" {
-		t.Fatalf("incorrect policy binding")
+		t.Fatalf("incorrect Policy binding")
 	}
 	if requestKeyAccess["encryptedMetadata"] != "encrypted" {
 		t.Fatalf("incorrect encrypted metadata")

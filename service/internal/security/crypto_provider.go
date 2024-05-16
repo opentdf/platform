@@ -21,14 +21,3 @@ type CryptoProvider interface {
 	GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC, ephemeralPublicKey []byte) ([]byte, error)
 	Close()
 }
-
-func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
-	switch cfg.Type {
-	case "hsm":
-		return New(&cfg.HSMConfig)
-	case "standard":
-		return NewStandardCrypto(cfg.StandardConfig)
-	default:
-		return NewStandardCrypto(cfg.StandardConfig)
-	}
-}

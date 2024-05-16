@@ -1,3 +1,5 @@
+//go:build opentdf.hsm
+
 package security
 
 import (
@@ -22,22 +24,15 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-const (
-	ErrCertNotFound        = Error("not found")
-	ErrCertificateEncode   = Error("certificate encode error")
-	ErrPublicKeyMarshal    = Error("public key marshal error")
-	ErrHSMUnexpected       = Error("hsm unexpected")
-	ErrHSMDecrypt          = Error("hsm decrypt error")
-	ErrHSMNotFound         = Error("hsm unavailable")
-	ErrKeyConfig           = Error("key configuration error")
-	ErrUnknownHashFunction = Error("unknown hash function")
-)
-const keyLength = 32
-
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
+func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
+	switch cfg.Type {
+	case "hsm":
+		return NewHSM(&cfg.HSMConfig)
+	case "standard":
+		return NewStandardCrypto(cfg.StandardConfig)
+	default:
+		return NewStandardCrypto(cfg.StandardConfig)
+	}
 }
 
 // A session with a security module; useful for abstracting basic cryptographic
@@ -119,7 +114,7 @@ func findHSMLibrary(paths ...string) string {
 			continue
 		}
 		i, err := os.Stat(l)
-		slog.Info("stat", "path", l, "info", i, "err", err)
+		slog.Debug("stat", "path", l, "info", i, "err", err)
 		if os.IsNotExist(err) {
 			continue
 		} else if err == nil {
@@ -133,9 +128,9 @@ func findHSMLibrary(paths ...string) string {
 	}
 	l := o + "/lib/softhsm/libsofthsm2.so"
 	i, err := os.Stat(l)
-	slog.Info("stat", "path", l, "info", i, "err", err)
+	slog.Debug("stat", "path", l, "info", i, "err", err)
 	if os.IsNotExist(err) {
-		slog.Warn("pkcs11 error: softhsm not installed by brew", "err", err)
+		slog.Debug("pkcs11 error: softhsm not installed by brew", "err", err)
 		return ""
 	} else if err == nil {
 		return l
@@ -232,7 +227,7 @@ func lookupSlotWithLabel(ctx *pkcs11.Ctx, label string) (uint, error) {
 	return 0, ErrHSMUnexpected
 }
 
-func New(c *HSMConfig) (*HSMSession, error) {
+func NewHSM(c *HSMConfig) (*HSMSession, error) {
 	pkcs11Lib := findHSMLibrary(
 		c.ModulePath,
 		"/usr/lib/softhsm/libsofthsm2.so",

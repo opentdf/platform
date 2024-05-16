@@ -60,7 +60,7 @@ func (i TokenAddingInterceptor) AddCredentials(
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
-		slog.ErrorContext(ctx, "error adding dpop token to outgoing request. Request will not have DPoP token", err)
+		slog.ErrorContext(ctx, "error adding dpop token to outgoing request. Request will not have DPoP token", "error", err)
 	}
 
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)

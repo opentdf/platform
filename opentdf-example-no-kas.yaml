@@ -22,7 +22,7 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: '*'
+    allowedorigins: "*"
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET
@@ -46,8 +46,6 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
-  hsm:
-    enabled: false
   port: 8080
 opa:
   embedded: true # Only for local development

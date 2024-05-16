@@ -132,10 +132,10 @@ func CreateTestData(testConfig *TestConfig) error {
 	if err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Namespaces)))
+	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.GetNamespaces())))
 	for _, ns := range listResp.GetNamespaces() {
-		slog.Info(fmt.Sprintf("existing namespace; name: %s, id: %s", ns.Name, ns.Id))
-		if ns.Name == "example.com" {
+		slog.Info(fmt.Sprintf("existing namespace; name: %s, id: %s", ns.GetName(), ns.GetId()))
+		if ns.GetName() == "example.com" {
 			exampleNamespace = ns
 		}
 	}
@@ -148,7 +148,7 @@ func CreateTestData(testConfig *TestConfig) error {
 		if err != nil {
 			return err
 		}
-		exampleNamespace = resp.Namespace
+		exampleNamespace = resp.GetNamespace()
 	}
 
 	slog.Info("##################################\n#######################################")
@@ -157,7 +157,7 @@ func CreateTestData(testConfig *TestConfig) error {
 	slog.Info("creating attribute language with allOf rule")
 	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "language",
-		NamespaceId: exampleNamespace.Id,
+		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF.Enum(),
 		Values: []string{
 			"english",
@@ -179,7 +179,7 @@ func CreateTestData(testConfig *TestConfig) error {
 	slog.Info("creating attribute color with anyOf rule")
 	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "color",
-		NamespaceId: exampleNamespace.Id,
+		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF.Enum(),
 		Values: []string{
 			"red",
@@ -201,7 +201,7 @@ func CreateTestData(testConfig *TestConfig) error {
 	slog.Info("creating attribute cards with hierarchy rule")
 	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "cards",
-		NamespaceId: exampleNamespace.Id,
+		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
 		Values: []string{
 			"king",
@@ -247,14 +247,14 @@ func CreateTestData(testConfig *TestConfig) error {
 
 	// create subject mappings
 	slog.Info("creating subject mappings for client " + testConfig.ClientID)
-	for _, attribute_id := range attributeValueIDs {
+	for _, attributeID := range attributeValueIDs {
 		_, err = s.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
-			AttributeValueId: attribute_id,
+			AttributeValueId: attributeID,
 			Actions: []*policy.Action{{Value: &policy.Action_Standard{
-				Standard: policy.Action_StandardAction(policy.Action_STANDARD_ACTION_DECRYPT),
+				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
 			}},
 				{Value: &policy.Action_Standard{
-					Standard: policy.Action_StandardAction(policy.Action_STANDARD_ACTION_TRANSMIT),
+					Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 				}},
 			},
 			NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
@@ -303,21 +303,18 @@ func roundtrip(testConfig *TestConfig, attributes []string, failure bool) error 
 	err = decrypt(testConfig, filename, plaintext)
 	if failure {
 		if err == nil {
-			return err
+			return errors.New("decrypt passed but was expected to fail")
 		}
 		if !(strings.Contains(err.Error(), "PermissionDenied")) {
 			return err
 		}
-	} else {
-		if err != nil {
-			return err
-		}
+	} else if err != nil {
+		return err
 	}
 	return nil
 }
 
 func encrypt(testConfig *TestConfig, plaintext string, attributes []string, filename string) error {
-
 	strReader := strings.NewReader(plaintext)
 
 	// Create new offline client
@@ -353,7 +350,6 @@ func encrypt(testConfig *TestConfig, plaintext string, attributes []string, file
 }
 
 func decrypt(testConfig *TestConfig, tdfFile string, plaintext string) error {
-
 	// Create new client
 	client, err := sdk.New(testConfig.PlatformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
@@ -378,7 +374,7 @@ func decrypt(testConfig *TestConfig, tdfFile string, plaintext string) error {
 
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, tdfreader)
-	if err != nil && err != io.EOF {
+	if err != nil && !(errors.Is(err, io.EOF)) {
 		return err
 	}
 

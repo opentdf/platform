@@ -81,6 +81,10 @@ func newTestConfig() TestConfig {
 }
 
 func Test_RoundTrips(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping roundtrip tests, they require the server to be up and running")
+	}
+
 	config := newTestConfig()
 	slog.Info("Test config", "", &config)
 

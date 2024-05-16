@@ -31,7 +31,7 @@ server:
     enabled: true
     enforceDPoP: false
     audience: "http://localhost:8080"
-    issuer:  http://localhost:8888/auth/realms/opentdf
+    issuer: http://localhost:8888/auth/realms/opentdf
     clients:
       - "opentdf"
       - "opentdf-sdk"
@@ -74,7 +74,7 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: '*'
+    allowedorigins: "*"
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET
@@ -99,8 +99,8 @@ server:
   grpc:
     reflectionEnabled: true # Default is false
   cryptoProvider:
+    type: hsm
     hsm:
-      enabled: true
       # As configured by init-temp-keys.sh --hsm
       pin: "12345"
       slotlabel: "dev-token"
@@ -109,18 +109,6 @@ server:
           label: development-rsa-kas
         ec:
           label: development-ec-kas
-    standard:
-      rsa:
-        123:
-          privateKeyPath: kas-private.pem
-          publicKeyPath: kas-cert.pem
-        456:
-          privateKeyPath: kas-private.pem
-          publicKeyPath: kas-cert.pem
-      ec:
-        123:
-          privateKeyPath: kas-ec-private.pem
-          publicKeyPath: kas-ec-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

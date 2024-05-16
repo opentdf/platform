@@ -2,7 +2,6 @@ go 1.22.3
 
 use (
 	./examples
-	./e2e
 	./lib/ocrypto
         ./lib/fixtures
 	./protocol/go

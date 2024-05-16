@@ -1,32 +1,40 @@
-package cmd
+package rttests
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"os"
+	"strings"
+	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"
-	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var DataCmd = &cobra.Command{
-	Use:   "create-data",
-	Short: "Create test data",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		testConfig := *(cmd.Context().Value(RootConfigKey).(*TestConfig))
-		return createTestData(&testConfig)
-	},
-}
+// These roundtrip tests are to be run when the platform server is up and running
+// and the keycloak provision has already been run. These tests use the client and
+// endpoints provided in the config below. If the platform with a custom config
+// then those will need to be updated.
 
-func init() {
-	E2ECmd.AddCommand(DataCmd)
+type configKey string
+
+const RootConfigKey configKey = "test-config"
+
+type TestConfig struct {
+	PlatformEndpoint string
+	TokenEndpoint    string
+	ClientID         string
+	ClientSecret     string
 }
 
 var attributesToMap = []string{
@@ -34,7 +42,82 @@ var attributesToMap = []string{
 	"https://example.com/attr/color/value/red",
 	"https://example.com/attr/cards/value/queen"}
 
-func createTestData(testConfig *TestConfig) error {
+var successAttributeSets = [][]string{
+	{"https://example.com/attr/language/value/english"},
+	{"https://example.com/attr/color/value/red"},
+	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/green"},
+	{"https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/cards/value/queen"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/green",
+		"https://example.com/attr/cards/value/jack",
+		"https://example.com/attr/cards/value/queen"},
+}
+
+var failureAttributeSets = [][]string{
+	{"https://example.com/attr/language/value/english", "https://example.com/attr/language/value/french"},
+	{"https://example.com/attr/color/value/blue"},
+	{"https://example.com/attr/color/value/blue", "https://example.com/attr/color/value/green"},
+	{"https://example.com/attr/cards/value/king"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/language/value/french",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/green",
+		"https://example.com/attr/cards/value/queen"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/blue",
+		"https://example.com/attr/color/value/green",
+		"https://example.com/attr/cards/value/queen"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/green",
+		"https://example.com/attr/cards/value/king"},
+}
+
+func newTestConfig() TestConfig {
+	return TestConfig{
+		PlatformEndpoint: "localhost:8080",
+		TokenEndpoint:    "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token",
+		ClientID:         "opentdf",
+		ClientSecret:     "secret",
+	}
+}
+
+func Test_RoundTrips(t *testing.T) {
+	config := newTestConfig()
+	slog.Info("Test config", "", &config)
+
+	// err := CreateTestData(&config)
+	// require.NoError(t, err)
+
+	err := RunRoundtripTests(&config)
+	require.NoError(t, err)
+}
+
+func RunRoundtripTests(testConfig *TestConfig) error {
+	// success tests
+	for _, attributes := range successAttributeSets {
+		slog.Info("success roundtrip for ", "attributes", attributes)
+		err := roundtrip(testConfig, attributes, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	// failure tests
+	for _, attributes := range failureAttributeSets {
+		slog.Info("failutre roundtrip for ", "attributes", attributes)
+		err := roundtrip(testConfig, attributes, true)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func CreateTestData(testConfig *TestConfig) error {
 	s, err := sdk.New(testConfig.PlatformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials(testConfig.ClientID,
@@ -210,6 +293,102 @@ func createTestData(testConfig *TestConfig) error {
 		return err
 	}
 	slog.Info(fmt.Sprintf("list subject mappings response: %s", protojson.Format(allSubMaps)))
+
+	return nil
+}
+
+func roundtrip(testConfig *TestConfig, attributes []string, failure bool) error {
+	const filename = "test-success.tdf"
+	const plaintext = "Running a roundtrip test!"
+	err := encrypt(testConfig, plaintext, attributes, filename)
+	if err != nil {
+		return err
+	}
+	err = decrypt(testConfig, filename, plaintext)
+	if failure {
+		if err == nil {
+			return err
+		}
+		if !(strings.Contains(err.Error(), "PermissionDenied")) {
+			return err
+		}
+	} else {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func encrypt(testConfig *TestConfig, plaintext string, attributes []string, filename string) error {
+
+	strReader := strings.NewReader(plaintext)
+
+	// Create new offline client
+	client, err := sdk.New(testConfig.PlatformEndpoint,
+		sdk.WithInsecurePlaintextConn(),
+		sdk.WithClientCredentials(testConfig.ClientID,
+			testConfig.ClientSecret, nil),
+		sdk.WithTokenEndpoint(testConfig.TokenEndpoint),
+	)
+	if err != nil {
+		return err
+	}
+
+	tdfFile, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer tdfFile.Close()
+
+	_, err = client.CreateTDF(tdfFile, strReader,
+		sdk.WithDataAttributes(attributes...),
+		sdk.WithKasInformation(
+			sdk.KASInfo{
+				// examples assume insecure http
+				URL:       fmt.Sprintf("http://%s", testConfig.PlatformEndpoint),
+				PublicKey: "",
+			}))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func decrypt(testConfig *TestConfig, tdfFile string, plaintext string) error {
+
+	// Create new client
+	client, err := sdk.New(testConfig.PlatformEndpoint,
+		sdk.WithInsecurePlaintextConn(),
+		sdk.WithClientCredentials(testConfig.ClientID,
+			testConfig.ClientSecret, nil),
+		sdk.WithTokenEndpoint(testConfig.TokenEndpoint),
+	)
+	if err != nil {
+		return err
+	}
+	file, err := os.Open(tdfFile)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	tdfreader, err := client.LoadTDF(file)
+	if err != nil {
+		return errors.New("failure on LoadTDF: " + err.Error())
+	}
+
+	buf := new(strings.Builder)
+	_, err = io.Copy(buf, tdfreader)
+	if err != nil && err != io.EOF {
+		return err
+	}
+
+	if buf.String() != plaintext {
+		return errors.New("decrypt result (" + buf.String() + ") does not match expected (" + plaintext + ")")
+	}
 
 	return nil
 }

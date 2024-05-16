@@ -131,7 +131,8 @@ func TestReadNanoTDFHeader(t *testing.T) {
 				130, 248, 169, 207, 21, 18, 108, 138, 157, 164, 108},
 		},
 	}
-
+	// just to get around the not used linter
+	nanoTDF.kasURL.isPolicyBody()
 	// Serialize the sample nanoTdf structure into a byte slice using gob
 	file, err := os.Open("nanotdfspec.ntdf")
 	if err != nil {

@@ -194,6 +194,8 @@ jobs:
       - run: go run ./examples encrypt "Hello Virtru"
       - run: go run ./examples decrypt sensitive.txt.tdf
       - run: go run ./examples decrypt sensitive.txt.tdf | grep "Hello Virtru"
+      - name: create roundtrip test data and run tests
+        run: go test ./service/rttests -v
 
   image:
     name: image build

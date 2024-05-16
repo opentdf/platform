@@ -206,7 +206,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	// add payload info
 	mimeType := tdfConfig.mimeType
 	if mimeType == "" {
-	  mimeType = defaultMimeType
+		mimeType = defaultMimeType
 	}
 	tdfObject.manifest.Payload.MimeType = mimeType
 	tdfObject.manifest.Payload.Protocol = tdfAsZip

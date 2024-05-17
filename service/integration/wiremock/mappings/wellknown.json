@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "messages/get_wellknown.json",
+    "transformers": ["response-template"]
+  }
+}

@@ -8,6 +8,8 @@ import (
 
 type Option func(*config)
 
+type PlatformConfigurationType map[string]interface{}
+
 // Internal config struct for building SDK options.
 type config struct {
 	tls                   grpc.DialOption
@@ -20,10 +22,8 @@ type config struct {
 	authorizationConn     *grpc.ClientConn
 	extraDialOptions      []grpc.DialOption
 	wellknownConn         *grpc.ClientConn
-	platformConfiguration *PlatformConfigurationType
+	platformConfiguration PlatformConfigurationType
 }
-
-type PlatformConfigurationType map[string]interface{}
 
 func (c *config) build() []grpc.DialOption {
 	return []grpc.DialOption{c.tls}
@@ -66,6 +66,12 @@ func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 	}
 }
 
+func WithCustomWellKnownConn(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.wellknownConn = conn
+	}
+}
+
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
@@ -89,7 +95,7 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	}
 }
 
-func WithPlatformConfiguration(platformConfiguration *PlatformConfigurationType) Option {
+func WithPlatformConfiguration(platformConfiguration PlatformConfigurationType) Option {
 	return func(c *config) {
 		c.platformConfiguration = platformConfiguration
 	}

@@ -6,6 +6,18 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/go-connections/nat"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/lib/ocrypto"
+	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 	"io"
 	"log/slog"
 	"math"
@@ -14,19 +26,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/docker/go-connections/nat"
-	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/lib/ocrypto"
-	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/test/bufconn"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
-	tc "github.com/testcontainers/testcontainers-go"
 )
 
 const (
@@ -645,11 +644,24 @@ func runKas() (string, func(), *SDK) {
 	}
 
 	host := net.JoinHostPort("localhost", port.Port())
+
+	customWellKnownConn, _ := grpc.Dial(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	// TODO: Fix this stuff
+	//if err != nil {
+	//	return nil, errors.Join(ErrGrpcDialFailed, err)
+	//}
+
+	slog.Info(host)
+	//time.Sleep(time.Second * 2)
 	sdk, err := New(host,
 		WithClientCredentials("test", "test", nil),
-		WithTokenEndpoint(fmt.Sprintf("http://%s/auth/token", host)),
+		//WithTokenEndpoint(fmt.Sprintf("http://%s/auth/token", host)),
 		WithInsecureConn(),
-		WithExtraDialOptions(grpc.WithContextDialer(dialer)))
+		WithExtraDialOptions(grpc.WithContextDialer(dialer)),
+		WithCustomWellKnownConn(customWellKnownConn),
+	)
+
 	if err != nil {
 		panic(fmt.Sprintf("error creating SDK with authconfig: %v", err))
 	}

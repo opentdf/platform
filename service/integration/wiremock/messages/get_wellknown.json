@@ -1,0 +1,9 @@
+{
+    "health": {
+        "endpoints": {
+            "liveness": "/healthz?service=liveness",
+            "readiness": "/healthz?service=readiness"
+        }
+    },
+    "platform_issuer": "{{request.baseUrl}}/auth"
+}

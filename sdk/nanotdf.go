@@ -59,25 +59,25 @@ type NanoTDFHeader struct {
 	isInitialized        bool
 	mEncryptSymmetricKey []byte
 	policyBinding        []byte
-	mCompressedPubKey    []byte
-	mKeyPair             ocrypto.ECKeyPair
+	compressedPubKey     []byte
+	keyPair              ocrypto.ECKeyPair
 	mPrivateKey          string
-	mPublicKey           string
+	publicKey            string
 }
 
 type NanoTDFConfig struct {
-	mDatasetMode       bool
-	mMaxKeyIterations  uint64
-	mKeyIterationCount uint64
-	mEccMode           ocrypto.ECCMode
-	mKeyPair           ocrypto.ECKeyPair
+	datasetMode        bool
+	maxKeyIterations   uint64
+	keyIterationCount  uint64
+	eccMode            ocrypto.ECCMode
+	keyPair            ocrypto.ECKeyPair
 	mPrivateKey        string
-	mPublicKey         string
+	publicKey          string
 	attributes         []string
-	mBufferSize        uint64
-	mSignerPrivateKey  []byte
-	mCipher            cipherMode
-	mKasURL            resourceLocator
+	bufferSize         uint64
+	signerPrivateKey   []byte
+	cipher             cipherMode
+	kasURL             resourceLocator
 	mKasPublicKey      string
 	mDefaultSalt       []byte
 	EphemeralPublicKey eccKey
@@ -91,14 +91,16 @@ type NanoTDF struct {
 	header               NanoTDFHeader
 	config               NanoTDFConfig
 	policyObj            PolicyObject
-	mCompressedPubKey    []byte
-	mIv                  uint64
-	mAuthTag             []byte
-	mWorkingBuffer       []byte
+	compressedPubKey     []byte
+	iv                   uint64
+	authTag              []byte
+	workingBuffer        []byte
 	mEncryptSymmetricKey []byte
 	// mSignature           []byte
 	policyObjectAsStr []byte
 }
+
+// ============================================================================================================
 
 // resourceLocator - structure to contain a protocol + body comprising an URL
 type resourceLocator struct {
@@ -107,18 +109,39 @@ type resourceLocator struct {
 	body       string
 }
 
+// urlProtocol - shorthand for protocol prefix on fully qualified url
+type urlProtocol uint8
+
+const (
+	kPrefixHTTPS      string      = "https://"
+	kPrefixHTTP       string      = "http://"
+	urlProtocolHTTP   urlProtocol = 0
+	urlProtocolHTTPS  urlProtocol = 1
+	urlProtocolShared urlProtocol = 255 // TODO - how is this handled/parsed/rendered?
+)
+
+func (rl *resourceLocator) getLength() uint64 {
+	return uint64(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body) /* length of string */)
+}
+
 // setUrl - Store a fully qualified protocol+body string into a resourceLocator as a protocol value and a body string
 func (rl *resourceLocator) setUrl(url string) error {
 	lowerUrl := strings.ToLower(url)
 	if strings.HasPrefix(lowerUrl, kPrefixHTTPS) {
-		urlBody := lowerUrl[len(kPrefixHTTPS):]
+		urlBody := url[len(kPrefixHTTPS):]
+		if len(urlBody) > 255 {
+			return errors.New("URL too long")
+		}
 		rl.protocol = urlProtocolHTTPS
 		rl.lengthBody = uint8(len(urlBody))
 		rl.body = urlBody
 		return nil
 	}
 	if strings.HasPrefix(lowerUrl, kPrefixHTTP) {
-		urlBody := lowerUrl[len(kPrefixHTTP):]
+		urlBody := url[len(kPrefixHTTP):]
+		if len(urlBody) > 255 {
+			return errors.New("URL too long")
+		}
 		rl.protocol = urlProtocolHTTP
 		rl.lengthBody = uint8(len(urlBody))
 		rl.body = urlBody
@@ -128,7 +151,7 @@ func (rl *resourceLocator) setUrl(url string) error {
 }
 
 // getUrl - Retrieve a fully qualified protocol+body URL string from a resourceLocator struct
-func (rl resourceLocator) getUrl() (string, error) {
+func (rl *resourceLocator) getUrl() (string, error) {
 	if rl.protocol == urlProtocolHTTPS {
 		return kPrefixHTTPS + rl.body, nil
 	}
@@ -139,7 +162,7 @@ func (rl resourceLocator) getUrl() (string, error) {
 }
 
 // writeResourceLocator - writes the content of the resource locator to the supplied writer
-func (rl resourceLocator) writeResourceLocator(writer io.Writer) error {
+func (rl *resourceLocator) writeResourceLocator(writer io.Writer) error {
 	if err := binary.Write(writer, binary.BigEndian, byte(rl.protocol)); err != nil {
 		return err
 	}
@@ -171,6 +194,19 @@ func (rl *resourceLocator) readResourceLocator(reader io.Reader) error {
 	return nil
 }
 
+// ============================================================================================================
+
+// embeddedPolicy - policy for data that is stored locally within the nanoTDF
+type embeddedPolicy struct {
+	lengthBody uint16
+	body       string
+}
+
+// getLength - size in bytes of the serialized content of this object
+func (ep *embeddedPolicy) getLength() uint64 {
+	return uint64(2 /* length word length */ + len(ep.body) /* body data length */)
+}
+
 // writeEmbeddedPolicy - writes the content of the  to the supplied writer
 func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
 	if err := binary.Write(writer, binary.BigEndian, uint8(len(ep.body))); err != nil {
@@ -195,6 +231,20 @@ func (ep *embeddedPolicy) readEmbeddedPolicy(reader io.Reader) error {
 	return nil
 }
 
+// ============================================================================================================
+
+// remotePolicy - locator value for policy content that is stored externally to the nanoTDF
+type remotePolicy struct {
+	url resourceLocator
+}
+
+// getLength - size in bytes of the serialized content of this object
+func (rp *remotePolicy) getLength() uint64 {
+	return rp.url.getLength()
+}
+
+// ============================================================================================================
+
 type bindingCfg struct {
 	useEcdsaBinding bool
 	padding         uint8
@@ -212,15 +262,6 @@ type policyInfo struct {
 	binding *eccSignature
 }
 
-type remotePolicy struct {
-	url resourceLocator
-}
-
-type embeddedPolicy struct {
-	lengthBody uint16
-	body       string
-}
-
 type eccSignature struct {
 	value []byte
 }
@@ -228,16 +269,6 @@ type eccSignature struct {
 type eccKey struct {
 	Key []byte
 }
-
-type urlProtocol uint8
-
-const (
-	kPrefixHTTPS      string      = "https://"
-	kPrefixHTTP       string      = "http://"
-	urlProtocolHTTP   urlProtocol = 0
-	urlProtocolHTTPS  urlProtocol = 1
-	urlProtocolShared urlProtocol = 255 // TODO - how is this handled/parsed/rendered?
-)
 
 type cipherMode int
 
@@ -249,21 +280,6 @@ const (
 	cipherModeAes256gcm120Bit cipherMode = 4
 	cipherModeAes256gcm128Bit cipherMode = 5
 )
-
-type policyType uint8
-
-const (
-	policyTypeRemotePolicy                           policyType = 0
-	policyTypeEmbeddedPolicyPlainText                policyType = 1
-	policyTypeEmbeddedPolicyEncrypted                policyType = 2
-	policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess policyType = 3
-)
-
-type PolicyBody struct {
-	mode policyType
-	rp   remotePolicy
-	ep   embeddedPolicy
-}
 
 const (
 	ErrNanoTDFHeaderRead = Error("nanoTDF read error")
@@ -345,6 +361,39 @@ func serializeSignatureCfg(sigCfg signatureConfig) byte {
 	return sigSerial
 }
 
+// ============================================================================================================
+
+type policyType uint8
+
+const (
+	policyTypeRemotePolicy                           policyType = 0
+	policyTypeEmbeddedPolicyPlainText                policyType = 1
+	policyTypeEmbeddedPolicyEncrypted                policyType = 2
+	policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess policyType = 3
+)
+
+type PolicyBody struct {
+	mode policyType
+	rp   remotePolicy
+	ep   embeddedPolicy
+}
+
+// getLength - size in bytes of the serialized content of this object
+func (pb *PolicyBody) getLength() uint64 {
+	var result uint64
+
+	result = 1 /* policy mode byte */
+
+	if pb.mode == policyTypeRemotePolicy {
+		result += pb.rp.getLength()
+	} else {
+		// If it's not remote, assume embedded policy
+		result += pb.ep.getLength()
+	}
+
+	return result
+}
+
 // readPolicyBody - helper function to decode input data into a PolicyBody object
 func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
 
@@ -374,7 +423,7 @@ func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
 }
 
 // writePolicyBody - helper function to encode and write a PolicyBody object
-func (pb PolicyBody) writePolicyBody(writer io.Writer) error {
+func (pb *PolicyBody) writePolicyBody(writer io.Writer) error {
 	var err error
 
 	switch pb.mode {
@@ -401,6 +450,8 @@ func (pb PolicyBody) writePolicyBody(writer io.Writer) error {
 	}
 	return nil
 }
+
+// ============================================================================================================
 
 // Key length sizes for different curves
 const (
@@ -443,6 +494,8 @@ func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (eccKey, er
 	key.Key = buffer
 	return key, nil
 }
+
+// ============================================================================================================
 
 // ReadNanoTDFHeader - decode input into a NanoTDFHeader object
 func (header *NanoTDFHeader) ReadNanoTDFHeader(reader io.Reader) error {
@@ -496,10 +549,10 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		config.mDefaultSalt = ocrypto.CalculateSHA256([]byte(kNanoTDFMagicStringAndVersion))
 
 		header.mPrivateKey = config.mPrivateKey
-		header.mPublicKey = config.mPublicKey
-		header.mKeyPair = config.mKeyPair
+		header.publicKey = config.publicKey
+		header.keyPair = config.keyPair
 
-		header.kasURL = config.mKasURL
+		header.kasURL = config.kasURL
 
 		header.binding = config.binding
 
@@ -516,16 +569,16 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		header.isInitialized = true
 	}
 
-	if config.mDatasetMode && // In data set mode
-		config.mKeyIterationCount > 0 && // Not the first iteration
-		config.mKeyIterationCount != config.mMaxKeyIterations { // Didn't reach the max iteration
+	if config.datasetMode && // In data set mode
+		config.keyIterationCount > 0 && // Not the first iteration
+		config.keyIterationCount != config.maxKeyIterations { // Didn't reach the max iteration
 		// LogDebug("Reusing the header for dataset");
 		// Use the old header.
 		return err
 	}
 
-	if config.mDatasetMode && (config.mMaxKeyIterations == config.mKeyIterationCount) { //nolint:nestif // error checking each operation
-		var sdkECKeyPair, err = ocrypto.NewECKeyPair(config.mEccMode)
+	if config.datasetMode && (config.maxKeyIterations == config.keyIterationCount) { //nolint:nestif // error checking each operation
+		var sdkECKeyPair, err = ocrypto.NewECKeyPair(config.eccMode)
 		if err != nil {
 			return err
 		}
@@ -533,13 +586,13 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		if err != nil {
 			return err
 		}
-		header.mPublicKey, err = sdkECKeyPair.PublicKeyInPemFormat()
+		header.publicKey, err = sdkECKeyPair.PublicKeyInPemFormat()
 		if err != nil {
 			return err
 		}
-		header.mKeyPair = sdkECKeyPair
+		header.keyPair = sdkECKeyPair
 
-		header.mCompressedPubKey, err = ocrypto.CompressedECPublicKey(config.mEccMode, header.mKeyPair.PrivateKey.PublicKey)
+		header.compressedPubKey, err = ocrypto.CompressedECPublicKey(config.eccMode, header.keyPair.PrivateKey.PublicKey)
 		if err != nil {
 			return err
 		}
@@ -576,21 +629,37 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 	return err
 }
 
+func (header *NanoTDFHeader) getLength() uint64 {
+	var totalBytes uint64
+
+	totalBytes += uint64(len(header.magicNumber))
+
+	totalBytes += header.kasURL.getLength()
+
+	totalBytes += 1 /* binding byte */
+
+	totalBytes += 1 /* signature byte */
+
+	totalBytes += header.policy.body.getLength()
+
+	totalBytes += uint64(len(header.policyBinding))
+
+	totalBytes += uint64(len(header.EphemeralPublicKey.Key))
+
+	return totalBytes
+}
+
 func writeHeader(header *NanoTDFHeader, writer io.Writer) error {
 	var err error
 
 	if err = binary.Write(writer, binary.BigEndian, header.magicNumber); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, header.kasURL.protocol); err != nil {
+
+	if err = header.kasURL.writeResourceLocator(writer); err != nil {
 		return err
 	}
-	if err = binary.Write(writer, binary.BigEndian, header.kasURL.lengthBody); err != nil {
-		return err
-	}
-	if err = binary.Write(writer, binary.BigEndian, []byte(header.kasURL.body)); err != nil {
-		return err
-	}
+
 	bindingByte := serializeBindingCfg(header.binding)
 	if err = binary.Write(writer, binary.BigEndian, bindingByte); err != nil {
 		return err
@@ -601,9 +670,11 @@ func writeHeader(header *NanoTDFHeader, writer io.Writer) error {
 	if err := binary.Write(writer, binary.BigEndian, signatureByte); err != nil {
 		return err
 	}
+
 	if err = header.policy.body.writePolicyBody(writer); err != nil {
 		return err
 	}
+
 	if err = binary.Write(writer, binary.BigEndian, header.policyBinding); err != nil {
 		return err
 	}
@@ -614,6 +685,8 @@ func writeHeader(header *NanoTDFHeader, writer io.Writer) error {
 
 	return err
 }
+
+// ============================================================================================================
 
 // auth tag size in bytes for different ciphers
 const (
@@ -712,7 +785,7 @@ func NanoTDFEncryptFile(plaintextFile *os.File, encryptedFile *os.File, config N
 }
 
 func NanoTDFToBuffer(nanoTDF NanoTDF) ([]byte, error) {
-	return nanoTDF.mWorkingBuffer, nil
+	return nanoTDF.workingBuffer, nil
 }
 
 func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
@@ -726,7 +799,7 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	encryptBuffer := bytes.NewBuffer(make([]byte, 0, nanoTDF.config.mBufferSize))
+	encryptBuffer := bytes.NewBuffer(make([]byte, 0, nanoTDF.config.bufferSize))
 	ebWriter := bufio.NewWriter(encryptBuffer)
 	err = writeHeader(&nanoTDF.header, ebWriter)
 	if err != nil {
@@ -734,13 +807,13 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 	}
 
 	/// Resize the working buffer only if needed.
-	authTagSize, err := SizeOfAuthTagForCipher(nanoTDF.config.mCipher)
+	authTagSize, err := SizeOfAuthTagForCipher(nanoTDF.config.cipher)
 	if err != nil {
 		return nil, err
 	}
 	sizeOfWorkingBuffer := kIvPadding + kNanoTDFIvSize + len(plaintextBuffer) + authTagSize
-	if nanoTDF.mWorkingBuffer == nil || len(nanoTDF.mWorkingBuffer) < sizeOfWorkingBuffer {
-		nanoTDF.mWorkingBuffer = make([]byte, sizeOfWorkingBuffer)
+	if nanoTDF.workingBuffer == nil || len(nanoTDF.workingBuffer) < sizeOfWorkingBuffer {
+		nanoTDF.workingBuffer = make([]byte, sizeOfWorkingBuffer)
 	}
 
 	///
@@ -765,21 +838,21 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 		ivWithPadding := bytes.NewBuffer(make([]byte, 0, ivSizeWithPadding))
 
 		// Reset the IV after max iterations
-		if nanoTDF.config.mMaxKeyIterations == nanoTDF.config.mKeyIterationCount {
-			nanoTDF.mIv = 1
-			if nanoTDF.config.mDatasetMode {
-				nanoTDF.config.mKeyIterationCount = 0
+		if nanoTDF.config.maxKeyIterations == nanoTDF.config.keyIterationCount {
+			nanoTDF.iv = 1
+			if nanoTDF.config.datasetMode {
+				nanoTDF.config.keyIterationCount = 0
 			}
 		}
 
-		if err := binary.Write(ebWriter, binary.BigEndian, &nanoTDF.mIv); err != nil {
+		if err := binary.Write(ebWriter, binary.BigEndian, &nanoTDF.iv); err != nil {
 			return nil, err
 		}
-		nanoTDF.mIv++
+		nanoTDF.iv++
 
 		// Resize the auth tag.
 		newAuthTag := make([]byte, authTagSize)
-		copy(newAuthTag, nanoTDF.mAuthTag)
+		copy(newAuthTag, nanoTDF.authTag)
 
 		aesGcm, err := ocrypto.NewAESGcm(nanoTDF.mEncryptSymmetricKey)
 		if err != nil {
@@ -788,7 +861,7 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 
 		// Convert the uint64 IV value to byte array
 		byteIv := make([]byte, kUint64Size)
-		binary.BigEndian.PutUint64(byteIv, nanoTDF.mIv)
+		binary.BigEndian.PutUint64(byteIv, nanoTDF.iv)
 
 		// Encrypt the plaintext
 		encryptedText, err := aesGcm.EncryptWithIV(byteIv, plaintextBuffer)
@@ -807,16 +880,16 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 		}
 
 		// Copy tag at end
-		err = binary.Write(pbWriter, binary.BigEndian, nanoTDF.mAuthTag)
+		err = binary.Write(pbWriter, binary.BigEndian, nanoTDF.authTag)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// Copy the payload buffer contents into encrypt buffer without the IV padding.
-	pbContentsWithoutIv := bytes.NewBuffer(make([]byte, 0, len(nanoTDF.mWorkingBuffer)-kIvPadding))
+	pbContentsWithoutIv := bytes.NewBuffer(make([]byte, 0, len(nanoTDF.workingBuffer)-kIvPadding))
 	pbwiWriter := bufio.NewWriter(pbContentsWithoutIv)
-	err = binary.Write(pbwiWriter, binary.BigEndian, nanoTDF.mWorkingBuffer)
+	err = binary.Write(pbwiWriter, binary.BigEndian, nanoTDF.workingBuffer)
 	if err != nil {
 		return nil, err
 	}
@@ -840,9 +913,9 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 	*/
 
 	if nanoTDF.config.sigCfg.hasSignature {
-		signerPrivateKey := nanoTDF.config.mSignerPrivateKey
-		signerPublicKey := ocrypto.GetPEMPublicKeyFromPrivateKey(signerPrivateKey, nanoTDF.config.mEccMode)
-		compressedPubKey, err := ocrypto.CompressedECPublicKey(nanoTDF.config.mEccMode, signerPublicKey)
+		signerPrivateKey := nanoTDF.config.signerPrivateKey
+		signerPublicKey := ocrypto.GetPEMPublicKeyFromPrivateKey(signerPrivateKey, nanoTDF.config.eccMode)
+		compressedPubKey, err := ocrypto.CompressedECPublicKey(nanoTDF.config.eccMode, signerPublicKey)
 		if err != nil {
 			return nil, err
 		}
@@ -881,8 +954,8 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 		// bytesAdded += len(signature)
 	}
 
-	if nanoTDF.config.mDatasetMode {
-		nanoTDF.config.mKeyIterationCount++
+	if nanoTDF.config.datasetMode {
+		nanoTDF.config.keyIterationCount++
 	}
 
 	return encryptBuffer.Bytes(), err

@@ -190,17 +190,22 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		0xbf, 0x3e, 0x92, 0x57, 0x51, 0x5d, 0x36, 0x63, 0xa1, 0x31, 0xdd,
 	}
 
-	kasUrl := "api.exampl.com/kas"
+	kasUrl := "https://api.exampl.com/kas"
 
 	remotePolicyUrl := "https://api-develop01.develop.virtru.com/acm/api/policies/1a1d5e42-bf91-45c7-a86a-61d5331c1f55"
 
 	policyBinding := [...]byte{0x33, 0x31, 0x63, 0x31, 0x66, 0x35, 0x35, 0x00}
 
 	{ // Construct empty header - encrypt use case
+		var err error
 		config := NanoTDFConfig{}
 
-		config.mKasURL = resourceLocator{urlProtocolHTTPS, uint8(len(kasUrl)), kasUrl}
-		config.mEccMode = ocrypto.ECCModeSecp256r1
+		err = config.kasURL.setUrl(kasUrl)
+		if err != nil {
+			t.Fatalf("Cannot set policy url: %v", err)
+		}
+
+		config.eccMode = ocrypto.ECCModeSecp256r1
 
 		config.sigCfg = deserializeSignatureCfg(0x00) // no signature and AES_256_GCM_64_TAG
 
@@ -210,7 +215,7 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		config.binding = deserializeBindingCfg(0x00)
 
 		var policyUrl resourceLocator
-		err := policyUrl.setUrl(remotePolicyUrl)
+		err = policyUrl.setUrl(remotePolicyUrl)
 		if err != nil {
 			t.Fatalf("Cannot set policy url: %v", err)
 		}
@@ -223,6 +228,8 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		// Copy pre-built compressed public key
 		var epk eccKey
 		epk.Key = make([]byte, len(compressedPubKey))
+
+		// TODO FIXME - has to be a better way of copying this fixed data in
 		var i int
 		for _, b := range compressedPubKey {
 			epk.Key[i] = b
@@ -244,7 +251,8 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 			i++
 		}
 
-		headerBuffer := bytes.NewBuffer(make([]byte, 0, 4096))
+		headerLength := header.getLength()
+		headerBuffer := bytes.NewBuffer(make([]byte, 0, headerLength))
 		hbWriter := bufio.NewWriter(headerBuffer)
 
 		err = writeHeader(&header, hbWriter)
@@ -257,11 +265,12 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 			t.Fatalf("Cannot flush nanoTdf header: %v", err)
 		}
 
-		//auto headerSize = header.getTotalSize();
-		//BOOST_TEST(headerSize == headerData.size());
+		// Check length
+		if uint64(len(expectedHeader)) != headerLength {
+			t.Logf("Wrong header length. Expected %d, got %d", len(expectedHeader), headerLength)
+		}
 
-		// BOOST_TEST(headerData == expectedHeader);
-
+		// Check content
 		i = 0
 		hbReader := bufio.NewReader(headerBuffer)
 		for _, b := range expectedHeader {
@@ -300,13 +309,13 @@ func NotTestNanoTDFEncryptFile(t *testing.T) {
 	// TODO - populate config properly
 	var kasURL = "https://kas.virtru.com/kas"
 	var config NanoTDFConfig
-	config.mBufferSize = 8192 * 1024
-	config.mKasURL.body = kasURL // TODO - check for excessive length here
-	config.mKasURL.lengthBody = uint8(len(kasURL))
-	config.mKasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
+	config.bufferSize = 8192 * 1024
+	config.kasURL.body = kasURL // TODO - check for excessive length here
+	config.kasURL.lengthBody = uint8(len(kasURL))
+	config.kasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
 	config.mPrivateKey = sdkPrivateKey
 	config.mKasPublicKey = kasPublicKey
-	config.mEccMode = ocrypto.ECCModeSecp256r1
+	config.eccMode = ocrypto.ECCModeSecp256r1
 
 	err = NanoTDFEncryptFile(infile, outfile, config)
 	if err != nil {

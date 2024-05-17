@@ -279,6 +279,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	// Lack of scope has impacts on performance
 	// https://github.com/opentdf/platform/issues/365
 	if req.GetScope() == nil {
+		// TODO: Reomve and use MatchSubjectMappings instead later in the flow
 		listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 		if err != nil {
 			return nil, err
@@ -290,7 +291,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			for _, val := range attr.GetValues() {
 				fqn, err := fqnBuilder(ns, an, val.GetValue())
 				if err != nil {
-					slog.Error("Error building attribute fqn for ", "attr", attr)
+					slog.Error("Error building attribute fqn for ", "attr", attr, "value", val)
 					return nil, err
 				}
 				attributeFqns = append(attributeFqns, fqn)

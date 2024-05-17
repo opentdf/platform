@@ -64,7 +64,7 @@ clean:
 build: proto-generate opentdf sdk/sdk examples/examples
 
 opentdf: $(shell find service)
-	go build -o opentdf -v service/main.go
+	go build --tags=opentdf.hsm -o opentdf -v service/main.go
 
 sdk/sdk: $(shell find sdk)
 	(cd sdk && go build ./...)

@@ -182,7 +182,7 @@ jobs:
         name: start server in background
         with:
           run: |
-            go run ./service start
+            go run ${{ matrix.crypto == 'hsm' && '--tags=opentdf.hsm' || '' }} ./service start
           wait-on: |
             tcp:localhost:8080
           log-output-if: true

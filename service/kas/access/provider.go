@@ -12,7 +12,7 @@ import (
 
 const (
 	ErrHSM    = Error("hsm unexpected")
-	ErrConfig = Error("invalid port")
+	ErrConfig = Error("invalid config")
 )
 
 type Provider struct {

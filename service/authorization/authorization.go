@@ -290,7 +290,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			for _, val := range attr.GetValues() {
 				fqn, err := fqnBuilder(ns, an, val.GetValue())
 				if err != nil {
-					slog.Error("Error builting attribute fqn")
+					slog.Error("Error building attribute fqn for ", "attr", attr)
 					return nil, err
 				}
 				attributeFqns = append(attributeFqns, fqn)

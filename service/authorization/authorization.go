@@ -47,7 +47,7 @@ func NewRegistration() serviceregistry.Registration {
 			// default ERS endpoint
 			var ersURL = "http://localhost:8080/entityresolution/resolve"
 			var clientID = "tdf-authorization-svc"
-			var clientSecert = "secret"
+			var clientSecret = "secret"
 			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
@@ -68,9 +68,9 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting clientID to string")
 				}
 			}
-			val, ok = srp.Config.ExtraProps["clientsecert"]
+			val, ok = srp.Config.ExtraProps["clientsecret"]
 			if ok {
-				clientSecert, ok = val.(string)
+				clientSecret, ok = val.(string)
 				if !ok {
 					panic("Error casting clientSecret to string")
 				}
@@ -82,7 +82,7 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting tokenEndpoint to string")
 				}
 			}
-			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecert, TokenURL: tokenEndpoint}
+			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecret, TokenURL: tokenEndpoint}
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
 
 			as.ersURL = ersURL

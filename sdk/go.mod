@@ -1,16 +1,14 @@
 module github.com/opentdf/platform/sdk
 
-go 1.22
-
-toolchain go1.22.3
+go 1.21
 
 require (
 	github.com/docker/go-connections v0.5.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
-	github.com/opentdf/platform/lib/fixtures v0.2.0
-	github.com/opentdf/platform/lib/ocrypto v0.1.0
-	github.com/opentdf/platform/protocol/go v0.2.0
+	github.com/opentdf/platform/lib/fixtures v0.2.3
+	github.com/opentdf/platform/lib/ocrypto v0.1.2
+	github.com/opentdf/platform/protocol/go v0.2.2
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
 	google.golang.org/grpc v1.62.1
@@ -75,12 +73,12 @@ require (
 	go.opentelemetry.io/otel v1.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240311173647-c811ad7063a7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311173647-c811ad7063a7 // indirect

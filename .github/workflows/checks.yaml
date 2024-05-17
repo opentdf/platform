@@ -177,11 +177,12 @@ jobs:
           sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240
       - run: go run ./service provision keycloak
+      - run: go run ./service provision fixtures
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background
         with:
           run: |
-            go run ./service start
+            go run ${{ matrix.crypto == 'hsm' && '--tags=opentdf.hsm' || '' }} ./service start
           wait-on: |
             tcp:localhost:8080
           log-output-if: true
@@ -194,6 +195,8 @@ jobs:
       - run: go run ./examples encrypt "Hello Virtru"
       - run: go run ./examples decrypt sensitive.txt.tdf
       - run: go run ./examples decrypt sensitive.txt.tdf | grep "Hello Virtru"
+      - name: create roundtrip test data and run tests
+        run: go test ./service/rttests -v
 
   image:
     name: image build

@@ -212,7 +212,7 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKey []byte) (
 	return key, nil
 }
 
-func (s StandardCrypto) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
+func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
 	// prepare private key template
 	privKey := &ecdsa.PrivateKey{
 		PublicKey: ecdsa.PublicKey{
@@ -231,7 +231,7 @@ func (s StandardCrypto) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error)
 	return PrivateKeyEC(0), pubBytes, nil
 }
 
-func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC, ephemeralPublicKey []byte) ([]byte, error) {
+func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error) {
 	// Parse the received elliptic public key
 	pubKeyInterface, err := x509.ParsePKIXPublicKey(ephemeralPublicKey)
 	if err != nil {

@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"google.golang.org/grpc/codes"
@@ -18,6 +20,12 @@ import (
 const ErrTextCreationFailed = "resource creation failed"
 const ErrTextGetRetrievalFailed = "resource retrieval failed"
 const ErrTextNotFound = "resource not found"
+
+const ClientJwtSelector = "azp"
+const UsernameJwtSelector = "preferred_username"
+const UsernameConditionalSelector = "client_id"
+
+const serviceAccountUsernamePrefix = "service-account-"
 
 type KeycloakConfig struct {
 	URL            string `json:"url"`
@@ -31,6 +39,21 @@ type KeycloakConfig struct {
 type KeyCloakConnector struct {
 	token  *gocloak.JWT
 	client *gocloak.GoCloak
+}
+
+func CreateEntityChainFromJwt(ctx context.Context,
+	req *entityresolution.CreateEntityChainFromJwtRequest, kcConfig KeycloakConfig) (entityresolution.CreateEntityChainFromJwtResponse, error) {
+	var entityChains = []*authorization.EntityChain{}
+	// for each token in the tokens form an entity chain
+	for _, tok := range req.GetTokens() {
+		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt())
+		if err != nil {
+			return entityresolution.CreateEntityChainFromJwtResponse{}, err
+		}
+		entityChains = append(entityChains, &authorization.EntityChain{Id: tok.GetId(), Entities: entities})
+	}
+
+	return entityresolution.CreateEntityChainFromJwtResponse{EntityChains: entityChains}, nil
 }
 
 func EntityResolution(ctx context.Context,
@@ -255,4 +278,89 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConne
 		return nil, err
 	}
 	return entityRepresentations, nil
+}
+
+func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtString string) ([]*authorization.Entity, error) {
+	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		return nil, errors.New("error parsing jwt " + err.Error())
+	}
+	claims, err := token.AsMap(context.Background()) ///nolint:contextcheck // Do not want to include keys from context in map
+	if err != nil {
+		return nil, errors.New("error getting claims from jwt")
+	}
+	var entities = []*authorization.Entity{}
+	var entityID = 0
+
+	// extract azp
+	extractedValue, okExtract := claims[ClientJwtSelector]
+	if !okExtract {
+		return nil, errors.New("error extracting selector " + ClientJwtSelector + " from jwt")
+	}
+	extractedValueCasted, okCast := extractedValue.(string)
+	if !okCast {
+		return nil, errors.New("error casting extracted value to string")
+	}
+	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+	entityID++
+
+	// extract preferred_username if client isnt present
+	_, okExtractConditional := claims[UsernameConditionalSelector]
+	if !okExtractConditional { //nolint:nestif // this case has many possible outcomes to handle
+		extractedValueUsername, okExp := claims[UsernameJwtSelector]
+		if !okExp {
+			return nil, errors.New("error extracting selector " + UsernameJwtSelector + " from jwt")
+		}
+		extractedValueUsernameCasted, okUsernameCast := extractedValueUsername.(string)
+		if !okUsernameCast {
+			return nil, errors.New("error casting extracted value to string")
+		}
+
+		// double check for service account
+		if strings.HasPrefix(extractedValueUsernameCasted, serviceAccountUsernamePrefix) {
+			clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig)
+			if err != nil {
+				return nil, err
+			}
+			if clientid != "" {
+				entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: clientid}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			} else {
+				// if the returned clientId is empty, no client found, its not a serive account proceed with username
+				entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			}
+		} else {
+			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+		}
+	} else {
+		slog.Debug("Did not find conditional value " + UsernameConditionalSelector + " in jwt, proceed")
+	}
+
+	return entities, nil
+}
+
+func getServiceAccountClient(ctx context.Context, username string, kcConfig KeycloakConfig) (string, error) {
+	connector, err := getKCClient(ctx, kcConfig)
+	if err != nil {
+		return "", err
+	}
+	expectedClientName := strings.TrimPrefix(username, serviceAccountUsernamePrefix)
+
+	clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
+		ClientID: &expectedClientName,
+	})
+	switch {
+	case err != nil:
+		slog.Error(err.Error())
+		return "", err
+	case len(clients) == 1:
+		client := clients[0]
+		slog.Debug("Client found", "client", *client.ClientID)
+		return *client.ClientID, nil
+	case len(clients) > 1:
+		slog.Error("More than one client found for ", "clientid", expectedClientName)
+	default:
+		slog.Debug("No client found, likely not a service account", "clientid", expectedClientName)
+	}
+
+	return "", nil
 }

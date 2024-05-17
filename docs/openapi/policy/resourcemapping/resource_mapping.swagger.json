@@ -134,7 +134,7 @@
           "ResourceMappingService"
         ]
       },
-      "post": {
+      "patch": {
         "summary": "Request Example:\n{\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\",\n\"resource_mapping\": {\n\"attribute_value_id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n\"NEWTERM\"\n]\n}\n}",
         "description": "Response Example:\n{\n\"resource_mapping\": {\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n],\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1706103276\",\n\"nanos\": 510718000\n},\n\"updated_at\": {\n\"seconds\": \"1706107873\",\n\"nanos\": 399786000\n},\n\"description\": \"\"\n},\n\"attribute_value\": {\n\"members\": [],\n\"id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"metadata\": null,\n\"attribute_id\": \"\",\n\"value\": \"value1\"\n}\n}\n}",
         "operationId": "ResourceMappingService_UpdateResourceMapping",

@@ -242,17 +242,6 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 		slog.WarnContext(ctx, "missing sub")
 	}
 
-	// We have to check for the different ways the clientID can be stored in the token
-	clientIDKeys := []string{"clientId", "cid", "client_id"}
-	for _, key := range clientIDKeys {
-		if value, keyExists := token.Get(key); keyExists {
-			if clientID, ok := value.(string); ok {
-				info.ClientID = clientID
-				break // Stop looping once a valid key is found and successfully asserted
-			}
-		}
-	}
-
 	info.Token = auth.GetRawAccessTokenFromContext(ctx)
 
 	return info, nil
@@ -302,21 +291,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}
 
 	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.Policy)
-	// changed to ClientID from Subject
-	ent := &authorization.Entity{
-		EntityType: &authorization.Entity_Jwt{
-			Jwt: entity.Token,
-		},
-	}
-	if entity.ClientID != "" {
-		ent = &authorization.Entity{
-			EntityType: &authorization.Entity_ClientId{
-				ClientId: entity.ClientID,
-			},
-		}
+	// changed use the entities in the token to get the decisions
+	tok := &authorization.Token{
+		Id:  "rewrap-tok",
+		Jwt: entity.Token,
 	}
 
-	access, err := canAccess(ctx, ent, *policy, p.SDK)
+	access, err := canAccess(ctx, tok, *policy, p.SDK)
 
 	if err != nil {
 		slog.WarnContext(ctx, "Could not perform access decision!", "err", err)

@@ -372,19 +372,19 @@
             <ul>
               
                 <li>
+                  <a href="#entityresolution.CreateEntityChainFromJwtRequest"><span class="badge">M</span>CreateEntityChainFromJwtRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.CreateEntityChainFromJwtResponse"><span class="badge">M</span>CreateEntityChainFromJwtResponse</a>
+                </li>
+              
+                <li>
                   <a href="#entityresolution.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
                 </li>
               
                 <li>
                   <a href="#entityresolution.EntityRepresentation"><span class="badge">M</span>EntityRepresentation</a>
-                </li>
-              
-                <li>
-                  <a href="#entityresolution.GetEntityChainFromJwtRequest"><span class="badge">M</span>GetEntityChainFromJwtRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#entityresolution.GetEntityChainFromJwtResponse"><span class="badge">M</span>GetEntityChainFromJwtResponse</a>
                 </li>
               
                 <li>
@@ -2505,6 +2505,54 @@
       <p></p>
 
       
+        <h3 id="entityresolution.CreateEntityChainFromJwtRequest">CreateEntityChainFromJwtRequest</h3>
+        <p>Example: Get Entity chains for tokens aaaaaa and bbbbbb</p><p>{</p><p>"tokens": [</p><p>"aaaaaaa",</p><p>"bbbbbbbb"</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>tokens</td>
+                  <td><a href="#authorization.Token">authorization.Token</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.CreateEntityChainFromJwtResponse">CreateEntityChainFromJwtResponse</h3>
+        <p>Example: Return the entity chains from the provided tokens</p><p>{</p><p>"entity_chains": [</p><p>{</p><p>"id": "tok1",</p><p>"entities": [</p><p>{</p><p>"clientId": "client1"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "tok2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice",</p><p>"clientId": "client2"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_chains</td>
+                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="entityresolution.EntityNotFoundError">EntityNotFoundError</h3>
         <p></p>
 
@@ -2572,54 +2620,6 @@
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>ephemeral entity id from the request </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entityresolution.GetEntityChainFromJwtRequest">GetEntityChainFromJwtRequest</h3>
-        <p>Example: Get Entity chains for tokens aaaaaa and bbbbbb</p><p>{</p><p>"tokens": [</p><p>"aaaaaaa",</p><p>"bbbbbbbb"</p><p>]</p><p>}</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>tokens</td>
-                  <td><a href="#authorization.Token">authorization.Token</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entityresolution.GetEntityChainFromJwtResponse">GetEntityChainFromJwtResponse</h3>
-        <p>Example: Return the entity chains from the provided tokens</p><p>{</p><p>"entity_chains": [</p><p>{</p><p>"id": "tok1",</p><p>"entities": [</p><p>{</p><p>"clientId": "client1"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "tok2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice",</p><p>"clientId": "client2"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>entity_chains</td>
-                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -2699,9 +2699,9 @@
               </tr>
             
               <tr>
-                <td>GetEntityChainFromJwt</td>
-                <td><a href="#entityresolution.GetEntityChainFromJwtRequest">GetEntityChainFromJwtRequest</a></td>
-                <td><a href="#entityresolution.GetEntityChainFromJwtResponse">GetEntityChainFromJwtResponse</a></td>
+                <td>CreateEntityChainFromJwt</td>
+                <td><a href="#entityresolution.CreateEntityChainFromJwtRequest">CreateEntityChainFromJwtRequest</a></td>
+                <td><a href="#entityresolution.CreateEntityChainFromJwtResponse">CreateEntityChainFromJwtResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -2736,7 +2736,7 @@
               
               
               <tr>
-                <td>GetEntityChainFromJwt</td>
+                <td>CreateEntityChainFromJwt</td>
                 <td>POST</td>
                 <td>/entityresolution/entitychain</td>
                 <td>*</td>

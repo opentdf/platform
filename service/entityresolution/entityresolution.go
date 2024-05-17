@@ -43,8 +43,8 @@ func (s EntityResolutionService) ResolveEntities(ctx context.Context, req *entit
 	return &resp, err
 }
 
-func (s EntityResolutionService) GetEntityChainFromJwt(ctx context.Context, req *entityresolution.GetEntityChainFromJwtRequest) (*entityresolution.GetEntityChainFromJwtResponse, error) {
+func (s EntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	slog.Debug("request", "", req)
-	resp, err := keycloak.GetEntityChainFromJwt(ctx, req, s.idpConfig)
+	resp, err := keycloak.CreateEntityChainFromJwt(ctx, req, s.idpConfig)
 	return &resp, err
 }

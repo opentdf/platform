@@ -295,7 +295,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: clientCredentialsJwt}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -314,7 +314,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: passwordPubClientJwt}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -334,7 +334,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: passwordPrivClientJwt}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -354,7 +354,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: authPubClientJwt}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -374,7 +374,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: authPrivClientJwt}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -394,7 +394,7 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: implicitPubClientJwt}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -414,7 +414,7 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: implicitPrivClientJwt}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -437,7 +437,7 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: tokenExchangeJwt}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 
@@ -460,7 +460,7 @@ func Test_JwtMultiple(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: tokenExchangeJwt, Id: "tok1"}, {Jwt: authPrivClientJwt, Id: "tok2"}}
 
-	var resp, reserr = keycloak.GetEntityChainFromJwt(ctxb, &entityresolution.GetEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
 
 	require.NoError(t, reserr)
 

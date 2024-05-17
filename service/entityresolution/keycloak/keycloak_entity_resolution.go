@@ -41,19 +41,19 @@ type KeyCloakConnector struct {
 	client *gocloak.GoCloak
 }
 
-func GetEntityChainFromJwt(ctx context.Context,
-	req *entityresolution.GetEntityChainFromJwtRequest, kcConfig KeycloakConfig) (entityresolution.GetEntityChainFromJwtResponse, error) {
+func CreateEntityChainFromJwt(ctx context.Context,
+	req *entityresolution.CreateEntityChainFromJwtRequest, kcConfig KeycloakConfig) (entityresolution.CreateEntityChainFromJwtResponse, error) {
 	var entityChains = []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
 		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt())
 		if err != nil {
-			return entityresolution.GetEntityChainFromJwtResponse{}, err
+			return entityresolution.CreateEntityChainFromJwtResponse{}, err
 		}
 		entityChains = append(entityChains, &authorization.EntityChain{Id: tok.GetId(), Entities: entities})
 	}
 
-	return entityresolution.GetEntityChainFromJwtResponse{EntityChains: entityChains}, nil
+	return entityresolution.CreateEntityChainFromJwtResponse{EntityChains: entityChains}, nil
 }
 
 func EntityResolution(ctx context.Context,

@@ -20,12 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	configStandard = security.Config{
-		Type: "standard",
-	}
-)
-
 // Skips if not in CI and failure due to library missing
 func maybeSkip(t *testing.T, err error) {
 	if os.Getenv("CI") != "" {
@@ -109,7 +103,9 @@ func TestError(t *testing.T) {
 const hostname = "localhost"
 
 func TestStandardCertificateHandlerEmpty(t *testing.T) {
-	configStandard.StandardConfig.RSAKeys = map[string]security.StandardKeyInfo{}
+	configStandard := security.Config{
+		Type: "standard",
+	}
 	c := mustNewCryptoProvider(t, configStandard)
 	defer c.Close()
 	kasURI := urlHost(t)
@@ -139,10 +135,15 @@ func urlHost(t *testing.T) *url.URL {
 }
 
 func TestStandardPublicKeyHandlerV2(t *testing.T) {
-	configStandard.StandardConfig.RSAKeys = map[string]security.StandardKeyInfo{
-		"rsa": {
-			PrivateKeyPath: "./testdata/access-provider-000-private.pem",
-			PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			RSAKeys: map[string]security.StandardKeyInfo{
+				"rsa": {
+					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+				},
+			},
 		},
 	}
 	c := mustNewCryptoProvider(t, configStandard)
@@ -160,6 +161,9 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 }
 
 func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+	}
 	c := mustNewCryptoProvider(t, configStandard)
 	defer c.Close()
 	kasURI := urlHost(t)
@@ -174,10 +178,15 @@ func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
 }
 
 func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
-	configStandard.StandardConfig.RSAKeys = map[string]security.StandardKeyInfo{
-		"rsa": {
-			PrivateKeyPath: "./testdata/access-provider-000-private.pem",
-			PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			RSAKeys: map[string]security.StandardKeyInfo{
+				"rsa": {
+					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+				},
+			},
 		},
 	}
 	c := mustNewCryptoProvider(t, configStandard)
@@ -200,10 +209,15 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 
 func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 	t.Skip("EC Not yet implemented")
-	configStandard.StandardConfig.ECKeys = map[string]security.StandardKeyInfo{
-		"ec": {
-			PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-			PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"ec": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
 		},
 	}
 	c := mustNewCryptoProvider(t, configStandard)
@@ -222,10 +236,15 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 
 func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 	t.Skip("EC Not yet implemented")
-	configStandard.StandardConfig.ECKeys = map[string]security.StandardKeyInfo{
-		"ec": {
-			PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-			PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"ec": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
 		},
 	}
 	c := mustNewCryptoProvider(t, configStandard)
@@ -244,10 +263,15 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 
 func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
 	t.Skip("EC Not yet implemented")
-	configStandard.StandardConfig.ECKeys = map[string]security.StandardKeyInfo{
-		"ec": {
-			PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-			PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"ec": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
 		},
 	}
 	c := mustNewCryptoProvider(t, configStandard)

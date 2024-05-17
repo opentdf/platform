@@ -210,7 +210,7 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 		config.sigCfg = deserializeSignatureCfg(0x00) // no signature and AES_256_GCM_64_TAG
 
 		config.mKasPublicKey = kasPublicKey
-		config.mPrivateKey = sdkPrivateKey
+		config.privateKey = sdkPrivateKey
 
 		config.binding = deserializeBindingCfg(0x00)
 
@@ -313,7 +313,7 @@ func NotTestNanoTDFEncryptFile(t *testing.T) {
 	config.kasURL.body = kasURL // TODO - check for excessive length here
 	config.kasURL.lengthBody = uint8(len(kasURL))
 	config.kasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
-	config.mPrivateKey = sdkPrivateKey
+	config.privateKey = sdkPrivateKey
 	config.mKasPublicKey = kasPublicKey
 	config.eccMode = ocrypto.ECCModeSecp256r1
 

@@ -10,6 +10,13 @@ import (
 )
 
 // ============================================================================================================
+// Pat Mancuso May 2024
+// Support for serializing/deserializing URLS for nano usage
+//
+// If an URL is specified as "https://some.site.com/endpoint"
+// the storage format for this is to strip off the leading "https://" prefix and encode as 0 (or 1 for http)
+// followed by the run-length-prefixed body value
+// ============================================================================================================
 
 // resourceLocator - structure to contain a protocol + body comprising an URL
 type resourceLocator struct {
@@ -29,6 +36,7 @@ const (
 	urlProtocolShared urlProtocol = 255 // TODO - how is this handled/parsed/rendered?
 )
 
+// getLength - return the serialized length (in bytes) of this object
 func (rl *resourceLocator) getLength() uint64 {
 	return uint64(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body) /* length of string */)
 }

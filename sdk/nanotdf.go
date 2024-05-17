@@ -13,6 +13,14 @@ import (
 	"os"
 )
 
+// ============================================================================================================
+// Pat Mancuso May 2024
+// Support for nanoTDF operations
+//
+// See also the nanotdf_config.go interface
+//
+// ============================================================================================================
+
 // / Constants
 const (
 	kMaxTDFSize        = ((16 * 1024 * 1024) - 3 - 32) //nolint:gomnd // 16 mb - 3(iv) - 32(max auth tag)
@@ -58,7 +66,7 @@ type NanoTDFHeader struct {
 	policyBinding        []byte
 	compressedPubKey     []byte
 	keyPair              ocrypto.ECKeyPair
-	mPrivateKey          string
+	privateKey           string
 	publicKey            string
 }
 
@@ -429,7 +437,7 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		}
 		config.mDefaultSalt = ocrypto.CalculateSHA256([]byte(kNanoTDFMagicStringAndVersion))
 
-		header.mPrivateKey = config.mPrivateKey
+		header.privateKey = config.privateKey
 		header.publicKey = config.publicKey
 		header.keyPair = config.keyPair
 		header.kasURL = config.kasURL
@@ -458,7 +466,7 @@ func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
 		if err != nil {
 			return err
 		}
-		header.mPrivateKey, err = sdkECKeyPair.PrivateKeyInPemFormat()
+		header.privateKey, err = sdkECKeyPair.PrivateKeyInPemFormat()
 		if err != nil {
 			return err
 		}

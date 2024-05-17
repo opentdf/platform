@@ -204,7 +204,11 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	tdfObject.manifest.EncryptionInformation.Method.IsStreamable = true
 
 	// add payload info
-	tdfObject.manifest.Payload.MimeType = defaultMimeType
+	mimeType := tdfConfig.mimeType
+	if mimeType == "" {
+		mimeType = defaultMimeType
+	}
+	tdfObject.manifest.Payload.MimeType = mimeType
 	tdfObject.manifest.Payload.Protocol = tdfAsZip
 	tdfObject.manifest.Payload.Type = tdfZipReference
 	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName

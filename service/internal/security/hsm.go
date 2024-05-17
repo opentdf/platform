@@ -86,6 +86,8 @@ type RSAKeyPair struct {
 	*x509.Certificate
 }
 
+const keyLength = 32
+
 func sh(c string, arg ...string) (string, string, error) {
 	cmd := exec.Command(c, arg...)
 	stdout, err := cmd.StdoutPipe()

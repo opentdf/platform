@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 type AsymDecryption struct {
@@ -22,7 +23,19 @@ func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return AsymDecryption{}, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
+		if strings.Contains(err.Error(), "use ParsePKCS1PrivateKey instead") {
+			priv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+			if err != nil {
+				return AsymDecryption{}, fmt.Errorf("x509.ParsePKCS1PrivateKey failed: %w", err)
+			}
+		} else if strings.Contains(err.Error(), "use ParseECPrivateKey instead") {
+			priv, err = x509.ParseECPrivateKey(block.Bytes)
+			if err != nil {
+				return AsymDecryption{}, fmt.Errorf("x509.ParseECPrivateKey failed: %w", err)
+			}
+		} else {
+			return AsymDecryption{}, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
+		}
 	}
 
 	switch privateKey := priv.(type) {

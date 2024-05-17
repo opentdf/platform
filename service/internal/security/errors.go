@@ -10,7 +10,6 @@ const (
 	ErrKeyConfig           = Error("key configuration error")
 	ErrUnknownHashFunction = Error("unknown hash function")
 )
-const keyLength = 32
 
 type Error string
 

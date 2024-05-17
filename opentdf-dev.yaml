@@ -11,6 +11,7 @@ logger:
 services:
   kas:
     enabled: true
+    eccertid: "123"
   policy:
     enabled: true
   authorization:

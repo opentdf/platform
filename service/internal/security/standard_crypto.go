@@ -150,9 +150,9 @@ func (s StandardCrypto) ECPublicKey(string) (string, error) {
 		return "", ErrCertNotFound
 	}
 	ecKey := s.ecKeys[0]
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(ecKey.ecPrivateKey.PublicKey)
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&ecKey.ecPrivateKey.PublicKey)
 	if err != nil {
-		return "", ErrPublicKeyMarshal
+		return "", fmt.Errorf(string(ErrPublicKeyMarshal)+": %w", err)
 	}
 	pemEncoded := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",

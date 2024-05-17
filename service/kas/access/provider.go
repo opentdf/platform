@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"log/slog"
 	"net/url"
 
@@ -21,6 +22,7 @@ type Provider struct {
 	SDK            *otdf.SDK
 	AttributeSvc   *url.URL
 	CryptoProvider security.CryptoProvider
+	Config         *serviceregistry.ServiceConfig
 }
 
 func (p *Provider) IsReady(ctx context.Context) error {

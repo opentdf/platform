@@ -746,3 +746,14 @@ func versionSalt() []byte {
 	digest.Write([]byte("L1L"))
 	return digest.Sum(nil)
 }
+
+func (h *HSMSession) ECCertificate(string) (string, error) {
+	if h.EC == nil || h.EC.Certificate == nil {
+		return "", ErrCertNotFound
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: h.EC.Certificate.Raw,
+	})
+	return string(certPEM), nil
+}

@@ -27,7 +27,7 @@ type NanoTDFConfig struct {
 	bufferSize         uint64
 	signerPrivateKey   []byte
 	cipher             cipherMode
-	kasURL             resourceLocator
+	kasURL             ResourceLocator
 	mKasPublicKey      string
 	mDefaultSalt       []byte
 	EphemeralPublicKey eccKey

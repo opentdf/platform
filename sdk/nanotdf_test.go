@@ -18,7 +18,7 @@ func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 	}
 
 	// Compare kasURL field
-	if a.kasURL.protocol != b.kasURL.protocol || a.kasURL.lengthBody != b.kasURL.lengthBody || a.kasURL.body != b.kasURL.body {
+	if a.kasURL.protocol != b.kasURL.protocol || a.kasURL.getLength() != b.kasURL.getLength() || a.kasURL.body != b.kasURL.body {
 		return false
 	}
 
@@ -63,7 +63,7 @@ func policyBodyEqual(a, b PolicyBody) bool {
 // remotePolicyEqual compares two remotePolicy instances for equality.
 func remotePolicyEqual(a, b remotePolicy) bool {
 	// Compare url field
-	if a.url.protocol != b.url.protocol || a.url.lengthBody != b.url.lengthBody || a.url.body != b.url.body {
+	if a.url.protocol != b.url.protocol || a.url.getLength() != b.url.getLength() || a.url.body != b.url.body {
 		return false
 	}
 	return true
@@ -90,10 +90,9 @@ func TestReadNanoTDFHeader(t *testing.T) {
 	// Prepare a sample nanoTdf structure
 	goodHeader := NanoTDFHeader{
 		magicNumber: [3]byte{'L', '1', 'L'},
-		kasURL: resourceLocator{
-			protocol:   urlProtocolHTTPS,
-			lengthBody: 14,
-			body:       "kas.virtru.com",
+		kasURL: ResourceLocator{
+			protocol: urlProtocolHTTPS,
+			body:     "kas.virtru.com",
 		},
 		binding: bindingCfg{
 			useEcdsaBinding: true,
@@ -109,10 +108,9 @@ func TestReadNanoTDFHeader(t *testing.T) {
 			body: PolicyBody{
 				mode: policyTypeRemotePolicy,
 				rp: remotePolicy{
-					url: resourceLocator{
-						protocol:   urlProtocolHTTPS,
-						lengthBody: 21,
-						body:       "kas.virtru.com/policy",
+					url: ResourceLocator{
+						protocol: urlProtocolHTTPS,
+						body:     "kas.virtru.com/policy",
 					},
 				},
 			},
@@ -214,7 +212,7 @@ func TestNanoTdfWriteHeader(t *testing.T) {
 
 		config.binding = deserializeBindingCfg(0x00)
 
-		var policyUrl resourceLocator
+		var policyUrl ResourceLocator
 		err = policyUrl.setUrl(remotePolicyUrl)
 		if err != nil {
 			t.Fatalf("Cannot set policy url: %v", err)
@@ -310,9 +308,10 @@ func NotTestNanoTDFEncryptFile(t *testing.T) {
 	var kasURL = "https://kas.virtru.com/kas"
 	var config NanoTDFConfig
 	config.bufferSize = 8192 * 1024
-	config.kasURL.body = kasURL // TODO - check for excessive length here
-	config.kasURL.lengthBody = uint8(len(kasURL))
-	config.kasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
+	err = config.kasURL.setUrl(kasURL)
+	if err != nil {
+		t.Fatal(err)
+	}
 	config.privateKey = sdkPrivateKey
 	config.mKasPublicKey = kasPublicKey
 	config.eccMode = ocrypto.ECCModeSecp256r1

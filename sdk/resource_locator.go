@@ -18,11 +18,10 @@ import (
 // followed by the run-length-prefixed body value
 // ============================================================================================================
 
-// resourceLocator - structure to contain a protocol + body comprising an URL
-type resourceLocator struct {
-	protocol   urlProtocol
-	lengthBody uint8 // TODO FIXME - redundant?
-	body       string
+// ResourceLocator - structure to contain a protocol + body comprising an URL
+type ResourceLocator struct {
+	protocol urlProtocol // See urlProtocol values below
+	body     string      // Body of url
 }
 
 // urlProtocol - shorthand for protocol prefix on fully qualified url
@@ -36,13 +35,25 @@ const (
 	urlProtocolShared urlProtocol = 255 // TODO - how is this handled/parsed/rendered?
 )
 
+func NewResourceLocator(url string) (*ResourceLocator, error) {
+
+	rl := &ResourceLocator{}
+
+	err := rl.setUrl(url)
+	if err != nil {
+		return nil, err
+	}
+
+	return rl, err
+}
+
 // getLength - return the serialized length (in bytes) of this object
-func (rl *resourceLocator) getLength() uint64 {
+func (rl ResourceLocator) getLength() uint64 {
 	return uint64(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body) /* length of string */)
 }
 
-// setUrl - Store a fully qualified protocol+body string into a resourceLocator as a protocol value and a body string
-func (rl *resourceLocator) setUrl(url string) error {
+// setUrl - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string
+func (rl *ResourceLocator) setUrl(url string) error {
 	lowerUrl := strings.ToLower(url)
 	if strings.HasPrefix(lowerUrl, kPrefixHTTPS) {
 		urlBody := url[len(kPrefixHTTPS):]
@@ -50,7 +61,6 @@ func (rl *resourceLocator) setUrl(url string) error {
 			return errors.New("URL too long")
 		}
 		rl.protocol = urlProtocolHTTPS
-		rl.lengthBody = uint8(len(urlBody))
 		rl.body = urlBody
 		return nil
 	}
@@ -60,15 +70,14 @@ func (rl *resourceLocator) setUrl(url string) error {
 			return errors.New("URL too long")
 		}
 		rl.protocol = urlProtocolHTTP
-		rl.lengthBody = uint8(len(urlBody))
 		rl.body = urlBody
 		return nil
 	}
 	return errors.New("Unsupported protocol: " + url)
 }
 
-// getUrl - Retrieve a fully qualified protocol+body URL string from a resourceLocator struct
-func (rl *resourceLocator) getUrl() (string, error) {
+// getUrl - Retrieve a fully qualified protocol+body URL string from a ResourceLocator struct
+func (rl ResourceLocator) getUrl() (string, error) {
 	if rl.protocol == urlProtocolHTTPS {
 		return kPrefixHTTPS + rl.body, nil
 	}
@@ -79,7 +88,7 @@ func (rl *resourceLocator) getUrl() (string, error) {
 }
 
 // writeResourceLocator - writes the content of the resource locator to the supplied writer
-func (rl *resourceLocator) writeResourceLocator(writer io.Writer) error {
+func (rl ResourceLocator) writeResourceLocator(writer io.Writer) error {
 	if err := binary.Write(writer, binary.BigEndian, byte(rl.protocol)); err != nil {
 		return err
 	}
@@ -92,20 +101,21 @@ func (rl *resourceLocator) writeResourceLocator(writer io.Writer) error {
 	return nil
 }
 
-// readResourceLocator - read the encoded protocol and body string into a resourceLocator
-func (rl *resourceLocator) readResourceLocator(reader io.Reader) error {
+// readResourceLocator - read the encoded protocol and body string into a ResourceLocator
+func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	if err := binary.Read(reader, binary.BigEndian, &rl.protocol); err != nil {
-		return errors.Join(Error("Error reading resourceLocator protocol value"), err)
+		return errors.Join(Error("Error reading ResourceLocator protocol value"), err)
 	}
 	if (rl.protocol != urlProtocolHTTP) && (rl.protocol != urlProtocolHTTPS) { // TODO - support 'shared' protocol?
 		return errors.New("Unsupported protocol: " + strconv.Itoa(int(rl.protocol)))
 	}
-	if err := binary.Read(reader, binary.BigEndian, &rl.lengthBody); err != nil {
-		return errors.Join(Error("Error reading resourceLocator body length value"), err)
+	var lengthBody byte
+	if err := binary.Read(reader, binary.BigEndian, &lengthBody); err != nil {
+		return errors.Join(Error("Error reading ResourceLocator body length value"), err)
 	}
-	body := make([]byte, rl.lengthBody)
+	body := make([]byte, lengthBody)
 	if err := binary.Read(reader, binary.BigEndian, &body); err != nil {
-		return errors.Join(Error("Error reading resourceLocator body value"), err)
+		return errors.Join(Error("Error reading ResourceLocator body value"), err)
 	}
 	rl.body = string(body) // TODO - normalize to lowercase?
 	return nil

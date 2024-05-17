@@ -55,7 +55,7 @@ const (
 
 type NanoTDFHeader struct {
 	magicNumber          [len(kNanoTDFMagicStringAndVersion)]byte
-	kasURL               resourceLocator
+	kasURL               ResourceLocator
 	binding              bindingCfg
 	sigCfg               signatureConfig
 	policy               policyInfo
@@ -124,7 +124,7 @@ func (ep *embeddedPolicy) readEmbeddedPolicy(reader io.Reader) error {
 
 // remotePolicy - locator value for policy content that is stored externally to the nanoTDF
 type remotePolicy struct {
-	url resourceLocator
+	url ResourceLocator
 }
 
 // getLength - size in bytes of the serialized content of this object
@@ -292,7 +292,7 @@ func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
 	}
 	switch mode {
 	case policyTypeRemotePolicy:
-		var rl resourceLocator
+		var rl ResourceLocator
 		if err := rl.readResourceLocator(reader); err != nil {
 			return errors.Join(ErrNanoTDFHeaderRead, err)
 		}

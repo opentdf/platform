@@ -56,8 +56,7 @@ type entityInfo struct {
 }
 
 const (
-	ErrUser     = Error("request error")
-	ErrInternal = Error("internal error")
+	ErrUser = Error("request error")
 )
 
 func err400(s string) error {
@@ -357,10 +356,6 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	// get Policy from header and pass to canAccess
 	if header.Policy != nil {
 		policyString := header.Policy.Body.GetPolicyBody()
-		if err != nil {
-			slog.WarnContext(ctx, "unable to decode policy", "err", err)
-			return nil, err400("bad request")
-		}
 
 		var policy Policy
 		err = json.Unmarshal([]byte(policyString), &policy)

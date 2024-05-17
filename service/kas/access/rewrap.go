@@ -272,9 +272,13 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.Algorithm == "ec:secp256r1" {
-		return p.nanoTDFRewrap(body)
+		rsp, err := p.nanoTDFRewrap(body)
+		slog.ErrorContext(ctx, "rewrap nano", "err", err)
+		return rsp, err
 	}
-	return p.tdf3Rewrap(ctx, body, entityInfo)
+	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
+	slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
+	return rsp, err
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
@@ -356,7 +360,17 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
+
+	pubDER, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		return nil, err
+	}
+	pubKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pubDER,
+	})
+
+	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
@@ -366,6 +380,9 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
 
+	if len(publicKeyHandle) < 2 {
+		return nil, fmt.Errorf("incorrect length of public key handle")
+	}
 	// see explanation why Public Key starts at position 2
 	//https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
 	pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle[2:])

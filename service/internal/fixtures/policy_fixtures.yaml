@@ -264,6 +264,15 @@ subject_mappings:
       subject_condition_set_id: 10d03422-7eae-43b9-ac3b-d10400171858
       actions:
         - standard: STANDARD_ACTION_DECRYPT
+    
+    subject_mapping_sdk_attribute1:
+      id: bc28cacb-1687-4c87-9c63-eae55e271320
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      # subject_condition_sdk_client
+      subject_condition_set_id: 86621a00-b63e-42e9-bea5-40ba52d98ede
+      actions:
+        - standard: STANDARD_ACTION_TRANSMIT
+        - standard: STANDARD_ACTION_DECRYPT
 
 subject_condition_set:
   metadata:
@@ -314,7 +323,7 @@ subject_condition_set:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
                   # any index
-                  - subject_external_selector_value: '.data[0].favorite_things[*]'
+                  - subject_external_selector_value: '.data[0].favorite_things[]'
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - futbol
@@ -375,6 +384,17 @@ subject_condition_set:
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - marketing
+    subject_condition_sdk_client:
+      id: 86621a00-b63e-42e9-bea5-40ba52d98ede
+      condition:
+        subject_sets:
+          - condition_groups:
+              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+                conditions:
+                  - subject_external_selector_value: '.clientId'
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subject_external_values:
+                      - opentdf-sdk
 
 ##
 # Resource Mappings

@@ -317,6 +317,14 @@
                 </li>
               
                 <li>
+                  <a href="#authorization.GetDecisionsByTokenRequest"><span class="badge">M</span>GetDecisionsByTokenRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.GetDecisionsByTokenResponse"><span class="badge">M</span>GetDecisionsByTokenResponse</a>
+                </li>
+              
+                <li>
                   <a href="#authorization.GetDecisionsRequest"><span class="badge">M</span>GetDecisionsRequest</a>
                 </li>
               
@@ -334,6 +342,14 @@
               
                 <li>
                   <a href="#authorization.ResourceAttribute"><span class="badge">M</span>ResourceAttribute</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.Token"><span class="badge">M</span>Token</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.TokenDecisionRequest"><span class="badge">M</span>TokenDecisionRequest</a>
                 </li>
               
               
@@ -354,6 +370,14 @@
           <li>
             <a href="#entityresolution%2fentity_resolution.proto">entityresolution/entity_resolution.proto</a>
             <ul>
+              
+                <li>
+                  <a href="#entityresolution.CreateEntityChainFromJwtRequest"><span class="badge">M</span>CreateEntityChainFromJwtRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.CreateEntityChainFromJwtResponse"><span class="badge">M</span>CreateEntityChainFromJwtResponse</a>
+                </li>
               
                 <li>
                   <a href="#entityresolution.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
@@ -1858,7 +1882,7 @@
 
       
         <h3 id="authorization.DecisionRequest">DecisionRequest</h3>
-        <p>Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)</p><p>and Alice (represented by entity chain ec2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>{</p><p>"actions": [</p><p>{</p><p>"standard": "STANDARD_ACTION_TRANSMIT"</p><p>}</p><p>],</p><p>"entityChains": [</p><p>{</p><p>"id": "ec1",</p><p>"entities": [</p><p>{</p><p>"emailAddress": "bob@example.org"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "ec2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice@example.org"</p><p>}</p><p>]</p><p>}</p><p>],</p><p>"resourceAttributes": [</p><p>{</p><p>"attributeFqns": [</p><p>"https://www.example.org/attr/foo/value/value1"</p><p>]</p><p>},</p><p>{</p><p>"attributeFqns": [</p><p>"https://example.net/attr/attr1/value/value1",</p><p>"https://example.net/attr/attr1/value/value2"</p><p>]</p><p>}</p><p>]</p><p>}</p>
+        <p>Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)</p><p>and Alice (represented by entity chain ec2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>{</p><p>"actions": [</p><p>{</p><p>"standard": "STANDARD_ACTION_TRANSMIT"</p><p>}</p><p>],</p><p>"entityChains": [</p><p>{</p><p>"id": "ec1",</p><p>"entities": [</p><p>{</p><p>"emailAddress": "bob@example.org"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "ec2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice@example.org"</p><p>}</p><p>]</p><p>}</p><p>],</p><p>"resourceAttributes": [</p><p>{</p><p>"resourceAttributeId":  "attr-set-1",</p><p>"attributeFqns": [</p><p>"https://www.example.org/attr/foo/value/value1"</p><p>]</p><p>},</p><p>{</p><p>"resourceAttributeId":  "attr-set-2",</p><p>"attributeFqns": [</p><p>"https://example.net/attr/attr1/value/value1",</p><p>"https://example.net/attr/attr1/value/value2"</p><p>]</p><p>}</p><p>]</p><p>}</p>
 
         
           <table class="field-table">
@@ -1986,7 +2010,7 @@
                 </tr>
               
                 <tr>
-                  <td>jwt</td>
+                  <td>uuid</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -2106,6 +2130,54 @@
 
         
       
+        <h3 id="authorization.GetDecisionsByTokenRequest">GetDecisionsByTokenRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_requests</td>
+                  <td><a href="#authorization.TokenDecisionRequest">TokenDecisionRequest</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.GetDecisionsByTokenResponse">GetDecisionsByTokenResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_responses</td>
+                  <td><a href="#authorization.DecisionResponse">DecisionResponse</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="authorization.GetDecisionsRequest">GetDecisionsRequest</h3>
         <p></p>
 
@@ -2155,7 +2227,7 @@
         
       
         <h3 id="authorization.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p>Request to get entitlements for one or more entities for an optional attribute scope</p><p>Example: Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>]</p><p>}</p>
+        <p>Request to get entitlements for one or more entities for an optional attribute scope</p><p>Example: Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>],</p><p>"scope": {</p><p>"attributeFqns": [</p><p>"https://example.net/attr/attr1/value/value1",</p><p>"https://example.net/attr/attr1/value/value2"</p><p>]</p><p>}</p><p>}</p>
 
         
           <table class="field-table">
@@ -2220,8 +2292,84 @@
             <tbody>
               
                 <tr>
+                  <td>resource_attributes_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>attribute_value_fqns</td>
                   <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.Token">Token</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>jwt</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the token </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.TokenDecisionRequest">TokenDecisionRequest</h3>
+        <p>Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)</p><p>and Alice and client2 (represented by token tok2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>{</p><p>"actions": [</p><p>{</p><p>"standard": "STANDARD_ACTION_TRANSMIT"</p><p>}</p><p>],</p><p>"tokens": [</p><p>{</p><p>"id": "tok1",</p><p>"jwt": ....</p><p>},</p><p>{</p><p>"id": "tok2",</p><p>"jwt": .....</p><p>}</p><p>],</p><p>"resourceAttributes": [</p><p>{</p><p>"attributeFqns": [</p><p>"https://www.example.org/attr/foo/value/value1"</p><p>]</p><p>},</p><p>{</p><p>"attributeFqns": [</p><p>"https://example.net/attr/attr1/value/value1",</p><p>"https://example.net/attr/attr1/value/value2"</p><p>]</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>tokens</td>
+                  <td><a href="#authorization.Token">Token</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resource_attributes</td>
+                  <td><a href="#authorization.ResourceAttribute">ResourceAttribute</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -2284,6 +2432,13 @@
               </tr>
             
               <tr>
+                <td>GetDecisionsByToken</td>
+                <td><a href="#authorization.GetDecisionsByTokenRequest">GetDecisionsByTokenRequest</a></td>
+                <td><a href="#authorization.GetDecisionsByTokenResponse">GetDecisionsByTokenResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>GetEntitlements</td>
                 <td><a href="#authorization.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
                 <td><a href="#authorization.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
@@ -2321,6 +2476,16 @@
               
               
               <tr>
+                <td>GetDecisionsByToken</td>
+                <td>POST</td>
+                <td>/v1/token/authorization</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
                 <td>GetEntitlements</td>
                 <td>POST</td>
                 <td>/v1/entitlements</td>
@@ -2339,6 +2504,54 @@
       </div>
       <p></p>
 
+      
+        <h3 id="entityresolution.CreateEntityChainFromJwtRequest">CreateEntityChainFromJwtRequest</h3>
+        <p>Example: Get Entity chains for tokens aaaaaa and bbbbbb</p><p>{</p><p>"tokens": [</p><p>"aaaaaaa",</p><p>"bbbbbbbb"</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>tokens</td>
+                  <td><a href="#authorization.Token">authorization.Token</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.CreateEntityChainFromJwtResponse">CreateEntityChainFromJwtResponse</h3>
+        <p>Example: Return the entity chains from the provided tokens</p><p>{</p><p>"entity_chains": [</p><p>{</p><p>"id": "tok1",</p><p>"entities": [</p><p>{</p><p>"clientId": "client1"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "tok2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice",</p><p>"clientId": "client2"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_chains</td>
+                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
       
         <h3 id="entityresolution.EntityNotFoundError">EntityNotFoundError</h3>
         <p></p>
@@ -2485,6 +2698,13 @@
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>CreateEntityChainFromJwt</td>
+                <td><a href="#entityresolution.CreateEntityChainFromJwtRequest">CreateEntityChainFromJwtRequest</a></td>
+                <td><a href="#entityresolution.CreateEntityChainFromJwtResponse">CreateEntityChainFromJwtResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -2509,6 +2729,16 @@
                 <td>ResolveEntities</td>
                 <td>POST</td>
                 <td>/entityresolution/resolve</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateEntityChainFromJwt</td>
+                <td>POST</td>
+                <td>/entityresolution/entitychain</td>
                 <td>*</td>
               </tr>
               

@@ -7,6 +7,12 @@ import "google/protobuf/any.proto";
 
 import "policy/objects.proto";
 
+
+message Token {
+  string id = 1; // ephemeral id for tracking between request and response
+  string jwt = 2; // the token
+}
+
 // PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {
   string id = 1; // ephemeral id for tracking between request and response
@@ -15,7 +21,7 @@ message Entity {
     string email_address = 2;
     string user_name = 3;
     string remote_claims_url = 4;
-    string jwt = 5;
+    string uuid = 5;
     google.protobuf.Any claims = 6;
     EntityCustom custom = 7;
     string client_id = 8;
@@ -64,11 +70,13 @@ message EntityChain {
   ],
   "resourceAttributes": [
     {
+      "resourceAttributeId":  "attr-set-1",
       "attributeFqns": [
         "https://www.example.org/attr/foo/value/value1"
       ]
     },
     {
+      "resourceAttributeId":  "attr-set-2",
       "attributeFqns": [
         "https://example.net/attr/attr1/value/value1",
         "https://example.net/attr/attr1/value/value2"
@@ -158,7 +166,13 @@ message GetDecisionsResponse {
          "id": "e2",
          "emailAddress": "alice@example.org"
        }
-     ]
+     ],
+     "scope": {
+        "attributeFqns": [
+          "https://example.net/attr/attr1/value/value1",
+         "https://example.net/attr/attr1/value/value2"
+        ]
+      }
    }
 
 */
@@ -174,6 +188,7 @@ message EntityEntitlements {
 
 //A logical bucket of attributes belonging to a "Resource"
 message ResourceAttribute {
+  string resource_attributes_id = 1;
   repeated string attribute_value_fqns = 2;
 }
 
@@ -208,9 +223,64 @@ message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;
 }
 
+
+/*
+   Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
+   and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
+   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
+  {
+  "actions": [
+    {
+      "standard": "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "tokens": [
+    {
+      "id": "tok1",
+      "jwt": ....
+    },
+    {
+      "id": "tok2",
+      "jwt": .....
+    }
+  ],
+  "resourceAttributes": [
+    {
+      "attributeFqns": [
+        "https://www.example.org/attr/foo/value/value1"
+      ]
+    },
+    {
+      "attributeFqns": [
+        "https://example.net/attr/attr1/value/value1",
+        "https://example.net/attr/attr1/value/value2"
+      ]
+    }
+  ]
+}
+
+*/
+message TokenDecisionRequest {
+  repeated policy.Action actions = 1;
+  repeated Token tokens = 2;
+  repeated ResourceAttribute resource_attributes = 3;
+}
+
+message GetDecisionsByTokenRequest {
+  repeated TokenDecisionRequest decision_requests = 1;
+}
+
+message GetDecisionsByTokenResponse {
+  repeated DecisionResponse decision_responses = 1;
+}
+
 service AuthorizationService {
   rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
     option (google.api.http) = {post: "/v1/authorization"};
+  }
+  rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
+    option (google.api.http) = {post: "/v1/token/authorization"};
   }
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
     option (google.api.http) = {post: "/v1/entitlements"};

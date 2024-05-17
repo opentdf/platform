@@ -177,6 +177,7 @@ jobs:
           sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240
       - run: go run ./service provision keycloak
+      - run: go run ./service provision fixtures
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background
         with:

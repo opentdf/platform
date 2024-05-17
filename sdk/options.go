@@ -13,16 +13,17 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	dialOption        grpc.DialOption
-	tlsConfig         *tls.Config
-	clientCredentials *oauth.ClientCredentials
-	tokenExchange     *oauth.TokenExchangeInfo
-	tokenEndpoint     string
-	scopes            []string
-	policyConn        *grpc.ClientConn
-	authorizationConn *grpc.ClientConn
-	extraDialOptions  []grpc.DialOption
-	certExchange      *oauth.CertExchangeInfo
+	dialOption           grpc.DialOption
+	tlsConfig            *tls.Config
+	clientCredentials    *oauth.ClientCredentials
+	tokenExchange        *oauth.TokenExchangeInfo
+	tokenEndpoint        string
+	scopes               []string
+	policyConn           *grpc.ClientConn
+	authorizationConn    *grpc.ClientConn
+	entityresolutionConn *grpc.ClientConn
+	extraDialOptions     []grpc.DialOption
+	certExchange         *oauth.CertExchangeInfo
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -82,6 +83,12 @@ func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
+	}
+}
+
+func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.entityresolutionConn = conn
 	}
 }
 

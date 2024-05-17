@@ -271,18 +271,36 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
-	// Scope is required for because of performance.  Remove and handle 360 no scope
-	// https://github.com/opentdf/platform/issues/365
-	if req.GetScope() == nil {
-		as.logger.ErrorContext(ctx, "requires scope")
-		return nil, errors.New(db.ErrTextFqnMissingValue)
-	}
-	// get subject mappings
 	request := attr.GetAttributeValuesByFqnsRequest{
-		Fqns: req.GetScope().GetAttributeValueFqns(),
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},
+	}
+	// Lack of scope has impacts on performance
+	// https://github.com/opentdf/platform/issues/365
+	if req.GetScope() == nil {
+		// TODO: Reomve and use MatchSubjectMappings instead later in the flow
+		listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
+		if err != nil {
+			return nil, err
+		}
+		var attributeFqns []string
+		for _, attr := range listAttributeResp.GetAttributes() {
+			ns := attr.GetNamespace().GetName()
+			an := attr.GetName()
+			for _, val := range attr.GetValues() {
+				fqn, err := fqnBuilder(ns, an, val.GetValue())
+				if err != nil {
+					slog.Error("Error building attribute fqn for ", "attr", attr, "value", val)
+					return nil, err
+				}
+				attributeFqns = append(attributeFqns, fqn)
+			}
+		}
+		request.Fqns = attributeFqns
+	} else {
+		// get subject mappings
+		request.Fqns = req.GetScope().GetAttributeValueFqns()
 	}
 	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
 	if err != nil {

@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -49,13 +49,11 @@ type SDK struct {
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
-	tlsConfig := tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}
-
 	// Set default options
 	cfg := &config{
-		tls: grpc.WithTransportCredentials(credentials.NewTLS(&tlsConfig)),
+		dialOption: grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS12,
+		})),
 	}
 
 	// Apply options
@@ -138,7 +136,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 
 		if accessTokenSource != nil {
-			interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
+			interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
 			dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
 		}
 	} else {
@@ -168,20 +166,28 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	// any just return a KAS client that can only get public keys
 	if c.clientCredentials == nil {
 		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
-		return nil, nil //nolint:nilnil // not having credentials is not an error
+		return nil, nil // not having credentials is not an error
+	}
+
+	if c.certExchange != nil && c.tokenExchange != nil {
+		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
 	}
 
 	var ts auth.AccessTokenSource
 	var err error
-	if c.tokenExchange == nil {
-		ts, err = NewIDPAccessTokenSource(
+
+	switch {
+	case c.certExchange != nil:
+		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint)
+	case c.tokenExchange != nil:
+		ts, err = NewIDPTokenExchangeTokenSource(
+			*c.tokenExchange,
 			*c.clientCredentials,
 			c.tokenEndpoint,
 			c.scopes,
 		)
-	} else {
-		ts, err = NewIDPTokenExchangeTokenSource(
-			*c.tokenExchange,
+	default:
+		ts, err = NewIDPAccessTokenSource(
 			*c.clientCredentials,
 			c.tokenEndpoint,
 			c.scopes,

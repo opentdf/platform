@@ -20,6 +20,12 @@ const (
 	secondsPerMinute = 60
 )
 
+type RequestBody struct {
+	KeyAccess       `json:"keyAccess"`
+	ClientPublicKey string `json:"clientPublicKey"`
+	Policy          string `json:"policy"`
+}
+
 type KASClient struct {
 	accessTokenSource  auth.AccessTokenSource
 	dialOptions        []grpc.DialOption
@@ -78,7 +84,7 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 
 	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
 	if err != nil {
-		return nil, fmt.Errorf("Error connecting to kas: %w", err)
+		return nil, fmt.Errorf("error connecting to kas: %w", err)
 	}
 	defer conn.Close()
 

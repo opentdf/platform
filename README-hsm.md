@@ -3,7 +3,7 @@
 The `opentdf` services can use hardware security modules (HSMs)
 to protect access to high value private key data,
 notably KAS private keys used for long lived identity of the server.
-The servcies can use PKCS #11 bindings to communicate with a system or network HSM.
+The services can use PKCS #11 bindings to communicate with a system or network HSM.
 To configure a development environment,
 we use [softHSM](https://github.com/opendnssec/SoftHSMv2).
 

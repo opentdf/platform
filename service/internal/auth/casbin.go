@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -97,10 +96,14 @@ p,	role:readonly,		/kas.AccessService/LegacyPublicKey,			read,			allow
 ## gRPC routes
 p,	role:unknown,			kas.AccessService/LegacyPublicKey,			other,	allow
 p,	role:unknown,			kas.AccessService/PublicKey,						other,	allow
+## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
+p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,										write,		allow
 ## HTTP routes
 p,	role:unknown,			/health,																read,		allow
 p,	role:unknown,			/kas/v2/kas_public_key,									read,		allow
 p,	role:unknown,			/kas/kas_public_key,										read,		allow
+## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
+p,	role:unknown,			/entityresolution/resolve,										write,		allow
 `
 
 var defaultModel = `
@@ -133,7 +136,6 @@ type casbinSubject struct {
 
 type CasbinConfig struct {
 	PolicyConfig
-	DB *sql.DB
 }
 
 // newCasbinEnforcer creates a new casbin enforcer
@@ -179,11 +181,7 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 	permDeniedError := fmt.Errorf("permission denied")
 
 	// extract the role claim from the token
-	s, err := e.buildSubjectFromToken(token)
-	if err != nil {
-		slog.Error("failed to build subject from token", slog.String("error", err.Error()))
-		return false, permDeniedError
-	}
+	s := e.buildSubjectFromToken(token)
 
 	if len(s.Roles) == 0 {
 		sub := rolePrefix + defaultRole
@@ -211,20 +209,17 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 	return true, nil
 }
 
-func (e Enforcer) buildSubjectFromToken(t jwt.Token) (casbinSubject, error) {
+func (e Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	slog.Debug("building subject from token", slog.Any("token", t))
-	roles, err := e.extractRolesFromToken(t)
-	if err != nil {
-		return casbinSubject{}, err
-	}
+	roles := e.extractRolesFromToken(t)
 
 	return casbinSubject{
 		Subject: t.Subject(),
 		Roles:   roles,
-	}, nil
+	}
 }
 
-func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
+func (e Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	slog.Debug("extracting roles from token", slog.Any("token", t))
 	roles := []string{}
 
@@ -242,7 +237,7 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 	claim, exists := t.Get(selectors[0])
 	if !exists {
 		slog.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
-		return nil, nil
+		return nil
 	}
 	slog.Debug("root claim found", slog.String("claim", roleClaim), slog.Any("claims", claim))
 	// use dotnotation if the claim is nested
@@ -250,12 +245,12 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 		claimMap, ok := claim.(map[string]interface{})
 		if !ok {
 			slog.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
-			return nil, nil
+			return nil
 		}
 		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
 			slog.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
-			return nil, nil
+			return nil
 		}
 	}
 
@@ -271,7 +266,7 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 		}
 	default:
 		slog.Warn("could not get claim type", slog.String("selector", roleClaim), slog.Any("claims", claim))
-		return nil, nil
+		return nil
 	}
 
 	// filter roles based on the role map
@@ -290,5 +285,5 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) ([]string, error) {
 		filtered = append(filtered, defaultRole)
 	}
 
-	return filtered, nil
+	return filtered
 }

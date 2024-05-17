@@ -1,0 +1,112 @@
+logger:
+  level: debug
+  type: text
+  output: stdout
+# DB and Server configurations are defaulted for local development
+# db:
+#   host: localhost
+#   port: 5432
+#   user: postgres
+#   password: changeme
+services:
+  kas:
+    enabled: true
+  policy:
+    enabled: true
+  authorization:
+    enabled: true
+    ersUrl: http://localhost:8080/entityresolution/resolve
+    clientid: tdf-authorization-svc
+    clientsecret: secret
+    tokenEndpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
+  entityresolution:
+    enabled: true
+    url: http://localhost:8888/auth
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "opentdf"
+    legacykeycloak: true
+server:
+  auth:
+    enabled: true
+    enforceDPoP: false
+    audience: "http://localhost:8080"
+    issuer: http://localhost:8888/auth/realms/opentdf
+    policy:
+      ## Default policy for all requests
+      default: #"role:readonly"
+      ## Dot notation is used to access nested claims (i.e. realm_access.roles)
+      claim: # realm_access.roles
+      ## Maps the external role to the opentdf role
+      ## Note: left side is used in the policy, right side is the external role
+      map:
+      #  readonly: opentdf-readonly
+      #  admin: opentdf-admin
+      #  org-admin: opentdf-org-admin
+
+      ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
+      csv: #|
+      #  p, role:org-admin, policy:attributes, *, *, allow
+      #  p, role:org-admin, policy:subject-mappings, *, *, allow
+      #  p, role:org-admin, policy:resource-mappings, *, *, allow
+      #  p, role:org-admin, policy:kas-registry, *, *, allow
+      ## Custom model (see https://casbin.org/docs/syntax-for-models/)
+      model: #|
+      #  [request_definition]
+      #  r = sub, res, act, obj
+      #
+      #  [policy_definition]
+      #  p = sub, res, act, obj, eft
+      #
+      #  [role_definition]
+      #  g = _, _
+      #
+      #  [policy_effect]
+      #  e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
+      #
+      #  [matchers]
+      #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
+  cors:
+    enabled: false
+    # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
+    allowedorigins: "*"
+    # List of methods. Examples: 'GET,POST,PUT'
+    allowedmethods:
+      - GET
+      - POST
+      - PATCH
+      - PUT
+      - DELETE
+      - OPTIONS
+    # List of headers that are allowed in a request
+    allowedheaders:
+      - ACCEPT
+      - Authorization
+      - Content-Type
+      - X-CSRF-Token
+    # List of response headers that browsers are allowed to access
+    exposedheaders:
+      - Link
+    # Sets whether credentials are included in the CORS request
+    allowcredentials: true
+    # Sets the maximum age (in seconds) of a specific CORS preflight request
+    maxage: 3600
+  grpc:
+    reflectionEnabled: true # Default is false
+  cryptoProvider:
+    type: standard
+    standard:
+      rsa:
+        123:
+          privateKeyPath: kas-private.pem
+          publicKeyPath: kas-cert.pem
+        456:
+          privateKeyPath: kas-private.pem
+          publicKeyPath: kas-cert.pem
+      ec:
+        123:
+          privateKeyPath: kas-ec-private.pem
+          publicKeyPath: kas-ec-cert.pem
+  port: 8080
+opa:
+  embedded: true # Only for local development

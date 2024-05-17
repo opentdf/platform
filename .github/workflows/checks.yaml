@@ -1,5 +1,8 @@
 name: "Checks"
 
+env:
+  IS_RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'release-please-') }}
+
 on:
   pull_request:
     branches:
@@ -21,9 +24,38 @@ jobs:
     permissions:
       pull-requests: read
     steps:
-      - uses: amannn/action-semantic-pull-request@e9fabac35e210fea40ca5b14c0da95a099eff26f
+      - uses: amannn/action-semantic-pull-request@cfb60706e18bc85e8aec535e3c577abe8f70378e
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Types include:
+          #   - fix: fixes
+          #   - feat: features and enhancements
+          #   - chore: non-feature or enhancement (i.e. docs, ci, linting, automated, etc)
+          types: |
+            fix
+            feat
+            chore
+            refactor
+            revert
+          # Scopes include:
+          #   - main: used for automated releases
+          #   - core: related to any core need such as the core service or monorepo
+          #   - ci: anything related to ci
+          #   - docs: anything related solely to documentation
+          #   - sdk: related to sdk changes in the /sdk directory
+          #   - policy: related to policy service changes (i.e. /service/policy)
+          #   - kas: related to key access service changes (i.e. /service/kas)
+          #   - authz: related to the authorization service changes (i.e. /service/authorization)
+          scopes: |
+            main
+            core
+            ci
+            docs
+            sdk
+            policy
+            kas
+            authz
 
   go:
     runs-on: ubuntu-22.04
@@ -41,25 +73,32 @@ jobs:
           - lib/fixtures
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.22.2"
+          go-version: "1.22.3"
           check-latest: false
           cache-dependency-path: |
             examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum
+      - if: env.IS_RELEASE_BRANCH == 'true'
+        run: ./.github/scripts/work-init.sh
       - run: go mod download
+        working-directory: ${{ matrix.directory }}
       - run: go mod verify
+        working-directory: ${{ matrix.directory }}
+      - run: go work use .
+        if: env.IS_RELEASE_BRANCH == 'true'
+        working-directory: ${{ matrix.directory }}
       - name: golangci-lint
-        #uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804
-        uses: strantalis/golangci-lint-action@f4e979f5b36068d69d340547f66c991dca8b70ef
+        uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc
         with:
-          version: v1.56
+          version: v1.57
           working-directory: ${{ matrix.directory }}
           skip-cache: true
-          only-new-issues: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
           args: --out-format=colored-line-number
       - name: Install softHSM
         if: matrix.directory == 'service'
@@ -77,6 +116,17 @@ jobs:
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
         run: go test ./service/integration -race -failfast
+      - name: check go fmt and go mod tidy
+        run: |-
+          go mod tidy
+          go fmt ./...
+          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
+        working-directory: ${{ matrix.directory }}
+      - run: git diff
+      - run: git diff-files --ignore-submodules
+      - name: Check that files have been formatted before PR submission; see above for error details
+        run: git diff-files --quiet --ignore-submodules
+        if: env.IS_RELEASE_BRANCH == 'false'
 
   integration:
     name: integration tests
@@ -90,13 +140,15 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.22.2"
+          go-version: "1.22.3"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
             examples/go.sum
             protocol/go/go.sum
             sdk/go.sum
+      - if: env.IS_RELEASE_BRANCH == 'true'
+        run: ./.github/scripts/work-init.sh
       - run: go mod download
       - run: go mod verify
       - name: Install softHSM
@@ -109,17 +161,23 @@ jobs:
           echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
-      - run: docker compose up -d --wait --wait-timeout 240
       - run: |
           .github/scripts/init-temp-keys.sh --hsm
           cp opentdf-with-hsm.yaml opentdf.yaml
         if: matrix.crypto == 'hsm'
       - run: |
           .github/scripts/init-temp-keys.sh
-          cp opentdf-example.yaml opentdf.yaml
+          cp opentdf-dev.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
+      - name: Added Trusted Certs
+        run: |
+          sudo chmod -R 777 ./keys 
+          sudo apt-get install -y ca-certificates
+          sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
+          sudo update-ca-certificates
+      - run: docker compose up -d --wait --wait-timeout 240
       - run: go run ./service provision keycloak
-      - uses: JarvusInnovations/background-action@313d37130873d82c33fc907b9b78e932aec8e990
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background
         with:
           run: |
@@ -136,6 +194,8 @@ jobs:
       - run: go run ./examples encrypt "Hello Virtru"
       - run: go run ./examples decrypt sensitive.txt.tdf
       - run: go run ./examples decrypt sensitive.txt.tdf | grep "Hello Virtru"
+      - name: create roundtrip test data and run tests
+        run: go test ./service/rttests -v
 
   image:
     name: image build
@@ -154,7 +214,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: bufbuild/buf-setup-action@382440cdb8ec7bc25a68d7b4711163d95f7cc3aa
+      - uses: bufbuild/buf-setup-action@480a0ee8a588045b52a847b48138c6f377a89519
       - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
         with:
           input: service
@@ -166,7 +226,7 @@ jobs:
           against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.22.2"
+          go-version: "1.22.3"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -178,9 +238,14 @@ jobs:
       - run: make proto-generate
       - name: Restore go.mod after installing protoc-gen-doc
         run: git restore {service,protocol/go}/go.{mod,sum}
+      - name: validate go mod tidy
+        run: |-
+          cd protocol/go
+          go mod tidy
+          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
       - run: git diff
       - run: git diff-files --ignore-submodules
-      - name: Check that files have been formatted before PR submission
+      - name: Check that make proto-generate has run before PR submission; see above for error details
         run: git diff-files --quiet --ignore-submodules
   ci:
     needs:
@@ -202,33 +267,20 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: "1.22.2"
+          go-version: "1.22.3"
           check-latest: false
           cache: false
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
-        id: deps-changed
-        with:
-          filters: |
-            examples:
-              - 'examplesk/go.*'
-            service:
-              - 'service/go.*'
-            sdk:
-              - 'sdk/go.*'
       - name: install go-licenses
         run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
       - name: check service licenses
-        if: steps.deps-changed.outputs.service == 'true'
         run: >
           go-licenses check --disallowed_types=forbidden --include_tests
           ./service
       - name: check sdk licenses
-        if: steps.deps-changed.outputs.sdk == 'true'
         run: >
           go-licenses check --disallowed_types=forbidden --include_tests
           ./sdk
       - name: check examples licenses
-        if: steps.deps-changed.outputs.examples == 'true'
         run: >
           go-licenses check --disallowed_types=forbidden --include_tests
           ./examples

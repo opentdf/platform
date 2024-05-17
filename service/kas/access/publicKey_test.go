@@ -24,7 +24,6 @@ var (
 	config = security.Config{
 		Type: "hsm",
 		HSMConfig: security.HSMConfig{
-			Enabled:    true,
 			ModulePath: "",
 			PIN:        "12345",
 			SlotID:     0,
@@ -151,7 +150,6 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
@@ -190,7 +188,6 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
 	}
 
 	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
@@ -216,7 +213,6 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1"})
@@ -242,7 +238,6 @@ func TestPublicKeyHandlerV2(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
@@ -262,7 +257,6 @@ func TestPublicKeyHandlerV2Failure(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
 	}
 
 	_, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
@@ -286,7 +280,6 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1",
@@ -313,7 +306,6 @@ func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{

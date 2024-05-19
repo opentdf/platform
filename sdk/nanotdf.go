@@ -917,9 +917,44 @@ func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (in
 		return 0, err
 	}
 
+	// Write the length of the payload as int24
+	int24Bytes := Int32ToInt24(int32(len(cipherData)))
+	if err = binary.Write(writer, binary.BigEndian, int24Bytes); err != nil {
+		return 0, err
+	}
+
 	if err = binary.Write(writer, binary.BigEndian, cipherData); err != nil {
 		return 0, err
 	}
 
 	return int32(header.getLength()) + int32(len(cipherData)), nil
+}
+
+func ReadNanoTDF(writer io.Writer, reader io.Reader) (int32, error) {
+
+	nanoTDFBuf := bytes.Buffer{}
+	size, err := nanoTDFBuf.ReadFrom(reader)
+	if err != nil {
+		return 0, err
+	}
+
+	if size > kMaxEncryptedNTDFSize {
+		return 0, errors.New("exceeds max size for nano tdf")
+	}
+
+	var resultHeader NanoTDFHeader
+	err = resultHeader.ReadNanoTDFHeader(reader)
+	if err != nil {
+		return 0, err
+	}
+
+	return 0, nil
+}
+
+func Int24ToInt32(threeBytes []byte) int32 {
+	return (int32(threeBytes[0]) << 8) | (int32(threeBytes[1]) << 16) | (int32(threeBytes[2]) << 24)
+}
+
+func Int32ToInt24(s int32) (threeBytes []byte) {
+	return []byte{byte(s >> 8), byte(s >> 16), byte(s >> 24)}
 }

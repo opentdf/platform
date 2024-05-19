@@ -918,7 +918,7 @@ func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (in
 	}
 
 	// Write the length of the payload as int24
-	int24Bytes := Int32ToInt24(int32(len(cipherData)))
+	int24Bytes := UInt32ToUInt24(uint32(len(cipherData)))
 	if err = binary.Write(writer, binary.BigEndian, int24Bytes); err != nil {
 		return 0, err
 	}
@@ -951,10 +951,18 @@ func ReadNanoTDF(writer io.Writer, reader io.Reader) (int32, error) {
 	return 0, nil
 }
 
-func Int24ToInt32(threeBytes []byte) int32 {
-	return (int32(threeBytes[0]) << 8) | (int32(threeBytes[1]) << 16) | (int32(threeBytes[2]) << 24)
+func UInt24ToUInt32(b []byte) uint32 {
+	buf := make([]byte, 4)
+	//copy(buf[1:], b)
+	copy(buf[:len(buf)-1], b)
+	//fmt.Println(strconv.FormatUint(uint64(binary.LittleEndian.Uint32(buf)), 2))
+	return binary.LittleEndian.Uint32(buf)
 }
 
-func Int32ToInt24(s int32) (threeBytes []byte) {
-	return []byte{byte(s >> 8), byte(s >> 16), byte(s >> 24)}
+func UInt32ToUInt24(s uint32) []byte {
+	//fmt.Println(strconv.FormatUint(uint64(s), 2))
+	buf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(buf, s)
+	//return buf[1:]
+	return buf[:len(buf)-1]
 }

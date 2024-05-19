@@ -343,12 +343,28 @@ func TestCreateNanoTDF(t *testing.T) {
 	config.bufferSize = 8192 * 1024
 	config.kasURL.body = kasURL               // TODO - check for excessive length here
 	config.kasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
-	config.mPrivateKey = sdkPrivateKey
+	config.privateKey = sdkPrivateKey
 	config.mKasPublicKey = kasPublicKey
 	config.eccMode = ocrypto.ECCModeSecp256r1
 
-	err = CreateNanoTDF(outfile, infile, config)
+	_, err = CreateNanoTDF(outfile, infile, config)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestInt24(t *testing.T) {
+
+	b := [...]uint32{0, 16, 1234, 99999, 837434, 16777215}
+	for _, value := range b {
+
+		uint24AsBytes := UInt32ToUInt24(value)
+		int24 := UInt24ToUInt32(uint24AsBytes)
+		//println(value)
+		//println(int24)
+		if value != int24 {
+			t.Fatalf("Int24 test failed")
+		}
+	}
+
 }

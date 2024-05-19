@@ -48,8 +48,8 @@ func NewResourceLocator(url string) (*ResourceLocator, error) {
 }
 
 // getLength - return the serialized length (in bytes) of this object
-func (rl ResourceLocator) getLength() uint64 {
-	return uint64(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body) /* length of string */)
+func (rl ResourceLocator) getLength() uint16 {
+	return uint16(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body))
 }
 
 // setUrl - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string

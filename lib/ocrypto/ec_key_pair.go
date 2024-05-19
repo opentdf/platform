@@ -250,6 +250,25 @@ func ComputeECDHKey(privateKeyInPem []byte, publicKeyInPem []byte) ([]byte, erro
 	return sharedKey, nil
 }
 
+func ComputeECDHKeyFromEC(publicKey *ecdsa.PublicKey, privateKey *ecdsa.PrivateKey) ([]byte, error) {
+	ecdhPrivateKey, err := ConvertToECDHPrivateKey(privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ECPrivateKeyFromPem failed: %w", err)
+	}
+
+	ecdhPublicKey, err := ConvertToECDHPublicKey(publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
+	}
+
+	sharedKey, err := ecdhPrivateKey.ECDH(ecdhPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	return sharedKey, nil
+}
+
 // TODO FIXME
 func GetPEMPublicKeyFromPrivateKey(_ /*key*/ []byte, _ /*mode*/ ECCMode) ecdsa.PublicKey {
 	b := ecdsa.PublicKey{}

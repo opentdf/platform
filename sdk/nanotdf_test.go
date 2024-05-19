@@ -321,3 +321,34 @@ func NotTestNanoTDFEncryptFile(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreateNanoTDF(t *testing.T) {
+
+	infile, err := os.Open("nanotest1.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// try to delete the output file in case it exists already - ignore error if it doesn't exist
+	_ = os.Remove("nanotest1.ntdf")
+
+	outfile, err := os.Create("nanotest1.ntdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO - populate config properly
+	var kasURL = "https://kas.virtru.com/kas"
+	var config NanoTDFConfig
+	config.bufferSize = 8192 * 1024
+	config.kasURL.body = kasURL               // TODO - check for excessive length here
+	config.kasURL.protocol = urlProtocolHTTPS // TODO FIXME - should be derived from URL
+	config.mPrivateKey = sdkPrivateKey
+	config.mKasPublicKey = kasPublicKey
+	config.eccMode = ocrypto.ECCModeSecp256r1
+
+	err = CreateNanoTDF(outfile, infile, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+}

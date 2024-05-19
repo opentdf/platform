@@ -92,8 +92,8 @@ type embeddedPolicy struct {
 }
 
 // getLength - size in bytes of the serialized content of this object
-func (ep *embeddedPolicy) getLength() uint64 {
-	return uint64(2 /* length word length */ + len(ep.body) /* body data length */)
+func (ep *embeddedPolicy) getLength() uint16 {
+	return uint16(2 /* length word length */ + len(ep.body) /* body data length */)
 }
 
 // writeEmbeddedPolicy - writes the content of the  to the supplied writer
@@ -128,7 +128,7 @@ type remotePolicy struct {
 }
 
 // getLength - size in bytes of the serialized content of this object
-func (rp *remotePolicy) getLength() uint64 {
+func (rp *remotePolicy) getLength() uint16 {
 	return rp.url.getLength()
 }
 
@@ -268,8 +268,8 @@ type PolicyBody struct {
 }
 
 // getLength - size in bytes of the serialized content of this object
-func (pb *PolicyBody) getLength() uint64 {
-	var result uint64
+func (pb *PolicyBody) getLength() uint16 {
+	var result uint16
 
 	result = 1 /* policy mode byte */
 
@@ -385,6 +385,32 @@ func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (eccKey, er
 }
 
 // ============================================================================================================
+
+func NewNanoTDFHeader(config NanoTDFConfig) (*NanoTDFHeader, error) {
+
+	h := NanoTDFHeader{}
+
+	h.magicNumber = [3]byte([]byte(kNanoTDFMagicStringAndVersion))
+	h.privateKey = config.privateKey
+	h.publicKey = config.publicKey
+	h.keyPair = config.keyPair
+	h.kasURL = config.kasURL
+	h.binding = config.binding
+	h.sigCfg = config.sigCfg
+	h.policy = config.policy
+
+	// TODO - FIXME - calculate a real policy binding value
+	h.policyBinding = make([]byte, kEccSignatureLength)
+
+	// copy key from config
+	var err error
+	h.EphemeralPublicKey.Key, err = ocrypto.CompressedECPublicKey(config.eccMode, config.keyPair.PrivateKey.PublicKey)
+	if err != nil {
+		return nil, errors.New("URL too long")
+	}
+
+	return &h, nil
+}
 
 // ReadNanoTDFHeader - decode input into a NanoTDFHeader object
 func (header *NanoTDFHeader) ReadNanoTDFHeader(reader io.Reader) error {
@@ -518,13 +544,13 @@ func (header *NanoTDFHeader) getLength() uint64 {
 
 	totalBytes += uint64(len(header.magicNumber))
 
-	totalBytes += header.kasURL.getLength()
+	totalBytes += uint64(header.kasURL.getLength())
 
 	totalBytes += 1 /* binding byte */
 
 	totalBytes += 1 /* signature byte */
 
-	totalBytes += header.policy.body.getLength()
+	totalBytes += uint64(header.policy.body.getLength())
 
 	totalBytes += uint64(len(header.policyBinding))
 
@@ -843,4 +869,57 @@ func NanoTDFEncrypt(nanoTDF *NanoTDF, plaintextBuffer []byte) ([]byte, error) {
 	}
 
 	return encryptBuffer.Bytes(), err
+}
+
+//func (s SDK) CreateNanoTDF(writer io.Writer, reader io.ReadSeeker, config NanoTDFConfig) error {
+
+func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (int32, error) {
+
+	// Create nano tdf header
+	header, err := NewNanoTDFHeader(config)
+	if err != nil {
+		return 0, err
+	}
+
+	err = writeHeader(header, writer)
+	if err != nil {
+		return 0, err
+	}
+
+	buf := bytes.Buffer{}
+	size, err := buf.ReadFrom(reader)
+	if err != nil {
+		return 0, err
+	}
+
+	if size > kMaxTDFSize {
+		return 0, errors.New("exceeds max size for nano tdf")
+	}
+
+	// TODO: Get kas public key from KAS
+	symKey, err := ocrypto.ComputeECDHKey([]byte(config.publicKey), []byte(config.privateKey))
+	if err != nil {
+		return 0, err
+	}
+
+	key, err := ocrypto.CalculateHKDF(config.mDefaultSalt, symKey)
+	if err != nil {
+		return 0, err
+	}
+
+	aesGcm, err := ocrypto.NewAESGcm(key)
+	if err != nil {
+		return 0, err
+	}
+
+	cipherData, err := aesGcm.Encrypt(buf.Bytes())
+	if err != nil {
+		return 0, err
+	}
+
+	if err = binary.Write(writer, binary.BigEndian, cipherData); err != nil {
+		return 0, err
+	}
+
+	return int32(header.getLength()) + int32(len(cipherData)), nil
 }
